@@ -113,22 +113,45 @@
 <h2 class="Ss" id="void_session_log_buffer_append_("><a class="permalink" href="#void_session_log_buffer_append_(">void
   session_log_buffer_append (<b>session_log_buffer_t</b> * buf, const char *
   message)</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file
+<p class="Pp">Definition at line <b>93</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>88                                                                                {
-89   (void)buf;
-90   (void)message;
-91   // No-op - session log buffer not used in WASM
-92 }</pre>
+<pre>93                                                                                {
+94   (void)buf;
+95   (void)message;
+96   // No-op - session log buffer not used in WASM
+97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
   session_log_buffer_clear (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>88                                                          {
+89   (void)buf;
+90   // No-op - session log buffer not used in WASM
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
+  )</h2>
+<p class="Pp">Definition at line <b>79</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>79                                                       {
+80   return NULL;  // No-op - session log buffer not used in WASM
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
+  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
 <p class="Pp">Definition at line <b>83</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>83                                                          {
+<pre>83                                                            {
 84   (void)buf;
 85   // No-op - session log buffer not used in WASM
 86 }</pre>
@@ -136,40 +159,17 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
-  )</h2>
-<p class="Pp">Definition at line <b>74</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>74                                                       {
-75   return NULL;  // No-op - session log buffer not used in WASM
-76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
-  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>78                                                            {
-79   (void)buf;
-80   // No-op - session log buffer not used in WASM
-81 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
   session_log_buffer_get_recent (<b>session_log_buffer_t</b> * buf,
   <b>session_log_entry_t</b> * out_entries, size_t max_count)</a></h2>
-<p class="Pp">Definition at line <b>94</b> of file
+<p class="Pp">Definition at line <b>99</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>96                                                         {
-97   (void)buf;
-98   (void)out_entries;
-99   (void)max_count;
-100   return 0; // No entries in WASM
-101 }</pre>
+<pre>101                                                         {
+102   (void)buf;
+103   (void)out_entries;
+104   (void)max_count;
+105   return 0; // No entries in WASM
+106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

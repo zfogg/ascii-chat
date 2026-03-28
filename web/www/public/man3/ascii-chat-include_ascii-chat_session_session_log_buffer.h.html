@@ -133,13 +133,13 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>88</b> of file
+<p class="Pp">Definition at line <b>93</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>88                                                                                {
-89   (void)buf;
-90   (void)message;
-91   // No-op - session log buffer not used in WASM
-92 }</pre>
+<pre>93                                                                                {
+94   (void)buf;
+95   (void)message;
+96   // No-op - session log buffer not used in WASM
+97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
@@ -159,12 +159,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>88</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>83                                                          {
-84   (void)buf;
-85   // No-op - session log buffer not used in WASM
-86 }</pre>
+<pre>88                                                          {
+89   (void)buf;
+90   // No-op - session log buffer not used in WASM
+91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>,
@@ -185,11 +185,11 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
   failure</div>
-<p class="Pp">Definition at line <b>74</b> of file
+<p class="Pp">Definition at line <b>79</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>74                                                       {
-75   return NULL;  // No-op - session log buffer not used in WASM
-76 }</pre>
+<pre>79                                                       {
+80   return NULL;  // No-op - session log buffer not used in WASM
+81 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>,
@@ -206,12 +206,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
-<p class="Pp">Definition at line <b>78</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>78                                                            {
-79   (void)buf;
-80   // No-op - session log buffer not used in WASM
-81 }</pre>
+<pre>83                                                            {
+84   (void)buf;
+85   // No-op - session log buffer not used in WASM
+86 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer::mutex</b>,
@@ -235,14 +235,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of entries actually copied (may be less than
   max_count)</div>
-<p class="Pp">Definition at line <b>94</b> of file
+<p class="Pp">Definition at line <b>99</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>96                                                         {
-97   (void)buf;
-98   (void)out_entries;
-99   (void)max_count;
-100   return 0; // No entries in WASM
-101 }</pre>
+<pre>101                                                         {
+102   (void)buf;
+103   (void)out_entries;
+104   (void)max_count;
+105   return 0; // No entries in WASM
+106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>,

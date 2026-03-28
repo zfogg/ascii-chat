@@ -6017,153 +6017,175 @@ if (help) {
 1955   if (opts.height != OPT_HEIGHT_DEFAULT &amp;&amp; opts.height != 0) {
 1956     opts.auto_height = false;
 1957   }
-1958   update_dimensions_to_terminal_size(&amp;opts);
-1959   update_dimensions_for_full_height(&amp;opts);
-1960   // Apply verbose level to log threshold
-1961   // Each -V decreases the log level by 1 (showing more verbose output)
-1962   // Minimum level is LOG_DEV (0)
-1963   if (opts.verbose_level &gt; 0) {
-1964     log_level_t current_level = log_get_level();
-1965     int new_level = (int)current_level - (int)opts.verbose_level;
-1966     if (new_level &lt; LOG_DEV) {
-1967       new_level = LOG_DEV;
-1968     }
-1969     log_set_level((log_level_t)new_level);
-1970   }
-1971 
-1972   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
-1973   // Useful for CI/CD and testing environments without a physical webcam
-1974   const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
-1975   if (webcam_disabled &amp;&amp;
-1976       (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
-1977        platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
-1978     opts.test_pattern = true;
-1979   }
-1980 
-1981   // Apply --no-compress interaction with audio encoding
-1982   if (opts.no_compress) {
-1983     opts.encode_audio = false;
-1984     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
-1985   }
-1986 
-1987   // Set media_from_stdin flag if media_file is &quot;-&quot;
-1988   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
-1989     opts.media_from_stdin = true;
-1990     log_debug(&quot;Media file set to stdin&quot;);
-1991   }
-1992 
-1993   // Validate --seek option
-1994   if (opts.media_seek_timestamp &gt; 0.0) {
-1995     // Can't seek stdin
-1996     if (opts.media_from_stdin) {
-1997       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
-1998       SAFE_FREE(allocated_mode_argv);
-1999       return ERROR_INVALID_PARAM;
-2000     }
-2001 
-2002     // Require --file or --url
-2003     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2004       log_error(&quot;--seek requires --file or --url&quot;);
-2005       SAFE_FREE(allocated_mode_argv);
-2006       return ERROR_INVALID_PARAM;
-2007     }
-2008   }
-2009 
-2010   // Validate --pause option
-2011   if (opts.pause) {
-2012     // Require --file or --url (not webcam, not test pattern)
-2013     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2014       log_error(&quot;--pause requires --file or --url&quot;);
-2015       SAFE_FREE(allocated_mode_argv);
-2016       return ERROR_INVALID_PARAM;
-2017     }
-2018   }
-2019 
-2020   if (opts.media_url[0] != '\0') {
-2021     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
-2022     if (!url_is_valid(opts.media_url)) {
-2023       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
-2024       SAFE_FREE(allocated_mode_argv);
-2025       return ERROR_INVALID_PARAM;
-2026     }
-2027 
-2028     // Normalize bare URLs by prepending http:// if not present
-2029     if (!strstr(opts.media_url, &quot;://&quot;)) {
-2030       char normalized_url[2048];
-2031       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
-2032       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
-2033         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
-2034       } else {
-2035         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
-2036         SAFE_FREE(allocated_mode_argv);
-2037         return ERROR_INVALID_PARAM;
-2038       }
-2039     }
-2040   }
-2041 
-2042   // ========================================================================
-2043   // STAGE 8: Publish to RCU
-2044   // ========================================================================
-2045 
-2046   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
-2047   // (file/URL content is typically not horizontally flipped, unlike webcam)
-2048   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
-2049     opts.flip_x = false;
-2050     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
-2051   }
-2052 
-2053   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
-2054 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2055   bool quiet_for_memory_report = opts.quiet;
-2056 #endif
+1958   log_info(&quot;[PERF] About to call update_dimensions_to_terminal_size&quot;);
+1959   // SKIPPING to test if get_terminal_size EM_JS breaks logging
+1960   // update_dimensions_to_terminal_size(&amp;opts);
+1961   log_info(&quot;[PERF] update_dimensions_to_terminal_size done (SKIPPED)&quot;);
+1962   log_info(&quot;[PERF] About to call update_dimensions_for_full_height&quot;);
+1963   // SKIPPING this call to test if it's the hang source
+1964   // update_dimensions_for_full_height(&amp;opts);
+1965   log_info(&quot;[PERF] update_dimensions_for_full_height done (SKIPPED)&quot;);
+1966   log_info(&quot;[PERF] BETWEEN_SKIPPED_AND_DUMMY&quot;);
+1967 
+1968   // Try a dummy operation to see if state is corrupted
+1969   volatile int dummy = 0;
+1970   dummy++;
+1971   log_info(&quot;[PERF] AFTER_DUMMY&quot;);
+1972 
+1973   // Apply verbose level to log threshold
+1974   // Each -V decreases the log level by 1 (showing more verbose output)
+1975   // Minimum level is LOG_DEV (0)
+1976   if (opts.verbose_level &gt; 0) {
+1977     log_level_t current_level = log_get_level();
+1978     int new_level = (int)current_level - (int)opts.verbose_level;
+1979     if (new_level &lt; LOG_DEV) {
+1980       new_level = LOG_DEV;
+1981     }
+1982     log_set_level((log_level_t)new_level);
+1983   }
+1984 
+1985   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
+1986   // Useful for CI/CD and testing environments without a physical webcam
+1987   log_info(&quot;[PERF] BEFORE_GETENV&quot;);
+1988   const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
+1989   if (webcam_disabled &amp;&amp;
+1990       (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
+1991        platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
+1992     opts.test_pattern = true;
+1993   }
+1994 
+1995   // Apply --no-compress interaction with audio encoding
+1996   if (opts.no_compress) {
+1997     opts.encode_audio = false;
+1998     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
+1999   }
+2000 
+2001   // Set media_from_stdin flag if media_file is &quot;-&quot;
+2002   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
+2003     opts.media_from_stdin = true;
+2004     log_debug(&quot;Media file set to stdin&quot;);
+2005   }
+2006 
+2007   // Validate --seek option
+2008   if (opts.media_seek_timestamp &gt; 0.0) {
+2009     // Can't seek stdin
+2010     if (opts.media_from_stdin) {
+2011       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
+2012       SAFE_FREE(allocated_mode_argv);
+2013       return ERROR_INVALID_PARAM;
+2014     }
+2015 
+2016     // Require --file or --url
+2017     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2018       log_error(&quot;--seek requires --file or --url&quot;);
+2019       SAFE_FREE(allocated_mode_argv);
+2020       return ERROR_INVALID_PARAM;
+2021     }
+2022   }
+2023 
+2024   // Validate --pause option
+2025   if (opts.pause) {
+2026     // Require --file or --url (not webcam, not test pattern)
+2027     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2028       log_error(&quot;--pause requires --file or --url&quot;);
+2029       SAFE_FREE(allocated_mode_argv);
+2030       return ERROR_INVALID_PARAM;
+2031     }
+2032   }
+2033 
+2034   if (opts.media_url[0] != '\0') {
+2035     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+2036     log_info(&quot;[PERF] About to call url_is_valid&quot;);
+2037     if (!url_is_valid(opts.media_url)) {
+2038       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
+2039       SAFE_FREE(allocated_mode_argv);
+2040       return ERROR_INVALID_PARAM;
+2041     }
+2042     log_info(&quot;[PERF] url_is_valid done&quot;);
+2043 
+2044     // Normalize bare URLs by prepending http:// if not present
+2045     if (!strstr(opts.media_url, &quot;://&quot;)) {
+2046       char normalized_url[2048];
+2047       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
+2048       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
+2049         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+2050       } else {
+2051         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
+2052         SAFE_FREE(allocated_mode_argv);
+2053         return ERROR_INVALID_PARAM;
+2054       }
+2055     }
+2056   }
 2057 
-2058   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
-2059   // This makes the options visible to all threads via lock-free reads
-2060   asciichat_error_t publish_result = options_state_set(&amp;opts);
-2061   if (publish_result != ASCIICHAT_OK) {
-2062     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
-2063     SAFE_FREE(allocated_mode_argv);
-2064     return publish_result;
-2065   }
-2066 
-2067   // Now update debug memory quiet mode with the saved quiet value
-2068 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2069   debug_memory_set_quiet_mode(quiet_for_memory_report);
-2070 #endif
-2071 
-2072   // ========================================================================
-2073   // Apply color scheme to logging
-2074   // ========================================================================
-2075   // Now that options are parsed, set and apply the selected color scheme to logging
-2076   if (opts.color_scheme_name[0] != '\0') {
-2077     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
-2078     if (scheme_result == ASCIICHAT_OK) {
-2079       const color_scheme_t *scheme = colorscheme_get_active_scheme();
-2080       if (scheme) {
-2081         log_set_color_scheme(scheme);
-2082         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
-2083       }
-2084     } else {
-2085       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
-2086     }
-2087   }
-2088 
-2089   // ========================================================================
-2090   // STAGE 8: Execute deferred actions (after all options parsed and published)
-2091   // ========================================================================
-2092   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
-2093   // are executed here after all options are fully parsed and published via RCU.
-2094   // This ensures action output reflects the final parsed state (e.g., final dimensions
-2095   // for --show-capabilities).
-2096   // Re-enable terminal output so deferred actions can print their results.
-2097   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
-2098   if (has_action) {
-2099     log_set_terminal_output(true);
-2100   }
-2101   actions_execute_deferred();
-2102   SAFE_FREE(allocated_mode_argv);
-2103   return ASCIICHAT_OK;
-2104 }</pre>
+2058   // ========================================================================
+2059   // STAGE 8: Publish to RCU
+2060   // ========================================================================
+2061 
+2062   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
+2063   // (file/URL content is typically not horizontally flipped, unlike webcam)
+2064   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
+2065     opts.flip_x = false;
+2066     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
+2067   }
+2068 
+2069   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
+2070 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2071   bool quiet_for_memory_report = opts.quiet;
+2072 #endif
+2073 
+2074   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
+2075   // This makes the options visible to all threads via lock-free reads
+2076   log_info(&quot;[PERF] About to call options_state_set&quot;);
+2077   asciichat_error_t publish_result = options_state_set(&amp;opts);
+2078   log_info(&quot;[PERF] options_state_set done&quot;);
+2079   if (publish_result != ASCIICHAT_OK) {
+2080     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
+2081     SAFE_FREE(allocated_mode_argv);
+2082     return publish_result;
+2083   }
+2084 
+2085   // Now update debug memory quiet mode with the saved quiet value
+2086 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2087   debug_memory_set_quiet_mode(quiet_for_memory_report);
+2088 #endif
+2089 
+2090   // ========================================================================
+2091   // Apply color scheme to logging
+2092   // ========================================================================
+2093   // Now that options are parsed, set and apply the selected color scheme to logging
+2094   if (opts.color_scheme_name[0] != '\0') {
+2095     log_info(&quot;[PERF] About to call colorscheme_set_active_scheme&quot;);
+2096     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+2097     log_info(&quot;[PERF] colorscheme_set_active_scheme done&quot;);
+2098     if (scheme_result == ASCIICHAT_OK) {
+2099       const color_scheme_t *scheme = colorscheme_get_active_scheme();
+2100       if (scheme) {
+2101         log_set_color_scheme(scheme);
+2102         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
+2103       }
+2104     } else {
+2105       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
+2106     }
+2107   }
+2108 
+2109   // ========================================================================
+2110   // STAGE 8: Execute deferred actions (after all options parsed and published)
+2111   // ========================================================================
+2112   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
+2113   // are executed here after all options are fully parsed and published via RCU.
+2114   // This ensures action output reflects the final parsed state (e.g., final dimensions
+2115   // for --show-capabilities).
+2116   // Re-enable terminal output so deferred actions can print their results.
+2117   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
+2118   if (has_action) {
+2119     log_set_terminal_output(true);
+2120   }
+2121   log_info(&quot;[PERF] About to call actions_execute_deferred (has_action=%d)&quot;, has_action);
+2122   actions_execute_deferred();
+2123   log_info(&quot;[PERF] actions_execute_deferred done&quot;);
+2124   SAFE_FREE(allocated_mode_argv);
+2125   return ASCIICHAT_OK;
+2126 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_check_update_immediate()</b>,
@@ -6240,12 +6262,10 @@ if (help) {
     <b>terminal_supports_utf8()</b>, <b>options_state::test_pattern</b>,
     <b>options_state::turn_credential</b>, <b>options_state::turn_secret</b>,
     <b>options_state::turn_servers</b>, <b>options_state::turn_username</b>,
-    <b>update_dimensions_for_full_height()</b>,
-    <b>update_dimensions_to_terminal_size()</b>, <b>url_is_valid()</b>,
-    <b>usage()</b>, <b>utf8_is_ascii_only()</b>, <b>utf8_is_valid()</b>,
-    <b>validate_options_and_report()</b>, <b>options_state::verbose_level</b>,
-    <b>options_state::version</b>, <b>options_state::websocket_port</b>, and
-    <b>options_state::width</b>.</p>
+    <b>url_is_valid()</b>, <b>usage()</b>, <b>utf8_is_ascii_only()</b>,
+    <b>utf8_is_valid()</b>, <b>validate_options_and_report()</b>,
+    <b>options_state::verbose_level</b>, <b>options_state::version</b>,
+    <b>options_state::websocket_port</b>, and <b>options_state::width</b>.</p>
 <p class="Pp">Referenced by <b>client_init_with_args()</b>, <b>main()</b>, and
     <b>mirror_init_with_args()</b>.</p>
 </section>
@@ -7374,39 +7394,43 @@ if (auto_height || auto_width) {
 </pre>
 <p class="Pp">Definition at line <b>606</b> of file <b>options/common.c</b>.</p>
 <pre>606                                                         {
-607   if (!opts) {
-608     return;
-609   }
-610 
-611   unsigned short int term_width, term_height;
+607   log_info(&quot;[PERF] update_dimensions_for_full_height START&quot;);
+608   if (!opts) {
+609     log_info(&quot;[PERF] opts is NULL, returning&quot;);
+610     return;
+611   }
 612 
-613   // Note: Logging is not available during options_init, so we can't use log_debug here
-614   asciichat_error_t result = get_terminal_size(&amp;term_width, &amp;term_height);
-615   if (result == ASCIICHAT_OK) {
-616     // If both dimensions are auto, set height to terminal height and let
-617     // aspect_ratio calculate width
-618     if (opts-&gt;auto_height &amp;&amp; opts-&gt;auto_width) {
-619       opts-&gt;height = term_height;
-620       opts-&gt;width = term_width; // Also set width when both are auto
-621     }
-622     // If only height is auto, use full terminal height
-623     else if (opts-&gt;auto_height) {
-624       opts-&gt;height = term_height;
+613   unsigned short int term_width, term_height;
+614 
+615   // Note: Logging is not available during options_init, so we can't use log_debug here
+616   log_info(&quot;[PERF] About to call get_terminal_size&quot;);
+617   asciichat_error_t result = get_terminal_size(&amp;term_width, &amp;term_height);
+618   log_info(&quot;[PERF] get_terminal_size returned&quot;);
+619   if (result == ASCIICHAT_OK) {
+620     // If both dimensions are auto, set height to terminal height and let
+621     // aspect_ratio calculate width
+622     if (opts-&gt;auto_height &amp;&amp; opts-&gt;auto_width) {
+623       opts-&gt;height = term_height;
+624       opts-&gt;width = term_width; // Also set width when both are auto
 625     }
-626     // If only width is auto, use full terminal width
-627     else if (opts-&gt;auto_width) {
-628       opts-&gt;width = term_width;
+626     // If only height is auto, use full terminal height
+627     else if (opts-&gt;auto_height) {
+628       opts-&gt;height = term_height;
 629     }
-630   } else {
-631     // Terminal size detection failed, but we can still continue with defaults
-632   }
-633 }</pre>
+630     // If only width is auto, use full terminal width
+631     else if (opts-&gt;auto_width) {
+632       opts-&gt;width = term_width;
+633     }
+634   } else {
+635     // Terminal size detection failed, but we can still continue with defaults
+636   }
+637 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::auto_height</b>,
     <b>options_state::auto_width</b>, <b>get_terminal_size()</b>,
-    <b>options_state::height</b>, and <b>options_state::width</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
+    <b>options_state::height</b>, <b>log_info</b>, and
+    <b>options_state::width</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_update_dimensions_to_terminal_size_("><a class="permalink" href="#void_update_dimensions_to_terminal_size_(">void
@@ -7477,40 +7501,39 @@ if (auto_height || auto_width) {
 update_dimensions_to_terminal_size();
 log_info(&quot;Terminal dimensions: %dx%d&quot;, opt_width, opt_height);
 </pre>
-<p class="Pp">Definition at line <b>635</b> of file <b>options/common.c</b>.</p>
-<pre>635                                                          {
-636   if (!opts) {
-637     return;
-638   }
-639 
-640   unsigned short int term_width, term_height;
-641   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
-642   asciichat_error_t terminal_result = get_terminal_size(&amp;term_width, &amp;term_height);
-643   if (terminal_result == ASCIICHAT_OK) {
-644     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
-645     log_dev(&quot;Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)&quot;, term_width, term_height, opts-&gt;auto_width,
-646             opts-&gt;auto_height);
-647     if (opts-&gt;auto_width) {
-648       opts-&gt;width = term_width;
-649       log_debug(&quot;Auto-width: set width to %u&quot;, opts-&gt;width);
-650     }
-651     if (opts-&gt;auto_height) {
-652       opts-&gt;height = term_height;
-653       log_debug(&quot;Auto-height: set height to %u&quot;, opts-&gt;height);
+<p class="Pp">Definition at line <b>639</b> of file <b>options/common.c</b>.</p>
+<pre>639                                                          {
+640   if (!opts) {
+641     return;
+642   }
+643 
+644   unsigned short int term_width, term_height;
+645   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
+646   asciichat_error_t terminal_result = get_terminal_size(&amp;term_width, &amp;term_height);
+647   if (terminal_result == ASCIICHAT_OK) {
+648     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
+649     log_dev(&quot;Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)&quot;, term_width, term_height, opts-&gt;auto_width,
+650             opts-&gt;auto_height);
+651     if (opts-&gt;auto_width) {
+652       opts-&gt;width = term_width;
+653       log_debug(&quot;Auto-width: set width to %u&quot;, opts-&gt;width);
 654     }
-655     log_debug(&quot;Final dimensions: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
-656   } else {
-657     // Terminal detection failed - keep the default values set in options_init()
-658     log_warn(&quot;TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
-659   }
-660 }</pre>
+655     if (opts-&gt;auto_height) {
+656       opts-&gt;height = term_height;
+657       log_debug(&quot;Auto-height: set height to %u&quot;, opts-&gt;height);
+658     }
+659     log_debug(&quot;Final dimensions: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+660   } else {
+661     // Terminal detection failed - keep the default values set in options_init()
+662     log_warn(&quot;TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+663   }
+664 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::auto_height</b>,
     <b>options_state::auto_width</b>, <b>get_terminal_size()</b>,
     <b>options_state::height</b>, <b>log_debug</b>, <b>log_dev</b>,
     <b>log_warn</b>, and <b>options_state::width</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_usage_(FILE_*_stream,_"><a class="permalink" href="#void_usage_(FILE_*_stream,_">void
@@ -7567,36 +7590,36 @@ usage(stdout, MODE_SERVER);
 <p class="Pp"></p>
 <p class="Pp">Options grouped by functionality for readability</p>
 </div>
-<p class="Pp">Definition at line <b>683</b> of file <b>options/common.c</b>.</p>
-<pre>683                                               {
-684   if (!desc) {
-685     return;
-686   }
-687 
-688   // Find mode metadata
-689   const mode_metadata_t *metadata = NULL;
-690   for (size_t i = 0; i &lt; sizeof(mode_info) / sizeof(mode_info[0]); i++) {
-691     if (mode_info[i].mode == mode) {
-692       metadata = &amp;mode_info[i];
-693       break;
-694     }
-695   }
-696 
-697   if (!metadata) {
-698     (void)fprintf(desc, &quot;error: Unknown mode\n&quot;);
-699     return;
-700   }
-701 
-702   // Get unified config
-703   const options_config_t *config = options_preset_unified(metadata-&gt;program_name, metadata-&gt;description);
-704   if (!config) {
-705     (void)fprintf(desc, &quot;Error: Failed to create options config\n&quot;);
-706     return;
-707   }
-708 
-709   options_print_help_for_mode(config, mode, metadata-&gt;program_name, metadata-&gt;description, desc);
-710   options_config_destroy(config);
-711 }</pre>
+<p class="Pp">Definition at line <b>687</b> of file <b>options/common.c</b>.</p>
+<pre>687                                               {
+688   if (!desc) {
+689     return;
+690   }
+691 
+692   // Find mode metadata
+693   const mode_metadata_t *metadata = NULL;
+694   for (size_t i = 0; i &lt; sizeof(mode_info) / sizeof(mode_info[0]); i++) {
+695     if (mode_info[i].mode == mode) {
+696       metadata = &amp;mode_info[i];
+697       break;
+698     }
+699   }
+700 
+701   if (!metadata) {
+702     (void)fprintf(desc, &quot;error: Unknown mode\n&quot;);
+703     return;
+704   }
+705 
+706   // Get unified config
+707   const options_config_t *config = options_preset_unified(metadata-&gt;program_name, metadata-&gt;description);
+708   if (!config) {
+709     (void)fprintf(desc, &quot;Error: Failed to create options config\n&quot;);
+710     return;
+711   }
+712 
+713   options_print_help_for_mode(config, mode, metadata-&gt;program_name, metadata-&gt;description, desc);
+714   options_config_destroy(config);
+715 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mode_metadata_t::description</b>,

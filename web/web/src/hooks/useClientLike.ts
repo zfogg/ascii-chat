@@ -109,24 +109,80 @@ export function useClientLike(
 
   // Initialize WASM on mount
   useEffect(() => {
+    console.log(
+      "[useClientLike] Starting WASM initialization at",
+      new Date().toISOString(),
+    );
     initWasm()
-      .then(() => setWasmInitialized(true))
+      .then(() => {
+        console.log(
+          "[useClientLike] WASM initialization complete, setting wasmInitialized=true at",
+          new Date().toISOString(),
+        );
+        setWasmInitialized(true);
+      })
       .catch((err) => {
         console.error("WASM init error:", err);
         setError(`Failed to load WASM module: ${err}`);
       });
   }, [initWasm]);
 
-  // Apply WASM settings when they change
+  // Apply WASM settings immediately after init completes
   useEffect(() => {
-    if (wasmInitialized && isWasmReady()) {
+    console.log(
+      `[useClientLike] Settings effect triggered: wasmInitialized=${wasmInitialized}`,
+    );
+
+    if (!wasmInitialized) {
+      console.log(
+        "[useClientLike] Skipping settings: WASM not initialized yet",
+      );
+      return;
+    }
+
+    console.log(
+      "[useClientLike] wasmInitialized=true, applying settings at",
+      new Date().toISOString(),
+    );
+
+    // Retry up to 5 times if WASM isn't ready yet (typically ready immediately)
+    let retries = 0;
+    const tryApply = () => {
+      console.log(
+        `[useClientLike] tryApply called: isWasmReady()=${isWasmReady()}, retries=${retries}`,
+      );
+
+      if (!isWasmReady()) {
+        if (retries < 5) {
+          retries++;
+          console.log(
+            `[useClientLike] WASM not ready yet, retrying in 10ms (attempt ${retries}/5)`,
+          );
+          setTimeout(tryApply, 10); // 10ms retry
+          return;
+        }
+        console.warn(
+          "[useClientLike] WASM still not ready after 5 retries, skipping settings",
+        );
+        return;
+      }
+
       try {
+        console.log("[useClientLike] Calling applyWasmSettings...");
+        const settingsStart = performance.now();
         applyWasmSettings(settings);
+        const settingsTime = performance.now() - settingsStart;
+        console.log(
+          `[useClientLike] Settings applied successfully in ${settingsTime.toFixed(2)}ms`,
+        );
       } catch (err) {
         console.error("Failed to apply WASM settings:", err);
       }
-    }
-  }, [wasmInitialized, isWasmReady, applyWasmSettings, settings]);
+    };
+
+    tryApply();
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [wasmInitialized, applyWasmSettings, settings]);
 
   // Update frame interval when target FPS changes
   useEffect(() => {
@@ -154,6 +210,9 @@ export function useClientLike(
   // Handle dimension changes from AsciiRenderer
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
+      console.log(
+        `[useClientLike] handleDimensionsChange called with ${dims.cols}x${dims.rows}`,
+      );
       setTerminalDimensions(dims);
       onDimensionsChange?.(dims);
     },

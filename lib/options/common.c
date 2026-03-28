@@ -604,14 +604,18 @@ int options_format_default_value(option_type_t type, const void *default_value, 
 // ============================================================================
 
 void update_dimensions_for_full_height(options_t *opts) {
+  log_info("[PERF] update_dimensions_for_full_height START");
   if (!opts) {
+    log_info("[PERF] opts is NULL, returning");
     return;
   }
 
   unsigned short int term_width, term_height;
 
   // Note: Logging is not available during options_init, so we can't use log_debug here
+  log_info("[PERF] About to call get_terminal_size");
   asciichat_error_t result = get_terminal_size(&term_width, &term_height);
+  log_info("[PERF] get_terminal_size returned");
   if (result == ASCIICHAT_OK) {
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width

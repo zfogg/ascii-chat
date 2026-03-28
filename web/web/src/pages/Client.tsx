@@ -257,72 +257,75 @@ export function ClientPage() {
     }
   });
 
-  const renderFrame = useCallback((deltaMs: number) => {
-    renderCallCountRef.current++;
+  const renderFrame = useCallback(
+    (deltaMs: number) => {
+      renderCallCountRef.current++;
 
-    if (frameQueueRef.current.length === 0 || !rendererRef.current) {
-      renderNoOpCountRef.current++;
-    }
-
-    // Log every 60 calls to renderFrame (regardless of whether we actually render)
-    if (renderCallCountRef.current % 60 === 0) {
-      const noOpRate = (
-        (renderNoOpCountRef.current / renderCallCountRef.current) *
-        100
-      ).toFixed(1);
-      console.log(
-        `[Client] renderFrame called ${renderCallCountRef.current} times (${noOpRate}% no-op), queue depth: ${frameQueueRef.current.length}`,
-      );
-    }
-
-    // Delta-time frame queue draining: drop stale frames on slow hardware
-    if (frameQueueRef.current.length > 0 && rendererRef.current) {
-      if (renderLoopStartTimeRef.current === 0) {
-        renderLoopStartTimeRef.current = performance.now();
+      if (frameQueueRef.current.length === 0 || !rendererRef.current) {
+        renderNoOpCountRef.current++;
       }
 
-      const MAX_DRAIN = 4;
-      const framesToDrain = Math.min(
-        Math.floor(deltaMs / frameIntervalRef.current),
-        MAX_DRAIN,
-      );
-
-      // Drop stale frames (skip all but the newest)
-      for (let i = 0; i < framesToDrain - 1; i++) {
-        frameQueueRef.current.shift();
+      // Log every 60 calls to renderFrame (regardless of whether we actually render)
+      if (renderCallCountRef.current % 60 === 0) {
+        const noOpRate = (
+          (renderNoOpCountRef.current / renderCallCountRef.current) *
+          100
+        ).toFixed(1);
+        console.log(
+          `[Client] renderFrame called ${renderCallCountRef.current} times (${noOpRate}% no-op), queue depth: ${frameQueueRef.current.length}`,
+        );
       }
 
-      // Render the newest frame
-      const frameContent = frameQueueRef.current.shift();
-      if (frameContent) {
-        const frameHash = hashFrame(frameContent);
-        // Track if this is a new unique frame we haven't seen before
-        if (!frameHashesRef.current[frameHash]) {
-          cumulativeUniqueFramesRef.current++;
-        }
-        frameHashesRef.current[frameHash] =
-          (frameHashesRef.current[frameHash] || 0) + 1;
-
-        rendererRef.current.writeFrame(frameContent);
-
-        frameCountRef.current++;
-        diagnosticFrameCountRef.current++;
-
-        // Log render rate every 60 rendered frames (using diagnostic counter)
-        if (diagnosticFrameCountRef.current % 60 === 0) {
-          const uniqueFrames = Object.keys(frameHashesRef.current).length;
-          console.log(`[Client] Rendered ${uniqueFrames} unique frames`);
-          console.log(
-            `[Client] Frame hash distribution:`,
-            frameHashesRef.current,
-          );
+      // Delta-time frame queue draining: drop stale frames on slow hardware
+      if (frameQueueRef.current.length > 0 && rendererRef.current) {
+        if (renderLoopStartTimeRef.current === 0) {
           renderLoopStartTimeRef.current = performance.now();
-          diagnosticFrameCountRef.current = 0;
-          frameHashesRef.current = {};
+        }
+
+        const MAX_DRAIN = 4;
+        const framesToDrain = Math.min(
+          Math.floor(deltaMs / frameIntervalRef.current),
+          MAX_DRAIN,
+        );
+
+        // Drop stale frames (skip all but the newest)
+        for (let i = 0; i < framesToDrain - 1; i++) {
+          frameQueueRef.current.shift();
+        }
+
+        // Render the newest frame
+        const frameContent = frameQueueRef.current.shift();
+        if (frameContent) {
+          const frameHash = hashFrame(frameContent);
+          // Track if this is a new unique frame we haven't seen before
+          if (!frameHashesRef.current[frameHash]) {
+            cumulativeUniqueFramesRef.current++;
+          }
+          frameHashesRef.current[frameHash] =
+            (frameHashesRef.current[frameHash] || 0) + 1;
+
+          rendererRef.current.writeFrame(frameContent);
+
+          frameCountRef.current++;
+          diagnosticFrameCountRef.current++;
+
+          // Log render rate every 60 rendered frames (using diagnostic counter)
+          if (diagnosticFrameCountRef.current % 60 === 0) {
+            const uniqueFrames = Object.keys(frameHashesRef.current).length;
+            console.log(`[Client] Rendered ${uniqueFrames} unique frames`);
+            console.log(
+              `[Client] Frame hash distribution:`,
+              frameHashesRef.current,
+            );
+            renderLoopStartTimeRef.current = performance.now();
+            diagnosticFrameCountRef.current = 0;
+            frameHashesRef.current = {};
+          }
         }
       }
-    }
-  }, [frameIntervalRef]);
+    },
+    [frameIntervalRef],
+  );
 
   const { startRenderLoop } = useRenderLoop(
     renderFrame,

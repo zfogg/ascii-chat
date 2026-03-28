@@ -378,10 +378,10 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>94</b> of file <b>comprehensive.c</b>.</p>
-<pre>94                                                    {
-95   (void)encoder;
-96 }</pre>
+<p class="Pp">Definition at line <b>99</b> of file <b>comprehensive.c</b>.</p>
+<pre>99                                                    {
+100   (void)encoder;
+101 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_IO</b>, and <b>SAFE_FREE</b>.</p>
@@ -410,13 +410,13 @@
 <p class="Pp">USAGE: // After final <b>h265_encode()</b> call, flush remaining
     frames while (size &gt; 0) { size = max_size; h265_encoder_flush(encoder,
     buf, &amp;size); if (size &gt; 0) { // Send the flushed frame... } }</p>
-<p class="Pp">Definition at line <b>98</b> of file <b>comprehensive.c</b>.</p>
-<pre>98                                                                                                   {
-99   (void)encoder;
-100   (void)out_data;
-101   (void)out_len;
-102   return ASCIICHAT_OK;
-103 }</pre>
+<p class="Pp">Definition at line <b>103</b> of file <b>comprehensive.c</b>.</p>
+<pre>103                                                                                                   {
+104   (void)encoder;
+105   (void)out_data;
+106   (void)out_len;
+107   return ASCIICHAT_OK;
+108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
@@ -467,10 +467,10 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder handle</div>
-<p class="Pp">Definition at line <b>105</b> of file <b>comprehensive.c</b>.</p>
-<pre>105                                                             {
-106   (void)encoder;
-107 }</pre>
+<p class="Pp">Definition at line <b>110</b> of file <b>comprehensive.c</b>.</p>
+<pre>110                                                             {
+111   (void)encoder;
+112 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>h265_client_request_keyframe()</b>.</p>

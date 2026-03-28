@@ -62,9 +62,16 @@ export async function initMirrorWasm(
   moduleFactory: EmscriptenModuleFactory,
   options?: { locateFile?: (path: string) => string },
 ): Promise<void> {
-  if (wasmModule) return;
+  console.log(
+    `[WASM Mirror] initMirrorWasm called at ${new Date().toISOString()}`
+  );
 
-  console.log("[WASM] Starting module factory...");
+  if (wasmModule) {
+    console.log("[WASM Mirror] WASM module already initialized, returning");
+    return;
+  }
+
+  console.log("[WASM Mirror] Starting module factory...");
   const moduleOverrides: Record<string, unknown> = {
     // libsodium crypto random - returns 32-bit unsigned integer
     getRandomValue: function () {
@@ -78,8 +85,18 @@ export async function initMirrorWasm(
     moduleOverrides["locateFile"] = options.locateFile;
   }
 
-  wasmModule = await moduleFactory(moduleOverrides);
-  console.log("[WASM] Module factory completed");
+  console.log("[WASM Mirror] About to await moduleFactory...");
+  const factoryStart = performance.now();
+  try {
+    wasmModule = await moduleFactory(moduleOverrides);
+  } catch (err) {
+    console.error("[WASM Mirror] moduleFactory failed with error:", err);
+    throw err;
+  }
+  const factoryTime = performance.now() - factoryStart;
+  console.log(
+    `[WASM Mirror] moduleFactory().COMPLETED after ${(factoryTime / 1000).toFixed(2)}s at ${new Date().toISOString()}`
+  );
 
   if (!wasmModule) {
     throw new Error("Failed to load WASM module");
@@ -90,6 +107,10 @@ export async function initMirrorWasm(
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
+      console.log(
+        `[WASM] BEFORE _mirror_init_with_args at ${new Date().toISOString()}`
+      );
+      const initWithArgsStart = performance.now();
       console.log(
         "[WASM] Calling _mirror_init_with_args to initialize C options...",
       );
@@ -103,7 +124,14 @@ export async function initMirrorWasm(
 
       try {
         wasmModule.stringToUTF8(argsJson, strPtr, strLen);
+        console.log(
+          `[WASM] About to call _mirror_init_with_args at ${new Date().toISOString()}`
+        );
         const initResult = wasmModule._mirror_init_with_args(strPtr);
+        const initWithArgsTime = performance.now() - initWithArgsStart;
+        console.log(
+          `[WASM] _mirror_init_with_args RETURNED in ${initWithArgsTime.toFixed(2)}ms at ${new Date().toISOString()} with result ${initResult}`,
+        );
         if (initResult !== 0) {
           console.error(
             "[WASM] _mirror_init_with_args failed with code:",
@@ -119,10 +147,28 @@ export async function initMirrorWasm(
       console.warn("[WASM] _mirror_init_with_args not found in WASM module");
     }
 
+    console.log(
+      `[WASM] About to createOptionAccessor at ${new Date().toISOString()}`
+    );
+
     // Initialize shared options module with option accessor
     // This allows React components to call setColorMode, setPalette, etc.
+    const optionsAccessorStart = performance.now();
     const optionsAccessor = createOptionAccessor(wasmModule);
+    const optionsAccessorTime = performance.now() - optionsAccessorStart;
+    console.log(
+      `[WASM] createOptionAccessor DONE in ${optionsAccessorTime.toFixed(2)}ms at ${new Date().toISOString()}`,
+    );
+
+    console.log(
+      `[WASM] About to initializeOptions at ${new Date().toISOString()}`
+    );
+    const initializeOptionsStart = performance.now();
     initializeOptions(optionsAccessor);
+    const initializeOptionsTime = performance.now() - initializeOptionsStart;
+    console.log(
+      `[WASM] initializeOptions DONE in ${initializeOptionsTime.toFixed(2)}ms at ${new Date().toISOString()}`,
+    );
     console.log("[WASM] Options module initialized");
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
@@ -194,37 +240,20 @@ export function convertFrameToAscii(
   }
 
   frameCallCount++;
-  if (frameCallCount % 300 === 0) {
-    console.log(`[WASM] Processed ${frameCallCount} frames`);
-  }
 
   // Allocate memory for RGBA data
-  console.log(`[WASM] Requesting malloc for ${rgbaData.length} bytes`);
   const dataPtr = wasmModule._malloc(rgbaData.length);
 
   // CRITICAL: In WASM, malloc returns 0 on failure (0 is a valid memory address but indicates error)
   // Accessing memory at address 0 would corrupt the heap
   if (dataPtr === 0 || dataPtr === null || typeof dataPtr === "undefined") {
-    console.error(
-      `[WASM] CRITICAL: malloc returned ${dataPtr} for ${rgbaData.length} bytes. WASM heap may be exhausted.`,
-    );
     throw new Error(
       `Failed to allocate WASM memory for RGBA data (${rgbaData.length} bytes). WASM heap may be exhausted.`,
     );
   }
 
   if (dataPtr < 0) {
-    console.error(`[WASM] malloc returned negative pointer: ${dataPtr}`);
     throw new Error(`malloc returned invalid pointer: ${dataPtr}`);
-  }
-
-  console.log(`[WASM] malloc succeeded: dataPtr=${dataPtr}`);
-
-  // Also check that we're not at the start of memory (0 is often heap metadata)
-  if (dataPtr < 1024) {
-    console.warn(
-      `[WASM] WARNING: malloc returned very low address (${dataPtr}), possible heap corruption risk`,
-    );
   }
 
   try {
@@ -235,72 +264,22 @@ export function convertFrameToAscii(
       );
     }
 
-    // Verify expected size matches actual size
-    const expectedSize = srcWidth * srcHeight * 4;
-    if (rgbaData.length !== expectedSize) {
-      console.error(
-        `[WASM] CRITICAL: RGBA data size mismatch before copy - expected ${expectedSize}, got ${rgbaData.length}`,
-      );
-    }
-
-    // Copy RGBA data to WASM memory - catch any errors during copy
-    let copyError: Error | null = null;
-    try {
-      console.log(
-        `[WASM] Starting HEAPU8.set: copying ${rgbaData.length} bytes to WASM memory at ptr=${dataPtr}`,
-      );
-      wasmModule.HEAPU8.set(rgbaData, dataPtr);
-      console.log(`[WASM] HEAPU8.set completed successfully`);
-    } catch (err) {
-      copyError = err as Error;
-      console.error(`[WASM] ERROR during HEAPU8.set: ${copyError.message}`);
-      // Re-throw with additional context already logged above
-      throw copyError;
-    }
-
-    // Verify data was copied correctly by spot-checking bytes
-    const firstByteAfterCopy = wasmModule.HEAPU8[dataPtr];
-    const lastByteAfterCopy = wasmModule.HEAPU8[dataPtr + rgbaData.length - 1];
-    const lastExpectedPtr = dataPtr + rgbaData.length - 1;
-
-    console.log(
-      `[WASM] Frame ${frameCallCount}: dimensions=${srcWidth}x${srcHeight}, buffer=${rgbaData.length} bytes, dataPtr=${dataPtr}, lastBytePtr=${lastExpectedPtr}, firstByte=${firstByteAfterCopy}, lastByte=${lastByteAfterCopy}`,
-    );
+    // Copy RGBA data to WASM memory
+    wasmModule.HEAPU8.set(rgbaData, dataPtr);
 
     // Validate the C function pointers are available
     if (!wasmModule._mirror_convert_frame) {
       throw new Error("WASM function _mirror_convert_frame not found");
     }
 
-    console.log(
-      `[WASM] About to call _mirror_convert_frame(dataPtr=${dataPtr}, srcWidth=${srcWidth}, srcHeight=${srcHeight})`,
+    // Call WASM function (dimensions come from options set during init)
+    const resultPtr = wasmModule._mirror_convert_frame(
+      dataPtr,
+      srcWidth,
+      srcHeight,
     );
 
-    // Call WASM function (dimensions come from options set during init)
-    let resultPtr: number;
-    try {
-      resultPtr = wasmModule._mirror_convert_frame(
-        dataPtr,
-        srcWidth,
-        srcHeight,
-      );
-      console.log(`[WASM] _mirror_convert_frame returned: ${resultPtr}`);
-    } catch (err) {
-      const callError = err as Error;
-      console.error(
-        `[WASM] FATAL ERROR calling _mirror_convert_frame: ${callError.message}`,
-      );
-      console.error(
-        `[WASM] Context: srcWidth=${srcWidth}, srcHeight=${srcHeight}, dataPtr=${dataPtr}, bufferSize=${rgbaData.length}`,
-      );
-      // Re-throw with context already logged above
-      throw callError;
-    }
-
     if (!resultPtr) {
-      console.error(
-        `[WASM] mirror_convert_frame returned NULL pointer for frame ${frameCallCount}`,
-      );
       throw new Error(
         `WASM mirror_convert_frame returned null after processing ${srcWidth}x${srcHeight}`,
       );
@@ -310,14 +289,6 @@ export function convertFrameToAscii(
     try {
       // Convert C string to JavaScript string
       asciiString = wasmModule.UTF8ToString(resultPtr);
-
-      // Debug: log string length on palette change
-      if (frameCallCount % 30 === 0) {
-        console.log(
-          `[WASM] Frame result: ptr=${resultPtr}, length=${asciiString.length}, first 50 chars:`,
-          asciiString.substring(0, 50),
-        );
-      }
     } finally {
       // Always free the result buffer (allocated by WASM), even if UTF8ToString fails
       wasmModule._mirror_free_string(resultPtr);
@@ -325,7 +296,6 @@ export function convertFrameToAscii(
 
     return asciiString;
   } catch (err) {
-    console.error("[WASM] convertFrameToAscii error:", err);
     throw err;
   } finally {
     // Only free the input data buffer if malloc succeeded (dataPtr is not 0 or null)

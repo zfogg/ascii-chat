@@ -453,7 +453,7 @@
     "name": "ascii_renderer.c",
     "title": "ascii_renderer.c",
     "file": "ascii-chat-ascii_renderer.c.html",
-    "sourcePath": null
+    "sourcePath": "src/web/renderer/ascii_renderer.c"
   },
   {
     "name": "ascii_renderer_t",

@@ -1063,15 +1063,15 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
 <p class="Pp">Print project links with link emoji and colored styling.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>desc</i> Output file stream (typically stdout)</div>
-<p class="Pp">Definition at line <b>739</b> of file <b>options/common.c</b>.</p>
-<pre>739                                      {
-740   if (!desc) {
-741     return;
-742   }
-743 
-744   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://ascii-chat.com&quot;));
-745   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://github.com/zfogg/ascii-chat&quot;));
-746 }</pre>
+<p class="Pp">Definition at line <b>743</b> of file <b>options/common.c</b>.</p>
+<pre>743                                      {
+744   if (!desc) {
+745     return;
+746   }
+747 
+748   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://ascii-chat.com&quot;));
+749   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://github.com/zfogg/ascii-chat&quot;));
+750 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, and <b>LOG_COLOR_GREY</b>.</p>
@@ -1239,24 +1239,24 @@ if (result != ASCIICHAT_OK) {
     return result;
 }
 </pre>
-<p class="Pp">Definition at line <b>717</b> of file <b>options/common.c</b>.</p>
-<pre>717                                                                                     {
-718   if (!config || !opts) {
-719     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options is NULL&quot;);
-720   }
-721 
-722   char *error_message = NULL;
-723   // Cast opaque config pointer to actual type
-724   const options_config_t *config_typed = (const options_config_t *)config;
-725   asciichat_error_t result = options_config_validate(config_typed, opts, &amp;error_message);
-726   if (result != ASCIICHAT_OK) {
-727     if (error_message) {
-728       log_error(&quot;%s&quot;, error_message);
-729       free(error_message);
-730     }
-731   }
-732   return result;
-733 }</pre>
+<p class="Pp">Definition at line <b>721</b> of file <b>options/common.c</b>.</p>
+<pre>721                                                                                     {
+722   if (!config || !opts) {
+723     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options is NULL&quot;);
+724   }
+725 
+726   char *error_message = NULL;
+727   // Cast opaque config pointer to actual type
+728   const options_config_t *config_typed = (const options_config_t *)config;
+729   asciichat_error_t result = options_config_validate(config_typed, opts, &amp;error_message);
+730   if (result != ASCIICHAT_OK) {
+731     if (error_message) {
+732       log_error(&quot;%s&quot;, error_message);
+733       free(error_message);
+734     }
+735   }
+736   return result;
+737 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,

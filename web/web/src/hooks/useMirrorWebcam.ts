@@ -32,6 +32,7 @@ interface UseMirrorWebcamParams {
   setError: (error: string) => void;
   wasmInitialized: boolean;
   isWebcamRunning: boolean;
+  terminalDimensions?: { cols: number; rows: number };
 }
 
 export function useMirrorWebcam({
@@ -46,6 +47,7 @@ export function useMirrorWebcam({
   setError,
   wasmInitialized,
   isWebcamRunning,
+  terminalDimensions,
 }: UseMirrorWebcamParams) {
   const devAutoStartRef = useRef(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -217,19 +219,35 @@ export function useMirrorWebcam({
   }, []);
 
   // Auto-start webcam in development mode
+  // CRITICAL: Wait for terminalDimensions to be set by AsciiRenderer before starting webcam.
+  // If we start before dimensions are available, the render loop will block on 0x0 dimensions.
   useEffect(() => {
+    const hasDimensions =
+      terminalDimensions &&
+      terminalDimensions.cols > 0 &&
+      terminalDimensions.rows > 0;
+
     if (
       import.meta.env["NODE_ENV"] !== "production" &&
       wasmInitialized &&
       permissionGranted &&
       !isWebcamRunning &&
-      !devAutoStartRef.current
+      !devAutoStartRef.current &&
+      hasDimensions
     ) {
       devAutoStartRef.current = true;
-      console.log("[Mirror] Auto-starting webcam in development mode");
+      console.log(
+        `[Mirror] Auto-starting webcam with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+      );
       void Promise.resolve().then(() => startWebcam());
     }
-  }, [wasmInitialized, permissionGranted, isWebcamRunning, startWebcam]);
+  }, [
+    wasmInitialized,
+    permissionGranted,
+    isWebcamRunning,
+    startWebcam,
+    terminalDimensions,
+  ]);
 
   const startVideoFile = useCallback(
     async (file: File) => {

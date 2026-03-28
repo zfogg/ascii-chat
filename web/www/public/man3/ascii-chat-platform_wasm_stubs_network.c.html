@@ -48,7 +48,7 @@
   <br/>
   typedef void <b>app_client_t</b>
   <br/>
-  typedef void <b>connection_context_t</b>
+  typedef void <b>connection_attempt_context_t</b>
   <br/>
   <br/>
 </p>
@@ -56,11 +56,14 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">FILE * <b>platform_popen</b> (const char *cmd, const char *mode)
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_popen</b> (const char *name,
+    const char *command, const char *mode, FILE **out_stream)
   <br/>
-  int <b>platform_pclose</b> (FILE *stream)
+  Execute a command and return a file stream for reading/writing.
+    <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
   <br/>
-  int <b>platform_execute_subprocess</b> (const char *executable, const char
+  Close a process stream opened with <b>platform_popen()</b>. int
+    <b>platform_execute_subprocess</b> (const char *executable, const char
     **argv, char *output_buffer, size_t output_size)
   <br/>
   Execute a subprocess and optionally capture its output. void
@@ -77,11 +80,14 @@
   Create and initialize client application context. void
     <b>app_client_destroy</b> (<b>app_client_t</b> *client)
   <br/>
-  <b>connection_context_t</b> * <b>connection_context_init</b> (void)
+  <b>asciichat_error_t</b> <b>connection_context_init</b>
+    (<b>connection_attempt_context_t</b> *ctx)
   <br/>
-  void <b>connection_context_cleanup</b> (<b>connection_context_t</b> *ctx)
+  Initialize connection attempt context. void <b>connection_context_cleanup</b>
+    (<b>connection_attempt_context_t</b> *ctx)
   <br/>
-  <b>tcp_client_t</b> * <b>tcp_client_create</b> (void)
+  Cleanup connection attempt context. <b>tcp_client_t</b> *
+    <b>tcp_client_create</b> (void)
   <br/>
   Create and initialize a TCP client instance.
   <br/>
@@ -101,34 +107,35 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>app_callbacks_reg_t</b></h2>
-<p class="Pp">Definition at line <b>48</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_struct_app_callbacks_t_app_callbacks_t"><a class="permalink" href="#typedef_struct_app_callbacks_t_app_callbacks_t">typedef
   struct app_callbacks_t app_callbacks_t</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file
+<p class="Pp">Definition at line <b>35</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>app_client_t</b></h2>
-<p class="Pp">Definition at line <b>49</b> of file
+<p class="Pp">Definition at line <b>52</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">typedef void <b>connection_context_t</b></h2>
-<p class="Pp">Definition at line <b>50</b> of file
+<h2 class="Ss" id="typedef_void_connection_attempt_context_t"><a class="permalink" href="#typedef_void_connection_attempt_context_t">typedef
+  void connection_attempt_context_t</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef struct <b>tcp_client_t</b> <b>tcp_client_t</b></h2>
-<p class="Pp">Definition at line <b>31</b> of file
+<p class="Pp">Definition at line <b>34</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef struct <b>websocket_client_t</b>
   <b>websocket_client_t</b></h2>
-<p class="Pp">Definition at line <b>30</b> of file
+<p class="Pp">Definition at line <b>33</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
 </section>
 </section>
@@ -138,22 +145,22 @@
 <section class="Ss">
 <h2 class="Ss"><b>app_callbacks_t</b> * app_callbacks_get (void )</h2>
 <p class="Pp">Get registered callbacks (returns NULL if not registered)</p>
-<p class="Pp">Definition at line <b>44</b> of file
+<p class="Pp">Definition at line <b>47</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>44                                          {
-45   return NULL; // No app callbacks in WASM
-46 }</pre>
+<pre>47                                          {
+48   return NULL; // No app callbacks in WASM
+49 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_app_callbacks_register_("><a class="permalink" href="#void_app_callbacks_register_(">void
   app_callbacks_register (<b>app_callbacks_reg_t</b> * callbacks)</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>52                                                             {
-53   (void)callbacks;
-54 }</pre>
+<pre>55                                                             {
+56   (void)callbacks;
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -162,82 +169,61 @@
 <p class="Pp">Create and initialize client application context.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to initialized context, or NULL on failure</div>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>59</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>56                                       {
-57   return NULL;
-58 }</pre>
+<pre>59                                       {
+60   return NULL;
+61 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_app_client_destroy_("><a class="permalink" href="#void_app_client_destroy_(">void
   app_client_destroy (<b>app_client_t</b> * client)</a></h2>
-<p class="Pp">Definition at line <b>60</b> of file
+<p class="Pp">Definition at line <b>63</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>60                                               {
-61   (void)client;
-62 }</pre>
+<pre>63                                               {
+64   (void)client;
+65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_connection_context_cleanup_("><a class="permalink" href="#void_connection_context_cleanup_(">void
-  connection_context_cleanup (<b>connection_context_t</b> * ctx)</a></h2>
-<p class="Pp">Definition at line <b>68</b> of file
+  connection_context_cleanup (<b>connection_attempt_context_t</b> *
+  ctx)</a></h2>
+<p class="Pp">Cleanup connection attempt context. Closes and releases any active
+    transports. Called on connection success, failure, or shutdown.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Connection context to cleanup</div>
+<p class="Pp">Definition at line <b>72</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>68                                                            {
-69   (void)ctx;
+<pre>72                                                                    {
+73   (void)ctx;
+74 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> connection_context_init
+  (<b>connection_attempt_context_t</b> * ctx)</h2>
+<p class="Pp">Initialize connection attempt context. Sets up initial state,
+    resets timeouts, and prepares for connection attempt.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Connection context to initialize</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>67</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>67                                                                              {
+68   (void)ctx;
+69   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;connection_context_init not supported in WASM&quot;);
 70 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>connection_context_t</b> * connection_context_init (void
-  )</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>64                                                     {
-65   return NULL;
-66 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>client_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_pclose_(FILE_*_stream)"><a class="permalink" href="#int_platform_pclose_(FILE_*_stream)">int
-  platform_pclose (FILE * stream)</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>15                                   {
-16   (void)stream;
-17   return -1;
-18 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature_with_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, and
-    <b>yt_dlp_extract_stream_url()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="FILE_*_platform_popen_(const_char_*_cmd,_const_char_*_mode)"><a class="permalink" href="#FILE_*_platform_popen_(const_char_*_cmd,_const_char_*_mode)">FILE
-  * platform_popen (const char * cmd, const char * mode)</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>9                                                         {
-10   (void)cmd;
-11   (void)mode;
-12   return NULL; // No subprocess support in WASM
-13 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature_with_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, and
-    <b>yt_dlp_extract_stream_url()</b>.</p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>tcp_client_t</b> * tcp_client_create (void )</h2>
@@ -279,35 +265,35 @@
 <p class="Pp"></p>
 <p class="Pp">Allocates <b>tcp_client_t</b> and initializes all fields to safe
     defaults.</p>
-<p class="Pp">Definition at line <b>72</b> of file
+<p class="Pp">Definition at line <b>76</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>72                                       {
-73   return NULL;
-74 }</pre>
+<pre>76                                       {
+77   return NULL;
+78 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_client_destroy_("><a class="permalink" href="#void_tcp_client_destroy_(">void
   tcp_client_destroy (<b>tcp_client_t</b> * client)</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file
+<p class="Pp">Definition at line <b>42</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>39                                               {
-40   (void)client;
-41   // No-op - TCP client not used in WASM mirror mode
-42 }</pre>
+<pre>42                                               {
+43   (void)client;
+44   // No-op - TCP client not used in WASM mirror mode
+45 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_destroy_("><a class="permalink" href="#void_websocket_client_destroy_(">void
   websocket_client_destroy (<b>websocket_client_t</b> * client)</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file
+<p class="Pp">Definition at line <b>37</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>34                                                           {
-35   (void)client;
-36   // No-op - websocket client not used in WASM mirror mode
-37 }</pre>
+<pre>37                                                           {
+38   (void)client;
+39   // No-op - websocket client not used in WASM mirror mode
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

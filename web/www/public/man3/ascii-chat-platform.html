@@ -6041,15 +6041,15 @@ if (exit_code == 0) {
 <p class="Pp"></p>
 <p class="Pp">More secure than system() as it doesn't invoke a shell</p>
 </div>
-<p class="Pp">Definition at line <b>20</b> of file
+<p class="Pp">Definition at line <b>23</b> of file
     <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>21                                                                          {
-22   (void)executable;
-23   (void)argv;
-24   (void)output_buffer;
-25   (void)output_size;
-26   return -1; // No subprocess support in WASM
-27 }</pre>
+<pre>24                                                                          {
+25   (void)executable;
+26   (void)argv;
+27   (void)output_buffer;
+28   (void)output_size;
+29   return -1; // No subprocess support in WASM
+30 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>gpg_sign_with_key()</b>,
@@ -6255,10 +6255,10 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
 <p class="Pp"></p>
 <p class="Pp">Use this sparingly - prefer normal exit() whenever possible.</p>
 </div>
-<p class="Pp">Definition at line <b>125</b> of file <b>misc.c</b>.</p>
-<pre>125                                         {
-126   (void)exit_code;
-127 }</pre>
+<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
+<pre>129                                         {
+130   (void)exit_code;
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
@@ -6980,10 +6980,10 @@ platform_install_crash_handler(my_crash_handler);
   possible</div>
 <p class="Pp">Use this to check before calling prompt functions in contexts
     where non-interactive operation is acceptable (e.g., scripted usage).</p>
-<p class="Pp">Definition at line <b>348</b> of file <b>comprehensive.c</b>.</p>
-<pre>348                                    {
-349   return false;
-350 }</pre>
+<p class="Pp">Definition at line <b>363</b> of file <b>comprehensive.c</b>.</p>
+<pre>363                                    {
+364   return false;
+365 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
@@ -7626,6 +7626,20 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <p class="Pp"></p>
 <p class="Pp">Always sets errno context on failure for debugging.</p>
 </div>
+<p class="Pp">Definition at line <b>18</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>18                                                      {
+19   (void)stream_ptr;
+20   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;platform_pclose not supported in WASM&quot;);
+21 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
+    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature_with_binary()</b>,
+    <b>parse_gpg_keys_from_response()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_pipe_close_("><a class="permalink" href="#int_platform_pipe_close_(">int
@@ -7788,6 +7802,23 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 }
 </pre>
 </div>
+<p class="Pp">Definition at line <b>10</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>10                                                                                                              {
+11   (void)name;
+12   (void)command;
+13   (void)mode;
+14   (void)out_stream;
+15   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;platform_popen not supported in WASM&quot;);
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
+    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature_with_binary()</b>,
+    <b>parse_gpg_keys_from_response()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_process_destroy_("><a class="permalink" href="#void_platform_process_destroy_(">void
@@ -8103,10 +8134,10 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"></p>
 <p class="Pp">POSIX systems return ASCIICHAT_OK but do nothing</p>
 </div>
-<p class="Pp">Definition at line <b>103</b> of file <b>misc.c</b>.</p>
-<pre>103                                                           {
-104   return ASCIICHAT_OK;
-105 }</pre>
+<p class="Pp">Definition at line <b>107</b> of file <b>misc.c</b>.</p>
+<pre>107                                                           {
+108   return ASCIICHAT_OK;
+109 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -8172,12 +8203,12 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Previous signal handler, or SIG_ERR on error</div>
 <p class="Pp">Registers a signal handler for the specified signal.</p>
-<p class="Pp">Definition at line <b>119</b> of file <b>misc.c</b>.</p>
-<pre>119                                                                     {
-120   (void)sig;
-121   (void)handler;
-122   return NULL;
-123 }</pre>
+<p class="Pp">Definition at line <b>123</b> of file <b>misc.c</b>.</p>
+<pre>123                                                                     {
+124   (void)sig;
+125   (void)handler;
+126   return NULL;
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>,
@@ -9734,11 +9765,11 @@ platform_stderr_restore(handle);        // stderr restored
 <div class="Bd-indent"><i>sock</i> Socket to close</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero on error</div>
-<p class="Pp">Definition at line <b>32</b> of file <b>comprehensive.c</b>.</p>
-<pre>32                                 {
-33   (void)sock;
-34   return 0;
-35 }</pre>
+<p class="Pp">Definition at line <b>37</b> of file <b>comprehensive.c</b>.</p>
+<pre>37                                 {
+38   (void)sock;
+39   return 0;
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_disconnect()</b>,
@@ -9911,10 +9942,10 @@ if (!socket_is_valid(sock)) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The returned string may be a static buffer. Do not modify
   or free it.</div>
-<p class="Pp">Definition at line <b>76</b> of file <b>comprehensive.c</b>.</p>
-<pre>76                                           {
-77   return &quot;Socket error&quot;;
-78 }</pre>
+<p class="Pp">Definition at line <b>81</b> of file <b>comprehensive.c</b>.</p>
+<pre>81                                           {
+82   return &quot;Socket error&quot;;
+83 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
@@ -9941,10 +9972,10 @@ if (!socket_is_valid(sock)) {
 <p class="Pp">Get last socket error code.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Error code (platform-specific)</div>
-<p class="Pp">Definition at line <b>80</b> of file <b>comprehensive.c</b>.</p>
-<pre>80                                 {
-81   return 0;
-82 }</pre>
+<p class="Pp">Definition at line <b>85</b> of file <b>comprehensive.c</b>.</p>
+<pre>85                                 {
+86   return 0;
+87 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
@@ -10118,11 +10149,11 @@ if (result &lt; 0 &amp;&amp; socket_is_in_progress_error(socket_get_last_error()
 <div class="Bd-indent">true if error indicates socket is closed or invalid</div>
 <p class="Pp">Detects errors like EBADF (bad file descriptor) on POSIX or
     WSAENOTSOCK (socket operation on non-socket) on Windows.</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>comprehensive.c</b>.</p>
-<pre>71                                                     {
-72   (void)error_code;
-73   return false;
-74 }</pre>
+<p class="Pp">Definition at line <b>76</b> of file <b>comprehensive.c</b>.</p>
+<pre>76                                                     {
+77   (void)error_code;
+78   return false;
+79 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>error_code</b>.</p>
@@ -10137,10 +10168,10 @@ if (result &lt; 0 &amp;&amp; socket_is_in_progress_error(socket_get_last_error()
 <div class="Bd-indent"><i>sock</i> Socket handle to check</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if socket is valid, false otherwise</div>
-<p class="Pp">Definition at line <b>28</b> of file <b>comprehensive.c</b>.</p>
-<pre>28                                     {
-29   return sock &gt;= 0;
-30 }</pre>
+<p class="Pp">Definition at line <b>33</b> of file <b>comprehensive.c</b>.</p>
+<pre>33                                     {
+34   return sock &gt;= 0;
+35 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>packet_send()</b>, <b>tcp_client_close()</b>,
@@ -10249,11 +10280,11 @@ while (total_sent &lt; len) {
     }
 }
 </pre>
-<p class="Pp">Definition at line <b>66</b> of file <b>comprehensive.c</b>.</p>
-<pre>66                                                  {
-67   (void)error_code;
-68   return false;
-69 }</pre>
+<p class="Pp">Definition at line <b>71</b> of file <b>comprehensive.c</b>.</p>
+<pre>71                                                  {
+72   (void)error_code;
+73   return false;
+74 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>error_code</b>.</p>
@@ -10504,14 +10535,14 @@ if (received == 0) {
 </pre>
 <p class="Pp"><b>For UDP (datagram) sockets:</b> Use <b>socket_recvfrom()</b>
     instead to receive data with source address information.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>comprehensive.c</b>.</p>
-<pre>51                                                                      {
-52   (void)sock;
-53   (void)buf;
-54   (void)len;
-55   (void)flags;
-56   return -1;
-57 }</pre>
+<p class="Pp">Definition at line <b>56</b> of file <b>comprehensive.c</b>.</p>
+<pre>56                                                                      {
+57   (void)sock;
+58   (void)buf;
+59   (void)len;
+60   (void)flags;
+61   return -1;
+62 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>recv_with_timeout()</b>.</p>
@@ -10625,14 +10656,14 @@ while (total_sent &lt; len) {
       write())</li>
   <li>Partial sends are normal and should be handled</li>
 </ul>
-<p class="Pp">Definition at line <b>43</b> of file <b>comprehensive.c</b>.</p>
-<pre>43                                                                            {
-44   (void)sock;
-45   (void)buf;
-46   (void)len;
-47   (void)flags;
-48   return -1;
-49 }</pre>
+<p class="Pp">Definition at line <b>48</b> of file <b>comprehensive.c</b>.</p>
+<pre>48                                                                            {
+49   (void)sock;
+50   (void)buf;
+51   (void)len;
+52   (void)flags;
+53   return -1;
+54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
@@ -10947,12 +10978,12 @@ while (total_sent &lt; len) {
 <i>how</i> Shutdown mode (SHUT_RD, SHUT_WR, SHUT_RDWR)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero on error</div>
-<p class="Pp">Definition at line <b>37</b> of file <b>comprehensive.c</b>.</p>
-<pre>37                                             {
-38   (void)sock;
-39   (void)how;
-40   return 0;
-41 }</pre>
+<p class="Pp">Definition at line <b>42</b> of file <b>comprehensive.c</b>.</p>
+<pre>42                                             {
+43   (void)sock;
+44   (void)how;
+45   return 0;
+46 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
@@ -11606,11 +11637,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">On Windows, clears console screen buffer.</p>
 </div>
-<p class="Pp">Definition at line <b>76</b> of file <b>misc.c</b>.</p>
-<pre>76                                                     {
-77   (void)fd;
-78   return ASCIICHAT_OK;
-79 }</pre>
+<p class="Pp">Definition at line <b>80</b> of file <b>misc.c</b>.</p>
+<pre>80                                                     {
+81   (void)fd;
+82   return ASCIICHAT_OK;
+83 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11917,11 +11948,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Terminal state is reset immediately.</p>
 </div>
-<p class="Pp">Definition at line <b>81</b> of file <b>misc.c</b>.</p>
-<pre>81                                          {
-82   (void)fd;
-83   return ASCIICHAT_OK;
-84 }</pre>
+<p class="Pp">Definition at line <b>85</b> of file <b>misc.c</b>.</p>
+<pre>85                                          {
+86   (void)fd;
+87   return ASCIICHAT_OK;
+88 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>

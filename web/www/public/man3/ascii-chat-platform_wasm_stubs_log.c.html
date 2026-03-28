@@ -127,11 +127,11 @@
 <h2 class="Ss" id="void_log_mmap_destroy_(void_)"><a class="permalink" href="#void_log_mmap_destroy_(void_)">void
   log_mmap_destroy (void )</a></h2>
 <p class="Pp">Shutdown mmap logging. Syncs and unmaps the log file.</p>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>108</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>103                             {
-104   // No-op - mmap logging not used in WASM
-105 }</pre>
+<pre>108                             {
+109   // No-op - mmap logging not used in WASM
+110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -268,13 +268,13 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>88</b> of file
+<p class="Pp">Definition at line <b>93</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>88                                                                                {
-89   (void)buf;
-90   (void)message;
-91   // No-op - session log buffer not used in WASM
-92 }</pre>
+<pre>93                                                                                {
+94   (void)buf;
+95   (void)message;
+96   // No-op - session log buffer not used in WASM
+97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -287,12 +287,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>88</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>83                                                          {
-84   (void)buf;
-85   // No-op - session log buffer not used in WASM
-86 }</pre>
+<pre>88                                                          {
+89   (void)buf;
+90   // No-op - session log buffer not used in WASM
+91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>terminal_screen_log_clear()</b>.</p>
@@ -307,11 +307,11 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
   failure</div>
-<p class="Pp">Definition at line <b>74</b> of file
+<p class="Pp">Definition at line <b>79</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>74                                                       {
-75   return NULL;  // No-op - session log buffer not used in WASM
-76 }</pre>
+<pre>79                                                       {
+80   return NULL;  // No-op - session log buffer not used in WASM
+81 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>terminal_screen_log_init()</b>.</p>
@@ -324,12 +324,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
-<p class="Pp">Definition at line <b>78</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>78                                                            {
-79   (void)buf;
-80   // No-op - session log buffer not used in WASM
-81 }</pre>
+<pre>83                                                            {
+84   (void)buf;
+85   // No-op - session log buffer not used in WASM
+86 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>terminal_screen_log_destroy()</b>.</p>
@@ -351,14 +351,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of entries actually copied (may be less than
   max_count)</div>
-<p class="Pp">Definition at line <b>94</b> of file
+<p class="Pp">Definition at line <b>99</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>96                                                         {
-97   (void)buf;
-98   (void)out_entries;
-99   (void)max_count;
-100   return 0; // No entries in WASM
-101 }</pre>
+<pre>101                                                         {
+102   (void)buf;
+103   (void)out_entries;
+104   (void)max_count;
+105   return 0; // No entries in WASM
+106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>, and
@@ -393,9 +393,14 @@
 <p class="Pp">Definition at line <b>64</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
 <pre>64                                               {
-65   (void)level;
-66   return 2; // Stub: return stderr-like fd
-67 }</pre>
+65   // Route based on level: INFO and below go to stdout, WARN and above go to stderr
+66   // This matches the native implementation and allows Emscripten to route to
+67   // console.log for INFO/DEBUG/DEV and console.error for WARN/ERROR/FATAL
+68   if (level &gt;= 3) { // LOG_WARN = 3, LOG_ERROR = 4, LOG_FATAL = 5
+69     return 2; // STDERR_FILENO
+70   }
+71   return 1; // STDOUT_FILENO (LOG_DEV=0, LOG_DEBUG=1, LOG_INFO=2)
+72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

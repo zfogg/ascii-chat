@@ -96,10 +96,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
-<pre>129                                                     {
-130   (void)callback;
-131 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+<pre>133                                                     {
+134   (void)callback;
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
@@ -155,10 +155,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>misc.c</b>.</p>
-<pre>136                        {
-137   return false;
-138 }</pre>
+<p class="Pp">Definition at line <b>140</b> of file <b>misc.c</b>.</p>
+<pre>140                        {
+141   return false;
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -179,9 +179,9 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
-<pre>133                        {
-134 }</pre>
+<p class="Pp">Definition at line <b>137</b> of file <b>misc.c</b>.</p>
+<pre>137                        {
+138 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, and

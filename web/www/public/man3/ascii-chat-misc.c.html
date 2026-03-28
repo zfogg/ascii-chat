@@ -38,7 +38,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef void <b>render_file_t</b>
+<p class="Pp">typedef void <b>ui_mdns_server_t</b>
+  <br/>
+  typedef void <b>render_file_t</b>
   <br/>
   typedef void <b>media_source_t</b>
   <br/>
@@ -72,7 +74,7 @@
   <br/>
   Apply command-line overrides to detected capabilities. <b>render_file_t</b> *
     <b>render_file_create</b> (const char *output_file, int width, int height,
-    int fps, int vcodec_id)
+    int fps, int vcodec_id, int acodec_id)
   <br/>
   void <b>render_file_set_audio_source</b> (<b>render_file_t</b> *rf,
     <b>media_source_t</b> *source, int sample_rate)
@@ -127,9 +129,10 @@
   <b>mdns_result_t</b> * <b>ui_mdns_get_best_address</b> (<b>mdns_query_t</b>
     *query)
   <br/>
-  <b>mdns_result_t</b> * <b>ui_mdns_select</b> (<b>mdns_result_t</b> *results)
+  int <b>ui_mdns_select</b> (const <b>ui_mdns_server_t</b> *servers, int count)
   <br/>
-  void <b>ui_mdns_free_results</b> (<b>mdns_result_t</b> *results)
+  TUI-based server selection with formatted display. void
+    <b>ui_mdns_free_results</b> (<b>mdns_result_t</b> *results)
   <br/>
   <br/>
 </p>
@@ -148,29 +151,34 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>mdns_query_t</b></h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>misc.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>mdns_result_t</b></h2>
-<p class="Pp">Definition at line <b>142</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>146</b> of file <b>misc.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_void_media_source_t"><a class="permalink" href="#typedef_void_media_source_t">typedef
   void media_source_t</a></h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>misc.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>render_file_t</b></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>misc.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_void(*_signal_handler_t)_(int)"><a class="permalink" href="#typedef_void(*_signal_handler_t)_(int)">typedef
   void(* signal_handler_t) (int)</a></h2>
-<p class="Pp">Definition at line <b>117</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>misc.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef void <b>symbol_cache_t</b></h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>misc.c</b>.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>misc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void_ui_mdns_server_t"><a class="permalink" href="#typedef_void_ui_mdns_server_t">typedef
+  void ui_mdns_server_t</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>misc.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -198,10 +206,10 @@
 <p class="Pp"></p>
 <p class="Pp">Overrides take precedence over detected capabilities.</p>
 </div>
-<p class="Pp">Definition at line <b>31</b> of file <b>misc.c</b>.</p>
-<pre>31                                                                                 {
-32   return caps;
-33 }</pre>
+<p class="Pp">Definition at line <b>34</b> of file <b>misc.c</b>.</p>
+<pre>34                                                                                 {
+35   return caps;
+36 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>, and
@@ -223,11 +231,11 @@
 <p class="Pp">TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
     etc.).</p>
 </div>
-<p class="Pp">Definition at line <b>26</b> of file <b>misc.c</b>.</p>
-<pre>26                                  {
-27   tty_info_t tty = {0};
-28   return tty;
-29 }</pre>
+<p class="Pp">Definition at line <b>29</b> of file <b>misc.c</b>.</p>
+<pre>29                                  {
+30   tty_info_t tty = {0};
+31   return tty;
+32 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_display_create()</b>.</p>
@@ -235,40 +243,42 @@
 <section class="Ss">
 <h2 class="Ss"><b>h265_encoder_t</b> * h265_encoder_create (int width, int
   height, double fps)</h2>
-<p class="Pp">Definition at line <b>109</b> of file <b>misc.c</b>.</p>
-<pre>109                                                                        {
-110   (void)width;
-111   (void)height;
-112   (void)fps;
-113   return NULL;  // No video encoding in WASM
-114 }</pre>
+<p class="Pp">Definition at line <b>113</b> of file <b>misc.c</b>.</p>
+<pre>113                                                                        {
+114   (void)width;
+115   (void)height;
+116   (void)fps;
+117   return NULL;  // No video encoding in WASM
+118 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>h265_client_context_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>render_file_t</b> * render_file_create (const char *
-  output_file, int width, int height, int fps, int vcodec_id)</h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>misc.c</b>.</p>
-<pre>38                                                                                                           {
-39   (void)output_file;
-40   (void)width;
-41   (void)height;
-42   (void)fps;
-43   (void)vcodec_id;
-44   return NULL;  // No file rendering in browser
-45 }</pre>
+  output_file, int width, int height, int fps, int vcodec_id, int
+  acodec_id)</h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>misc.c</b>.</p>
+<pre>41                                                                                                                          {
+42   (void)output_file;
+43   (void)width;
+44   (void)height;
+45   (void)fps;
+46   (void)vcodec_id;
+47   (void)acodec_id;
+48   return NULL;  // No file rendering in browser
+49 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_render_file_destroy_("><a class="permalink" href="#int_render_file_destroy_(">int
   render_file_destroy (<b>render_file_t</b> * rf)</a></h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>misc.c</b>.</p>
-<pre>65                                            {
-66   (void)rf;
-67   return 0;
-68 }</pre>
+<p class="Pp">Definition at line <b>69</b> of file <b>misc.c</b>.</p>
+<pre>69                                            {
+70   (void)rf;
+71   return 0;
+72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -276,12 +286,12 @@
 <h2 class="Ss" id="void_render_file_set_audio_source_("><a class="permalink" href="#void_render_file_set_audio_source_(">void
   render_file_set_audio_source (<b>render_file_t</b> * rf, <b>media_source_t</b>
   * source, int sample_rate)</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>misc.c</b>.</p>
-<pre>47                                                                                               {
-48   (void)rf;
-49   (void)source;
-50   (void)sample_rate;
-51 }</pre>
+<p class="Pp">Definition at line <b>51</b> of file <b>misc.c</b>.</p>
+<pre>51                                                                                               {
+52   (void)rf;
+53   (void)source;
+54   (void)sample_rate;
+55 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -289,11 +299,11 @@
 <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
   render_file_set_snapshot_actual_duration (<b>render_file_t</b> * rf, double
   duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>misc.c</b>.</p>
-<pre>70                                                                                       {
-71   (void)rf;
-72   (void)duration_sec;
-73 }</pre>
+<p class="Pp">Definition at line <b>74</b> of file <b>misc.c</b>.</p>
+<pre>74                                                                                       {
+75   (void)rf;
+76   (void)duration_sec;
+77 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -301,11 +311,11 @@
 <h2 class="Ss" id="void_render_file_set_video_source_("><a class="permalink" href="#void_render_file_set_video_source_(">void
   render_file_set_video_source (<b>render_file_t</b> * rf, <b>media_source_t</b>
   * source)</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file <b>misc.c</b>.</p>
-<pre>53                                                                              {
-54   (void)rf;
-55   (void)source;
-56 }</pre>
+<p class="Pp">Definition at line <b>57</b> of file <b>misc.c</b>.</p>
+<pre>57                                                                              {
+58   (void)rf;
+59   (void)source;
+60 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -313,13 +323,13 @@
 <h2 class="Ss" id="int_render_file_write_frame_("><a class="permalink" href="#int_render_file_write_frame_(">int
   render_file_write_frame (<b>render_file_t</b> * rf, const <b>uint8_t</b> *
   data, <b>uint64_t</b> duration_ns)</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>misc.c</b>.</p>
-<pre>58                                                                                           {
-59   (void)rf;
-60   (void)data;
-61   (void)duration_ns;
-62   return 0;
-63 }</pre>
+<p class="Pp">Definition at line <b>62</b> of file <b>misc.c</b>.</p>
+<pre>62                                                                                           {
+63   (void)rf;
+64   (void)data;
+65   (void)duration_ns;
+66   return 0;
+67 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -343,10 +353,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
-<pre>129                                                     {
-130   (void)callback;
-131 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+<pre>133                                                     {
+134   (void)callback;
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
@@ -362,10 +372,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>misc.c</b>.</p>
-<pre>136                        {
-137   return false;
-138 }</pre>
+<p class="Pp">Definition at line <b>140</b> of file <b>misc.c</b>.</p>
+<pre>140                        {
+141   return false;
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>,
@@ -384,9 +394,9 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
-<pre>133                        {
-134 }</pre>
+<p class="Pp">Definition at line <b>137</b> of file <b>misc.c</b>.</p>
+<pre>137                        {
+138 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>, and
@@ -396,9 +406,9 @@
 <h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)"><a class="permalink" href="#void_terminal_stop_resize_detection_(void_)">void
   terminal_stop_resize_detection (void )</a></h2>
 <p class="Pp">No-op stub on POSIX platforms (no resize detection thread).</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>misc.c</b>.</p>
-<pre>92                                           {
-93 }</pre>
+<p class="Pp">Definition at line <b>96</b> of file <b>misc.c</b>.</p>
+<pre>96                                           {
+97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
@@ -406,10 +416,10 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_free_results_("><a class="permalink" href="#void_ui_mdns_free_results_(">void
   ui_mdns_free_results (<b>mdns_result_t</b> * results)</a></h2>
-<p class="Pp">Definition at line <b>159</b> of file <b>misc.c</b>.</p>
-<pre>159                                                   {
-160   (void)results;
-161 }</pre>
+<p class="Pp">Definition at line <b>164</b> of file <b>misc.c</b>.</p>
+<pre>164                                                   {
+165   (void)results;
+166 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
@@ -417,34 +427,73 @@
 <section class="Ss">
 <h2 class="Ss"><b>mdns_result_t</b> * ui_mdns_get_best_address
   (<b>mdns_query_t</b> * query)</h2>
-<p class="Pp">Definition at line <b>149</b> of file <b>misc.c</b>.</p>
-<pre>149                                                              {
-150   (void)query;
-151   return NULL;
-152 }</pre>
+<p class="Pp">Definition at line <b>153</b> of file <b>misc.c</b>.</p>
+<pre>153                                                              {
+154   (void)query;
+155   return NULL;
+156 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mdns_query_t</b> * ui_mdns_query (const char * service)</h2>
-<p class="Pp">Definition at line <b>144</b> of file <b>misc.c</b>.</p>
-<pre>144                                                  {
-145   (void)service;
-146   return NULL;
-147 }</pre>
+<p class="Pp">Definition at line <b>148</b> of file <b>misc.c</b>.</p>
+<pre>148                                                  {
+149   (void)service;
+150   return NULL;
+151 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>mdns_result_t</b> * ui_mdns_select (<b>mdns_result_t</b> *
-  results)</h2>
-<p class="Pp">Definition at line <b>154</b> of file <b>misc.c</b>.</p>
-<pre>154                                                       {
-155   (void)results;
-156   return NULL;
-157 }</pre>
+<h2 class="Ss" id="int_ui_mdns_select_(const_"><a class="permalink" href="#int_ui_mdns_select_(const_">int
+  ui_mdns_select (const <b>ui_mdns_server_t</b> * servers, int count)</a></h2>
+<p class="Pp">TUI-based server selection with formatted display. Displays
+    discovered servers in a formatted terminal UI with:</p>
+<ul class="Bl-bullet">
+  <li>Clear screen and boxed display</li>
+  <li>Server list with numbering and addresses</li>
+  <li>&quot;No results&quot; message if no servers available</li>
+  <li>Interactive numeric selection prompt</li>
+</ul>
+<p class="Pp"><b>Display Example (3 servers):</b></p>
+<p class="Pp"></p>
+<pre>&#x256D;&#x2500; &#x1F50D; ascii-chat Server Discovery &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;
+&#x2502;
+&#x2502; Found 3 servers on your local network:
+&#x2502;
+&#x2502;   [1] swift-river-canyon     192.168.1.100:27224
+&#x2502;   [2] quiet-mountain-lake    192.168.1.101:27224
+&#x2502;   [3] gentle-forest-breeze   192.168.1.102:27224
+&#x2502;
+&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;
+Enter server number (1-3) or press Enter to cancel:
+</pre>
+<p class="Pp"><b>No Results Display:</b></p>
+<p class="Pp"></p>
+<pre>&#x256D;&#x2500; &#x1F50D; ascii-chat Server Discovery &#x2500;&#x256E;
+&#x2502;
+&#x2502;   No servers found on local network
+&#x2502;
+&#x2502;   Make sure an ascii-chat server is running on your LAN
+&#x2502;   Or provide a server address manually: ascii-chat client &lt;address&gt;
+&#x2502;
+&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;
+</pre>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>servers</i> Array of discovered servers
+<br/>
+<i>count</i> Number of servers (0 for &quot;no results&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0-based index of selected server, or -1 to cancel</div>
+<p class="Pp">Definition at line <b>158</b> of file <b>misc.c</b>.</p>
+<pre>158                                                                {
+159   (void)servers;
+160   (void)count;
+161   return -1;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>

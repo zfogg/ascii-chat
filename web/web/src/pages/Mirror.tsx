@@ -135,6 +135,13 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
+  // Debug: log whenever terminalDimensions changes
+  useEffect(() => {
+    console.log(
+      `[Mirror] terminalDimensions changed to ${terminalDimensions.cols}x${terminalDimensions.rows} at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [terminalDimensions.cols, terminalDimensions.rows]);
+
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
     setSettings(newSettings);
@@ -165,6 +172,7 @@ export function MirrorPage() {
     setError,
     wasmInitialized,
     isWebcamRunning,
+    terminalDimensions,
   });
 
   const handleVideoFileSelect = useCallback(

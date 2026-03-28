@@ -1115,13 +1115,13 @@
     <b>acip_websocket_server_transport_create()</b>,
     <b>action_create_config()</b>, <b>action_create_manpage()</b>,
     <b>add_client()</b>, <b>add_webrtc_client()</b>, <b>ascii_read_init()</b>,
-    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
-    <b>ascii_renderer_shutdown()</b>, <b>asciichat_mdns_query()</b>,
-    <b>asciichat_mdns_unadvertise()</b>, <b>audio_analysis_destroy()</b>,
-    <b>audio_analysis_init()</b>, <b>audio_init()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_sender_init()</b>,
-    <b>audio_start_duplex()</b>, <b>check_known_host()</b>,
-    <b>client_audio_pipeline_create()</b>,
+    <b>ascii_renderer_init()</b>, <b>ascii_renderer_render_frame()</b>,
+    <b>ascii_renderer_resize()</b>, <b>ascii_renderer_shutdown()</b>,
+    <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_unadvertise()</b>,
+    <b>audio_analysis_destroy()</b>, <b>audio_analysis_init()</b>,
+    <b>audio_init()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_sender_init()</b>, <b>audio_start_duplex()</b>,
+    <b>check_known_host()</b>, <b>client_audio_pipeline_create()</b>,
     <b>client_audio_pipeline_process_duplex()</b>,
     <b>client_audio_pipeline_reset()</b>, <b>client_crypto_handshake()</b>,
     <b>client_dispatch_thread()</b>, <b>client_init_with_args()</b>,
@@ -1204,8 +1204,9 @@
     <b>tcp_client_signal_lost()</b>, <b>terminal_fd_reader_next()</b>,
     <b>thread_pool_create_with_workers()</b>,
     <b>threaded_send_image_frame_h265()</b>, <b>ui_mdns_log_append()</b>,
-    <b>update_check_perform()</b>, <b>video_frame_buffer_create()</b>,
-    <b>webcam_init()</b>, <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>update_check_perform()</b>, <b>update_dimensions_for_full_height()</b>,
+    <b>video_frame_buffer_create()</b>, <b>webcam_init()</b>,
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
     <b>webrtc_set_session_context()</b>,
     <b>websocket_callback_timing_log_stats()</b>,
@@ -1647,7 +1648,7 @@
   struct <b>session_log_buffer</b> <b>session_log_buffer_t</b></a></h2>
 <p class="Pp">#include &lt;<b>lib/platform/wasm/stubs/log.c</b>&gt;<b></b></p>
 <p class="Pp">Opaque handle to log buffer instance.</p>
-<p class="Pp">Definition at line <b>72</b> of file
+<p class="Pp">Definition at line <b>77</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
 </section>
 </section>
@@ -2020,10 +2021,10 @@
 <p class="Pp">Clean up compiled color scheme. Should be called AFTER memory
     reporting to ensure colored output. Safe to call multiple times
     (idempotent).</p>
-<p class="Pp">Definition at line <b>1815</b> of file <b>log/log.c</b>.</p>
-<pre>1815                               {
-1816   colorscheme_cleanup_compiled(&amp;g_log.compiled_colors);
-1817 }</pre>
+<p class="Pp">Definition at line <b>1809</b> of file <b>log/log.c</b>.</p>
+<pre>1809                               {
+1810   colorscheme_cleanup_compiled(&amp;g_log.compiled_colors);
+1811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colorscheme_cleanup_compiled()</b>.</p>
@@ -2035,10 +2036,10 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/log/log.h</b>&gt;<b></b></p>
 <p class="Pp">Unregister the session log buffer. No-op if no buffer is currently
     registered.</p>
-<p class="Pp">Definition at line <b>1840</b> of file <b>log/log.c</b>.</p>
-<pre>1840                                         {
-1841   atomic_ptr_store(&amp;g_log.session_log_buffer, NULL);
-1842 }</pre>
+<p class="Pp">Definition at line <b>1834</b> of file <b>log/log.c</b>.</p>
+<pre>1834                                         {
+1835   atomic_ptr_store(&amp;g_log.session_log_buffer, NULL);
+1836 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>.</p>
@@ -2128,13 +2129,13 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/log/log.h</b>&gt;<b></b></p>
 <p class="Pp">Disable mmap logging and return to mutex-based logging. Flushes
     remaining entries and closes the mmap file.</p>
-<p class="Pp">Definition at line <b>1777</b> of file <b>log/log.c</b>.</p>
-<pre>1777                             {
-1778   if (log_mmap_is_active()) {
-1779     log_mmap_destroy();
-1780     log_info(&quot;Lock-free mmap logging disabled&quot;);
-1781   }
-1782 }</pre>
+<p class="Pp">Definition at line <b>1771</b> of file <b>log/log.c</b>.</p>
+<pre>1771                             {
+1772   if (log_mmap_is_active()) {
+1773     log_mmap_destroy();
+1774     log_info(&quot;Lock-free mmap logging disabled&quot;);
+1775   }
+1776 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_info</b>, <b>log_mmap_destroy()</b>, and
@@ -2165,10 +2166,10 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Call <b>log_init()</b> first, then
   <b>log_enable_mmap()</b> to upgrade to lock-free</div>
-<p class="Pp">Definition at line <b>1758</b> of file <b>log/log.c</b>.</p>
-<pre>1758                                                         {
-1759   return log_enable_mmap_sized(log_path, 0); /* Use default size */
-1760 }</pre>
+<p class="Pp">Definition at line <b>1752</b> of file <b>log/log.c</b>.</p>
+<pre>1752                                                         {
+1753   return log_enable_mmap_sized(log_path, 0); /* Use default size */
+1754 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_enable_mmap_sized()</b>.</p>
@@ -2184,21 +2185,21 @@
 <i>max_size</i> Maximum file size in bytes (0 = default 4MB)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1762</b> of file <b>log/log.c</b>.</p>
-<pre>1762                                                                                {
-1763   if (!log_path) {
-1764     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;log_path is required&quot;);
+<p class="Pp">Definition at line <b>1756</b> of file <b>log/log.c</b>.</p>
+<pre>1756                                                                                {
+1757   if (!log_path) {
+1758     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;log_path is required&quot;);
+1759   }
+1760 
+1761   // Initialize mmap logging - text is written directly to the mmap'd file
+1762   asciichat_error_t result = log_mmap_init_simple(log_path, max_size);
+1763   if (result != ASCIICHAT_OK) {
+1764     return result;
 1765   }
 1766 
-1767   // Initialize mmap logging - text is written directly to the mmap'd file
-1768   asciichat_error_t result = log_mmap_init_simple(log_path, max_size);
-1769   if (result != ASCIICHAT_OK) {
-1770     return result;
-1771   }
-1772 
-1773   log_info(&quot;Lock-free mmap logging enabled: %s&quot;, log_path);
-1774   return ASCIICHAT_OK;
-1775 }</pre>
+1767   log_info(&quot;Lock-free mmap logging enabled: %s&quot;, log_path);
+1768   return ASCIICHAT_OK;
+1769 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -2215,39 +2216,39 @@
 <br/>
 <i>...</i> Format arguments</div>
 <p class="Pp">Writes to log file only, without terminal output.</p>
-<p class="Pp">Definition at line <b>1464</b> of file <b>log/log.c</b>.</p>
-<pre>1464                                         {
-1465   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1466     return;
-1467   }
+<p class="Pp">Definition at line <b>1458</b> of file <b>log/log.c</b>.</p>
+<pre>1458                                         {
+1459   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1460     return;
+1461   }
+1462 
+1463   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1464   va_list args;
+1465   va_start(args, fmt);
+1466   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+1467   va_end(args);
 1468 
-1469   char log_buffer[LOG_MSG_BUFFER_SIZE];
-1470   va_list args;
-1471   va_start(args, fmt);
-1472   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
-1473   va_end(args);
-1474 
-1475   if (msg_len &lt;= 0) {
-1476     return;
-1477   }
+1469   if (msg_len &lt;= 0) {
+1470     return;
+1471   }
+1472 
+1473   // Truncate at whole line boundaries to avoid UTF-8 issues
+1474   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1475 
+1476   // Validate UTF-8 in formatted message
+1477   validate_log_message_utf8(log_buffer, &quot;file-only log&quot;);
 1478 
-1479   // Truncate at whole line boundaries to avoid UTF-8 issues
-1480   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
-1481 
-1482   // Validate UTF-8 in formatted message
-1483   validate_log_message_utf8(log_buffer, &quot;file-only log&quot;);
-1484 
-1485   // Write to mmap if active, else to file
-1486   if (log_mmap_is_active()) {
-1487     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
-1488   } else {
-1489     int file_fd = atomic_load_u64(&amp;g_log.file);
-1490     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
-1491       write_to_log_file_atomic(log_buffer, msg_len, NULL);
-1492       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
-1493     }
-1494   }
-1495 }</pre>
+1479   // Write to mmap if active, else to file
+1480   if (log_mmap_is_active()) {
+1481     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
+1482   } else {
+1483     int file_fd = atomic_load_u64(&amp;g_log.file);
+1484     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1485       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1486       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
+1487     }
+1488   }
+1489 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>atomic_load_u64()</b>,
@@ -2267,32 +2268,32 @@
   truecolor)</div>
 <p class="Pp">Automatically detects terminal capabilities and returns the
     appropriate color array.</p>
-<p class="Pp">Definition at line <b>1625</b> of file <b>log/log.c</b>.</p>
-<pre>1625                                        {
-1626   init_terminal_capabilities();
+<p class="Pp">Definition at line <b>1619</b> of file <b>log/log.c</b>.</p>
+<pre>1619                                        {
+1620   init_terminal_capabilities();
+1621 
+1622   /* Colors should be initialized via log_system_init(); this is just a safety check */
+1623   if (!g_log.log_colorscheme_initialized) {
+1624     /* Fallback: initialize colors if not already done (should not happen after log_system_init) */
+1625     log_init_colors();
+1626   }
 1627 
-1628   /* Colors should be initialized via log_system_init(); this is just a safety check */
+1628   /* Safety check: if colors are still not initialized, return NULL to prevent crashes from null pointers */
 1629   if (!g_log.log_colorscheme_initialized) {
-1630     /* Fallback: initialize colors if not already done (should not happen after log_system_init) */
-1631     log_init_colors();
-1632   }
-1633 
-1634   /* Safety check: if colors are still not initialized, return NULL to prevent crashes from null pointers */
-1635   if (!g_log.log_colorscheme_initialized) {
-1636     return NULL;
-1637   }
-1638 
-1639   /* Return the compiled color scheme based on terminal capabilities
-1640    * codes_16, codes_256, codes_truecolor are now proper arrays of pointers (const char *[8]),
-1641    * so we can safely cast them to const char **. */
-1642   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
-1643     return (const char **)g_log.compiled_colors.codes_truecolor;
-1644   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
-1645     return (const char **)g_log.compiled_colors.codes_256;
-1646   } else {
-1647     return (const char **)g_log.compiled_colors.codes_16;
-1648   }
-1649 }</pre>
+1630     return NULL;
+1631   }
+1632 
+1633   /* Return the compiled color scheme based on terminal capabilities
+1634    * codes_16, codes_256, codes_truecolor are now proper arrays of pointers (const char *[8]),
+1635    * so we can safely cast them to const char **. */
+1636   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1637     return (const char **)g_log.compiled_colors.codes_truecolor;
+1638   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1639     return (const char **)g_log.compiled_colors.codes_256;
+1640   } else {
+1641     return (const char **)g_log.compiled_colors.codes_16;
+1642   }
+1643 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_init_colors()</b>, <b>TERM_COLOR_256</b>, and
@@ -2345,10 +2346,10 @@
 <p class="Pp">Returns the buffer that was previously registered with
     <b>log_set_session_log_buffer()</b>. Returns NULL if no buffer is currently
     registered.</p>
-<p class="Pp">Definition at line <b>1850</b> of file <b>log/log.c</b>.</p>
-<pre>1850                                                        {
-1851   return (session_log_buffer_t *)atomic_ptr_load(&amp;g_log.session_log_buffer);
-1852 }</pre>
+<p class="Pp">Definition at line <b>1844</b> of file <b>log/log.c</b>.</p>
+<pre>1844                                                        {
+1845   return (session_log_buffer_t *)atomic_ptr_load(&amp;g_log.session_log_buffer);
+1846 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_load()</b>.</p>
@@ -2385,10 +2386,10 @@
     system. This is used by platform code (e.g., backtrace formatting) to format
     log entries using the same template as the rest of the logging system.
     Returns void* (opaque) to avoid circular dependency with format.h.</p>
-<p class="Pp">Definition at line <b>2152</b> of file <b>log/log.c</b>.</p>
-<pre>2152                              {
-2153   return (void *)g_log.format;
-2154 }</pre>
+<p class="Pp">Definition at line <b>2146</b> of file <b>log/log.c</b>.</p>
+<pre>2146                              {
+2147   return (void *)g_log.format;
+2148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>backtrace_print()</b>.</p>
@@ -2546,61 +2547,61 @@
     capabilities. Compiles the active color scheme to ANSI codes based on
     terminal capabilities. Called automatically during terminal capability
     detection.</p>
-<p class="Pp">Definition at line <b>1666</b> of file <b>log/log.c</b>.</p>
-<pre>1666                            {
-1667   /* Skip color initialization during terminal detection to avoid mutex deadlock */
-1668   if (g_log.terminal_caps_detecting) {
-1669     return;
-1670   }
-1671 
-1672   /* Skip color initialization before logging is fully initialized */
-1673   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1674     return;
-1675   }
-1676 
-1677   if (g_log.log_colorscheme_initialized) {
-1678     return;
-1679   }
-1680 
-1681   /* Get active color scheme - this ensures color system is initialized */
-1682   const color_scheme_t *scheme = colorscheme_get_active_scheme();
-1683   if (!scheme) {
-1684     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
-1685     return;
-1686   }
-1687 
-1688   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
-1689   mutex_lock(&amp;g_colorscheme_mutex);
-1690   /* Debug: Check if g_log.compiled_colors is actually zero-initialized */
-1691   /* Zero the structure on first use to avoid freeing garbage pointers */
-1692   /* (static = {0} produces garbage in this build for unknown reasons) */
-1693   static bool first_compile = true;
-1694   if (first_compile) {
-1695     memset(&amp;g_log.compiled_colors, 0, sizeof(g_log.compiled_colors));
-1696     first_compile = false;
-1697   }
-1698 
-1699   /* Detect terminal background */
-1700   terminal_background_t background = detect_terminal_background();
-1701   /* Determine color mode for compilation */
-1702   terminal_color_mode_t mode;
-1703   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
-1704     mode = TERM_COLOR_TRUECOLOR;
-1705   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
-1706     mode = TERM_COLOR_256;
-1707   } else {
-1708     mode = TERM_COLOR_16;
-1709   }
-1710   /* Compile the color scheme to ANSI codes */
-1711   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
-1712   g_log.log_colorscheme_initialized = true;
-1713   mutex_unlock(&amp;g_colorscheme_mutex);
-1714 
-1715   /* Log outside of mutex lock to avoid recursive lock deadlock */
-1716   if (result != ASCIICHAT_OK) {
-1717     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
-1718   }
-1719 }</pre>
+<p class="Pp">Definition at line <b>1660</b> of file <b>log/log.c</b>.</p>
+<pre>1660                            {
+1661   /* Skip color initialization during terminal detection to avoid mutex deadlock */
+1662   if (g_log.terminal_caps_detecting) {
+1663     return;
+1664   }
+1665 
+1666   /* Skip color initialization before logging is fully initialized */
+1667   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1668     return;
+1669   }
+1670 
+1671   if (g_log.log_colorscheme_initialized) {
+1672     return;
+1673   }
+1674 
+1675   /* Get active color scheme - this ensures color system is initialized */
+1676   const color_scheme_t *scheme = colorscheme_get_active_scheme();
+1677   if (!scheme) {
+1678     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
+1679     return;
+1680   }
+1681 
+1682   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
+1683   mutex_lock(&amp;g_colorscheme_mutex);
+1684   /* Debug: Check if g_log.compiled_colors is actually zero-initialized */
+1685   /* Zero the structure on first use to avoid freeing garbage pointers */
+1686   /* (static = {0} produces garbage in this build for unknown reasons) */
+1687   static bool first_compile = true;
+1688   if (first_compile) {
+1689     memset(&amp;g_log.compiled_colors, 0, sizeof(g_log.compiled_colors));
+1690     first_compile = false;
+1691   }
+1692 
+1693   /* Detect terminal background */
+1694   terminal_background_t background = detect_terminal_background();
+1695   /* Determine color mode for compilation */
+1696   terminal_color_mode_t mode;
+1697   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1698     mode = TERM_COLOR_TRUECOLOR;
+1699   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1700     mode = TERM_COLOR_256;
+1701   } else {
+1702     mode = TERM_COLOR_16;
+1703   }
+1704   /* Compile the color scheme to ANSI codes */
+1705   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
+1706   g_log.log_colorscheme_initialized = true;
+1707   mutex_unlock(&amp;g_colorscheme_mutex);
+1708 
+1709   /* Log outside of mutex lock to avoid recursive lock deadlock */
+1710   if (result != ASCIICHAT_OK) {
+1711     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
+1712   }
+1713 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -2659,17 +2660,17 @@
 <div class="Bd-indent"><i>color</i> Color enum value</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ANSI color code string</div>
-<p class="Pp">Definition at line <b>1651</b> of file <b>log/log.c</b>.</p>
-<pre>1651                                                {
-1652   const char **colors = log_get_color_array();
-1653   if (colors == NULL) {
-1654     return &quot;&quot;; /* Return empty string if colors not available */
-1655   }
-1656   if (color &gt;= 0 &amp;&amp; color &lt;= LOG_COLOR_RESET) {
-1657     return colors[color];
-1658   }
-1659   return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
-1660 }</pre>
+<p class="Pp">Definition at line <b>1645</b> of file <b>log/log.c</b>.</p>
+<pre>1645                                                {
+1646   const char **colors = log_get_color_array();
+1647   if (colors == NULL) {
+1648     return &quot;&quot;; /* Return empty string if colors not available */
+1649   }
+1650   if (color &gt;= 0 &amp;&amp; color &lt;= LOG_COLOR_RESET) {
+1651     return colors[color];
+1652   }
+1653   return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
+1654 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_COLOR_RESET</b>, and
@@ -2731,174 +2732,174 @@
 <i>fmt</i> Format string (printf-style)
 <br/>
 <i>...</i> Format arguments</div>
-<p class="Pp">Definition at line <b>1023</b> of file <b>log/log.c</b>.</p>
-<pre>1023                                                                                                     {
-1024   // All state access uses atomic operations - fully lock-free
-1025   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1026     return;
-1027   }
-1028   // Safety check: if main format template has been freed during shutdown, skip logging
-1029   // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
-1030   if (!g_log.format) {
-1031     return;
-1032   }
-1033   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
-1034     return;
-1035   }
-1036   /* =========================================================================
-1037    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
-1038    * ========================================================================= */
-1039   bool mmap_active = log_mmap_is_active();
-1040   if (mmap_active) {
-1041     maybe_rotate_log();
+<p class="Pp">Definition at line <b>1017</b> of file <b>log/log.c</b>.</p>
+<pre>1017                                                                                                     {
+1018   // All state access uses atomic operations - fully lock-free
+1019   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1020     return;
+1021   }
+1022   // Safety check: if main format template has been freed during shutdown, skip logging
+1023   // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
+1024   if (!g_log.format) {
+1025     return;
+1026   }
+1027   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
+1028     return;
+1029   }
+1030   /* =========================================================================
+1031    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
+1032    * ========================================================================= */
+1033   bool mmap_active = log_mmap_is_active();
+1034   if (mmap_active) {
+1035     maybe_rotate_log();
+1036 
+1037     va_list args;
+1038     va_start(args, fmt);
+1039     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
+1040     int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+1041     va_end(args);
 1042 
-1043     va_list args;
-1044     va_start(args, fmt);
-1045     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
-1046     int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
-1047     va_end(args);
-1048 
-1049     // Truncate at whole line boundaries to avoid UTF-8 issues
-1050     if (msg_len &gt; 0) {
-1051       msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
-1052     }
-1053 
-1054     // Validate UTF-8 in formatted message
-1055     validate_log_message_utf8(msg_buffer, &quot;mmap log message&quot;);
-1056 
-1057     log_mmap_write(level, file, line, func, &quot;%s&quot;, msg_buffer);
+1043     // Truncate at whole line boundaries to avoid UTF-8 issues
+1044     if (msg_len &gt; 0) {
+1045       msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
+1046     }
+1047 
+1048     // Validate UTF-8 in formatted message
+1049     validate_log_message_utf8(msg_buffer, &quot;mmap log message&quot;);
+1050 
+1051     log_mmap_write(level, file, line, func, &quot;%s&quot;, msg_buffer);
+1052 
+1053     // Terminal output (check with atomic loads)
+1054     if (atomic_load_u64(&amp;g_log.terminal_output_enabled) &amp;&amp; !atomic_load_bool(&amp;g_log.terminal_locked)) {
+1055       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1056       uint64_t time_ns = time_get_realtime_ns();
+1057       get_current_time_formatted(time_buf);
 1058 
-1059     // Terminal output (check with atomic loads)
-1060     if (atomic_load_u64(&amp;g_log.terminal_output_enabled) &amp;&amp; !atomic_load_bool(&amp;g_log.terminal_locked)) {
-1061       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
-1062       uint64_t time_ns = time_get_realtime_ns();
-1063       get_current_time_formatted(time_buf);
-1064 
-1065       // Choose output stream using unified routing logic
-1066       int fd = terminal_choose_log_fd(level);
-1067       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-1068       // Check if colors should be used
-1069       // Priority 1: If --color was explicitly passed, force colors
-1070       bool use_colors = true; // Default: enable colors
-1071       if (g_color_flag_passed &amp;&amp; !g_color_flag_value) {
-1072         use_colors = false; // --color=false explicitly disables colors
-1073       }
-1074       // Priority 2: If --color NOT explicitly passed, enable colors by default
-1075 
-1076       char header_buffer[512];
-1077       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
-1078                                          use_colors, time_ns);
-1079 
-1080       if (header_len &gt;= 0 &amp;&amp; header_len &lt; (int)sizeof(header_buffer)) {
-1081         if (use_colors) {
-1082           const char *colorized_msg = colorize_log_message(msg_buffer);
-1083           const char **colors = log_get_color_array();
-1084           if (colors) {
-1085             safe_fprintf(output_stream, &quot;%s%s%s%s\n&quot;, header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
-1086                          colors[LOG_COLOR_RESET]);
-1087           } else {
-1088             safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, colorized_msg);
-1089           }
-1090         } else {
-1091           safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, msg_buffer);
-1092         }
-1093         (void)fflush(output_stream);
-1094       }
-1095     }
-1096     return;
-1097   }
-1098   /* =========================================================================
-1099    * FILE I/O PATH: Lock-free using atomic write() syscalls
-1100    * ========================================================================= */
-1101   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
-1102   uint64_t time_ns = time_get_realtime_ns();
-1103   get_current_time_formatted(time_buf);
-1104   // Format message for file output
-1105   char log_buffer[LOG_MSG_BUFFER_SIZE];
-1106   va_list args;
-1107   va_start(args, fmt);
-1108   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, time_ns);
-1109   if (header_len &lt; 0 || header_len &gt;= (int)sizeof(log_buffer)) {
-1110     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log header&quot;);
-1111     va_end(args);
-1112     return;
-1113   }
-1114   int msg_len = header_len;
-1115   int formatted_len = safe_vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
-1116   if (formatted_len &lt; 0) {
-1117     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log message&quot;);
-1118     va_end(args);
-1119     return;
-1120   }
-1121 
-1122   msg_len += formatted_len;
-1123   // Truncate at whole line boundaries to avoid UTF-8 issues
-1124   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
-1125   // Add newline if there's room and message doesn't already end with one
-1126   if (msg_len &gt; 0 &amp;&amp; msg_len &lt; (int)sizeof(log_buffer) - 1) {
-1127     if (log_buffer[msg_len - 1] != '\n') {
-1128       log_buffer[msg_len++] = '\n';
-1129       log_buffer[msg_len] = '\0';
-1130     }
-1131   }
-1132   va_end(args);
-1133   // Validate UTF-8 in formatted message
-1134   validate_log_message_utf8(log_buffer, &quot;leveled log message&quot;);
-1135 
-1136   // Extract the user message part (without header) for JSON logging
-1137   const char *user_message = log_buffer + header_len;
-1138 
-1139   // For JSON output: strip automatic trailing newline (keep explicit ones)
-1140   char json_message_buf[LOG_MSG_BUFFER_SIZE];
-1141   const char *json_message = user_message;
-1142   size_t user_msg_len = strlen(user_message);
-1143 
-1144   // If message ends with newline and it was added automatically (not in original message)
-1145   if (user_msg_len &gt; 0 &amp;&amp; user_message[user_msg_len - 1] == '\n') {
-1146     // The newline was added automatically if the message part didn't end with one
-1147     // before we added it on line 1067. We can check this by looking at msg_len - 1
-1148     // If msg_len &gt;= header_len + 2, then msg_len - 2 would be the char before the newline
-1149     int msg_content_len = msg_len - header_len;
-1150     // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - msg_content_len &gt; 1 bounds check above
-1151     if (msg_content_len &gt; 1 &amp;&amp; log_buffer[msg_len - 2] != '\n') {
-1152       // Newline was added automatically - strip it for JSON
-1153       if (user_msg_len - 1 &lt; sizeof(json_message_buf)) {
-1154         memcpy(json_message_buf, user_message, user_msg_len - 1);
-1155         json_message_buf[user_msg_len - 1] = '\0';
-1156         json_message = json_message_buf;
-1157       }
-1158     }
-1159   }
-1160 
-1161   // Check if JSON format is enabled
-1162   int json_fd = atomic_load_int(&amp;g_log.json_file);
-1163   bool json_format_enabled = (json_fd &gt;= 0);
-1164 
-1165   // If JSON format is enabled, output ONLY JSON (skip text output)
-1166   if (json_format_enabled) {
-1167     // Output JSON to the JSON file descriptor
-1168     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
-1169     // Also output JSON to console using unified routing logic, respecting quiet flag
-1170     if (atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
-1171       int console_fd = terminal_choose_log_fd(level);
-1172       log_json_write(console_fd, level, time_ns, file, line, func, json_message);
-1173     }
-1174   } else {
-1175     // Text format: output to file and terminal
-1176     // No heap allocation - use log_buffer directly
-1177     // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
-1178     int file_fd = (int)atomic_load_u64(&amp;g_log.file);
-1179     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
-1180       write_to_log_file_atomic(log_buffer, msg_len, NULL);
-1181     }
-1182 
-1183     // Write to terminal (atomic state checks)
-1184     va_list args_terminal;
-1185     va_start(args_terminal, fmt);
-1186     write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
-1187     va_end(args_terminal);
-1188   }
-1189 }</pre>
+1059       // Choose output stream using unified routing logic
+1060       int fd = terminal_choose_log_fd(level);
+1061       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+1062       // Check if colors should be used
+1063       // Priority 1: If --color was explicitly passed, force colors
+1064       bool use_colors = true; // Default: enable colors
+1065       if (g_color_flag_passed &amp;&amp; !g_color_flag_value) {
+1066         use_colors = false; // --color=false explicitly disables colors
+1067       }
+1068       // Priority 2: If --color NOT explicitly passed, enable colors by default
+1069 
+1070       char header_buffer[512];
+1071       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
+1072                                          use_colors, time_ns);
+1073 
+1074       if (header_len &gt;= 0 &amp;&amp; header_len &lt; (int)sizeof(header_buffer)) {
+1075         if (use_colors) {
+1076           const char *colorized_msg = colorize_log_message(msg_buffer);
+1077           const char **colors = log_get_color_array();
+1078           if (colors) {
+1079             safe_fprintf(output_stream, &quot;%s%s%s%s\n&quot;, header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
+1080                          colors[LOG_COLOR_RESET]);
+1081           } else {
+1082             safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, colorized_msg);
+1083           }
+1084         } else {
+1085           safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, msg_buffer);
+1086         }
+1087         (void)fflush(output_stream);
+1088       }
+1089     }
+1090     return;
+1091   }
+1092   /* =========================================================================
+1093    * FILE I/O PATH: Lock-free using atomic write() syscalls
+1094    * ========================================================================= */
+1095   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1096   uint64_t time_ns = time_get_realtime_ns();
+1097   get_current_time_formatted(time_buf);
+1098   // Format message for file output
+1099   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1100   va_list args;
+1101   va_start(args, fmt);
+1102   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, time_ns);
+1103   if (header_len &lt; 0 || header_len &gt;= (int)sizeof(log_buffer)) {
+1104     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log header&quot;);
+1105     va_end(args);
+1106     return;
+1107   }
+1108   int msg_len = header_len;
+1109   int formatted_len = safe_vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
+1110   if (formatted_len &lt; 0) {
+1111     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log message&quot;);
+1112     va_end(args);
+1113     return;
+1114   }
+1115 
+1116   msg_len += formatted_len;
+1117   // Truncate at whole line boundaries to avoid UTF-8 issues
+1118   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1119   // Add newline if there's room and message doesn't already end with one
+1120   if (msg_len &gt; 0 &amp;&amp; msg_len &lt; (int)sizeof(log_buffer) - 1) {
+1121     if (log_buffer[msg_len - 1] != '\n') {
+1122       log_buffer[msg_len++] = '\n';
+1123       log_buffer[msg_len] = '\0';
+1124     }
+1125   }
+1126   va_end(args);
+1127   // Validate UTF-8 in formatted message
+1128   validate_log_message_utf8(log_buffer, &quot;leveled log message&quot;);
+1129 
+1130   // Extract the user message part (without header) for JSON logging
+1131   const char *user_message = log_buffer + header_len;
+1132 
+1133   // For JSON output: strip automatic trailing newline (keep explicit ones)
+1134   char json_message_buf[LOG_MSG_BUFFER_SIZE];
+1135   const char *json_message = user_message;
+1136   size_t user_msg_len = strlen(user_message);
+1137 
+1138   // If message ends with newline and it was added automatically (not in original message)
+1139   if (user_msg_len &gt; 0 &amp;&amp; user_message[user_msg_len - 1] == '\n') {
+1140     // The newline was added automatically if the message part didn't end with one
+1141     // before we added it on line 1067. We can check this by looking at msg_len - 1
+1142     // If msg_len &gt;= header_len + 2, then msg_len - 2 would be the char before the newline
+1143     int msg_content_len = msg_len - header_len;
+1144     // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - msg_content_len &gt; 1 bounds check above
+1145     if (msg_content_len &gt; 1 &amp;&amp; log_buffer[msg_len - 2] != '\n') {
+1146       // Newline was added automatically - strip it for JSON
+1147       if (user_msg_len - 1 &lt; sizeof(json_message_buf)) {
+1148         memcpy(json_message_buf, user_message, user_msg_len - 1);
+1149         json_message_buf[user_msg_len - 1] = '\0';
+1150         json_message = json_message_buf;
+1151       }
+1152     }
+1153   }
+1154 
+1155   // Check if JSON format is enabled
+1156   int json_fd = atomic_load_int(&amp;g_log.json_file);
+1157   bool json_format_enabled = (json_fd &gt;= 0);
+1158 
+1159   // If JSON format is enabled, output ONLY JSON (skip text output)
+1160   if (json_format_enabled) {
+1161     // Output JSON to the JSON file descriptor
+1162     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
+1163     // Also output JSON to console using unified routing logic, respecting quiet flag
+1164     if (atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
+1165       int console_fd = terminal_choose_log_fd(level);
+1166       log_json_write(console_fd, level, time_ns, file, line, func, json_message);
+1167     }
+1168   } else {
+1169     // Text format: output to file and terminal
+1170     // No heap allocation - use log_buffer directly
+1171     // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
+1172     int file_fd = (int)atomic_load_u64(&amp;g_log.file);
+1173     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1174       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1175     }
+1176 
+1177     // Write to terminal (atomic state checks)
+1178     va_list args_terminal;
+1179     va_start(args_terminal, fmt);
+1180     write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
+1181     va_end(args_terminal);
+1182   }
+1183 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>atomic_load_bool()</b>,
@@ -3382,15 +3383,15 @@
 <i>...</i> Format arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1557</b> of file <b>log/log.c</b>.</p>
-<pre>1559                                                         {
-1560   va_list args;
-1561   va_start(args, fmt);
-1562   asciichat_error_t result =
-1563       log_network_message_internal(sockfd, crypto_ctx, level, direction, file, line, func, fmt, args);
-1564   va_end(args);
-1565   return result;
-1566 }</pre>
+<p class="Pp">Definition at line <b>1551</b> of file <b>log/log.c</b>.</p>
+<pre>1553                                                         {
+1554   va_list args;
+1555   va_start(args, fmt);
+1556   asciichat_error_t result =
+1557       log_network_message_internal(sockfd, crypto_ctx, level, direction, file, line, func, fmt, args);
+1558   va_end(args);
+1559   return result;
+1560 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -3415,15 +3416,15 @@
 <i>...</i> Format arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1547</b> of file <b>log/log.c</b>.</p>
-<pre>1548                                                                                               {
-1549   va_list args;
-1550   va_start(args, fmt);
-1551   asciichat_error_t result =
-1552       log_network_message_internal(sockfd, crypto_ctx, level, direction, NULL, 0, NULL, fmt, args);
-1553   va_end(args);
-1554   return result;
-1555 }</pre>
+<p class="Pp">Definition at line <b>1541</b> of file <b>log/log.c</b>.</p>
+<pre>1542                                                                                               {
+1543   va_list args;
+1544   va_start(args, fmt);
+1545   asciichat_error_t result =
+1546       log_network_message_internal(sockfd, crypto_ctx, level, direction, NULL, 0, NULL, fmt, args);
+1547   va_end(args);
+1548   return result;
+1549 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -3441,91 +3442,91 @@
 <i>...</i> Format arguments</div>
 <p class="Pp">Writes to both log file and stderr without timestamps or log
     levels.</p>
-<p class="Pp">Definition at line <b>1212</b> of file <b>log/log.c</b>.</p>
-<pre>1212                                          {
-1213   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1214     return;
-1215   }
-1216 
-1217   if (shutdown_is_requested()) {
-1218     return;
-1219   }
+<p class="Pp">Definition at line <b>1206</b> of file <b>log/log.c</b>.</p>
+<pre>1206                                          {
+1207   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1208     return;
+1209   }
+1210 
+1211   if (shutdown_is_requested()) {
+1212     return;
+1213   }
+1214 
+1215   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1216   va_list args;
+1217   va_start(args, fmt);
+1218   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+1219   va_end(args);
 1220 
-1221   char log_buffer[LOG_MSG_BUFFER_SIZE];
-1222   va_list args;
-1223   va_start(args, fmt);
-1224   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
-1225   va_end(args);
-1226 
-1227   if (msg_len &lt;= 0) {
-1228     return;
-1229   }
+1221   if (msg_len &lt;= 0) {
+1222     return;
+1223   }
+1224 
+1225   // Truncate at whole line boundaries to avoid UTF-8 issues
+1226   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1227 
+1228   // Validate UTF-8 in formatted message
+1229   validate_log_message_utf8(log_buffer, &quot;plain text log&quot;);
 1230 
-1231   // Truncate at whole line boundaries to avoid UTF-8 issues
-1232   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
-1233 
-1234   // Validate UTF-8 in formatted message
-1235   validate_log_message_utf8(log_buffer, &quot;plain text log&quot;);
-1236 
-1237   // Write to mmap if active
-1238   if (log_mmap_is_active()) {
-1239     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
-1240   } else {
-1241     // Write to file with headers (atomic write syscall)
-1242     int file_fd = atomic_load_u64(&amp;g_log.file);
-1243     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
-1244       // Add header with timestamp and log level to file output
-1245       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
-1246       uint64_t time_ns = time_get_realtime_ns();
-1247       get_current_time_formatted(time_buf);
-1248 
-1249       char header_buffer[512];
-1250       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, &quot;lib/log/logging.c&quot;,
-1251                                          0, &quot;log_plain_msg&quot;, false, time_ns);
-1252 
-1253       if (header_len &gt; 0) {
-1254         write_to_log_file_atomic(header_buffer, header_len, NULL);
-1255       }
-1256       write_to_log_file_atomic(log_buffer, msg_len, NULL);
-1257       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
-1258     }
-1259   }
-1260 
-1261   // Terminal output (atomic state checks)
-1262   if (!atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
-1263     return;
+1231   // Write to mmap if active
+1232   if (log_mmap_is_active()) {
+1233     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
+1234   } else {
+1235     // Write to file with headers (atomic write syscall)
+1236     int file_fd = atomic_load_u64(&amp;g_log.file);
+1237     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1238       // Add header with timestamp and log level to file output
+1239       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1240       uint64_t time_ns = time_get_realtime_ns();
+1241       get_current_time_formatted(time_buf);
+1242 
+1243       char header_buffer[512];
+1244       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, &quot;lib/log/logging.c&quot;,
+1245                                          0, &quot;log_plain_msg&quot;, false, time_ns);
+1246 
+1247       if (header_len &gt; 0) {
+1248         write_to_log_file_atomic(header_buffer, header_len, NULL);
+1249       }
+1250       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1251       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
+1252     }
+1253   }
+1254 
+1255   // Terminal output (atomic state checks)
+1256   if (!atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
+1257     return;
+1258   }
+1259   if (atomic_load_u64(&amp;g_log.terminal_locked)) {
+1260     uint64_t owner = atomic_load_u64(&amp;g_log.terminal_owner_thread);
+1261     if (owner != (uint64_t)asciichat_thread_self()) {
+1262       return;
+1263     }
 1264   }
-1265   if (atomic_load_u64(&amp;g_log.terminal_locked)) {
-1266     uint64_t owner = atomic_load_u64(&amp;g_log.terminal_owner_thread);
-1267     if (owner != (uint64_t)asciichat_thread_self()) {
-1268       return;
-1269     }
-1270   }
-1271 
-1272   // Check if JSON format is enabled
-1273   int json_fd = atomic_load_int(&amp;g_log.json_file);
-1274   bool json_format_enabled = (json_fd &gt;= 0);
-1275 
-1276   if (json_format_enabled) {
-1277     // Output JSON for plain messages too
-1278     uint64_t time_ns = time_get_realtime_ns();
-1279     int console_fd = terminal_choose_log_fd(LOG_INFO);
-1280     log_json_write(console_fd, LOG_INFO, time_ns, __FILE__, __LINE__, &quot;log_plain_msg&quot;, log_buffer);
-1281   } else {
-1282     // Choose output stream using unified routing logic (LOG_INFO level)
-1283     int fd = terminal_choose_log_fd(LOG_INFO);
-1284     FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-1285 
-1286     // Apply colorization for TTY output
-1287     if (terminal_should_color_output(fd)) {
-1288       const char *colorized_msg = colorize_log_message(log_buffer);
-1289       safe_fprintf(output_stream, &quot;%s\n&quot;, colorized_msg);
-1290     } else {
-1291       safe_fprintf(output_stream, &quot;%s\n&quot;, log_buffer);
-1292     }
-1293     (void)fflush(output_stream);
-1294   }
-1295 }</pre>
+1265 
+1266   // Check if JSON format is enabled
+1267   int json_fd = atomic_load_int(&amp;g_log.json_file);
+1268   bool json_format_enabled = (json_fd &gt;= 0);
+1269 
+1270   if (json_format_enabled) {
+1271     // Output JSON for plain messages too
+1272     uint64_t time_ns = time_get_realtime_ns();
+1273     int console_fd = terminal_choose_log_fd(LOG_INFO);
+1274     log_json_write(console_fd, LOG_INFO, time_ns, __FILE__, __LINE__, &quot;log_plain_msg&quot;, log_buffer);
+1275   } else {
+1276     // Choose output stream using unified routing logic (LOG_INFO level)
+1277     int fd = terminal_choose_log_fd(LOG_INFO);
+1278     FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+1279 
+1280     // Apply colorization for TTY output
+1281     if (terminal_should_color_output(fd)) {
+1282       const char *colorized_msg = colorize_log_message(log_buffer);
+1283       safe_fprintf(output_stream, &quot;%s\n&quot;, colorized_msg);
+1284     } else {
+1285       safe_fprintf(output_stream, &quot;%s\n&quot;, log_buffer);
+1286     }
+1287     (void)fflush(output_stream);
+1288   }
+1289 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>asciichat_thread_self()</b>,
@@ -3550,20 +3551,20 @@
 <i>...</i> Format arguments</div>
 <p class="Pp">Writes to both log file and stderr without timestamps or log
     levels, with trailing newline.</p>
-<p class="Pp">Definition at line <b>1358</b> of file <b>log/log.c</b>.</p>
-<pre>1358                                                 {
-1359   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1360     return;
-1361   }
-1362   if (shutdown_is_requested()) {
-1363     return;
-1364   }
-1365 
-1366   va_list args;
-1367   va_start(args, fmt);
-1368   log_plain_stderr_internal_atomic(fmt, args, true);
-1369   va_end(args);
-1370 }</pre>
+<p class="Pp">Definition at line <b>1352</b> of file <b>log/log.c</b>.</p>
+<pre>1352                                                 {
+1353   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1354     return;
+1355   }
+1356   if (shutdown_is_requested()) {
+1357     return;
+1358   }
+1359 
+1360   va_list args;
+1361   va_start(args, fmt);
+1362   log_plain_stderr_internal_atomic(fmt, args, true);
+1363   va_end(args);
+1364 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>lifecycle_is_initialized()</b>, and
@@ -3581,20 +3582,20 @@
 <p class="Pp">Writes to both log file and stderr without timestamps, log levels,
     or trailing newline. Useful for interactive prompts where the user's
     response should be on the same line.</p>
-<p class="Pp">Definition at line <b>1372</b> of file <b>log/log.c</b>.</p>
-<pre>1372                                                           {
-1373   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1374     return;
-1375   }
-1376   if (shutdown_is_requested()) {
-1377     return;
-1378   }
-1379 
-1380   va_list args;
-1381   va_start(args, fmt);
-1382   log_plain_stderr_internal_atomic(fmt, args, false);
-1383   va_end(args);
-1384 }</pre>
+<p class="Pp">Definition at line <b>1366</b> of file <b>log/log.c</b>.</p>
+<pre>1366                                                           {
+1367   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1368     return;
+1369   }
+1370   if (shutdown_is_requested()) {
+1371     return;
+1372   }
+1373 
+1374   va_list args;
+1375   va_start(args, fmt);
+1376   log_plain_stderr_internal_atomic(fmt, args, false);
+1377   va_end(args);
+1378 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>lifecycle_is_initialized()</b>, and
@@ -3612,20 +3613,20 @@
 <p class="Pp">Writes to both log file and stdout without timestamps or log
     levels, with trailing newline. Used for informational output like device
     listings.</p>
-<p class="Pp">Definition at line <b>1450</b> of file <b>log/log.c</b>.</p>
-<pre>1450                                                 {
-1451   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1452     return;
-1453   }
-1454   if (shutdown_is_requested()) {
-1455     return;
-1456   }
-1457 
-1458   va_list args;
-1459   va_start(args, fmt);
-1460   log_plain_stdout_internal_atomic(fmt, args, true);
-1461   va_end(args);
-1462 }</pre>
+<p class="Pp">Definition at line <b>1444</b> of file <b>log/log.c</b>.</p>
+<pre>1444                                                 {
+1445   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1446     return;
+1447   }
+1448   if (shutdown_is_requested()) {
+1449     return;
+1450   }
+1451 
+1452   va_list args;
+1453   va_start(args, fmt);
+1454   log_plain_stdout_internal_atomic(fmt, args, true);
+1455   va_end(args);
+1456 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>lifecycle_is_initialized()</b>, and
@@ -3665,257 +3666,257 @@
 <p class="Pp">Parses plain log format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID]
     FILE:LINE in FUNC(): MESSAGE And recolors it with appropriate ANSI codes
     matching the colored format.</p>
-<p class="Pp">Definition at line <b>1864</b> of file <b>log/log.c</b>.</p>
-<pre>1864                                                                                            {
-1865   if (!plain_line || !colored_buf || buf_size &lt; 128) {
-1866     return 0;
-1867   }
+<p class="Pp">Definition at line <b>1858</b> of file <b>log/log.c</b>.</p>
+<pre>1858                                                                                            {
+1859   if (!plain_line || !colored_buf || buf_size &lt; 128) {
+1860     return 0;
+1861   }
+1862 
+1863   static char work_buffer[LOG_MSG_BUFFER_SIZE + 1024];
+1864 
+1865   // Parse format FIRST, regardless of color availability
+1866   // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
+1867   const char *p = plain_line;
 1868 
-1869   static char work_buffer[LOG_MSG_BUFFER_SIZE + 1024];
-1870 
-1871   // Parse format FIRST, regardless of color availability
-1872   // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
-1873   const char *p = plain_line;
-1874 
-1875   // Extract timestamp [TIMESTAMP]
-1876   if (*p != '[') {
-1877     return 0; // Invalid format
-1878   }
-1879   p++;
-1880   const char *timestamp_start = p;
-1881 
-1882   // Find the closing ] for timestamp - look for pattern that ends with proper timestamp format
-1883   // Valid timestamp: HH:MM:SS.UUUUUU (time with microseconds, no date)
-1884   while (*p &amp;&amp; *p != ']') {
-1885     p++;
-1886   }
-1887   if (*p != ']') {
-1888     return 0; // Malformed - no closing bracket
+1869   // Extract timestamp [TIMESTAMP]
+1870   if (*p != '[') {
+1871     return 0; // Invalid format
+1872   }
+1873   p++;
+1874   const char *timestamp_start = p;
+1875 
+1876   // Find the closing ] for timestamp - look for pattern that ends with proper timestamp format
+1877   // Valid timestamp: HH:MM:SS.UUUUUU (time with microseconds, no date)
+1878   while (*p &amp;&amp; *p != ']') {
+1879     p++;
+1880   }
+1881   if (*p != ']') {
+1882     return 0; // Malformed - no closing bracket
+1883   }
+1884 
+1885   size_t timestamp_len = p - timestamp_start;
+1886   char timestamp[64];
+1887   if (timestamp_len &gt;= sizeof(timestamp) || timestamp_len == 0) {
+1888     return 0; // Invalid timestamp - empty or too long
 1889   }
-1890 
-1891   size_t timestamp_len = p - timestamp_start;
-1892   char timestamp[64];
-1893   if (timestamp_len &gt;= sizeof(timestamp) || timestamp_len == 0) {
-1894     return 0; // Invalid timestamp - empty or too long
-1895   }
-1896   SAFE_STRNCPY(timestamp, timestamp_start, timestamp_len);
-1897   timestamp[timestamp_len] = '\0';
-1898   p++; // Skip ]
-1899 
-1900   // Skip whitespace after timestamp
-1901   while (*p &amp;&amp; *p == ' ') {
-1902     p++;
-1903   }
-1904 
-1905   // Extract level [LEVEL]
-1906   if (*p != '[') {
-1907     return 0; // Missing opening bracket for level
-1908   }
-1909   p++;
-1910   const char *level_start = p;
-1911   while (*p &amp;&amp; *p != ']') {
-1912     p++;
-1913   }
-1914   if (*p != ']') {
-1915     return 0; // Missing closing bracket for level
-1916   }
-1917   size_t level_len = p - level_start;
-1918   char level_str[16];
-1919   if (level_len &gt;= sizeof(level_str) || level_len == 0) {
-1920     return 0; // Level string too long or empty
-1921   }
-1922   /* Use strncpy directly for substring extraction (not null-terminated source) */
-1923   strncpy(level_str, level_start, level_len);
-1924   level_str[level_len] = '\0';
-1925 
-1926   // Determine log level for color selection
-1927   log_level_t level = LOG_INFO; // Default
-1928   if (strstr(level_str, &quot;DEV&quot;) || strstr(level_str, &quot;DEBUG&quot;)) {
-1929     level = LOG_DEBUG;
-1930   } else if (strstr(level_str, &quot;INFO&quot;)) {
-1931     level = LOG_INFO;
-1932   } else if (strstr(level_str, &quot;WARN&quot;)) {
-1933     level = LOG_WARN;
-1934   } else if (strstr(level_str, &quot;ERROR&quot;)) {
-1935     level = LOG_ERROR;
-1936   } else if (strstr(level_str, &quot;FATAL&quot;)) {
-1937     level = LOG_FATAL;
-1938   }
-1939 
-1940   p++; // Skip ]
-1941 
-1942   // Skip whitespace after level
-1943   while (*p &amp;&amp; *p == ' ') {
-1944     p++;
-1945   }
-1946 
-1947   // Extract thread ID [tid:THREAD_ID] - optional field
-1948   uint64_t tid = 0;
-1949   if (*p == '[' &amp;&amp; strncmp(p, &quot;[tid:&quot;, 5) == 0) {
-1950     p += 5;
-1951     char *tid_end = NULL;
-1952     tid = strtoull(p, &amp;tid_end, 10);
-1953     if (!tid_end || *tid_end != ']') {
-1954       // tid parsing failed, but continue anyway (might still recover)
-1955       // Try to find the closing bracket
-1956       while (*p &amp;&amp; *p != ']') {
-1957         p++;
-1958       }
-1959       if (*p == ']') {
-1960         p++;
-1961       }
-1962     } else {
-1963       p = tid_end + 1; // Skip past the ]
-1964     }
-1965     // Skip whitespace after tid
-1966     while (*p &amp;&amp; *p == ' ') {
-1967       p++;
-1968     }
-1969   }
-1970   // tid is optional - continue parsing if not present
-1971 
-1972   // Extract file path (everything up to :LINE)
-1973   const char *file_start = p;
-1974   while (*p &amp;&amp; *p != ':') {
-1975     p++;
-1976   }
-1977   if (*p != ':') {
-1978     return 0; // Malformed
-1979   }
-1980   size_t file_len = p - file_start;
-1981   char file_path[256];
-1982   if (file_len &gt;= sizeof(file_path)) {
-1983     return 0;
-1984   }
-1985   /* Use strncpy directly for substring extraction (not null-terminated source) */
-1986   strncpy(file_path, file_start, file_len);
-1987   file_path[file_len] = '\0';
-1988   p++; // Skip :
-1989 
-1990   // Extract line number (digits only)
-1991   int line_num = 0;
-1992   const char *line_start = p;
-1993   while (*p &amp;&amp; isdigit((unsigned char)*p)) {
-1994     p++;
-1995   }
-1996   if (p == line_start) {
-1997     return 0; // No line number
+1890   SAFE_STRNCPY(timestamp, timestamp_start, timestamp_len);
+1891   timestamp[timestamp_len] = '\0';
+1892   p++; // Skip ]
+1893 
+1894   // Skip whitespace after timestamp
+1895   while (*p &amp;&amp; *p == ' ') {
+1896     p++;
+1897   }
+1898 
+1899   // Extract level [LEVEL]
+1900   if (*p != '[') {
+1901     return 0; // Missing opening bracket for level
+1902   }
+1903   p++;
+1904   const char *level_start = p;
+1905   while (*p &amp;&amp; *p != ']') {
+1906     p++;
+1907   }
+1908   if (*p != ']') {
+1909     return 0; // Missing closing bracket for level
+1910   }
+1911   size_t level_len = p - level_start;
+1912   char level_str[16];
+1913   if (level_len &gt;= sizeof(level_str) || level_len == 0) {
+1914     return 0; // Level string too long or empty
+1915   }
+1916   /* Use strncpy directly for substring extraction (not null-terminated source) */
+1917   strncpy(level_str, level_start, level_len);
+1918   level_str[level_len] = '\0';
+1919 
+1920   // Determine log level for color selection
+1921   log_level_t level = LOG_INFO; // Default
+1922   if (strstr(level_str, &quot;DEV&quot;) || strstr(level_str, &quot;DEBUG&quot;)) {
+1923     level = LOG_DEBUG;
+1924   } else if (strstr(level_str, &quot;INFO&quot;)) {
+1925     level = LOG_INFO;
+1926   } else if (strstr(level_str, &quot;WARN&quot;)) {
+1927     level = LOG_WARN;
+1928   } else if (strstr(level_str, &quot;ERROR&quot;)) {
+1929     level = LOG_ERROR;
+1930   } else if (strstr(level_str, &quot;FATAL&quot;)) {
+1931     level = LOG_FATAL;
+1932   }
+1933 
+1934   p++; // Skip ]
+1935 
+1936   // Skip whitespace after level
+1937   while (*p &amp;&amp; *p == ' ') {
+1938     p++;
+1939   }
+1940 
+1941   // Extract thread ID [tid:THREAD_ID] - optional field
+1942   uint64_t tid = 0;
+1943   if (*p == '[' &amp;&amp; strncmp(p, &quot;[tid:&quot;, 5) == 0) {
+1944     p += 5;
+1945     char *tid_end = NULL;
+1946     tid = strtoull(p, &amp;tid_end, 10);
+1947     if (!tid_end || *tid_end != ']') {
+1948       // tid parsing failed, but continue anyway (might still recover)
+1949       // Try to find the closing bracket
+1950       while (*p &amp;&amp; *p != ']') {
+1951         p++;
+1952       }
+1953       if (*p == ']') {
+1954         p++;
+1955       }
+1956     } else {
+1957       p = tid_end + 1; // Skip past the ]
+1958     }
+1959     // Skip whitespace after tid
+1960     while (*p &amp;&amp; *p == ' ') {
+1961       p++;
+1962     }
+1963   }
+1964   // tid is optional - continue parsing if not present
+1965 
+1966   // Extract file path (everything up to :LINE)
+1967   const char *file_start = p;
+1968   while (*p &amp;&amp; *p != ':') {
+1969     p++;
+1970   }
+1971   if (*p != ':') {
+1972     return 0; // Malformed
+1973   }
+1974   size_t file_len = p - file_start;
+1975   char file_path[256];
+1976   if (file_len &gt;= sizeof(file_path)) {
+1977     return 0;
+1978   }
+1979   /* Use strncpy directly for substring extraction (not null-terminated source) */
+1980   strncpy(file_path, file_start, file_len);
+1981   file_path[file_len] = '\0';
+1982   p++; // Skip :
+1983 
+1984   // Extract line number (digits only)
+1985   int line_num = 0;
+1986   const char *line_start = p;
+1987   while (*p &amp;&amp; isdigit((unsigned char)*p)) {
+1988     p++;
+1989   }
+1990   if (p == line_start) {
+1991     return 0; // No line number
+1992   }
+1993   line_num = (int)strtol(line_start, NULL, 10);
+1994 
+1995   // Skip whitespace and find &quot;in&quot; keyword (be very lenient)
+1996   while (*p &amp;&amp; (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+1997     p++;
 1998   }
-1999   line_num = (int)strtol(line_start, NULL, 10);
-2000 
-2001   // Skip whitespace and find &quot;in&quot; keyword (be very lenient)
-2002   while (*p &amp;&amp; (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
-2003     p++;
-2004   }
-2005 
-2006   // Try to find &quot;in &quot; - if not found, might still be valid, just harder to parse
-2007   if (strncmp(p, &quot;in &quot;, 3) == 0) {
-2008     p += 3; // Skip &quot;in &quot;
-2009   } else if (*p == 'i' &amp;&amp; *(p + 1) == 'n' &amp;&amp; (*(p + 2) == ' ' || *(p + 2) == '\t')) {
-2010     // Allow tab after &quot;in&quot;
-2011     p += 2; // Skip &quot;in&quot;
-2012     while (*p &amp;&amp; (*p == ' ' || *p == '\t')) {
-2013       p++;
-2014     }
-2015   } else {
-2016     // Missing &quot;in&quot; keyword - this is a format error
-2017     return 0;
+1999 
+2000   // Try to find &quot;in &quot; - if not found, might still be valid, just harder to parse
+2001   if (strncmp(p, &quot;in &quot;, 3) == 0) {
+2002     p += 3; // Skip &quot;in &quot;
+2003   } else if (*p == 'i' &amp;&amp; *(p + 1) == 'n' &amp;&amp; (*(p + 2) == ' ' || *(p + 2) == '\t')) {
+2004     // Allow tab after &quot;in&quot;
+2005     p += 2; // Skip &quot;in&quot;
+2006     while (*p &amp;&amp; (*p == ' ' || *p == '\t')) {
+2007       p++;
+2008     }
+2009   } else {
+2010     // Missing &quot;in&quot; keyword - this is a format error
+2011     return 0;
+2012   }
+2013 
+2014   // Extract function name (everything up to &quot;()&quot;)
+2015   const char *func_start = p;
+2016   while (*p &amp;&amp; *p != '(') {
+2017     p++;
 2018   }
-2019 
-2020   // Extract function name (everything up to &quot;()&quot;)
-2021   const char *func_start = p;
-2022   while (*p &amp;&amp; *p != '(') {
-2023     p++;
-2024   }
-2025   if (*p != '(' || func_start == p) {
-2026     return 0; // Missing function name or parentheses
+2019   if (*p != '(' || func_start == p) {
+2020     return 0; // Missing function name or parentheses
+2021   }
+2022   size_t func_len = p - func_start;
+2023 
+2024   // Trim trailing whitespace from function name
+2025   while (func_len &gt; 0 &amp;&amp; (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
+2026     func_len--;
 2027   }
-2028   size_t func_len = p - func_start;
-2029 
-2030   // Trim trailing whitespace from function name
-2031   while (func_len &gt; 0 &amp;&amp; (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
-2032     func_len--;
-2033   }
-2034 
-2035   char func_name[256];
-2036   if (func_len &gt;= sizeof(func_name)) {
-2037     func_len = sizeof(func_name) - 1;
-2038   }
-2039   if (func_len &gt; 0) {
-2040     /* Use strncpy directly for substring extraction (not null-terminated source) */
-2041     strncpy(func_name, func_start, func_len);
-2042   }
-2043   func_name[func_len] = '\0';
-2044 
-2045   // Skip &quot;(&quot; and &quot;)&quot; - be lenient about what's between them
-2046   if (*p == '(') {
-2047     p++;
-2048     while (*p &amp;&amp; *p != ')') {
-2049       p++;
-2050     }
-2051     if (*p == ')') {
-2052       p++;
-2053     }
-2054   }
-2055 
-2056   // Skip whitespace and optional colon(s) and other separators
-2057   while (*p &amp;&amp; (*p == ' ' || *p == ':' || *p == '\t')) {
-2058     p++;
-2059   }
-2060 
-2061   // Remaining is the message
-2062   const char *message = p;
-2063 
-2064   // Format is valid, get colors from logging system
-2065   const char **colors = log_get_color_array();
-2066   if (!colors) {
-2067     // No colors available, return plain text
-2068     static bool warned_once = false;
-2069     if (!warned_once) {
-2070       log_debug(&quot;WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text&quot;);
-2071       warned_once = true;
-2072     }
-2073     size_t len = strlen(plain_line);
-2074     if (len &gt;= buf_size) {
-2075       return 0;
-2076     }
-2077     SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
-2078     colored_buf[buf_size - 1] = '\0';
-2079     return len;
-2080   }
-2081 
-2082   // Build colored output
-2083   const char *level_color = colors[level];
-2084   const char *reset = colors[LOG_COLOR_RESET];
-2085   const char *file_color = colors[1]; // DEBUG/Cyan
-2086   const char *line_color = colors[6]; // GREY (matching tid)
-2087   const char *func_color = colors[0]; // DEV/Orange
-2088   const char *tid_color = colors[6];  // GREY
-2089 
-2090   int len = safe_snprintf(work_buffer, sizeof(work_buffer),
-2091                           &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp,
-2092                           reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
-2093                           file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
-2094 
-2095   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer)) {
-2096     return 0;
-2097   }
-2098 
-2099   // Colorize the message part
-2100   const char *colorized_msg = colorize_log_message(message);
-2101   len = safe_snprintf(work_buffer, sizeof(work_buffer),
-2102                       &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp, reset,
-2103                       level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
-2104                       reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
-2105 
-2106   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer) || len &gt;= (int)buf_size) {
-2107     return 0;
-2108   }
-2109 
-2110   SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
-2111   colored_buf[buf_size - 1] = '\0';
-2112   return (size_t)len;
-2113 }</pre>
+2028 
+2029   char func_name[256];
+2030   if (func_len &gt;= sizeof(func_name)) {
+2031     func_len = sizeof(func_name) - 1;
+2032   }
+2033   if (func_len &gt; 0) {
+2034     /* Use strncpy directly for substring extraction (not null-terminated source) */
+2035     strncpy(func_name, func_start, func_len);
+2036   }
+2037   func_name[func_len] = '\0';
+2038 
+2039   // Skip &quot;(&quot; and &quot;)&quot; - be lenient about what's between them
+2040   if (*p == '(') {
+2041     p++;
+2042     while (*p &amp;&amp; *p != ')') {
+2043       p++;
+2044     }
+2045     if (*p == ')') {
+2046       p++;
+2047     }
+2048   }
+2049 
+2050   // Skip whitespace and optional colon(s) and other separators
+2051   while (*p &amp;&amp; (*p == ' ' || *p == ':' || *p == '\t')) {
+2052     p++;
+2053   }
+2054 
+2055   // Remaining is the message
+2056   const char *message = p;
+2057 
+2058   // Format is valid, get colors from logging system
+2059   const char **colors = log_get_color_array();
+2060   if (!colors) {
+2061     // No colors available, return plain text
+2062     static bool warned_once = false;
+2063     if (!warned_once) {
+2064       log_debug(&quot;WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text&quot;);
+2065       warned_once = true;
+2066     }
+2067     size_t len = strlen(plain_line);
+2068     if (len &gt;= buf_size) {
+2069       return 0;
+2070     }
+2071     SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
+2072     colored_buf[buf_size - 1] = '\0';
+2073     return len;
+2074   }
+2075 
+2076   // Build colored output
+2077   const char *level_color = colors[level];
+2078   const char *reset = colors[LOG_COLOR_RESET];
+2079   const char *file_color = colors[1]; // DEBUG/Cyan
+2080   const char *line_color = colors[6]; // GREY (matching tid)
+2081   const char *func_color = colors[0]; // DEV/Orange
+2082   const char *tid_color = colors[6];  // GREY
+2083 
+2084   int len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2085                           &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp,
+2086                           reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
+2087                           file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
+2088 
+2089   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer)) {
+2090     return 0;
+2091   }
+2092 
+2093   // Colorize the message part
+2094   const char *colorized_msg = colorize_log_message(message);
+2095   len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2096                       &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp, reset,
+2097                       level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
+2098                       reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
+2099 
+2100   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer) || len &gt;= (int)buf_size) {
+2101     return 0;
+2102   }
+2103 
+2104   SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
+2105   colored_buf[buf_size - 1] = '\0';
+2106   return (size_t)len;
+2107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colorize_log_message()</b>, <b>file_path</b>,
@@ -3930,31 +3931,31 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/log/log.h</b>&gt;<b></b></p>
 <p class="Pp">Re-detect terminal capabilities after logging is initialized.
     Useful when terminal capabilities change or need to be refreshed.</p>
-<p class="Pp">Definition at line <b>1599</b> of file <b>log/log.c</b>.</p>
-<pre>1599                                               {
-1600   // Guard against recursion
-1601   if (g_log.terminal_caps_detecting) {
-1602     return;
-1603   }
-1604 
-1605   // Detect if not initialized, or if we're using defaults (not reliably detected)
-1606   // This ensures we get proper detection after logging is ready, replacing any defaults
-1607   // Once we have reliable detection, never re-detect to keep colors consistent
-1608   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
-1609     g_log.terminal_caps_detecting = true;
-1610     g_log.terminal_caps = detect_terminal_capabilities();
-1611     g_log.terminal_caps_detecting = false;
-1612     g_log.terminal_caps_initialized = true;
-1613 
-1614     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
-1615     log_debug(&quot;Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d&quot;,
-1616               g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
-1617               g_log.terminal_caps.utf8_support ? &quot;yes&quot; : &quot;no&quot;, g_log.terminal_caps.desired_fps);
-1618 
-1619     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
-1620   }
-1621   // Once initialized with reliable detection, never re-detect to keep colors consistent
-1622 }</pre>
+<p class="Pp">Definition at line <b>1593</b> of file <b>log/log.c</b>.</p>
+<pre>1593                                               {
+1594   // Guard against recursion
+1595   if (g_log.terminal_caps_detecting) {
+1596     return;
+1597   }
+1598 
+1599   // Detect if not initialized, or if we're using defaults (not reliably detected)
+1600   // This ensures we get proper detection after logging is ready, replacing any defaults
+1601   // Once we have reliable detection, never re-detect to keep colors consistent
+1602   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
+1603     g_log.terminal_caps_detecting = true;
+1604     g_log.terminal_caps = detect_terminal_capabilities();
+1605     g_log.terminal_caps_detecting = false;
+1606     g_log.terminal_caps_initialized = true;
+1607 
+1608     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
+1609     log_debug(&quot;Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d&quot;,
+1610               g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
+1611               g_log.terminal_caps.utf8_support ? &quot;yes&quot; : &quot;no&quot;, g_log.terminal_caps.desired_fps);
+1612 
+1613     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
+1614   }
+1615   // Once initialized with reliable detection, never re-detect to keep colors consistent
+1616 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>detect_terminal_capabilities()</b>, and
@@ -3972,39 +3973,39 @@
   NULL)</div>
 <p class="Pp">Updates the compiled ANSI color codes based on the new color
     scheme. Must be called after colors_init() to have an effect.</p>
-<p class="Pp">Definition at line <b>1721</b> of file <b>log/log.c</b>.</p>
-<pre>1721                                                         {
-1722   if (!scheme) {
-1723     return;
-1724   }
+<p class="Pp">Definition at line <b>1715</b> of file <b>log/log.c</b>.</p>
+<pre>1715                                                         {
+1716   if (!scheme) {
+1717     return;
+1718   }
+1719 
+1720   /* Mutex is managed by colors.c - just use it */
+1721   mutex_lock(&amp;g_colorscheme_mutex);
+1722 
+1723   /* Detect terminal background */
+1724   terminal_background_t background = detect_terminal_background();
 1725 
-1726   /* Mutex is managed by colors.c - just use it */
-1727   mutex_lock(&amp;g_colorscheme_mutex);
-1728 
-1729   /* Detect terminal background */
-1730   terminal_background_t background = detect_terminal_background();
-1731 
-1732   /* Determine color mode for compilation */
-1733   terminal_color_mode_t mode;
-1734   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
-1735     mode = TERM_COLOR_TRUECOLOR;
-1736   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
-1737     mode = TERM_COLOR_256;
-1738   } else {
-1739     mode = TERM_COLOR_16;
-1740   }
+1726   /* Determine color mode for compilation */
+1727   terminal_color_mode_t mode;
+1728   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1729     mode = TERM_COLOR_TRUECOLOR;
+1730   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1731     mode = TERM_COLOR_256;
+1732   } else {
+1733     mode = TERM_COLOR_16;
+1734   }
+1735 
+1736   /* Compile the new color scheme */
+1737   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
+1738 
+1739   g_log.log_colorscheme_initialized = true;
+1740   mutex_unlock(&amp;g_colorscheme_mutex);
 1741 
-1742   /* Compile the new color scheme */
-1743   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
-1744 
-1745   g_log.log_colorscheme_initialized = true;
-1746   mutex_unlock(&amp;g_colorscheme_mutex);
-1747 
-1748   /* Log outside of mutex lock to avoid recursive lock deadlock */
-1749   if (result != ASCIICHAT_OK) {
-1750     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
-1751   }
-1752 }</pre>
+1742   /* Log outside of mutex lock to avoid recursive lock deadlock */
+1743   if (result != ASCIICHAT_OK) {
+1744     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
+1745   }
+1746 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -4151,10 +4152,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance to register (can be NULL to
   unregister)</div>
-<p class="Pp">Definition at line <b>1831</b> of file <b>log/log.c</b>.</p>
-<pre>1831                                                            {
-1832   atomic_ptr_store(&amp;g_log.session_log_buffer, (void *)buf);
-1833 }</pre>
+<p class="Pp">Definition at line <b>1825</b> of file <b>log/log.c</b>.</p>
+<pre>1825                                                            {
+1826   atomic_ptr_store(&amp;g_log.session_log_buffer, (void *)buf);
+1827 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>.</p>
@@ -4206,17 +4207,17 @@
 <p class="Pp">Useful when you want final messages (like &quot;no servers
     found&quot;) to go to the log file only, not to stdout where it might
     interfere with output.</p>
-<p class="Pp">Definition at line <b>1788</b> of file <b>log/log.c</b>.</p>
-<pre>1788                               {
-1789   if (g_log.shutdown_in_progress) {
-1790     return; /* Already in shutdown phase */
-1791   }
-1792 
-1793   /* Save current terminal output state and disable console output */
-1794   g_log.shutdown_saved_terminal_output = atomic_load_u64(&amp;g_log.terminal_output_enabled);
-1795   atomic_store_bool(&amp;g_log.terminal_output_enabled, false);
-1796   g_log.shutdown_in_progress = true;
-1797 }</pre>
+<p class="Pp">Definition at line <b>1782</b> of file <b>log/log.c</b>.</p>
+<pre>1782                               {
+1783   if (g_log.shutdown_in_progress) {
+1784     return; /* Already in shutdown phase */
+1785   }
+1786 
+1787   /* Save current terminal output state and disable console output */
+1788   g_log.shutdown_saved_terminal_output = atomic_load_u64(&amp;g_log.terminal_output_enabled);
+1789   atomic_store_bool(&amp;g_log.terminal_output_enabled, false);
+1790   g_log.shutdown_in_progress = true;
+1791 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, and
@@ -4229,16 +4230,16 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/log/log.h</b>&gt;<b></b></p>
 <p class="Pp">End shutdown phase - restore previous logging settings. Call after
     shutdown messages have been logged to restore console output.</p>
-<p class="Pp">Definition at line <b>1799</b> of file <b>log/log.c</b>.</p>
-<pre>1799                             {
-1800   if (!g_log.shutdown_in_progress) {
-1801     return; /* Not in shutdown phase, skip terminal state restoration */
-1802   }
-1803 
-1804   /* Restore previous terminal output state */
-1805   atomic_store_u64(&amp;g_log.terminal_output_enabled, g_log.shutdown_saved_terminal_output);
-1806   g_log.shutdown_in_progress = false;
-1807 }</pre>
+<p class="Pp">Definition at line <b>1793</b> of file <b>log/log.c</b>.</p>
+<pre>1793                             {
+1794   if (!g_log.shutdown_in_progress) {
+1795     return; /* Not in shutdown phase, skip terminal state restoration */
+1796   }
+1797 
+1798   /* Restore previous terminal output state */
+1799   atomic_store_u64(&amp;g_log.terminal_output_enabled, g_log.shutdown_saved_terminal_output);
+1800   g_log.shutdown_in_progress = false;
+1801 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>.</p>
@@ -4709,27 +4710,27 @@ int len = log_template_apply(fmt, output, sizeof(output),
 <p class="Pp">Logs to terminal only, skipping file/mmap output. WARN/ERROR/FATAL
     go to stderr, other levels go to stdout (unless force_stderr is
   enabled).</p>
-<p class="Pp">Definition at line <b>1191</b> of file <b>log/log.c</b>.</p>
-<pre>1191                                                                                                              {
-1192   // Lock-free: only uses atomic loads, no mutex
-1193   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
-1194     return;
-1195   }
-1196 
-1197   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
-1198     return;
-1199   }
-1200 
-1201   // Terminal output only - no file/mmap writing
-1202   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
-1203   uint64_t time_ns = time_get_realtime_ns();
-1204   get_current_time_formatted(time_buf);
-1205 
-1206   va_list args;
-1207   va_start(args, fmt);
-1208   write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns);
-1209   va_end(args);
-1210 }</pre>
+<p class="Pp">Definition at line <b>1185</b> of file <b>log/log.c</b>.</p>
+<pre>1185                                                                                                              {
+1186   // Lock-free: only uses atomic loads, no mutex
+1187   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1188     return;
+1189   }
+1190 
+1191   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
+1192     return;
+1193   }
+1194 
+1195   // Terminal output only - no file/mmap writing
+1196   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1197   uint64_t time_ns = time_get_realtime_ns();
+1198   get_current_time_formatted(time_buf);
+1199 
+1200   va_list args;
+1201   va_start(args, fmt);
+1202   write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns);
+1203   va_end(args);
+1204 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>atomic_load_u64()</b>,
