@@ -320,3 +320,25 @@ void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
   WASM_LOG("mirror_free_string: COMPLETE");
 }
+
+// Embedded font data (defined in generated/data/fonts/default.c)
+extern const unsigned char g_font_default[];
+extern const size_t g_font_default_size;
+
+/**
+ * Get the pointer to the embedded default font data
+ * @return Pointer to font data
+ */
+EMSCRIPTEN_KEEPALIVE
+const unsigned char *get_font_default_ptr(void) {
+  return g_font_default;
+}
+
+/**
+ * Get the size of the embedded default font
+ * @return Font data size in bytes
+ */
+EMSCRIPTEN_KEEPALIVE
+unsigned int get_font_default_size(void) {
+  return (unsigned int)g_font_default_size;
+}

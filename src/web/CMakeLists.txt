@@ -502,6 +502,9 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _term_renderer_get_cols
     _term_renderer_get_rows
     _term_renderer_destroy
+    # Embedded font data
+    _get_font_default_ptr
+    _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height

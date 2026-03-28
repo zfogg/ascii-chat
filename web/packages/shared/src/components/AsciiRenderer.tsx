@@ -38,12 +38,16 @@ export const AsciiRenderer = forwardRef<
 ) {
   const renderTime = performance.now();
   console.log(
-    `[AsciiRenderer] RENDER: wasmModuleReady=${wasmModuleReady} at ${renderTime.toFixed(0)}ms`,
+    `[AsciiRenderer] RENDER: wasmModuleReady=${wasmModuleReady} at ${renderTime.toFixed(
+      0,
+    )}ms`,
   );
   const previousWasmReadyRef = useRef<boolean | undefined>(undefined);
   if (previousWasmReadyRef.current !== wasmModuleReady) {
     console.log(
-      `[AsciiRenderer] ✓ wasmModuleReady CHANGED from ${previousWasmReadyRef.current} to ${wasmModuleReady} at ${renderTime.toFixed(0)}ms - both effects should fire`,
+      `[AsciiRenderer] ✓ wasmModuleReady CHANGED from ${previousWasmReadyRef.current} to ${wasmModuleReady} at ${renderTime.toFixed(
+        0,
+      )}ms - both effects should fire`,
     );
     previousWasmReadyRef.current = wasmModuleReady;
   }
@@ -66,18 +70,26 @@ export const AsciiRenderer = forwardRef<
   useEffect(() => {
     const effectTime = performance.now();
     console.log(
-      `[AsciiRenderer] EFFECT-1 (wasmModuleReady) FIRED at ${effectTime.toFixed(0)}ms: wasmModuleReady=${wasmModuleReady}`,
+      `[AsciiRenderer] EFFECT-1 (wasmModuleReady) FIRED at ${effectTime.toFixed(
+        0,
+      )}ms: wasmModuleReady=${wasmModuleReady}`,
     );
     if (wasmModuleReady) {
       const getModuleStart = performance.now();
       const module = getMirrorModule();
       const getModuleEnd = performance.now();
       console.log(
-        `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
+        `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(
+          0,
+        )}ms returned ${!!module} (took ${(
+          getModuleEnd - getModuleStart
+        ).toFixed(1)}ms)`,
       );
       moduleRef.current = module;
       console.log(
-        `[AsciiRenderer] moduleRef.current set at ${performance.now().toFixed(0)}ms`,
+        `[AsciiRenderer] moduleRef.current set at ${performance
+          .now()
+          .toFixed(0)}ms`,
       );
     }
     return () => {
@@ -102,28 +114,40 @@ export const AsciiRenderer = forwardRef<
   useEffect(() => {
     const effectStartTime = performance.now();
     console.log(
-      `[AsciiRenderer] EFFECT-2 (init) FIRED at ${effectStartTime.toFixed(0)}ms: wasmModuleReady=${wasmModuleReady}, canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`,
+      `[AsciiRenderer] EFFECT-2 (init) FIRED at ${effectStartTime.toFixed(
+        0,
+      )}ms: wasmModuleReady=${wasmModuleReady}, canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`,
     );
     if (!canvasRef.current || setupDoneRef.current) {
       console.log(
-        `[AsciiRenderer] EFFECT-2 early exit at ${performance.now().toFixed(0)}ms - canvas=${!!canvasRef.current}, setupDone=${setupDoneRef.current}`,
+        `[AsciiRenderer] EFFECT-2 early exit at ${performance
+          .now()
+          .toFixed(
+            0,
+          )}ms - canvas=${!!canvasRef.current}, setupDone=${setupDoneRef.current}`,
       );
       return;
     }
 
     console.log(
-      `[AsciiRenderer] EFFECT-2 BODY START at ${performance.now().toFixed(0)}ms - initializing canvas`,
+      `[AsciiRenderer] EFFECT-2 BODY START at ${performance
+        .now()
+        .toFixed(0)}ms - initializing canvas`,
     );
     const canvas = canvasRef.current;
     console.log(
-      `[AsciiRenderer] Canvas ref assigned at ${performance.now().toFixed(0)}ms`,
+      `[AsciiRenderer] Canvas ref assigned at ${performance
+        .now()
+        .toFixed(0)}ms`,
     );
 
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
       const rendererStartTime = performance.now();
       console.log(
-        `[AsciiRenderer initRenderer] STARTED at ${rendererStartTime.toFixed(0)}ms`,
+        `[AsciiRenderer initRenderer] STARTED at ${rendererStartTime.toFixed(
+          0,
+        )}ms`,
       );
 
       try {
@@ -131,7 +155,9 @@ export const AsciiRenderer = forwardRef<
         const height = canvas.clientHeight || 720;
 
         console.log(
-          `[AsciiRenderer initRenderer] dimensions: width=${width}, height=${height} at ${performance.now().toFixed(0)}ms`,
+          `[AsciiRenderer initRenderer] dimensions: width=${width}, height=${height} at ${performance
+            .now()
+            .toFixed(0)}ms`,
         );
 
         // Set canvas on module for raylib/Emscripten
@@ -142,74 +168,131 @@ export const AsciiRenderer = forwardRef<
         const canvasSetTime = performance.now();
         moduleRef.current.canvas = canvas;
         console.log(
-          `[AsciiRenderer initRenderer] Canvas set on module at ${canvasSetTime.toFixed(0)}ms (took ${(performance.now() - canvasSetTime).toFixed(1)}ms)`,
+          `[AsciiRenderer initRenderer] Canvas set on module at ${canvasSetTime.toFixed(
+            0,
+          )}ms (took ${(performance.now() - canvasSetTime).toFixed(1)}ms)`,
         );
 
         // Allocate and initialize term_renderer_config_t struct
-        // struct: int cols, int rows, double font_size_pt, int theme, char[512] font_spec, bool font_is_path, uint8_t* font_data, size_t font_data_size
-        const configSize = 4 + 4 + 8 + 4 + 512 + 8 + 8 + 8; // 556 bytes with alignment
+        // Struct layout (WASM 32-bit pointers):
+        // int cols (4) + int rows (4) + double font_size_pt (8) + int theme (4) = 20 bytes
+        // char font_spec[512] at offset 20 = 512 bytes
+        // bool font_is_path (1) + padding (3) = 4 bytes at offset 532
+        // uint8_t *font_data (4) at offset 536
+        // size_t font_data_size (4) at offset 540
+        // Total: 544 bytes
+        const configSize = 544;
         const configPtr = moduleRef.current!._malloc(configSize);
         const outPtr = moduleRef.current!._malloc(8); // pointer to renderer
 
-        // Write config struct to WASM memory
+        // Write config struct to WASM memory using direct offsets
         const view = new DataView(
           moduleRef.current!.HEAPU8.buffer,
           configPtr,
           configSize,
         );
-        let offset = 0;
 
-        // cols (int32)
-        view.setInt32(offset, 80, true);
-        offset += 4;
-
-        // rows (int32)
-        view.setInt32(offset, 24, true);
-        offset += 4;
-
-        // font_size_pt (float64)
-        view.setFloat64(offset, 12.0, true);
-        offset += 8;
-
-        // theme (int32) - TERM_RENDERER_THEME_DARK = 0
-        view.setInt32(offset, 0, true);
-        offset += 4;
-
-        // font_spec (char[512]) - "Courier New"
+        // cols (int32) at offset 0
+        view.setInt32(0, 80, true);
+        // rows (int32) at offset 4
+        view.setInt32(4, 24, true);
+        // font_size_pt (float64) at offset 8
+        view.setFloat64(8, 12.0, true);
+        // theme (int32) at offset 16
+        view.setInt32(16, 0, true);
+        // font_spec (char[512]) at offset 20
         const fontSpec = "Courier New";
-        for (
-          let i = 0;
-          i < fontSpec.length && offset < configPtr + 512 + 4 + 4 + 8;
-          i++
-        ) {
-          moduleRef.current!.HEAPU8[configPtr + offset + i] =
+        for (let i = 0; i < fontSpec.length && i < 511; i++) {
+          moduleRef.current!.HEAPU8[configPtr + 20 + i] =
             fontSpec.charCodeAt(i);
         }
-        offset += 512;
+        moduleRef.current!.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
+        // font_is_path (bool) at offset 532
+        moduleRef.current!.HEAPU8[configPtr + 532] = 0;
+        // font_data (pointer) at offset 536 (WASM 32-bit pointers)
+        const fontDataPtr = moduleRef.current!._get_font_default_ptr();
+        console.log(
+          `[AsciiRenderer initRenderer] _get_font_default_ptr() returned: ${fontDataPtr} (type: ${typeof fontDataPtr})`,
+        );
+        view.setInt32(536, fontDataPtr, true);
 
-        // font_is_path (bool) - false
-        moduleRef.current!.HEAPU8[configPtr + offset] = 0;
-        offset += 8; // alignment
+        // Verify the write
+        const readBackPtr = view.getInt32(536, true);
+        console.log(
+          `[AsciiRenderer initRenderer] Verified write at offset 536: ${readBackPtr}`,
+        );
 
-        // font_data (pointer) - NULL
-        view.setInt32(offset, 0, true);
-        offset += 8;
+        // font_data_size (size_t) at offset 540 (WASM 32-bit size_t)
+        const fontDataSize = moduleRef.current!._get_font_default_size();
+        console.log(
+          `[AsciiRenderer initRenderer] _get_font_default_size() returned: ${fontDataSize} (type: ${typeof fontDataSize})`,
+        );
+        view.setInt32(540, fontDataSize, true);
 
-        // font_data_size (size_t) - 0
-        view.setInt32(offset, 0, true);
-        offset += 8;
+        // Verify the write
+        const readBackSize = view.getInt32(540, true);
+        console.log(
+          `[AsciiRenderer initRenderer] Verified write at offset 540: ${readBackSize}`,
+        );
+
+        console.log(
+          `[AsciiRenderer initRenderer] Using embedded font: ptr=${fontDataPtr}, size=${fontDataSize}`,
+        );
 
         const doInit = () => {
           const initCallTime = performance.now();
+
+          // Debug: dump the struct contents
           console.log(
-            `[AsciiRenderer initRenderer] Calling _term_renderer_create(configPtr=${configPtr}, outPtr=${outPtr}) at ${initCallTime.toFixed(0)}ms`,
+            `[AsciiRenderer initRenderer] STRUCT DUMP before _term_renderer_create:`,
+          );
+          console.log(`  cols (offset 0, int32): ${view.getInt32(0, true)}`);
+          console.log(`  rows (offset 4, int32): ${view.getInt32(4, true)}`);
+          console.log(
+            `  font_size_pt (offset 8, float64): ${view.getFloat64(8, true)}`,
+          );
+          console.log(`  theme (offset 16, int32): ${view.getInt32(16, true)}`);
+
+          // font_spec at offset 20 (char[512])
+          let fontSpecStr = "";
+          for (let i = 0; i < 512; i++) {
+            const byte = moduleRef.current!.HEAPU8[configPtr + 20 + i];
+            if (byte === 0) break;
+            if (byte) {
+              fontSpecStr += String.fromCharCode(byte);
+            }
+          }
+          console.log(`  font_spec (offset 20, char[512]): "${fontSpecStr}"`);
+          console.log(
+            `  font_is_path (offset 532, bool): ${
+              moduleRef.current!.HEAPU8[configPtr + 532]
+            }`,
+          );
+          console.log(
+            `  font_data (offset 536, ptr): 0x${view
+              .getInt32(536, true)
+              .toString(16)}`,
+          );
+          console.log(
+            `  font_data_size (offset 540, size_t): ${view.getInt32(
+              540,
+              true,
+            )}`,
+          );
+
+          console.log(
+            `[AsciiRenderer initRenderer] Calling _term_renderer_create(configPtr=${configPtr}, outPtr=${outPtr}) at ${initCallTime.toFixed(
+              0,
+            )}ms`,
           );
           const result = moduleRef.current!._term_renderer_create(
             configPtr,
             outPtr,
           );
           console.log(
-            `[AsciiRenderer initRenderer] _term_renderer_create returned ${result} at ${performance.now().toFixed(0)}ms`,
+            `[AsciiRenderer initRenderer] _term_renderer_create returned ${result} at ${performance
+              .now()
+              .toFixed(0)}ms`,
           );
 
           if (result !== 0) {
@@ -233,12 +316,15 @@ export const AsciiRenderer = forwardRef<
         rendererPtrRef.current = rendererPtr;
         const afterDoInit = performance.now();
         console.log(
-          `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(0)}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
+          `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(
+            0,
+          )}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
         );
 
         // Validate _term_renderer_feed function exists and is callable
         console.log(
-          `[WASM Function Check] _term_renderer_feed type=${typeof moduleRef.current!._term_renderer_feed}`,
+          `[WASM Function Check] _term_renderer_feed type=${typeof moduleRef
+            .current!._term_renderer_feed}`,
         );
 
         const getDimsStart = performance.now();
@@ -251,7 +337,11 @@ export const AsciiRenderer = forwardRef<
         );
 
         console.log(
-          `[AsciiRenderer initRenderer] Got dimensions at ${performance.now().toFixed(0)}ms: ${cols}x${rows} (took ${(performance.now() - getDimsStart).toFixed(1)}ms)`,
+          `[AsciiRenderer initRenderer] Got dimensions at ${performance
+            .now()
+            .toFixed(0)}ms: ${cols}x${rows} (took ${(
+            performance.now() - getDimsStart
+          ).toFixed(1)}ms)`,
         );
 
         if (cols === 0 || rows === 0) {
@@ -261,13 +351,17 @@ export const AsciiRenderer = forwardRef<
         const updateDimsTime = performance.now();
         updateDimensions(cols, rows);
         console.log(
-          `[AsciiRenderer initRenderer] updateDimensions called at ${updateDimsTime.toFixed(0)}ms (took ${(performance.now() - updateDimsTime).toFixed(1)}ms)`,
+          `[AsciiRenderer initRenderer] updateDimensions called at ${updateDimsTime.toFixed(
+            0,
+          )}ms (took ${(performance.now() - updateDimsTime).toFixed(1)}ms)`,
         );
 
         setupDoneRef.current = true;
         const totalTime = performance.now() - rendererStartTime;
         console.log(
-          `[AsciiRenderer initRenderer] Setup complete at ${performance.now().toFixed(0)}ms (TOTAL: ${totalTime.toFixed(1)}ms)`,
+          `[AsciiRenderer initRenderer] Setup complete at ${performance
+            .now()
+            .toFixed(0)}ms (TOTAL: ${totalTime.toFixed(1)}ms)`,
         );
       } catch (err) {
         console.error("[AsciiRenderer] Initialization failed:", err);
@@ -276,32 +370,42 @@ export const AsciiRenderer = forwardRef<
     };
 
     console.log(
-      `[AsciiRenderer] initRenderer function defined at ${performance.now().toFixed(0)}ms`,
+      `[AsciiRenderer] initRenderer function defined at ${performance
+        .now()
+        .toFixed(0)}ms`,
     );
 
     // Try to initialize synchronously
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (moduleRef.current) {
       console.log(
-        `[AsciiRenderer] EFFECT-2: Module ready, initializing at ${performance.now().toFixed(0)}ms`,
+        `[AsciiRenderer] EFFECT-2: Module ready, initializing at ${performance
+          .now()
+          .toFixed(0)}ms`,
       );
       initRenderer();
     } else {
       // Module not ready yet - wait one microtask for it to load, then retry
       console.log(
-        `[AsciiRenderer] EFFECT-2: Module not ready, scheduling retry at ${performance.now().toFixed(0)}ms`,
+        `[AsciiRenderer] EFFECT-2: Module not ready, scheduling retry at ${performance
+          .now()
+          .toFixed(0)}ms`,
       );
       timeoutId = setTimeout(() => {
         if (moduleRef.current && !setupDoneRef.current) {
           console.log(
-            `[AsciiRenderer] EFFECT-2: Retry - module now ready at ${performance.now().toFixed(0)}ms, initializing`,
+            `[AsciiRenderer] EFFECT-2: Retry - module now ready at ${performance
+              .now()
+              .toFixed(0)}ms, initializing`,
           );
           initRenderer();
         } else if (setupDoneRef.current) {
           console.log(`[AsciiRenderer] EFFECT-2: Retry - already initialized`);
         } else {
           console.log(
-            `[AsciiRenderer] EFFECT-2: Retry - module still not ready at ${performance.now().toFixed(0)}ms`,
+            `[AsciiRenderer] EFFECT-2: Retry - module still not ready at ${performance
+              .now()
+              .toFixed(0)}ms`,
           );
         }
       }, 0);
@@ -311,7 +415,11 @@ export const AsciiRenderer = forwardRef<
       const cleanupTime = performance.now();
       const timeSinceSchedule = cleanupTime - effectStartTime;
       console.log(
-        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(0)}ms: setupDone=${setupDoneRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(1)}ms`,
+        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(
+          0,
+        )}ms: setupDone=${setupDoneRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(
+          1,
+        )}ms`,
       );
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
@@ -321,8 +429,9 @@ export const AsciiRenderer = forwardRef<
 
   // Handle canvas resizes
   useEffect(() => {
-    if (!canvasRef.current || !moduleRef.current || !setupDoneRef.current)
+    if (!canvasRef.current || !moduleRef.current || !setupDoneRef.current) {
       return;
+    }
 
     const canvas = canvasRef.current;
     const handleResize = () => {
@@ -463,7 +572,9 @@ export const AsciiRenderer = forwardRef<
             `[writeFrame] Calling _term_renderer_feed(${rendererPtrRef.current}, ${ptr}, ${data.length})`,
           );
           console.log(
-            `[writeFrame] ansiString contains: ${ansiString.substring(0, 200).replace(/\n/g, "\\n")}`,
+            `[writeFrame] ansiString contains: ${ansiString
+              .substring(0, 200)
+              .replace(/\n/g, "\\n")}`,
           );
           try {
             const feedResult = moduleRef.current._term_renderer_feed(

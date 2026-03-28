@@ -20,6 +20,7 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 #include <string.h>
+#include <stddef.h>
 
 struct terminal_renderer_s {
   VTerm *vt;
@@ -107,9 +108,23 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   }
 
   // Load font from either file path or memory
+  log_debug("STRUCT_OFFSETS: sizeof(term_renderer_config_t)=%zu", sizeof(term_renderer_config_t));
+  log_debug("FIELD_OFFSETS: cols=%zu, rows=%zu, font_size_pt=%zu, theme=%zu, font_spec=%zu, font_is_path=%zu, font_data=%zu, font_data_size=%zu",
+           offsetof(term_renderer_config_t, cols),
+           offsetof(term_renderer_config_t, rows),
+           offsetof(term_renderer_config_t, font_size_pt),
+           offsetof(term_renderer_config_t, theme),
+           offsetof(term_renderer_config_t, font_spec),
+           offsetof(term_renderer_config_t, font_is_path),
+           offsetof(term_renderer_config_t, font_data),
+           offsetof(term_renderer_config_t, font_data_size));
+  log_debug("term_renderer_create: font_data=%p, font_data_size=%zu, font_spec='%s'",
+           cfg->font_data, cfg->font_data_size, cfg->font_spec);
   if (cfg->font_data && cfg->font_data_size > 0) {
-    log_debug_every(1000, "term_renderer_create: Loading font from memory (%zu bytes)", cfg->font_data_size);
+    log_debug_every(1000, "term_renderer_create: Loading font from memory (%zu bytes) at ptr %p",
+                   cfg->font_data_size, cfg->font_data);
     if (FT_New_Memory_Face(r->ft_lib, cfg->font_data, (FT_Long)cfg->font_data_size, 0, &r->ft_face)) {
+      log_debug("FT_New_Memory_Face failed with code %d", 0);  // FreeType returns 0 on success
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
       return SET_ERRNO(ERROR_INIT, "FreeType: cannot load bundled font");
