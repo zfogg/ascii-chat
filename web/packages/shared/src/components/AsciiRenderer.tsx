@@ -5,7 +5,26 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import type { MirrorModule } from "@ascii-chat/shared/wasm";
+
+// Local type definition to avoid import dependency on wasm module
+// This allows the component to work in builds without WASM (e.g., discovery)
+interface MirrorModule {
+  canvas?: HTMLCanvasElement;
+  _ascii_renderer_init(width: number, height: number): void;
+  _ascii_renderer_render_frame(ptr: number, len: number): void;
+  _ascii_renderer_resize(width: number, height: number): void;
+  _ascii_renderer_get_cols(): number;
+  _ascii_renderer_get_rows(): number;
+  _ascii_renderer_get_framebuffer(): number;
+  _ascii_renderer_get_framebuffer_width(): number;
+  _ascii_renderer_get_framebuffer_height(): number;
+  _ascii_renderer_get_framebuffer_stride(): number;
+  _ascii_renderer_shutdown(): void;
+  _malloc(size: number): number;
+  _free(ptr: number): void;
+  HEAPU8: Uint8Array;
+  UTF8ToString(ptr: number): string;
+}
 
 export interface AsciiRendererHandle {
   writeFrame(ansiString: string): void;
@@ -52,6 +71,7 @@ export const AsciiRenderer = forwardRef<
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const firstRenderDoneRef = useRef(false);
+  const rafCallbackFiredRef = useRef(false);
 
   // FPS tracking
   const frameCountRef = useRef(0);
@@ -106,15 +126,18 @@ export const AsciiRenderer = forwardRef<
     console.log(
       `[AsciiRenderer] EFFECT-2 (init) FIRED at ${effectStartTime.toFixed(0)}ms: wasmModuleReady=${wasmModuleReady}, canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`,
     );
-    if (!canvasRef.current || !moduleRef.current || setupDoneRef.current) {
+    if (!canvasRef.current || setupDoneRef.current) {
       console.log(
-        `[AsciiRenderer] EFFECT-2 early exit at ${performance.now().toFixed(0)}ms - canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`,
+        `[AsciiRenderer] EFFECT-2 early exit at ${performance.now().toFixed(0)}ms - canvas=${!!canvasRef.current}, setupDone=${setupDoneRef.current}`,
       );
       return;
     }
 
+    // Reset RAF callback flag for this effect cycle
+    rafCallbackFiredRef.current = false;
+
     console.log(
-      `[AsciiRenderer] EFFECT-2 BODY START at ${performance.now().toFixed(0)}ms - initializing canvas`,
+      `[AsciiRenderer] EFFECT-2 BODY START at ${performance.now().toFixed(0)}ms - initializing canvas (reset rafCallbackFiredRef)`,
     );
     const canvas = canvasRef.current;
     console.log(
@@ -210,24 +233,28 @@ export const AsciiRenderer = forwardRef<
 
     const checkAndInit = () => {
       const checkTimeA = performance.now();
-      console.log(
-        `[AsciiRenderer checkAndInit] CALLBACK FIRED at ${checkTimeA.toFixed(0)}ms`,
-      );
+      if (!rafCallbackFiredRef.current) {
+        rafCallbackFiredRef.current = true;
+        console.log(
+          `[AsciiRenderer checkAndInit] FIRST CALLBACK FIRED at ${checkTimeA.toFixed(0)}ms`,
+        );
+      }
       retryCount++;
       const elapsed = performance.now() - startTime;
       const checkTime = performance.now();
 
       console.log(
-        `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}`,
+        `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, module=${!!moduleRef.current}, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}`,
       );
 
-      // Allow zero dimensions (hidden canvas) - will use fallback dimensions in initRenderer
-      if (
-        retryCount === 1 ||
-        (canvas.clientWidth > 0 && canvas.clientHeight > 0)
-      ) {
+      // Wait for module to be available AND canvas to have layout
+      const moduleReady = !!moduleRef.current;
+      const canvasDimsReady =
+        retryCount === 1 || (canvas.clientWidth > 0 && canvas.clientHeight > 0);
+
+      if (moduleReady && canvasDimsReady) {
         console.log(
-          `[AsciiRenderer checkAndInit] Canvas ready at ${performance.now().toFixed(0)}ms (clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}), calling initRenderer`,
+          `[AsciiRenderer checkAndInit] Module ready and canvas ready at ${performance.now().toFixed(0)}ms, calling initRenderer`,
         );
         const initStart = performance.now();
         initRenderer();
@@ -235,15 +262,15 @@ export const AsciiRenderer = forwardRef<
           `[AsciiRenderer checkAndInit] initRenderer returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - initStart).toFixed(1)}ms)`,
         );
       } else if (retryCount < maxRetries && elapsed < maxWaitTime) {
-        // Use RAF to wait for next layout cycle
+        // Use RAF to wait for next cycle (either module load or layout)
         console.log(
-          `[AsciiRenderer checkAndInit] Waiting for layout at ${performance.now().toFixed(0)}ms, scheduling next check`,
+          `[AsciiRenderer checkAndInit] Waiting at ${performance.now().toFixed(0)}ms (module=${moduleReady}, canvasDims=${canvasDimsReady}), scheduling next check`,
         );
         rafId = requestAnimationFrame(checkAndInit);
       } else {
         // Force initialization with fallback dimensions after timeout
         console.log(
-          `[AsciiRenderer checkAndInit] Timeout/max retries reached at ${performance.now().toFixed(0)}ms, forcing init`,
+          `[AsciiRenderer checkAndInit] Timeout/max retries reached at ${performance.now().toFixed(0)}ms, module=${moduleReady}, forcing init`,
         );
         const forceInitStart = performance.now();
         initRenderer();
@@ -253,29 +280,41 @@ export const AsciiRenderer = forwardRef<
       }
     };
 
+    const fnDefTime = performance.now();
     console.log(
-      `[AsciiRenderer] checkAndInit function defined at ${performance.now().toFixed(0)}ms`,
+      `[AsciiRenderer] checkAndInit function defined at ${fnDefTime.toFixed(0)}ms`,
     );
 
     // Start checking on next animation frame
     const scheduleInitTime = performance.now();
     console.log(
-      `[AsciiRenderer Init] Scheduling initial checkAndInit at ${scheduleInitTime.toFixed(0)}ms`,
+      `[AsciiRenderer Init] About to call requestAnimationFrame at ${scheduleInitTime.toFixed(0)}ms (${(scheduleInitTime - fnDefTime).toFixed(1)}ms after fn def)`,
     );
-    rafId = requestAnimationFrame(checkAndInit);
-    console.log(
-      `[AsciiRenderer Init] RAF scheduled at ${performance.now().toFixed(0)}ms`,
-    );
+    try {
+      rafId = requestAnimationFrame(checkAndInit);
+      console.log(
+        `[AsciiRenderer Init] requestAnimationFrame returned rafId=${rafId} at ${performance.now().toFixed(0)}ms`,
+      );
+    } catch (err) {
+      console.error(
+        `[AsciiRenderer Init] requestAnimationFrame threw error:`,
+        err,
+      );
+    }
 
     return () => {
+      const shouldCancel = setupDoneRef.current || rafCallbackFiredRef.current;
       console.log(
-        `[AsciiRenderer] EFFECT-2 CLEANUP at ${performance.now().toFixed(0)}ms: canceling RAF rafId=${rafId}, setupDone=${setupDoneRef.current}`,
+        `[AsciiRenderer] EFFECT-2 CLEANUP at ${performance.now().toFixed(0)}ms: rafId=${rafId}, setupDone=${setupDoneRef.current}, callbackFired=${rafCallbackFiredRef.current}, shouldCancel=${shouldCancel}`,
       );
-      if (rafId !== undefined) {
+      if (rafId !== undefined && shouldCancel) {
+        console.log(
+          `[AsciiRenderer] EFFECT-2 CLEANUP: Canceling RAF`,
+        );
         cancelAnimationFrame(rafId);
       }
     };
-  }, [wasmModuleReady, updateDimensions]);
+  }, [updateDimensions]);
 
   // Handle canvas resizes
   useEffect(() => {
