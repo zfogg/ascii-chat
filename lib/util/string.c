@@ -372,3 +372,36 @@ void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_
   output[2] = '.';
   output[3] = '\0';
 }
+
+void strip_ansi_codes(const char *input, char *output, size_t output_size) {
+  if (!input || !output || output_size == 0) {
+    return;
+  }
+
+  size_t out_idx = 0;
+  size_t in_idx = 0;
+
+  while (input[in_idx] != '\0' && out_idx < output_size - 1) {
+    // Check for ANSI escape sequence: ESC[
+    // Standard ANSI codes use escape character (0x1B or \033) followed by [
+    if (input[in_idx] == '\033' && input[in_idx + 1] == '[') {
+      in_idx += 2; // Skip \033[
+
+      // Skip until we find the terminating letter (m is most common, also H, J, K, etc.)
+      // This handles patterns like: 38;5;74m, 0m, 38;2;255;0;0m, 2J, H, etc.
+      while (input[in_idx] != '\0') {
+        if ((input[in_idx] >= 'A' && input[in_idx] <= 'Z') ||
+            (input[in_idx] >= 'a' && input[in_idx] <= 'z')) {
+          in_idx++; // Skip the terminating letter
+          break;
+        }
+        in_idx++;
+      }
+    } else {
+      // Regular character (including [ in normal text), copy to output
+      output[out_idx++] = input[in_idx++];
+    }
+  }
+
+  output[out_idx] = '\0';
+}

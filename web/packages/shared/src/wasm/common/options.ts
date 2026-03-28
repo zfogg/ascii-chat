@@ -61,7 +61,6 @@ const LOG_PREFIX = "[WASM opts]";
  * @internal
  */
 export function initializeOptions(accessor: OptionAccessor): void {
-  console.log(`${LOG_PREFIX} Options module initialized`);
   options = accessor;
 }
 
@@ -70,7 +69,6 @@ export function initializeOptions(accessor: OptionAccessor): void {
  * @internal
  */
 export function cleanupOptions(): void {
-  console.log(`${LOG_PREFIX} Options module cleaned up`);
   options = null;
 }
 
@@ -88,7 +86,6 @@ export function isOptionsInitialized(): boolean {
 
 export function setWidth(width: number): void {
   if (!options) throw new Error("Options not initialized");
-  console.debug(`${LOG_PREFIX} setWidth(${width})`);
   options.setInt("width", width);
 }
 
@@ -99,7 +96,6 @@ export function getWidth(): number {
 
 export function setHeight(height: number): void {
   if (!options) throw new Error("Options not initialized");
-  console.debug(`${LOG_PREFIX} setHeight(${height})`);
   options.setInt("height", height);
 }
 
@@ -109,7 +105,6 @@ export function getHeight(): number {
 }
 
 export function setDimensions(width: number, height: number): void {
-  console.debug(`${LOG_PREFIX} setDimensions(${width}x${height})`);
   setWidth(width);
   setHeight(height);
 }
@@ -127,7 +122,6 @@ export function getDimensions(): { width: number; height: number } {
 
 export function setColorMode(mode: ColorMode): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setColorMode(${ColorMode[mode] ?? mode})`);
   options.setInt("color_mode", mode);
 }
 
@@ -142,7 +136,6 @@ export function getColorMode(): ColorMode {
 
 export function setColorFilter(filter: ColorFilter): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setColorFilter(${ColorFilter[filter] ?? filter})`);
   options.setInt("color_filter", filter);
 }
 
@@ -157,7 +150,6 @@ export function getColorFilter(): ColorFilter {
 
 export function setRenderMode(mode: RenderMode): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setRenderMode(${RenderMode[mode] ?? mode})`);
   options.setInt("render_mode", mode);
 }
 
@@ -172,7 +164,6 @@ export function getRenderMode(): RenderMode {
 
 export function setPalette(palette: Palette): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setPalette(${palette})`);
   options.setString("palette", palette);
 }
 
@@ -192,7 +183,6 @@ export function getPalette(): Palette {
 
 export function setPaletteChars(chars: string): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setPaletteChars("${chars}")`);
   options.setString("palette_chars", chars);
 }
 
@@ -207,7 +197,6 @@ export function getPaletteChars(): string {
 
 export function setMatrixRain(enabled: boolean): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setMatrixRain(${enabled})`);
   options.setBool("matrix_rain", enabled);
 }
 
@@ -222,7 +211,6 @@ export function getMatrixRain(): boolean {
 
 export function setFlipX(enabled: boolean): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setFlipX(${enabled})`);
   options.setBool("flip_x", enabled);
 }
 
@@ -237,7 +225,6 @@ export function getFlipX(): boolean {
 
 export function setFlipY(enabled: boolean): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setFlipY(${enabled})`);
   options.setBool("flip_y", enabled);
 }
 
@@ -252,7 +239,6 @@ export function getFlipY(): boolean {
 
 export function setTargetFps(fps: number): void {
   if (!options) throw new Error("Options not initialized");
-  console.log(`${LOG_PREFIX} setTargetFps(${fps})`);
   options.setInt("target_fps", fps);
 }
 

@@ -32,15 +32,6 @@ export function useRenderLoop(
           debug.skipped++;
         }
 
-        // Log every 60 cycles
-        if (debug.count - debug.lastLog >= 60) {
-          const skipRate = ((debug.skipped / debug.count) * 100).toFixed(1);
-          console.log(
-            `[RenderLoop] ${debug.count} RAF cycles, ${skipRate}% skipped (interval=${interval.toFixed(2)}ms)`,
-          );
-          debug.lastLog = debug.count;
-        }
-
         // Schedule next frame
         requestAnimationFrame(animationFrameRef);
       } catch (error) {

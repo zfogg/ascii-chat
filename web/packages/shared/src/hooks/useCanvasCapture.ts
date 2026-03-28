@@ -39,10 +39,6 @@ export function useCanvasCapture(
       return null;
     }
 
-    console.log(
-      `[useCanvasCapture] Canvas setup: display=${canvas.width}x${canvas.height}, video=${video.videoWidth}x${video.videoHeight}`,
-    );
-
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
       console.error("[useCanvasCapture] Failed to get canvas 2D context");
@@ -92,10 +88,6 @@ export function useCanvasCapture(
         );
         return null;
       }
-
-      console.log(
-        `[useCanvasCapture] captureFrame SUCCESS at ${performance.now().toFixed(0)}ms: returning ${canvas.width}x${canvas.height} frame (took ${(performance.now() - capStartTime).toFixed(1)}ms)`,
-      );
 
       return {
         data: rgbaData,

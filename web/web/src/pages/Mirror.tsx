@@ -45,17 +45,10 @@ import {
 } from "../hooks";
 
 export function MirrorPage() {
-  const pageRenderTime = performance.now();
-  console.log(`[Mirror] MirrorPage render at ${pageRenderTime.toFixed(0)}ms`);
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
-    const moduleInitTime = performance.now();
-    const module = getMirrorModule();
-    console.log(
-      `[Mirror] Initial useState for wasmModule: getMirrorModule() at ${moduleInitTime.toFixed(0)}ms returned ${!!module}`,
-    );
-    return module;
+    return getMirrorModule();
   });
 
   // Memoize WASM callbacks to prevent infinite re-render loops.
@@ -150,23 +143,12 @@ export function MirrorPage() {
     om?.setDimensions(cols, rows);
   }, []);
 
-  const optionsManagerTime = performance.now();
-  console.log(
-    `[Mirror] Creating useClientLike at ${optionsManagerTime.toFixed(0)}ms`,
-  );
   const optionsManager = useClientLike({
     initWasm,
     isWasmReady,
     applyWasmSettings,
     setWasmDimensions,
   });
-  console.log(
-    `[Mirror] useClientLike returned at ${performance.now().toFixed(0)}ms (${(performance.now() - optionsManagerTime).toFixed(1)}ms to return)`,
-  );
-
-  console.log(
-    `[Mirror] optionsManager state: wasmInitialized=${optionsManager.wasmInitialized}, terminalDimensions=${optionsManager.terminalDimensions.cols}x${optionsManager.terminalDimensions.rows}`,
-  );
 
   const {
     videoRef,
@@ -229,10 +211,6 @@ export function MirrorPage() {
   };
 
   // Render loop that captures and converts frames to ASCII
-  const renderLoopTime = performance.now();
-  console.log(
-    `[Mirror] Calling useMirrorRenderLoop at ${renderLoopTime.toFixed(0)}ms`,
-  );
   useMirrorRenderLoop({
     isWebcamRunning,
     terminalDimensions,
@@ -243,15 +221,8 @@ export function MirrorPage() {
     firstFrameTimeRef,
     frameIntervalRef,
   });
-  console.log(
-    `[Mirror] useMirrorRenderLoop returned at ${performance.now().toFixed(0)}ms`,
-  );
 
   // Webcam start logic and auto-start effects
-  const webcamHookTime = performance.now();
-  console.log(
-    `[Mirror] Calling useMirrorWebcam at ${webcamHookTime.toFixed(0)}ms`,
-  );
   const { startWebcam, startVideoFile } = useMirrorWebcam({
     settings,
     videoRef,
@@ -266,10 +237,6 @@ export function MirrorPage() {
     isWebcamRunning,
     terminalDimensions,
   });
-
-  console.log(
-    `[Mirror] useMirrorWebcam returned at ${performance.now().toFixed(0)}ms`,
-  );
 
   const handleVideoFileSelect = useCallback(
     (file: File) => {
@@ -302,11 +269,6 @@ export function MirrorPage() {
       stopWebcam();
     };
   }, [stopWebcam]);
-
-  const returnTime = performance.now();
-  console.log(
-    `[Mirror] About to return JSX at ${returnTime.toFixed(0)}ms (total render time: ${(returnTime - pageRenderTime).toFixed(1)}ms)`,
-  );
 
   return (
     <>
@@ -344,9 +306,6 @@ export function MirrorPage() {
           />
         }
         renderer={(() => {
-          console.log(
-            `[Mirror] Rendering AsciiRenderer with wasmModuleReady=${!!wasmModule}`,
-          );
           return (
             <AsciiRenderer
               ref={rendererRef}

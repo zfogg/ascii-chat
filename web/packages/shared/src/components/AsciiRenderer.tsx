@@ -36,19 +36,8 @@ export const AsciiRenderer = forwardRef<
   },
   ref,
 ) {
-  const renderTime = performance.now();
-  console.log(
-    `[AsciiRenderer] RENDER: wasmModuleReady=${wasmModuleReady} at ${renderTime.toFixed(
-      0,
-    )}ms`,
-  );
   const previousWasmReadyRef = useRef<boolean | undefined>(undefined);
   if (previousWasmReadyRef.current !== wasmModuleReady) {
-    console.log(
-      `[AsciiRenderer] ✓ wasmModuleReady CHANGED from ${previousWasmReadyRef.current} to ${wasmModuleReady} at ${renderTime.toFixed(
-        0,
-      )}ms - both effects should fire`,
-    );
     previousWasmReadyRef.current = wasmModuleReady;
   }
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,110 +57,40 @@ export const AsciiRenderer = forwardRef<
   }, []);
 
   useEffect(() => {
-    const effectTime = performance.now();
-    console.log(
-      `[AsciiRenderer] EFFECT-1 (wasmModuleReady) FIRED at ${effectTime.toFixed(
-        0,
-      )}ms: wasmModuleReady=${wasmModuleReady}`,
-    );
     if (wasmModuleReady) {
-      const getModuleStart = performance.now();
       const module = getMirrorModule();
-      const getModuleEnd = performance.now();
-      console.log(
-        `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(
-          0,
-        )}ms returned ${!!module} (took ${(
-          getModuleEnd - getModuleStart
-        ).toFixed(1)}ms)`,
-      );
       moduleRef.current = module;
-      console.log(
-        `[AsciiRenderer] moduleRef.current set at ${performance
-          .now()
-          .toFixed(0)}ms`,
-      );
     }
-    return () => {
-      console.log(
-        `[AsciiRenderer] EFFECT-1 CLEANUP at ${performance.now().toFixed(0)}ms`,
-      );
-    };
   }, [wasmModuleReady]);
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
-      console.log(
-        `[AsciiRenderer] updateDimensions called with ${cols}x${rows}, onDimensionsChange=${!!onDimensionsChange}`,
-      );
       dimensionsRef.current = { cols, rows };
       onDimensionsChange?.({ cols, rows });
-      console.log(`[AsciiRenderer] onDimensionsChange callback invoked`);
     },
     [onDimensionsChange],
   );
 
   useEffect(() => {
     const effectStartTime = performance.now();
-    console.log(
-      `[AsciiRenderer] EFFECT-2 (init) FIRED at ${effectStartTime.toFixed(
-        0,
-      )}ms: wasmModuleReady=${wasmModuleReady}, canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`,
-    );
     if (!canvasRef.current || setupDoneRef.current) {
-      console.log(
-        `[AsciiRenderer] EFFECT-2 early exit at ${performance
-          .now()
-          .toFixed(
-            0,
-          )}ms - canvas=${!!canvasRef.current}, setupDone=${setupDoneRef.current}`,
-      );
       return;
     }
 
-    console.log(
-      `[AsciiRenderer] EFFECT-2 BODY START at ${performance
-        .now()
-        .toFixed(0)}ms - initializing canvas`,
-    );
     const canvas = canvasRef.current;
-    console.log(
-      `[AsciiRenderer] Canvas ref assigned at ${performance
-        .now()
-        .toFixed(0)}ms`,
-    );
 
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
-      const rendererStartTime = performance.now();
-      console.log(
-        `[AsciiRenderer initRenderer] STARTED at ${rendererStartTime.toFixed(
-          0,
-        )}ms`,
-      );
-
       try {
         const width = canvas.clientWidth || 1280;
         const height = canvas.clientHeight || 720;
-
-        console.log(
-          `[AsciiRenderer initRenderer] dimensions: width=${width}, height=${height} at ${performance
-            .now()
-            .toFixed(0)}ms`,
-        );
 
         // Set canvas on module for raylib/Emscripten
         if (!moduleRef.current) {
           throw new Error("moduleRef.current is null during initRenderer");
         }
 
-        const canvasSetTime = performance.now();
         moduleRef.current.canvas = canvas;
-        console.log(
-          `[AsciiRenderer initRenderer] Canvas set on module at ${canvasSetTime.toFixed(
-            0,
-          )}ms (took ${(performance.now() - canvasSetTime).toFixed(1)}ms)`,
-        );
 
         // Allocate and initialize term_renderer_config_t struct
         // Struct layout (WASM 32-bit pointers):
@@ -211,88 +130,16 @@ export const AsciiRenderer = forwardRef<
         moduleRef.current!.HEAPU8[configPtr + 532] = 0;
         // font_data (pointer) at offset 536 (WASM 32-bit pointers)
         const fontDataPtr = moduleRef.current!._get_font_default_ptr();
-        console.log(
-          `[AsciiRenderer initRenderer] _get_font_default_ptr() returned: ${fontDataPtr} (type: ${typeof fontDataPtr})`,
-        );
         view.setInt32(536, fontDataPtr, true);
-
-        // Verify the write
-        const readBackPtr = view.getInt32(536, true);
-        console.log(
-          `[AsciiRenderer initRenderer] Verified write at offset 536: ${readBackPtr}`,
-        );
 
         // font_data_size (size_t) at offset 540 (WASM 32-bit size_t)
         const fontDataSize = moduleRef.current!._get_font_default_size();
-        console.log(
-          `[AsciiRenderer initRenderer] _get_font_default_size() returned: ${fontDataSize} (type: ${typeof fontDataSize})`,
-        );
         view.setInt32(540, fontDataSize, true);
 
-        // Verify the write
-        const readBackSize = view.getInt32(540, true);
-        console.log(
-          `[AsciiRenderer initRenderer] Verified write at offset 540: ${readBackSize}`,
-        );
-
-        console.log(
-          `[AsciiRenderer initRenderer] Using embedded font: ptr=${fontDataPtr}, size=${fontDataSize}`,
-        );
-
         const doInit = () => {
-          const initCallTime = performance.now();
-
-          // Debug: dump the struct contents
-          console.log(
-            `[AsciiRenderer initRenderer] STRUCT DUMP before _term_renderer_create:`,
-          );
-          console.log(`  cols (offset 0, int32): ${view.getInt32(0, true)}`);
-          console.log(`  rows (offset 4, int32): ${view.getInt32(4, true)}`);
-          console.log(
-            `  font_size_pt (offset 8, float64): ${view.getFloat64(8, true)}`,
-          );
-          console.log(`  theme (offset 16, int32): ${view.getInt32(16, true)}`);
-
-          // font_spec at offset 20 (char[512])
-          let fontSpecStr = "";
-          for (let i = 0; i < 512; i++) {
-            const byte = moduleRef.current!.HEAPU8[configPtr + 20 + i];
-            if (byte === 0) break;
-            if (byte) {
-              fontSpecStr += String.fromCharCode(byte);
-            }
-          }
-          console.log(`  font_spec (offset 20, char[512]): "${fontSpecStr}"`);
-          console.log(
-            `  font_is_path (offset 532, bool): ${
-              moduleRef.current!.HEAPU8[configPtr + 532]
-            }`,
-          );
-          console.log(
-            `  font_data (offset 536, ptr): 0x${view
-              .getInt32(536, true)
-              .toString(16)}`,
-          );
-          console.log(
-            `  font_data_size (offset 540, size_t): ${view.getInt32(
-              540,
-              true,
-            )}`,
-          );
-
-          console.log(
-            `[AsciiRenderer initRenderer] Calling _term_renderer_create(configPtr=${configPtr}, outPtr=${outPtr}) at ${initCallTime.toFixed(
-              0,
-            )}ms`,
-          );
           const result = moduleRef.current!._term_renderer_create(
             configPtr,
             outPtr,
-          );
-          console.log(
-            `[AsciiRenderer initRenderer] _term_renderer_create returned ${result} at ${performance
-              .now()
-              .toFixed(0)}ms`,
           );
 
           if (result !== 0) {
@@ -307,27 +154,12 @@ export const AsciiRenderer = forwardRef<
             outPtr,
             8,
           ).getBigInt64(0, true);
-          console.log(`[AsciiRenderer] Got renderer pointer: ${rendererPtr}`);
           return Number(rendererPtr);
         };
 
-        const beforeDoInit = performance.now();
         const rendererPtr = doInit();
         rendererPtrRef.current = rendererPtr;
-        const afterDoInit = performance.now();
-        console.log(
-          `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(
-            0,
-          )}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
-        );
 
-        // Validate _term_renderer_feed function exists and is callable
-        console.log(
-          `[WASM Function Check] _term_renderer_feed type=${typeof moduleRef
-            .current!._term_renderer_feed}`,
-        );
-
-        const getDimsStart = performance.now();
         // Get actual dimensions from renderer
         const cols = moduleRef.current!._term_renderer_get_cols(
           rendererPtrRef.current,
@@ -336,91 +168,28 @@ export const AsciiRenderer = forwardRef<
           rendererPtrRef.current,
         );
 
-        console.log(
-          `[AsciiRenderer initRenderer] Got dimensions at ${performance
-            .now()
-            .toFixed(0)}ms: ${cols}x${rows} (took ${(
-            performance.now() - getDimsStart
-          ).toFixed(1)}ms)`,
-        );
-
-        if (cols === 0 || rows === 0) {
-          console.warn(`[AsciiRenderer] Invalid dimensions: ${cols}x${rows}`);
-        }
-
-        const updateDimsTime = performance.now();
         updateDimensions(cols, rows);
-        console.log(
-          `[AsciiRenderer initRenderer] updateDimensions called at ${updateDimsTime.toFixed(
-            0,
-          )}ms (took ${(performance.now() - updateDimsTime).toFixed(1)}ms)`,
-        );
-
         setupDoneRef.current = true;
-        const totalTime = performance.now() - rendererStartTime;
-        console.log(
-          `[AsciiRenderer initRenderer] Setup complete at ${performance
-            .now()
-            .toFixed(0)}ms (TOTAL: ${totalTime.toFixed(1)}ms)`,
-        );
       } catch (err) {
         console.error("[AsciiRenderer] Initialization failed:", err);
         setupDoneRef.current = false;
       }
     };
 
-    console.log(
-      `[AsciiRenderer] initRenderer function defined at ${performance
-        .now()
-        .toFixed(0)}ms`,
-    );
-
     // Try to initialize synchronously
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (moduleRef.current) {
-      console.log(
-        `[AsciiRenderer] EFFECT-2: Module ready, initializing at ${performance
-          .now()
-          .toFixed(0)}ms`,
-      );
       initRenderer();
     } else {
       // Module not ready yet - wait one microtask for it to load, then retry
-      console.log(
-        `[AsciiRenderer] EFFECT-2: Module not ready, scheduling retry at ${performance
-          .now()
-          .toFixed(0)}ms`,
-      );
       timeoutId = setTimeout(() => {
         if (moduleRef.current && !setupDoneRef.current) {
-          console.log(
-            `[AsciiRenderer] EFFECT-2: Retry - module now ready at ${performance
-              .now()
-              .toFixed(0)}ms, initializing`,
-          );
           initRenderer();
-        } else if (setupDoneRef.current) {
-          console.log(`[AsciiRenderer] EFFECT-2: Retry - already initialized`);
-        } else {
-          console.log(
-            `[AsciiRenderer] EFFECT-2: Retry - module still not ready at ${performance
-              .now()
-              .toFixed(0)}ms`,
-          );
         }
       }, 0);
     }
 
     return () => {
-      const cleanupTime = performance.now();
-      const timeSinceSchedule = cleanupTime - effectStartTime;
-      console.log(
-        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(
-          0,
-        )}ms: setupDone=${setupDoneRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(
-          1,
-        )}ms`,
-      );
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
       }
@@ -474,60 +243,18 @@ export const AsciiRenderer = forwardRef<
     () => ({
       writeFrame(ansiString: string) {
         if (!moduleRef.current || !setupDoneRef.current) {
-          console.warn("[AsciiRenderer] writeFrame called but not ready:", {
-            hasModule: !!moduleRef.current,
-            setupDone: setupDoneRef.current,
-            stringLength: ansiString.length,
-          });
           return;
         }
 
-        // Log middle 100 chars of first frame and every 60th frame
         frameCountForLoggingRef.current++;
-        if (
-          frameCountForLoggingRef.current === 1 ||
-          frameCountForLoggingRef.current % 60 === 0
-        ) {
-          const start = Math.max(0, Math.floor(ansiString.length / 2) - 50);
-          const middle100 = ansiString.substring(start, start + 100);
-          console.log(
-            `[Frame ${frameCountForLoggingRef.current}] Middle 100 chars:`,
-            middle100,
-          );
-        }
 
         try {
-          console.log(
-            `[Frame ${frameCountForLoggingRef.current}] writeFrame called with ${ansiString.length} bytes`,
-          );
-
           // Encode string to UTF-8 bytes
           const encoder = new TextEncoder();
           const data = encoder.encode(ansiString);
 
-          console.log(
-            "[DEBUG writeFrame] ansiString first 50 chars:",
-            ansiString.substring(0, 50),
-          );
-          console.log(
-            "[DEBUG writeFrame] ansiString.length:",
-            ansiString.length,
-          );
-          console.log("[DEBUG writeFrame] encoded data.length:", data.length);
-          console.log(
-            "[DEBUG writeFrame] data is Uint8Array:",
-            data instanceof Uint8Array,
-          );
-
           // Allocate memory in WASM and copy data
           const ptr = moduleRef.current._malloc(data.length);
-          console.log(
-            "[DEBUG writeFrame] _malloc(",
-            data.length,
-            ") returned:",
-            ptr,
-          );
-          console.log("[DEBUG writeFrame] typeof ptr:", typeof ptr);
 
           if (!ptr) {
             console.error("[AsciiRenderer] Failed to allocate memory in WASM");
@@ -535,55 +262,14 @@ export const AsciiRenderer = forwardRef<
           }
 
           const wasmMemory = new Uint8Array(moduleRef.current.HEAPU8.buffer);
-          console.log(
-            "[DEBUG writeFrame] wasmMemory.length:",
-            wasmMemory.length,
-          );
-          console.log(
-            "[DEBUG writeFrame] About to copy data to WASM memory at offset",
-            ptr,
-          );
-
           wasmMemory.set(data, ptr);
-          console.log("[DEBUG writeFrame] Memory copy successful");
-
-          // Check the function before calling it
-          console.log(
-            "[DEBUG writeFrame] moduleRef.current._term_renderer_feed type:",
-            typeof moduleRef.current._term_renderer_feed,
-          );
-          console.log(
-            "[DEBUG writeFrame] Function exists:",
-            !!moduleRef.current._term_renderer_feed,
-          );
-
-          // Log what we're about to call
-          console.log(
-            "[DEBUG writeFrame] About to call _term_renderer_feed with:",
-            {
-              rendererPtr: rendererPtrRef.current,
-              ptr: ptr,
-              "data.length": data.length,
-            },
-          );
 
           // Render frame - call term_renderer_feed with renderer pointer
-          console.log(
-            `[writeFrame] Calling _term_renderer_feed(${rendererPtrRef.current}, ${ptr}, ${data.length})`,
-          );
-          console.log(
-            `[writeFrame] ansiString contains: ${ansiString
-              .substring(0, 200)
-              .replace(/\n/g, "\\n")}`,
-          );
           try {
-            const feedResult = moduleRef.current._term_renderer_feed(
+            moduleRef.current._term_renderer_feed(
               rendererPtrRef.current,
               ptr,
               data.length,
-            );
-            console.log(
-              `[writeFrame] _term_renderer_feed returned ${feedResult}`,
             );
           } catch (wasmError) {
             console.error(
@@ -610,9 +296,6 @@ export const AsciiRenderer = forwardRef<
           moduleRef.current._free(ptr);
 
           // Display framebuffer on canvas
-          console.log(
-            "[Canvas Drawing] Attempting to display framebuffer on canvas",
-          );
           try {
             const canvas = canvasRef.current;
             if (
@@ -633,13 +316,6 @@ export const AsciiRenderer = forwardRef<
                 rendererPtrRef.current,
               );
 
-              console.log("[Canvas Entry] Framebuffer getters:", {
-                fbPtr,
-                fbWidth,
-                fbHeight,
-                fbStride,
-              });
-
               if (
                 fbPtr &&
                 fbWidth &&
@@ -649,60 +325,27 @@ export const AsciiRenderer = forwardRef<
                 typeof fbWidth === "number" &&
                 typeof fbHeight === "number"
               ) {
-                console.log(
-                  "[Canvas Check] Condition passed, proceeding to draw",
-                );
                 const w: number = fbWidth as number;
                 const h: number = fbHeight as number;
-                const stride: number = fbStride ? (fbStride as number) : w * 3;
+                const stride: number = fbStride ? (fbStride as number) : w * 4;
 
-                // Read RGB24 framebuffer from WASM memory
+                // Read RGBA32 framebuffer from WASM memory (now 4 bytes per pixel)
                 const fbData: Uint8Array = new Uint8Array(
                   moduleRef.current.HEAPU8.buffer,
                   fbPtr,
                   h * stride,
                 );
 
-                // Create ImageData (RGBA)
+                // Create ImageData directly from RGBA data (no conversion needed)
                 const imageData = new ImageData(w, h);
-                let dstIdx = 0;
-
-                // Convert RGB24 to RGBA32
-                for (let y = 0; y < h; y++) {
-                  const rowStart: number = y * stride;
-                  for (let x = 0; x < w; x++) {
-                    const srcIdx: number = rowStart + x * 3;
-                    const r: number = fbData[srcIdx] ?? 0;
-                    const g: number = fbData[srcIdx + 1] ?? 0;
-                    const b: number = fbData[srcIdx + 2] ?? 0;
-                    imageData.data[dstIdx++] = r;
-                    imageData.data[dstIdx++] = g;
-                    imageData.data[dstIdx++] = b;
-                    imageData.data[dstIdx++] = 255;
-                  }
-                }
+                // Copy RGBA data directly - no per-pixel conversion loop
+                imageData.data.set(fbData.subarray(0, w * h * 4));
 
                 // Display on canvas
                 const ctx = canvas.getContext("2d");
                 if (ctx) {
-                  console.log("[Canvas Display] putImageData:", {
-                    width: w,
-                    height: h,
-                    dataLength: imageData.data.length,
-                    canvasSize: canvas.width + "x" + canvas.height,
-                  });
                   ctx.putImageData(imageData, 0, 0);
                 }
-              } else {
-                console.log("[Canvas Check] Condition FAILED:", {
-                  fbPtr_valid: !!fbPtr,
-                  fbWidth_valid: !!fbWidth,
-                  fbHeight_valid: !!fbHeight,
-                  fbWidth_gt0: fbWidth > 0,
-                  fbHeight_gt0: fbHeight > 0,
-                  fbWidth_isNum: typeof fbWidth === "number",
-                  fbHeight_isNum: typeof fbHeight === "number",
-                });
               }
             }
           } catch (displayErr) {

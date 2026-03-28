@@ -28,39 +28,15 @@ export function useMirrorRenderLoop({
   frameIntervalRef,
 }: UseMirrorRenderLoopParams) {
   useEffect(() => {
-    const effectStartTime = performance.now();
-    console.log(
-      `[Mirror] RENDER LOOP EFFECT FIRED at ${effectStartTime.toFixed(0)}ms (dependencies: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions?.cols}x${terminalDimensions?.rows})`,
-    );
-    console.log(
-      `[Mirror] *** RENDER LOOP EFFECT BODY START at ${effectStartTime.toFixed(0)}ms ***`,
-    );
-    console.log(
-      `[Mirror] Dependencies: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions.cols}x${terminalDimensions.rows}, captureFrame=${!!captureFrame}`,
-    );
-
     if (!isWebcamRunning) {
-      console.log("[Mirror] Skipping render loop: webcam not running");
       return;
     }
 
-    // CRITICAL: Skip rendering until terminal dimensions are initialized
+    // Skip rendering until terminal dimensions are initialized
     // Without this, WASM tries to render with dst_width=0/dst_height=0, causing memory access out of bounds
     if (terminalDimensions.cols <= 0 || terminalDimensions.rows <= 0) {
-      console.log(
-        `[Mirror] BLOCKING render loop: dimensions not yet initialized (${terminalDimensions.cols}x${terminalDimensions.rows})`,
-      );
-      if (debugCountRef.current % 300 === 0) {
-        console.log(
-          `[Mirror] Waiting for terminal dimensions: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
-        );
-      }
       return;
     }
-
-    console.log(
-      `[Mirror] Render loop STARTING with dimensions: ${terminalDimensions.cols}x${terminalDimensions.rows} at ${effectStartTime.toFixed(0)}ms`,
-    );
 
     const isTestMode = new URLSearchParams(window.location.search).has("test");
     let lastFrameTime = performance.now();
@@ -68,32 +44,12 @@ export function useMirrorRenderLoop({
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
-        if (debugCountRef.current === 0) {
-          console.log(
-            `[Mirror] renderFrame EARLY RETURN at ${performance.now().toFixed(0)}ms:`,
-            {
-              wasmReady: isWasmReady(),
-              hasRenderer: !!rendererRef.current,
-            },
-          );
-        }
         return;
-      }
-
-      if (debugCountRef.current === 0) {
-        console.log(
-          `[Mirror] renderFrame EXECUTING for first time at ${performance.now().toFixed(0)}ms`,
-        );
       }
 
       const now = performance.now();
       if (firstFrameTimeRef.current === null) {
         firstFrameTimeRef.current = now;
-        console.log(
-          "[Mirror] FIRST FRAME STARTING at",
-          new Date().toISOString(),
-        );
-        console.time("[Mirror] Time to first frame render");
       }
 
       let frame;
@@ -131,34 +87,17 @@ export function useMirrorRenderLoop({
       }
 
       if (!frame) {
-        if (debugCountRef.current % 300 === 0) {
-          console.log("[Mirror] captureFrame returned null");
-        }
         return;
       }
 
       // Verify frame dimensions match expected RGBA size
       const expectedSize = frame.width * frame.height * 4;
       if (frame.data.length !== expectedSize) {
-        console.error(
-          `[Mirror] CRITICAL: Frame data size mismatch - frame is ${frame.width}x${frame.height} but data is ${frame.data.length} bytes (expected ${expectedSize})`,
-        );
         return;
-      }
-
-      if (debugCountRef.current === 0) {
-        console.log(
-          `[Mirror] First frame captured at ${now - firstFrameTimeRef.current!}ms: ${frame.width}x${frame.height}, ${frame.data.length} bytes`,
-        );
       }
 
       // If last conversion took > 100ms, skip this frame to prevent blocking
       if (lastConversionTime > 100) {
-        if (debugCountRef.current % 30 === 0) {
-          console.warn(
-            `[Mirror] Last conversion took ${lastConversionTime.toFixed(1)}ms - skipping frame to prevent RAF blocking`,
-          );
-        }
         return;
       }
 
@@ -171,9 +110,6 @@ export function useMirrorRenderLoop({
       lastConversionTime = performance.now() - conversionStartTime;
 
       if (!asciiArt) {
-        if (debugCountRef.current % 300 === 0) {
-          console.log("[Mirror] convertFrameToAscii returned empty");
-        }
         return;
       }
 
@@ -186,66 +122,30 @@ export function useMirrorRenderLoop({
 
       rendererRef.current!.writeFrame(asciiArt);
 
-      if (debugCountRef.current === 0) {
-        console.timeEnd("[Mirror] Time to first frame render");
-      }
-
       debugCountRef.current++;
     };
 
-    let rafCallCount = 0;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
-      rafCallCount++;
-      if (rafCallCount === 1) {
-        console.log(
-          `[Mirror] !!! FIRST RAF CALLBACK FIRED at ${performance.now().toFixed(0)}ms (time=${time.toFixed(0)}, scheduled=${rafScheduleTime.toFixed(0)}, gap=${(performance.now() - rafScheduleTime).toFixed(0)}ms)`,
-        );
-      }
       try {
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
 
         if (elapsed >= interval) {
           lastFrameTime = time;
-          if (rafCallCount <= 3) {
-            console.log(
-              `[Mirror] RAF callback #${rafCallCount}: elapsed=${elapsed.toFixed(1)}ms >= interval=${interval.toFixed(1)}ms, calling renderFrame at ${performance.now().toFixed(0)}ms`,
-            );
-          }
           renderFrame();
-        } else {
-          if (rafCallCount <= 3) {
-            console.log(
-              `[Mirror] RAF callback #${rafCallCount}: elapsed=${elapsed.toFixed(1)}ms < interval=${interval.toFixed(1)}ms, skipping renderFrame`,
-            );
-          }
         }
 
         requestAnimationFrame(animationFrameRef);
       } catch (err) {
-        console.error("[Mirror] Render error:", err);
+        // Silent error catch - don't log in hot loop
       }
     };
 
     lastFrameTime = performance.now();
-    const rafScheduleTime = performance.now();
-    console.log(
-      `[Mirror] >>> RAF SCHEDULED at ${rafScheduleTime.toFixed(0)}ms`,
-    );
     const rafHandle = requestAnimationFrame(animationFrameRef);
-    console.log(
-      `[Mirror] >>> RAF handle=${rafHandle} returned at ${performance.now().toFixed(0)}ms`,
-    );
 
     return () => {
-      const cleanupTime = performance.now();
-      console.log(
-        `[Mirror] !!! CLEANUP: Cancelling RAF handle=${rafHandle} at ${cleanupTime.toFixed(0)}ms (was scheduled ${(cleanupTime - rafScheduleTime).toFixed(1)}ms ago)`,
-      );
       cancelAnimationFrame(rafHandle);
-      console.log(
-        `[Mirror] !!! CLEANUP: cancelAnimationFrame returned at ${performance.now().toFixed(0)}ms`,
-      );
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isWebcamRunning, captureFrame, terminalDimensions]);

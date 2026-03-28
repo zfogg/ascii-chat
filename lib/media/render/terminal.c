@@ -66,13 +66,6 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
  */
 static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, uint8_t fr, uint8_t fg, uint8_t fb,
                        uint8_t br, uint8_t bg, uint8_t bb) {
-  // DEBUG: Log first blit to see colors being used
-  static int blit_count = 0;
-  if (blit_count++ < 10) {
-    log_debug("BLIT_GLYPH[%d]: px=%d py=%d bitmap(%ux%u) FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)", blit_count, px, py,
-              bm->width, bm->rows, fr, fg, fb, br, bg, bb);
-  }
-
   for (unsigned row = 0; row < bm->rows; row++) {
     int dy = py + (int)row;
     if (dy < 0 || dy >= r->height_px)
@@ -83,7 +76,7 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
         continue;
       uint8_t a = bm->buffer[row * bm->pitch + col];
 
-      uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 3;
+      uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 4;
       uint8_t r_val = (uint8_t)((fr * a + br * (255 - a)) / 255);
       uint8_t g_val = (uint8_t)((fg * a + bg * (255 - a)) / 255);
       uint8_t b_val = (uint8_t)((fb * a + bb * (255 - a)) / 255);
@@ -91,6 +84,7 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
       dst[0] = r_val;
       dst[1] = g_val;
       dst[2] = b_val;
+      dst[3] = 255; // Alpha (fully opaque)
     }
   }
 }
@@ -216,12 +210,12 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->height_px = r->rows * r->cell_h;
   log_debug("DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)",
             r->width_px, r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
-  // Pitch in bytes: align to 4-byte boundary for proper row alignment
-  // Each pixel is 3 bytes (RGB), so we calculate base pitch and round up
-  int base_pitch = r->width_px * 3;
-  r->pitch = (base_pitch + 3) & ~3; // Round up to next multiple of 4
-  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (padded by %d bytes)", r->width_px, base_pitch,
-            r->pitch, r->pitch - base_pitch);
+  // Pitch in bytes: each pixel is 4 bytes (RGBA), already aligned to 4-byte boundary
+  // No padding needed since 4 is already a multiple of 4
+  int base_pitch = r->width_px * 4;
+  r->pitch = base_pitch;
+  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (RGBA, no padding needed)", r->width_px, base_pitch,
+            r->pitch);
   log_debug("DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)",
             (int)((size_t)r->pitch * r->height_px), r->pitch, r->height_px);
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
@@ -254,13 +248,6 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
 
-  // DEBUG: Log cell dimensions and font info
-  static int feed_count = 0;
-  if (feed_count++ < 2) {
-    log_debug("TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d", feed_count, r->cols,
-              r->rows, r->cell_w, r->cell_h, r->width_px, r->height_px, r->baseline);
-  }
-
   static const char home[] = "\033[H";
   vterm_input_write(r->vt, home, sizeof(home) - 1);
 
@@ -290,49 +277,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   }
 
   vterm_input_write(r->vt, fixed_frame, fixed_pos);
-  log_debug("DEBUG: fed ANSI frame to vterm with CRLF line endings (original_len=%zu, fixed_len=%zu)", len, fixed_pos);
   SAFE_FREE(fixed_frame);
-
-  // Check ALL line lengths to see if there's an alternating pattern
-  size_t line_num = 0;
-  size_t pos = 0;
-  size_t visible_chars = 0;
-  bool in_ansi = false;
-
-  while (pos < len && line_num < 45) { // Check all 42 lines
-    char c = ansi_frame[pos];
-
-    if (c == '\033') {
-      in_ansi = true;
-    } else if (in_ansi && c == 'm') {
-      in_ansi = false;
-    } else if (!in_ansi && c == '\n') {
-      if (line_num < 10 || line_num >= 40) {
-        log_debug("DEBUG: ANSI line %zu has %zu visible chars", line_num, visible_chars);
-      }
-      visible_chars = 0;
-      line_num++;
-    } else if (!in_ansi) {
-      visible_chars++;
-    }
-    pos++;
-  }
-
-  int cells_with_chars = 0, cells_rendered = 0;
-  log_debug("DEBUG: RENDER_LOOP starting - grid is %d rows × %d cols, cell dimensions w=%d h=%d", r->rows, r->cols,
-            r->cell_w, r->cell_h);
 
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
       vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
-
-      // Debug sample: first row, every 50th column
-      if (row == 0 && col % 50 == 0) {
-        log_debug("DEBUG: ROW0 COL%d: char=0x%02x ('%c'), has_fg=%d has_bg=%d", col, cell.chars[0],
-                  (cell.chars[0] >= 32 && cell.chars[0] < 127) ? cell.chars[0] : '?', VTERM_COLOR_IS_RGB(&cell.fg),
-                  VTERM_COLOR_IS_RGB(&cell.bg));
-      }
 
       uint8_t fr, fg, fb, br, bg, bb;
       if (VTERM_COLOR_IS_RGB(&cell.fg)) {
@@ -351,58 +301,27 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         br = bg = bb = def_bg;
       }
 
-      // DEBUG: Log color extraction for sample cells
-      if ((row == 0 && col % 50 == 0) || (row == 5 && col % 50 == 0)) {
-        log_debug("COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)", row, col,
-                  cell.chars[0], fr, fg, fb, br, bg, bb);
-      }
-
       int px = col * r->cell_w, py = row * r->cell_h;
       for (int dy = 0; dy < r->cell_h; dy++) {
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
-        uint8_t *line = r->framebuffer + y * r->pitch + px * 3;
+        uint8_t *line = r->framebuffer + y * r->pitch + px * 4;
         for (int dx = 0; dx < r->cell_w; dx++) {
           int x = px + dx;
           if (x < 0 || x >= r->width_px)
             continue;
-          line[dx * 3] = br;
-          line[dx * 3 + 1] = bg;
-          line[dx * 3 + 2] = bb;
+          line[dx * 4] = br;
+          line[dx * 4 + 1] = bg;
+          line[dx * 4 + 2] = bb;
+          line[dx * 4 + 3] = 255; // Alpha (fully opaque)
         }
-      }
-
-      // Debug: log bounds for rightmost column
-      if (col == r->cols - 1 && row == 0) {
-        log_debug("DEBUG: CELL_BG_FILL: col=%d px=%d cell_w=%d extends to px=%d (width_px=%d) cell would extend to "
-                  "pixel %d%s",
-                  col, px, r->cell_w, px + r->cell_w - 1, r->width_px, px + r->cell_w,
-                  (px + r->cell_w > r->width_px) ? " [OVERFLOW!]" : "");
-      }
-
-      // Debug: log all characters in rightmost column
-      if (col == r->cols - 1) {
-        int char_code = (int)(unsigned char)cell.chars[0];
-        char char_display = (char_code >= 32 && char_code < 127) ? (char)char_code : '?';
-        log_debug("DEBUG: RIGHTMOST_CHAR: row=%d col=%d char=0x%02x (dec %d '%c') space=%d", row, col,
-                  (unsigned char)cell.chars[0], char_code, char_display, (cell.chars[0] == ' ' ? 1 : 0));
       }
 
       if (cell.chars[0] && cell.chars[0] != ' ') {
-        cells_with_chars++;
         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
         FT_UInt gi = FT_Get_Char_Index(r->ft_face, char_to_render);
-
-        // Debug: sample cells (every 50 cols, every 5 rows) AND all cells in rightmost column
-        int is_rightmost = (col == r->cols - 1);
-        int is_sample = (col % 50 == 0 && row % 5 == 0);
-        if (is_sample || is_rightmost) {
-          log_debug("DEBUG: GLYPH_LOOKUP: row=%d col=%d char=0x%02x ('%c') → gi=%u%s", row, col, cell.chars[0],
-                    (cell.chars[0] >= 32 && cell.chars[0] < 127) ? cell.chars[0] : '?', gi,
-                    is_rightmost ? " [RIGHTMOST]" : "");
-        }
 
         if (gi) {
           if (FT_Load_Glyph(r->ft_face, gi, FT_LOAD_RENDER) == 0) {
@@ -410,103 +329,13 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
             // Blit if we have content
             if (g->bitmap.width > 0 && g->bitmap.rows > 0) {
-              // Debug: sample rendered glyphs AND all rightmost column glyphs
-              if (is_sample || is_rightmost) {
-                log_debug("DEBUG: GLYPH_RENDER: row=%d col=%d bitmap(%dx%d) → px=%d py=%d blit_pos(x=%d,y=%d) "
-                          "offset(bmp_left=%d, baseline=%d, bmp_top=%d)%s",
-                          row, col, g->bitmap.width, g->bitmap.rows, px, py, px + g->bitmap_left,
-                          py + r->baseline - g->bitmap_top, g->bitmap_left, r->baseline, g->bitmap_top,
-                          is_rightmost ? " [RIGHTMOST]" : "");
-              }
               blit_glyph(r, &g->bitmap, px + g->bitmap_left, py + r->baseline - g->bitmap_top, fr, fg, fb, br, bg, bb);
-              cells_rendered++;
-            } else if (is_sample || is_rightmost) {
-              log_debug("DEBUG: GLYPH_EMPTY: row=%d col=%d gi=%u has empty bitmap (%dx%d)%s", row, col, gi,
-                        g->bitmap.width, g->bitmap.rows, is_rightmost ? " [RIGHTMOST]" : "");
             }
-          } else if (is_sample || is_rightmost) {
-            log_debug("DEBUG: GLYPH_LOAD_FAIL: row=%d col=%d gi=%u FT_Load_Glyph failed%s", row, col, gi,
-                      is_rightmost ? " [RIGHTMOST]" : "");
           }
-        } else if (is_sample || is_rightmost) {
-          log_debug("DEBUG: GLYPH_NOT_FOUND: row=%d col=%d char=0x%02x no glyph index%s", row, col, cell.chars[0],
-                    is_rightmost ? " [RIGHTMOST]" : "");
         }
       }
     }
   }
-
-  log_debug("DEBUG: render loop finished - processed %d cells total", r->rows * r->cols);
-
-  // Sample pixels from framebuffer to verify content
-  uint8_t *sample_top = r->framebuffer;
-  uint8_t *sample_mid = r->framebuffer + (r->height_px / 2) * r->pitch;
-  uint8_t *sample_bot = r->framebuffer + (r->height_px - 1) * r->pitch;
-
-  // Enhanced pixel sampling
-  log_debug("DEBUG: pixel samples:");
-  log_debug("  top_left RGB(%d,%d,%d), top_mid RGB(%d,%d,%d), top_right RGB(%d,%d,%d)", sample_top[0], sample_top[1],
-            sample_top[2], sample_top[r->pitch / 2], sample_top[r->pitch / 2 + 1], sample_top[r->pitch / 2 + 2],
-            sample_top[(r->width_px - 1) * 3], sample_top[(r->width_px - 1) * 3 + 1],
-            sample_top[(r->width_px - 1) * 3 + 2]);
-  log_debug("  mid_left RGB(%d,%d,%d), mid_mid RGB(%d,%d,%d), mid_right RGB(%d,%d,%d)", sample_mid[0], sample_mid[1],
-            sample_mid[2], sample_mid[r->pitch / 2], sample_mid[r->pitch / 2 + 1], sample_mid[r->pitch / 2 + 2],
-            sample_mid[(r->width_px - 1) * 3], sample_mid[(r->width_px - 1) * 3 + 1],
-            sample_mid[(r->width_px - 1) * 3 + 2]);
-  log_debug("  bot_left RGB(%d,%d,%d), bot_mid RGB(%d,%d,%d), bot_right RGB(%d,%d,%d)", sample_bot[0], sample_bot[1],
-            sample_bot[2], sample_bot[r->pitch / 2], sample_bot[r->pitch / 2 + 1], sample_bot[r->pitch / 2 + 2],
-            sample_bot[(r->width_px - 1) * 3], sample_bot[(r->width_px - 1) * 3 + 1],
-            sample_bot[(r->width_px - 1) * 3 + 2]);
-
-  log_debug("term_renderer_feed: cells_with_chars=%d, cells_rendered=%d", cells_with_chars, cells_rendered);
-
-  // Write ANSI frame size and sample bottom row characters to debug file
-  FILE *dbg_dims = fopen("/tmp/render-dims.txt", "a");
-  if (dbg_dims) {
-    fprintf(dbg_dims, "[TERM_FEED] len=%zu, grid=%dx%d, pixels=%dx%d, cells_with_chars=%d, cells_rendered=%d\n", len,
-            r->cols, r->rows, r->width_px, r->height_px, cells_with_chars, cells_rendered);
-
-    // Sample bottom row to see what characters are there
-    fprintf(dbg_dims, "  Bottom row (41): ");
-    for (int col = 0; col < 20; col++) { // First 20 chars
-      VTermScreenCell cell;
-      vterm_screen_get_cell(r->vts, (VTermPos){r->rows - 1, col}, &cell);
-      if (cell.chars[0]) {
-        fprintf(dbg_dims, "%c", (cell.chars[0] >= 32 && cell.chars[0] < 127) ? cell.chars[0] : '?');
-      } else {
-        fprintf(dbg_dims, " ");
-      }
-    }
-    fprintf(dbg_dims, "\n");
-
-    // Check color of first char in bottom row
-    for (int col = 0; col < r->cols; col++) {
-      VTermScreenCell cell;
-      vterm_screen_get_cell(r->vts, (VTermPos){r->rows - 1, col}, &cell);
-      if (cell.chars[0] && cell.chars[0] != ' ') {
-        int has_rgb_fg = VTERM_COLOR_IS_RGB(&cell.fg);
-        int has_rgb_bg = VTERM_COLOR_IS_RGB(&cell.bg);
-        fprintf(dbg_dims, "  Colors - has_rgb_fg=%d has_rgb_bg=%d\n", has_rgb_fg, has_rgb_bg);
-        if (has_rgb_fg) {
-          fprintf(dbg_dims, "    fg=RGB(%d,%d,%d)\n", cell.fg.rgb.red, cell.fg.rgb.green, cell.fg.rgb.blue);
-        }
-        if (has_rgb_bg) {
-          fprintf(dbg_dims, "    bg=RGB(%d,%d,%d)\n", cell.bg.rgb.red, cell.bg.rgb.green, cell.bg.rgb.blue);
-        }
-        break;
-      }
-    }
-    fflush(dbg_dims);
-    fclose(dbg_dims);
-  }
-
-  log_debug("term_renderer_feed: Grid dimensions: %d cols x %d rows, Pixel dimensions: %d x %d px", r->cols, r->rows,
-            r->width_px, r->height_px);
-
-  log_debug(
-      "term_renderer_feed: pixel samples - top_left RGB(%d,%d,%d), mid_left RGB(%d,%d,%d), bot_left RGB(%d,%d,%d)",
-      sample_top[0], sample_top[1], sample_top[2], sample_mid[0], sample_mid[1], sample_mid[2], sample_bot[0],
-      sample_bot[1], sample_bot[2]);
 
   return ASCIICHAT_OK;
 }

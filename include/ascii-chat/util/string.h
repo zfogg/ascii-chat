@@ -284,4 +284,38 @@ const char *colored_string(log_color_t color, const char *text);
  */
 void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_size, int max_width);
 
+/**
+ * @brief Strip ANSI escape codes from a string
+ *
+ * Removes all ANSI escape sequences from the input string, suitable for
+ * displaying colored/styled text in environments that don't support ANSI codes
+ * (e.g., browser console, plain text output).
+ *
+ * Handles patterns like:
+ * - \\033[...m (color and style codes)
+ * - \\033[0m (reset code)
+ * - \\033[38;5;Nm (256-color codes)
+ * - \\033[38;2;R;G;Bm (truecolor codes)
+ * - \\033[2J, \\033[H, etc. (cursor and screen control)
+ *
+ * @param input Input string with ANSI codes (must not be NULL)
+ * @param output Output buffer for cleaned string (must not be NULL)
+ * @param output_size Size of output buffer (must be > 0)
+ *
+ * EXAMPLE:
+ * @code
+ * char input[] = "\\033[31mError\\033[0m";  // Red "Error" text
+ * char output[256];
+ * strip_ansi_codes(input, output, sizeof(output));
+ * // output now contains "Error" without ANSI codes
+ * @endcode
+ *
+ * @note Output buffer must be large enough for input (worst case: same size).
+ * @note Function truncates output if buffer is too small.
+ * @note Safe for use with formatted log messages.
+ *
+ * @ingroup util
+ */
+void strip_ansi_codes(const char *input, char *output, size_t output_size);
+
 /** @} */

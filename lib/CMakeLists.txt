@@ -141,6 +141,13 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 endif()
 
+# WASM logging only for Emscripten builds
+if(EMSCRIPTEN)
+    list(APPEND CORE_SRCS
+        ${LIB_DIR}/log/wasm.c
+    )
+endif()
+
 # Include subdirectories that define module source variables
 add_subdirectory(${LIB_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
 add_subdirectory(${LIB_DIR}/platform ${CMAKE_BINARY_DIR}/lib/platform)
