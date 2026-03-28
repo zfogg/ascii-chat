@@ -122,12 +122,6 @@ importers:
 
   packages/shared:
     dependencies:
-      '@pablo-lion/xterm-react':
-        specifier: ^1.1.2
-        version: 1.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@xterm/addon-fit':
-        specifier: ^0.11.0
-        version: 0.11.0
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -143,9 +137,6 @@ importers:
       react-syntax-highlighter:
         specifier: ^16.1.0
         version: 16.1.1(react@19.2.4)
-      xterm:
-        specifier: ^5.3.0
-        version: 5.3.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -165,15 +156,6 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.9
         version: 2.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@pablo-lion/xterm-react':
-        specifier: ^1.1.2
-        version: 1.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@xterm/addon-fit':
-        specifier: ^0.11.0
-        version: 0.11.0
-      '@xterm/addon-web-links':
-        specifier: ^0.12.0
-        version: 0.12.0
       hls.js:
         specifier: ^1.6.15
         version: 1.6.15
@@ -189,9 +171,6 @@ importers:
       react-router-dom:
         specifier: ^7.13.0
         version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      xterm:
-        specifier: ^5.3.0
-        version: 5.3.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.7.0
@@ -1493,12 +1472,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@pablo-lion/xterm-react@1.1.2':
-    resolution: {integrity: sha512-kwu1mcPICL5LQ0qQlHxH+z+la1hzoPfjWmgG+a6iXRahKG2O0Y3PrCJwPwYifKj1B8I+v0AXSTW9a3EIE6zzNQ==}
-    peerDependencies:
-      react: '>=17.0.0'
-      react-dom: '>=17.0.0'
-
   '@playwright/test@1.58.2':
     resolution: {integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==}
     engines: {node: '>=18'}
@@ -2161,15 +2134,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
-
-  '@xterm/addon-fit@0.11.0':
-    resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
-
-  '@xterm/addon-web-links@0.12.0':
-    resolution: {integrity: sha512-4Smom3RPyVp7ZMYOYDoC/9eGJJJqYhnPLGGqJ6wOBfB8VxPViJNSKdgRYb8NpaM6YSelEKbA2SStD7lGyqaobw==}
-
-  '@xterm/xterm@5.5.0':
-    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -4084,10 +4048,6 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
-  xterm@5.3.0:
-    resolution: {integrity: sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg==}
-    deprecated: This package is now deprecated. Move to @xterm/xterm instead.
-
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -5152,12 +5112,6 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.55.0':
     optional: true
 
-  '@pablo-lion/xterm-react@1.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@xterm/xterm': 5.5.0
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-
   '@playwright/test@1.58.2':
     dependencies:
       playwright: 1.58.2
@@ -5809,12 +5763,6 @@ snapshots:
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.12':
     optional: true
-
-  '@xterm/addon-fit@0.11.0': {}
-
-  '@xterm/addon-web-links@0.12.0': {}
-
-  '@xterm/xterm@5.5.0': {}
 
   accepts@1.3.8:
     dependencies:
@@ -8086,8 +8034,6 @@ snapshots:
   xml-name-validator@5.0.0: {}
 
   xmlchars@2.2.0: {}
-
-  xterm@5.3.0: {}
 
   y18n@5.0.8: {}
 

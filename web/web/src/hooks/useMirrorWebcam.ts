@@ -54,20 +54,25 @@ export function useMirrorWebcam({
 
   const startWebcam = useCallback(async () => {
     const clickTime = performance.now();
-    console.log("[Mirror] Button clicked");
+    console.log(`[Mirror] Button clicked / startWebcam called at ${clickTime}`);
     console.time("[Mirror] Total startWebcam time");
 
+    console.log(`[Mirror] Checking videoRef=${!!videoRef.current}, canvasRef=${!!canvasRef.current}`);
     if (!videoRef.current || !canvasRef.current) {
+      console.error("[Mirror] Video or canvas element not ready");
       setError("Video or canvas element not ready");
       return;
     }
 
     try {
+      console.log(`[Mirror] startWebcam: entering try block at ${performance.now()}`);
       console.time("[Mirror] WASM settings");
+      console.log(`[Mirror] WASM ready=${isWasmReady()}, options initialized=${isOptionsInitialized()}`);
       if (isWasmReady() && isOptionsInitialized()) {
         // Apply WASM settings but don't fail if any individual setter fails
         // The webcam should start regardless of color settings
         try {
+          console.log("[Mirror] Setting color mode...");
           setColorMode(mapColorModeToWasm(settings.colorMode));
         } catch (err) {
           console.warn("[Mirror] Failed to set color mode:", err);
@@ -107,12 +112,14 @@ export function useMirrorWebcam({
       console.timeEnd("[Mirror] WASM settings");
 
       // Check for test mode via query parameter
+      console.log(`[Mirror] Checking test mode at ${performance.now()}`);
       const isTestMode = new URLSearchParams(window.location.search).has(
         "test",
       );
+      console.log(`[Mirror] isTestMode=${isTestMode}`);
 
       if (isTestMode) {
-        console.log("[Mirror] Test mode enabled - generating synthetic frames");
+        console.log(`[Mirror] Test mode enabled at ${performance.now()} - generating synthetic frames`);
         const canvas = canvasRef.current!;
         canvas.width =
           settings.width && settings.width > 0 ? settings.width : 640;
@@ -128,8 +135,9 @@ export function useMirrorWebcam({
         return;
       }
 
-      console.log("[Mirror] Calling getUserMedia...");
+      console.log(`[Mirror] About to call getUserMedia at ${performance.now()}`);
       console.time("[Mirror] getUserMedia (incl browser permission)");
+      console.log("[Mirror] Calling getUserMedia...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: settings.width },
@@ -139,6 +147,7 @@ export function useMirrorWebcam({
         audio: false,
       });
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
+      console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
       console.log(
         `[Mirror] Stream received after ${performance.now() - clickTime}ms from button click`,
       );
@@ -234,6 +243,10 @@ export function useMirrorWebcam({
       terminalDimensions.cols > 0 &&
       terminalDimensions.rows > 0;
 
+    console.log(
+      `[Mirror] useMirrorWebcam auto-start effect: NODE_ENV=${import.meta.env["NODE_ENV"]}, wasmInitialized=${wasmInitialized}, permissionGranted=${permissionGranted}, isWebcamRunning=${isWebcamRunning}, devAutoStartRef=${devAutoStartRef.current}, hasDimensions=${hasDimensions}`,
+    );
+
     if (
       import.meta.env["NODE_ENV"] !== "production" &&
       wasmInitialized &&
@@ -246,7 +259,13 @@ export function useMirrorWebcam({
       console.log(
         `[Mirror] Auto-starting webcam with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
       );
-      void Promise.resolve().then(() => startWebcam());
+      const startTime = performance.now();
+      console.time("[Mirror] startWebcam()");
+      void Promise.resolve().then(() => {
+        console.log(`[Mirror] Calling startWebcam at ${performance.now()}`);
+        startWebcam();
+        console.timeEnd("[Mirror] startWebcam()");
+      });
     }
   }, [
     wasmInitialized,
