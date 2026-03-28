@@ -222,7 +222,10 @@ export const AsciiRenderer = forwardRef<
       );
 
       // Allow zero dimensions (hidden canvas) - will use fallback dimensions in initRenderer
-      if (retryCount === 1 || (canvas.clientWidth > 0 && canvas.clientHeight > 0)) {
+      if (
+        retryCount === 1 ||
+        (canvas.clientWidth > 0 && canvas.clientHeight > 0)
+      ) {
         console.log(
           `[AsciiRenderer checkAndInit] Canvas ready at ${performance.now().toFixed(0)}ms (clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}), calling initRenderer`,
         );

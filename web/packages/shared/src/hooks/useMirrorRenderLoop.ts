@@ -67,7 +67,7 @@ export function useMirrorRenderLoop({
       if (!isWasmReady() || !rendererRef.current) {
         if (debugCountRef.current === 0) {
           console.log(
-            "[Mirror] renderFrame EARLY RETURN at ${performance.now().toFixed(0)}ms:",
+            `[Mirror] renderFrame EARLY RETURN at ${performance.now().toFixed(0)}ms:`,
             {
               wasmReady: isWasmReady(),
               hasRenderer: !!rendererRef.current,
