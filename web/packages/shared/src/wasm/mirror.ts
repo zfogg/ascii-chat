@@ -102,7 +102,9 @@ export async function initMirrorWasm(
   console.log("[WASM Mirror] About to await moduleFactory...");
   const factoryStart = performance.now();
   try {
+    console.time("[TIMING] moduleFactory()");
     wasmModule = await moduleFactory(moduleOverrides);
+    console.timeEnd("[TIMING] moduleFactory()");
   } catch (err) {
     console.error("[WASM Mirror] moduleFactory failed with error:", err);
     throw err;
@@ -116,6 +118,9 @@ export async function initMirrorWasm(
     throw new Error("Failed to load WASM module");
   }
   console.log("[WASM] Module loaded successfully");
+
+  const factoryEnd = performance.now();
+  console.log(`[WASM] TOTAL factory time: ${((factoryEnd - factoryStart) / 1000).toFixed(2)}s`);
 
   try {
     // Bind renderer functions to module if they exist
@@ -159,10 +164,12 @@ export async function initMirrorWasm(
         console.log(
           `[WASM] About to call _mirror_init_with_args at ${new Date().toISOString()}`
         );
+        const callStart = performance.now();
         const initResult = wasmModule._mirror_init_with_args(strPtr);
+        const callTime = performance.now() - callStart;
         const initWithArgsTime = performance.now() - initWithArgsStart;
         console.log(
-          `[WASM] _mirror_init_with_args RETURNED in ${initWithArgsTime.toFixed(2)}ms at ${new Date().toISOString()} with result ${initResult}`,
+          `[WASM] _mirror_init_with_args CALL TOOK ${callTime.toFixed(2)}ms, TOTAL ${initWithArgsTime.toFixed(2)}ms at ${new Date().toISOString()} with result ${initResult}`,
         );
         if (initResult !== 0) {
           console.error(
@@ -173,7 +180,10 @@ export async function initMirrorWasm(
         }
         console.log("[WASM] C options initialized successfully");
       } finally {
+        const freeStart = performance.now();
         wasmModule._free(strPtr);
+        const freeTime = performance.now() - freeStart;
+        console.log(`[WASM] _free took ${freeTime.toFixed(2)}ms`);
       }
     } else {
       console.warn("[WASM] _mirror_init_with_args not found in WASM module");
@@ -203,6 +213,9 @@ export async function initMirrorWasm(
     );
     console.log("[WASM] Options module initialized");
 
+    console.log(
+      `[WASM] About to set globalWindow.asciiChatWasm at ${new Date().toISOString()}`
+    );
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
       asciiChatWasm: AsciiChatWasmExports;
@@ -210,8 +223,16 @@ export async function initMirrorWasm(
     globalWindow.asciiChatWasm = {
       _wasmModule: wasmModule,
     };
+    console.log(
+      `[WASM] Set globalWindow.asciiChatWasm at ${new Date().toISOString()}`
+    );
 
-    console.log("[WASM] Initialization complete!");
+    console.log("[WASM] Initialization complete!", performance.now());
+
+    // Force a microtask to check if something blocks after this
+    Promise.resolve().then(() => {
+      console.log("[WASM] After initialization microtask", performance.now());
+    });
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
     throw err;

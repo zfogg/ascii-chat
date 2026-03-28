@@ -59,7 +59,6 @@ export function useMirrorRenderLoop({
     const isTestMode = new URLSearchParams(window.location.search).has("test");
     let lastFrameTime = performance.now();
     let lastConversionTime = 0;
-    let skipNextConversion = false;
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
