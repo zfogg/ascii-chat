@@ -86,7 +86,7 @@ if(DEFINED EMSCRIPTEN)
 
     set(OPUS_FOUND TRUE)
     set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
-    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include;${OPUS_PREFIX}/include/opus")
 
     message(STATUS "${BoldGreen}✓${ColorReset} Opus (WASM): ${BoldCyan}libopus${ColorReset}")
     return()
@@ -146,7 +146,7 @@ if(PLATFORM_IOS)
 
     set(OPUS_FOUND TRUE)
     set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
-    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include;${OPUS_PREFIX}/include/opus")
 
     message(STATUS "${BoldGreen}✓${ColorReset} Opus configured (iOS cross-compile): ${OPUS_PREFIX}/lib/libopus.a")
 
@@ -187,7 +187,7 @@ if(USE_MUSL)
 
     set(OPUS_FOUND TRUE)
     set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
-    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include;${OPUS_PREFIX}/include/opus")
     return()
 endif()
 

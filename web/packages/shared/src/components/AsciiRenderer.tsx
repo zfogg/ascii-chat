@@ -518,6 +518,17 @@ export const AsciiRenderer = forwardRef<
           }
         } catch (err) {
           console.error("[AsciiRenderer] writeFrame error:", err);
+          if (
+            err instanceof Error &&
+            err.message.includes("signature mismatch")
+          ) {
+            console.error(
+              "[WASM Signature Mismatch] _ascii_renderer_render_frame issue - function type:",
+              typeof moduleRef.current._ascii_renderer_render_frame,
+              "moduleRef:",
+              moduleRef.current,
+            );
+          }
         }
 
         // Update FPS counter

@@ -56,7 +56,13 @@ if(DEFINED EMSCRIPTEN)
                 -DCMAKE_BUILD_TYPE=Release
                 -DCMAKE_INSTALL_PREFIX=${RAYLIB_PREFIX}
                 -DBUILD_SHARED_LIBS=OFF
-                -DSUPPORT_WEB=ON
+                -DPLATFORM=Web
+                -DUSE_EXTERNAL_GLFW=OFF
+                -DSUPPORT_GLFW=ON
+                -DSUPPORT_OPENGL=OFF
+                -DBUILD_EXAMPLES=OFF
+                -DBUILD_GAMES=OFF
+                "-DCMAKE_EXE_LINKER_FLAGS=-s USE_GLFW=3 -s WASM=1 -s ASYNCIFY"
             BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
             INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
             BUILD_BYPRODUCTS ${RAYLIB_PREFIX}/lib/libraylib.a
