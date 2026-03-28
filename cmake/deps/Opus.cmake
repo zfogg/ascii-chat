@@ -9,8 +9,9 @@
 #   - Efficient bandwidth usage in multi-client audio chat
 #
 # Build strategy:
+#   - For WASM/Emscripten: Built from source with Emscripten toolchain
 #   - For iOS: Built from source with iOS cross-compilation
-#   - For musl: Built from source in MuslDependencies.cmake
+#   - For musl: Built from source
 #   - For vcpkg: Uses vcpkg-installed Opus
 #   - For glibc: Uses system-installed Opus via pkg-config
 #
@@ -19,6 +20,7 @@
 #   - USE_MUSL: Whether using musl libc
 #   - USE_VCPKG: Whether using vcpkg
 #   - CMAKE_BUILD_TYPE: Build type
+#   - FETCHCONTENT_BASE_DIR: Shared source cache directory
 #
 # Outputs (variables set by this file):
 #   - OPUS_FOUND: Whether Opus was found
@@ -26,11 +28,75 @@
 #   - OPUS_INCLUDE_DIRS: Include directories
 # =============================================================================
 
+include(FetchContent)
+
+# Shared source URL for autotools builds (iOS, musl, WASM)
+FetchContent_Declare(opus-src
+    URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
+    URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/opus-src"
+    UPDATE_DISCONNECTED ON
+)
+
+# WASM builds: Use Emscripten toolchain
+if(DEFINED EMSCRIPTEN)
+    message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (WASM)...")
+
+    include(ExternalProject)
+    FetchContent_Populate(opus-src)
+
+    set(OPUS_PREFIX "${FETCHCONTENT_BASE_DIR}/opus-wasm")
+    set(OPUS_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/opus-wasm-build")
+
+    if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
+        message(STATUS "  Opus library not found in cache, will build from source")
+
+        ExternalProject_Add(opus-wasm
+            SOURCE_DIR ${opus-src_SOURCE_DIR}
+            PREFIX ${OPUS_BUILD_DIR}
+            STAMP_DIR ${OPUS_BUILD_DIR}/stamps
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND
+                <SOURCE_DIR>/configure
+                --prefix=${OPUS_PREFIX}
+                --enable-static
+                --disable-shared
+                --disable-doc
+                --disable-extra-programs
+                --disable-intrinsics
+                --disable-asm
+                --with-pic
+                CC=emcc
+                CFLAGS=-O2\ -fPIC
+                LDFLAGS=--no-entry
+            BUILD_COMMAND make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}Opus${ColorReset} library found in cache: ${BoldMagenta}${OPUS_PREFIX}/lib/libopus.a${ColorReset}")
+        add_custom_target(opus-wasm)
+    endif()
+
+    set(OPUS_FOUND TRUE)
+    set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+
+    message(STATUS "${BoldGreen}✓${ColorReset} Opus (WASM): ${BoldCyan}libopus${ColorReset}")
+    return()
+endif()
+
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (iOS cross-compile)...")
 
     include(ExternalProject)
+    FetchContent_Populate(opus-src)
 
     set(OPUS_PREFIX "${IOS_DEPS_CACHE_DIR}/opus")
     set(OPUS_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/opus-build")
@@ -46,12 +112,9 @@ if(PLATFORM_IOS)
         message(STATUS "  Opus library not found in cache, will build from source")
 
         ExternalProject_Add(opus-ios
-            URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
-            URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            SOURCE_DIR ${opus-src_SOURCE_DIR}
             PREFIX ${OPUS_BUILD_DIR}
             STAMP_DIR ${OPUS_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND
                 <SOURCE_DIR>/configure
@@ -70,7 +133,6 @@ if(PLATFORM_IOS)
             BUILD_COMMAND make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
-            LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE
             LOG_INSTALL TRUE
@@ -90,9 +152,12 @@ if(PLATFORM_IOS)
     return()
 endif()
 
-# Handle musl builds - Opus is built from source
+# musl builds - Opus is built from source
 if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}libopus${ColorReset} from source...")
+    message(STATUS "Configuring ${BoldBlue}libopus${ColorReset} from source (musl)...")
+
+    include(ExternalProject)
+    FetchContent_Populate(opus-src)
 
     set(OPUS_PREFIX "${MUSL_DEPS_DIR_STATIC}/opus")
     set(OPUS_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/opus-build")
@@ -101,18 +166,14 @@ if(USE_MUSL)
     if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
         message(STATUS "  libopus library not found in cache, will build from source")
         ExternalProject_Add(opus-musl
-            URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
-            URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            SOURCE_DIR ${opus-src_SOURCE_DIR}
             PREFIX ${OPUS_BUILD_DIR}
             STAMP_DIR ${OPUS_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc --disable-extra-programs
             BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
-            LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE
             LOG_INSTALL TRUE
@@ -120,7 +181,6 @@ if(USE_MUSL)
         )
     else()
         message(STATUS "  ${BoldBlue}libopus${ColorReset} library found in cache: ${BoldMagenta}${OPUS_PREFIX}/lib/libopus.a${ColorReset}")
-        # Create a dummy target so dependencies can reference it
         add_custom_target(opus-musl)
     endif()
 
@@ -130,104 +190,15 @@ if(USE_MUSL)
     return()
 endif()
 
-# =============================================================================
-# Try vcpkg first if enabled (all platforms)
-# =============================================================================
-if(USE_VCPKG AND VCPKG_ROOT)
-    find_library(OPUS_LIB_RELEASE NAMES opus libopus
-                 PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_library(OPUS_LIB_DEBUG NAMES opus libopus
-                 PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_path(OPUS_INC NAMES opus/opus.h
-              PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+# Native builds: Use find_dependency_library helper
+include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-    if(OPUS_LIB_RELEASE OR OPUS_LIB_DEBUG)
-        set(OPUS_FOUND TRUE)
-        include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
-        asciichat_select_library_config(
-            RELEASE_LIB ${OPUS_LIB_RELEASE}
-            DEBUG_LIB   ${OPUS_LIB_DEBUG}
-            OUTPUT      OPUS_LIBRARIES
-        )
-        set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
-        message(STATUS "Found ${BoldGreen}Opus${ColorReset} via vcpkg: ${OPUS_LIB_RELEASE}${OPUS_LIB_DEBUG}")
-        return()
-    endif()
-endif()
-
-# =============================================================================
-# Fallback: Platform-specific methods
-# =============================================================================
-
-# For Windows without vcpkg: Try pkg-config (MSYS2/MinGW)
-if(WIN32)
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(OPUS opus IMPORTED_TARGET)
-        if(OPUS_FOUND)
-            message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config (Windows): ${OPUS_LIBRARIES}")
-            return()
-        endif()
-    endif()
-
-    message(FATAL_ERROR "${BoldRed}Opus not found on Windows${ColorReset}. Install with:\n"
-        "  vcpkg: vcpkg install opus:x64-windows\n"
-        "  Chocolatey: choco install opus\n"
-        "  Or via pkg-config with MSYS2/MinGW")
-endif()
-
-# Unix/Linux/macOS: Use pkg-config
-find_package(PkgConfig QUIET)
-if(NOT PkgConfig_FOUND)
-    message(FATAL_ERROR "pkg-config not found. Required to find system Opus library.")
-endif()
-
-# On macOS Release builds: prefer static library over dynamic (from pkg-config)
-# Skip static preference if ASCIICHAT_SHARED_DEPS is set (e.g., Homebrew builds)
-# Otherwise use pkg-config for dynamic linking
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-    # Try to find static libopus.a for static release builds
-    # Search in standard homebrew paths first
-    find_library(OPUS_STATIC_LIB
-        NAMES libopus.a
-        PATHS
-            ${HOMEBREW_PREFIX}/opt/opus/lib
-            ${HOMEBREW_PREFIX}/lib
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    find_path(OPUS_INC NAMES opus/opus.h PATH_SUFFIXES include
-        PATHS
-            ${HOMEBREW_PREFIX}/opt/opus/include
-            ${HOMEBREW_PREFIX}/include
-            /usr/local/include
-        NO_DEFAULT_PATH
-    )
-
-    if(OPUS_STATIC_LIB AND OPUS_INC)
-        set(OPUS_FOUND TRUE)
-        set(OPUS_LIBRARIES "${OPUS_STATIC_LIB}")
-        set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
-        message(STATUS "${BoldGreen}Opus${ColorReset} found (macOS static): ${OPUS_STATIC_LIB}")
-    else()
-        # Fall back to pkg-config if static not found
-        pkg_check_modules(OPUS REQUIRED opus IMPORTED_TARGET)
-        if(OPUS_FOUND)
-            message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config: ${OPUS_LIBRARIES}")
-        endif()
-    endif()
-else()
-    # Non-macOS or non-Release: use pkg-config
-    pkg_check_modules(OPUS REQUIRED opus IMPORTED_TARGET)
-    if(OPUS_FOUND)
-        message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config: ${OPUS_LIBRARIES}")
-    endif()
-endif()
-
-if(NOT OPUS_FOUND)
-    message(FATAL_ERROR "${BoldRed}Opus not found${ColorReset}. Install with:\n"
-        "  Ubuntu/Debian: sudo apt install libopus-dev\n"
-        "  Fedora: sudo dnf install opus-devel\n"
-        "  Arch: sudo pacman -S opus\n"
-        "  macOS: brew install opus")
-endif()
+find_dependency_library(
+    NAME OPUS
+    VCPKG_NAMES opus
+    HEADER opus/opus.h
+    PKG_CONFIG opus
+    HOMEBREW_PKG opus
+    STATIC_LIB_NAME libopus.a
+    REQUIRED
+)

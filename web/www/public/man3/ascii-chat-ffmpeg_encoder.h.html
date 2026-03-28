@@ -274,7 +274,7 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 <section class="Ss">
 <h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
   struct <b>ffmpeg_encoder_s</b> <b>ffmpeg_encoder_t</b></a></h2>
-<p class="Pp">Definition at line <b>163</b> of file <b>ffmpeg_encoder.h</b>.</p>
+<p class="Pp">Definition at line <b>162</b> of file <b>ffmpeg_encoder.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -317,299 +317,313 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>ffmpeg_encoder_write_frame</b>,
   <b>ffmpeg_encoder_destroy</b>, ffmpeg_encoder_formats</div>
-<p class="Pp">Definition at line <b>337</b> of file <b>ffmpeg_encoder.c</b>.</p>
-<pre>338                                                                 {
-339   log_info(&quot;[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps&quot;, output_path, width_px, height_px, fps);
-340 
-341   if (!output_path || !out || width_px &lt;= 0 || height_px &lt;= 0)
-342     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ffmpeg_encoder_create: invalid parameters&quot;);
-343 
-344   // Use default FPS if not specified (0 from config means &quot;use default&quot;)
-345   if (fps &lt;= 0) {
-346     fps = 60;
-347     log_debug(&quot;ffmpeg_encoder_create: fps was 0, using default 60&quot;);
-348   }
-349 
-350   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
-351   enc-&gt;width_px = width_px;
-352   enc-&gt;height_px = height_px;
-353 
-354   // For snapshot mode, calculate output FPS based on input FPS and snapshot duration
-355   // If we capture for N seconds at input_fps, we'll get ~(N * input_fps) frames
-356   // Output duration should be snapshot_delay seconds
-357   // So output_fps = (input_fps * snapshot_delay) / snapshot_delay = input_fps
-358   // EXCEPT: if the input was probed, fps parameter is the actual input fps
-359   // Then output_fps should equal input_fps to make frame durations sum correctly
-360   bool snapshot_mode = GET_OPTION(snapshot_mode);
-361   double snapshot_delay = GET_OPTION(snapshot_delay);
-362   log_debug(&quot;ffmpeg_encoder_create: snapshot_mode=%d, snapshot_delay=%.1f, input_fps=%d&quot;,
-363             snapshot_mode, snapshot_delay, fps);
-364 
-365   if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
-366     // For snapshot mode: if we capture at input_fps for snapshot_delay seconds,
-367     // we get approximately (input_fps * snapshot_delay) frames
-368     // To make output span exactly snapshot_delay seconds:
-369     // output_fps = frame_count / snapshot_delay = (input_fps * snapshot_delay) / snapshot_delay = input_fps
-370     // So we should use input_fps as output_fps!
-371     // Example: 30fps input for 3s &#x2192; ~90 frames &#x2192; output at 30fps &#x2192; 90/30 = 3 seconds &#x2713;
-372 
-373     log_info(&quot;ffmpeg_encoder_create: Snapshot mode snapshot_delay=%.1f, input_fps=%d&quot;,
-374              snapshot_delay, fps);
-375     log_info(&quot;  &#x2192; Will estimate ~%.0f frames, output FPS=%d makes durations sum to %.1f seconds&quot;,
-376              fps * snapshot_delay, fps, snapshot_delay);
-377   }
-378 
-379   enc-&gt;fps = fps;
-380 
-381   // Snapshot mode frame distribution setup
-382   enc-&gt;estimated_frame_count = 0;
-383   enc-&gt;estimated_frame_duration = 0;
-384   if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0 &amp;&amp; fps &gt; 0) {
-385     // Estimate how many frames we'll capture
-386     enc-&gt;estimated_frame_count = (int)(fps * snapshot_delay + 0.5);
-387     // Each frame should have uniform duration in stream time_base (1/90000 for MP4)
-388     // frame_duration = total_duration / estimated_frame_count
-389     //                = snapshot_delay seconds * time_base.den / estimated_frame_count
-390     // We'll set this to stream-&gt;time_base later after it's initialized
-391     log_info(&quot;ffmpeg_encoder_create: Snapshot mode ENABLED - estimated_frame_count=%d (fps=%d * snapshot_delay=%.2f)&quot;,
-392               enc-&gt;estimated_frame_count, fps, snapshot_delay);
-393   } else {
-394     log_info(&quot;ffmpeg_encoder_create: Snapshot mode disabled or invalid - snapshot_mode=%d, snapshot_delay=%.2f, fps=%d&quot;,
-395              snapshot_mode, snapshot_delay, fps);
-396   }
-397   enc-&gt;is_stdout_pipe = (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) ? 1 : 0;
-398 
-399   // For codec/format detection, use output_path unless it's &quot;-&quot; (stdout)
-400   // For stdout, use &quot;fake.mp4&quot; to default to MP4 format
-401   const char *detection_path = output_path;
-402   if (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) {
-403     detection_path = &quot;fake.mp4&quot;; // Fake path for format detection when piping to stdout
-404     log_debug(&quot;ffmpeg_encoder_create: Using MP4 format for stdout piping&quot;);
-405   }
-406 
-407   const char *codec_name = NULL, *format_name = NULL;
-408   get_codec_from_extension(detection_path, &amp;codec_name, &amp;format_name, &amp;enc-&gt;is_image, &amp;enc-&gt;target_pix_fmt);
-409 
-410   log_debug(&quot;ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)&quot;, output_path, codec_name, width_px, height_px, fps,
-411             enc-&gt;is_image ? &quot;image&quot; : &quot;video&quot;);
-412 
-413   // Allocate output media context
-414   int ret = avformat_alloc_output_context2(&amp;enc-&gt;fmt_ctx, NULL, format_name, output_path);
-415   if (ret &lt; 0) {
-416     SAFE_FREE(enc);
-417     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_alloc_output_context2 failed&quot;);
-418   }
-419 
-420   // Find encoder
-421   const AVCodec *codec = avcodec_find_encoder_by_name(codec_name);
-422   if (!codec) {
-423     avformat_free_context(enc-&gt;fmt_ctx);
-424     SAFE_FREE(enc);
-425     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: encoder '%s' not found&quot;, codec_name);
-426   }
-427 
-428   // Create new stream
-429   enc-&gt;stream = avformat_new_stream(enc-&gt;fmt_ctx, codec);
-430   if (!enc-&gt;stream) {
-431     avformat_free_context(enc-&gt;fmt_ctx);
-432     SAFE_FREE(enc);
-433     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_new_stream failed&quot;);
+<p class="Pp">Definition at line <b>336</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<pre>337                                                                 {
+338   log_info(&quot;[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps&quot;, output_path, width_px, height_px, fps);
+339 
+340   if (!output_path || !out || width_px &lt;= 0 || height_px &lt;= 0)
+341     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ffmpeg_encoder_create: invalid parameters&quot;);
+342 
+343   // Use default FPS if not specified (0 from config means &quot;use default&quot;)
+344   if (fps &lt;= 0) {
+345     fps = 60;
+346     log_debug(&quot;ffmpeg_encoder_create: fps was 0, using default 60&quot;);
+347   }
+348 
+349   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
+350   enc-&gt;width_px = width_px;
+351   enc-&gt;height_px = height_px;
+352 
+353   // For snapshot mode, calculate output FPS based on input FPS and snapshot duration
+354   // If we capture for N seconds at input_fps, we'll get ~(N * input_fps) frames
+355   // Output duration should be snapshot_delay seconds
+356   // So output_fps = (input_fps * snapshot_delay) / snapshot_delay = input_fps
+357   // EXCEPT: if the input was probed, fps parameter is the actual input fps
+358   // Then output_fps should equal input_fps to make frame durations sum correctly
+359   bool snapshot_mode = GET_OPTION(snapshot_mode);
+360   double snapshot_delay = GET_OPTION(snapshot_delay);
+361   log_debug(&quot;ffmpeg_encoder_create: snapshot_mode=%d, snapshot_delay=%.1f, input_fps=%d&quot;,
+362             snapshot_mode, snapshot_delay, fps);
+363 
+364   if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
+365     // For snapshot mode: if we capture at input_fps for snapshot_delay seconds,
+366     // we get approximately (input_fps * snapshot_delay) frames
+367     // To make output span exactly snapshot_delay seconds:
+368     // output_fps = frame_count / snapshot_delay = (input_fps * snapshot_delay) / snapshot_delay = input_fps
+369     // So we should use input_fps as output_fps!
+370     // Example: 30fps input for 3s &#x2192; ~90 frames &#x2192; output at 30fps &#x2192; 90/30 = 3 seconds &#x2713;
+371 
+372     log_info(&quot;ffmpeg_encoder_create: Snapshot mode snapshot_delay=%.1f, input_fps=%d&quot;,
+373              snapshot_delay, fps);
+374     log_info(&quot;  &#x2192; Will estimate ~%.0f frames, output FPS=%d makes durations sum to %.1f seconds&quot;,
+375              fps * snapshot_delay, fps, snapshot_delay);
+376   }
+377 
+378   enc-&gt;fps = fps;
+379 
+380   // Snapshot mode frame distribution setup
+381   enc-&gt;estimated_frame_count = 0;
+382   enc-&gt;estimated_frame_duration = 0;
+383   if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0 &amp;&amp; fps &gt; 0) {
+384     // Estimate how many frames we'll capture
+385     enc-&gt;estimated_frame_count = (int)(fps * snapshot_delay + 0.5);
+386     // Each frame should have uniform duration in stream time_base (1/90000 for MP4)
+387     // frame_duration = total_duration / estimated_frame_count
+388     //                = snapshot_delay seconds * time_base.den / estimated_frame_count
+389     // We'll set this to stream-&gt;time_base later after it's initialized
+390     log_info(&quot;ffmpeg_encoder_create: Snapshot mode ENABLED - estimated_frame_count=%d (fps=%d * snapshot_delay=%.2f)&quot;,
+391               enc-&gt;estimated_frame_count, fps, snapshot_delay);
+392   } else {
+393     log_info(&quot;ffmpeg_encoder_create: Snapshot mode disabled or invalid - snapshot_mode=%d, snapshot_delay=%.2f, fps=%d&quot;,
+394              snapshot_mode, snapshot_delay, fps);
+395   }
+396   enc-&gt;is_stdout_pipe = (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) ? 1 : 0;
+397 
+398   // For codec/format detection, use output_path unless it's &quot;-&quot; (stdout)
+399   // For stdout, use &quot;fake.mp4&quot; to default to MP4 format
+400   const char *detection_path = output_path;
+401   if (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) {
+402     detection_path = &quot;fake.mp4&quot;; // Fake path for format detection when piping to stdout
+403     log_debug(&quot;ffmpeg_encoder_create: Using MP4 format for stdout piping&quot;);
+404   }
+405 
+406   const char *codec_name = NULL, *format_name = NULL;
+407   get_codec_from_extension(detection_path, &amp;codec_name, &amp;format_name, &amp;enc-&gt;is_image, &amp;enc-&gt;target_pix_fmt);
+408 
+409   log_debug(&quot;ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)&quot;, output_path, codec_name, width_px, height_px, fps,
+410             enc-&gt;is_image ? &quot;image&quot; : &quot;video&quot;);
+411 
+412   // Allocate output media context
+413   int ret = avformat_alloc_output_context2(&amp;enc-&gt;fmt_ctx, NULL, format_name, output_path);
+414   if (ret &lt; 0) {
+415     SAFE_FREE(enc);
+416     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_alloc_output_context2 failed&quot;);
+417   }
+418 
+419   // Find encoder (with fallback for FFmpeg builds without libx264)
+420   const AVCodec *codec = avcodec_find_encoder_by_name(codec_name);
+421   if (!codec &amp;&amp; strcmp(codec_name, &quot;libx264&quot;) == 0) {
+422     // libx264 not available - try built-in H.264 encoders
+423     static const char *h264_fallbacks[] = {&quot;libopenh264&quot;, &quot;h264_mf&quot;, NULL};
+424     for (int i = 0; h264_fallbacks[i] &amp;&amp; !codec; i++) {
+425       codec = avcodec_find_encoder_by_name(h264_fallbacks[i]);
+426     }
+427     if (!codec) {
+428       // Last resort: ask FFmpeg for any H.264 encoder
+429       codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+430     }
+431     if (codec) {
+432       log_info(&quot;ffmpeg: using fallback H.264 encoder '%s' (libx264 not available)&quot;, codec-&gt;name);
+433     }
 434   }
-435 
-436   // Allocate codec context
-437   enc-&gt;codec_ctx = avcodec_alloc_context3(codec);
-438   if (!enc-&gt;codec_ctx) {
-439     avformat_free_context(enc-&gt;fmt_ctx);
-440     SAFE_FREE(enc);
-441     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_alloc_context3 failed&quot;);
-442   }
-443 
-444   // Set codec parameters
-445   enc-&gt;codec_ctx-&gt;width = width_px;
-446   enc-&gt;codec_ctx-&gt;height = height_px;
-447   enc-&gt;codec_ctx-&gt;pix_fmt = enc-&gt;target_pix_fmt;
-448   enc-&gt;codec_ctx-&gt;time_base = (AVRational){1, fps};
-449   enc-&gt;codec_ctx-&gt;framerate = (AVRational){fps, 1};
-450 
-451   // Set bitrate for high quality (music-level quality)
-452   // Use ~5-10 Mbps per megapixel for visually lossless quality
-453   int bitrate = (width_px * height_px * 10) / 1024; // higher quality estimate in kbps
-454   if (bitrate &lt; 4000)
-455     bitrate = 4000; // Minimum 4000 kbps for quality
-456   if (bitrate &gt; 50000)
-457     bitrate = 50000; // Cap at 50 Mbps max
-458   enc-&gt;codec_ctx-&gt;bit_rate = bitrate * 1000;
-459   log_debug(&quot;ffmpeg_encoder: bitrate set to %d kbps for %dx%d&quot;, bitrate, width_px, height_px);
-460 
-461   // Configure codec-specific options for quality
-462   AVDictionary *codec_opts = NULL;
-463   if (strcmp(codec_name, &quot;libx264&quot;) == 0) {
-464     av_dict_set(&amp;codec_opts, &quot;preset&quot;, &quot;ultrafast&quot;, 0);
-465     av_dict_set(&amp;codec_opts, &quot;crf&quot;, &quot;28&quot;, 0);
-466     log_debug(&quot;ffmpeg_encoder: x264 preset=ultrafast crf=28&quot;);
-467   } else if (strcmp(codec_name, &quot;libx265&quot;) == 0) {
-468     av_dict_set(&amp;codec_opts, &quot;preset&quot;, &quot;ultrafast&quot;, 0);
-469     av_dict_set(&amp;codec_opts, &quot;crf&quot;, &quot;32&quot;, 0);
-470     // x265 tag must be hvc1 for MP4 container compatibility (Apple/browser playback)
-471     enc-&gt;stream-&gt;codecpar-&gt;codec_tag = MKTAG('h', 'v', 'c', '1');
-472     log_debug(&quot;ffmpeg_encoder: x265 preset=ultrafast crf=32&quot;);
-473   }
-474 
-475   // Open codec (capture libx264 startup logs)
-476   LOG_IO(&quot;ffmpeg&quot;, {
-477     ret = avcodec_open2(enc-&gt;codec_ctx, codec, &amp;codec_opts);
-478   });
-479   av_dict_free(&amp;codec_opts);
-480   if (ret &lt; 0) {
-481     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-482     avformat_free_context(enc-&gt;fmt_ctx);
-483     SAFE_FREE(enc);
-484     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_open2 failed&quot;);
-485   }
-486 
-487   // Copy codec parameters to stream
-488   ret = avcodec_parameters_from_context(enc-&gt;stream-&gt;codecpar, enc-&gt;codec_ctx);
-489   if (ret &lt; 0) {
-490     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-491     avformat_free_context(enc-&gt;fmt_ctx);
-492     SAFE_FREE(enc);
-493     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_parameters_from_context failed&quot;);
-494   }
-495 
-496   // Muxer options for proper MP4 container structure
-497   AVDictionary *opts = NULL;
-498 
-499   // Muxer flags configuration
-500   // For stdout/non-seekable output, use fragmented MP4 (frag_keyframe)
-501   // For regular files, use faststart (moov at front for streaming)
-502   bool is_stdout = (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0);
-503   if (is_stdout) {
-504     // Use fragmented MP4 for stdout - starts a new fragment at each video keyframe
-505     // This allows streaming without requiring file seeking (FFmpeg docs recommended)
-506     av_dict_set(&amp;opts, &quot;movflags&quot;, &quot;+frag_keyframe&quot;, 0);
-507     log_debug(&quot;ffmpeg_encoder_create: Using fragmented MP4 (+frag_keyframe) for stdout output&quot;);
-508   } else {
-509     // Move moov atom to the front (faststart) - helps with streaming and player compatibility
-510     av_dict_set(&amp;opts, &quot;movflags&quot;, &quot;faststart&quot;, 0);
-511   }
-512 
-513   if (enc-&gt;is_image) {
-514     // Use -update flag for single frame output
-515     av_dict_set(&amp;opts, &quot;update&quot;, &quot;1&quot;, 0);
-516   }
-517 
-518   // Allocate frames
-519   enc-&gt;frame = av_frame_alloc();
-520   enc-&gt;frame_encoded = av_frame_alloc();
-521   enc-&gt;pkt = av_packet_alloc();
-522   if (!enc-&gt;frame || !enc-&gt;frame_encoded || !enc-&gt;pkt) {
-523     av_frame_free(&amp;enc-&gt;frame);
-524     av_frame_free(&amp;enc-&gt;frame_encoded);
-525     av_packet_free(&amp;enc-&gt;pkt);
-526     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-527     avformat_free_context(enc-&gt;fmt_ctx);
-528     SAFE_FREE(enc);
-529     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: frame allocation failed&quot;);
-530   }
-531 
-532   // Set frame properties for target pixel format
-533   enc-&gt;frame_encoded-&gt;format = enc-&gt;target_pix_fmt;
-534   enc-&gt;frame_encoded-&gt;width = width_px;
-535   enc-&gt;frame_encoded-&gt;height = height_px;
-536   ret = av_frame_get_buffer(enc-&gt;frame_encoded, 32);
-537   if (ret &lt; 0) {
-538     av_frame_free(&amp;enc-&gt;frame);
-539     av_frame_free(&amp;enc-&gt;frame_encoded);
-540     av_packet_free(&amp;enc-&gt;pkt);
-541     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-542     avformat_free_context(enc-&gt;fmt_ctx);
-543     SAFE_FREE(enc);
-544     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: av_frame_get_buffer failed&quot;);
-545   }
-546 
-547   // Create SWS context for RGB &#x2192; target format conversion
-548   LOG_IO(&quot;swscaler&quot;, {
-549     enc-&gt;sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGB24, width_px, height_px, enc-&gt;target_pix_fmt,
-550                                   SWS_BICUBIC, NULL, NULL, NULL);
-551   });
-552   if (!enc-&gt;sws_ctx) {
-553     av_frame_free(&amp;enc-&gt;frame);
-554     av_frame_free(&amp;enc-&gt;frame_encoded);
-555     av_packet_free(&amp;enc-&gt;pkt);
-556     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-557     avformat_free_context(enc-&gt;fmt_ctx);
-558     SAFE_FREE(enc);
-559     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: sws_getContext failed&quot;);
-560   }
-561 
-562   // Initialize audio stream if supported
-563   encoder_init_audio_stream(enc, output_path);
-564 
-565   // Open output file or stdout
-566   if (!(enc-&gt;fmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_NOFILE)) {
-567     // For stdout output, use &quot;pipe:1&quot; (FFmpeg's standard for writing to stdout)
-568     const char *open_path = output_path;
-569     if (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) {
-570       open_path = &quot;pipe:1&quot;; // Use pipe:1 for stdout
-571       log_debug(&quot;ffmpeg: Redirecting '-' to 'pipe:1' for stdout output&quot;);
-572     }
-573     ret = avio_open(&amp;enc-&gt;fmt_ctx-&gt;pb, open_path, AVIO_FLAG_WRITE);
-574     if (ret &lt; 0) {
-575       sws_freeContext(enc-&gt;sws_ctx);
-576       av_frame_free(&amp;enc-&gt;frame);
-577       av_frame_free(&amp;enc-&gt;frame_encoded);
-578       av_packet_free(&amp;enc-&gt;pkt);
-579       avcodec_free_context(&amp;enc-&gt;codec_ctx);
-580       avformat_free_context(enc-&gt;fmt_ctx);
-581       SAFE_FREE(enc);
-582       return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avio_open failed for '%s'&quot;, open_path);
-583     }
-584   }
-585 
-586   // Write header (capture FFmpeg format muxer logs)
-587   LOG_IO(&quot;ffmpeg&quot;, {
-588     ret = avformat_write_header(enc-&gt;fmt_ctx, &amp;opts);
-589   });
-590   av_dict_free(&amp;opts); // Free options after use
-591   if (ret &lt; 0) {
-592     avio_closep(&amp;enc-&gt;fmt_ctx-&gt;pb);
-593     sws_freeContext(enc-&gt;sws_ctx);
-594     av_frame_free(&amp;enc-&gt;frame);
-595     av_frame_free(&amp;enc-&gt;frame_encoded);
-596     av_packet_free(&amp;enc-&gt;pkt);
-597     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-598     avformat_free_context(enc-&gt;fmt_ctx);
-599     SAFE_FREE(enc);
-600     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_write_header failed&quot;);
-601   }
-602 
-603   // Now that stream-&gt;time_base is set, calculate estimated frame duration for snapshot mode
-604   bool snapshot_mode_after_header = GET_OPTION(snapshot_mode);
-605   double snapshot_delay_after_header = GET_OPTION(snapshot_delay);
-606   if (snapshot_mode_after_header &amp;&amp; enc-&gt;estimated_frame_count &gt; 0 &amp;&amp; snapshot_delay_after_header &gt; 0) {
-607     // Each frame should span: snapshot_delay / estimated_frame_count seconds
-608     // In stream time_base units: (snapshot_delay * time_base.den) / estimated_frame_count
-609     enc-&gt;estimated_frame_duration =
-610         (int64_t)((snapshot_delay_after_header * (double)enc-&gt;stream-&gt;time_base.den) / enc-&gt;estimated_frame_count);
-611     log_debug(&quot;ffmpeg_encoder_create: Calculated estimated_frame_duration=%lld time_base units &quot;
-612               &quot;for snapshot mode (snapshot_delay=%.2f, estimated_frames=%d, time_base=%d/%d)&quot;,
-613               (long long)enc-&gt;estimated_frame_duration, snapshot_delay_after_header, enc-&gt;estimated_frame_count,
-614               enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den);
-615   }
-616 
-617   enc-&gt;frame_count = 0;
-618   enc-&gt;video_pts = 0;
-619   enc-&gt;snapshot_actual_duration = 0.0;
-620   enc-&gt;snapshot_elapsed_ns = 0;
-621   enc-&gt;first_frame_captured_ns = 0;  // Initialize first frame timestamp
-622   *out = enc;
-623 
-624   /* Register encoder with named registry */
-625   NAMED_REGISTER_FFMPEG_ENCODER(enc, output_path, NULL);
-626 
-627   log_info(&quot;[FFMPEG_ENCODER_CREATE] SUCCESS: encoder initialized, frame_count=0, fps=%d, dims=%dx%d&quot;, enc-&gt;fps, enc-&gt;width_px, enc-&gt;height_px);
-628   return ASCIICHAT_OK;
-629 }</pre>
+435   if (!codec) {
+436     avformat_free_context(enc-&gt;fmt_ctx);
+437     SAFE_FREE(enc);
+438     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: encoder '%s' not found&quot;, codec_name);
+439   }
+440 
+441   // Create new stream
+442   enc-&gt;stream = avformat_new_stream(enc-&gt;fmt_ctx, codec);
+443   if (!enc-&gt;stream) {
+444     avformat_free_context(enc-&gt;fmt_ctx);
+445     SAFE_FREE(enc);
+446     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_new_stream failed&quot;);
+447   }
+448 
+449   // Allocate codec context
+450   enc-&gt;codec_ctx = avcodec_alloc_context3(codec);
+451   if (!enc-&gt;codec_ctx) {
+452     avformat_free_context(enc-&gt;fmt_ctx);
+453     SAFE_FREE(enc);
+454     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_alloc_context3 failed&quot;);
+455   }
+456 
+457   // Set codec parameters
+458   enc-&gt;codec_ctx-&gt;width = width_px;
+459   enc-&gt;codec_ctx-&gt;height = height_px;
+460   enc-&gt;codec_ctx-&gt;pix_fmt = enc-&gt;target_pix_fmt;
+461   enc-&gt;codec_ctx-&gt;time_base = (AVRational){1, fps};
+462   enc-&gt;codec_ctx-&gt;framerate = (AVRational){fps, 1};
+463 
+464   // Set bitrate for high quality (music-level quality)
+465   // Use ~5-10 Mbps per megapixel for visually lossless quality
+466   int bitrate = (width_px * height_px * 10) / 1024; // higher quality estimate in kbps
+467   if (bitrate &lt; 4000)
+468     bitrate = 4000; // Minimum 4000 kbps for quality
+469   if (bitrate &gt; 50000)
+470     bitrate = 50000; // Cap at 50 Mbps max
+471   enc-&gt;codec_ctx-&gt;bit_rate = bitrate * 1000;
+472   log_debug(&quot;ffmpeg_encoder: bitrate set to %d kbps for %dx%d&quot;, bitrate, width_px, height_px);
+473 
+474   // Configure codec-specific options for quality
+475   AVDictionary *codec_opts = NULL;
+476   if (strcmp(codec_name, &quot;libx264&quot;) == 0) {
+477     av_dict_set(&amp;codec_opts, &quot;preset&quot;, &quot;ultrafast&quot;, 0);
+478     av_dict_set(&amp;codec_opts, &quot;crf&quot;, &quot;28&quot;, 0);
+479     log_debug(&quot;ffmpeg_encoder: x264 preset=ultrafast crf=28&quot;);
+480   } else if (strcmp(codec_name, &quot;libx265&quot;) == 0) {
+481     av_dict_set(&amp;codec_opts, &quot;preset&quot;, &quot;ultrafast&quot;, 0);
+482     av_dict_set(&amp;codec_opts, &quot;crf&quot;, &quot;32&quot;, 0);
+483     // x265 tag must be hvc1 for MP4 container compatibility (Apple/browser playback)
+484     enc-&gt;stream-&gt;codecpar-&gt;codec_tag = MKTAG('h', 'v', 'c', '1');
+485     log_debug(&quot;ffmpeg_encoder: x265 preset=ultrafast crf=32&quot;);
+486   }
+487 
+488   // Open codec (capture libx264 startup logs)
+489   LOG_IO(&quot;ffmpeg&quot;, {
+490     ret = avcodec_open2(enc-&gt;codec_ctx, codec, &amp;codec_opts);
+491   });
+492   av_dict_free(&amp;codec_opts);
+493   if (ret &lt; 0) {
+494     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+495     avformat_free_context(enc-&gt;fmt_ctx);
+496     SAFE_FREE(enc);
+497     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_open2 failed&quot;);
+498   }
+499 
+500   // Copy codec parameters to stream
+501   ret = avcodec_parameters_from_context(enc-&gt;stream-&gt;codecpar, enc-&gt;codec_ctx);
+502   if (ret &lt; 0) {
+503     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+504     avformat_free_context(enc-&gt;fmt_ctx);
+505     SAFE_FREE(enc);
+506     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avcodec_parameters_from_context failed&quot;);
+507   }
+508 
+509   // Muxer options for proper MP4 container structure
+510   AVDictionary *opts = NULL;
+511 
+512   // Muxer flags configuration
+513   // For stdout/non-seekable output, use fragmented MP4 (frag_keyframe)
+514   // For regular files, use faststart (moov at front for streaming)
+515   bool is_stdout = (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0);
+516   if (is_stdout) {
+517     // Use fragmented MP4 for stdout - starts a new fragment at each video keyframe
+518     // This allows streaming without requiring file seeking (FFmpeg docs recommended)
+519     av_dict_set(&amp;opts, &quot;movflags&quot;, &quot;+frag_keyframe&quot;, 0);
+520     log_debug(&quot;ffmpeg_encoder_create: Using fragmented MP4 (+frag_keyframe) for stdout output&quot;);
+521   } else {
+522     // Move moov atom to the front (faststart) - helps with streaming and player compatibility
+523     av_dict_set(&amp;opts, &quot;movflags&quot;, &quot;faststart&quot;, 0);
+524   }
+525 
+526   if (enc-&gt;is_image) {
+527     // Use -update flag for single frame output
+528     av_dict_set(&amp;opts, &quot;update&quot;, &quot;1&quot;, 0);
+529   }
+530 
+531   // Allocate frames
+532   enc-&gt;frame = av_frame_alloc();
+533   enc-&gt;frame_encoded = av_frame_alloc();
+534   enc-&gt;pkt = av_packet_alloc();
+535   if (!enc-&gt;frame || !enc-&gt;frame_encoded || !enc-&gt;pkt) {
+536     av_frame_free(&amp;enc-&gt;frame);
+537     av_frame_free(&amp;enc-&gt;frame_encoded);
+538     av_packet_free(&amp;enc-&gt;pkt);
+539     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+540     avformat_free_context(enc-&gt;fmt_ctx);
+541     SAFE_FREE(enc);
+542     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: frame allocation failed&quot;);
+543   }
+544 
+545   // Set frame properties for target pixel format
+546   enc-&gt;frame_encoded-&gt;format = enc-&gt;target_pix_fmt;
+547   enc-&gt;frame_encoded-&gt;width = width_px;
+548   enc-&gt;frame_encoded-&gt;height = height_px;
+549   ret = av_frame_get_buffer(enc-&gt;frame_encoded, 32);
+550   if (ret &lt; 0) {
+551     av_frame_free(&amp;enc-&gt;frame);
+552     av_frame_free(&amp;enc-&gt;frame_encoded);
+553     av_packet_free(&amp;enc-&gt;pkt);
+554     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+555     avformat_free_context(enc-&gt;fmt_ctx);
+556     SAFE_FREE(enc);
+557     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: av_frame_get_buffer failed&quot;);
+558   }
+559 
+560   // Create SWS context for RGB &#x2192; target format conversion
+561   LOG_IO(&quot;swscaler&quot;, {
+562     enc-&gt;sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGB24, width_px, height_px, enc-&gt;target_pix_fmt,
+563                                   SWS_BICUBIC, NULL, NULL, NULL);
+564   });
+565   if (!enc-&gt;sws_ctx) {
+566     av_frame_free(&amp;enc-&gt;frame);
+567     av_frame_free(&amp;enc-&gt;frame_encoded);
+568     av_packet_free(&amp;enc-&gt;pkt);
+569     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+570     avformat_free_context(enc-&gt;fmt_ctx);
+571     SAFE_FREE(enc);
+572     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: sws_getContext failed&quot;);
+573   }
+574 
+575   // Initialize audio stream if supported
+576   encoder_init_audio_stream(enc, output_path);
+577 
+578   // Open output file or stdout
+579   if (!(enc-&gt;fmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_NOFILE)) {
+580     // For stdout output, use &quot;pipe:1&quot; (FFmpeg's standard for writing to stdout)
+581     const char *open_path = output_path;
+582     if (output_path &amp;&amp; strcmp(output_path, &quot;-&quot;) == 0) {
+583       open_path = &quot;pipe:1&quot;; // Use pipe:1 for stdout
+584       log_debug(&quot;ffmpeg: Redirecting '-' to 'pipe:1' for stdout output&quot;);
+585     }
+586     ret = avio_open(&amp;enc-&gt;fmt_ctx-&gt;pb, open_path, AVIO_FLAG_WRITE);
+587     if (ret &lt; 0) {
+588       sws_freeContext(enc-&gt;sws_ctx);
+589       av_frame_free(&amp;enc-&gt;frame);
+590       av_frame_free(&amp;enc-&gt;frame_encoded);
+591       av_packet_free(&amp;enc-&gt;pkt);
+592       avcodec_free_context(&amp;enc-&gt;codec_ctx);
+593       avformat_free_context(enc-&gt;fmt_ctx);
+594       SAFE_FREE(enc);
+595       return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avio_open failed for '%s'&quot;, open_path);
+596     }
+597   }
+598 
+599   // Write header (capture FFmpeg format muxer logs)
+600   LOG_IO(&quot;ffmpeg&quot;, {
+601     ret = avformat_write_header(enc-&gt;fmt_ctx, &amp;opts);
+602   });
+603   av_dict_free(&amp;opts); // Free options after use
+604   if (ret &lt; 0) {
+605     avio_closep(&amp;enc-&gt;fmt_ctx-&gt;pb);
+606     sws_freeContext(enc-&gt;sws_ctx);
+607     av_frame_free(&amp;enc-&gt;frame);
+608     av_frame_free(&amp;enc-&gt;frame_encoded);
+609     av_packet_free(&amp;enc-&gt;pkt);
+610     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+611     avformat_free_context(enc-&gt;fmt_ctx);
+612     SAFE_FREE(enc);
+613     return SET_ERRNO(ERROR_INIT, &quot;ffmpeg: avformat_write_header failed&quot;);
+614   }
+615 
+616   // Now that stream-&gt;time_base is set, calculate estimated frame duration for snapshot mode
+617   bool snapshot_mode_after_header = GET_OPTION(snapshot_mode);
+618   double snapshot_delay_after_header = GET_OPTION(snapshot_delay);
+619   if (snapshot_mode_after_header &amp;&amp; enc-&gt;estimated_frame_count &gt; 0 &amp;&amp; snapshot_delay_after_header &gt; 0) {
+620     // Each frame should span: snapshot_delay / estimated_frame_count seconds
+621     // In stream time_base units: (snapshot_delay * time_base.den) / estimated_frame_count
+622     enc-&gt;estimated_frame_duration =
+623         (int64_t)((snapshot_delay_after_header * (double)enc-&gt;stream-&gt;time_base.den) / enc-&gt;estimated_frame_count);
+624     log_debug(&quot;ffmpeg_encoder_create: Calculated estimated_frame_duration=%lld time_base units &quot;
+625               &quot;for snapshot mode (snapshot_delay=%.2f, estimated_frames=%d, time_base=%d/%d)&quot;,
+626               (long long)enc-&gt;estimated_frame_duration, snapshot_delay_after_header, enc-&gt;estimated_frame_count,
+627               enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den);
+628   }
+629 
+630   enc-&gt;frame_count = 0;
+631   enc-&gt;video_pts = 0;
+632   enc-&gt;snapshot_actual_duration = 0.0;
+633   enc-&gt;snapshot_elapsed_ns = 0;
+634   enc-&gt;first_frame_captured_ns = 0;  // Initialize first frame timestamp
+635   *out = enc;
+636 
+637   /* Register encoder with named registry */
+638   NAMED_REGISTER_FFMPEG_ENCODER(enc, output_path, NULL);
+639 
+640   log_info(&quot;[FFMPEG_ENCODER_CREATE] SUCCESS: encoder initialized, frame_count=0, fps=%d, dims=%dx%d&quot;, enc-&gt;fps, enc-&gt;width_px, enc-&gt;height_px);
+641   return ASCIICHAT_OK;
+642 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -660,203 +674,203 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 </div>
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>ffmpeg_encoder_create</b></div>
-<p class="Pp">Definition at line <b>881</b> of file <b>ffmpeg_encoder.c</b>.</p>
-<pre>881                                                                 {
-882   if (!enc)
-883     return ASCIICHAT_OK;
-884 
-885   NAMED_UNREGISTER(enc);
-886 
-887   // In snapshot mode, calculate the FPS needed to match the target duration
-888   bool snapshot_mode = GET_OPTION(snapshot_mode);
-889   int64_t adjusted_packet_duration = 0;
-890   double snapshot_delay = GET_OPTION(snapshot_delay);
-891 
-892   if (snapshot_mode &amp;&amp; enc-&gt;frame_count &gt; 0 &amp;&amp; snapshot_delay &gt; 0) {
-893     // Calculate output FPS that distributes frames across snapshot_delay seconds
-894     // output_fps = frame_count / snapshot_delay
-895     // packet_duration (in stream time_base) = stream_time_base.den / output_fps
-896     //                                        = (stream_time_base.den * snapshot_delay) / frame_count
-897     adjusted_packet_duration = (int64_t)((snapshot_delay * enc-&gt;stream-&gt;time_base.den) / enc-&gt;frame_count);
-898     log_info(&quot;ffmpeg_encoder_destroy: Snapshot mode - adjusting packet durations for %d frames over %.2f seconds&quot;,
-899              enc-&gt;frame_count, snapshot_delay);
-900     log_debug(&quot;  Adjusted packet duration: %lld units (%.6f seconds per frame)&quot;,
-901               (long long)adjusted_packet_duration,
-902               (double)adjusted_packet_duration / enc-&gt;stream-&gt;time_base.den);
-903   }
+<p class="Pp">Definition at line <b>894</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<pre>894                                                                 {
+895   if (!enc)
+896     return ASCIICHAT_OK;
+897 
+898   NAMED_UNREGISTER(enc);
+899 
+900   // In snapshot mode, calculate the FPS needed to match the target duration
+901   bool snapshot_mode = GET_OPTION(snapshot_mode);
+902   int64_t adjusted_packet_duration = 0;
+903   double snapshot_delay = GET_OPTION(snapshot_delay);
 904 
-905   // Flush video encoder (capture libx264 final statistics)
-906   LOG_IO(&quot;ffmpeg&quot;, {
-907     avcodec_send_frame(enc-&gt;codec_ctx, NULL);
-908     int flush_pkt_count = 0;
-909     while (1) {
-910       int ret = avcodec_receive_packet(enc-&gt;codec_ctx, enc-&gt;pkt);
-911       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-912         break;
-913       if (ret &lt; 0)
-914         break;
-915 
-916       flush_pkt_count++;
+905   if (snapshot_mode &amp;&amp; enc-&gt;frame_count &gt; 0 &amp;&amp; snapshot_delay &gt; 0) {
+906     // Calculate output FPS that distributes frames across snapshot_delay seconds
+907     // output_fps = frame_count / snapshot_delay
+908     // packet_duration (in stream time_base) = stream_time_base.den / output_fps
+909     //                                        = (stream_time_base.den * snapshot_delay) / frame_count
+910     adjusted_packet_duration = (int64_t)((snapshot_delay * enc-&gt;stream-&gt;time_base.den) / enc-&gt;frame_count);
+911     log_info(&quot;ffmpeg_encoder_destroy: Snapshot mode - adjusting packet durations for %d frames over %.2f seconds&quot;,
+912              enc-&gt;frame_count, snapshot_delay);
+913     log_debug(&quot;  Adjusted packet duration: %lld units (%.6f seconds per frame)&quot;,
+914               (long long)adjusted_packet_duration,
+915               (double)adjusted_packet_duration / enc-&gt;stream-&gt;time_base.den);
+916   }
 917 
-918       // Set packet duration in codec time base if not already set
-919       if (enc-&gt;pkt-&gt;duration == 0) {
-920         enc-&gt;pkt-&gt;duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
-921       }
-922 
-923       // In snapshot mode, rescale to stream time_base and apply adjusted duration if set
-924       int64_t duration_before = enc-&gt;pkt-&gt;duration;
-925       av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;codec_ctx-&gt;time_base, enc-&gt;stream-&gt;time_base);
-926       if (snapshot_mode &amp;&amp; adjusted_packet_duration &gt; 0) {
-927         enc-&gt;pkt-&gt;duration = adjusted_packet_duration;
-928         log_debug(&quot;ffmpeg_encoder_destroy: Flush packet %d duration adjusted from %lld to %lld&quot;,
-929                   flush_pkt_count, (long long)duration_before, (long long)adjusted_packet_duration);
-930       }
-931       enc-&gt;pkt-&gt;stream_index = enc-&gt;stream-&gt;index;
-932       av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
-933       av_packet_unref(enc-&gt;pkt);
-934     }
-935   });
-936 
-937   // Flush audio encoder if present
-938   if (enc-&gt;has_audio_stream &amp;&amp; enc-&gt;audio_codec_ctx) {
-939     // Write any remaining partial audio samples as padding
-940     if (enc-&gt;audio_partial_len &gt; 0) {
-941       // Zero-pad the remaining samples
-942       memset(&amp;enc-&gt;audio_partial_buf[enc-&gt;audio_partial_len], 0,
-943              (enc-&gt;audio_frame_size - enc-&gt;audio_partial_len) * sizeof(float));
-944       enc-&gt;audio_frame-&gt;data[0] = (uint8_t *)enc-&gt;audio_partial_buf;
-945       enc-&gt;audio_frame-&gt;linesize[0] = enc-&gt;audio_frame_size * sizeof(float);
-946       enc-&gt;audio_frame-&gt;nb_samples = enc-&gt;audio_frame_size;
-947       enc-&gt;audio_frame-&gt;pts = enc-&gt;audio_pts;
-948       avcodec_send_frame(enc-&gt;audio_codec_ctx, enc-&gt;audio_frame);
-949     }
-950 
-951     // Flush any remaining packets (capture FFmpeg audio codec logs)
-952     LOG_IO(&quot;ffmpeg&quot;, {
-953       avcodec_send_frame(enc-&gt;audio_codec_ctx, NULL);
-954       while (1) {
-955         int ret = avcodec_receive_packet(enc-&gt;audio_codec_ctx, enc-&gt;pkt);
-956         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-957           break;
-958         if (ret &lt; 0)
-959           break;
-960 
-961         av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;audio_codec_ctx-&gt;time_base, enc-&gt;audio_stream-&gt;time_base);
-962         enc-&gt;pkt-&gt;stream_index = enc-&gt;audio_stream-&gt;index;
-963         av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
-964         av_packet_unref(enc-&gt;pkt);
-965       }
-966     });
-967   }
-968 
-969   // Set stream duration for proper metadata (must be before trailer)
-970   if (enc-&gt;stream &amp;&amp; enc-&gt;frame_count &gt; 0) {
-971     int64_t duration;
-972     bool snapshot_mode = GET_OPTION(snapshot_mode);
-973     if (snapshot_mode) {
-974       extern uint64_t g_snapshot_actual_duration_ms;
-975       double snapshot_delay = GET_OPTION(snapshot_delay);
-976       // Use actual capture elapsed time if available, otherwise use snapshot_delay
-977       // This ensures frames are distributed across the correct time window
-978       double actual_capture_duration = g_snapshot_actual_duration_ms / 1000.0;
-979       double effective_duration = (actual_capture_duration &gt; 0) ? actual_capture_duration : snapshot_delay;
-980 
-981       // In snapshot mode with wall-clock timing, the video duration should equal the actual elapsed time
-982       // duration_seconds = effective_duration
-983       // duration_time_base_units = effective_duration * time_base.den
-984       duration = (int64_t)(effective_duration * enc-&gt;stream-&gt;time_base.den);
-985 
-986       // Calculate what the frame durations should be to sum to effective_duration
-987       // This ensures FFmpeg plays the captured frames across the full effective_duration
-988       // effective_frame_duration = effective_duration / frame_count (seconds per frame)
-989       int64_t effective_frame_duration = (int64_t)((effective_duration / (double)enc-&gt;frame_count) * enc-&gt;stream-&gt;time_base.den);
-990 
-991       log_info(&quot;ffmpeg_encoder_destroy: Snapshot mode - snapshot_delay=%.2f, frames=%d, output_duration=%.2f sec&quot;,
-992                snapshot_delay, enc-&gt;frame_count, effective_duration);
-993       log_debug(&quot;  Using effective_duration=%.2f seconds for output&quot;, effective_duration);
-994       log_debug(&quot;  stream-&gt;time_base=%d/%d, effective frame duration=%lld time_base units&quot;,
-995                 enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den, (long long)effective_frame_duration);
-996       log_debug(&quot;  (each frame should span %.3f seconds to total %.2f seconds)&quot;,
-997                 effective_duration / (double)enc-&gt;frame_count, effective_duration);
+918   // Flush video encoder (capture libx264 final statistics)
+919   LOG_IO(&quot;ffmpeg&quot;, {
+920     avcodec_send_frame(enc-&gt;codec_ctx, NULL);
+921     int flush_pkt_count = 0;
+922     while (1) {
+923       int ret = avcodec_receive_packet(enc-&gt;codec_ctx, enc-&gt;pkt);
+924       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+925         break;
+926       if (ret &lt; 0)
+927         break;
+928 
+929       flush_pkt_count++;
+930 
+931       // Set packet duration in codec time base if not already set
+932       if (enc-&gt;pkt-&gt;duration == 0) {
+933         enc-&gt;pkt-&gt;duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
+934       }
+935 
+936       // In snapshot mode, rescale to stream time_base and apply adjusted duration if set
+937       int64_t duration_before = enc-&gt;pkt-&gt;duration;
+938       av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;codec_ctx-&gt;time_base, enc-&gt;stream-&gt;time_base);
+939       if (snapshot_mode &amp;&amp; adjusted_packet_duration &gt; 0) {
+940         enc-&gt;pkt-&gt;duration = adjusted_packet_duration;
+941         log_debug(&quot;ffmpeg_encoder_destroy: Flush packet %d duration adjusted from %lld to %lld&quot;,
+942                   flush_pkt_count, (long long)duration_before, (long long)adjusted_packet_duration);
+943       }
+944       enc-&gt;pkt-&gt;stream_index = enc-&gt;stream-&gt;index;
+945       av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
+946       av_packet_unref(enc-&gt;pkt);
+947     }
+948   });
+949 
+950   // Flush audio encoder if present
+951   if (enc-&gt;has_audio_stream &amp;&amp; enc-&gt;audio_codec_ctx) {
+952     // Write any remaining partial audio samples as padding
+953     if (enc-&gt;audio_partial_len &gt; 0) {
+954       // Zero-pad the remaining samples
+955       memset(&amp;enc-&gt;audio_partial_buf[enc-&gt;audio_partial_len], 0,
+956              (enc-&gt;audio_frame_size - enc-&gt;audio_partial_len) * sizeof(float));
+957       enc-&gt;audio_frame-&gt;data[0] = (uint8_t *)enc-&gt;audio_partial_buf;
+958       enc-&gt;audio_frame-&gt;linesize[0] = enc-&gt;audio_frame_size * sizeof(float);
+959       enc-&gt;audio_frame-&gt;nb_samples = enc-&gt;audio_frame_size;
+960       enc-&gt;audio_frame-&gt;pts = enc-&gt;audio_pts;
+961       avcodec_send_frame(enc-&gt;audio_codec_ctx, enc-&gt;audio_frame);
+962     }
+963 
+964     // Flush any remaining packets (capture FFmpeg audio codec logs)
+965     LOG_IO(&quot;ffmpeg&quot;, {
+966       avcodec_send_frame(enc-&gt;audio_codec_ctx, NULL);
+967       while (1) {
+968         int ret = avcodec_receive_packet(enc-&gt;audio_codec_ctx, enc-&gt;pkt);
+969         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+970           break;
+971         if (ret &lt; 0)
+972           break;
+973 
+974         av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;audio_codec_ctx-&gt;time_base, enc-&gt;audio_stream-&gt;time_base);
+975         enc-&gt;pkt-&gt;stream_index = enc-&gt;audio_stream-&gt;index;
+976         av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
+977         av_packet_unref(enc-&gt;pkt);
+978       }
+979     });
+980   }
+981 
+982   // Set stream duration for proper metadata (must be before trailer)
+983   if (enc-&gt;stream &amp;&amp; enc-&gt;frame_count &gt; 0) {
+984     int64_t duration;
+985     bool snapshot_mode = GET_OPTION(snapshot_mode);
+986     if (snapshot_mode) {
+987       extern uint64_t g_snapshot_actual_duration_ms;
+988       double snapshot_delay = GET_OPTION(snapshot_delay);
+989       // Use actual capture elapsed time if available, otherwise use snapshot_delay
+990       // This ensures frames are distributed across the correct time window
+991       double actual_capture_duration = g_snapshot_actual_duration_ms / 1000.0;
+992       double effective_duration = (actual_capture_duration &gt; 0) ? actual_capture_duration : snapshot_delay;
+993 
+994       // In snapshot mode with wall-clock timing, the video duration should equal the actual elapsed time
+995       // duration_seconds = effective_duration
+996       // duration_time_base_units = effective_duration * time_base.den
+997       duration = (int64_t)(effective_duration * enc-&gt;stream-&gt;time_base.den);
 998 
-999       log_info(&quot;ffmpeg_encoder_destroy: Setting stream-&gt;duration=%lld (effective_duration=%.3f, time_base=%d/%d, equiv=%.3f sec)&quot;,
-1000                (long long)duration, effective_duration,
-1001                enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den,
-1002                (double)duration * enc-&gt;stream-&gt;time_base.num / enc-&gt;stream-&gt;time_base.den);
-1003     } else {
-1004       // Normal mode: calculate duration from frame count and FPS
-1005       // time_base = 1 / time_base.den seconds per unit
-1006       // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
-1007       // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
-1008       duration = (int64_t)enc-&gt;frame_count * enc-&gt;stream-&gt;time_base.den / enc-&gt;fps;
-1009       log_debug(&quot;ffmpeg_encoder_destroy: Normal mode - Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)&quot;,
-1010                 (long long)duration, enc-&gt;frame_count, enc-&gt;fps, 1, enc-&gt;stream-&gt;time_base.den);
-1011     }
-1012     enc-&gt;stream-&gt;duration = duration;
-1013 
-1014     // CRITICAL: Adjust last frame duration to ensure total duration matches stream-&gt;duration
-1015     // Each frame was encoded with FPS-based duration, but snapshot mode needs them distributed
-1016     // across the actual capture duration. Since we can't change past frame durations, we extend
-1017     // the last frame's duration to make the sum equal the desired total.
-1018     if (snapshot_mode) {
-1019       // Calculate sum of all frame durations (each frame currently has the same FPS-based duration)
-1020       int64_t current_total_duration = enc-&gt;video_pts;  // This is the sum of all frame durations so far
-1021       int64_t desired_duration = duration;
-1022 
-1023       // The last frame needs to be extended to: desired - (sum of all other frames)
-1024       // This ensures the video plays for exactly the snapshot_delay duration
-1025       int64_t last_frame_extension = desired_duration - current_total_duration;
+999       // Calculate what the frame durations should be to sum to effective_duration
+1000       // This ensures FFmpeg plays the captured frames across the full effective_duration
+1001       // effective_frame_duration = effective_duration / frame_count (seconds per frame)
+1002       int64_t effective_frame_duration = (int64_t)((effective_duration / (double)enc-&gt;frame_count) * enc-&gt;stream-&gt;time_base.den);
+1003 
+1004       log_info(&quot;ffmpeg_encoder_destroy: Snapshot mode - snapshot_delay=%.2f, frames=%d, output_duration=%.2f sec&quot;,
+1005                snapshot_delay, enc-&gt;frame_count, effective_duration);
+1006       log_debug(&quot;  Using effective_duration=%.2f seconds for output&quot;, effective_duration);
+1007       log_debug(&quot;  stream-&gt;time_base=%d/%d, effective frame duration=%lld time_base units&quot;,
+1008                 enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den, (long long)effective_frame_duration);
+1009       log_debug(&quot;  (each frame should span %.3f seconds to total %.2f seconds)&quot;,
+1010                 effective_duration / (double)enc-&gt;frame_count, effective_duration);
+1011 
+1012       log_info(&quot;ffmpeg_encoder_destroy: Setting stream-&gt;duration=%lld (effective_duration=%.3f, time_base=%d/%d, equiv=%.3f sec)&quot;,
+1013                (long long)duration, effective_duration,
+1014                enc-&gt;stream-&gt;time_base.num, enc-&gt;stream-&gt;time_base.den,
+1015                (double)duration * enc-&gt;stream-&gt;time_base.num / enc-&gt;stream-&gt;time_base.den);
+1016     } else {
+1017       // Normal mode: calculate duration from frame count and FPS
+1018       // time_base = 1 / time_base.den seconds per unit
+1019       // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
+1020       // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
+1021       duration = (int64_t)enc-&gt;frame_count * enc-&gt;stream-&gt;time_base.den / enc-&gt;fps;
+1022       log_debug(&quot;ffmpeg_encoder_destroy: Normal mode - Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)&quot;,
+1023                 (long long)duration, enc-&gt;frame_count, enc-&gt;fps, 1, enc-&gt;stream-&gt;time_base.den);
+1024     }
+1025     enc-&gt;stream-&gt;duration = duration;
 1026 
-1027       if (last_frame_extension &gt; 0) {
-1028         // We need to extend the last frame. But we can't modify it directly after encoding.
-1029         // Instead, the muxer will use stream-&gt;duration as the authoritative source.
-1030         log_debug(&quot;ffmpeg_encoder_destroy: Last frame would need extension of %lld units to reach total %lld (currently %lld)&quot;,
-1031                   (long long)last_frame_extension, (long long)desired_duration, (long long)current_total_duration);
-1032       }
-1033     }
-1034   }
+1027     // CRITICAL: Adjust last frame duration to ensure total duration matches stream-&gt;duration
+1028     // Each frame was encoded with FPS-based duration, but snapshot mode needs them distributed
+1029     // across the actual capture duration. Since we can't change past frame durations, we extend
+1030     // the last frame's duration to make the sum equal the desired total.
+1031     if (snapshot_mode) {
+1032       // Calculate sum of all frame durations (each frame currently has the same FPS-based duration)
+1033       int64_t current_total_duration = enc-&gt;video_pts;  // This is the sum of all frame durations so far
+1034       int64_t desired_duration = duration;
 1035 
-1036   // Write trailer (capture FFmpeg muxer logs and final frame statistics)
-1037   LOG_IO(&quot;ffmpeg&quot;, {
-1038     av_write_trailer(enc-&gt;fmt_ctx);
-1039   });
-1040 
-1041   // Flush output buffer for stdout/pipes before closing
-1042   if (enc-&gt;fmt_ctx &amp;&amp; enc-&gt;fmt_ctx-&gt;pb) {
-1043     avio_flush(enc-&gt;fmt_ctx-&gt;pb);
-1044     log_debug(&quot;ffmpeg_encoder_destroy: Flushed output buffer&quot;);
-1045   }
-1046 
-1047   // Close output file
-1048   if (enc-&gt;fmt_ctx &amp;&amp; !(enc-&gt;fmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_NOFILE))
-1049     avio_closep(&amp;enc-&gt;fmt_ctx-&gt;pb);
-1050 
-1051   // Cleanup
-1052   sws_freeContext(enc-&gt;sws_ctx);
-1053   av_frame_free(&amp;enc-&gt;frame);
-1054   av_frame_free(&amp;enc-&gt;frame_encoded);
-1055 
-1056   // Cleanup audio resources (capture any remaining FFmpeg logs from codec cleanup)
-1057   if (enc-&gt;has_audio_stream) {
-1058     swr_free(&amp;enc-&gt;audio_swr_ctx);
-1059     av_frame_free(&amp;enc-&gt;audio_frame);
-1060     LOG_IO(&quot;ffmpeg&quot;, {
-1061       avcodec_free_context(&amp;enc-&gt;audio_codec_ctx);
-1062     });
-1063     SAFE_FREE(enc-&gt;audio_partial_buf);
-1064   }
-1065 
-1066   av_packet_free(&amp;enc-&gt;pkt);
-1067   LOG_IO(&quot;ffmpeg&quot;, {
-1068     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-1069   });
-1070   if (enc-&gt;fmt_ctx)
-1071     avformat_free_context(enc-&gt;fmt_ctx);
-1072 
-1073   log_debug(&quot;ffmpeg_encoder_destroy: wrote %d frames&quot;, enc-&gt;frame_count);
-1074   SAFE_FREE(enc);
-1075   return ASCIICHAT_OK;
-1076 }</pre>
+1036       // The last frame needs to be extended to: desired - (sum of all other frames)
+1037       // This ensures the video plays for exactly the snapshot_delay duration
+1038       int64_t last_frame_extension = desired_duration - current_total_duration;
+1039 
+1040       if (last_frame_extension &gt; 0) {
+1041         // We need to extend the last frame. But we can't modify it directly after encoding.
+1042         // Instead, the muxer will use stream-&gt;duration as the authoritative source.
+1043         log_debug(&quot;ffmpeg_encoder_destroy: Last frame would need extension of %lld units to reach total %lld (currently %lld)&quot;,
+1044                   (long long)last_frame_extension, (long long)desired_duration, (long long)current_total_duration);
+1045       }
+1046     }
+1047   }
+1048 
+1049   // Write trailer (capture FFmpeg muxer logs and final frame statistics)
+1050   LOG_IO(&quot;ffmpeg&quot;, {
+1051     av_write_trailer(enc-&gt;fmt_ctx);
+1052   });
+1053 
+1054   // Flush output buffer for stdout/pipes before closing
+1055   if (enc-&gt;fmt_ctx &amp;&amp; enc-&gt;fmt_ctx-&gt;pb) {
+1056     avio_flush(enc-&gt;fmt_ctx-&gt;pb);
+1057     log_debug(&quot;ffmpeg_encoder_destroy: Flushed output buffer&quot;);
+1058   }
+1059 
+1060   // Close output file
+1061   if (enc-&gt;fmt_ctx &amp;&amp; !(enc-&gt;fmt_ctx-&gt;oformat-&gt;flags &amp; AVFMT_NOFILE))
+1062     avio_closep(&amp;enc-&gt;fmt_ctx-&gt;pb);
+1063 
+1064   // Cleanup
+1065   sws_freeContext(enc-&gt;sws_ctx);
+1066   av_frame_free(&amp;enc-&gt;frame);
+1067   av_frame_free(&amp;enc-&gt;frame_encoded);
+1068 
+1069   // Cleanup audio resources (capture any remaining FFmpeg logs from codec cleanup)
+1070   if (enc-&gt;has_audio_stream) {
+1071     swr_free(&amp;enc-&gt;audio_swr_ctx);
+1072     av_frame_free(&amp;enc-&gt;audio_frame);
+1073     LOG_IO(&quot;ffmpeg&quot;, {
+1074       avcodec_free_context(&amp;enc-&gt;audio_codec_ctx);
+1075     });
+1076     SAFE_FREE(enc-&gt;audio_partial_buf);
+1077   }
+1078 
+1079   av_packet_free(&amp;enc-&gt;pkt);
+1080   LOG_IO(&quot;ffmpeg&quot;, {
+1081     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+1082   });
+1083   if (enc-&gt;fmt_ctx)
+1084     avformat_free_context(enc-&gt;fmt_ctx);
+1085 
+1086   log_debug(&quot;ffmpeg_encoder_destroy: wrote %d frames&quot;, enc-&gt;frame_count);
+1087   SAFE_FREE(enc);
+1088   return ASCIICHAT_OK;
+1089 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -911,25 +925,25 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
   <b>ffmpeg_encoder_destroy</b></div>
-<p class="Pp">Definition at line <b>862</b> of file <b>ffmpeg_encoder.c</b>.</p>
-<pre>862                                                                                                     {
-863   if (!enc)
-864     return;
-865   enc-&gt;snapshot_actual_duration = actual_duration_sec;
-866 
-867   // If we already have frame count, we can calculate the adjusted packet duration now
-868   // This will be used for any remaining frames and during flush
-869   if (enc-&gt;frame_count &gt; 0 &amp;&amp; actual_duration_sec &gt; 0) {
-870     // Calculate the packet duration that would make all frames fit in actual_duration_sec
-871     // packet_duration_units = (actual_duration_sec * time_base.den) / frame_count
-872     // This is only a starting point - the actual duration might be different if more frames are captured
-873     log_debug(&quot;ffmpeg_encoder_set_snapshot_actual_duration: %.3f sec with %d frames so far&quot;,
-874               actual_duration_sec, enc-&gt;frame_count);
-875   } else {
-876     log_info(&quot;ffmpeg_encoder_set_snapshot_actual_duration: Setting duration to %.3f seconds (already encoded %d frames)&quot;,
-877             actual_duration_sec, enc-&gt;frame_count);
-878   }
-879 }</pre>
+<p class="Pp">Definition at line <b>875</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<pre>875                                                                                                     {
+876   if (!enc)
+877     return;
+878   enc-&gt;snapshot_actual_duration = actual_duration_sec;
+879 
+880   // If we already have frame count, we can calculate the adjusted packet duration now
+881   // This will be used for any remaining frames and during flush
+882   if (enc-&gt;frame_count &gt; 0 &amp;&amp; actual_duration_sec &gt; 0) {
+883     // Calculate the packet duration that would make all frames fit in actual_duration_sec
+884     // packet_duration_units = (actual_duration_sec * time_base.den) / frame_count
+885     // This is only a starting point - the actual duration might be different if more frames are captured
+886     log_debug(&quot;ffmpeg_encoder_set_snapshot_actual_duration: %.3f sec with %d frames so far&quot;,
+887               actual_duration_sec, enc-&gt;frame_count);
+888   } else {
+889     log_info(&quot;ffmpeg_encoder_set_snapshot_actual_duration: Setting duration to %.3f seconds (already encoded %d frames)&quot;,
+890             actual_duration_sec, enc-&gt;frame_count);
+891   }
+892 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_encoder_s::frame_count</b>, <b>log_debug</b>,
@@ -980,73 +994,73 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
   <b>ffmpeg_encoder_write_frame</b></div>
-<p class="Pp">Definition at line <b>795</b> of file <b>ffmpeg_encoder.c</b>.</p>
-<pre>795                                                                                                            {
-796   if (!enc || !samples || num_samples &lt;= 0)
-797     return ASCIICHAT_OK; // Silently ignore invalid calls
-798 
-799   // No audio stream for this format
-800   if (!enc-&gt;has_audio_stream)
-801     return ASCIICHAT_OK;
-802 
-803   // Accumulate samples into partial buffer
-804   int samples_to_process = num_samples;
-805   int samples_offset = 0;
-806 
-807   while (samples_to_process &gt; 0) {
-808     // How many samples can we add to the partial buffer?
-809     int space_in_buffer = enc-&gt;audio_frame_size - enc-&gt;audio_partial_len;
-810     int samples_to_copy = (samples_to_process &lt; space_in_buffer) ? samples_to_process : space_in_buffer;
+<p class="Pp">Definition at line <b>808</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<pre>808                                                                                                            {
+809   if (!enc || !samples || num_samples &lt;= 0)
+810     return ASCIICHAT_OK; // Silently ignore invalid calls
 811 
-812     // Copy samples to partial buffer
-813     memcpy(&amp;enc-&gt;audio_partial_buf[enc-&gt;audio_partial_len], &amp;samples[samples_offset], samples_to_copy * sizeof(float));
-814     enc-&gt;audio_partial_len += samples_to_copy;
-815     samples_offset += samples_to_copy;
-816     samples_to_process -= samples_to_copy;
-817 
-818     // If buffer is full, encode and write frame
-819     if (enc-&gt;audio_partial_len &gt;= enc-&gt;audio_frame_size) {
-820       // Set up audio frame with accumulated samples
-821       enc-&gt;audio_frame-&gt;data[0] = (uint8_t *)enc-&gt;audio_partial_buf;
-822       enc-&gt;audio_frame-&gt;linesize[0] = enc-&gt;audio_frame_size * sizeof(float);
-823       enc-&gt;audio_frame-&gt;nb_samples = enc-&gt;audio_frame_size;
-824       enc-&gt;audio_frame-&gt;pts = enc-&gt;audio_pts;
-825 
-826       // Send frame to encoder
-827       int ret = avcodec_send_frame(enc-&gt;audio_codec_ctx, enc-&gt;audio_frame);
-828       if (ret &lt; 0) {
-829         log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_send_frame for audio failed&quot;);
-830       } else {
-831         // Receive and write packets
-832         while (ret &gt;= 0) {
-833           ret = avcodec_receive_packet(enc-&gt;audio_codec_ctx, enc-&gt;pkt);
-834           if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-835             break;
-836           if (ret &lt; 0) {
-837             log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_receive_packet for audio failed&quot;);
-838             break;
-839           }
-840 
-841           // Rescale timestamp and write
-842           av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;audio_codec_ctx-&gt;time_base, enc-&gt;audio_stream-&gt;time_base);
-843           enc-&gt;pkt-&gt;stream_index = enc-&gt;audio_stream-&gt;index;
-844           ret = av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
-845           av_packet_unref(enc-&gt;pkt);
-846           if (ret &lt; 0) {
-847             log_warn_every(5 * 1000000000LL, &quot;ffmpeg: av_interleaved_write_frame for audio failed&quot;);
+812   // No audio stream for this format
+813   if (!enc-&gt;has_audio_stream)
+814     return ASCIICHAT_OK;
+815 
+816   // Accumulate samples into partial buffer
+817   int samples_to_process = num_samples;
+818   int samples_offset = 0;
+819 
+820   while (samples_to_process &gt; 0) {
+821     // How many samples can we add to the partial buffer?
+822     int space_in_buffer = enc-&gt;audio_frame_size - enc-&gt;audio_partial_len;
+823     int samples_to_copy = (samples_to_process &lt; space_in_buffer) ? samples_to_process : space_in_buffer;
+824 
+825     // Copy samples to partial buffer
+826     memcpy(&amp;enc-&gt;audio_partial_buf[enc-&gt;audio_partial_len], &amp;samples[samples_offset], samples_to_copy * sizeof(float));
+827     enc-&gt;audio_partial_len += samples_to_copy;
+828     samples_offset += samples_to_copy;
+829     samples_to_process -= samples_to_copy;
+830 
+831     // If buffer is full, encode and write frame
+832     if (enc-&gt;audio_partial_len &gt;= enc-&gt;audio_frame_size) {
+833       // Set up audio frame with accumulated samples
+834       enc-&gt;audio_frame-&gt;data[0] = (uint8_t *)enc-&gt;audio_partial_buf;
+835       enc-&gt;audio_frame-&gt;linesize[0] = enc-&gt;audio_frame_size * sizeof(float);
+836       enc-&gt;audio_frame-&gt;nb_samples = enc-&gt;audio_frame_size;
+837       enc-&gt;audio_frame-&gt;pts = enc-&gt;audio_pts;
+838 
+839       // Send frame to encoder
+840       int ret = avcodec_send_frame(enc-&gt;audio_codec_ctx, enc-&gt;audio_frame);
+841       if (ret &lt; 0) {
+842         log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_send_frame for audio failed&quot;);
+843       } else {
+844         // Receive and write packets
+845         while (ret &gt;= 0) {
+846           ret = avcodec_receive_packet(enc-&gt;audio_codec_ctx, enc-&gt;pkt);
+847           if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 848             break;
-849           }
-850         }
-851       }
-852 
-853       // Update PTS for next frame
-854       enc-&gt;audio_pts += enc-&gt;audio_frame_size;
-855       enc-&gt;audio_partial_len = 0;
-856     }
-857   }
-858 
-859   return ASCIICHAT_OK;
-860 }</pre>
+849           if (ret &lt; 0) {
+850             log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_receive_packet for audio failed&quot;);
+851             break;
+852           }
+853 
+854           // Rescale timestamp and write
+855           av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;audio_codec_ctx-&gt;time_base, enc-&gt;audio_stream-&gt;time_base);
+856           enc-&gt;pkt-&gt;stream_index = enc-&gt;audio_stream-&gt;index;
+857           ret = av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
+858           av_packet_unref(enc-&gt;pkt);
+859           if (ret &lt; 0) {
+860             log_warn_every(5 * 1000000000LL, &quot;ffmpeg: av_interleaved_write_frame for audio failed&quot;);
+861             break;
+862           }
+863         }
+864       }
+865 
+866       // Update PTS for next frame
+867       enc-&gt;audio_pts += enc-&gt;audio_frame_size;
+868       enc-&gt;audio_partial_len = 0;
+869     }
+870   }
+871 
+872   return ASCIICHAT_OK;
+873 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1105,169 +1119,169 @@ ffmpeg_encoder_destroy(enc);  // Finalizes GIF with palette
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
   <b>ffmpeg_encoder_destroy</b></div>
-<p class="Pp">Definition at line <b>631</b> of file <b>ffmpeg_encoder.c</b>.</p>
-<pre>632                                                                    {
-633   if (!enc || !rgb)
-634     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ffmpeg_encoder_write_frame: NULL input&quot;);
-635 
-636   // Initialize first frame capture time on first call
-637   if (enc-&gt;first_frame_captured_ns == 0) {
-638     enc-&gt;first_frame_captured_ns = captured_ns;
-639     log_debug(&quot;ffmpeg_encoder_write_frame: first frame captured at %llu ns&quot;, (unsigned long long)captured_ns);
-640   }
-641 
-642   log_info(&quot;[FFMPEG_ENCODER_WRITE] frame %d, pitch=%d, dims=%dx%d&quot;, enc-&gt;frame_count, pitch, enc-&gt;width_px, enc-&gt;height_px);
-643   log_debug(&quot;ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d, captured_ns=%llu&quot;, enc-&gt;frame_count, pitch, enc-&gt;width_px,
-644             enc-&gt;height_px, (unsigned long long)captured_ns);
-645 
-646   // Set up RGB frame for conversion
-647   uint8_t *data[1] = {(uint8_t *)rgb};
-648   int linesize[1] = {pitch};
-649 
-650   // CRITICAL: Ensure frame format is set before each sws_scale call
-651   // Some FFmpeg versions reset the format field, so we need to set it explicitly
-652   enc-&gt;frame_encoded-&gt;format = enc-&gt;target_pix_fmt;
-653 
-654   // Convert RGB24 to target format
-655   sws_scale(enc-&gt;sws_ctx, (const uint8_t *const *)data, linesize, 0, enc-&gt;height_px, enc-&gt;frame_encoded-&gt;data,
-656             enc-&gt;frame_encoded-&gt;linesize);
-657 
-658   // Set frame duration based on mode
-659   int64_t frame_duration;
-660   bool snapshot_mode = GET_OPTION(snapshot_mode);
-661 
-662   if (enc-&gt;frame_count == 0) {
-663     log_info(&quot;ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d&quot;, snapshot_mode);
-664   }
-665 
-666   // Use FPS-based frame duration (snapshot mode adjusts total duration in destroy())
-667   frame_duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
-668 
-669   enc-&gt;frame_encoded-&gt;duration = frame_duration;
+<p class="Pp">Definition at line <b>644</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<pre>645                                                                    {
+646   if (!enc || !rgb)
+647     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ffmpeg_encoder_write_frame: NULL input&quot;);
+648 
+649   // Initialize first frame capture time on first call
+650   if (enc-&gt;first_frame_captured_ns == 0) {
+651     enc-&gt;first_frame_captured_ns = captured_ns;
+652     log_debug(&quot;ffmpeg_encoder_write_frame: first frame captured at %llu ns&quot;, (unsigned long long)captured_ns);
+653   }
+654 
+655   log_info(&quot;[FFMPEG_ENCODER_WRITE] frame %d, pitch=%d, dims=%dx%d&quot;, enc-&gt;frame_count, pitch, enc-&gt;width_px, enc-&gt;height_px);
+656   log_debug(&quot;ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d, captured_ns=%llu&quot;, enc-&gt;frame_count, pitch, enc-&gt;width_px,
+657             enc-&gt;height_px, (unsigned long long)captured_ns);
+658 
+659   // Set up RGB frame for conversion
+660   uint8_t *data[1] = {(uint8_t *)rgb};
+661   int linesize[1] = {pitch};
+662 
+663   // CRITICAL: Ensure frame format is set before each sws_scale call
+664   // Some FFmpeg versions reset the format field, so we need to set it explicitly
+665   enc-&gt;frame_encoded-&gt;format = enc-&gt;target_pix_fmt;
+666 
+667   // Convert RGB24 to target format
+668   sws_scale(enc-&gt;sws_ctx, (const uint8_t *const *)data, linesize, 0, enc-&gt;height_px, enc-&gt;frame_encoded-&gt;data,
+669             enc-&gt;frame_encoded-&gt;linesize);
 670 
-671   // Track this frame's capture timestamp for duration calculation of next frame
-672   if (snapshot_mode) {
-673     uint64_t frame_dur_ms = (enc-&gt;previous_captured_ns &gt; 0) ? (captured_ns - enc-&gt;previous_captured_ns) / 1000000 : 0;
-674     if (enc-&gt;frame_count &lt;= 2) {
-675       log_info(&quot;ffmpeg: frame %d SET duration=%lld units (%.3fms since last, codec_base=1/%d)&quot;,
-676                enc-&gt;frame_count, (long long)frame_duration, (double)frame_dur_ms,
-677                enc-&gt;codec_ctx-&gt;time_base.den);
-678     }
-679     enc-&gt;previous_captured_ns = captured_ns;
-680   }
+671   // Set frame duration based on mode
+672   int64_t frame_duration;
+673   bool snapshot_mode = GET_OPTION(snapshot_mode);
+674 
+675   if (enc-&gt;frame_count == 0) {
+676     log_info(&quot;ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d&quot;, snapshot_mode);
+677   }
+678 
+679   // Use FPS-based frame duration (snapshot mode adjusts total duration in destroy())
+680   frame_duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
 681 
-682   // Calculate PTS from actual capture timestamp
-683   // time_base is {1, fps}, so 1 PTS unit = 1/fps seconds
-684   // Convert elapsed nanoseconds to PTS units: elapsed_ns * fps / 1_000_000_000
-685   uint64_t elapsed_ns = captured_ns - enc-&gt;first_frame_captured_ns;
-686   int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc-&gt;fps) / 1000000000ULL);
-687 
-688   // In snapshot mode, distribute frames linearly across the actual duration
-689   if (snapshot_mode) {
-690     extern uint64_t g_snapshot_actual_duration_ms;
-691     extern uint64_t g_snapshot_last_capture_elapsed_ns;
-692     if (g_snapshot_actual_duration_ms &gt; 0) {
-693       // Distribute frames linearly based on their capture timestamp relative to total duration
-694       // pts = (frame_elapsed_ns / total_elapsed_ns) * actual_duration_sec * fps
-695       // This ensures frame 0 is at 0s and last frame is at actual_duration_sec
-696       double actual_duration_sec = (double)g_snapshot_actual_duration_ms / 1000.0;
-697       double total_elapsed_sec = (double)g_snapshot_last_capture_elapsed_ns / (double)NS_PER_SEC_INT;
-698 
-699       if (total_elapsed_sec &gt; 0.001) {
-700         double frame_fraction = (double)elapsed_ns / (double)g_snapshot_last_capture_elapsed_ns;
-701         double target_pts_sec = frame_fraction * actual_duration_sec;
-702         int64_t pts_before = pts_from_timestamp;
-703         // Convert target seconds to time_base units: pts = target_sec * time_base.den / time_base.num
-704         pts_from_timestamp = (int64_t)(target_pts_sec * (double)enc-&gt;codec_ctx-&gt;time_base.den / (double)enc-&gt;codec_ctx-&gt;time_base.num);
-705 
-706         if (enc-&gt;frame_count &lt; 3 || enc-&gt;frame_count % 10 == 0) {
-707           log_debug(&quot;ffmpeg: snapshot frame %d: PTS distributed (before=%lld, after=%lld, sec=%lld-&gt;%lld, frac=%.3f)&quot;,
-708                     enc-&gt;frame_count, (long long)pts_before, (long long)pts_from_timestamp,
-709                     (long long)((double)pts_before * enc-&gt;codec_ctx-&gt;time_base.num / enc-&gt;codec_ctx-&gt;time_base.den),
-710                     (long long)target_pts_sec, frame_fraction);
-711         }
-712       }
-713     }
-714   }
-715 
-716   // Use timestamp-based (or scaled) PTS
-717   enc-&gt;frame_encoded-&gt;pts = pts_from_timestamp;
-718   enc-&gt;video_pts += frame_duration;
-719 
-720   if (!snapshot_mode) {
-721     log_debug(&quot;ffmpeg_encoder_write_frame: PTS calculation - elapsed_ns=%llu, pts_from_timestamp=%lld, fps=%d&quot;,
-722               (unsigned long long)elapsed_ns, (long long)pts_from_timestamp, enc-&gt;fps);
-723   }
-724 
-725   // Send frame to encoder
-726   int ret = avcodec_send_frame(enc-&gt;codec_ctx, enc-&gt;frame_encoded);
-727   if (ret &lt; 0) {
-728     log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_send_frame failed&quot;);
-729     return ASCIICHAT_OK; // Continue anyway
-730   }
-731 
-732   // Receive packets from encoder and write to file
-733   static int write_frame_pkt_count = 0;
-734 
-735   while (ret &gt;= 0) {
-736     ret = avcodec_receive_packet(enc-&gt;codec_ctx, enc-&gt;pkt);
-737     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-738       break;
-739     if (ret &lt; 0) {
-740       log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_receive_packet failed&quot;);
-741       break;
-742     }
-743 
-744     write_frame_pkt_count++;
-745 
-746     // Set packet duration in codec time base (duration of one frame at target FPS)
-747     // This ensures proper stream duration calculation
-748     if (enc-&gt;pkt-&gt;duration == 0) {
-749       enc-&gt;pkt-&gt;duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
-750     }
-751 
-752     av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;codec_ctx-&gt;time_base, enc-&gt;stream-&gt;time_base);
-753     enc-&gt;pkt-&gt;stream_index = enc-&gt;stream-&gt;index;
-754 
-755     // In snapshot mode, apply adjusted duration if snapshot_actual_duration is set
-756     // This happens when we get the actual duration from the capture thread
-757     bool is_snapshot_mode = GET_OPTION(snapshot_mode);
-758     if (is_snapshot_mode &amp;&amp; enc-&gt;snapshot_actual_duration &gt; 0 &amp;&amp; enc-&gt;frame_count &gt; 0) {
-759       int64_t adjusted_dur = (int64_t)((enc-&gt;snapshot_actual_duration * enc-&gt;stream-&gt;time_base.den) / enc-&gt;frame_count);
-760       // Only apply if it's significantly different from the default
-761       if (adjusted_dur &gt; enc-&gt;pkt-&gt;duration * 2) {
-762         enc-&gt;pkt-&gt;duration = adjusted_dur;
-763         log_debug(&quot;ffmpeg: write_frame packet %d duration adjusted to %lld units based on actual duration&quot;,
-764                   write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration);
-765       }
-766     } else if (!is_snapshot_mode &amp;&amp; write_frame_pkt_count &lt; 3) {
-767       log_debug(&quot;ffmpeg: write_frame pkt %d, duration=%lld, snapshot_mode=%d, actual_dur=%.2f, frame_count=%d&quot;,
-768                 write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration, is_snapshot_mode, enc-&gt;snapshot_actual_duration,
-769                 enc-&gt;frame_count);
-770     }
-771 
-772     if (write_frame_pkt_count &lt;= 2 || write_frame_pkt_count &gt;= 16) {
-773       log_debug(&quot;ffmpeg: write_frame pkt %d with final duration=%lld (%.6f sec in stream time_base), total frames=%d&quot;,
-774                 write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration,
-775                 (double)enc-&gt;pkt-&gt;duration / enc-&gt;stream-&gt;time_base.den, enc-&gt;frame_count);
-776     }
-777 
-778     ret = av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
-779     av_packet_unref(enc-&gt;pkt);
-780     if (ret &lt; 0) {
-781       log_warn_every(5 * 1000000000LL, &quot;ffmpeg: av_interleaved_write_frame failed&quot;);
-782       break;
+682   enc-&gt;frame_encoded-&gt;duration = frame_duration;
+683 
+684   // Track this frame's capture timestamp for duration calculation of next frame
+685   if (snapshot_mode) {
+686     uint64_t frame_dur_ms = (enc-&gt;previous_captured_ns &gt; 0) ? (captured_ns - enc-&gt;previous_captured_ns) / 1000000 : 0;
+687     if (enc-&gt;frame_count &lt;= 2) {
+688       log_info(&quot;ffmpeg: frame %d SET duration=%lld units (%.3fms since last, codec_base=1/%d)&quot;,
+689                enc-&gt;frame_count, (long long)frame_duration, (double)frame_dur_ms,
+690                enc-&gt;codec_ctx-&gt;time_base.den);
+691     }
+692     enc-&gt;previous_captured_ns = captured_ns;
+693   }
+694 
+695   // Calculate PTS from actual capture timestamp
+696   // time_base is {1, fps}, so 1 PTS unit = 1/fps seconds
+697   // Convert elapsed nanoseconds to PTS units: elapsed_ns * fps / 1_000_000_000
+698   uint64_t elapsed_ns = captured_ns - enc-&gt;first_frame_captured_ns;
+699   int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc-&gt;fps) / 1000000000ULL);
+700 
+701   // In snapshot mode, distribute frames linearly across the actual duration
+702   if (snapshot_mode) {
+703     extern uint64_t g_snapshot_actual_duration_ms;
+704     extern uint64_t g_snapshot_last_capture_elapsed_ns;
+705     if (g_snapshot_actual_duration_ms &gt; 0) {
+706       // Distribute frames linearly based on their capture timestamp relative to total duration
+707       // pts = (frame_elapsed_ns / total_elapsed_ns) * actual_duration_sec * fps
+708       // This ensures frame 0 is at 0s and last frame is at actual_duration_sec
+709       double actual_duration_sec = (double)g_snapshot_actual_duration_ms / 1000.0;
+710       double total_elapsed_sec = (double)g_snapshot_last_capture_elapsed_ns / (double)NS_PER_SEC_INT;
+711 
+712       if (total_elapsed_sec &gt; 0.001) {
+713         double frame_fraction = (double)elapsed_ns / (double)g_snapshot_last_capture_elapsed_ns;
+714         double target_pts_sec = frame_fraction * actual_duration_sec;
+715         int64_t pts_before = pts_from_timestamp;
+716         // Convert target seconds to time_base units: pts = target_sec * time_base.den / time_base.num
+717         pts_from_timestamp = (int64_t)(target_pts_sec * (double)enc-&gt;codec_ctx-&gt;time_base.den / (double)enc-&gt;codec_ctx-&gt;time_base.num);
+718 
+719         if (enc-&gt;frame_count &lt; 3 || enc-&gt;frame_count % 10 == 0) {
+720           log_debug(&quot;ffmpeg: snapshot frame %d: PTS distributed (before=%lld, after=%lld, sec=%lld-&gt;%lld, frac=%.3f)&quot;,
+721                     enc-&gt;frame_count, (long long)pts_before, (long long)pts_from_timestamp,
+722                     (long long)((double)pts_before * enc-&gt;codec_ctx-&gt;time_base.num / enc-&gt;codec_ctx-&gt;time_base.den),
+723                     (long long)target_pts_sec, frame_fraction);
+724         }
+725       }
+726     }
+727   }
+728 
+729   // Use timestamp-based (or scaled) PTS
+730   enc-&gt;frame_encoded-&gt;pts = pts_from_timestamp;
+731   enc-&gt;video_pts += frame_duration;
+732 
+733   if (!snapshot_mode) {
+734     log_debug(&quot;ffmpeg_encoder_write_frame: PTS calculation - elapsed_ns=%llu, pts_from_timestamp=%lld, fps=%d&quot;,
+735               (unsigned long long)elapsed_ns, (long long)pts_from_timestamp, enc-&gt;fps);
+736   }
+737 
+738   // Send frame to encoder
+739   int ret = avcodec_send_frame(enc-&gt;codec_ctx, enc-&gt;frame_encoded);
+740   if (ret &lt; 0) {
+741     log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_send_frame failed&quot;);
+742     return ASCIICHAT_OK; // Continue anyway
+743   }
+744 
+745   // Receive packets from encoder and write to file
+746   static int write_frame_pkt_count = 0;
+747 
+748   while (ret &gt;= 0) {
+749     ret = avcodec_receive_packet(enc-&gt;codec_ctx, enc-&gt;pkt);
+750     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+751       break;
+752     if (ret &lt; 0) {
+753       log_warn_every(5 * 1000000000LL, &quot;ffmpeg: avcodec_receive_packet failed&quot;);
+754       break;
+755     }
+756 
+757     write_frame_pkt_count++;
+758 
+759     // Set packet duration in codec time base (duration of one frame at target FPS)
+760     // This ensures proper stream duration calculation
+761     if (enc-&gt;pkt-&gt;duration == 0) {
+762       enc-&gt;pkt-&gt;duration = enc-&gt;codec_ctx-&gt;time_base.den / (enc-&gt;codec_ctx-&gt;time_base.num * enc-&gt;fps);
+763     }
+764 
+765     av_packet_rescale_ts(enc-&gt;pkt, enc-&gt;codec_ctx-&gt;time_base, enc-&gt;stream-&gt;time_base);
+766     enc-&gt;pkt-&gt;stream_index = enc-&gt;stream-&gt;index;
+767 
+768     // In snapshot mode, apply adjusted duration if snapshot_actual_duration is set
+769     // This happens when we get the actual duration from the capture thread
+770     bool is_snapshot_mode = GET_OPTION(snapshot_mode);
+771     if (is_snapshot_mode &amp;&amp; enc-&gt;snapshot_actual_duration &gt; 0 &amp;&amp; enc-&gt;frame_count &gt; 0) {
+772       int64_t adjusted_dur = (int64_t)((enc-&gt;snapshot_actual_duration * enc-&gt;stream-&gt;time_base.den) / enc-&gt;frame_count);
+773       // Only apply if it's significantly different from the default
+774       if (adjusted_dur &gt; enc-&gt;pkt-&gt;duration * 2) {
+775         enc-&gt;pkt-&gt;duration = adjusted_dur;
+776         log_debug(&quot;ffmpeg: write_frame packet %d duration adjusted to %lld units based on actual duration&quot;,
+777                   write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration);
+778       }
+779     } else if (!is_snapshot_mode &amp;&amp; write_frame_pkt_count &lt; 3) {
+780       log_debug(&quot;ffmpeg: write_frame pkt %d, duration=%lld, snapshot_mode=%d, actual_dur=%.2f, frame_count=%d&quot;,
+781                 write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration, is_snapshot_mode, enc-&gt;snapshot_actual_duration,
+782                 enc-&gt;frame_count);
 783     }
 784 
-785     // Flush output buffer for stdout to ensure frames are written immediately
-786     if (enc-&gt;is_stdout_pipe) {
-787       avio_flush(enc-&gt;fmt_ctx-&gt;pb);
-788     }
-789   }
+785     if (write_frame_pkt_count &lt;= 2 || write_frame_pkt_count &gt;= 16) {
+786       log_debug(&quot;ffmpeg: write_frame pkt %d with final duration=%lld (%.6f sec in stream time_base), total frames=%d&quot;,
+787                 write_frame_pkt_count, (long long)enc-&gt;pkt-&gt;duration,
+788                 (double)enc-&gt;pkt-&gt;duration / enc-&gt;stream-&gt;time_base.den, enc-&gt;frame_count);
+789     }
 790 
-791   enc-&gt;frame_count++;
-792   return ASCIICHAT_OK;
-793 }</pre>
+791     ret = av_interleaved_write_frame(enc-&gt;fmt_ctx, enc-&gt;pkt);
+792     av_packet_unref(enc-&gt;pkt);
+793     if (ret &lt; 0) {
+794       log_warn_every(5 * 1000000000LL, &quot;ffmpeg: av_interleaved_write_frame failed&quot;);
+795       break;
+796     }
+797 
+798     // Flush output buffer for stdout to ensure frames are written immediately
+799     if (enc-&gt;is_stdout_pipe) {
+800       avio_flush(enc-&gt;fmt_ctx-&gt;pb);
+801     }
+802   }
+803 
+804   enc-&gt;frame_count++;
+805   return ASCIICHAT_OK;
+806 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,

@@ -27,6 +27,6 @@
  * - Linux/macOS: "${INSTALL_PREFIX}/etc/ascii-chat/config.toml"
  * - Windows: "${INSTALL_PREFIX}\\etc\\ascii-chat\\config.toml"
  */
-#define ASCIICHAT_INSTALL_PREFIX "C:/Program Files (x86)/ascii-chat"
+#define ASCIICHAT_INSTALL_PREFIX "/usr/local"
 
 #endif /* ASCIICHAT_PATHS_H */
