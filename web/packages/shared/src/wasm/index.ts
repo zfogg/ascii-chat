@@ -8,7 +8,7 @@ export {
   ColorMode,
   ColorFilter,
 } from "./mirror";
-export type { Palette, EmscriptenModuleFactory } from "./mirror";
+export type { Palette, EmscriptenModuleFactory, MirrorModule } from "./mirror";
 export { createOptionAccessor } from "./common/optionsWrapper";
 export type { WasmModule, OptionAccessor } from "./common/optionsWrapper";
 export {

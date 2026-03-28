@@ -30,7 +30,10 @@ export function useMirrorRenderLoop({
   useEffect(() => {
     const effectStartTime = performance.now();
     console.log(
-      `[Mirror] Render loop effect triggered at ${effectStartTime.toFixed(0)}ms: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions.cols}x${terminalDimensions.rows}`,
+      `[Mirror] *** RENDER LOOP EFFECT BODY START at ${effectStartTime.toFixed(0)}ms ***`,
+    );
+    console.log(
+      `[Mirror] Dependencies: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions.cols}x${terminalDimensions.rows}, captureFrame=${!!captureFrame}`,
     );
 
     if (!isWebcamRunning) {
@@ -63,12 +66,21 @@ export function useMirrorRenderLoop({
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
         if (debugCountRef.current === 0) {
-          console.log("[Mirror] renderFrame early return:", {
-            wasmReady: isWasmReady(),
-            hasRenderer: !!rendererRef.current,
-          });
+          console.log(
+            "[Mirror] renderFrame EARLY RETURN at ${performance.now().toFixed(0)}ms:",
+            {
+              wasmReady: isWasmReady(),
+              hasRenderer: !!rendererRef.current,
+            },
+          );
         }
         return;
+      }
+
+      if (debugCountRef.current === 0) {
+        console.log(
+          `[Mirror] renderFrame EXECUTING for first time at ${performance.now().toFixed(0)}ms`,
+        );
       }
 
       const now = performance.now();
@@ -178,14 +190,32 @@ export function useMirrorRenderLoop({
       debugCountRef.current++;
     };
 
+    let rafCallCount = 0;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
+      rafCallCount++;
+      if (rafCallCount === 1) {
+        console.log(
+          `[Mirror] !!! FIRST RAF CALLBACK FIRED at ${performance.now().toFixed(0)}ms (time=${time.toFixed(0)}, scheduled=${rafScheduleTime.toFixed(0)}, gap=${(performance.now() - rafScheduleTime).toFixed(0)}ms)`,
+        );
+      }
       try {
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
 
         if (elapsed >= interval) {
           lastFrameTime = time;
+          if (rafCallCount <= 3) {
+            console.log(
+              `[Mirror] RAF callback #${rafCallCount}: elapsed=${elapsed.toFixed(1)}ms >= interval=${interval.toFixed(1)}ms, calling renderFrame at ${performance.now().toFixed(0)}ms`,
+            );
+          }
           renderFrame();
+        } else {
+          if (rafCallCount <= 3) {
+            console.log(
+              `[Mirror] RAF callback #${rafCallCount}: elapsed=${elapsed.toFixed(1)}ms < interval=${interval.toFixed(1)}ms, skipping renderFrame`,
+            );
+          }
         }
 
         requestAnimationFrame(animationFrameRef);
@@ -195,9 +225,25 @@ export function useMirrorRenderLoop({
     };
 
     lastFrameTime = performance.now();
+    const rafScheduleTime = performance.now();
+    console.log(
+      `[Mirror] >>> RAF SCHEDULED at ${rafScheduleTime.toFixed(0)}ms`,
+    );
     const rafHandle = requestAnimationFrame(animationFrameRef);
+    console.log(
+      `[Mirror] >>> RAF handle=${rafHandle} returned at ${performance.now().toFixed(0)}ms`,
+    );
 
-    return () => cancelAnimationFrame(rafHandle);
+    return () => {
+      const cleanupTime = performance.now();
+      console.log(
+        `[Mirror] !!! CLEANUP: Cancelling RAF handle=${rafHandle} at ${cleanupTime.toFixed(0)}ms (was scheduled ${(cleanupTime - rafScheduleTime).toFixed(1)}ms ago)`,
+      );
+      cancelAnimationFrame(rafHandle);
+      console.log(
+        `[Mirror] !!! CLEANUP: cancelAnimationFrame returned at ${performance.now().toFixed(0)}ms`,
+      );
+    };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isWebcamRunning, captureFrame, terminalDimensions]);
 }

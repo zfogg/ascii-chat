@@ -45,7 +45,8 @@ interface MirrorModuleExports {
   _free(ptr: number): void;
 }
 
-interface MirrorModule extends WasmModule {
+export interface MirrorModule extends WasmModule {
+  canvas?: HTMLCanvasElement;
   _mirror_init_with_args?: MirrorModuleExports["_mirror_init_with_args"];
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];

@@ -5,7 +5,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import { getMirrorModule } from "@ascii-chat/shared/wasm";
+import { getMirrorModule, type MirrorModule } from "@ascii-chat/shared/wasm";
 
 export interface AsciiRendererHandle {
   writeFrame(ansiString: string): void;
@@ -48,7 +48,7 @@ export const AsciiRenderer = forwardRef<
     previousWasmReadyRef.current = wasmModuleReady;
   }
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const moduleRef = useRef<any>(null);
+  const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const firstRenderDoneRef = useRef(false);
@@ -147,7 +147,7 @@ export const AsciiRenderer = forwardRef<
           console.log(
             `[AsciiRenderer initRenderer] Calling _ascii_renderer_init(${width}, ${height}) at ${initCallTime.toFixed(0)}ms`,
           );
-          moduleRef.current._ascii_renderer_init(width, height);
+          moduleRef.current!._ascii_renderer_init(width, height);
           console.log(
             `[AsciiRenderer initRenderer] _ascii_renderer_init returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - initCallTime).toFixed(1)}ms)`,
           );
@@ -161,8 +161,8 @@ export const AsciiRenderer = forwardRef<
         );
 
         const getDimsStart = performance.now();
-        const cols = moduleRef.current._ascii_renderer_get_cols();
-        const rows = moduleRef.current._ascii_renderer_get_rows();
+        const cols = moduleRef.current!._ascii_renderer_get_cols();
+        const rows = moduleRef.current!._ascii_renderer_get_rows();
 
         console.log(
           `[AsciiRenderer initRenderer] Got dimensions at ${performance.now().toFixed(0)}ms: ${cols}x${rows} (took ${(performance.now() - getDimsStart).toFixed(1)}ms)`,
@@ -264,7 +264,7 @@ export const AsciiRenderer = forwardRef<
         cancelAnimationFrame(rafId);
       }
     };
-  }, [wasmModuleReady]);
+  }, [wasmModuleReady, updateDimensions]);
 
   // Handle canvas resizes
   useEffect(() => {
@@ -282,7 +282,7 @@ export const AsciiRenderer = forwardRef<
         return;
       }
 
-      if (firstRenderDoneRef.current) {
+      if (firstRenderDoneRef.current && moduleRef.current) {
         moduleRef.current._ascii_renderer_resize(width, height);
         const cols = moduleRef.current._ascii_renderer_get_cols();
         const rows = moduleRef.current._ascii_renderer_get_rows();

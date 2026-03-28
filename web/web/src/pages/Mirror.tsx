@@ -221,7 +221,7 @@ export function MirrorPage() {
         );
       }
     }
-  }, [wasmInitialized]);
+  }, [wasmInitialized, wasmModule]);
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {

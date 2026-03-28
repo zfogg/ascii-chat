@@ -19,11 +19,14 @@ export function useCanvasCapture(
     width: number;
     height: number;
   } | null => {
+    const capStartTime = performance.now();
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
     if (!video || !canvas) {
-      console.warn("[useCanvasCapture] Video or canvas not ready");
+      console.warn(
+        `[useCanvasCapture] captureFrame at ${capStartTime.toFixed(0)}ms: Video or canvas not ready (video=${!!video}, canvas=${!!canvas})`,
+      );
       return null;
     }
 
@@ -89,6 +92,10 @@ export function useCanvasCapture(
         );
         return null;
       }
+
+      console.log(
+        `[useCanvasCapture] captureFrame SUCCESS at ${performance.now().toFixed(0)}ms: returning ${canvas.width}x${canvas.height} frame (took ${(performance.now() - capStartTime).toFixed(1)}ms)`,
+      );
 
       return {
         data: rgbaData,
