@@ -416,8 +416,22 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_alloc_output_context2 failed");
   }
 
-  // Find encoder
+  // Find encoder (with fallback for FFmpeg builds without libx264)
   const AVCodec *codec = avcodec_find_encoder_by_name(codec_name);
+  if (!codec && strcmp(codec_name, "libx264") == 0) {
+    // libx264 not available - try built-in H.264 encoders
+    static const char *h264_fallbacks[] = {"libopenh264", "h264_mf", NULL};
+    for (int i = 0; h264_fallbacks[i] && !codec; i++) {
+      codec = avcodec_find_encoder_by_name(h264_fallbacks[i]);
+    }
+    if (!codec) {
+      // Last resort: ask FFmpeg for any H.264 encoder
+      codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+    }
+    if (codec) {
+      log_info("ffmpeg: using fallback H.264 encoder '%s' (libx264 not available)", codec->name);
+    }
+  }
   if (!codec) {
     avformat_free_context(enc->fmt_ctx);
     SAFE_FREE(enc);
