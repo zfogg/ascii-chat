@@ -4,8 +4,9 @@
 # Finds and configures zstd compression library using CMake's find_package()
 #
 # Platform-specific dependency management:
+#   - WASM/Emscripten: Built from source with CMake
 #   - iOS: Built from source with iOS cross-compilation
-#   - musl: Built from source in this file with USE_MUSL check
+#   - musl: Built from source with musl toolchain
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
@@ -14,7 +15,44 @@
 #   - ZSTD_FOUND - Whether zstd was found/configured
 #   - ZSTD_LIBRARIES - Library paths
 #   - ZSTD_INCLUDE_DIRS - Include directories
+#   - FETCHCONTENT_BASE_DIR: Shared source cache directory
 # =============================================================================
+
+include(FetchContent)
+
+# Shared source URL for all builds
+FetchContent_Declare(zstd-src
+    URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+    URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-src"
+    UPDATE_DISCONNECTED ON
+)
+
+# =============================================================================
+# WASM: Build from source with Emscripten CMake
+# =============================================================================
+if(DEFINED EMSCRIPTEN)
+    message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (WASM)...")
+
+    FetchContent_Declare(zstd-wasm
+        URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+        URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-wasm-src"
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+                   -DZSTD_BUILD_TESTS=OFF
+                   -DZSTD_BUILD_PROGRAMS=OFF
+    )
+
+    FetchContent_MakeAvailable(zstd-wasm)
+    set(ZSTD_LIBRARIES zstd)
+    set(ZSTD_INCLUDE_DIRS "${zstd-wasm_SOURCE_DIR}/lib")
+    set(ZSTD_FOUND TRUE)
+
+    message(STATUS "${BoldGreen}✓${ColorReset} zstd (WASM): ${BoldCyan}zstd${ColorReset}")
+    return()
+endif()
 
 # =============================================================================
 # iOS: Build from source

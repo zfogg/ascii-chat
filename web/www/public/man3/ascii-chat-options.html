@@ -1305,17 +1305,17 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Zero-initialized fields are returned if options pointer is somehow
     NULL</p>
 </div>
-<p class="Pp">Definition at line <b>1243</b> of file
+<p class="Pp">Definition at line <b>1237</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>1243 #define GET_OPTION(field)                                                                                              \
-1244   ({                                                                                                                   \
-1245     const options_t *_opts = options_get();                                                                            \
-1246     if (!_opts) {                                                                                                      \
-1247       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
-1248     }                                                                                                                  \
-1249     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
-1250     (_opts ? (_opts-&gt;field) : _default);                                                                               \
-1251   })</pre>
+<pre>1237 #define GET_OPTION(field)                                                                                              \
+1238   ({                                                                                                                   \
+1239     const options_t *_opts = options_get();                                                                            \
+1240     if (!_opts) {                                                                                                      \
+1241       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
+1242     }                                                                                                                  \
+1243     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
+1244     (_opts ? (_opts-&gt;field) : _default);                                                                               \
+1245   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>, <b>add_client()</b>,
@@ -2164,7 +2164,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FILE_DEFAULT ''</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>770</b> of file
+<p class="Pp">Definition at line <b>769</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2172,7 +2172,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FONT_DEFAULT ''</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>772</b> of file
+<p class="Pp">Definition at line <b>771</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2180,7 +2180,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FONT_SIZE_DEFAULT 12.0</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>773</b> of file
+<p class="Pp">Definition at line <b>772</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2199,7 +2199,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_THEME_DEFAULT 0</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>771</b> of file
+<p class="Pp">Definition at line <b>770</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2620,7 +2620,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   | <b>OPTION_MODE_DISCOVERY</b>)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>951</b> of file
+<p class="Pp">Definition at line <b>947</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
@@ -2630,10 +2630,10 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   <b>OPTION_MODE_DISCOVERY_SVC</b> | <b>OPTION_MODE_DISCOVERY</b>)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>952</b> of file
+<p class="Pp">Definition at line <b>948</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>952 #define OPTION_MODE_NETWORKED                                                                                          \
-953   (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)</pre>
+<pre>948 #define OPTION_MODE_NETWORKED                                                                                          \
+949   (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -2646,7 +2646,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Mode group macros for examples. These macros combine multiple mode
     bits to allow examples to apply to logical groups of modes (e.g.,
     server-like modes, client-like modes).</p>
-<p class="Pp">Definition at line <b>950</b> of file
+<p class="Pp">Definition at line <b>946</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
@@ -2712,16 +2712,16 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     </i></b></a></dt>
   <dd>Invalid mode.</dd>
 </dl>
-<p class="Pp">Definition at line <b>918</b> of file
+<p class="Pp">Definition at line <b>914</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>918              {
-919   MODE_SERVER,            
-920   MODE_CLIENT,            
-921   MODE_MIRROR,            
-922   MODE_DISCOVERY_SERVICE, 
-923   MODE_DISCOVERY,         
-924   MODE_INVALID            
-925 } asciichat_mode_t;</pre>
+<pre>914              {
+915   MODE_SERVER,            
+916   MODE_CLIENT,            
+917   MODE_MIRROR,            
+918   MODE_DISCOVERY_SERVICE, 
+919   MODE_DISCOVERY,         
+920   MODE_INVALID            
+921 } asciichat_mode_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -2927,18 +2927,18 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     </i></b></a></dt>
   <dd>All modes + binary.</dd>
 </dl>
-<p class="Pp">Definition at line <b>933</b> of file
+<p class="Pp">Definition at line <b>929</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>933              {
-934   OPTION_MODE_NONE = 0,                                      
-935   OPTION_MODE_SERVER = (1 &lt;&lt; MODE_SERVER),                   
-936   OPTION_MODE_CLIENT = (1 &lt;&lt; MODE_CLIENT),                   
-937   OPTION_MODE_MIRROR = (1 &lt;&lt; MODE_MIRROR),                   
-938   OPTION_MODE_DISCOVERY_SVC = (1 &lt;&lt; MODE_DISCOVERY_SERVICE), 
-939   OPTION_MODE_DISCOVERY = (1 &lt;&lt; MODE_DISCOVERY),             
-940   OPTION_MODE_BINARY = 0x100,                                
-941   OPTION_MODE_ALL = 0x1F | 0x100                             
-942 } option_mode_bitmask_t;</pre>
+<pre>929              {
+930   OPTION_MODE_NONE = 0,                                      
+931   OPTION_MODE_SERVER = (1 &lt;&lt; MODE_SERVER),                   
+932   OPTION_MODE_CLIENT = (1 &lt;&lt; MODE_CLIENT),                   
+933   OPTION_MODE_MIRROR = (1 &lt;&lt; MODE_MIRROR),                   
+934   OPTION_MODE_DISCOVERY_SVC = (1 &lt;&lt; MODE_DISCOVERY_SERVICE), 
+935   OPTION_MODE_DISCOVERY = (1 &lt;&lt; MODE_DISCOVERY),             
+936   OPTION_MODE_BINARY = 0x100,                                
+937   OPTION_MODE_ALL = 0x1F | 0x100                             
+938 } option_mode_bitmask_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

@@ -172,12 +172,13 @@
 242     /* Free pattern string */
 243     SAFE_FREE(current-&gt;pattern);
 244 
-245     /* Free singleton structure */
-246     SAFE_FREE(current);
-247 
-248     current = next;
-249   }
-250 }</pre>
+245     /* Do not free the singleton struct itself - static pointers in other
+246      * modules (path.c, url.c, etc.) may still reference it during late
+247      * shutdown logging. The struct is tiny and harmless to leak at exit. */
+248 
+249     current = next;
+250   }
+251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
@@ -216,34 +217,34 @@ if (foundation) {
   SAFE_FREE(foundation);
 }
 </pre>
-<p class="Pp">Definition at line <b>303</b> of file <b>pcre2.c</b>.</p>
-<pre>303                                                                                                       {
-304   if (!match_data || !subject || group_num &lt; 0) {
-305     return NULL;
-306   }
-307 
-308   /* Get ovector (output vector with match offsets) */
-309   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-310   PCRE2_SIZE start = ovector[2 * group_num];
-311   PCRE2_SIZE end = ovector[2 * group_num + 1];
-312 
-313   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-314     return NULL; /* Group not matched */
-315   }
-316 
-317   /* Allocate and copy substring */
-318   size_t len = end - start;
-319   char *result = SAFE_MALLOC(len + 1, char *);
-320   if (!result) {
-321     log_error(&quot;asciichat_pcre2_extract_group: failed to allocate %zu bytes&quot;, len + 1);
-322     return NULL;
-323   }
-324 
-325   memcpy(result, subject + start, len);
-326   result[len] = '\0';
-327 
-328   return result;
-329 }</pre>
+<p class="Pp">Definition at line <b>304</b> of file <b>pcre2.c</b>.</p>
+<pre>304                                                                                                       {
+305   if (!match_data || !subject || group_num &lt; 0) {
+306     return NULL;
+307   }
+308 
+309   /* Get ovector (output vector with match offsets) */
+310   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+311   PCRE2_SIZE start = ovector[2 * group_num];
+312   PCRE2_SIZE end = ovector[2 * group_num + 1];
+313 
+314   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+315     return NULL; /* Group not matched */
+316   }
+317 
+318   /* Allocate and copy substring */
+319   size_t len = end - start;
+320   char *result = SAFE_MALLOC(len + 1, char *);
+321   if (!result) {
+322     log_error(&quot;asciichat_pcre2_extract_group: failed to allocate %zu bytes&quot;, len + 1);
+323     return NULL;
+324   }
+325 
+326   memcpy(result, subject + start, len);
+327   result[len] = '\0';
+328 
+329   return result;
+330 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, and <b>SAFE_MALLOC</b>.</p>
@@ -278,24 +279,24 @@ if (video_id) {
   printf(&quot;Video ID: %.*s\n&quot;, (int)len, video_id);
 }
 </pre>
-<p class="Pp">Definition at line <b>334</b> of file <b>pcre2.c</b>.</p>
-<pre>335                                                                {
-336   if (!match_data || !subject || !out_len || group_num &lt; 0) {
-337     return NULL;
-338   }
-339 
-340   /* Get ovector (output vector with match offsets) */
-341   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-342   PCRE2_SIZE start = ovector[2 * group_num];
-343   PCRE2_SIZE end = ovector[2 * group_num + 1];
-344 
-345   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-346     return NULL; /* Group not matched */
-347   }
-348 
-349   *out_len = end - start;
-350   return subject + start;
-351 }</pre>
+<p class="Pp">Definition at line <b>335</b> of file <b>pcre2.c</b>.</p>
+<pre>336                                                                {
+337   if (!match_data || !subject || !out_len || group_num &lt; 0) {
+338     return NULL;
+339   }
+340 
+341   /* Get ovector (output vector with match offsets) */
+342   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+343   PCRE2_SIZE start = ovector[2 * group_num];
+344   PCRE2_SIZE end = ovector[2 * group_num + 1];
+345 
+346   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+347     return NULL; /* Group not matched */
+348   }
+349 
+350   *out_len = end - start;
+351   return subject + start;
+352 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
@@ -328,43 +329,43 @@ if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &amp;component_id))
   candidate-&gt;component_id = (uint32_t)component_id;
 }
 </pre>
-<p class="Pp">Definition at line <b>356</b> of file <b>pcre2.c</b>.</p>
-<pre>357                                                                    {
-358   if (!match_data || !subject || !out_value || group_num &lt; 0) {
-359     return false;
-360   }
-361 
-362   /* Get ovector (output vector with match offsets) */
-363   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-364   PCRE2_SIZE start = ovector[2 * group_num];
-365   PCRE2_SIZE end = ovector[2 * group_num + 1];
-366 
-367   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-368     return false; /* Group not matched */
-369   }
-370 
-371   /* Extract substring into temporary buffer */
-372   size_t len = end - start;
-373   if (len == 0 || len &gt; 63) { /* Sanity check for reasonable number length */
-374     return false;
-375   }
-376 
-377   char temp[64];
-378   memcpy(temp, subject + start, len);
-379   temp[len] = '\0';
-380 
-381   /* Parse as unsigned long */
-382   char *endptr;
-383   errno = 0;
-384   unsigned long value = strtoul(temp, &amp;endptr, 10);
-385 
-386   if (errno != 0 || endptr == temp || *endptr != '\0') {
-387     return false; /* Parse failed */
-388   }
-389 
-390   *out_value = value;
-391   return true;
-392 }</pre>
+<p class="Pp">Definition at line <b>357</b> of file <b>pcre2.c</b>.</p>
+<pre>358                                                                    {
+359   if (!match_data || !subject || !out_value || group_num &lt; 0) {
+360     return false;
+361   }
+362 
+363   /* Get ovector (output vector with match offsets) */
+364   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+365   PCRE2_SIZE start = ovector[2 * group_num];
+366   PCRE2_SIZE end = ovector[2 * group_num + 1];
+367 
+368   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+369     return false; /* Group not matched */
+370   }
+371 
+372   /* Extract substring into temporary buffer */
+373   size_t len = end - start;
+374   if (len == 0 || len &gt; 63) { /* Sanity check for reasonable number length */
+375     return false;
+376   }
+377 
+378   char temp[64];
+379   memcpy(temp, subject + start, len);
+380   temp[len] = '\0';
+381 
+382   /* Parse as unsigned long */
+383   char *endptr;
+384   errno = 0;
+385   unsigned long value = strtoul(temp, &amp;endptr, 10);
+386 
+387   if (errno != 0 || endptr == temp || *endptr != '\0') {
+388     return false; /* Parse failed */
+389   }
+390 
+391   *out_value = value;
+392   return true;
+393 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>errno</b>.</p>
@@ -388,41 +389,41 @@ if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &amp;component_id))
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated string containing the matched substring, or
   NULL if group not matched</div>
-<p class="Pp">Definition at line <b>264</b> of file <b>pcre2.c</b>.</p>
-<pre>265                                                                {
-266   if (!regex || !match_data || !group_name || !subject) {
-267     log_error(&quot;pcre2_extract_named_group: invalid parameters&quot;);
-268     return NULL;
-269   }
-270 
-271   /* Get group number from name */
-272   int group_number = pcre2_substring_number_from_name(regex, (PCRE2_SPTR)group_name);
-273   if (group_number &lt; 0) {
-274     return NULL; /* Group doesn't exist */
-275   }
-276 
-277   /* Get ovector (output vector with match offsets) */
-278   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-279   PCRE2_SIZE start = ovector[2 * group_number];
-280   PCRE2_SIZE end = ovector[2 * group_number + 1];
-281 
-282   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-283     return NULL; /* Group not matched */
-284   }
-285 
-286   /* Allocate and copy substring */
-287   size_t len = end - start;
-288   char *result = SAFE_MALLOC(len + 1, char *);
-289   if (!result) {
-290     log_error(&quot;pcre2_extract_named_group: failed to allocate %zu bytes&quot;, len + 1);
-291     return NULL;
-292   }
-293 
-294   memcpy(result, subject + start, len);
-295   result[len] = '\0';
-296 
-297   return result;
-298 }</pre>
+<p class="Pp">Definition at line <b>265</b> of file <b>pcre2.c</b>.</p>
+<pre>266                                                                {
+267   if (!regex || !match_data || !group_name || !subject) {
+268     log_error(&quot;pcre2_extract_named_group: invalid parameters&quot;);
+269     return NULL;
+270   }
+271 
+272   /* Get group number from name */
+273   int group_number = pcre2_substring_number_from_name(regex, (PCRE2_SPTR)group_name);
+274   if (group_number &lt; 0) {
+275     return NULL; /* Group doesn't exist */
+276   }
+277 
+278   /* Get ovector (output vector with match offsets) */
+279   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+280   PCRE2_SIZE start = ovector[2 * group_number];
+281   PCRE2_SIZE end = ovector[2 * group_number + 1];
+282 
+283   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+284     return NULL; /* Group not matched */
+285   }
+286 
+287   /* Allocate and copy substring */
+288   size_t len = end - start;
+289   char *result = SAFE_MALLOC(len + 1, char *);
+290   if (!result) {
+291     log_error(&quot;pcre2_extract_named_group: failed to allocate %zu bytes&quot;, len + 1);
+292     return NULL;
+293   }
+294 
+295   memcpy(result, subject + start, len);
+296   result[len] = '\0';
+297 
+298   return result;
+299 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, and <b>SAFE_MALLOC</b>.</p>
