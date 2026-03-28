@@ -70,19 +70,21 @@ export const AsciiRenderer = forwardRef<
     if (wasmModuleReady) {
       const getModuleStart = performance.now();
       // Lazy-load wasm module to avoid build failures when wasm is not available
-      import("@ascii-chat/shared/wasm").then((wasmModule) => {
-        const module = wasmModule.getMirrorModule();
-        const getModuleEnd = performance.now();
-        console.log(
-          `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
-        );
-        moduleRef.current = module;
-        console.log(
-          `[AsciiRenderer] moduleRef.current set at ${performance.now().toFixed(0)}ms`,
-        );
-      }).catch((err) => {
-        console.error("[AsciiRenderer] Failed to load WASM module:", err);
-      });
+      import("@ascii-chat/shared/wasm")
+        .then((wasmModule) => {
+          const module = wasmModule.getMirrorModule();
+          const getModuleEnd = performance.now();
+          console.log(
+            `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
+          );
+          moduleRef.current = module;
+          console.log(
+            `[AsciiRenderer] moduleRef.current set at ${performance.now().toFixed(0)}ms`,
+          );
+        })
+        .catch((err) => {
+          console.error("[AsciiRenderer] Failed to load WASM module:", err);
+        });
     }
     return () => {
       console.log(
