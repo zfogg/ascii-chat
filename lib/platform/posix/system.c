@@ -317,6 +317,10 @@ int platform_setenv(const char *name, const char *value) {
   return setenv(name, value, 1);
 }
 
+int platform_unsetenv(const char *name) {
+  return unsetenv(name);
+}
+
 // ============================================================================
 // Memory Operations
 // ============================================================================

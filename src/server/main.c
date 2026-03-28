@@ -1226,12 +1226,7 @@ static void *status_screen_thread(void *arg) {
   // Redirect stderr to /dev/null during status screen mode to prevent async logs
   // from other threads from appearing on the terminal and pushing the header off-screen.
   // This ensures the status screen remains the only output visible.
-  int original_stderr = dup(STDERR_FILENO);
-  int devnull = open("/dev/null", O_WRONLY);
-  if (devnull >= 0) {
-    dup2(devnull, STDERR_FILENO);
-    close(devnull);
-  }
+  platform_stderr_redirect_handle_t stderr_redirect = platform_stderr_redirect_to_null();
 
   // Register keyboard atomics with named debug registry
   static bool keyboard_atomics_registered = false;
@@ -1344,10 +1339,7 @@ static void *status_screen_thread(void *arg) {
   }
 
   // Restore stderr before exiting
-  if (original_stderr >= 0) {
-    dup2(original_stderr, STDERR_FILENO);
-    close(original_stderr);
-  }
+  platform_stderr_restore(stderr_redirect);
 
   log_debug("Status screen thread exiting");
   return NULL;

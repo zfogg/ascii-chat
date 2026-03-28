@@ -129,11 +129,7 @@ bool env_pop_prompt_response(char *response_out, size_t response_size) {
     unescape_response(response_out);
 
     // Clear the environment variable
-#ifdef _WIN32
-    _putenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE=");
-#else
-    unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
-#endif
+    platform_unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
 
     log_dev("Popped last response from stack: '%s' (cleared env)", response_out);
     return true;
@@ -181,24 +177,15 @@ bool env_pop_prompt_response(char *response_out, size_t response_size) {
       return false;
     }
 
-#ifdef _WIN32
-    _putenv(new_env);
-#else
-    // For POSIX, we need to use setenv
-    if (setenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", remaining, 1) != 0) {
+    if (platform_setenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", remaining) != 0) {
       log_warn("Failed to update ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
       return false;
     }
-#endif
 
     log_debug("Popped response from stack: '%s' (remaining: '%s')", response_out, remaining);
   } else {
     // No valid remaining responses - clear the env
-#ifdef _WIN32
-    _putenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE=");
-#else
-    unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
-#endif
+    platform_unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
 
     log_debug("Popped response from stack: '%s' (cleared env)", response_out);
   }

@@ -345,6 +345,14 @@ const char *platform_getenv(const char *name);
  */
 int platform_setenv(const char *name, const char *value);
 
+/**
+ * @brief Remove an environment variable
+ * @param name Variable name to unset
+ * @return 0 on success, -1 on failure
+ * @ingroup platform_system
+ */
+int platform_unsetenv(const char *name);
+
 // ============================================================================
 // Stream Redirection
 // ============================================================================

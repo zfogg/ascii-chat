@@ -373,6 +373,9 @@ int platform_setenv(const char *name, const char *value) {
   return _putenv_s(name, value);
 }
 
+int platform_unsetenv(const char *name) {
+  return _putenv_s(name, "");
+}
 
 // ============================================================================
 // Crash Handling
