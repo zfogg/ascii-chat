@@ -705,11 +705,19 @@ void log_destroy(void) {
  * Safe to call multiple times (idempotent).
  */
 void log_system_init(void) {
+  js_debug_log("log_system_init: START");
+
   // Detect terminal capabilities if not already done
+  js_debug_log("log_system_init: before log_redetect_terminal_capabilities");
   log_redetect_terminal_capabilities();
+  js_debug_log("log_system_init: after log_redetect_terminal_capabilities");
 
   // Initialize color scheme based on terminal capabilities
+  js_debug_log("log_system_init: before log_init_colors");
   log_init_colors();
+  js_debug_log("log_system_init: after log_init_colors");
+
+  js_debug_log("log_system_init: COMPLETE");
 }
 
 /**
@@ -1663,19 +1671,29 @@ static void init_terminal_capabilities(void) {
 
 /* Re-detect terminal capabilities after logging is initialized */
 void log_redetect_terminal_capabilities(void) {
+  js_debug_log("log_redetect_terminal_capabilities: entry");
+
   // Guard against recursion
   if (g_log.terminal_caps_detecting) {
+    js_debug_log("log_redetect_terminal_capabilities: already detecting, returning");
     return;
   }
+
+  js_debug_log("log_redetect_terminal_capabilities: checking if needs detection");
 
   // Detect if not initialized, or if we're using defaults (not reliably detected)
   // This ensures we get proper detection after logging is ready, replacing any defaults
   // Once we have reliable detection, never re-detect to keep colors consistent
   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
+    js_debug_log("log_redetect_terminal_capabilities: starting detection");
     g_log.terminal_caps_detecting = true;
+    js_debug_log("log_redetect_terminal_capabilities: before detect_terminal_capabilities");
     g_log.terminal_caps = detect_terminal_capabilities();
+    js_debug_log("log_redetect_terminal_capabilities: after detect_terminal_capabilities");
     g_log.terminal_caps_detecting = false;
     g_log.terminal_caps_initialized = true;
+
+    js_debug_log("log_redetect_terminal_capabilities: detection complete");
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
     log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
@@ -1683,7 +1701,10 @@ void log_redetect_terminal_capabilities(void) {
               g_log.terminal_caps.utf8_support ? "yes" : "no", g_log.terminal_caps.desired_fps);
 
     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
+  } else {
+    js_debug_log("log_redetect_terminal_capabilities: already initialized, skipping");
   }
+  js_debug_log("log_redetect_terminal_capabilities: exit");
   // Once initialized with reliable detection, never re-detect to keep colors consistent
 }
 
@@ -1730,53 +1751,79 @@ const char *log_level_color(log_color_t color) {
  * ============================================================================ */
 
 void log_init_colors(void) {
+  js_debug_log("log_init_colors: entry");
+
   /* Skip color initialization during terminal detection to avoid mutex deadlock */
   if (g_log.terminal_caps_detecting) {
+    js_debug_log("log_init_colors: skipping, terminal detection in progress");
     return;
   }
+
+  js_debug_log("log_init_colors: not detecting, checking lifecycle");
 
   /* Skip color initialization before logging is fully initialized */
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
+    js_debug_log("log_init_colors: skipping, lifecycle not initialized");
     return;
   }
 
+  js_debug_log("log_init_colors: lifecycle ok, checking if already initialized");
+
   if (g_log.log_colorscheme_initialized) {
+    js_debug_log("log_init_colors: already initialized, returning");
     return;
   }
+
+  js_debug_log("log_init_colors: getting active color scheme");
 
   /* Get active color scheme - this ensures color system is initialized */
   const color_scheme_t *scheme = colorscheme_get_active_scheme();
   if (!scheme) {
+    js_debug_log("log_init_colors: no color scheme available");
     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
     return;
   }
 
+  js_debug_log("log_init_colors: got color scheme, acquiring mutex");
+
   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
   mutex_lock(&g_colorscheme_mutex);
+  js_debug_log("log_init_colors: mutex acquired");
+
   /* Debug: Check if g_log.compiled_colors is actually zero-initialized */
   /* Zero the structure on first use to avoid freeing garbage pointers */
   /* (static = {0} produces garbage in this build for unknown reasons) */
   static bool first_compile = true;
   if (first_compile) {
+    js_debug_log("log_init_colors: zeroing compiled_colors");
     memset(&g_log.compiled_colors, 0, sizeof(g_log.compiled_colors));
     first_compile = false;
   }
 
   /* Detect terminal background */
+  js_debug_log("log_init_colors: detecting terminal background");
   terminal_background_t background = detect_terminal_background();
+  js_debug_log("log_init_colors: background detected");
   /* Determine color mode for compilation */
   terminal_color_mode_t mode;
   if (g_log.terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
     mode = TERM_COLOR_TRUECOLOR;
+    js_debug_log("log_init_colors: using TRUECOLOR mode");
   } else if (g_log.terminal_caps.color_level >= TERM_COLOR_256) {
     mode = TERM_COLOR_256;
+    js_debug_log("log_init_colors: using 256 color mode");
   } else {
     mode = TERM_COLOR_16;
+    js_debug_log("log_init_colors: using 16 color mode");
   }
   /* Compile the color scheme to ANSI codes */
+  js_debug_log("log_init_colors: before colorscheme_compile_scheme");
   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_log.compiled_colors);
+  js_debug_log("log_init_colors: after colorscheme_compile_scheme");
   g_log.log_colorscheme_initialized = true;
+  js_debug_log("log_init_colors: before mutex_unlock");
   mutex_unlock(&g_colorscheme_mutex);
+  js_debug_log("log_init_colors: after mutex_unlock");
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
   if (result != ASCIICHAT_OK) {

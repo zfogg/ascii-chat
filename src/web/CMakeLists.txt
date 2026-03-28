@@ -50,10 +50,11 @@ else()
     )
 endif()
 
-set(Sodium_CMAKE_ARGS ${FetchContent_Toolchain_Args})
-set(pcre2_CMAKE_ARGS ${FetchContent_Toolchain_Args})
-set(Opus_CMAKE_ARGS ${FetchContent_Toolchain_Args})
-set(zstd_CMAKE_ARGS ${FetchContent_Toolchain_Args})
+set(Sodium_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${SODIUM_PREFIX})
+set(pcre2_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${PCRE2_PREFIX})
+set(Opus_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${OPUS_PREFIX})
+set(zstd_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${ZSTD_PREFIX})
+set(raylib_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${RAYLIB_PREFIX})
 
 # Suppress verbose configure output from dependency builds
 set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
@@ -77,7 +78,7 @@ set(ZSTD_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 
 if(BUILD_WEB)
-    # libsodium (with toolchain args)
+    # libsodium - skip rebuild if cached
     FetchContent_Declare(Sodium
         GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
         GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
@@ -85,9 +86,24 @@ if(BUILD_WEB)
         CMAKE_ARGS ${Sodium_CMAKE_ARGS}
     )
     set(SODIUM_DISABLE_TESTS ON)
-    FetchContent_MakeAvailable(Sodium)
+    FetchContent_GetProperties(Sodium)
+    if(NOT Sodium_POPULATED)
+        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+            FetchContent_MakeAvailable(Sodium)
+        else()
+            message(STATUS "Using cached Sodium: ${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+            set(Sodium_POPULATED TRUE)
+            if(NOT TARGET sodium)
+                add_library(sodium STATIC IMPORTED GLOBAL)
+                set_target_properties(sodium PROPERTIES
+                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include"
+                )
+            endif()
+        endif()
+    endif()
 
-    # PCRE2 (with toolchain args)
+    # PCRE2 - skip rebuild if cached
     FetchContent_Declare(pcre2
         GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
         GIT_TAG pcre2-10.44
@@ -96,9 +112,24 @@ if(BUILD_WEB)
     )
     set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
     set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-    FetchContent_MakeAvailable(pcre2)
+    FetchContent_GetProperties(pcre2)
+    if(NOT pcre2_POPULATED)
+        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
+            FetchContent_MakeAvailable(pcre2)
+        else()
+            message(STATUS "Using cached PCRE2: ${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
+            set(pcre2_POPULATED TRUE)
+            if(NOT TARGET pcre2-8)
+                add_library(pcre2-8 STATIC IMPORTED GLOBAL)
+                set_target_properties(pcre2-8 PROPERTIES
+                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/pcre2-src"
+                )
+            endif()
+        endif()
+    endif()
 
-    # Opus (with toolchain args)
+    # Opus - skip rebuild if cached
     FetchContent_Declare(Opus
         GIT_REPOSITORY https://github.com/xiph/opus.git
         GIT_TAG v1.5.2
@@ -109,9 +140,24 @@ if(BUILD_WEB)
     set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
     set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-    FetchContent_MakeAvailable(Opus)
+    FetchContent_GetProperties(Opus)
+    if(NOT Opus_POPULATED)
+        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
+            FetchContent_MakeAvailable(Opus)
+        else()
+            message(STATUS "Using cached Opus: ${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
+            set(Opus_POPULATED TRUE)
+            if(NOT TARGET opus)
+                add_library(opus STATIC IMPORTED GLOBAL)
+                set_target_properties(opus PROPERTIES
+                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/opus-src/include"
+                )
+            endif()
+        endif()
+    endif()
 
-    # zstd (with toolchain args)
+    # zstd - skip rebuild if cached
     FetchContent_Declare(zstd
         GIT_REPOSITORY https://github.com/facebook/zstd.git
         GIT_TAG v1.5.5
@@ -124,23 +170,64 @@ if(BUILD_WEB)
     set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
     set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
     set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-    FetchContent_MakeAvailable(zstd)
+    FetchContent_GetProperties(zstd)
+    if(NOT zstd_POPULATED)
+        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
+            FetchContent_MakeAvailable(zstd)
+        else()
+            message(STATUS "Using cached zstd: ${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
+            set(zstd_POPULATED TRUE)
+            if(NOT TARGET zstd::libzstd)
+                add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
+                set_target_properties(zstd::libzstd PROPERTIES
+                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/zstd-src/lib"
+                )
+            endif()
+        endif()
+    endif()
 
-    # raylib (with toolchain args)
+    # raylib - skip rebuild if cached
     FetchContent_Declare(raylib_wasm
         GIT_REPOSITORY https://github.com/raysan5/raylib.git
         GIT_TAG 5.5
         UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${FetchContent_Toolchain_Args}
+        CMAKE_ARGS ${raylib_CMAKE_ARGS}
     )
     set(PLATFORM "Web" CACHE STRING "" FORCE)
     set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
-    FetchContent_MakeAvailable(raylib_wasm)
+    FetchContent_GetProperties(raylib_wasm)
+    if(NOT raylib_wasm_POPULATED)
+        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
+            FetchContent_MakeAvailable(raylib_wasm)
+        else()
+            message(STATUS "Using cached raylib: ${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
+            set(raylib_wasm_POPULATED TRUE)
+            if(NOT TARGET raylib)
+                add_library(raylib STATIC IMPORTED GLOBAL)
+                set_target_properties(raylib PROPERTIES
+                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src"
+                )
+            endif()
+        endif()
+    endif()
 endif()
 
 # ==============================================================================
 # libvterm - handled by Libvterm.cmake
 # ==============================================================================
+# Declare and populate libvterm_wasm for Libvterm.cmake to use
+FetchContent_Declare(libvterm_wasm
+    GIT_REPOSITORY https://github.com/vim/libvterm.git
+    GIT_TAG v0.3.3
+    UPDATE_DISCONNECTED ON
+)
+FetchContent_GetProperties(libvterm_wasm)
+if(NOT libvterm_wasm_POPULATED)
+    FetchContent_Populate(libvterm_wasm)
+endif()
+
 set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
 

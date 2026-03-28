@@ -730,7 +730,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     set(WASM_CONFIG_STAMP "${WASM_BUILD_DIR}/.wasm_src_configured")
     if(NOT EXISTS "${WASM_CONFIG_STAMP}")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} --fresh ${WASM_CMAKE_ARGS}
+            COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
             WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
             RESULT_VARIABLE WASM_CONFIG_RESULT
         )
