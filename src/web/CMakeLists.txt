@@ -370,7 +370,6 @@ endif()
 target_link_libraries(wasm-common PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
-    ${VTERM_LDFLAGS}
     ${RAYLIB_LIBRARIES}
 )
 

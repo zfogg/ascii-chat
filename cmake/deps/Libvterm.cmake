@@ -113,7 +113,9 @@ if(DEFINED EMSCRIPTEN)
         endif()
     endforeach()
 
-    # Compile all source files using emcc
+    # Compile all source files using emcc with WASM-aware flags
+    # These flags must match those used in src/web/CMakeLists.txt to ensure
+    # function table type signatures are compatible when libvterm is linked into the main module
     file(GLOB C_FILES "${libvterm_wasm_SOURCE_DIR}/src/*.c")
     set(OBJ_FILES "")
     foreach(src ${C_FILES})
@@ -122,6 +124,9 @@ if(DEFINED EMSCRIPTEN)
         execute_process(
             COMMAND emcc -O3 -fPIC -Wno-error
                 -I${libvterm_wasm_SOURCE_DIR}/include -std=c99
+                -sWASM=1
+                -sWASM_BIGINT=1
+                -msimd128
                 -c ${src} -o ${obj}
             RESULT_VARIABLE CC_RESULT
         )

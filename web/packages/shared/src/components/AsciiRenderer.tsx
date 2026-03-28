@@ -405,10 +405,36 @@ export const AsciiRenderer = forwardRef<
           console.log(
             `[writeFrame] ansiString contains: ${ansiString.substring(0, 200).replace(/\n/g, "\\n")}`,
           );
-          moduleRef.current._ascii_renderer_render_frame(ptr, data.length);
           console.log(
-            `[writeFrame] _ascii_renderer_render_frame returned successfully`,
+            `[WASM-CALL] Function type: ${typeof moduleRef.current._ascii_renderer_render_frame}, Function obj: ${Object.prototype.toString.call(moduleRef.current._ascii_renderer_render_frame)}`,
           );
+          console.log(
+            `[WASM-CALL] Calling with ptr=${ptr} (type=${typeof ptr}), len=${data.length} (type=${typeof data.length})`,
+          );
+          try {
+            moduleRef.current._ascii_renderer_render_frame(ptr, data.length);
+            console.log(
+              `[writeFrame] _ascii_renderer_render_frame returned successfully`,
+            );
+          } catch (wasmError) {
+            console.error(
+              `[WASM-ERROR-DETAILS] Caught error calling _ascii_renderer_render_frame:`,
+              {
+                message:
+                  wasmError instanceof Error
+                    ? wasmError.message
+                    : String(wasmError),
+                name: wasmError instanceof Error ? wasmError.name : "Unknown",
+                stack:
+                  wasmError instanceof Error ? wasmError.stack : "No stack",
+                ptr: ptr,
+                len: data.length,
+                moduleType: typeof moduleRef.current,
+                functionName: "_ascii_renderer_render_frame",
+              },
+            );
+            throw wasmError;
+          }
 
           // Free memory
           moduleRef.current._free(ptr);
