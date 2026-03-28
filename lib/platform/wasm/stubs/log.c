@@ -62,8 +62,13 @@ void log_json_write(int fd, int level, uint64_t time_ns, const char *file, int l
 
 // Terminal logging fd selection stub
 int terminal_choose_log_fd(log_level_t level) {
-  (void)level;
-  return 2; // Stub: return stderr-like fd
+  // Route based on level: INFO and below go to stdout, WARN and above go to stderr
+  // This matches the native implementation and allows Emscripten to route to
+  // console.log for INFO/DEBUG/DEV and console.error for WARN/ERROR/FATAL
+  if (level >= 3) { // LOG_WARN = 3, LOG_ERROR = 4, LOG_FATAL = 5
+    return 2; // STDERR_FILENO
+  }
+  return 1; // STDOUT_FILENO (LOG_DEV=0, LOG_DEBUG=1, LOG_INFO=2)
 }
 
 // Session log buffer stub (session screens not used in WASM)

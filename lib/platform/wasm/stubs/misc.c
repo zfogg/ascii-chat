@@ -38,12 +38,13 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 typedef void render_file_t;
 typedef void media_source_t;
 
-render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id) {
+render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id, int acodec_id) {
   (void)output_file;
   (void)width;
   (void)height;
   (void)fps;
   (void)vcodec_id;
+  (void)acodec_id;
   return NULL;  // No file rendering in browser
 }
 

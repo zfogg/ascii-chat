@@ -1961,21 +1961,29 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_info("[PERF] About to call update_dimensions_for_full_height");
   update_dimensions_for_full_height(&opts);
   log_info("[PERF] update_dimensions_for_full_height done");
+
+  log_info("[PERF] After dimension updates, about to apply verbose level");
   // Apply verbose level to log threshold
   // Each -V decreases the log level by 1 (showing more verbose output)
   // Minimum level is LOG_DEV (0)
   if (opts.verbose_level > 0) {
+    log_info("[PERF] verbose_level=%d, setting log level", opts.verbose_level);
     log_level_t current_level = log_get_level();
     int new_level = (int)current_level - (int)opts.verbose_level;
     if (new_level < LOG_DEV) {
       new_level = LOG_DEV;
     }
+    log_info("[PERF] About to call log_set_level");
     log_set_level((log_level_t)new_level);
+    log_info("[PERF] log_set_level done");
   }
+  log_info("[PERF] Verbose level applied");
 
   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
   // Useful for CI/CD and testing environments without a physical webcam
+  log_info("[PERF] About to call SAFE_GETENV");
   const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
+  log_info("[PERF] SAFE_GETENV done");
   if (webcam_disabled &&
       (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
        platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
@@ -2023,11 +2031,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   if (opts.media_url[0] != '\0') {
     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+    log_info("[PERF] About to call url_is_valid");
     if (!url_is_valid(opts.media_url)) {
       log_error("--url must be a valid HTTP(S) URL: %s", opts.media_url);
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
+    log_info("[PERF] url_is_valid done");
 
     // Normalize bare URLs by prepending http:// if not present
     if (!strstr(opts.media_url, "://")) {
@@ -2061,7 +2071,9 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
   // This makes the options visible to all threads via lock-free reads
+  log_info("[PERF] About to call options_state_set");
   asciichat_error_t publish_result = options_state_set(&opts);
+  log_info("[PERF] options_state_set done");
   if (publish_result != ASCIICHAT_OK) {
     log_error("Failed to publish parsed options to RCU state: %d", publish_result);
     SAFE_FREE(allocated_mode_argv);
@@ -2078,7 +2090,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // Now that options are parsed, set and apply the selected color scheme to logging
   if (opts.color_scheme_name[0] != '\0') {
+    log_info("[PERF] About to call colorscheme_set_active_scheme");
     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+    log_info("[PERF] colorscheme_set_active_scheme done");
     if (scheme_result == ASCIICHAT_OK) {
       const color_scheme_t *scheme = colorscheme_get_active_scheme();
       if (scheme) {
@@ -2102,7 +2116,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (has_action) {
     log_set_terminal_output(true);
   }
+  log_info("[PERF] About to call actions_execute_deferred (has_action=%d)", has_action);
   actions_execute_deferred();
+  log_info("[PERF] actions_execute_deferred done");
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;
 }
