@@ -78,158 +78,182 @@ set(ZSTD_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 
 if(BUILD_WEB)
-    # libsodium - skip rebuild if cached
-    FetchContent_Declare(Sodium
-        GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
-        GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${Sodium_CMAKE_ARGS}
-    )
-    set(SODIUM_DISABLE_TESTS ON)
-    FetchContent_GetProperties(Sodium)
-    if(NOT Sodium_POPULATED)
-        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
-            FetchContent_MakeAvailable(Sodium)
-        else()
-            message(STATUS "Using cached Sodium: ${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
-            set(Sodium_POPULATED TRUE)
-            if(NOT TARGET sodium)
-                add_library(sodium STATIC IMPORTED GLOBAL)
-                set_target_properties(sodium PROPERTIES
-                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a"
-                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include"
-                )
-            endif()
+    # libsodium - check cache BEFORE FetchContent declaration
+    if(EXISTS "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+        message(STATUS "Using cached Sodium: ${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+        if(NOT TARGET sodium)
+            add_library(sodium STATIC IMPORTED GLOBAL)
+            set_target_properties(sodium PROPERTIES
+                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include"
+            )
         endif()
+    else()
+        FetchContent_Declare(Sodium
+            GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
+            GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
+            UPDATE_DISCONNECTED ON
+            CMAKE_ARGS ${Sodium_CMAKE_ARGS}
+        )
+        set(SODIUM_DISABLE_TESTS ON)
+        FetchContent_MakeAvailable(Sodium)
     endif()
 
-    # PCRE2 - skip rebuild if cached
-    FetchContent_Declare(pcre2
-        GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
-        GIT_TAG pcre2-10.44
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${pcre2_CMAKE_ARGS}
-    )
-    set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
-    set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-    FetchContent_GetProperties(pcre2)
-    if(NOT pcre2_POPULATED)
-        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
-            FetchContent_MakeAvailable(pcre2)
-        else()
-            message(STATUS "Using cached PCRE2: ${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
-            set(pcre2_POPULATED TRUE)
-            if(NOT TARGET pcre2-8)
-                add_library(pcre2-8 STATIC IMPORTED GLOBAL)
-                set_target_properties(pcre2-8 PROPERTIES
-                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a"
-                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/pcre2-src"
-                )
-            endif()
+    # PCRE2 - check cache BEFORE FetchContent declaration
+    if(EXISTS "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
+        message(STATUS "Using cached PCRE2: ${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
+        if(NOT TARGET pcre2-8)
+            add_library(pcre2-8 STATIC IMPORTED GLOBAL)
+            set_target_properties(pcre2-8 PROPERTIES
+                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/pcre2-build;${FETCHCONTENT_BASE_DIR}/pcre2-src"
+            )
         endif()
+    else()
+        FetchContent_Declare(pcre2
+            GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+            GIT_TAG pcre2-10.44
+            UPDATE_DISCONNECTED ON
+            CMAKE_ARGS ${pcre2_CMAKE_ARGS}
+        )
+        set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
+        set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
+        FetchContent_MakeAvailable(pcre2)
     endif()
 
-    # Opus - skip rebuild if cached
-    FetchContent_Declare(Opus
-        GIT_REPOSITORY https://github.com/xiph/opus.git
-        GIT_TAG v1.5.2
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${Opus_CMAKE_ARGS}
-    )
-    set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
-    set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
-    set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
-    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-    FetchContent_GetProperties(Opus)
-    if(NOT Opus_POPULATED)
-        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
-            FetchContent_MakeAvailable(Opus)
-        else()
-            message(STATUS "Using cached Opus: ${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
-            set(Opus_POPULATED TRUE)
-            if(NOT TARGET opus)
-                add_library(opus STATIC IMPORTED GLOBAL)
-                set_target_properties(opus PROPERTIES
-                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a"
-                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/opus-src/include"
-                )
-            endif()
+    # Opus - check cache BEFORE FetchContent declaration
+    if(EXISTS "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
+        message(STATUS "Using cached Opus: ${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
+        if(NOT TARGET opus)
+            add_library(opus STATIC IMPORTED GLOBAL)
+            set_target_properties(opus PROPERTIES
+                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/opus-src/include"
+            )
         endif()
+    else()
+        FetchContent_Declare(Opus
+            GIT_REPOSITORY https://github.com/xiph/opus.git
+            GIT_TAG v1.5.2
+            UPDATE_DISCONNECTED ON
+            CMAKE_ARGS ${Opus_CMAKE_ARGS}
+        )
+        set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
+        set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
+        set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
+        set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+        FetchContent_MakeAvailable(Opus)
     endif()
 
-    # zstd - skip rebuild if cached
-    FetchContent_Declare(zstd
-        GIT_REPOSITORY https://github.com/facebook/zstd.git
-        GIT_TAG v1.5.5
-        SOURCE_SUBDIR build/cmake
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${zstd_CMAKE_ARGS}
-    )
-    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
-    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
-    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-    set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
-    set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-    FetchContent_GetProperties(zstd)
-    if(NOT zstd_POPULATED)
-        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
-            FetchContent_MakeAvailable(zstd)
-        else()
-            message(STATUS "Using cached zstd: ${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
-            set(zstd_POPULATED TRUE)
-            if(NOT TARGET zstd::libzstd)
-                add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
-                set_target_properties(zstd::libzstd PROPERTIES
-                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a"
-                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/zstd-src/lib"
-                )
-            endif()
+    # zstd - check cache BEFORE FetchContent declaration
+    if(EXISTS "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
+        message(STATUS "Using cached zstd: ${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
+        if(NOT TARGET zstd::libzstd)
+            add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
+            set_target_properties(zstd::libzstd PROPERTIES
+                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/zstd-src/lib"
+            )
         endif()
+    else()
+        FetchContent_Declare(zstd
+            GIT_REPOSITORY https://github.com/facebook/zstd.git
+            GIT_TAG v1.5.5
+            SOURCE_SUBDIR build/cmake
+            UPDATE_DISCONNECTED ON
+            CMAKE_ARGS ${zstd_CMAKE_ARGS}
+        )
+        set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
+        set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
+        set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+        set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
+        set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
+        FetchContent_MakeAvailable(zstd)
     endif()
 
-    # raylib - skip rebuild if cached
-    FetchContent_Declare(raylib_wasm
-        GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG 5.5
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS ${raylib_CMAKE_ARGS}
-    )
-    set(PLATFORM "Web" CACHE STRING "" FORCE)
-    set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
-    FetchContent_GetProperties(raylib_wasm)
-    if(NOT raylib_wasm_POPULATED)
-        if(NOT EXISTS "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
-            FetchContent_MakeAvailable(raylib_wasm)
-        else()
-            message(STATUS "Using cached raylib: ${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
-            set(raylib_wasm_POPULATED TRUE)
-            if(NOT TARGET raylib)
-                add_library(raylib STATIC IMPORTED GLOBAL)
-                set_target_properties(raylib PROPERTIES
-                    IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a"
-                    INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src"
-                )
-            endif()
+    # raylib - check cache BEFORE FetchContent declaration
+    if(EXISTS "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
+        message(STATUS "Using cached raylib: ${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
+        if(NOT TARGET raylib)
+            add_library(raylib STATIC IMPORTED GLOBAL)
+            set_target_properties(raylib PROPERTIES
+                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src"
+            )
         endif()
+    else()
+        FetchContent_Declare(raylib_wasm
+            GIT_REPOSITORY https://github.com/raysan5/raylib.git
+            GIT_TAG 5.5
+            UPDATE_DISCONNECTED ON
+            CMAKE_ARGS ${raylib_CMAKE_ARGS}
+        )
+        set(PLATFORM "Web" CACHE STRING "" FORCE)
+        set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
+        FetchContent_MakeAvailable(raylib_wasm)
     endif()
 endif()
 
 # ==============================================================================
 # libvterm - handled by Libvterm.cmake
 # ==============================================================================
-# Declare and populate libvterm_wasm for Libvterm.cmake to use
-FetchContent_Declare(libvterm_wasm
-    GIT_REPOSITORY https://github.com/vim/libvterm.git
-    GIT_TAG v0.3.3
-    UPDATE_DISCONNECTED ON
-)
-FetchContent_GetProperties(libvterm_wasm)
-if(NOT libvterm_wasm_POPULATED)
-    FetchContent_Populate(libvterm_wasm)
+# Download and extract libvterm source (no CMakeLists.txt build step)
+set(libvterm_wasm_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libvterm-src")
+set(libvterm_wasm_ARCHIVE "${FETCHCONTENT_BASE_DIR}/libvterm-0.3.3.tar.gz")
+
+if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}")
+    # Download tarball if not cached
+    if(NOT EXISTS "${libvterm_wasm_ARCHIVE}")
+        message(STATUS "Downloading libvterm v0.3.3...")
+        file(DOWNLOAD
+            "https://github.com/neovim/libvterm/archive/refs/tags/v0.3.3.tar.gz"
+            "${libvterm_wasm_ARCHIVE}"
+            TIMEOUT 60
+            STATUS DOWNLOAD_STATUS
+        )
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_CODE)
+        if(NOT DOWNLOAD_CODE EQUAL 0)
+            message(FATAL_ERROR "Failed to download libvterm (code ${DOWNLOAD_CODE})")
+        endif()
+    endif()
+
+    # Create temporary extraction directory
+    set(libvterm_EXTRACT_DIR "${FETCHCONTENT_BASE_DIR}/libvterm-extract-tmp")
+    file(MAKE_DIRECTORY "${libvterm_EXTRACT_DIR}")
+
+    message(STATUS "Extracting libvterm...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E tar xzf "${libvterm_wasm_ARCHIVE}"
+        WORKING_DIRECTORY "${libvterm_EXTRACT_DIR}"
+        RESULT_VARIABLE TAR_RESULT
+    )
+    if(NOT TAR_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to extract libvterm (code ${TAR_RESULT})")
+    endif()
+
+    # Move extracted content to final location
+    # GitHub releases extract to repo-version/ format (libvterm-0.3.3/)
+    if(EXISTS "${libvterm_EXTRACT_DIR}/libvterm-0.3.3")
+        file(RENAME "${libvterm_EXTRACT_DIR}/libvterm-0.3.3" "${libvterm_wasm_SOURCE_DIR}")
+    else()
+        message(FATAL_ERROR "Extracted libvterm not found in ${libvterm_EXTRACT_DIR}")
+    endif()
 endif()
 
+message(STATUS "libvterm source at: ${libvterm_wasm_SOURCE_DIR}")
+
 set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
-include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
+
+# Check if libvterm.a is already cached - if so, skip full cmake build
+set(libvterm_cached_a "${libvterm_wasm_SOURCE_DIR}/libvterm.a")
+if(EXISTS "${libvterm_cached_a}")
+    message(STATUS "Using cached libvterm: ${libvterm_cached_a}")
+    set(VTERM_LDFLAGS "${libvterm_cached_a}")
+    set(VTERM_INCLUDE_DIRS "${libvterm_wasm_SOURCE_DIR}/include")
+else()
+    # No cached .a file, need to build it
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
+endif()
 
 # Restore original message log level
 set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
