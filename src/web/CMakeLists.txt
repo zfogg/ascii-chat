@@ -359,11 +359,11 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/buffer_pool.c
 
     # Options system
+    ${LIB_ROOT}/options/rcu.c
     ${LIB_ROOT}/options/options.c
     ${LIB_ROOT}/options/common.c
     ${LIB_ROOT}/options/enums.c
     ${LIB_ROOT}/options/strings.c
-    ${LIB_ROOT}/options/rcu.c
     ${LIB_ROOT}/options/parsing/parsers.c
     ${LIB_ROOT}/options/parsing/validation.c
     ${LIB_ROOT}/options/colorscheme.c
@@ -443,6 +443,7 @@ set(LIB_SRC_COMMON
 
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
+    ${LIB_ROOT}/debug/sync.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
     # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
@@ -553,7 +554,13 @@ endif()
 # Libvterm was built by cmake/deps/Libvterm.cmake when EMSCRIPTEN is defined
 # VTERM_LDFLAGS and VTERM_INCLUDE_DIRS are set by that file
 
-# Link dependencies for shared library
+# Link dependencies for shared library with explicit library paths
+target_link_options(wasm-common PRIVATE
+    -L${FETCHCONTENT_BASE_DIR}/sodium-build
+    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
+    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build
+)
+
 target_link_libraries(wasm-common PRIVATE
     sodium
     pcre2-8
@@ -602,7 +609,13 @@ target_compile_definitions(mirror-web PRIVATE
 target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
-# Link dependencies (built for WASM via FetchContent)
+# Link dependencies with explicit library paths for wasm-ld
+target_link_options(mirror-web PRIVATE
+    -L${FETCHCONTENT_BASE_DIR}/sodium-build
+    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
+    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/raylib
+)
+
 target_link_libraries(mirror-web PRIVATE
     sodium
     pcre2-8
@@ -641,9 +654,16 @@ target_compile_definitions(client-web PRIVATE
     BUILD_WASM_CLIENT=1
 )
 
-# Enable Emscripten's pthread support and FreeType
+# Enable Emscripten's pthread support and FreeType, add library search paths
 target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
-target_link_options(client-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
+target_link_options(client-web PRIVATE
+    -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
+    -L${FETCHCONTENT_BASE_DIR}/sodium-build
+    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
+    -L${FETCHCONTENT_BASE_DIR}/opus-build
+    -L${FETCHCONTENT_BASE_DIR}/zstd-build/lib
+    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/raylib
+)
 
 # Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(client-web PRIVATE
@@ -659,7 +679,6 @@ target_link_libraries(client-web PRIVATE
     sodium
     pcre2-8
     opus
-    zstd
     ${VTERM_LDFLAGS}
     raylib
 )

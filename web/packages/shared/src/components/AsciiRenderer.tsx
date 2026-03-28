@@ -167,7 +167,7 @@ export const AsciiRenderer = forwardRef<
         cancelAnimationFrame(rafId);
       }
     };
-  }, [wasmModule, updateDimensions]);
+  }, [wasmModule]);
 
   // Handle canvas resizes
   useEffect(() => {

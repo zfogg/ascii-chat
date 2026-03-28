@@ -108,9 +108,7 @@ test("debug mirror 30-second hang - main thread blocking", async ({
       );
     }
   } catch (err) {
-    console.log(
-      `[HANG-DEBUG] Could not interact with start button: ${err}`,
-    );
+    console.log(`[HANG-DEBUG] Could not interact with start button: ${err}`);
   }
 
   // Monitor for 40 seconds, collecting main thread latency data
