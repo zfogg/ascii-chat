@@ -93,8 +93,20 @@ endif()
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (WASM)...")
 
-    FetchContent_Populate(libvterm-src)
-    set(libvterm_wasm_SOURCE_DIR "${libvterm-src_SOURCE_DIR}")
+    # For WASM, the libvterm source is in the build-type-specific cache where FetchContent downloaded it
+    # during the main build configuration
+    set(libvterm_wasm_SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-src")
+
+    # If source doesn't exist at expected location, try to use the one from FetchContent
+    if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}/src")
+        message(STATUS "  libvterm source not found in ${libvterm_wasm_SOURCE_DIR}")
+        # Try the regular FetchContent location
+        FetchContent_Populate(libvterm-src)
+        set(libvterm_wasm_SOURCE_DIR "${libvterm-src_SOURCE_DIR}")
+        if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}/src")
+            message(FATAL_ERROR "libvterm source not found after FetchContent_Populate")
+        endif()
+    endif()
 
     # Generate encoding .inc files from .tbl files
     file(GLOB TBL_FILES "${libvterm_wasm_SOURCE_DIR}/src/encoding/*.tbl")

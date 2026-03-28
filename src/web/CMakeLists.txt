@@ -93,7 +93,6 @@ set(WEB_SRC_MIRROR
 # Platform abstraction layer for WASM
 set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/init.c
-    ${LIB_ROOT}/platform/wasm/console.c
     ${LIB_ROOT}/platform/wasm/terminal.c
     ${LIB_ROOT}/platform/wasm/threading.c
     ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
@@ -251,6 +250,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/search.c
     ${LIB_ROOT}/log/io.c
     ${LIB_ROOT}/log/raylib.c
+    ${LIB_ROOT}/log/wasm.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
     ${LIB_ROOT}/debug/memory.c
@@ -374,6 +374,7 @@ target_link_libraries(wasm-common PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${RAYLIB_LIBRARIES}
+    ${VTERM_LDFLAGS}
 )
 
 target_include_directories(wasm-common PRIVATE
