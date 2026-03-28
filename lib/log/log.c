@@ -952,12 +952,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     }
   }
 
-  // Platform log hook runs unconditionally (e.g., WASM browser console routing)
-  // Uses plain_log_line which has the full formatted header without ANSI codes
-  if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
-    platform_log_hook(level, plain_log_line);
-  }
-
   // Check if terminal output is enabled (atomic load)
   bool is_enabled = atomic_load_u64(&g_log.terminal_output_enabled);
   if (!is_enabled) {
