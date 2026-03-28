@@ -68,6 +68,7 @@ export const AsciiRenderer = forwardRef<
   }
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const moduleRef = useRef<MirrorModule | null>(null);
+  const rendererPtrRef = useRef<number>(0);
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const firstRenderDoneRef = useRef(false);
@@ -163,34 +164,87 @@ export const AsciiRenderer = forwardRef<
           `[AsciiRenderer initRenderer] Canvas set on module at ${canvasSetTime.toFixed(0)}ms (took ${(performance.now() - canvasSetTime).toFixed(1)}ms)`,
         );
 
-        // Ensure WebGL context is ready before InitWindow
-        // requestAnimationFrame guarantees the canvas is properly laid out and WebGL is available
+        // Allocate and initialize term_renderer_config_t struct
+        // struct: int cols, int rows, double font_size_pt, int theme, char[512] font_spec, bool font_is_path, uint8_t* font_data, size_t font_data_size
+        const configSize = 4 + 4 + 8 + 4 + 512 + 8 + 8 + 8; // 556 bytes with alignment
+        const configPtr = moduleRef.current!._malloc(configSize);
+        const outPtr = moduleRef.current!._malloc(8); // pointer to renderer
+
+        // Write config struct to WASM memory
+        const view = new DataView(moduleRef.current!.HEAPU8.buffer, configPtr, configSize);
+        let offset = 0;
+
+        // cols (int32)
+        view.setInt32(offset, 80, true);
+        offset += 4;
+
+        // rows (int32)
+        view.setInt32(offset, 24, true);
+        offset += 4;
+
+        // font_size_pt (float64)
+        view.setFloat64(offset, 12.0, true);
+        offset += 8;
+
+        // theme (int32) - TERM_RENDERER_THEME_DARK = 0
+        view.setInt32(offset, 0, true);
+        offset += 4;
+
+        // font_spec (char[512]) - "Courier New"
+        const fontSpec = "Courier New";
+        for (let i = 0; i < fontSpec.length && offset < configPtr + 512 + 4 + 4 + 8; i++) {
+          moduleRef.current!.HEAPU8[configPtr + offset + i] = fontSpec.charCodeAt(i);
+        }
+        offset += 512;
+
+        // font_is_path (bool) - false
+        moduleRef.current!.HEAPU8[configPtr + offset] = 0;
+        offset += 8; // alignment
+
+        // font_data (pointer) - NULL
+        view.setInt32(offset, 0, true);
+        offset += 8;
+
+        // font_data_size (size_t) - 0
+        view.setInt32(offset, 0, true);
+        offset += 8;
+
         const doInit = () => {
           const initCallTime = performance.now();
           console.log(
-            `[AsciiRenderer initRenderer] Calling _ascii_renderer_init(${width}, ${height}) at ${initCallTime.toFixed(0)}ms`,
+            `[AsciiRenderer initRenderer] Calling _term_renderer_create(configPtr=${configPtr}, outPtr=${outPtr}) at ${initCallTime.toFixed(0)}ms`,
           );
-          moduleRef.current!._ascii_renderer_init(width, height);
+          const result = moduleRef.current!._term_renderer_create(configPtr, outPtr);
           console.log(
-            `[AsciiRenderer initRenderer] _ascii_renderer_init returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - initCallTime).toFixed(1)}ms)`,
+            `[AsciiRenderer initRenderer] _term_renderer_create returned ${result} at ${performance.now().toFixed(0)}ms`,
           );
+
+          if (result !== 0) {
+            throw new Error(`term_renderer_create failed with error code ${result}`);
+          }
+
+          // Read renderer pointer from outPtr
+          const rendererPtr = new DataView(moduleRef.current!.HEAPU8.buffer, outPtr, 8).getBigInt64(0, true);
+          console.log(`[AsciiRenderer] Got renderer pointer: ${rendererPtr}`);
+          return Number(rendererPtr);
         };
 
         const beforeDoInit = performance.now();
-        doInit();
+        const rendererPtr = doInit();
         const afterDoInit = performance.now();
         console.log(
           `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(0)}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
         );
 
-        // Validate _ascii_renderer_render_frame function exists and is callable
+        // Validate _term_renderer_feed function exists and is callable
         console.log(
-          `[WASM Function Check] _ascii_renderer_render_frame type=${typeof moduleRef.current!._ascii_renderer_render_frame}, exists=${!!moduleRef.current!._ascii_renderer_render_frame}, isFunction=${typeof moduleRef.current!._ascii_renderer_render_frame === "function"}`,
+          `[WASM Function Check] _term_renderer_feed type=${typeof moduleRef.current!._term_renderer_feed}`,
         );
 
         const getDimsStart = performance.now();
-        const cols = moduleRef.current!._ascii_renderer_get_cols();
-        const rows = moduleRef.current!._ascii_renderer_get_rows();
+        // Get actual dimensions from renderer
+        const cols = moduleRef.current!._term_renderer_get_cols(rendererPtr);
+        const rows = moduleRef.current!._term_renderer_get_rows(rendererPtr);
 
         console.log(
           `[AsciiRenderer initRenderer] Got dimensions at ${performance.now().toFixed(0)}ms: ${cols}x${rows} (took ${(performance.now() - getDimsStart).toFixed(1)}ms)`,

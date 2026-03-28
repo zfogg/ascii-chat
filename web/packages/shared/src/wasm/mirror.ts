@@ -36,6 +36,8 @@ interface MirrorModuleExports {
   _term_renderer_width_px(r: number): number;
   _term_renderer_height_px(r: number): number;
   _term_renderer_pitch(r: number): number;
+  _term_renderer_get_cols(r: number): number;
+  _term_renderer_get_rows(r: number): number;
   _term_renderer_destroy(r: number): void;
   // Memory management
   _malloc(size: number): number;
@@ -55,6 +57,8 @@ export interface MirrorModule extends WasmModule {
   _term_renderer_width_px: MirrorModuleExports["_term_renderer_width_px"];
   _term_renderer_height_px: MirrorModuleExports["_term_renderer_height_px"];
   _term_renderer_pitch: MirrorModuleExports["_term_renderer_pitch"];
+  _term_renderer_get_cols: MirrorModuleExports["_term_renderer_get_cols"];
+  _term_renderer_get_rows: MirrorModuleExports["_term_renderer_get_rows"];
   _term_renderer_destroy: MirrorModuleExports["_term_renderer_destroy"];
 }
 

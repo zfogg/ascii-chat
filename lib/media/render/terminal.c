@@ -34,29 +34,6 @@ struct terminal_renderer_s {
   bool is_matrix_font;
 };
 
-static int screen_damage(VTermRect r, void *u) {
-  (void)r;
-  (void)u;
-  return 1;
-}
-
-#ifdef __EMSCRIPTEN__
-// VTerm size callback for WASM - return a fixed grid size
-static int vterm_size_callback(int *rows, int *cols, void *user) {
-  (void)user;
-  if (!rows || !cols)
-    return -1;
-  // Return default terminal grid size (will be adjusted by framebuffer dimensions)
-  *rows = 24;
-  *cols = 80;
-  return 0;
-}
-
-static VTermScreenCallbacks g_vterm_cbs = {.damage = screen_damage, .get_size = vterm_size_callback};
-#else
-static VTermScreenCallbacks g_vterm_cbs = {.damage = screen_damage};
-#endif
-
 /**
  * Map ASCII characters to Matrix font's Private Use Area glyphs (U+E900-U+E91A).
  * The Matrix-Resurrected font has 27 decorative glyphs in the PUA.
@@ -241,7 +218,6 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   vterm_set_size(r->vt, r->rows, r->cols);
   log_debug("DEBUG: vterm_set_size called with rows=%d cols=%d", r->rows, r->cols);
 
-  vterm_screen_set_callbacks(r->vts, &g_vterm_cbs, r);
   // Reset MUST come before any input writing to initialize state correctly
   vterm_screen_reset(r->vts, 1);
 
@@ -533,6 +509,18 @@ int term_renderer_pitch(terminal_renderer_t *r) {
   return r->pitch;
 }
 
+int term_renderer_get_cols(terminal_renderer_t *r) {
+  if (!r)
+    return 0;
+  return r->cols;
+}
+
+int term_renderer_get_rows(terminal_renderer_t *r) {
+  if (!r)
+    return 0;
+  return r->rows;
+}
+
 void term_renderer_destroy(terminal_renderer_t *r) {
   if (!r)
     return;
@@ -542,4 +530,3 @@ void term_renderer_destroy(terminal_renderer_t *r) {
   SAFE_FREE(r->framebuffer);
   SAFE_FREE(r);
 }
-

@@ -499,6 +499,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _term_renderer_width_px
     _term_renderer_height_px
     _term_renderer_pitch
+    _term_renderer_get_cols
+    _term_renderer_get_rows
     _term_renderer_destroy
     # Option getters/setters for live option updates (no restart needed)
     _set_width
@@ -536,6 +538,8 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _term_renderer_width_px
     _term_renderer_height_px
     _term_renderer_pitch
+    _term_renderer_get_cols
+    _term_renderer_get_rows
     _term_renderer_destroy
     # Option getters/setters for live option updates (no restart needed)
     _set_width
