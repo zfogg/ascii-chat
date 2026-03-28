@@ -48,6 +48,7 @@ typedef struct {
 
   Texture2D texture;
   bool texture_initialized;
+  bool window_initialized;
 } ascii_renderer_t;
 
 static ascii_renderer_t renderer = {0};
@@ -109,6 +110,7 @@ static void blit_glyph(FT_Bitmap *bm, int px, int py, uint8_t fr,
  * @param pixel_height Canvas height in pixels
  */
 void ascii_renderer_init(int pixel_width, int pixel_height) {
+  log_info("[PERF] ascii_renderer_init START");
   if (renderer.vt) {
     log_warn("ascii_renderer_init called but renderer already initialized");
     return;
@@ -119,8 +121,11 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4; /* Align to 4 bytes */
 
   /* Allocate framebuffer */
+  log_info("[PERF] About to allocate framebuffer: %d bytes",
+           renderer.pitch * pixel_height);
   renderer.framebuffer =
       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
+  log_info("[PERF] Framebuffer allocated");
   if (!renderer.framebuffer) {
     log_error("Failed to allocate framebuffer");
     return;
@@ -128,13 +133,16 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
 
   /* Initialize FreeType */
+  log_info("[PERF] About to FT_Init_FreeType");
   if (FT_Init_FreeType(&renderer.ft_lib)) {
     log_error("Failed to initialize FreeType");
     SAFE_FREE(renderer.framebuffer);
     return;
   }
+  log_info("[PERF] FT_Init_FreeType done");
 
   /* Load embedded DejaVu Sans Mono font */
+  log_info("[PERF] About to FT_New_Memory_Face");
   if (FT_New_Memory_Face(renderer.ft_lib, g_font_default,
                           (FT_Long)g_font_default_size, 0, &renderer.ft_face)) {
     log_error("Failed to load default font");
@@ -142,12 +150,18 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
     SAFE_FREE(renderer.framebuffer);
     return;
   }
+  log_info("[PERF] FT_New_Memory_Face done");
 
   /* Set font size: 12pt at 96 DPI */
+  log_info("[PERF] About to FT_Set_Char_Size");
   FT_Set_Char_Size(renderer.ft_face, 0, 12 * 64, 96, 96);
+  log_info("[PERF] FT_Set_Char_Size done");
 
   /* Measure cell dimensions using 'M' */
+  log_info("[PERF] About to FT_Load_Char");
   FT_Load_Char(renderer.ft_face, 'M', FT_LOAD_RENDER);
+  log_info("[PERF] FT_Load_Char done");
+
   renderer.cell_w = renderer.ft_face->glyph->advance.x >> 6;
   renderer.cell_h = renderer.ft_face->glyph->bitmap.rows;
   renderer.baseline = (3 * renderer.cell_h) / 4;
@@ -163,7 +177,9 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
            renderer.cell_w, renderer.cell_h);
 
   /* Initialize libvterm */
+  log_info("[PERF] About to vterm_new");
   renderer.vt = vterm_new(renderer.rows, renderer.cols);
+  log_info("[PERF] vterm_new done");
   if (!renderer.vt) {
     log_error("Failed to create VTerm");
     FT_Done_Face(renderer.ft_face);
@@ -174,11 +190,12 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
 
   renderer.vts = vterm_obtain_screen(renderer.vt);
 
-  /* Note: raylib texture will be created on first render call (lazy init)
-   * This avoids hanging on GPU operations before WebGL context is ready.
-   * texture_initialized starts as false and is set after first LoadTextureFromImage. */
+  /* Note: raylib window will be initialized on first render (lazy init)
+   * This avoids blocking the JS event loop on InitWindow during renderer setup.
+   * In Emscripten, InitWindow can take significant time as it initializes WebGL.
+   * Deferring it to BeginDrawing ensures the JS thread stays responsive. */
 
-  log_info("ASCII renderer ready");
+  log_info("[PERF] ascii_renderer_init COMPLETE");
 }
 
 /**
@@ -190,6 +207,14 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
   if (!renderer.vt || !renderer.framebuffer) {
     log_warn("ascii_renderer_render_frame: renderer not initialized");
     return;
+  }
+
+  /* Lazy-initialize raylib window on first render
+   * Deferred from init() to avoid blocking JS event loop on InitWindow */
+  if (!renderer.window_initialized) {
+    InitWindow(renderer.width_px, renderer.height_px, "ASCII Renderer");
+    renderer.window_initialized = true;
+    log_debug("ascii_renderer: window initialized on first render");
   }
 
   /* Lazy-initialize raylib texture on first render

@@ -5,11 +5,14 @@
  */
 
 #include <stdio.h>
+#include <ascii-chat/common/error.h>
 
-FILE *platform_popen(const char *cmd, const char *mode) {
-  (void)cmd;
+asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream) {
+  (void)name;
+  (void)command;
   (void)mode;
-  return NULL; // No subprocess support in WASM
+  (void)out_stream;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "platform_popen not supported in WASM");
 }
 
 int platform_pclose(FILE *stream) {
@@ -47,7 +50,7 @@ app_callbacks_t *app_callbacks_get(void) {
 
 typedef void app_callbacks_reg_t;
 typedef void app_client_t;
-typedef void connection_context_t;
+typedef void connection_attempt_context_t;
 
 void app_callbacks_register(app_callbacks_reg_t *callbacks) {
   (void)callbacks;
@@ -61,11 +64,12 @@ void app_client_destroy(app_client_t *client) {
   (void)client;
 }
 
-connection_context_t *connection_context_init(void) {
-  return NULL;
+asciichat_error_t connection_context_init(connection_attempt_context_t *ctx) {
+  (void)ctx;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "connection_context_init not supported in WASM");
 }
 
-void connection_context_cleanup(connection_context_t *ctx) {
+void connection_context_cleanup(connection_attempt_context_t *ctx) {
   (void)ctx;
 }
 

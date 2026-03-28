@@ -141,7 +141,8 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   return 0;
 }
 
-void audio_set_pipeline(audio_pipeline_t *pipeline) {
+void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
+  (void)ctx;
   (void)pipeline;
 }
 
@@ -161,7 +162,8 @@ asciichat_error_t audio_read_samples(void *ctx, float *buffer, int count) {
 
 /* ===== Client audio pipeline stubs ===== */
 
-client_audio_pipeline_t *client_audio_pipeline_create(void) {
+client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipeline_config_t *config) {
+  (void)config;
   return NULL;
 }
 
@@ -172,10 +174,11 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   (void)pipeline;
 }
 
-void client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *samples, size_t count) {
+asciichat_error_t client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *samples, size_t count) {
   (void)pipeline;
   (void)samples;
   (void)count;
+  return ASCIICHAT_OK;
 }
 
 void client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const float *samples, size_t count) {
@@ -196,8 +199,10 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
 }
 
-asciichat_error_t acip_client_receive_and_dispatch(void *transport) {
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
+                                                   const acip_client_callbacks_t *callbacks) {
   (void)transport;
+  (void)callbacks;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
 }
 
@@ -235,10 +240,11 @@ void *wav_writer_open(const char *path) {
   return NULL;
 }
 
-void wav_writer_write(void *wav, const float *samples, size_t count) {
-  (void)wav;
+int wav_writer_write(wav_writer_t *writer, const float *samples, int num_samples) {
+  (void)writer;
   (void)samples;
-  (void)count;
+  (void)num_samples;
+  return 0;
 }
 
 void wav_writer_close(void *wav) {
@@ -292,10 +298,12 @@ void acds_client_disconnect(acds_client_t *client) {
   (void)client;
 }
 
-void *acds_session_lookup(acds_client_t *client, const char *session_string) {
+asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string,
+                                      acds_session_lookup_result_t *result) {
   (void)client;
   (void)session_string;
-  return NULL;
+  (void)result;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACDS not supported in WASM");
 }
 
 /* ===== Crypto stubs ===== */
@@ -311,10 +319,12 @@ bool validate_ssh_key_file(const char *path) {
   return false;
 }
 
-int discovery_keys_verify(const uint8_t *data, size_t len) {
-  (void)data;
-  (void)len;
-  return 1;
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
+                                        uint8_t pubkey_out[32]) {
+  (void)acds_server;
+  (void)key_spec;
+  (void)pubkey_out;
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "discovery_keys_verify not supported in WASM");
 }
 
 void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {

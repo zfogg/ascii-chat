@@ -151,9 +151,10 @@ mdns_result_t *ui_mdns_get_best_address(mdns_query_t *query) {
   return NULL;
 }
 
-mdns_result_t *ui_mdns_select(mdns_result_t *results) {
-  (void)results;
-  return NULL;
+int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
+  (void)servers;
+  (void)count;
+  return -1;
 }
 
 void ui_mdns_free_results(mdns_result_t *results) {
