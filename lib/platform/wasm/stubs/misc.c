@@ -4,10 +4,13 @@
  * @ingroup platform
  */
 
-#include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>
 #include <stddef.h>
+
+/* Forward declarations */
+typedef void audio_context_t;
+typedef void ui_mdns_server_t;
 
 /* Audio stubs */
 asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {

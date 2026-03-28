@@ -5,7 +5,7 @@
  */
 
 #include <stdio.h>
-#include <ascii-chat/common/error.h>
+#include <ascii-chat/asciichat_errno.h>
 
 asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream) {
   (void)name;
@@ -15,9 +15,9 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "platform_popen not supported in WASM");
 }
 
-int platform_pclose(FILE *stream) {
-  (void)stream;
-  return -1;
+asciichat_error_t platform_pclose(FILE **stream_ptr) {
+  (void)stream_ptr;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "platform_pclose not supported in WASM");
 }
 
 int platform_execute_subprocess(const char *executable, const char **argv,

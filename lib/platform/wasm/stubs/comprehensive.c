@@ -22,6 +22,11 @@ typedef void h265_encoder_t;
 typedef void video_frame_t;
 typedef void acds_client_config_t;
 typedef void acds_client_t;
+typedef void audio_context_t;
+typedef void client_audio_pipeline_config_t;
+typedef void acip_client_callbacks_t;
+typedef void wav_writer_t;
+typedef void acds_session_lookup_result_t;
 
 /* ===== Socket stubs ===== */
 

@@ -1955,8 +1955,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.height != OPT_HEIGHT_DEFAULT && opts.height != 0) {
     opts.auto_height = false;
   }
+  log_info("[PERF] About to call update_dimensions_to_terminal_size");
   update_dimensions_to_terminal_size(&opts);
+  log_info("[PERF] update_dimensions_to_terminal_size done");
+  log_info("[PERF] About to call update_dimensions_for_full_height");
   update_dimensions_for_full_height(&opts);
+  log_info("[PERF] update_dimensions_for_full_height done");
   // Apply verbose level to log threshold
   // Each -V decreases the log level by 1 (showing more verbose output)
   // Minimum level is LOG_DEV (0)

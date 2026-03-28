@@ -142,7 +142,7 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   log_info("[PERF] FT_Init_FreeType done");
 
   /* Load embedded DejaVu Sans Mono font */
-  log_info("[PERF] About to FT_New_Memory_Face");
+  log_info("[PERF] About to FT_New_Memory_Face (font size: %u bytes)", g_font_default_size);
   if (FT_New_Memory_Face(renderer.ft_lib, g_font_default,
                           (FT_Long)g_font_default_size, 0, &renderer.ft_face)) {
     log_error("Failed to load default font");
@@ -188,7 +188,9 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
     return;
   }
 
+  log_info("[PERF] About to vterm_obtain_screen");
   renderer.vts = vterm_obtain_screen(renderer.vt);
+  log_info("[PERF] vterm_obtain_screen done");
 
   /* Note: raylib window will be initialized on first render (lazy init)
    * This avoids blocking the JS event loop on InitWindow during renderer setup.
@@ -212,7 +214,9 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
   /* Lazy-initialize raylib window on first render
    * Deferred from init() to avoid blocking JS event loop on InitWindow */
   if (!renderer.window_initialized) {
+    log_info("[PERF] About to call InitWindow(%d, %d)", renderer.width_px, renderer.height_px);
     InitWindow(renderer.width_px, renderer.height_px, "ASCII Renderer");
+    log_info("[PERF] InitWindow returned");
     renderer.window_initialized = true;
     log_debug("ascii_renderer: window initialized on first render");
   }
@@ -220,6 +224,7 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
   /* Lazy-initialize raylib texture on first render
    * This ensures WebGL context is ready before GPU operations */
   if (!renderer.texture_initialized) {
+    log_info("[PERF] About to call LoadTextureFromImage");
     Image img = {
         .data = renderer.framebuffer,
         .width = renderer.width_px,
@@ -228,6 +233,7 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
         .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
     };
     renderer.texture = LoadTextureFromImage(img);
+    log_info("[PERF] LoadTextureFromImage returned");
     renderer.texture_initialized = true;
     log_debug("ascii_renderer: texture created on first render (lazy init)");
   }
@@ -283,10 +289,14 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
   }
 
   /* Render to canvas */
+  log_info("[PERF] About to call BeginDrawing");
   BeginDrawing();
+  log_info("[PERF] BeginDrawing returned, about to draw");
   ClearBackground(BLACK);
   DrawTexture(renderer.texture, 0, 0, WHITE);
+  log_info("[PERF] About to call EndDrawing");
   EndDrawing();
+  log_info("[PERF] EndDrawing returned");
 }
 
 /**
