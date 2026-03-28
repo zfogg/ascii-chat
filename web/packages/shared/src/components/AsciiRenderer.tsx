@@ -221,9 +221,10 @@ export const AsciiRenderer = forwardRef<
         `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}`,
       );
 
-      if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+      // Allow zero dimensions (hidden canvas) - will use fallback dimensions in initRenderer
+      if (retryCount === 1 || (canvas.clientWidth > 0 && canvas.clientHeight > 0)) {
         console.log(
-          `[AsciiRenderer checkAndInit] Canvas has dimensions at ${performance.now().toFixed(0)}ms, calling initRenderer`,
+          `[AsciiRenderer checkAndInit] Canvas ready at ${performance.now().toFixed(0)}ms (clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}), calling initRenderer`,
         );
         const initStart = performance.now();
         initRenderer();
