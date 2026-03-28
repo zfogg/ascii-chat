@@ -618,6 +618,9 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   // NOTE: Color initialization happens separately via log_set_color_scheme()
   // after options are parsed. Logging works without colors until then.
   // NOTE: Grep filter initialization happens in main.c after options_init() completes.
+
+  // Initialize raylib logging integration
+  log_init_raylib();
 }
 
 void log_destroy(void) {

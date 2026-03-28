@@ -153,6 +153,16 @@ extern "C" {
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap);
 
 /**
+ * @brief Initialize raylib logging integration
+ * @ingroup logging
+ *
+ * Sets up raylib's logging callback to use a separate path from our logging system.
+ * This ensures raylib logs don't interfere with our log levels and filtering.
+ * Only has effect on WASM builds; no-op on other platforms.
+ */
+void log_init_raylib(void);
+
+/**
  * @brief Destroy the logging system and close log file
  * @ingroup logging
  */
