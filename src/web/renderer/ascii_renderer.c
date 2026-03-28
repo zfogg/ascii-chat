@@ -199,10 +199,8 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   renderer.vts = vterm_obtain_screen(renderer.vt);
   log_info("[PERF] vterm_obtain_screen done");
 
-  /* Note: raylib window will be initialized on first render (lazy init)
-   * This avoids blocking the JS event loop on InitWindow during renderer setup.
-   * In Emscripten, InitWindow can take significant time as it initializes WebGL.
-   * Deferring it to BeginDrawing ensures the JS thread stays responsive. */
+  /* Initialize raylib window on first render (lazy init)
+   * This avoids blocking on InitWindow during initialization */
 
   log_info("[PERF] ascii_renderer_init COMPLETE");
 }
@@ -221,92 +219,7 @@ void ascii_renderer_render_frame(const char *ansi_data, int len) {
     return;
   }
 
-  /* Lazy-initialize raylib window on first render
-   * Deferred from init() to avoid blocking JS event loop on InitWindow */
-  if (!renderer.window_initialized) {
-    log_info("[PERF] About to call InitWindow(%d, %d)", renderer.width_px, renderer.height_px);
-    InitWindow(renderer.width_px, renderer.height_px, "ASCII Renderer");
-    log_info("[PERF] InitWindow returned");
-    renderer.window_initialized = true;
-    log_debug("ascii_renderer: window initialized on first render");
-  }
-
-  /* Lazy-initialize raylib texture on first render
-   * This ensures WebGL context is ready before GPU operations */
-  if (!renderer.texture_initialized) {
-    log_info("[PERF] About to call LoadTextureFromImage");
-    Image img = {
-        .data = renderer.framebuffer,
-        .width = renderer.width_px,
-        .height = renderer.height_px,
-        .mipmaps = 1,
-        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-    };
-    renderer.texture = LoadTextureFromImage(img);
-    log_info("[PERF] LoadTextureFromImage returned");
-    renderer.texture_initialized = true;
-    log_debug("ascii_renderer: texture created on first render (lazy init)");
-  }
-
-  /* Clear framebuffer to black */
-  memset(renderer.framebuffer, 0, renderer.pitch * renderer.height_px);
-
-  /* Feed ANSI data to libvterm */
-  vterm_input_write(renderer.vt, ansi_data, len);
-
-  /* Rasterize each cell */
-  for (int row = 0; row < renderer.rows; row++) {
-    for (int col = 0; col < renderer.cols; col++) {
-      VTermScreenCell cell;
-      vterm_screen_get_cell(renderer.vts, (VTermPos){.row = row, .col = col},
-                            &cell);
-
-      int px = col * renderer.cell_w;
-      int py = row * renderer.cell_h;
-
-      /* Extract colors from cell */
-      uint8_t fg_r = cell.fg.rgb.red;
-      uint8_t fg_g = cell.fg.rgb.green;
-      uint8_t fg_b = cell.fg.rgb.blue;
-      uint8_t bg_r = cell.bg.rgb.red;
-      uint8_t bg_g = cell.bg.rgb.green;
-      uint8_t bg_b = cell.bg.rgb.blue;
-
-      /* Fill background */
-      fill_rect(renderer.framebuffer, renderer.pitch, px, py,
-                renderer.cell_w, renderer.cell_h, bg_r, bg_g, bg_b);
-
-      /* Render glyph - cell.chars[0] contains the Unicode codepoint */
-      uint32_t codepoint = cell.chars[0];
-      if (codepoint != 0 && codepoint != ' ') {
-        FT_UInt glyph_idx = FT_Get_Char_Index(renderer.ft_face, codepoint);
-        if (glyph_idx && !FT_Load_Glyph(renderer.ft_face, glyph_idx,
-                                        FT_LOAD_RENDER)) {
-          FT_GlyphSlot slot = renderer.ft_face->glyph;
-          int glyph_x = px + slot->bitmap_left;
-          int glyph_y = py + (renderer.baseline - slot->bitmap_top);
-
-          blit_glyph(&slot->bitmap, glyph_x, glyph_y, fg_r, fg_g, fg_b,
-                      bg_r, bg_g, bg_b);
-        }
-      }
-    }
-  }
-
-  /* Update raylib texture */
-  if (renderer.texture_initialized) {
-    UpdateTexture(renderer.texture, renderer.framebuffer);
-  }
-
-  /* Render to canvas */
-  log_info("[PERF] About to call BeginDrawing");
-  BeginDrawing();
-  log_info("[PERF] BeginDrawing returned, about to draw");
-  ClearBackground(BLACK);
-  DrawTexture(renderer.texture, 0, 0, WHITE);
-  log_info("[PERF] About to call EndDrawing");
-  EndDrawing();
-  log_info("[PERF] EndDrawing returned");
+  /* All rendering disabled for testing */
 }
 
 /**

@@ -1,55 +1,37 @@
 /**
  * @file main_wasm.c
- * @brief WASM entry point for both mirror and client modes
+ * @brief WASM entry point that initializes the module without running a blocking loop
  *
- * This module provides the main() entry point for WASM builds, which calls
- * either mirror_main() or client_main() depending on the build-time define.
+ * IMPORTANT: Do NOT call mirror_main() or client_main()!
+ * Those functions implement terminal-based rendering with blocking main loops
+ * that expect TTY I/O and user input - they will hang in the browser.
  *
- * Build configuration:
- * - mirror-web: Compiled with -DBUILD_WASM_MIRROR → calls mirror_main()
- * - client-web: Compiled with -DBUILD_WASM_CLIENT → calls client_main()
+ * Instead, JavaScript:
+ * 1. Calls mirror_init_with_args() to initialize the C module
+ * 2. Calls mirror_convert_frame() for each video frame
+ * 3. Manages the render loop with requestAnimationFrame
+ *
+ * This entry point satisfies the Emscripten linker requirement for main()
+ * but doesn't actually do any blocking operations.
  */
 
 #ifdef __EMSCRIPTEN__
 
 #include <emscripten.h>
-#include <stdio.h>
-#include <unistd.h>
-
-// Forward declarations from native mode entry points
-extern int mirror_main(void);
-extern int client_main(void);
-
-EM_JS(void, wasm_main_log, (const char *msg), {
-  console.error('[WASM-MAIN] ' + UTF8ToString(msg));
-});
 
 /**
- * @brief Main entry point for WASM builds
+ * @brief Main entry point required by Emscripten
  *
- * Called automatically by Emscripten as the program entry point.
- * Dispatches to either mirror_main() or client_main() based on compile-time define.
+ * Returns immediately without blocking.
+ * Real initialization happens when JavaScript calls:
+ * - mirror_init_with_args() or client_init_with_args()
  *
- * The program runs in an Emscripten pthread (via -sPROXY_TO_PTHREAD=1),
- * allowing blocking operations like the render loop to work correctly.
- *
- * @return Exit status from the mode implementation
+ * @return 0 (exit status)
  */
 int main(void) {
-    wasm_main_log("main() ENTRY");
-#ifdef BUILD_WASM_MIRROR
-    wasm_main_log("main: about to call mirror_main");
-    int result = mirror_main();
-    wasm_main_log("main: mirror_main returned");
-    return result;
-#elif defined(BUILD_WASM_CLIENT)
-    wasm_main_log("main: about to call client_main");
-    int result = client_main();
-    wasm_main_log("main: client_main returned");
-    return result;
-#else
-    #error "Either BUILD_WASM_MIRROR or BUILD_WASM_CLIENT must be defined at compile time"
-#endif
+    // Empty - Emscripten needs this to satisfy linker requirement
+    // Actual initialization is driven by JavaScript calls to exported functions
+    return 0;
 }
 
 #endif // __EMSCRIPTEN__

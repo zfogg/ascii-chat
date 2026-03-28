@@ -29,6 +29,14 @@ interface MirrorModuleExports {
   ): number;
   _mirror_free_string(ptr: number): void;
   _get_help_text(mode: number, option_name: number): number;
+  // ASCII renderer functions (libvterm + FreeType + raylib)
+  _ascii_renderer_init(pixel_width: number, pixel_height: number): void;
+  _ascii_renderer_render_frame(ansi_data_ptr: number, len: number): void;
+  _ascii_renderer_resize(pixel_width: number, pixel_height: number): void;
+  _ascii_renderer_get_cols(): number;
+  _ascii_renderer_get_rows(): number;
+  _ascii_renderer_shutdown(): void;
+  // Memory management
   _malloc(size: number): number;
   _free(ptr: number): void;
 }
@@ -39,6 +47,12 @@ interface MirrorModule extends WasmModule {
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
   _get_help_text: MirrorModuleExports["_get_help_text"];
+  _ascii_renderer_init: MirrorModuleExports["_ascii_renderer_init"];
+  _ascii_renderer_render_frame: MirrorModuleExports["_ascii_renderer_render_frame"];
+  _ascii_renderer_resize: MirrorModuleExports["_ascii_renderer_resize"];
+  _ascii_renderer_get_cols: MirrorModuleExports["_ascii_renderer_get_cols"];
+  _ascii_renderer_get_rows: MirrorModuleExports["_ascii_renderer_get_rows"];
+  _ascii_renderer_shutdown: MirrorModuleExports["_ascii_renderer_shutdown"];
 }
 
 // Re-export enums and types from shared options module
@@ -104,6 +118,24 @@ export async function initMirrorWasm(
   console.log("[WASM] Module loaded successfully");
 
   try {
+    // Bind renderer functions to module if they exist
+    const rendererFunctions = [
+      '_ascii_renderer_init',
+      '_ascii_renderer_render_frame',
+      '_ascii_renderer_resize',
+      '_ascii_renderer_get_cols',
+      '_ascii_renderer_get_rows',
+      '_ascii_renderer_shutdown',
+    ];
+
+    for (const funcName of rendererFunctions) {
+      if (typeof (wasmModule as any)[funcName] === 'undefined') {
+        console.warn(`[WASM] Renderer function not found: ${funcName}`);
+      } else {
+        console.log(`[WASM] Renderer function bound: ${funcName}`);
+      }
+    }
+
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {

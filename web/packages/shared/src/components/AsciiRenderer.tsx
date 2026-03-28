@@ -94,13 +94,18 @@ export const AsciiRenderer = forwardRef<
         moduleRef.current.canvas = canvas;
         console.log("[AsciiRenderer] Canvas set on module");
 
-        console.log(
-          `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`
-        );
-        const initStart = performance.now();
-        moduleRef.current._ascii_renderer_init(width, height);
-        const initTime = performance.now() - initStart;
-        console.log(`[AsciiRenderer] _ascii_renderer_init returned in ${initTime.toFixed(2)}ms`);
+        // Ensure WebGL context is ready before InitWindow
+        // requestAnimationFrame guarantees the canvas is properly laid out and WebGL is available
+        const doInit = () => {
+          console.log(
+            `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`
+          );
+          console.time("[TIMING] _ascii_renderer_init");
+          moduleRef.current._ascii_renderer_init(width, height);
+          console.timeEnd("[TIMING] _ascii_renderer_init");
+        };
+
+        doInit();
 
         console.log(`[AsciiRenderer] Getting dimensions...`);
         const cols = moduleRef.current._ascii_renderer_get_cols();

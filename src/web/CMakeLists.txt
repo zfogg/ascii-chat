@@ -283,22 +283,13 @@ include_directories(
     ${raylib_wasm_SOURCE_DIR}/src  # raylib headers
 )
 
-# Source files for WASM mirror entry point (native C pipeline)
-# Note: We use session files directly rather than stubs, so stub versions
-# (session_log_buffer_append in stubs/log.c, platform_write in stubs/filesystem.c)
-# are already provided by wasm-common and should not be duplicated here.
+# Source files for WASM mirror entry point
+# IMPORTANT: Do NOT include src/mirror/main.c or session/*.c files
+# Those implement terminal-based rendering and blocking main loops that hang in WASM.
+# JavaScript handles the render loop by calling mirror_convert_frame() directly.
 set(WEB_SRC_MIRROR
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/mirror/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/client_like.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/capture.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/render.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/keyboard_handler.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/pipeline.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/settings.c
 )
 
 # Platform abstraction layer for WASM
@@ -613,29 +604,17 @@ target_link_libraries(mirror-web PRIVATE
 # Apply sanitizers
 apply_sanitizers_to_target(mirror-web)
 
-# Source files for WASM client entry point (native C pipeline)
-# Note: We use session files directly rather than stubs, so stub versions
-# (session_log_buffer_append in stubs/log.c, platform_write in stubs/filesystem.c)
-# are already provided by wasm-common and should not be duplicated here.
+# Source files for WASM client entry point
+# IMPORTANT: Do NOT include src/client/main.c or session/*.c files
+# Those implement terminal-based rendering and blocking main loops that hang in WASM.
+# JavaScript handles the render loop by calling client_convert_frame() directly.
 set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/capture.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/keepalive.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/client_like.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/capture.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/render.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/keyboard_handler.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/pipeline.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/settings.c
 )
 
 # Create WASM client module
@@ -674,7 +653,6 @@ apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
-    _main
     # Frame processing for JavaScript control
     _mirror_init_with_args
     _mirror_cleanup
@@ -715,9 +693,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _free
 )
 
-# Exported functions for client module (main() entry point via main_wasm.c)
+# Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
-    _main
     # ASCII renderer functions (raylib + libvterm + FreeType)
     _ascii_renderer_init
     _ascii_renderer_render_frame
@@ -771,7 +748,6 @@ target_link_options(mirror-web PRIVATE
     -sMAXIMUM_MEMORY=128MB
     -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
-    -sPROXY_TO_PTHREAD=1
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
@@ -795,7 +771,6 @@ target_link_options(client-web PRIVATE
     -sMAXIMUM_MEMORY=256MB
     -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
-    -sPROXY_TO_PTHREAD=1
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
