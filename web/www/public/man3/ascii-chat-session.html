@@ -2590,15 +2590,15 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if end of stream reached, false otherwise</div>
 <p class="Pp">Useful for detecting end of file sources. Webcam and test pattern
     sources never reach end.</p>
-<p class="Pp">Definition at line <b>465</b> of file
+<p class="Pp">Definition at line <b>478</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>465                                                         {
-466   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
-467     return true;
-468   }
-469 
-470   return media_source_at_end(ctx-&gt;source);
-471 }</pre>
+<pre>478                                                         {
+479   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
+480     return true;
+481   }
+482 
+483   return media_source_at_end(ctx-&gt;source);
+484 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>,
@@ -2859,23 +2859,23 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Current FPS, or 0.0 if not enough frames captured
   yet</div>
-<p class="Pp">Definition at line <b>477</b> of file
+<p class="Pp">Definition at line <b>490</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>477                                                                    {
-478   if (!ctx || !ctx-&gt;initialized || ctx-&gt;frame_count == 0) {
-479     return 0.0;
-480   }
-481 
-482   // Calculate elapsed time in nanoseconds then convert to seconds
-483   uint64_t elapsed_ns = time_elapsed_ns(ctx-&gt;start_time_ns, time_get_ns());
-484   double elapsed_sec = time_ns_to_s(elapsed_ns);
-485 
-486   if (elapsed_sec &lt;= 0.0) {
-487     return 0.0;
-488   }
-489 
-490   return (double)ctx-&gt;frame_count / elapsed_sec;
-491 }</pre>
+<pre>490                                                                    {
+491   if (!ctx || !ctx-&gt;initialized || ctx-&gt;frame_count == 0) {
+492     return 0.0;
+493   }
+494 
+495   // Calculate elapsed time in nanoseconds then convert to seconds
+496   uint64_t elapsed_ns = time_elapsed_ns(ctx-&gt;start_time_ns, time_get_ns());
+497   double elapsed_sec = time_ns_to_s(elapsed_ns);
+498 
+499   if (elapsed_sec &lt;= 0.0) {
+500     return 0.0;
+501   }
+502 
+503   return (double)ctx-&gt;frame_count / elapsed_sec;
+504 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::frame_count</b>,
@@ -2904,14 +2904,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">Use for advanced control like pause/resume or seek operations</p>
 </div>
-<p class="Pp">Definition at line <b>541</b> of file
+<p class="Pp">Definition at line <b>554</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>541                                                                    {
-542   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
-543     return NULL;
-544   }
-545   return (void *)ctx-&gt;source;
-546 }</pre>
+<pre>554                                                                    {
+555   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
+556     return NULL;
+557   }
+558   return (void *)ctx-&gt;source;
+559 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and
@@ -2928,17 +2928,18 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Capture context (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Target FPS from configuration</div>
-<p class="Pp">Definition at line <b>493</b> of file
+<p class="Pp">Definition at line <b>506</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>493                                                                     {
-494   if (!ctx) {
-495     return 0;
-496   }
-497   return ctx-&gt;target_fps;
-498 }</pre>
+<pre>506                                                                     {
+507   if (!ctx) {
+508     return 0;
+509   }
+510   return ctx-&gt;target_fps;
+511 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::target_fps</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_sleep_for_fps()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_has_audio
@@ -2951,14 +2952,14 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if audio is available, false otherwise</div>
 <p class="Pp">Returns whether the capture source has audio and it is
   enabled.</p>
-<p class="Pp">Definition at line <b>500</b> of file
+<p class="Pp">Definition at line <b>513</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>500                                                            {
-501   if (!ctx || !ctx-&gt;initialized) {
-502     return false;
-503   }
-504   return ctx-&gt;audio_enabled;
-505 }</pre>
+<pre>513                                                            {
+514   if (!ctx || !ctx-&gt;initialized) {
+515     return false;
+516   }
+517   return ctx-&gt;audio_enabled;
+518 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_enabled</b>, and
@@ -2974,11 +2975,11 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if context is valid and initialized, false
   otherwise</div>
-<p class="Pp">Definition at line <b>473</b> of file
+<p class="Pp">Definition at line <b>486</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>473                                                           {
-474   return ctx != NULL &amp;&amp; ctx-&gt;initialized &amp;&amp; ctx-&gt;source != NULL;
-475 }</pre>
+<pre>486                                                           {
+487   return ctx != NULL &amp;&amp; ctx-&gt;initialized &amp;&amp; ctx-&gt;source != NULL;
+488 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and
@@ -3086,34 +3087,34 @@ fps_counter_destroy(fps);</pre>
   <li>Microphone if using fallback</li>
 </ul>
 <p class="Pp">Returns 0 if audio is not enabled or available.</p>
-<p class="Pp">Definition at line <b>507</b> of file
+<p class="Pp">Definition at line <b>520</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>507                                                                                                  {
-508   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
-509     return 0;
-510   }
-511 
-512   if (!ctx-&gt;audio_enabled) {
-513     return 0;
-514   }
-515 
-516   // If using file audio, read from media source
-517   if (ctx-&gt;using_file_audio &amp;&amp; ctx-&gt;source) {
-518     return media_source_read_audio(ctx-&gt;source, buffer, num_samples);
-519   }
-520 
-521   // If using microphone fallback, read from mic context
-522   if (ctx-&gt;mic_audio_ctx) {
-523     // mic_audio_ctx is actually an audio_context_t pointer
-524     // We need to read from its capture_buffer audio ring buffer
-525     audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;mic_audio_ctx;
-526     if (audio_ctx &amp;&amp; audio_ctx-&gt;capture_buffer) {
-527       return audio_ring_buffer_read(audio_ctx-&gt;capture_buffer, buffer, num_samples);
-528     }
-529   }
-530 
-531   return 0;
-532 }</pre>
+<pre>520                                                                                                  {
+521   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
+522     return 0;
+523   }
+524 
+525   if (!ctx-&gt;audio_enabled) {
+526     return 0;
+527   }
+528 
+529   // If using file audio, read from media source
+530   if (ctx-&gt;using_file_audio &amp;&amp; ctx-&gt;source) {
+531     return media_source_read_audio(ctx-&gt;source, buffer, num_samples);
+532   }
+533 
+534   // If using microphone fallback, read from mic context
+535   if (ctx-&gt;mic_audio_ctx) {
+536     // mic_audio_ctx is actually an audio_context_t pointer
+537     // We need to read from its capture_buffer audio ring buffer
+538     audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;mic_audio_ctx;
+539     if (audio_ctx &amp;&amp; audio_ctx-&gt;capture_buffer) {
+540       return audio_ring_buffer_read(audio_ctx-&gt;capture_buffer, buffer, num_samples);
+541     }
+542   }
+543 
+544   return 0;
+545 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_enabled</b>,
@@ -3213,18 +3214,35 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Definition at line <b>456</b> of file
     <b>common/session/capture.c</b>.</p>
 <pre>456                                                                {
-457   if (!ctx || !ctx-&gt;initialized) {
+457   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
 458     return;
 459   }
 460 
-461   // Use adaptive sleep with queue_depth=0, target_depth=0 for constant rate
-462   adaptive_sleep_do(&amp;ctx-&gt;sleep_state, 0, 0);
-463 }</pre>
+461   // For file/stdin sources: use direct FPS sleep (no adaptation)
+462   // This avoids the adaptive sleep multipliers which cause 2x slowdown
+463   media_source_type_t source_type = media_source_get_type(ctx-&gt;source);
+464   if (source_type == MEDIA_SOURCE_FILE || source_type == MEDIA_SOURCE_STDIN) {
+465     uint32_t target_fps = session_capture_get_target_fps(ctx);
+466     if (target_fps &gt; 0) {
+467       uint64_t sleep_ns = NS_PER_SEC_INT / target_fps;
+468       platform_sleep_ns(sleep_ns);
+469     }
+470     return;
+471   }
+472 
+473   // For network/webcam sources: use adaptive sleep to handle variable network conditions
+474   // queue_depth=0, target_depth=0 maintains constant frame rate
+475   adaptive_sleep_do(&amp;ctx-&gt;sleep_state, 0, 0);
+476 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_do()</b>,
-    <b>session_capture_ctx::initialized</b>, and
-    <b>session_capture_ctx::sleep_state</b>.</p>
+    <b>session_capture_ctx::initialized</b>, <b>MEDIA_SOURCE_FILE</b>,
+    <b>media_source_get_type()</b>, <b>MEDIA_SOURCE_STDIN</b>,
+    <b>NS_PER_SEC_INT</b>, <b>platform_sleep_ns()</b>,
+    <b>session_capture_get_target_fps()</b>,
+    <b>session_capture_ctx::sleep_state</b>, and
+    <b>session_capture_ctx::source</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_using_file_audio
@@ -3237,14 +3255,14 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if using file audio, false if using microphone or no
   audio</div>
 <p class="Pp">Useful for logging and debugging which audio source is active.</p>
-<p class="Pp">Definition at line <b>534</b> of file
+<p class="Pp">Definition at line <b>547</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>534                                                                   {
-535   if (!ctx || !ctx-&gt;initialized) {
-536     return false;
-537   }
-538   return ctx-&gt;using_file_audio;
-539 }</pre>
+<pre>547                                                                   {
+548   if (!ctx || !ctx-&gt;initialized) {
+549     return false;
+550   }
+551   return ctx-&gt;using_file_audio;
+552 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and

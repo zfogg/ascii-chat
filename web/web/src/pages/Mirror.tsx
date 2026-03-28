@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import "xterm/css/xterm.css";
 import {
   initMirrorWasm,
   isWasmReady,
@@ -19,6 +18,7 @@ import {
   getFlipX,
   setTargetFps,
   getTargetFps,
+  getMirrorModule,
 } from "@ascii-chat/shared/wasm";
 // @ts-expect-error - Generated file without types
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
@@ -241,6 +241,7 @@ export function MirrorPage() {
             onFpsChange={setFps}
             error={error}
             showFps={isWebcamRunning}
+            wasmModule={getMirrorModule()}
           />
         }
         modal={

@@ -170,14 +170,14 @@
 <div class="Bd-indent"><i>ctx</i> Capture context</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Audio context pointer (borrowed, not owned) or NULL</div>
-<p class="Pp">Definition at line <b>548</b> of file
+<p class="Pp">Definition at line <b>561</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>548                                                                     {
-549   if (!ctx || !ctx-&gt;initialized) {
-550     return NULL;
-551   }
-552   return ctx-&gt;audio_ctx;
-553 }</pre>
+<pre>561                                                                     {
+562   if (!ctx || !ctx-&gt;initialized) {
+563     return NULL;
+564   }
+565   return ctx-&gt;audio_ctx;
+566 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_ctx</b>, and
@@ -193,13 +193,13 @@
 <div class="Bd-indent"><i>ctx</i> Capture context (must not be NULL)
 <br/>
 <i>audio_ctx</i> Audio context pointer (borrowed, not owned)</div>
-<p class="Pp">Definition at line <b>555</b> of file
+<p class="Pp">Definition at line <b>568</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>555                                                                                     {
-556   if (ctx) {
-557     ctx-&gt;audio_ctx = audio_ctx;
-558   }
-559 }</pre>
+<pre>568                                                                                     {
+569   if (ctx) {
+570     ctx-&gt;audio_ctx = audio_ctx;
+571   }
+572 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_ctx</b>.</p>

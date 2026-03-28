@@ -112,10 +112,6 @@
   Description</a></h1>
 <p class="Pp">Terminal-to-pixel renderer and render-file output (audio +
   video).</p>
-<p class="Pp">Platform-specific renderers (Linux: FreeType+ghostty_vt, macOS:
-    ghostty+Metal) implement the functions declared here. render_file_* is the
-    public orchestrator called from the session display layer.</p>
-<p class="Pp"></p>
 <p class="Pp">Supports theme-aware rendering that adapts colors based on the
     terminal's background theme (dark or light) for optimal readability.</p>
 <p class="Pp">Definition in file <b>renderer.h</b>.</p>
@@ -126,12 +122,12 @@
 <section class="Ss">
 <h2 class="Ss">typedef struct <b>render_file_ctx_s</b>
   <b>render_file_ctx_t</b></h2>
-<p class="Pp">Definition at line <b>59</b> of file <b>renderer.h</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>renderer.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef struct <b>terminal_renderer_s</b>
   <b>terminal_renderer_t</b></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>renderer.h</b>.</p>
+<p class="Pp">Definition at line <b>18</b> of file <b>renderer.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -158,12 +154,12 @@
     </i></b></a></dt>
   <dd>Auto-detect theme from terminal (default)</dd>
 </dl>
-<p class="Pp">Definition at line <b>31</b> of file <b>renderer.h</b>.</p>
-<pre>31              {
-32   TERM_RENDERER_THEME_DARK = 0,  
-33   TERM_RENDERER_THEME_LIGHT = 1, 
-34   TERM_RENDERER_THEME_AUTO = 2,  
-35 } term_renderer_theme_t;</pre>
+<p class="Pp">Definition at line <b>27</b> of file <b>renderer.h</b>.</p>
+<pre>27              {
+28   TERM_RENDERER_THEME_DARK = 0,  
+29   TERM_RENDERER_THEME_LIGHT = 1, 
+30   TERM_RENDERER_THEME_AUTO = 2,  
+31 } term_renderer_theme_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

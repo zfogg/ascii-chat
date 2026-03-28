@@ -819,6 +819,7 @@
     <b>action_create_manpage()</b>, <b>add_client()</b>,
     <b>add_webrtc_client()</b>, <b>app_client_create()</b>,
     <b>ascii_convert()</b>, <b>ascii_convert_with_capabilities()</b>,
+    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
     <b>ascii_write_init()</b>, <b>asciichat_pcre2_extract_group()</b>,
     <b>asciichat_pcre2_extract_named_group()</b>,
     <b>asciichat_pcre2_singleton_compile()</b>, <b>asciichat_set_errno()</b>,
@@ -1114,11 +1115,13 @@
     <b>acip_websocket_server_transport_create()</b>,
     <b>action_create_config()</b>, <b>action_create_manpage()</b>,
     <b>add_client()</b>, <b>add_webrtc_client()</b>, <b>ascii_read_init()</b>,
-    <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_unadvertise()</b>,
-    <b>audio_analysis_destroy()</b>, <b>audio_analysis_init()</b>,
-    <b>audio_init()</b>, <b>audio_ring_buffer_read()</b>,
-    <b>audio_sender_init()</b>, <b>audio_start_duplex()</b>,
-    <b>check_known_host()</b>, <b>client_audio_pipeline_create()</b>,
+    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
+    <b>ascii_renderer_shutdown()</b>, <b>asciichat_mdns_query()</b>,
+    <b>asciichat_mdns_unadvertise()</b>, <b>audio_analysis_destroy()</b>,
+    <b>audio_analysis_init()</b>, <b>audio_init()</b>,
+    <b>audio_ring_buffer_read()</b>, <b>audio_sender_init()</b>,
+    <b>audio_start_duplex()</b>, <b>check_known_host()</b>,
+    <b>client_audio_pipeline_create()</b>,
     <b>client_audio_pipeline_process_duplex()</b>,
     <b>client_audio_pipeline_reset()</b>, <b>client_crypto_handshake()</b>,
     <b>client_dispatch_thread()</b>, <b>client_init_with_args()</b>,
@@ -1480,6 +1483,7 @@
     <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
     <b>actions_execute_deferred()</b>, <b>add_client()</b>,
     <b>add_webrtc_client()</b>, <b>ascii_convert_with_capabilities()</b>,
+    <b>ascii_renderer_init()</b>, <b>ascii_renderer_render_frame()</b>,
     <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
     <b>ascii_write_init()</b>, <b>asciichat_pcre2_singleton_get_code()</b>,
     <b>audio_process_received_samples()</b>, <b>audio_start_duplex()</b>,
@@ -1704,6 +1708,11 @@
 <p class="Pp">Logging levels enumeration. Defines the severity levels for log
     messages. Used throughout the logging system without circular
   dependencies.</p>
+<p class="Pp"></p>
+<p class="Pp">Note: If raylib is included (detected via RAYLIB_H), we skip
+    redefining the enumerators and just use int for <b>log_level_t</b>, since
+    raylib already defines LOG_DEBUG, LOG_INFO, LOG_ERROR, LOG_FATAL with
+    compatible values.</p>
 <p class="Pp"><b>Enumerator</b>
   <br/>
 </p>
@@ -1727,15 +1736,15 @@
     </i></b></a></dt>
   <dd>Fatal error messages (most severe)</dd>
 </dl>
-<p class="Pp">Definition at line <b>19</b> of file <b>types.h</b>.</p>
-<pre>19              {
-20   LOG_DEV = 0, 
-21   LOG_DEBUG,   
-22   LOG_INFO,    
-23   LOG_WARN,    
-24   LOG_ERROR,   
-25   LOG_FATAL    
-26 } log_level_t;</pre>
+<p class="Pp">Definition at line <b>24</b> of file <b>types.h</b>.</p>
+<pre>24              {
+25   LOG_DEV = 0, 
+26   LOG_DEBUG,   
+27   LOG_INFO,    
+28   LOG_WARN,    
+29   LOG_ERROR,   
+30   LOG_FATAL    
+31 } log_level_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

@@ -3,6 +3,7 @@ export {
   cleanupMirrorWasm,
   convertFrameToAscii,
   isWasmReady,
+  getMirrorModule,
   RenderMode,
   ColorMode,
   ColorFilter,

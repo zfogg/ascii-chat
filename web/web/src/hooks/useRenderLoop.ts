@@ -9,7 +9,7 @@ interface UseRenderLoopReturn {
  * Handles frame rate limiting and error handling
  */
 export function useRenderLoop(
-  renderFrame: () => void,
+  renderFrame: (deltaMs: number) => void,
   frameIntervalRef: MutableRefObject<number>,
   lastFrameTimeRef: MutableRefObject<number>,
   onError?: (error: unknown) => void,
@@ -27,7 +27,7 @@ export function useRenderLoop(
 
         if (elapsed >= interval) {
           lastFrameTimeRef.current = time;
-          renderFrame();
+          renderFrame(elapsed);
         } else {
           debug.skipped++;
         }

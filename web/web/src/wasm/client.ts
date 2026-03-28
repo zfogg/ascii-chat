@@ -315,14 +315,6 @@ export async function initClientWasm(
       crypto.getRandomValues(buf);
       return buf[0];
     },
-    // Forward C stdout (log_debug, log_info, etc.) to browser console
-    print: (text: string) => {
-      console.log("[C] " + text);
-    },
-    // Forward C stderr to browser console
-    printErr: (text: string) => {
-      console.error("[C] " + text);
-    },
   });
   console.log("[Client WASM] Module factory completed");
 

@@ -41,6 +41,7 @@ export function useMirrorRenderLoop({
     }
 
     const isTestMode = new URLSearchParams(window.location.search).has("test");
+    let lastFrameTime = performance.now();
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) return;
@@ -147,15 +148,26 @@ export function useMirrorRenderLoop({
       debugCountRef.current++;
     };
 
-    const interval = setInterval(() => {
+    const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
-        renderFrame();
+        const elapsed = time - lastFrameTime;
+        const interval = frameIntervalRef.current;
+
+        if (elapsed >= interval) {
+          lastFrameTime = time;
+          renderFrame();
+        }
+
+        requestAnimationFrame(animationFrameRef);
       } catch (err) {
         console.error("[Mirror] Render error:", err);
       }
-    }, frameIntervalRef.current);
+    };
 
-    return () => clearInterval(interval);
+    lastFrameTime = performance.now();
+    const rafHandle = requestAnimationFrame(animationFrameRef);
+
+    return () => cancelAnimationFrame(rafHandle);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isWebcamRunning, captureFrame, terminalDimensions]);
 }

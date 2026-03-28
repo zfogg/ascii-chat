@@ -450,6 +450,18 @@
     "sourcePath": null
   },
   {
+    "name": "ascii_renderer.c",
+    "title": "ascii_renderer.c",
+    "file": "ascii-chat-ascii_renderer.c.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ascii_renderer_t",
+    "title": "ascii_renderer_t",
+    "file": "ascii-chat-ascii_renderer_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "asciichat_errno.c",
     "title": "asciichat_errno.c",
     "file": "ascii-chat-asciichat_errno.c.html",

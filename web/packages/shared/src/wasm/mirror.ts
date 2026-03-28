@@ -72,14 +72,6 @@ export async function initMirrorWasm(
       crypto.getRandomValues(buf);
       return buf[0];
     },
-    // Forward C stdout to browser console
-    print: (text: string) => {
-      console.log("[C] " + text);
-    },
-    // Forward C stderr to browser console
-    printErr: (text: string) => {
-      console.error("[C] " + text);
-    },
   };
 
   if (options?.locateFile) {
@@ -348,4 +340,11 @@ export function convertFrameToAscii(
  */
 export function isWasmReady(): boolean {
   return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
+}
+
+/**
+ * Get the WASM module instance
+ */
+export function getMirrorModule(): MirrorModule | null {
+  return wasmModule;
 }

@@ -5,19 +5,11 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import type { Terminal } from "xterm";
-import { XTerm, type XTerm as XTermType } from "@pablo-lion/xterm-react";
-import { FitAddon } from "@xterm/addon-fit";
-import "xterm/css/xterm.css";
 
 export interface AsciiRendererHandle {
   writeFrame(ansiString: string): void;
   getDimensions(): { cols: number; rows: number };
   clear(): void;
-}
-
-interface XTermWithElement extends XTermType {
-  element?: HTMLElement;
 }
 
 export interface AsciiRendererProps {
@@ -26,30 +18,41 @@ export interface AsciiRendererProps {
   error?: string;
   showFps?: boolean;
   connectionState?: number;
+  wasmModule?: any;
 }
 
 export const AsciiRenderer = forwardRef<
   AsciiRendererHandle,
   AsciiRendererProps
 >(function AsciiRenderer(
-  { onDimensionsChange, onFpsChange, error, showFps = true, connectionState },
+  {
+    onDimensionsChange,
+    onFpsChange,
+    error,
+    showFps = true,
+    connectionState,
+    wasmModule,
+  },
   ref,
 ) {
-  const xtermRef = useRef<XTermType | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const fpsRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const moduleRef = useRef<any>(null);
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
+  const firstRenderDoneRef = useRef(false);
 
-  // FPS tracking via direct DOM updates
+  // FPS tracking
   const frameCountRef = useRef(0);
   const fpsUpdateTimeRef = useRef<number | null>(null);
-  const lastDimsRef = useRef({ cols: 0, rows: 0 });
+  const fpsDisplayRef = useRef<HTMLDivElement>(null);
 
-  // Initialize FPS timer
   useEffect(() => {
     fpsUpdateTimeRef.current = performance.now();
   }, []);
+
+  useEffect(() => {
+    moduleRef.current = wasmModule;
+  }, [wasmModule]);
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
@@ -59,74 +62,137 @@ export const AsciiRenderer = forwardRef<
     [onDimensionsChange],
   );
 
+  useEffect(() => {
+    if (!canvasRef.current || !moduleRef.current || setupDoneRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    // Initialize WASM renderer with canvas dimensions
+    const initRenderer = () => {
+      try {
+        const width = canvas.clientWidth || 1280;
+        const height = canvas.clientHeight || 720;
+
+        // Set canvas on module for raylib/Emscripten
+        moduleRef.current.canvas = canvas;
+
+        console.log(
+          `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`
+        );
+        moduleRef.current._ascii_renderer_init(width, height);
+
+        console.log(`[AsciiRenderer] Getting dimensions...`);
+        const cols = moduleRef.current._ascii_renderer_get_cols();
+        const rows = moduleRef.current._ascii_renderer_get_rows();
+
+        console.log(
+          `[AsciiRenderer] Got dimensions: ${cols}x${rows}`
+        );
+        updateDimensions(cols, rows);
+        setupDoneRef.current = true;
+
+        console.log(
+          `[AsciiRenderer] Initialized: ${width}x${height}px, ${cols}x${rows} cells`
+        );
+      } catch (err) {
+        console.error("[AsciiRenderer] Initialization failed:", err);
+      }
+    };
+
+    // Wait for canvas to have layout
+    let timer: number | undefined;
+    if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+      initRenderer();
+    } else {
+      timer = window.setTimeout(initRenderer, 100);
+    }
+
+    return () => {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+    };
+  }, [wasmModule, updateDimensions]);
+
+  // Handle canvas resizes
+  useEffect(() => {
+    if (!canvasRef.current || !moduleRef.current || !setupDoneRef.current)
+      return;
+
+    const canvas = canvasRef.current;
+    const handleResize = () => {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+
+      if (width > 0 && height > 0 && firstRenderDoneRef.current) {
+        moduleRef.current._ascii_renderer_resize(width, height);
+        const cols = moduleRef.current._ascii_renderer_get_cols();
+        const rows = moduleRef.current._ascii_renderer_get_rows();
+        updateDimensions(cols, rows);
+
+        console.log(`[AsciiRenderer] Resized to ${cols}x${rows} cells`);
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(canvas);
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [moduleRef, updateDimensions]);
+
   useImperativeHandle(
     ref,
     () => ({
       writeFrame(ansiString: string) {
-        // Write directly to terminal without RAF indirection to prevent frame drops
-        // when frames arrive faster than RAF cycle (~16.67ms at 60 FPS)
-        const xterm = xtermRef.current;
-        if (!xterm) return;
+        if (!moduleRef.current || !setupDoneRef.current) {
+          console.warn("[AsciiRenderer] writeFrame called but not ready:", {
+            hasModule: !!moduleRef.current,
+            setupDone: setupDoneRef.current,
+          });
+          return;
+        }
 
-        const terminal = (xterm as XTermType & { terminal: Terminal }).terminal;
-        if (!terminal) return;
+        try {
+          // Encode string to UTF-8 bytes
+          const encoder = new TextEncoder();
+          const data = encoder.encode(ansiString);
 
-        // Unpause render service BEFORE write() so xterm schedules a canvas paint.
-        // xterm's IntersectionObserver pauses rendering when the terminal isn't
-        // fully in the viewport (e.g. a 33vh container). If _isPaused is true
-        // when write() is called, xterm skips scheduling the render entirely.
-        const core = (
-          terminal as Terminal & {
-            _core?: {
-              _renderService?: {
-                _isPaused: boolean;
-              };
-            };
+          // Allocate memory in WASM and copy data
+          const ptr = moduleRef.current._malloc(data.length);
+          const wasmMemory = new Uint8Array(moduleRef.current.HEAPU8.buffer);
+          wasmMemory.set(data, ptr);
+
+          // Render frame - direct call to WASM function
+          moduleRef.current._ascii_renderer_render_frame(ptr, data.length);
+
+          // Free memory
+          moduleRef.current._free(ptr);
+
+          // Mark first render as done so resize can proceed
+          if (!firstRenderDoneRef.current) {
+            firstRenderDoneRef.current = true;
           }
-        )._core;
-        if (core?._renderService) {
-          core._renderService._isPaused = false;
+        } catch (err) {
+          console.error("[AsciiRenderer] writeFrame error:", err);
         }
 
-        const lines = ansiString.split("\n");
-
-        const formattedLines = lines.map((line: string, index: number) =>
-          index < lines.length - 1 ? line + "\r\n" : line,
-        );
-
-        // Use cursor home only. Clear screen only when dimensions changed.
-        const dims = dimensionsRef.current;
-        let prefix = "\x1b[H";
-        if (
-          lastDimsRef.current.cols !== dims.cols ||
-          lastDimsRef.current.rows !== dims.rows
-        ) {
-          prefix = "\x1b[H\x1b[J";
-          lastDimsRef.current = { ...dims };
-          console.log(
-            `[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`,
-          );
-        }
-
-        const output = prefix + formattedLines.join("");
-
-        terminal.write(output);
-
-        // Force the canvas renderer to repaint all rows.
-        // xterm's IntersectionObserver can leave the renderer paused when
-        // the terminal is in a small container (e.g. 33vh mini demo).
-        // terminal.refresh() is the public API that marks rows dirty.
-        terminal.refresh(0, terminal.rows - 1);
-
-        // Update FPS counter via direct DOM mutation and callback
+        // Update FPS counter
         if (showFps && fpsUpdateTimeRef.current !== null) {
           frameCountRef.current++;
           const now = performance.now();
           const elapsed = now - fpsUpdateTimeRef.current;
+
           if (elapsed >= 1000) {
             const fps = Math.round(frameCountRef.current / (elapsed / 1000));
-            if (fpsRef.current) {
-              fpsRef.current.textContent = fps.toString();
+            if (fpsDisplayRef.current) {
+              fpsDisplayRef.current.textContent = fps.toString();
             }
             onFpsChange?.(fps);
             frameCountRef.current = 0;
@@ -140,18 +206,12 @@ export const AsciiRenderer = forwardRef<
       },
 
       clear() {
-        const xterm = xtermRef.current;
-        if (xterm) {
-          const terminal = (xterm as XTermType & { terminal: Terminal })
-            .terminal;
-          if (terminal) {
-            console.log("[AsciiRenderer] clear()");
-            terminal.clear();
-          }
-        }
+        if (!moduleRef.current || !setupDoneRef.current) return;
+        console.log("[AsciiRenderer] clear()");
+        moduleRef.current._ascii_renderer_render_frame(0, 0);
       },
     }),
-    [showFps, onFpsChange],
+    [showFps, onFpsChange]
   );
 
   const handleXTermRef = useCallback(

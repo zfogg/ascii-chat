@@ -64,6 +64,19 @@ set(FETCHCONTENT_QUIET ON)
 # Suppress CMake find_package output
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
+# libvterm (declare before Libvterm.cmake so it's available when included)
+FetchContent_Declare(libvterm_wasm
+    GIT_REPOSITORY https://github.com/neovim/libvterm.git
+    GIT_TAG v0.3.3
+)
+if(BUILD_WEB AND NOT libvterm_wasm_POPULATED)
+    FetchContent_MakeAvailable(libvterm_wasm)
+endif()
+
+# Include libvterm configuration (will build from source for WASM)
+set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
+
 # libsodium
 FetchContent_Declare(Sodium
     GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
@@ -124,6 +137,17 @@ if(BUILD_WEB AND NOT zstd_POPULATED)
     FetchContent_MakeAvailable(zstd)
 endif()
 
+# raylib (for WebGL rendering of pixel buffer)
+FetchContent_Declare(raylib_wasm
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 5.5
+)
+set(PLATFORM "Web" CACHE STRING "" FORCE)
+set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
+if(BUILD_WEB AND NOT raylib_wasm_POPULATED)
+    FetchContent_MakeAvailable(raylib_wasm)
+endif()
+
 # FFmpeg - using pre-built ffmpeg.wasm (npm package)
 # JavaScript side will load ffmpeg.wasm from CDN/node_modules
 # C side uses stub implementations that bridge to ffmpeg.wasm via EM_JS
@@ -149,6 +173,8 @@ include_directories(
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
+    ${libvterm_wasm_SOURCE_DIR}/include  # libvterm headers
+    ${raylib_wasm_SOURCE_DIR}/src  # raylib headers
 )
 
 # Source files for WASM mirror entry point (native C pipeline)
@@ -198,6 +224,11 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
 )
 
+# WASM rendering components (libvterm + FreeType + raylib)
+set(WASM_RENDERER_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/renderer/ascii_renderer.c
+)
+
 # Third-party dependencies (source-included)
 set(TOML_SRC
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src/tomlc17.c
@@ -205,6 +236,14 @@ set(TOML_SRC
 
 set(UTF8PROC_SRC
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
+)
+
+# Generated font data (created by cmake/targets/Fonts.cmake)
+# Note: In web builds, CMAKE_BINARY_DIR points to build/web/, but fonts are generated in root build/
+# Get the parent build directory
+get_filename_component(PARENT_BUILD_DIR "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
+set(GENERATED_FONT_SRC
+    "${PARENT_BUILD_DIR}/generated/data/fonts/default.c"
 )
 
 # Library source files common to both mirror and client modes
@@ -377,9 +416,17 @@ add_library(wasm-common OBJECT
     ${COMMON_WEB_SRC}
     ${PLATFORM_SRC}
     ${LIB_SRC_COMMON}
+    ${WASM_RENDERER_SRC}
     ${TOML_SRC}
     ${UTF8PROC_SRC}
+    ${GENERATED_FONT_SRC}
 )
+
+
+# Ensure font generation happens before compiling wasm-common
+if(TARGET generate_fonts)
+    add_dependencies(wasm-common generate_fonts)
+endif()
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(wasm-common PRIVATE
@@ -390,10 +437,25 @@ target_compile_definitions(wasm-common PRIVATE
 target_compile_options(wasm-common PRIVATE -pthread)
 target_link_options(wasm-common PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 
+# Add FreeType via Emscripten port, libvterm, and raylib support
+if(DEFINED EMSCRIPTEN)
+    target_compile_options(wasm-common PRIVATE -sUSE_FREETYPE=1)
+    target_link_options(wasm-common PRIVATE -sUSE_FREETYPE=1)
+endif()
+
+# Libvterm was built by cmake/deps/Libvterm.cmake when EMSCRIPTEN is defined
+# VTERM_LDFLAGS and VTERM_INCLUDE_DIRS are set by that file
+
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
     sodium
     pcre2-8
+    ${VTERM_LDFLAGS}
+    raylib
+)
+
+target_include_directories(wasm-common PRIVATE
+    ${VTERM_INCLUDE_DIRS}
 )
 
 # NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
@@ -425,13 +487,15 @@ target_compile_definitions(mirror-web PRIVATE
 )
 
 # Enable Emscripten's pthread support and SIMD for video processing
-target_compile_options(mirror-web PRIVATE -pthread -msimd128)
-target_link_options(mirror-web PRIVATE -pthread -Wno-error=pthreads-mem-growth)
+target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
+target_link_options(mirror-web PRIVATE -pthread -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies (built for WASM via FetchContent)
 target_link_libraries(mirror-web PRIVATE
     sodium
     pcre2-8
+    ${VTERM_LDFLAGS}
+    raylib
 )
 
 # Apply sanitizers
@@ -476,9 +540,9 @@ target_compile_definitions(client-web PRIVATE
     BUILD_WASM_CLIENT=1
 )
 
-# Enable Emscripten's pthread support
-target_compile_options(client-web PRIVATE -pthread)
-target_link_options(client-web PRIVATE -pthread -Wno-error=pthreads-mem-growth)
+# Enable Emscripten's pthread support and FreeType
+target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
+target_link_options(client-web PRIVATE -pthread -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
@@ -486,6 +550,8 @@ target_link_libraries(client-web PRIVATE
     pcre2-8
     opus
     libzstd_static
+    ${VTERM_LDFLAGS}
+    raylib
 )
 
 # Add include directories for client mode dependencies
@@ -506,6 +572,13 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_convert_frame
     _mirror_free_string
     _get_help_text
+    # ASCII renderer functions (raylib + libvterm + FreeType)
+    _ascii_renderer_init
+    _ascii_renderer_render_frame
+    _ascii_renderer_resize
+    _ascii_renderer_get_cols
+    _ascii_renderer_get_rows
+    _ascii_renderer_shutdown
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
@@ -536,6 +609,13 @@ set(EXPORTED_FUNCTIONS_MIRROR
 # Exported functions for client module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_CLIENT
     _main
+    # ASCII renderer functions (raylib + libvterm + FreeType)
+    _ascii_renderer_init
+    _ascii_renderer_render_frame
+    _ascii_renderer_resize
+    _ascii_renderer_get_cols
+    _ascii_renderer_get_rows
+    _ascii_renderer_shutdown
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
@@ -583,6 +663,9 @@ target_link_options(mirror-web PRIVATE
     -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
     -sPROXY_TO_PTHREAD=1
+    -sUSE_WEBGL2=1
+    -sFULL_ES2=1
+    -sGL_ENABLE_GET_PROC_ADDRESS=1
     -msimd128
     -O3
     --no-entry
@@ -604,6 +687,9 @@ target_link_options(client-web PRIVATE
     -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
     -sPROXY_TO_PTHREAD=1
+    -sUSE_WEBGL2=1
+    -sFULL_ES2=1
+    -sGL_ENABLE_GET_PROC_ADDRESS=1
     -msimd128
     -O3
     --no-entry

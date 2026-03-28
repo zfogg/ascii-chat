@@ -77,6 +77,8 @@
   Application name for key comments (<i>ascii-chat&quot;).</i> #define
     <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
   <br/>
+  #define <b>NONSTRING</b> /* nothing */
+  <br/>
   #define <b>FATAL</b>(code, ...)
   <br/>
   Exit with error code and custom message, with stack trace in debug builds.
@@ -297,7 +299,7 @@ fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
 <pre>calloc((count), (size))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>245</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>252</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ALLOC_FREE(_ptr)"><a class="permalink" href="#_define_ALLOC_FREE(_ptr)">#define
@@ -307,7 +309,7 @@ fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
 <pre>free(ptr)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>247</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>254</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ALLOC_MALLOC(_size)"><a class="permalink" href="#_define_ALLOC_MALLOC(_size)">#define
@@ -317,7 +319,7 @@ fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
 <pre>malloc(size)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>244</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>251</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ALLOC_REALLOC(_ptr,__size)"><a class="permalink" href="#_define_ALLOC_REALLOC(_ptr,__size)">#define
@@ -327,7 +329,7 @@ fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
 <pre>realloc((ptr), (size))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>246</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>253</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_CHAT_APP_NAME___'ascii"><a class="permalink" href="#_define_ASCII_CHAT_APP_NAME___'ascii">#define
@@ -373,14 +375,14 @@ if (result != OK) {
 <br/>
                         crypto_result);
 </pre>
-<p class="Pp">Definition at line <b>602</b> of file <b>common.h</b>.</p>
-<pre>602 #define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                              \
-603   do {                                                                                                                 \
-604     if ((expr) != (ok_value)) {                                                                                        \
-605       log_error(msg, ##__VA_ARGS__);                                                                                   \
-606       return (expr);                                                                                                   \
-607     }                                                                                                                  \
-608   } while (0)</pre>
+<p class="Pp">Definition at line <b>609</b> of file <b>common.h</b>.</p>
+<pre>609 #define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                              \
+610   do {                                                                                                                 \
+611     if ((expr) != (ok_value)) {                                                                                        \
+612       log_error(msg, ##__VA_ARGS__);                                                                                   \
+613       return (expr);                                                                                                   \
+614     }                                                                                                                  \
+615   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -412,7 +414,7 @@ if (result != OK) {
 <pre>FATAL(ERROR_NETWORK_BIND, &quot;Cannot bind to port %d&quot;, port_number);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>151</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
     <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
     <b>client_main()</b>, <b>main()</b>, <b>server_connection_establish()</b>,
@@ -443,16 +445,22 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp"><b>MUTEX_INIT_OR_RETURN(mutex)</b>; // Mutex initialized
     successfully, continue</p>
-<p class="Pp">Definition at line <b>515</b> of file <b>common.h</b>.</p>
-<pre>515 #define MUTEX_INIT_OR_RETURN(m)                                                                                        \
-516   do {                                                                                                                 \
-517     if (mutex_init(&amp;(m)) != 0) {                                                                                       \
-518       log_error(&quot;Failed to initialize mutex: %s&quot;, #m);                                                                 \
-519       return -1;                                                                                                       \
-520     }                                                                                                                  \
-521   } while (0)</pre>
+<p class="Pp">Definition at line <b>522</b> of file <b>common.h</b>.</p>
+<pre>522 #define MUTEX_INIT_OR_RETURN(m)                                                                                        \
+523   do {                                                                                                                 \
+524     if (mutex_init(&amp;(m)) != 0) {                                                                                       \
+525       log_error(&quot;Failed to initialize mutex: %s&quot;, #m);                                                                 \
+526       return -1;                                                                                                       \
+527     }                                                                                                                  \
+528   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NONSTRING___/*_nothing_*/"><a class="permalink" href="#_define_NONSTRING___/*_nothing_*/">#define
+  NONSTRING /* nothing */</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>98</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096"><a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096">#define
@@ -464,13 +472,13 @@ if (result != OK) {
 <h2 class="Ss" id="_define_read_u16_unaligned___bytes_read_u16_unaligned"><a class="permalink" href="#_define_read_u16_unaligned___bytes_read_u16_unaligned">#define
   read_u16_unaligned bytes_read_u16_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>457</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>464</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_read_u32_unaligned___bytes_read_u32_unaligned"><a class="permalink" href="#_define_read_u32_unaligned___bytes_read_u32_unaligned">#define
   read_u32_unaligned bytes_read_u32_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>458</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)"><a class="permalink" href="#_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)">#define
@@ -525,30 +533,30 @@ if (result != OK) {
   values</p>
 <p class="Pp"></p>
 <p class="Pp">Calculate the number of elements in an array</p>
-<p class="Pp">Definition at line <b>199</b> of file <b>common.h</b>.</p>
-<pre>199 #define RUN_BURST_AND_THROTTLE(burst_ns, throttle_ns, code_block)                                                      \
-200   do {                                                                                                                 \
-201     static uint64_t burst_start = 0;                                                                                   \
-202     uint64_t now = time_get_ns();                                                                                      \
-203                                                                                                                        \
-204     /* First call or timer reset */                                                                                    \
-205     if (burst_start == 0) {                                                                                            \
-206       burst_start = now;                                                                                               \
-207       code_block;                                                                                                      \
-208     } else {                                                                                                           \
-209       uint64_t elapsed_ns = now - burst_start;                                                                         \
+<p class="Pp">Definition at line <b>206</b> of file <b>common.h</b>.</p>
+<pre>206 #define RUN_BURST_AND_THROTTLE(burst_ns, throttle_ns, code_block)                                                      \
+207   do {                                                                                                                 \
+208     static uint64_t burst_start = 0;                                                                                   \
+209     uint64_t now = time_get_ns();                                                                                      \
 210                                                                                                                        \
-211       if (elapsed_ns &lt; (uint64_t)(burst_ns)) {                                                                         \
-212         /* Within burst window */                                                                                      \
-213         code_block;                                                                                                    \
-214       } else if (elapsed_ns &gt;= (uint64_t)(throttle_ns)) {                                                              \
-215         /* Throttle period complete, reset and execute */                                                              \
-216         burst_start = now;                                                                                             \
-217         code_block;                                                                                                    \
-218       }                                                                                                                \
-219       /* else: in throttle period, do nothing */                                                                       \
-220     }                                                                                                                  \
-221   } while (0)</pre>
+211     /* First call or timer reset */                                                                                    \
+212     if (burst_start == 0) {                                                                                            \
+213       burst_start = now;                                                                                               \
+214       code_block;                                                                                                      \
+215     } else {                                                                                                           \
+216       uint64_t elapsed_ns = now - burst_start;                                                                         \
+217                                                                                                                        \
+218       if (elapsed_ns &lt; (uint64_t)(burst_ns)) {                                                                         \
+219         /* Within burst window */                                                                                      \
+220         code_block;                                                                                                    \
+221       } else if (elapsed_ns &gt;= (uint64_t)(throttle_ns)) {                                                              \
+222         /* Throttle period complete, reset and execute */                                                              \
+223         burst_start = now;                                                                                             \
+224         code_block;                                                                                                    \
+225       }                                                                                                                \
+226       /* else: in throttle period, do nothing */                                                                       \
+227     }                                                                                                                  \
+228   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -563,9 +571,9 @@ if (result != OK) {
 <p class="Pp">Safe buffer size calculation for snprintf. Casts offset to size_t
     to avoid sign conversion warnings when subtracting from buffer_size. Returns
     0 if offset is negative or &gt;= buffer_size (prevents underflow).</p>
-<p class="Pp">Definition at line <b>474</b> of file <b>common.h</b>.</p>
-<pre>474 #define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
-475   ((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
+<p class="Pp">Definition at line <b>481</b> of file <b>common.h</b>.</p>
+<pre>481 #define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
+482   ((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -588,15 +596,15 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>267</b> of file <b>common.h</b>.</p>
-<pre>267 #define SAFE_CALLOC(count, size, cast)                                                                                 \
-268   ({                                                                                                                   \
-269     cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                   \
-270     if (!_ptr) {                                                                                                       \
-271       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu elements x %zu bytes&quot;, (size_t)(count), (size_t)(size));      \
-272     }                                                                                                                  \
-273     _ptr;                                                                                                              \
-274   })</pre>
+<p class="Pp">Definition at line <b>274</b> of file <b>common.h</b>.</p>
+<pre>274 #define SAFE_CALLOC(count, size, cast)                                                                                 \
+275   ({                                                                                                                   \
+276     cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                   \
+277     if (!_ptr) {                                                                                                       \
+278       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu elements x %zu bytes&quot;, (size_t)(count), (size_t)(size));      \
+279     }                                                                                                                  \
+280     _ptr;                                                                                                              \
+281   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>,
@@ -638,14 +646,14 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>360</b> of file <b>common.h</b>.</p>
-<pre>360 #define SAFE_CALLOC_SIMD(count, size, cast)                                                                            \
-361   ({                                                                                                                   \
-362     size_t total_size = (count) * (size);                                                                              \
-363     cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                    \
-364     memset(_ptr, 0, total_size);                                                                                       \
-365     _ptr;                                                                                                              \
-366   })</pre>
+<p class="Pp">Definition at line <b>367</b> of file <b>common.h</b>.</p>
+<pre>367 #define SAFE_CALLOC_SIMD(count, size, cast)                                                                            \
+368   ({                                                                                                                   \
+369     size_t total_size = (count) * (size);                                                                              \
+370     cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                    \
+371     memset(_ptr, 0, total_size);                                                                                       \
+372     _ptr;                                                                                                              \
+373   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -666,14 +674,14 @@ if (result != OK) {
 } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>379</b> of file <b>common.h</b>.</p>
-<pre>379 #define SAFE_FCLOSE(fp)                                                                                                \
-380   do {                                                                                                                 \
-381     if ((fp) != NULL) {                                                                                                \
-382       fclose(fp);                                                                                                      \
-383       (fp) = NULL;                                                                                                     \
-384     }                                                                                                                  \
-385   } while (0)</pre>
+<p class="Pp">Definition at line <b>386</b> of file <b>common.h</b>.</p>
+<pre>386 #define SAFE_FCLOSE(fp)                                                                                                \
+387   do {                                                                                                                 \
+388     if ((fp) != NULL) {                                                                                                \
+389       fclose(fp);                                                                                                      \
+390       (fp) = NULL;                                                                                                     \
+391     }                                                                                                                  \
+392   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_known_host()</b>,
@@ -697,14 +705,14 @@ if (result != OK) {
 } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>369</b> of file <b>common.h</b>.</p>
-<pre>369 #define SAFE_FREE(ptr)                                                                                                 \
-370   do {                                                                                                                 \
-371     if ((ptr) != NULL) {                                                                                               \
-372       ALLOC_FREE((void *)(ptr));                                                                                       \
-373       (ptr) = NULL;                                                                                                    \
-374     }                                                                                                                  \
-375   } while (0)</pre>
+<p class="Pp">Definition at line <b>376</b> of file <b>common.h</b>.</p>
+<pre>376 #define SAFE_FREE(ptr)                                                                                                 \
+377   do {                                                                                                                 \
+378     if ((ptr) != NULL) {                                                                                               \
+379       ALLOC_FREE((void *)(ptr));                                                                                       \
+380       (ptr) = NULL;                                                                                                    \
+381     }                                                                                                                  \
+382   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>__attribute__()</b>,
@@ -717,8 +725,9 @@ if (result != OK) {
     <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
     <b>app_client_create()</b>, <b>app_client_destroy()</b>,
     <b>ascii_convert()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>asciichat_clear_errno()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>asciichat_fatal_with_context()</b>,
+    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
+    <b>ascii_renderer_shutdown()</b>, <b>asciichat_clear_errno()</b>,
+    <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_instr_runtime_destroy()</b>,
     <b>asciichat_instr_runtime_get()</b>, <b>asciichat_mdns_destroy()</b>,
     <b>asciichat_mdns_init()</b>, <b>asciichat_pcre2_cleanup_all()</b>,
@@ -873,7 +882,7 @@ if (result != OK) {
 <pre>platform_getenv(name)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>427</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>434</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>,
     <b>asciichat_instr_runtime_get()</b>, <b>detect_client_utf8_support()</b>,
     <b>detect_terminal_background()</b>, <b>env_has_prompt_response()</b>,
@@ -909,15 +918,15 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>257</b> of file <b>common.h</b>.</p>
-<pre>257 #define SAFE_MALLOC(size, cast)                                                                                        \
-258   ({                                                                                                                   \
-259     cast _ptr = (cast)ALLOC_MALLOC(size);                                                                              \
-260     if (!_ptr) {                                                                                                       \
-261       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu bytes&quot;, (size_t)(size));                                      \
-262     }                                                                                                                  \
-263     _ptr;                                                                                                              \
-264   })</pre>
+<p class="Pp">Definition at line <b>264</b> of file <b>common.h</b>.</p>
+<pre>264 #define SAFE_MALLOC(size, cast)                                                                                        \
+265   ({                                                                                                                   \
+266     cast _ptr = (cast)ALLOC_MALLOC(size);                                                                              \
+267     if (!_ptr) {                                                                                                       \
+268       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu bytes&quot;, (size_t)(size));                                      \
+269     }                                                                                                                  \
+270     _ptr;                                                                                                              \
+271   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
@@ -926,7 +935,8 @@ if (result != OK) {
     <b>acip_websocket_server_transport_create()</b>, <b>add_known_host()</b>,
     <b>ansi_strip_escapes()</b>, <b>app_client_create()</b>,
     <b>ascii_create_grid()</b>, <b>ascii_pad_frame_height()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>asciichat_mdns_init()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>ascii_renderer_init()</b>,
+    <b>ascii_renderer_resize()</b>, <b>asciichat_mdns_init()</b>,
     <b>asciichat_pcre2_extract_group()</b>,
     <b>asciichat_pcre2_extract_named_group()</b>,
     <b>asciichat_pcre2_singleton_compile()</b>, <b>asciichat_set_errno()</b>,
@@ -1047,18 +1057,18 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>342</b> of file <b>common.h</b>.</p>
-<pre>342 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
-343   ({                                                                                                                   \
-344     size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
-345     cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
-346     if (!_ptr) {                                                                                                       \
-347       FATAL(ERROR_MEMORY, &quot;Aligned memory allocation failed: %zu bytes, %zu alignment&quot;, aligned_size,                  \
-348             (size_t)(alignment));                                                                                      \
-349     }                                                                                                                  \
-350     TRACK_ALIGNED_ALLOC(_ptr, aligned_size, __FILE__, __LINE__);                                                       \
-351     _ptr;                                                                                                              \
-352   })</pre>
+<p class="Pp">Definition at line <b>349</b> of file <b>common.h</b>.</p>
+<pre>349 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+350   ({                                                                                                                   \
+351     size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
+352     cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
+353     if (!_ptr) {                                                                                                       \
+354       FATAL(ERROR_MEMORY, &quot;Aligned memory allocation failed: %zu bytes, %zu alignment&quot;, aligned_size,                  \
+355             (size_t)(alignment));                                                                                      \
+356     }                                                                                                                  \
+357     TRACK_ALIGNED_ALLOC(_ptr, aligned_size, __FILE__, __LINE__);                                                       \
+358     _ptr;                                                                                                              \
+359   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
@@ -1072,7 +1082,7 @@ if (result != OK) {
 <pre>SAFE_MALLOC_ALIGNED(size, 16, cast)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>357</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>364</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>image_new()</b>.</p>
 </section>
 <section class="Ss">
@@ -1083,7 +1093,7 @@ if (result != OK) {
 <pre>platform_memcpy((dest), (dest_size), (src), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>441</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>448</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>ansi_expand_rle()</b>, <b>ansi_rle_finish()</b>,
     <b>append_256color_bg()</b>, <b>append_256color_fg()</b>,
     <b>append_truecolor_bg()</b>, <b>append_truecolor_fg()</b>,
@@ -1115,7 +1125,7 @@ if (result != OK) {
 <pre>platform_memmove((dest), (dest_size), (src), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>443</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>450</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)"><a class="permalink" href="#_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)">#define
@@ -1125,7 +1135,7 @@ if (result != OK) {
 <pre>platform_memset((dest), (dest_size), (ch), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>442</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>449</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_create_grid()</b>,
     <b>ascii_pad_frame_width()</b>, <b>audio_analysis_init()</b>,
     <b>audio_init()</b>, <b>audio_ring_buffer_clear()</b>,
@@ -1156,15 +1166,15 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>277</b> of file <b>common.h</b>.</p>
-<pre>277 #define SAFE_REALLOC(ptr, size, cast)                                                                                  \
-278   ({                                                                                                                   \
-279     void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                      \
-280     if (!tmp_ptr) {                                                                                                    \
-281       FATAL(ERROR_MEMORY, &quot;Memory reallocation failed: %zu bytes&quot;, (size_t)(size));                                    \
-282     }                                                                                                                  \
-283     (cast)(tmp_ptr);                                                                                                   \
-284   })</pre>
+<p class="Pp">Definition at line <b>284</b> of file <b>common.h</b>.</p>
+<pre>284 #define SAFE_REALLOC(ptr, size, cast)                                                                                  \
+285   ({                                                                                                                   \
+286     void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                      \
+287     if (!tmp_ptr) {                                                                                                    \
+288       FATAL(ERROR_MEMORY, &quot;Memory reallocation failed: %zu bytes&quot;, (size_t)(size));                                    \
+289     }                                                                                                                  \
+290     (cast)(tmp_ptr);                                                                                                   \
+291   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>completions_collect_all_modes_unique()</b>,
@@ -1186,7 +1196,7 @@ if (result != OK) {
 <h2 class="Ss" id="_define_safe_size_mul___bytes_safe_size_mul"><a class="permalink" href="#_define_safe_size_mul___bytes_safe_size_mul">#define
   safe_size_mul bytes_safe_size_mul</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>461</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>468</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>, and
     <b>packet_validate_frame_dimensions()</b>.</p>
 </section>
@@ -1198,7 +1208,7 @@ if (result != OK) {
 <pre>(size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>472</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
     <b>crypto_get_status()</b>, <b>detect_default_ssh_key()</b>,
@@ -1231,7 +1241,7 @@ if (result != OK) {
 <pre>sscanf(str, format, __VA_ARGS__)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>433</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>440</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>parse_hex_color()</b>.</p>
 </section>
 <section class="Ss">
@@ -1242,7 +1252,7 @@ if (result != OK) {
 <pre>platform_strcpy((dest), (dest_size), (src))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>444</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>451</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_init_media_source()</b>,
     <b>log_named_format_or_original()</b>, <b>main()</b>,
     <b>mixer_add_source()</b>, and <b>video_frame_buffer_create()</b>.</p>
@@ -1278,21 +1288,21 @@ if (result != OK) {
 } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>411</b> of file <b>common.h</b>.</p>
-<pre>411 #define SAFE_STRDUP(dst, src)                                                                                          \
-412   do {                                                                                                                 \
-413     if (src) {                                                                                                         \
-414       size_t _len = strlen(src) + 1;                                                                                   \
-415       (dst) = SAFE_MALLOC(_len, char *);                                                                               \
-416       if (dst) {                                                                                                       \
-417         SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
-418       } else {                                                                                                         \
-419         SET_ERRNO(ERROR_MEMORY, &quot;String duplication failed for: %s&quot;, (src));                                           \
-420       }                                                                                                                \
-421     } else {                                                                                                           \
-422       (dst) = NULL;                                                                                                    \
-423     }                                                                                                                  \
-424   } while (0)</pre>
+<p class="Pp">Definition at line <b>418</b> of file <b>common.h</b>.</p>
+<pre>418 #define SAFE_STRDUP(dst, src)                                                                                          \
+419   do {                                                                                                                 \
+420     if (src) {                                                                                                         \
+421       size_t _len = strlen(src) + 1;                                                                                   \
+422       (dst) = SAFE_MALLOC(_len, char *);                                                                               \
+423       if (dst) {                                                                                                       \
+424         SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
+425       } else {                                                                                                         \
+426         SET_ERRNO(ERROR_MEMORY, &quot;String duplication failed for: %s&quot;, (src));                                           \
+427       }                                                                                                                \
+428     } else {                                                                                                           \
+429       (dst) = NULL;                                                                                                    \
+430     }                                                                                                                  \
+431   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>.</p>
@@ -1305,7 +1315,7 @@ if (result != OK) {
 <pre>platform_strerror(errnum)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>438</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>445</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>,
     <b>add_client()</b>, <b>asciichat_print_error_context()</b>,
     <b>gpg_sign_with_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
@@ -1320,7 +1330,7 @@ if (result != OK) {
 <pre>platform_strlcpy((dst), (src), (size))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>407</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>414</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
     <b>acds_identity_save()</b>, <b>acds_main()</b>,
     <b>acds_session_create()</b>, <b>acds_session_join()</b>,
@@ -1410,14 +1420,14 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp"><b>THREAD_CREATE_OR_RETURN(thread, thread_func, arg)</b>; //
     Thread created successfully, continue</p>
-<p class="Pp">Definition at line <b>495</b> of file <b>common.h</b>.</p>
-<pre>495 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
-496   do {                                                                                                                 \
-497     if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
-498       log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
-499       return -1;                                                                                                       \
-500     }                                                                                                                  \
-501   } while (0)</pre>
+<p class="Pp">Definition at line <b>502</b> of file <b>common.h</b>.</p>
+<pre>502 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
+503   do {                                                                                                                 \
+504     if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
+505       log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
+506       return -1;                                                                                                       \
+507     }                                                                                                                  \
+508   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1429,7 +1439,7 @@ if (result != OK) {
 <pre>((void)0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>296</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>303</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_UNTRACKED_FREE(_ptr)"><a class="permalink" href="#_define_UNTRACKED_FREE(_ptr)">#define
@@ -1448,14 +1458,14 @@ if (result != OK) {
 } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>398</b> of file <b>common.h</b>.</p>
-<pre>398 #define UNTRACKED_FREE(ptr)                                                                                            \
-399   do {                                                                                                                 \
-400     if ((ptr) != NULL) {                                                                                               \
-401       free((void *)(ptr));                                                                                             \
-402       (ptr) = NULL;                                                                                                    \
-403     }                                                                                                                  \
-404   } while (0)</pre>
+<p class="Pp">Definition at line <b>405</b> of file <b>common.h</b>.</p>
+<pre>405 #define UNTRACKED_FREE(ptr)                                                                                            \
+406   do {                                                                                                                 \
+407     if ((ptr) != NULL) {                                                                                               \
+408       free((void *)(ptr));                                                                                             \
+409       (ptr) = NULL;                                                                                                    \
+410     }                                                                                                                  \
+411   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1478,15 +1488,15 @@ if (result != OK) {
 })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>389</b> of file <b>common.h</b>.</p>
-<pre>389 #define UNTRACKED_MALLOC(size, cast)                                                                                   \
-390   ({                                                                                                                   \
-391     cast _ptr = (cast)malloc(size);                                                                                    \
-392     if (!_ptr) {                                                                                                       \
-393       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu bytes&quot;, (size_t)(size));                                      \
-394     }                                                                                                                  \
-395     _ptr;                                                                                                              \
-396   })</pre>
+<p class="Pp">Definition at line <b>396</b> of file <b>common.h</b>.</p>
+<pre>396 #define UNTRACKED_MALLOC(size, cast)                                                                                   \
+397   ({                                                                                                                   \
+398     cast _ptr = (cast)malloc(size);                                                                                    \
+399     if (!_ptr) {                                                                                                       \
+400       FATAL(ERROR_MEMORY, &quot;Memory allocation failed: %zu bytes&quot;, (size_t)(size));                                      \
+401     }                                                                                                                  \
+402     _ptr;                                                                                                              \
+403   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1494,13 +1504,13 @@ if (result != OK) {
 <h2 class="Ss" id="_define_write_u16_unaligned___bytes_write_u16_unaligned"><a class="permalink" href="#_define_write_u16_unaligned___bytes_write_u16_unaligned">#define
   write_u16_unaligned bytes_write_u16_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>459</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>466</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_write_u32_unaligned___bytes_write_u32_unaligned"><a class="permalink" href="#_define_write_u32_unaligned___bytes_write_u32_unaligned">#define
   write_u32_unaligned bytes_write_u32_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>460</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>467</b> of file <b>common.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
