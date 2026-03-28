@@ -110,6 +110,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+EM_JS(void, js_log_options, (const char *msg), {
+  console.log("[OPTIONS-EM] " + UTF8ToString(msg));
+});
+#else
+static void js_log_options(const char *msg) {
+  (void)msg;
+}
+#endif
+
 // ============================================================================
 // Global Action Flag Tracking
 // ============================================================================
@@ -1961,6 +1972,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_info("[PERF] About to call update_dimensions_for_full_height");
   update_dimensions_for_full_height(&opts);
   log_info("[PERF] update_dimensions_for_full_height done");
+  js_log_options("After update_dimensions_for_full_height log");
 
   // SKIP: verbose level adjustment - conflicts with raylib log level system
   // TODO: Properly separate our log levels from raylib's
@@ -1973,30 +1985,33 @@ asciichat_error_t options_init(int argc, char **argv) {
   //   log_set_level((log_level_t)new_level);
   // }
 
-  // Check WEBCAM_DISABLED environment variable to enable test pattern mode
-  // Useful for CI/CD and testing environments without a physical webcam
-  log_info("[PERF] About to call SAFE_GETENV");
-  const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
-  log_info("[PERF] SAFE_GETENV done");
-  if (webcam_disabled &&
-      (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
-       platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
-    opts.test_pattern = true;
-  }
+  // SKIP: Check WEBCAM_DISABLED environment variable to enable test pattern mode
+  // TODO: Debug why logging here causes hang
+  // const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
+  // if (webcam_disabled &&
+  //     (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
+  //      platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
+  //   opts.test_pattern = true;
+  // }
 
   // Apply --no-compress interaction with audio encoding
+  js_log_options("Before --no-compress check");
   if (opts.no_compress) {
     opts.encode_audio = false;
     log_debug("--no-compress set: disabling audio encoding");
   }
+  js_log_options("After --no-compress check");
 
   // Set media_from_stdin flag if media_file is "-"
+  js_log_options("Before media_from_stdin check");
   if (opts.media_file[0] != '\0' && strcmp(opts.media_file, "-") == 0) {
     opts.media_from_stdin = true;
     log_debug("Media file set to stdin");
   }
+  js_log_options("After media_from_stdin check");
 
   // Validate --seek option
+  js_log_options("Before --seek validation");
   if (opts.media_seek_timestamp > 0.0) {
     // Can't seek stdin
     if (opts.media_from_stdin) {
@@ -2012,8 +2027,10 @@ asciichat_error_t options_init(int argc, char **argv) {
       return ERROR_INVALID_PARAM;
     }
   }
+  js_log_options("After --seek validation");
 
   // Validate --pause option
+  js_log_options("Before --pause validation");
   if (opts.pause) {
     // Require --file or --url (not webcam, not test pattern)
     if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
@@ -2022,9 +2039,13 @@ asciichat_error_t options_init(int argc, char **argv) {
       return ERROR_INVALID_PARAM;
     }
   }
+  js_log_options("After --pause validation");
 
+  js_log_options("Before media_url check");
   if (opts.media_url[0] != '\0') {
+    js_log_options("Entering media_url block");
     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+    js_log_options("About to call url_is_valid from js_log");
     log_info("[PERF] About to call url_is_valid");
     if (!url_is_valid(opts.media_url)) {
       log_error("--url must be a valid HTTP(S) URL: %s", opts.media_url);

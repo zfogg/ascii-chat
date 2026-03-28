@@ -45,6 +45,19 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
   // Default: no-op
 }
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+/* EM_JS debugging functions for tracing in browser console */
+EM_JS(void, js_debug_log, (const char *msg), {
+  console.log("[C-DEBUG] " + UTF8ToString(msg));
+});
+#else
+static void js_debug_log(const char *msg) {
+  (void)msg;
+}
+#endif
+
 /* ============================================================================
  * Logging System Internal State
  * ============================================================================ */
@@ -531,12 +544,17 @@ static void maybe_rotate_log(void) {
 }
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
+  js_debug_log("log_init: START");
+
   // Initialize rotation mutex (only operation that uses a mutex)
+  js_debug_log("log_init: before lifecycle_init rotation_mutex");
   g_log.rotation_mutex_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
   g_log.rotation_mutex_lifecycle.sync.mutex = &g_log.rotation_mutex;
   lifecycle_init(&g_log.rotation_mutex_lifecycle, "log_rotation");
+  js_debug_log("log_init: after lifecycle_init rotation_mutex");
 
   // Set basic config using atomic stores
+  js_debug_log("log_init: setting basic config");
   atomic_store_u64(&g_log.force_stderr, force_stderr);
   bool preserve_terminal_output = atomic_load_u64(&g_log.terminal_output_enabled);
 
@@ -555,24 +573,29 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   }
 
   // Check LOG_LEVEL environment variable
+  js_debug_log("log_init: checking LOG_LEVEL env");
   const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
   if (env_level_str) {
     atomic_store_u64(&g_log.level, (int)parse_log_level_from_env());
   } else {
     atomic_store_u64(&g_log.level, (int)level);
   }
+  js_debug_log("log_init: LOG_LEVEL set");
 
   atomic_store_bool(&g_log.level_manually_set, false);
   atomic_store_u64(&g_log.current_size, 0);
 
   if (filename) {
+    js_debug_log("log_init: setting up file logging");
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
 
     if (use_mmap) {
+      js_debug_log("log_init: mmap mode");
       // Lock-free mmap path - writes go to mmap'd file
       asciichat_error_t mmap_result = log_mmap_init_simple(filename, 0);
       if (mmap_result == ASCIICHAT_OK) {
         atomic_store_int(&g_log.file, -1); // No regular fd - using mmap for file output
+        js_debug_log("log_init: mmap initialized");
       } else {
         // Mmap failed - use stderr only (atomic writes, lock-free)
         if (preserve_terminal_output) {
@@ -580,8 +603,10 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
         }
         atomic_store_int(&g_log.file, STDERR_FILENO);
         g_log.filename[0] = '\0';
+        js_debug_log("log_init: mmap failed, using stderr");
       }
     } else {
+      js_debug_log("log_init: file mode");
       // Lock-free file I/O path - uses atomic write() syscalls
       int fd = platform_open("log_file", filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       atomic_store_int(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
@@ -591,19 +616,25 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
         }
         g_log.filename[0] = '\0';
       }
+      js_debug_log("log_init: file opened");
     }
   } else {
+    js_debug_log("log_init: no file logging");
     atomic_store_int(&g_log.file, STDERR_FILENO);
     g_log.filename[0] = '\0';
   }
 
   /* Initialize default log format (NULL means use mode-specific default) */
+  js_debug_log("log_init: before log_set_format");
   log_set_format(NULL, false);
+  js_debug_log("log_init: after log_set_format");
 
   /* Mark logging system as initialized (state machine transition) */
+  js_debug_log("log_init: before lifecycle_init main");
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     lifecycle_init(&g_log.lifecycle, "logging");
   }
+  js_debug_log("log_init: after lifecycle_init main");
 
   atomic_store_u64(&g_log.terminal_output_enabled, preserve_terminal_output);
 
@@ -613,14 +644,19 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   }
 
   // Detect terminal capabilities
+  js_debug_log("log_init: before log_redetect_terminal_capabilities");
   log_redetect_terminal_capabilities();
+  js_debug_log("log_init: after log_redetect_terminal_capabilities");
 
   // NOTE: Color initialization happens separately via log_set_color_scheme()
   // after options are parsed. Logging works without colors until then.
   // NOTE: Grep filter initialization happens in main.c after options_init() completes.
 
   // Initialize raylib logging integration
+  js_debug_log("log_init: before log_init_raylib");
   log_init_raylib();
+  js_debug_log("log_init: after log_init_raylib");
+  js_debug_log("log_init: COMPLETE");
 }
 
 void log_destroy(void) {
@@ -1018,46 +1054,70 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+  js_debug_log("log_msg: entry");
+
   // All state access uses atomic operations - fully lock-free
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
+    js_debug_log("log_msg: lifecycle not initialized");
     return;
   }
+  js_debug_log("log_msg: lifecycle ok");
+
   // Safety check: if main format template has been freed during shutdown, skip logging
   // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
   if (!g_log.format) {
+    js_debug_log("log_msg: format is null");
     return;
   }
+  js_debug_log("log_msg: format ok");
+
   if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
+    js_debug_log("log_msg: level below threshold");
     return;
   }
+  js_debug_log("log_msg: level ok");
   /* =========================================================================
    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
    * ========================================================================= */
   bool mmap_active = log_mmap_is_active();
+  js_debug_log(mmap_active ? "log_msg: mmap_active=true" : "log_msg: mmap_active=false");
+
   if (mmap_active) {
+    js_debug_log("log_msg: entering mmap path");
     maybe_rotate_log();
 
+    js_debug_log("log_msg: before vsnprintf");
     va_list args;
     va_start(args, fmt);
     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
     int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
     va_end(args);
+    js_debug_log("log_msg: after vsnprintf");
 
     // Truncate at whole line boundaries to avoid UTF-8 issues
     if (msg_len > 0) {
+      js_debug_log("log_msg: before truncate_at_whole_line");
       msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
+      js_debug_log("log_msg: after truncate_at_whole_line");
     }
 
     // Validate UTF-8 in formatted message
+    js_debug_log("log_msg: before validate_log_message_utf8");
     validate_log_message_utf8(msg_buffer, "mmap log message");
+    js_debug_log("log_msg: after validate_log_message_utf8");
 
+    js_debug_log("log_msg: before log_mmap_write");
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
+    js_debug_log("log_msg: after log_mmap_write");
 
     // Terminal output (check with atomic loads)
+    js_debug_log("log_msg: checking terminal output");
     if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked)) {
+      js_debug_log("log_msg: entering terminal output section");
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
+      js_debug_log("log_msg: time formatted");
 
       // Choose output stream using unified routing logic
       int fd = terminal_choose_log_fd(level);
@@ -1070,13 +1130,17 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       }
       // Priority 2: If --color NOT explicitly passed, enable colors by default
 
+      js_debug_log("log_msg: before format_log_header");
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
                                          use_colors, time_ns);
+      js_debug_log("log_msg: after format_log_header");
 
       if (header_len >= 0 && header_len < (int)sizeof(header_buffer)) {
         if (use_colors) {
+          js_debug_log("log_msg: before colorize_log_message");
           const char *colorized_msg = colorize_log_message(msg_buffer);
+          js_debug_log("log_msg: after colorize_log_message");
           const char **colors = log_get_color_array();
           if (colors) {
             safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
@@ -1089,12 +1153,17 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
         }
         (void)fflush(output_stream);
       }
+      js_debug_log("log_msg: terminal output done");
+    } else {
+      js_debug_log("log_msg: terminal output disabled or locked");
     }
+    js_debug_log("log_msg: mmap path complete");
     return;
   }
   /* =========================================================================
    * FILE I/O PATH: Lock-free using atomic write() syscalls
    * ========================================================================= */
+  js_debug_log("log_msg: entering file I/O path");
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(time_buf);

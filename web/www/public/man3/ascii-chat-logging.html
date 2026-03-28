@@ -1710,10 +1710,8 @@
     messages. Used throughout the logging system without circular
   dependencies.</p>
 <p class="Pp"></p>
-<p class="Pp">Note: If raylib is included (detected via RAYLIB_H), we skip
-    redefining the enumerators and just use int for <b>log_level_t</b>, since
-    raylib already defines LOG_DEBUG, LOG_INFO, LOG_ERROR, LOG_FATAL with
-    compatible values.</p>
+<p class="Pp">Note: We use our own log levels independent of raylib's. Raylib
+    will use its own logging system (SetTraceLogCallback).</p>
 <p class="Pp"><b>Enumerator</b>
   <br/>
 </p>
@@ -1737,15 +1735,15 @@
     </i></b></a></dt>
   <dd>Fatal error messages (most severe)</dd>
 </dl>
-<p class="Pp">Definition at line <b>24</b> of file <b>types.h</b>.</p>
-<pre>24              {
-25   LOG_DEV = 0, 
-26   LOG_DEBUG,   
-27   LOG_INFO,    
-28   LOG_WARN,    
-29   LOG_ERROR,   
-30   LOG_FATAL    
-31 } log_level_t;</pre>
+<p class="Pp">Definition at line <b>22</b> of file <b>types.h</b>.</p>
+<pre>22              {
+23   LOG_DEV = 0, 
+24   LOG_DEBUG,   
+25   LOG_INFO,    
+26   LOG_WARN,    
+27   LOG_ERROR,   
+28   LOG_FATAL    
+29 } log_level_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

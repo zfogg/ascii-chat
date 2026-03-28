@@ -30,15 +30,15 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Apply only to WASM executables and common library below
 
 # Cache WASM dependencies outside build/ to persist across rebuilds
-if(ASCIICHAT_WEB_DEPS_DIR)
-    set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_WEB_DEPS_DIR}" CACHE PATH "FetchContent cache for web deps")
+if(NOT ASCIICHAT_WEB_DEPS_DIR)
+    set(ASCIICHAT_WEB_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/${CMAKE_BUILD_TYPE}/web")
 endif()
+file(MAKE_DIRECTORY "${ASCIICHAT_WEB_DEPS_DIR}")
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
 
 # Pass Emscripten toolchain to FetchContent sub-builds via per-package CMAKE_ARGS
-# Only include CMAKE_TOOLCHAIN_FILE if it's actually set (avoid empty -DCMAKE_TOOLCHAIN_FILE=)
 if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE)
     set(FetchContent_Toolchain_Args
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -50,109 +50,99 @@ else()
     )
 endif()
 
-# Set CMAKE_ARGS for each dependency using the toolchain args
 set(Sodium_CMAKE_ARGS ${FetchContent_Toolchain_Args})
 set(pcre2_CMAKE_ARGS ${FetchContent_Toolchain_Args})
 set(Opus_CMAKE_ARGS ${FetchContent_Toolchain_Args})
 set(zstd_CMAKE_ARGS ${FetchContent_Toolchain_Args})
 
-# Suppress verbose configure output from all dependency builds
+# Suppress verbose configure output from dependency builds
 set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
 set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 set(FETCHCONTENT_QUIET ON)
-
-# Suppress CMake find_package output
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
-# libvterm (declare before Libvterm.cmake so it's available when included)
-FetchContent_Declare(libvterm_wasm
-    GIT_REPOSITORY https://github.com/neovim/libvterm.git
-    GIT_TAG v0.3.3
-)
-if(BUILD_WEB AND NOT libvterm_wasm_POPULATED)
-    FetchContent_MakeAvailable(libvterm_wasm)
-endif()
+# Set FetchContent base dir to our cache
+set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_WEB_DEPS_DIR}/_deps")
 
-# Include libvterm configuration (will build from source for WASM)
-set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
-include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
+# ==============================================================================
+# Simplified approach: just use FetchContent with proper caching via disk
+# ==============================================================================
+# The dependencies are cached in .deps-cache via FETCHCONTENT_BASE_DIR
+# On subsequent builds, FetchContent finds them and reuses them (no rebuild)
 
-# libsodium
-FetchContent_Declare(Sodium
-    GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
-    GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
-    UPDATE_DISCONNECTED ON
-)
-set(SODIUM_DISABLE_TESTS ON)
-if(BUILD_WEB AND NOT sodium_POPULATED)
-    FetchContent_MakeAvailable(Sodium)
-endif()
+set(SODIUM_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
+set(PCRE2_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
+set(OPUS_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
+set(ZSTD_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
+set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 
-# PCRE2
-FetchContent_Declare(pcre2
-    GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
-    GIT_TAG pcre2-10.44
-    UPDATE_DISCONNECTED ON
-)
-set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
-set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-if(BUILD_WEB AND NOT pcre2_POPULATED)
-    FetchContent_MakeAvailable(pcre2)
-endif()
-
-# Opus codec (for client mode audio encoding/decoding)
-FetchContent_Declare(Opus
-    GIT_REPOSITORY https://github.com/xiph/opus.git
-    GIT_TAG v1.5.2
-)
-set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
-set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
-set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
-# Set minimum CMake version for Opus
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-if(BUILD_WEB AND NOT opus_POPULATED)
-    FetchContent_MakeAvailable(Opus)
-endif()
-
-# Ensure Opus source headers take precedence over system headers
-if(TARGET opus)
-    # Add source includes BEFORE inherited system Opus headers
-    target_include_directories(opus BEFORE PRIVATE
-        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk>
-        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk/float>
-        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk/fixed>
+if(BUILD_WEB)
+    # libsodium (with toolchain args)
+    FetchContent_Declare(Sodium
+        GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
+        GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS ${Sodium_CMAKE_ARGS}
     )
-endif()
+    set(SODIUM_DISABLE_TESTS ON)
+    FetchContent_MakeAvailable(Sodium)
 
-# zstd (for compression in client mode)
-FetchContent_Declare(zstd
-    GIT_REPOSITORY https://github.com/facebook/zstd.git
-    GIT_TAG v1.5.5
-    SOURCE_SUBDIR build/cmake
-)
-set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
-set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
-set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
-set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-if(BUILD_WEB AND NOT zstd_POPULATED)
+    # PCRE2 (with toolchain args)
+    FetchContent_Declare(pcre2
+        GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+        GIT_TAG pcre2-10.44
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS ${pcre2_CMAKE_ARGS}
+    )
+    set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
+    set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
+    FetchContent_MakeAvailable(pcre2)
+
+    # Opus (with toolchain args)
+    FetchContent_Declare(Opus
+        GIT_REPOSITORY https://github.com/xiph/opus.git
+        GIT_TAG v1.5.2
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS ${Opus_CMAKE_ARGS}
+    )
+    set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
+    set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
+    set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+    FetchContent_MakeAvailable(Opus)
+
+    # zstd (with toolchain args)
+    FetchContent_Declare(zstd
+        GIT_REPOSITORY https://github.com/facebook/zstd.git
+        GIT_TAG v1.5.5
+        SOURCE_SUBDIR build/cmake
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS ${zstd_CMAKE_ARGS}
+    )
+    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
+    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
+    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+    set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
+    set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
     FetchContent_MakeAvailable(zstd)
-endif()
 
-# raylib (for WebGL rendering of pixel buffer)
-FetchContent_Declare(raylib_wasm
-    GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    GIT_TAG 5.5
-)
-set(PLATFORM "Web" CACHE STRING "" FORCE)
-set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
-if(BUILD_WEB AND NOT raylib_wasm_POPULATED)
+    # raylib (with toolchain args)
+    FetchContent_Declare(raylib_wasm
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG 5.5
+        UPDATE_DISCONNECTED ON
+        CMAKE_ARGS ${FetchContent_Toolchain_Args}
+    )
+    set(PLATFORM "Web" CACHE STRING "" FORCE)
+    set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
     FetchContent_MakeAvailable(raylib_wasm)
 endif()
 
-# FFmpeg - using pre-built ffmpeg.wasm (npm package)
-# JavaScript side will load ffmpeg.wasm from CDN/node_modules
-# C side uses stub implementations that bridge to ffmpeg.wasm via EM_JS
+# ==============================================================================
+# libvterm - handled by Libvterm.cmake
+# ==============================================================================
+set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
 
 # Restore original message log level
 set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
@@ -352,6 +342,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/grep.c
     ${LIB_ROOT}/log/search.c
     ${LIB_ROOT}/log/io.c
+    ${LIB_ROOT}/log/raylib.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
     ${LIB_ROOT}/debug/memory.c
@@ -463,10 +454,13 @@ target_include_directories(wasm-common PRIVATE
 # NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
 # See web/web/package.json for ffmpeg.wasm dependency
 
-# Add include directories for wasm-common to find sodium and pcre2 headers
+# Add include directories for wasm-common (FetchContent handles these via IMPORTED targets)
 target_include_directories(wasm-common PRIVATE
-    ${CMAKE_BINARY_DIR}/_deps/sodium-src/libsodium/src/libsodium/include
-    ${CMAKE_BINARY_DIR}/_deps/pcre2-src
+    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
+    ${FETCHCONTENT_BASE_DIR}/pcre2-src
+    ${FETCHCONTENT_BASE_DIR}/opus-src/include
+    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
+    ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
 )
 
 # Apply sanitizers
@@ -556,11 +550,7 @@ target_link_libraries(client-web PRIVATE
     raylib
 )
 
-# Add include directories for client mode dependencies
-target_include_directories(client-web PRIVATE
-    ${zstd_SOURCE_DIR}/lib
-    ${opus_SOURCE_DIR}/include
-)
+# Include directories already handled by imported targets
 
 # Apply sanitizers
 apply_sanitizers_to_target(client-web)

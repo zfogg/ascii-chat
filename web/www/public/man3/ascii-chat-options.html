@@ -6035,149 +6035,147 @@ if (help) {
 1973   //   log_set_level((log_level_t)new_level);
 1974   // }
 1975 
-1976   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
-1977   // Useful for CI/CD and testing environments without a physical webcam
-1978   log_info(&quot;[PERF] About to call SAFE_GETENV&quot;);
-1979   const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
-1980   log_info(&quot;[PERF] SAFE_GETENV done&quot;);
-1981   if (webcam_disabled &amp;&amp;
-1982       (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
-1983        platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
-1984     opts.test_pattern = true;
-1985   }
-1986 
-1987   // Apply --no-compress interaction with audio encoding
-1988   if (opts.no_compress) {
-1989     opts.encode_audio = false;
-1990     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
-1991   }
-1992 
-1993   // Set media_from_stdin flag if media_file is &quot;-&quot;
-1994   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
-1995     opts.media_from_stdin = true;
-1996     log_debug(&quot;Media file set to stdin&quot;);
-1997   }
-1998 
-1999   // Validate --seek option
-2000   if (opts.media_seek_timestamp &gt; 0.0) {
-2001     // Can't seek stdin
-2002     if (opts.media_from_stdin) {
-2003       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
-2004       SAFE_FREE(allocated_mode_argv);
-2005       return ERROR_INVALID_PARAM;
-2006     }
-2007 
-2008     // Require --file or --url
-2009     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2010       log_error(&quot;--seek requires --file or --url&quot;);
-2011       SAFE_FREE(allocated_mode_argv);
-2012       return ERROR_INVALID_PARAM;
-2013     }
-2014   }
-2015 
-2016   // Validate --pause option
-2017   if (opts.pause) {
-2018     // Require --file or --url (not webcam, not test pattern)
-2019     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2020       log_error(&quot;--pause requires --file or --url&quot;);
-2021       SAFE_FREE(allocated_mode_argv);
-2022       return ERROR_INVALID_PARAM;
-2023     }
-2024   }
-2025 
-2026   if (opts.media_url[0] != '\0') {
-2027     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
-2028     log_info(&quot;[PERF] About to call url_is_valid&quot;);
-2029     if (!url_is_valid(opts.media_url)) {
-2030       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
-2031       SAFE_FREE(allocated_mode_argv);
-2032       return ERROR_INVALID_PARAM;
-2033     }
-2034     log_info(&quot;[PERF] url_is_valid done&quot;);
-2035 
-2036     // Normalize bare URLs by prepending http:// if not present
-2037     if (!strstr(opts.media_url, &quot;://&quot;)) {
-2038       char normalized_url[2048];
-2039       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
-2040       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
-2041         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
-2042       } else {
-2043         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
-2044         SAFE_FREE(allocated_mode_argv);
-2045         return ERROR_INVALID_PARAM;
-2046       }
-2047     }
-2048   }
-2049 
+1976   // SKIP: Check WEBCAM_DISABLED environment variable to enable test pattern mode
+1977   // TODO: Debug why logging here causes hang
+1978   // const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
+1979   // if (webcam_disabled &amp;&amp;
+1980   //     (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
+1981   //      platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
+1982   //   opts.test_pattern = true;
+1983   // }
+1984 
+1985   // Apply --no-compress interaction with audio encoding
+1986   if (opts.no_compress) {
+1987     opts.encode_audio = false;
+1988     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
+1989   }
+1990 
+1991   // Set media_from_stdin flag if media_file is &quot;-&quot;
+1992   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
+1993     opts.media_from_stdin = true;
+1994     log_debug(&quot;Media file set to stdin&quot;);
+1995   }
+1996 
+1997   // Validate --seek option
+1998   if (opts.media_seek_timestamp &gt; 0.0) {
+1999     // Can't seek stdin
+2000     if (opts.media_from_stdin) {
+2001       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
+2002       SAFE_FREE(allocated_mode_argv);
+2003       return ERROR_INVALID_PARAM;
+2004     }
+2005 
+2006     // Require --file or --url
+2007     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2008       log_error(&quot;--seek requires --file or --url&quot;);
+2009       SAFE_FREE(allocated_mode_argv);
+2010       return ERROR_INVALID_PARAM;
+2011     }
+2012   }
+2013 
+2014   // Validate --pause option
+2015   if (opts.pause) {
+2016     // Require --file or --url (not webcam, not test pattern)
+2017     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2018       log_error(&quot;--pause requires --file or --url&quot;);
+2019       SAFE_FREE(allocated_mode_argv);
+2020       return ERROR_INVALID_PARAM;
+2021     }
+2022   }
+2023 
+2024   if (opts.media_url[0] != '\0') {
+2025     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+2026     log_info(&quot;[PERF] About to call url_is_valid&quot;);
+2027     if (!url_is_valid(opts.media_url)) {
+2028       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
+2029       SAFE_FREE(allocated_mode_argv);
+2030       return ERROR_INVALID_PARAM;
+2031     }
+2032     log_info(&quot;[PERF] url_is_valid done&quot;);
+2033 
+2034     // Normalize bare URLs by prepending http:// if not present
+2035     if (!strstr(opts.media_url, &quot;://&quot;)) {
+2036       char normalized_url[2048];
+2037       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
+2038       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
+2039         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+2040       } else {
+2041         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
+2042         SAFE_FREE(allocated_mode_argv);
+2043         return ERROR_INVALID_PARAM;
+2044       }
+2045     }
+2046   }
+2047 
+2048   // ========================================================================
+2049   // STAGE 8: Publish to RCU
 2050   // ========================================================================
-2051   // STAGE 8: Publish to RCU
-2052   // ========================================================================
-2053 
-2054   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
-2055   // (file/URL content is typically not horizontally flipped, unlike webcam)
-2056   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
-2057     opts.flip_x = false;
-2058     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
-2059   }
-2060 
-2061   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
-2062 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2063   bool quiet_for_memory_report = opts.quiet;
-2064 #endif
-2065 
-2066   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
-2067   // This makes the options visible to all threads via lock-free reads
-2068   log_info(&quot;[PERF] About to call options_state_set&quot;);
-2069   asciichat_error_t publish_result = options_state_set(&amp;opts);
-2070   log_info(&quot;[PERF] options_state_set done&quot;);
-2071   if (publish_result != ASCIICHAT_OK) {
-2072     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
-2073     SAFE_FREE(allocated_mode_argv);
-2074     return publish_result;
-2075   }
-2076 
-2077   // Now update debug memory quiet mode with the saved quiet value
-2078 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2079   debug_memory_set_quiet_mode(quiet_for_memory_report);
-2080 #endif
-2081 
+2051 
+2052   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
+2053   // (file/URL content is typically not horizontally flipped, unlike webcam)
+2054   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
+2055     opts.flip_x = false;
+2056     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
+2057   }
+2058 
+2059   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
+2060 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2061   bool quiet_for_memory_report = opts.quiet;
+2062 #endif
+2063 
+2064   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
+2065   // This makes the options visible to all threads via lock-free reads
+2066   log_info(&quot;[PERF] About to call options_state_set&quot;);
+2067   asciichat_error_t publish_result = options_state_set(&amp;opts);
+2068   log_info(&quot;[PERF] options_state_set done&quot;);
+2069   if (publish_result != ASCIICHAT_OK) {
+2070     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
+2071     SAFE_FREE(allocated_mode_argv);
+2072     return publish_result;
+2073   }
+2074 
+2075   // Now update debug memory quiet mode with the saved quiet value
+2076 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2077   debug_memory_set_quiet_mode(quiet_for_memory_report);
+2078 #endif
+2079 
+2080   // ========================================================================
+2081   // Apply color scheme to logging
 2082   // ========================================================================
-2083   // Apply color scheme to logging
-2084   // ========================================================================
-2085   // Now that options are parsed, set and apply the selected color scheme to logging
-2086   if (opts.color_scheme_name[0] != '\0') {
-2087     log_info(&quot;[PERF] About to call colorscheme_set_active_scheme&quot;);
-2088     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
-2089     log_info(&quot;[PERF] colorscheme_set_active_scheme done&quot;);
-2090     if (scheme_result == ASCIICHAT_OK) {
-2091       const color_scheme_t *scheme = colorscheme_get_active_scheme();
-2092       if (scheme) {
-2093         log_set_color_scheme(scheme);
-2094         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
-2095       }
-2096     } else {
-2097       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
-2098     }
-2099   }
-2100 
+2083   // Now that options are parsed, set and apply the selected color scheme to logging
+2084   if (opts.color_scheme_name[0] != '\0') {
+2085     log_info(&quot;[PERF] About to call colorscheme_set_active_scheme&quot;);
+2086     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+2087     log_info(&quot;[PERF] colorscheme_set_active_scheme done&quot;);
+2088     if (scheme_result == ASCIICHAT_OK) {
+2089       const color_scheme_t *scheme = colorscheme_get_active_scheme();
+2090       if (scheme) {
+2091         log_set_color_scheme(scheme);
+2092         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
+2093       }
+2094     } else {
+2095       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
+2096     }
+2097   }
+2098 
+2099   // ========================================================================
+2100   // STAGE 8: Execute deferred actions (after all options parsed and published)
 2101   // ========================================================================
-2102   // STAGE 8: Execute deferred actions (after all options parsed and published)
-2103   // ========================================================================
-2104   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
-2105   // are executed here after all options are fully parsed and published via RCU.
-2106   // This ensures action output reflects the final parsed state (e.g., final dimensions
-2107   // for --show-capabilities).
-2108   // Re-enable terminal output so deferred actions can print their results.
-2109   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
-2110   if (has_action) {
-2111     log_set_terminal_output(true);
-2112   }
-2113   log_info(&quot;[PERF] About to call actions_execute_deferred (has_action=%d)&quot;, has_action);
-2114   actions_execute_deferred();
-2115   log_info(&quot;[PERF] actions_execute_deferred done&quot;);
-2116   SAFE_FREE(allocated_mode_argv);
-2117   return ASCIICHAT_OK;
-2118 }</pre>
+2102   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
+2103   // are executed here after all options are fully parsed and published via RCU.
+2104   // This ensures action output reflects the final parsed state (e.g., final dimensions
+2105   // for --show-capabilities).
+2106   // Re-enable terminal output so deferred actions can print their results.
+2107   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
+2108   if (has_action) {
+2109     log_set_terminal_output(true);
+2110   }
+2111   log_info(&quot;[PERF] About to call actions_execute_deferred (has_action=%d)&quot;, has_action);
+2112   actions_execute_deferred();
+2113   log_info(&quot;[PERF] actions_execute_deferred done&quot;);
+2114   SAFE_FREE(allocated_mode_argv);
+2115   return ASCIICHAT_OK;
+2116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_check_update_immediate()</b>,
@@ -6239,10 +6237,9 @@ if (help) {
     <b>options_state::palette_type</b>, <b>parse_color_setting()</b>,
     <b>parse_log_level()</b>, <b>options_state::password</b>,
     <b>options_state::pause</b>, <b>platform_getenv()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>platform_strcasecmp()</b>,
-    <b>options_state::port</b>, <b>options_state::quiet</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>,
-    <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
+    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>options_state::port</b>,
+    <b>options_state::quiet</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_SNPRINTF</b>, <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
     <b>options_state::server_key</b>, <b>options_state::session_string</b>,
     <b>SESSION_STRING_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
     <b>options_state::splash_screen</b>,
@@ -6250,9 +6247,9 @@ if (help) {
     <b>options_state::status_screen</b>,
     <b>options_state::status_screen_explicitly_set</b>,
     <b>options_state::stun_servers</b>, <b>terminal_is_interactive()</b>,
-    <b>terminal_supports_utf8()</b>, <b>options_state::test_pattern</b>,
-    <b>options_state::turn_credential</b>, <b>options_state::turn_secret</b>,
-    <b>options_state::turn_servers</b>, <b>options_state::turn_username</b>,
+    <b>terminal_supports_utf8()</b>, <b>options_state::turn_credential</b>,
+    <b>options_state::turn_secret</b>, <b>options_state::turn_servers</b>,
+    <b>options_state::turn_username</b>,
     <b>update_dimensions_for_full_height()</b>,
     <b>update_dimensions_to_terminal_size()</b>, <b>url_is_valid()</b>,
     <b>usage()</b>, <b>utf8_is_ascii_only()</b>, <b>utf8_is_valid()</b>,
