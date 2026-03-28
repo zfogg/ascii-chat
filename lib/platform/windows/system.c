@@ -1413,10 +1413,11 @@ int platform_execute_subprocess(const char *executable, const char **argv,
   }
 
   // Build command line from argv array
-  // Calculate total command line length needed
+  // Windows CreateProcess needs a single command line string.
+  // Arguments with spaces need quoting.
   size_t cmd_len = 0;
   for (int i = 0; argv[i] != NULL; i++) {
-    cmd_len += strlen(argv[i]) + 1;  // +1 for space
+    cmd_len += strlen(argv[i]) + 3; // +3 for quotes and space
   }
 
   if (cmd_len == 0) {
@@ -1429,32 +1430,43 @@ int platform_execute_subprocess(const char *executable, const char **argv,
     return -1;
   }
 
-  // Build command line using safe string operations
+  // Build command line with quoting for arguments containing spaces
   size_t pos = 0;
   for (int i = 0; argv[i] != NULL; i++) {
     if (i > 0) {
-      int result = SAFE_SNPRINTF(command_line + pos, cmd_len - pos, " %s", argv[i]);
-      if (result < 0) {
-        log_error("Failed to build command line");
-        SAFE_FREE(command_line);
-        return -1;
-      }
-      pos += result;
-    } else {
-      int result = SAFE_SNPRINTF(command_line + pos, cmd_len - pos, "%s", argv[i]);
-      if (result < 0) {
-        log_error("Failed to build command line");
-        SAFE_FREE(command_line);
-        return -1;
-      }
-      pos += result;
+      command_line[pos++] = ' ';
     }
+    bool needs_quotes = (strchr(argv[i], ' ') != NULL || strchr(argv[i], '\t') != NULL);
+    int result;
+    if (needs_quotes) {
+      result = SAFE_SNPRINTF(command_line + pos, cmd_len + 1 - pos, "\"%s\"", argv[i]);
+    } else {
+      result = SAFE_SNPRINTF(command_line + pos, cmd_len + 1 - pos, "%s", argv[i]);
+    }
+    if (result < 0) {
+      log_error("Failed to build command line");
+      SAFE_FREE(command_line);
+      return -1;
+    }
+    pos += (size_t)result;
   }
 
-  // Note: Windows output capture with pipes not yet implemented
-  // For now, just ignore output_buffer parameter
-  if (output_buffer && output_size > 0) {
-    log_warn("Output capture not yet implemented on Windows; proceeding without capture");
+  // Set up pipes for output capture if requested
+  HANDLE stdout_read = NULL;
+  HANDLE stdout_write = NULL;
+  bool capture_output = (output_buffer && output_size > 0);
+
+  if (capture_output) {
+    SECURITY_ATTRIBUTES sa = {.nLength = sizeof(SECURITY_ATTRIBUTES),
+                              .bInheritHandle = TRUE,
+                              .lpSecurityDescriptor = NULL};
+    if (!CreatePipe(&stdout_read, &stdout_write, &sa, 0)) {
+      log_error("Failed to create pipe for output capture: error %lu", GetLastError());
+      SAFE_FREE(command_line);
+      return -1;
+    }
+    // The read end should not be inherited by the child
+    SetHandleInformation(stdout_read, HANDLE_FLAG_INHERIT, 0);
   }
 
   // Create process
@@ -1464,12 +1476,18 @@ int platform_execute_subprocess(const char *executable, const char **argv,
   startup_info.cb = sizeof(startup_info);
   ZeroMemory(&process_info, sizeof(process_info));
 
+  if (capture_output) {
+    startup_info.hStdOutput = stdout_write;
+    startup_info.hStdError = stdout_write;
+    startup_info.dwFlags |= STARTF_USESTDHANDLES;
+  }
+
   BOOL success = CreateProcessA(
-    executable,      // lpApplicationName - executable path
+    NULL,            // lpApplicationName - NULL so PATH is searched
     command_line,    // lpCommandLine - full command line
     NULL,            // lpProcessAttributes
     NULL,            // lpThreadAttributes
-    FALSE,           // bInheritHandles
+    capture_output,  // bInheritHandles - only when capturing output
     0,               // dwCreationFlags
     NULL,            // lpEnvironment
     NULL,            // lpCurrentDirectory
@@ -1482,7 +1500,30 @@ int platform_execute_subprocess(const char *executable, const char **argv,
   if (!success) {
     DWORD error = GetLastError();
     log_error("Failed to execute %s: error code %lu", executable, error);
+    if (stdout_read) CloseHandle(stdout_read);
+    if (stdout_write) CloseHandle(stdout_write);
     return -1;
+  }
+
+  // Close the write end of the pipe in the parent so ReadFile can detect EOF
+  if (stdout_write) {
+    CloseHandle(stdout_write);
+    stdout_write = NULL;
+  }
+
+  // Read child stdout if capturing
+  if (capture_output && stdout_read) {
+    size_t total_read = 0;
+    DWORD bytes_read = 0;
+    while (total_read < output_size - 1) {
+      BOOL ok = ReadFile(stdout_read, output_buffer + total_read,
+                         (DWORD)(output_size - 1 - total_read), &bytes_read, NULL);
+      if (!ok || bytes_read == 0) break;
+      total_read += bytes_read;
+    }
+    output_buffer[total_read] = '\0';
+    CloseHandle(stdout_read);
+    stdout_read = NULL;
   }
 
   // Wait for process to complete
@@ -1493,6 +1534,7 @@ int platform_execute_subprocess(const char *executable, const char **argv,
   // Clean up handles
   CloseHandle(process_info.hProcess);
   CloseHandle(process_info.hThread);
+  if (stdout_read) CloseHandle(stdout_read);
 
   if (wait_result != WAIT_OBJECT_0) {
     log_error("Failed to wait for process: error code %lu", GetLastError());
