@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Include shared logging macros (uses console.log by default)
-#include "common/wasm_log.h"
 #include "common/init.h"
 
 #include <ascii-chat/options/options.h>

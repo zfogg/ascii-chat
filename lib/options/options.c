@@ -111,11 +111,7 @@
 #include <string.h>
 
 static void js_log_options(const char *msg) {
-  if (msg) {
-    char buffer[512];
-    snprintf(buffer, sizeof(buffer), "[OPTIONS-EM] %s\n", msg);
-    write(STDERR_FILENO, buffer, strlen(buffer));
-  }
+  (void)msg;
 }
 
 // ============================================================================

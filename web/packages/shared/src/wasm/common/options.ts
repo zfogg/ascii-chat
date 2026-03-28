@@ -53,8 +53,6 @@ export type Palette =
 // Module-level options accessor (set by mirror.ts or client.ts during init)
 let options: OptionAccessor | null = null;
 
-const LOG_PREFIX = "[WASM opts]";
-
 /**
  * Initialize the options module with an options accessor
  * Called by mirror.ts or client.ts after WASM module initialization

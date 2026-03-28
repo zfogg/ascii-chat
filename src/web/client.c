@@ -8,9 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 
-// Use console.error for client logging (playwright captures stderr)
-#define WASM_LOG_USE_ERROR
-#include "common/wasm_log.h"
 #include "common/init.h"
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket

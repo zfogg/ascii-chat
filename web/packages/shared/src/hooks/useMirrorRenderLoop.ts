@@ -136,7 +136,7 @@ export function useMirrorRenderLoop({
         }
 
         requestAnimationFrame(animationFrameRef);
-      } catch (err) {
+      } catch {
         // Silent error catch - don't log in hot loop
       }
     };

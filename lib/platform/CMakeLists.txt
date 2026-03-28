@@ -15,7 +15,6 @@ if(EMSCRIPTEN)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/system.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/console.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/backtrace.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/init.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/lifecycle.c

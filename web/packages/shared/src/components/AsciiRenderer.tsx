@@ -72,7 +72,6 @@ export const AsciiRenderer = forwardRef<
   );
 
   useEffect(() => {
-    const effectStartTime = performance.now();
     if (!canvasRef.current || setupDoneRef.current) {
       return;
     }
@@ -82,9 +81,6 @@ export const AsciiRenderer = forwardRef<
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
       try {
-        const width = canvas.clientWidth || 1280;
-        const height = canvas.clientHeight || 720;
-
         // Set canvas on module for raylib/Emscripten
         if (!moduleRef.current) {
           throw new Error("moduleRef.current is null during initRenderer");
