@@ -72,6 +72,8 @@ nixPkgs = [
   "fontconfig", # Fontconfig.cmake
   "mimalloc", # Mimalloc.cmake
   "alsa-lib", # ALSA.cmake
+  "alsa-lib.dev", # ALSA.cmake (pkg-config .pc files)
+  "libsodium.dev", # Libsodium.cmake (pkg-config .pc files)
   "libffi", # Criterion dep
   "protobufc", # Criterion dep (libprotobuf-c)
 

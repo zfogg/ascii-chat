@@ -41,6 +41,18 @@ endif()
 list(APPEND PKG_CONFIG_DIRS "/opt/local/lib/pkgconfig")
 list(APPEND PKG_CONFIG_DIRS "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
 
+# Preserve any existing PKG_CONFIG_PATH from the environment (e.g. Nix profile)
+if(DEFINED ENV{PKG_CONFIG_PATH})
+    foreach(_dir $ENV{PKG_CONFIG_PATH})
+        string(REPLACE ":" ";" _env_dirs "$ENV{PKG_CONFIG_PATH}")
+    endforeach()
+    foreach(_dir ${_env_dirs})
+        if(IS_DIRECTORY "${_dir}" AND NOT "${_dir}" IN_LIST PKG_CONFIG_DIRS)
+            list(APPEND PKG_CONFIG_DIRS "${_dir}")
+        endif()
+    endforeach()
+endif()
+
 # Join all paths with colons
 string(REPLACE ";" ":" PKG_CONFIG_PATH_STRING "${PKG_CONFIG_DIRS}")
 

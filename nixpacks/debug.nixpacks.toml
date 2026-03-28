@@ -42,12 +42,22 @@ cmds = [
   "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
   "cp -a /tmp/deps-preserve/* deps/ 2>/dev/null || true",
   "rm -rf /tmp/deps-preserve",
+  # Nix splits compiler-rt into a separate store path, but clang expects it
+  # under --print-resource-dir/lib/linux. Symlink the compiler-rt libs so
+  # cmake's sanitizer detection finds them.
+  "bash -c 'RESOURCE_DIR=$(clang --print-resource-dir) && COMPILER_RT_DIR=$(find /nix/store -maxdepth 1 -name \"*compiler-rt-libc*\" -type d | head -1) && if [ -n \"$COMPILER_RT_DIR\" ] && [ -d \"$COMPILER_RT_DIR/lib/linux\" ]; then mkdir -p \"$RESOURCE_DIR/lib/linux\" && ln -sf \"$COMPILER_RT_DIR/lib/linux/\"* \"$RESOURCE_DIR/lib/linux/\"; fi'",
+  # Nix multi-output packages put .pc files in -dev store paths that aren't
+  # symlinked into the profile. Collect all .pc files from nix store into
+  # the profile's pkgconfig dir so cmake can find them.
+  "bash -c 'mkdir -p /root/.nix-profile/lib/pkgconfig && find /nix/store -maxdepth 4 -path \"*/lib/pkgconfig/*.pc\" ! -path \"*emscripten*\" 2>/dev/null | while read pc; do ln -sf \"$pc\" /root/.nix-profile/lib/pkgconfig/ 2>/dev/null; done'",
 ]
 
 # Build ascii-chat Debug binary
 [phases.build]
 dependsOn = ["restore"]
 cmds = [
+  # Debug: verify pkg-config can find dependencies
+  "bash -c 'echo DEBUG: PKG_CONFIG_PATH=$PKG_CONFIG_PATH; cat /root/.nix-profile/lib/pkgconfig/alsa.pc 2>&1 | head -5; echo ---; readlink -f /root/.nix-profile/lib/pkgconfig/alsa.pc 2>&1; echo ---; ls -la $(readlink -f /root/.nix-profile/lib/pkgconfig/alsa.pc 2>/dev/null) 2>&1; echo ---; pkg-config --debug --exists alsa 2>&1 | tail -20; echo ---; which pkg-config; pkg-config --variable pc_path pkg-config 2>&1'",
   # Create minimal .git for cmake version detection
   "mkdir -p .git && touch .git/HEAD .git/index",
   # Build Debug (configure is fast because .deps-cache/ is pre-populated)
