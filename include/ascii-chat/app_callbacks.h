@@ -12,8 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/crypto/crypto.h>
-
-typedef int socket_t;
+#include <ascii-chat/platform/socket.h>
 typedef struct acip_transport acip_transport_t;
 
 typedef struct {

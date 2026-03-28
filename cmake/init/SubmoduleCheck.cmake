@@ -58,7 +58,7 @@ function(check_and_init_git_submodules)
         "deps/ascii-chat-deps/bearssl/Makefile"
         "deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/Makefile"
         "deps/ascii-chat-deps/sokol/sokol_app.h"
-        "deps/ascii-chat-deps/uthash/include/utarray.h"
+        "deps/ascii-chat-deps/uthash/src/utarray.h"
     )
 
     foreach(SUBMODULE ${REQUIRED_SUBMODULES})

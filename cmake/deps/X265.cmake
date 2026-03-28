@@ -19,6 +19,15 @@ set(X265_VERSION "4.1")
 set(X265_HASH "7d23cdcdbd510728202c0dfbf7c51eda26a395de2096c504c2b10d6035711102")
 
 # =============================================================================
+# Windows: x265 not needed (vcpkg FFmpeg is built without libx265)
+# =============================================================================
+if(WIN32)
+    set(X265_FOUND FALSE)
+    message(STATUS "⚠ x265 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
+    return()
+endif()
+
+# =============================================================================
 # musl: Build from source
 # =============================================================================
 if(USE_MUSL)

@@ -326,10 +326,12 @@ elseif(APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
 elseif(WIN32)
-    # Windows: Use vcpkg
-    find_package(unofficial-fontconfig CONFIG REQUIRED)
-
-    message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: vcpkg")
+    # Windows: fontconfig is not typically available or needed (Windows uses GDI for fonts)
+    # Set empty variables so the build can proceed without fontconfig
+    set(FONTCONFIG_LINK_LIBRARIES "")
+    set(FONTCONFIG_LDFLAGS "")
+    set(FONTCONFIG_INCLUDE_DIRS "")
+    message(STATUS "⚠ Fontconfig not needed on Windows (using GDI for font resolution)")
 
 else()
     message(FATAL_ERROR "Unsupported platform for Fontconfig")

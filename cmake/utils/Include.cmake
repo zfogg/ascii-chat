@@ -26,6 +26,10 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
     )
+    # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
+    if(WIN32)
+        include_directories(${CMAKE_SOURCE_DIR}/include/compat)
+    endif()
     # deps/ must use SYSTEM to ensure -isystem (not -iquote) for angle bracket includes
     # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>
     # Also includes utf8proc: #include <ascii-chat-deps/utf8proc/utf8proc.h>

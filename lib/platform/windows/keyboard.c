@@ -85,9 +85,7 @@ void keyboard_destroy(void) {
 
 keyboard_key_t keyboard_read_nonblocking(void) {
   // Check if keyboard is initialized with reference counting
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
+  bool is_initialized = lifecycle_is_initialized(&g_keyboard_lc);
 
   if (!is_initialized) {
     return KEY_NONE;
@@ -150,9 +148,7 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
 keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
   // Check if keyboard is initialized
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
+  bool is_initialized = lifecycle_is_initialized(&g_keyboard_lc);
 
   if (!is_initialized) {
     return KEY_NONE;
@@ -197,9 +193,7 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
   }
 
   // Check if keyboard is initialized
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
+  bool is_initialized = lifecycle_is_initialized(&g_keyboard_lc);
 
   if (!is_initialized) {
     return LINE_EDIT_NO_INPUT;

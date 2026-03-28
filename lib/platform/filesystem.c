@@ -186,6 +186,8 @@ bool platform_is_binary_in_path(const char *bin_name) {
  * @param path_size Size of the buffer
  * @return true on success, false on failure
  */
+// On Windows, platform_get_executable_path is in windows/filesystem.c
+#ifndef _WIN32
 bool platform_get_executable_path(char *exe_path, size_t path_size) {
   if (!exe_path || path_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: exe_path=%p, path_size=%zu", (void *)exe_path, path_size);
@@ -237,3 +239,4 @@ bool platform_get_executable_path(char *exe_path, size_t path_size) {
   return false;
 #endif
 }
+#endif // !_WIN32

@@ -29,6 +29,13 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <time.h>
+#ifdef _WIN32
+#include <basetsd.h>
+#ifndef _SSIZE_T_DEFINED
+typedef SSIZE_T ssize_t;
+#define _SSIZE_T_DEFINED
+#endif
+#endif
 #include "../common.h"
 #include "process.h"
 
@@ -221,6 +228,10 @@ void platform_disable_keepawake(void);
 #else
 // MSVC/Clang on Windows: Define usleep macro to use platform_sleep_us
 #define usleep(usec) platform_sleep_us(usec)
+#endif
+// sleep() in seconds mapped to platform_sleep_us() in microseconds
+#ifndef sleep
+#define sleep(sec) platform_sleep_us((sec) * 1000000U)
 #endif
 #endif
 #endif

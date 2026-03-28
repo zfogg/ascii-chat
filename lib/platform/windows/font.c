@@ -12,7 +12,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out,
                                         size_t *out_font_data_size) {
     (void)spec; (void)out; (void)out_size; (void)out_is_path;
     (void)out_font_data; (void)out_font_data_size;
-    return SET_ERRNO(ERROR_UNSUPPORTED,
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
                      "platform_font_resolve: not available on Windows");
 }
 #endif

@@ -633,7 +633,7 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
 
   // Register thread with name in debug registry
   if (name && thread) {
-    NAMED_REGISTER_THREAD(*thread, name, "thread", NULL);
+    NAMED_REGISTER_THREAD(*thread, name, NULL);
   }
 
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning

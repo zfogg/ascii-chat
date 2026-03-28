@@ -10,6 +10,7 @@
 
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/platform/rwlock.h"
+#include "ascii-chat/platform/string.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/util/path.h"
@@ -257,7 +258,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
   va_list args;
   va_start(args, fmt);
   char *full_name = NULL;
-  int ret = vasprintf(&full_name, fmt, args);
+  int ret = platform_vasprintf(&full_name, fmt, args);
   va_end(args);
 
   if (ret < 0) {

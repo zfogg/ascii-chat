@@ -201,23 +201,96 @@ elseif(APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2 + fontconfig${ColorReset}")
 
 elseif(WIN32)
-    # Windows: Use vcpkg for FreeType and fontconfig; FetchContent for libvterm
+    # Windows: Use vcpkg for FreeType; build libvterm from source
 
-    # libvterm: Not in vcpkg, use FetchContent to build from source (Launchpad)
-    include(FetchContent)
-    FetchContent_Declare(
-        libvterm
-        URL "https://launchpad.net/libvterm/+download/libvterm-0.3.3.tar.gz"
-        SOURCE_SUBDIR "."
+    set(VTERM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm")
+    set(VTERM_SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-src")
+    set(VTERM_LIB "${VTERM_PREFIX}/lib/vterm.lib")
+
+    if(NOT EXISTS "${VTERM_LIB}")
+        message(STATUS "${BoldYellow}libvterm${ColorReset} not found in cache, building from source...")
+
+        # Clone libvterm source
+        if(NOT EXISTS "${VTERM_SOURCE_DIR}/src")
+            execute_process(
+                COMMAND git clone --depth 1 --branch v0.3.3 https://github.com/neovim/libvterm.git "${VTERM_SOURCE_DIR}"
+                RESULT_VARIABLE CLONE_RESULT
+            )
+            if(NOT CLONE_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to clone libvterm")
+            endif()
+        endif()
+
+        file(MAKE_DIRECTORY "${VTERM_PREFIX}/lib" "${VTERM_PREFIX}/include")
+
+        # Generate encoding .inc files from .tbl files
+        find_program(PERL_EXECUTABLE perl)
+        if(PERL_EXECUTABLE)
+            file(GLOB TBL_FILES "${VTERM_SOURCE_DIR}/src/encoding/*.tbl")
+            foreach(tbl ${TBL_FILES})
+                get_filename_component(tbl_name ${tbl} NAME_WE)
+                set(inc_file "${VTERM_SOURCE_DIR}/src/encoding/${tbl_name}.inc")
+                if(NOT EXISTS "${inc_file}")
+                    execute_process(
+                        COMMAND "${PERL_EXECUTABLE}" -CSD "${VTERM_SOURCE_DIR}/tbl2inc_c.pl" "${tbl}"
+                        OUTPUT_FILE "${inc_file}"
+                        RESULT_VARIABLE TBL_RESULT
+                    )
+                    if(NOT TBL_RESULT EQUAL 0)
+                        message(WARNING "Failed to generate ${inc_file} - encoding tables may be missing")
+                    endif()
+                endif()
+            endforeach()
+        else()
+            message(STATUS "  Perl not found - using pre-generated encoding tables if available")
+        endif()
+
+        # Compile all source files with clang
+        file(GLOB C_FILES "${VTERM_SOURCE_DIR}/src/*.c")
+        set(OBJ_FILES "")
+        foreach(src ${C_FILES})
+            get_filename_component(name ${src} NAME_WE)
+            set(obj "${VTERM_SOURCE_DIR}/${name}.obj")
+            execute_process(
+                COMMAND "${CMAKE_C_COMPILER}" -O2 -w
+                    -I "${VTERM_SOURCE_DIR}/include" -std=c99
+                    -c "${src}" -o "${obj}"
+                RESULT_VARIABLE CC_RESULT
+            )
+            if(NOT CC_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to compile libvterm ${src}")
+            endif()
+            list(APPEND OBJ_FILES "${obj}")
+        endforeach()
+
+        # Create static archive with llvm-lib
+        execute_process(
+            COMMAND "${CMAKE_AR}" rcs "${VTERM_LIB}" ${OBJ_FILES}
+            RESULT_VARIABLE AR_RESULT
+        )
+        if(NOT AR_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to create vterm.lib")
+        endif()
+
+        # Copy headers
+        file(COPY "${VTERM_SOURCE_DIR}/include/" DESTINATION "${VTERM_PREFIX}/include")
+
+        message(STATUS "  ${BoldGreen}libvterm${ColorReset} built and cached successfully")
+    else()
+        message(STATUS "  ${BoldBlue}libvterm${ColorReset} library found in cache: ${BoldMagenta}${VTERM_LIB}${ColorReset}")
+    endif()
+
+    # Create imported target
+    add_library(vterm STATIC IMPORTED GLOBAL)
+    set_target_properties(vterm PROPERTIES
+        IMPORTED_LOCATION "${VTERM_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${VTERM_PREFIX}/include"
     )
 
-    FetchContent_MakeAvailable(libvterm)
+    set(RENDER_FILE_LIBS vterm ${FREETYPE_LIBRARIES})
+    set(RENDER_FILE_INCLUDES "${VTERM_PREFIX}/include" ${FREETYPE_INCLUDE_DIRS})
 
-    set(RENDER_FILE_LIBS freetype unofficial::fontconfig::fontconfig vterm)
-    get_target_property(VTERM_INCLUDES vterm INTERFACE_INCLUDE_DIRECTORIES)
-    set(RENDER_FILE_INCLUDES ${VTERM_INCLUDES})
-
-    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2 + fontconfig${ColorReset}")
+    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2${ColorReset} (no fontconfig on Windows)")
 
 else()
     message(FATAL_ERROR "Unsupported platform for render-file backend")

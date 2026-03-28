@@ -168,3 +168,20 @@ void platform_backtrace_symbols_destroy(char **strings) {
   // Free the array itself
   SAFE_FREE(strings);
 }
+
+void backtrace_print_simple(int skip_frames) {
+  void *buffer[64];
+  int depth = platform_backtrace(buffer, 64);
+
+  if (depth > 0) {
+    char **symbols = platform_backtrace_symbols((void *const *)buffer, depth);
+    if (symbols) {
+      int start = 1 + skip_frames;
+      fprintf(stderr, "Backtrace:\n");
+      for (int i = start; i < depth; i++) {
+        fprintf(stderr, "  #%d %s\n", i - start, symbols[i] ? symbols[i] : "???");
+      }
+      platform_backtrace_symbols_destroy(symbols);
+    }
+  }
+}

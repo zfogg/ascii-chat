@@ -20,6 +20,15 @@ set(X264_COMMIT "4613ac3c15fd75cebc4b9f65b7fb95e70a3acce1")
 set(X264_HASH "a]")
 
 # =============================================================================
+# Windows: x264 not needed (vcpkg FFmpeg is built without libx264)
+# =============================================================================
+if(WIN32)
+    set(X264_FOUND FALSE)
+    message(STATUS "⚠ x264 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
+    return()
+endif()
+
+# =============================================================================
 # musl: Build from source
 # =============================================================================
 if(USE_MUSL)

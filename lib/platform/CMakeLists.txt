@@ -49,7 +49,7 @@ elseif(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/errno.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/agent.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/font.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/windows/renderer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/backtrace.c
         ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c
     )
     # Link psapi for EnumProcessModules (used in backtrace symbol resolution)

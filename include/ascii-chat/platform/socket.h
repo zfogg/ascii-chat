@@ -251,6 +251,7 @@
 
 // Define ssize_t for Windows - avoid circular include with string.h
 #ifdef _WIN32
+#include <basetsd.h> // For SSIZE_T
 #ifndef _SSIZE_T_DEFINED
 typedef SSIZE_T ssize_t;
 #define _SSIZE_T_DEFINED

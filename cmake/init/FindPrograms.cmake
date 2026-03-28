@@ -424,6 +424,8 @@ if(WIN32)
         HINTS ${_MSVC_LIB_HINTS}
         PATHS
             "$ENV{VCToolsInstallDir}/bin/Hostx64/x64"
+            "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/*/bin/Hostx64/x64"
             "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64"
             "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64"
         DOC "MSVC lib.exe archiver"
@@ -611,6 +613,11 @@ if(WIN32)
             "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64"
             "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/*/bin/Hostx64/x64"
             "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/*/bin/Hostx64/x64"
             "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/*/bin/Hostx64/x64"
         DOC "Microsoft NMAKE"
     )

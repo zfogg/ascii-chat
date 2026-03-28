@@ -194,9 +194,11 @@ function(configure_asan_ubsan_sanitizers)
                 -D_DLL
             )
 
-            # Store Windows-specific ASan linking info in global variables (will be applied per-target)
-            set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASAN_DYNAMIC_IMPORT_LIB}" PARENT_SCOPE)
-            set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASAN_RUNTIME_THUNK_LIB}" PARENT_SCOPE)
+            # Store Windows-specific ASan linking info in CACHE variables (will be applied per-target)
+            # Use CACHE INTERNAL directly here so the value is available globally,
+            # including within this function scope (PARENT_SCOPE doesn't set in current scope).
+            set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASAN_DYNAMIC_IMPORT_LIB}" CACHE INTERNAL "Windows ASan DLL import library" FORCE)
+            set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASAN_RUNTIME_THUNK_LIB}" CACHE INTERNAL "Windows ASan runtime thunk library" FORCE)
 
             if(ASAN_DYNAMIC_IMPORT_LIB)
                 message(STATUS "  ASan import library (will be linked first on per-target basis): ${ASAN_DYNAMIC_IMPORT_LIB}")

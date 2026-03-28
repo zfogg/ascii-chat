@@ -491,7 +491,11 @@ int main(int argc, char *argv[]) {
 
   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations
 #ifndef NDEBUG
-  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main", NULL);
+#ifdef _WIN32
+  NAMED_REGISTER_THREAD(GetCurrentThread(), "main", NULL);
+#else
+  NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), "main", NULL);
+#endif
   // Also save main thread ID for memory reporting (must be very early)
   debug_sync_set_main_thread_id();
 #endif

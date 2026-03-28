@@ -108,7 +108,7 @@ static void *resize_detection_thread(void *arg) {
             last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1);
   }
 
-  while (!atomic_load(&g_resize_thread_should_exit)) {
+  while (!atomic_load_bool(&g_resize_thread_should_exit)) {
     INPUT_RECORD input_record;
     DWORD events_read = 0;
 
@@ -202,7 +202,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback) {
  * Signals the resize detection thread to exit and waits for it to complete.
  */
 void terminal_stop_resize_detection(void) {
-  if (!atomic_load(&g_resize_detection_active)) {
+  if (!atomic_load_bool(&g_resize_detection_active)) {
     return; // Not running
   }
 

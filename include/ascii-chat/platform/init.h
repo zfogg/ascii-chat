@@ -202,7 +202,7 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
     }
   }
   if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
@@ -230,7 +230,7 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
     }
   }
   if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {

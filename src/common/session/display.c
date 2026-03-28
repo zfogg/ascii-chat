@@ -462,12 +462,17 @@ void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
 }
 
 void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source) {
+#ifndef _WIN32
   if (!ctx || !ctx->render_file)
     return;
   render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, audio_source, NULL);
   if (audio_source) {
     log_debug("session_display_set_render_audio_source: Audio source set for render-file encoding");
   }
+#else
+  (void)ctx;
+  (void)audio_source;
+#endif
 }
 
 bool session_display_has_first_frame(session_display_ctx_t *ctx) {
@@ -490,7 +495,11 @@ bool session_display_has_render_file(session_display_ctx_t *ctx) {
   if (!ctx) {
     return false;
   }
+#ifndef _WIN32
   return ctx->render_file != NULL;
+#else
+  return false;
+#endif
 }
 
 /* ============================================================================
@@ -795,7 +804,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     splash_intro_done();
 
     // Perform initial terminal reset
-    if (ctx->has_tty && !ctx->render_file) {
+    if (ctx->has_tty
+#ifndef _WIN32
+        && !ctx->render_file
+#endif
+    ) {
       (void)terminal_reset(STDOUT_FILENO);
       (void)terminal_clear_screen();
       (void)terminal_cursor_home(STDOUT_FILENO);
@@ -877,7 +890,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   } else {
     // Non-interactive piped output
     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file="-")
-    if (!ctx->render_file) {
+    if (true
+#ifndef _WIN32
+        && !ctx->render_file
+#endif
+    ) {
       // No render-file, safe to write ASCII frames to stdout
       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
       if (write_buf) {
@@ -921,6 +938,10 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
 }
 
 void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
+#ifdef _WIN32
+  (void)ctx; (void)image; (void)captured_ns;
+  return; // render-file not supported on Windows
+#else
   static int call_count = 0;
   if (call_count++ < 5) {
     log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
@@ -959,6 +980,7 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
 #endif
 
   SAFE_FREE(ascii);
+#endif // !_WIN32
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
@@ -1216,6 +1238,9 @@ void keyboard_help_toggle_global(void) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
+#ifdef _WIN32
+  (void)ctx; (void)actual_duration_sec;
+#else
   log_info("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
 
@@ -1226,14 +1251,10 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
 
   if (!ctx->render_file) {
     log_warn("  -> render_file is NULL, cannot set duration");
-    return; // No render_file context, nothing to do
+    return;
   }
 
-#ifndef _WIN32
-  // Pass the actual duration to the render_file module, which passes it to the encoder
-  if (ctx->render_file) {
-    log_info("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
-    render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
-  }
+  log_info("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
+  render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
 #endif
 }

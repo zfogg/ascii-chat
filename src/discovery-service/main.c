@@ -420,6 +420,7 @@ int acds_main(void) {
   }
 
   // Install signal handlers for clean shutdown
+#ifndef _WIN32
   // Use sigaction with explicit flags to disable SA_RESTART - this ensures
   // select() returns EINTR instead of restarting, so the shutdown flag can be checked
   struct sigaction sa = {
@@ -429,6 +430,10 @@ int acds_main(void) {
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
+#else
+  signal(SIGINT, acds_handle_signal);
+  signal(SIGTERM, acds_handle_signal);
+#endif
 
 
   // Run server

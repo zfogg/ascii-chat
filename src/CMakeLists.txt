@@ -107,7 +107,7 @@ if(NOT _use_shared_lib AND NOT USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat ascii-chat-shared)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
@@ -115,7 +115,7 @@ elseif(_use_shared_lib)
         # Import library is in bin directory with the DLL
         target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
         get_core_deps_libraries(CORE_LIBS)
-        target_link_libraries(ascii-chat
+        target_link_libraries(ascii-chat PRIVATE
             ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
             crypt32
@@ -123,7 +123,11 @@ elseif(_use_shared_lib)
             ${CORE_LIBS}
         )
         # Link BearSSL (required)
-        target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        target_link_libraries(ascii-chat PRIVATE ${BEARSSL_LIBRARIES})
+        # Link FFmpeg libraries
+        if(FFMPEG_LIBRARIES)
+            target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+        endif()
         # Note: On Windows, we do NOT link webrtc_audio_processing directly to the executable.
         # The shared library (asciichat.dll) already links it, and direct C++ library linkage
         # would pull in MSVCP140D.dll as a direct dependency of the exe, causing ASan bad-free
@@ -131,7 +135,7 @@ elseif(_use_shared_lib)
 
         # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
         endif()
 
         # Delay-load datachannel.dll to defer loading when it's not needed.
@@ -141,7 +145,7 @@ elseif(_use_shared_lib)
         target_link_options(ascii-chat PRIVATE
             "LINKER:/DELAYLOAD:datachannel.dll"
         )
-        target_link_libraries(ascii-chat delayimp)
+        target_link_libraries(ascii-chat PRIVATE delayimp)
     else()
         # Unix: Also need explicit dependencies when linking against shared library
         get_core_deps_libraries(CORE_LIBS)
@@ -149,18 +153,18 @@ elseif(_use_shared_lib)
             ${CORE_LIBS}
         )
         # Link BearSSL (required)
-        target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        target_link_libraries(ascii-chat PRIVATE ${BEARSSL_LIBRARIES})
         # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)
         if(FFMPEG_LIBRARIES)
-            target_link_libraries(ascii-chat ${FFMPEG_LIBRARIES})
+            target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
         endif()
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
-            target_link_libraries(ascii-chat webrtc_audio_processing)
+            target_link_libraries(ascii-chat PRIVATE webrtc_audio_processing)
         endif()
         # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
         endif()
 
         # Suppress linker warnings about duplicate debug symbols in libdatachannel
@@ -452,7 +456,7 @@ if(USE_MIMALLOC)
 endif()
 
 if(ASCIICHAT_LLVM_STATIC_LIBUNWIND)
-    target_link_libraries(ascii-chat ${ASCIICHAT_LLVM_STATIC_LIBUNWIND})
+    target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_STATIC_LIBUNWIND})
 endif()
 
 if(NOT WIN32)

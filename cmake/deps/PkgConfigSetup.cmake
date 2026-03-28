@@ -7,9 +7,19 @@
 # These variables are set early so they're available to all dependencies,
 # not just in the execute_process() call for Ghostty.
 
-# Determine the system's pkg-config directories
-# Try to find pkg-config first to get the default search path
-find_program(PKG_CONFIG_PROGRAM pkg-config REQUIRED)
+# On Windows with vcpkg, pkg-config is not needed - vcpkg provides its own pkgconf
+if(WIN32)
+    find_program(PKG_CONFIG_PROGRAM pkg-config pkgconf
+        HINTS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/pkgconf")
+    if(NOT PKG_CONFIG_PROGRAM)
+        message(STATUS "pkg-config not found on Windows (vcpkg handles dependencies directly)")
+        return()
+    endif()
+else()
+    # Determine the system's pkg-config directories
+    # Try to find pkg-config first to get the default search path
+    find_program(PKG_CONFIG_PROGRAM pkg-config REQUIRED)
+endif()
 
 # Build comprehensive pkg-config search paths
 set(PKG_CONFIG_DIRS "")

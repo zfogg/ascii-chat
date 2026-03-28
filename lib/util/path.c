@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <ascii-chat/platform/stat.h>
 #include <pcre2.h>
 
 /**

@@ -69,13 +69,8 @@
  */
 
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
-// When compiling C++ with MSVC runtime headers, the atomic types are in std:: namespace.
-// We bring them into global namespace for compatibility with C-style struct definitions.
-#if defined(__cplusplus) && defined(_WIN32)
-#include <atomic>
-#else
+// atomic_t is always defined in ascii-chat/atomic.h (wraps C11 _Atomic)
 #include <ascii-chat/atomic.h>
-#endif
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

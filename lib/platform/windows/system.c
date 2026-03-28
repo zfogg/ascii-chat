@@ -21,11 +21,14 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/platform/backtrace.h>
+#include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/options/options.h>
 
 #include <dbghelp.h>
 #include <wincrypt.h>
 #include <windows.h>
+#include <psapi.h>
 #include <io.h>
 #include <fcntl.h>
 #include <share.h> // For _SH_DENYNO in _sopen_s
@@ -44,7 +47,8 @@
 #pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
 // Forward declarations
-void cleanup_windows_symbols(void);
+// Stub - symbol cleanup is handled by symbol_cache_destroy()
+static inline void cleanup_windows_symbols(void) {}
 
 /**
  * @brief Get username from environment variables
@@ -466,11 +470,14 @@ void platform_print_backtrace(int skip_frames) {
 
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);
-
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
-
-    platform_backtrace_symbols_destroy(symbols);
+    if (symbols) {
+      int start = 1 + skip_frames; // Skip this function + requested frames
+      fprintf(stderr, "  Backtrace:\n");
+      for (int i = start; i < size; i++) {
+        fprintf(stderr, "    #%d %s\n", i - start, symbols[i] ? symbols[i] : "???");
+      }
+      platform_backtrace_symbols_destroy(symbols);
+    }
   }
 }
 

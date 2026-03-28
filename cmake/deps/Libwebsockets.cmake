@@ -240,8 +240,15 @@ if(WIN32)
     add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
     # Create compatibility variables for the rest of the build
-    get_target_property(LIBWEBSOCKETS_LIBRARIES websockets IMPORTED_LOCATION)
-    if(NOT LIBWEBSOCKETS_LIBRARIES)
+    # vcpkg provides websockets_shared target, create an alias for compatibility
+    if(TARGET websockets_shared)
+        set(LIBWEBSOCKETS_LIBRARIES websockets_shared)
+        if(NOT TARGET websockets)
+            add_library(websockets ALIAS websockets_shared)
+        endif()
+    elseif(TARGET websockets)
+        set(LIBWEBSOCKETS_LIBRARIES websockets)
+    else()
         set(LIBWEBSOCKETS_LIBRARIES websockets)
     endif()
     set(LIBWEBSOCKETS_FOUND TRUE)

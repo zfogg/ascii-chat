@@ -34,6 +34,9 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#ifndef R_OK
+#define R_OK 4
+#endif
 #endif
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)

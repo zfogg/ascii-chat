@@ -26,7 +26,12 @@
       "default-features": false,
       "features": ["avcodec", "avformat", "swscale", "swresample"]
     },
-    "abseil"
+    "abseil",
+    "freetype",
+    {
+      "name": "fontconfig",
+      "platform": "!windows"
+    }
   ],
   "overrides": [
     { "name": "zstd", "version": "1.5.7" },

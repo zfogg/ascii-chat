@@ -370,7 +370,10 @@ void asciichat_error_stats_init(void) {
 
 void asciichat_error_stats_record(asciichat_error_t code) {
   if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
-    lifecycle_init(&g_error_stats.lifecycle, "error_stats");
+    if (lifecycle_init(&g_error_stats.lifecycle, "error_stats")) {
+      mutex_init(&g_error_stats.mutex, "error_stats");
+      memset(&g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+    }
   }
 
   mutex_lock(&g_error_stats.mutex);

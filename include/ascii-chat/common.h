@@ -440,6 +440,26 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
 #endif
 
+/* POSIX case-insensitive string comparison (Windows uses _stricmp/_strnicmp) */
+#ifdef _WIN32
+#include <string.h>
+#define strcasecmp  _stricmp
+#define strncasecmp _strnicmp
+/* POSIX access() mode flags */
+#ifndef R_OK
+#define R_OK 4
+#endif
+#ifndef W_OK
+#define W_OK 2
+#endif
+#ifndef X_OK
+#define X_OK 0
+#endif
+#ifndef F_OK
+#define F_OK 0
+#endif
+#endif
+
 /* Platform-safe strerror */
 #include "platform/abstraction.h" // IWYU pragma: keep
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)

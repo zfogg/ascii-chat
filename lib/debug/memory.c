@@ -343,6 +343,7 @@ void debug_memory_ensure_init(void) {
   if (lifecycle_init_once(&g_mem.lifecycle)) {
     /* This thread won the race; do the actual initialization */
     if (lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
+      mutex_init(&g_mem.mutex, "debug_memory");
       atomic_store_bool(&g_debug_mem_initialized, true);
     }
     lifecycle_init_commit(&g_mem.lifecycle);

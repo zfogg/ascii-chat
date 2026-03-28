@@ -29,7 +29,11 @@ log_io_t log_io_start(void) {
 
   // Create a pipe for capturing output
   int pipefd[2];
+#ifdef _WIN32
+  if (_pipe(pipefd, LOG_IO_BUFFER_SIZE, _O_BINARY) < 0) {
+#else
   if (pipe(pipefd) < 0) {
+#endif
     close(capture.saved_stdout_fd);
     close(capture.saved_stderr_fd);
     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
@@ -39,6 +43,7 @@ log_io_t log_io_start(void) {
   int write_fd = pipefd[1];
   capture.pipe_fd = pipefd[0];
 
+#ifndef _WIN32
   // Make the read end non-blocking so we can drain without hanging
   int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
   if (flags >= 0) {
@@ -54,6 +59,7 @@ log_io_t log_io_start(void) {
   if (wflags >= 0) {
     fcntl(write_fd, F_SETFL, wflags | O_NONBLOCK);
   }
+#endif
 
   // Redirect both stdout and stderr to the pipe
   if (dup2(write_fd, STDOUT_FILENO) < 0 || dup2(write_fd, STDERR_FILENO) < 0) {

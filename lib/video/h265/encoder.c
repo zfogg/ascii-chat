@@ -20,7 +20,13 @@
 #include <unistd.h>
 
 static int h265_thread_count(void) {
+#ifdef _WIN32
+  SYSTEM_INFO sysinfo;
+  GetSystemInfo(&sysinfo);
+  long cores = (long)sysinfo.dwNumberOfProcessors;
+#else
   long cores = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
   if (cores <= 0) cores = 4;
   int half = (int)(cores / 2);
   return half > 4 ? half : 4;

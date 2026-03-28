@@ -49,6 +49,12 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock_impl(mutex_t *mutex) {
+  // Auto-initialize if the CRITICAL_SECTION hasn't been initialized yet.
+  // On Windows, zero-initialized CRITICAL_SECTION is invalid (unlike POSIX pthread_mutex).
+  // Check DebugInfo field which is NULL only when uninitialized.
+  if (mutex->impl.DebugInfo == NULL) {
+    InitializeCriticalSection(&mutex->impl);
+  }
   EnterCriticalSection(&mutex->impl);
   mutex_on_lock(mutex);
   return 0;
