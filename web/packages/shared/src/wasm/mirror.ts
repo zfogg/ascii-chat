@@ -85,7 +85,7 @@ export async function initMirrorWasm(
   options?: { locateFile?: (path: string) => string },
 ): Promise<void> {
   console.log(
-    `[WASM Mirror] initMirrorWasm called at ${new Date().toISOString()}`
+    `[WASM Mirror] initMirrorWasm called at ${new Date().toISOString()}`,
   );
 
   if (wasmModule) {
@@ -119,7 +119,7 @@ export async function initMirrorWasm(
   }
   const factoryTime = performance.now() - factoryStart;
   console.log(
-    `[WASM Mirror] moduleFactory().COMPLETED after ${(factoryTime / 1000).toFixed(2)}s at ${new Date().toISOString()}`
+    `[WASM Mirror] moduleFactory().COMPLETED after ${(factoryTime / 1000).toFixed(2)}s at ${new Date().toISOString()}`,
   );
 
   if (!wasmModule) {
@@ -128,21 +128,23 @@ export async function initMirrorWasm(
   console.log("[WASM] Module loaded successfully");
 
   const factoryEnd = performance.now();
-  console.log(`[WASM] TOTAL factory time: ${((factoryEnd - factoryStart) / 1000).toFixed(2)}s`);
+  console.log(
+    `[WASM] TOTAL factory time: ${((factoryEnd - factoryStart) / 1000).toFixed(2)}s`,
+  );
 
   try {
     // Bind renderer functions to module if they exist
     const rendererFunctions = [
-      '_ascii_renderer_init',
-      '_ascii_renderer_render_frame',
-      '_ascii_renderer_resize',
-      '_ascii_renderer_get_cols',
-      '_ascii_renderer_get_rows',
-      '_ascii_renderer_shutdown',
+      "_ascii_renderer_init",
+      "_ascii_renderer_render_frame",
+      "_ascii_renderer_resize",
+      "_ascii_renderer_get_cols",
+      "_ascii_renderer_get_rows",
+      "_ascii_renderer_shutdown",
     ];
 
     for (const funcName of rendererFunctions) {
-      if (typeof (wasmModule as any)[funcName] === 'undefined') {
+      if (typeof (wasmModule as any)[funcName] === "undefined") {
         console.warn(`[WASM] Renderer function not found: ${funcName}`);
       } else {
         console.log(`[WASM] Renderer function bound: ${funcName}`);
@@ -153,7 +155,7 @@ export async function initMirrorWasm(
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
       console.log(
-        `[WASM] BEFORE _mirror_init_with_args at ${new Date().toISOString()}`
+        `[WASM] BEFORE _mirror_init_with_args at ${new Date().toISOString()}`,
       );
       const initWithArgsStart = performance.now();
       console.log(
@@ -170,7 +172,7 @@ export async function initMirrorWasm(
       try {
         wasmModule.stringToUTF8(argsJson, strPtr, strLen);
         console.log(
-          `[WASM] About to call _mirror_init_with_args at ${new Date().toISOString()}`
+          `[WASM] About to call _mirror_init_with_args at ${new Date().toISOString()}`,
         );
         const callStart = performance.now();
         const initResult = wasmModule._mirror_init_with_args(strPtr);
@@ -198,7 +200,7 @@ export async function initMirrorWasm(
     }
 
     console.log(
-      `[WASM] About to createOptionAccessor at ${new Date().toISOString()}`
+      `[WASM] About to createOptionAccessor at ${new Date().toISOString()}`,
     );
 
     // Initialize shared options module with option accessor
@@ -211,7 +213,7 @@ export async function initMirrorWasm(
     );
 
     console.log(
-      `[WASM] About to initializeOptions at ${new Date().toISOString()}`
+      `[WASM] About to initializeOptions at ${new Date().toISOString()}`,
     );
     const initializeOptionsStart = performance.now();
     initializeOptions(optionsAccessor);
@@ -222,7 +224,7 @@ export async function initMirrorWasm(
     console.log("[WASM] Options module initialized");
 
     console.log(
-      `[WASM] About to set globalWindow.asciiChatWasm at ${new Date().toISOString()}`
+      `[WASM] About to set globalWindow.asciiChatWasm at ${new Date().toISOString()}`,
     );
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
@@ -232,7 +234,7 @@ export async function initMirrorWasm(
       _wasmModule: wasmModule,
     };
     console.log(
-      `[WASM] Set globalWindow.asciiChatWasm at ${new Date().toISOString()}`
+      `[WASM] Set globalWindow.asciiChatWasm at ${new Date().toISOString()}`,
     );
 
     console.log("[WASM] Initialization complete!", performance.now());

@@ -30,7 +30,7 @@ export function useMirrorRenderLoop({
   useEffect(() => {
     const effectStartTime = performance.now();
     console.log(
-      `[Mirror] Render loop effect triggered at ${effectStartTime.toFixed(0)}ms: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions.cols}x${terminalDimensions.rows}`
+      `[Mirror] Render loop effect triggered at ${effectStartTime.toFixed(0)}ms: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions.cols}x${terminalDimensions.rows}`,
     );
 
     if (!isWebcamRunning) {
@@ -42,7 +42,7 @@ export function useMirrorRenderLoop({
     // Without this, WASM tries to render with dst_width=0/dst_height=0, causing memory access out of bounds
     if (terminalDimensions.cols <= 0 || terminalDimensions.rows <= 0) {
       console.log(
-        `[Mirror] BLOCKING render loop: dimensions not yet initialized (${terminalDimensions.cols}x${terminalDimensions.rows})`
+        `[Mirror] BLOCKING render loop: dimensions not yet initialized (${terminalDimensions.cols}x${terminalDimensions.rows})`,
       );
       if (debugCountRef.current % 300 === 0) {
         console.log(
@@ -53,7 +53,7 @@ export function useMirrorRenderLoop({
     }
 
     console.log(
-      `[Mirror] Render loop STARTING with dimensions: ${terminalDimensions.cols}x${terminalDimensions.rows} at ${effectStartTime.toFixed(0)}ms`
+      `[Mirror] Render loop STARTING with dimensions: ${terminalDimensions.cols}x${terminalDimensions.rows} at ${effectStartTime.toFixed(0)}ms`,
     );
 
     const isTestMode = new URLSearchParams(window.location.search).has("test");
@@ -62,19 +62,22 @@ export function useMirrorRenderLoop({
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
-      if (debugCountRef.current === 0) {
-        console.log("[Mirror] renderFrame early return:", {
-          wasmReady: isWasmReady(),
-          hasRenderer: !!rendererRef.current,
-        });
+        if (debugCountRef.current === 0) {
+          console.log("[Mirror] renderFrame early return:", {
+            wasmReady: isWasmReady(),
+            hasRenderer: !!rendererRef.current,
+          });
+        }
+        return;
       }
-      return;
-    }
 
       const now = performance.now();
       if (firstFrameTimeRef.current === null) {
         firstFrameTimeRef.current = now;
-        console.log("[Mirror] FIRST FRAME STARTING at", new Date().toISOString());
+        console.log(
+          "[Mirror] FIRST FRAME STARTING at",
+          new Date().toISOString(),
+        );
         console.time("[Mirror] Time to first frame render");
       }
 
@@ -137,7 +140,9 @@ export function useMirrorRenderLoop({
       // If last conversion took > 100ms, skip this frame to prevent blocking
       if (lastConversionTime > 100) {
         if (debugCountRef.current % 30 === 0) {
-          console.warn(`[Mirror] Last conversion took ${lastConversionTime.toFixed(1)}ms - skipping frame to prevent RAF blocking`);
+          console.warn(
+            `[Mirror] Last conversion took ${lastConversionTime.toFixed(1)}ms - skipping frame to prevent RAF blocking`,
+          );
         }
         return;
       }
@@ -156,7 +161,6 @@ export function useMirrorRenderLoop({
         }
         return;
       }
-
 
       // Expose last ANSI frame for E2E test access
       const win = window as unknown as Record<string, unknown>;

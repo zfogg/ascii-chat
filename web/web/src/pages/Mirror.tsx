@@ -146,7 +146,6 @@ export function MirrorPage() {
     }
   }, [wasmInitialized, wasmModule]);
 
-
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
     setSettings(newSettings);

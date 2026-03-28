@@ -72,7 +72,7 @@ export const AsciiRenderer = forwardRef<
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
       console.log(
-        `[AsciiRenderer] initRenderer called. Canvas dims: ${canvas.clientWidth}x${canvas.clientHeight}`
+        `[AsciiRenderer] initRenderer called. Canvas dims: ${canvas.clientWidth}x${canvas.clientHeight}`,
       );
 
       try {
@@ -93,7 +93,7 @@ export const AsciiRenderer = forwardRef<
         // requestAnimationFrame guarantees the canvas is properly laid out and WebGL is available
         const doInit = () => {
           console.log(
-            `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`
+            `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`,
           );
           console.time("[TIMING] _ascii_renderer_init");
           moduleRef.current._ascii_renderer_init(width, height);
@@ -110,7 +110,7 @@ export const AsciiRenderer = forwardRef<
 
         if (cols === 0 || rows === 0) {
           console.warn(
-            `[AsciiRenderer] WARNING: Got invalid dimensions from WASM: ${cols}x${rows}`
+            `[AsciiRenderer] WARNING: Got invalid dimensions from WASM: ${cols}x${rows}`,
           );
         }
 
@@ -118,7 +118,7 @@ export const AsciiRenderer = forwardRef<
         setupDoneRef.current = true;
 
         console.log(
-          `[AsciiRenderer] Initialized: ${width}x${height}px, ${cols}x${rows} cells`
+          `[AsciiRenderer] Initialized: ${width}x${height}px, ${cols}x${rows} cells`,
         );
       } catch (err) {
         console.error("[AsciiRenderer] Initialization failed:", err);
@@ -135,16 +135,20 @@ export const AsciiRenderer = forwardRef<
     const checkAndInit = () => {
       retryCount++;
       if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
-        console.log(`[AsciiRenderer] Canvas has dimensions on attempt ${retryCount}, initializing`);
+        console.log(
+          `[AsciiRenderer] Canvas has dimensions on attempt ${retryCount}, initializing`,
+        );
         initRenderer();
       } else if (retryCount < maxRetries) {
         console.log(
-          `[AsciiRenderer] Canvas still has no dimensions (${canvas.clientWidth}x${canvas.clientHeight}) on attempt ${retryCount}, retrying...`
+          `[AsciiRenderer] Canvas still has no dimensions (${canvas.clientWidth}x${canvas.clientHeight}) on attempt ${retryCount}, retrying...`,
         );
         // Use RAF to wait for next layout cycle instead of fixed timeout
         rafId = requestAnimationFrame(checkAndInit);
       } else {
-        console.warn(`[AsciiRenderer] Canvas never got dimensions after ${maxRetries} attempts, initializing with 0x0`);
+        console.warn(
+          `[AsciiRenderer] Canvas never got dimensions after ${maxRetries} attempts, initializing with 0x0`,
+        );
         // Force initialization even if canvas has no dimensions (will use fallback dimensions)
         initRenderer();
       }
@@ -172,28 +176,28 @@ export const AsciiRenderer = forwardRef<
       const height = canvas.clientHeight;
 
       console.log(
-        `[AsciiRenderer] ResizeObserver fired: canvas=${width}x${height}px, firstRenderDone=${firstRenderDoneRef.current}`
+        `[AsciiRenderer] ResizeObserver fired: canvas=${width}x${height}px, firstRenderDone=${firstRenderDoneRef.current}`,
       );
 
       // CRITICAL: Never resize to 0x0 dimensions. ResizeObserver fires before layout is complete,
       // and 0x0 would reset our valid dimensions from the initial render.
       if (width === 0 || height === 0) {
         console.log(
-          `[AsciiRenderer] Ignoring resize to 0x0 (layout not ready yet)`
+          `[AsciiRenderer] Ignoring resize to 0x0 (layout not ready yet)`,
         );
         return;
       }
 
       if (firstRenderDoneRef.current) {
         console.log(
-          `[AsciiRenderer] Calling _ascii_renderer_resize(${width}, ${height})`
+          `[AsciiRenderer] Calling _ascii_renderer_resize(${width}, ${height})`,
         );
         moduleRef.current._ascii_renderer_resize(width, height);
         const cols = moduleRef.current._ascii_renderer_get_cols();
         const rows = moduleRef.current._ascii_renderer_get_rows();
 
         console.log(
-          `[AsciiRenderer] WASM returned new dimensions: ${cols}x${rows}`
+          `[AsciiRenderer] WASM returned new dimensions: ${cols}x${rows}`,
         );
 
         updateDimensions(cols, rows);
@@ -201,7 +205,7 @@ export const AsciiRenderer = forwardRef<
         console.log(`[AsciiRenderer] Resized to ${cols}x${rows} cells`);
       } else {
         console.log(
-          `[AsciiRenderer] Skipping resize: first render not done yet`
+          `[AsciiRenderer] Skipping resize: first render not done yet`,
         );
       }
     };
@@ -238,9 +242,7 @@ export const AsciiRenderer = forwardRef<
           // Allocate memory in WASM and copy data
           const ptr = moduleRef.current._malloc(data.length);
           if (!ptr) {
-            console.error(
-              "[AsciiRenderer] Failed to allocate memory in WASM"
-            );
+            console.error("[AsciiRenderer] Failed to allocate memory in WASM");
             return;
           }
 
@@ -254,7 +256,7 @@ export const AsciiRenderer = forwardRef<
 
           if (frameCountRef.current === 0) {
             console.log(
-              `[AsciiRenderer] First frame rendered in ${renderTime.toFixed(2)}ms, data size ${data.length} bytes`
+              `[AsciiRenderer] First frame rendered in ${renderTime.toFixed(2)}ms, data size ${data.length} bytes`,
             );
           }
 
@@ -328,7 +330,9 @@ export const AsciiRenderer = forwardRef<
           // Mark first render as done so resize can proceed
           if (!firstRenderDoneRef.current) {
             firstRenderDoneRef.current = true;
-            console.log("[AsciiRenderer] First render complete, resize now enabled");
+            console.log(
+              "[AsciiRenderer] First render complete, resize now enabled",
+            );
           }
         } catch (err) {
           console.error("[AsciiRenderer] writeFrame error:", err);
@@ -362,7 +366,7 @@ export const AsciiRenderer = forwardRef<
         moduleRef.current._ascii_renderer_render_frame(0, 0);
       },
     }),
-    [showFps, onFpsChange]
+    [showFps, onFpsChange],
   );
 
   return (
