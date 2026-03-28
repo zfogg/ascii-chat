@@ -679,7 +679,8 @@ if(BUILD_WEB)
 
 set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
 set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
-set(WASM_DEPS_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/web")
+# WASM artifacts are build-type independent, use shared cache location
+set(WASM_DEPS_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web")
 
 # Find Emscripten toolchain file
 if(DEFINED ENV{EMSDK})
@@ -725,20 +726,19 @@ set(WASM_CMAKE_ARGS
 )
 
 # Configure WASM build directory during CMake configuration (not during build)
-# Use stamp file to ensure configure only runs once, not during cmake --build
 if(EMSCRIPTEN_TOOLCHAIN_FILE)
-    set(WASM_CONFIG_STAMP "${WASM_BUILD_DIR}/.wasm_src_configured")
-    if(NOT EXISTS "${WASM_CONFIG_STAMP}")
+    file(MAKE_DIRECTORY "${WASM_BUILD_DIR}")
+
+    # Check if build.ninja exists (indicates successful WASM configuration)
+    if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja")
+        message(STATUS "Configuring WASM build directory: ${WASM_BUILD_DIR}")
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
             WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
             RESULT_VARIABLE WASM_CONFIG_RESULT
         )
         if(NOT WASM_CONFIG_RESULT EQUAL 0)
-            message(WARNING "WASM configuration failed: ${WASM_CONFIG_RESULT}")
-        else()
-            # Mark as configured
-            file(WRITE "${WASM_CONFIG_STAMP}" "WASM configured in src/CMakeLists.txt\n")
+            message(WARNING "WASM configuration failed with code: ${WASM_CONFIG_RESULT}")
         endif()
     endif()
 endif()
@@ -750,6 +750,7 @@ if(NOT TARGET mirror-web)
     add_custom_target(mirror-web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
         COMMENT "Building WASM mirror module"
+        DEPENDS generate_fonts
         VERBATIM
     )
 endif()
@@ -759,6 +760,7 @@ if(NOT TARGET client-web)
     add_custom_target(client-web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
         COMMENT "Building WASM client module"
+        DEPENDS generate_fonts
         VERBATIM
     )
 endif()
@@ -769,6 +771,7 @@ if(NOT TARGET web)
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
         COMMENT "Building all WASM modules"
+        DEPENDS generate_fonts
         VERBATIM
     )
 

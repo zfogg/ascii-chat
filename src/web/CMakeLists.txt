@@ -30,8 +30,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Apply only to WASM executables and common library below
 
 # Cache WASM dependencies outside build/ to persist across rebuilds
+# Note: WASM artifacts are build-type independent, shared across all configurations
 if(NOT ASCIICHAT_WEB_DEPS_DIR)
-    set(ASCIICHAT_WEB_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/${CMAKE_BUILD_TYPE}/web")
+    set(ASCIICHAT_WEB_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/web")
 endif()
 file(MAKE_DIRECTORY "${ASCIICHAT_WEB_DEPS_DIR}")
 
@@ -79,12 +80,14 @@ set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 
 if(BUILD_WEB)
     # libsodium - check cache BEFORE FetchContent declaration
-    if(EXISTS "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
-        message(STATUS "Using cached Sodium: ${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+    # Support both old and new cache locations for backwards compatibility
+    set(sodium_a_path "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+    if(EXISTS "${sodium_a_path}")
+        message(STATUS "Using cached Sodium: ${sodium_a_path}")
         if(NOT TARGET sodium)
             add_library(sodium STATIC IMPORTED GLOBAL)
             set_target_properties(sodium PROPERTIES
-                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a"
+                IMPORTED_LOCATION "${sodium_a_path}"
                 INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include"
             )
         endif()
