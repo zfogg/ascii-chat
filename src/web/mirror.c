@@ -100,6 +100,7 @@ int mirror_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
+  WASM_LOG("mirror_cleanup: START");
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;
@@ -110,6 +111,7 @@ void mirror_cleanup(void) {
   }
   options_state_destroy();
   platform_destroy();
+  WASM_LOG("mirror_cleanup: COMPLETE");
 }
 
 // ============================================================================
@@ -118,7 +120,9 @@ void mirror_cleanup(void) {
 
 EMSCRIPTEN_KEEPALIVE
 char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
+  WASM_LOG("mirror_convert_frame: START");
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
+    WASM_LOG("mirror_convert_frame: invalid args, returning NULL");
     return NULL;
   }
 
@@ -312,5 +316,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_free_string(char *ptr) {
+  WASM_LOG("mirror_free_string: START");
   SAFE_FREE(ptr);
+  WASM_LOG("mirror_free_string: COMPLETE");
 }

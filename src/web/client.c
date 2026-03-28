@@ -13,11 +13,6 @@
 #include "common/wasm_log.h"
 #include "common/init.h"
 
-// Debug logging to JavaScript console
-EM_JS(void, js_debug_log, (const char *msg), {
-  console.error('[WASM DEBUG]', UTF8ToString(msg));
-});
-
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)
 EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len), {

@@ -35,6 +35,10 @@ interface MirrorModuleExports {
   _ascii_renderer_resize(pixel_width: number, pixel_height: number): void;
   _ascii_renderer_get_cols(): number;
   _ascii_renderer_get_rows(): number;
+  _ascii_renderer_get_framebuffer(): number;
+  _ascii_renderer_get_framebuffer_width(): number;
+  _ascii_renderer_get_framebuffer_height(): number;
+  _ascii_renderer_get_framebuffer_stride(): number;
   _ascii_renderer_shutdown(): void;
   // Memory management
   _malloc(size: number): number;
@@ -52,6 +56,10 @@ interface MirrorModule extends WasmModule {
   _ascii_renderer_resize: MirrorModuleExports["_ascii_renderer_resize"];
   _ascii_renderer_get_cols: MirrorModuleExports["_ascii_renderer_get_cols"];
   _ascii_renderer_get_rows: MirrorModuleExports["_ascii_renderer_get_rows"];
+  _ascii_renderer_get_framebuffer: MirrorModuleExports["_ascii_renderer_get_framebuffer"];
+  _ascii_renderer_get_framebuffer_width: MirrorModuleExports["_ascii_renderer_get_framebuffer_width"];
+  _ascii_renderer_get_framebuffer_height: MirrorModuleExports["_ascii_renderer_get_framebuffer_height"];
+  _ascii_renderer_get_framebuffer_stride: MirrorModuleExports["_ascii_renderer_get_framebuffer_stride"];
   _ascii_renderer_shutdown: MirrorModuleExports["_ascii_renderer_shutdown"];
 }
 

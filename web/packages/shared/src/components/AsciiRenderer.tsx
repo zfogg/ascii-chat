@@ -63,12 +63,7 @@ export const AsciiRenderer = forwardRef<
   );
 
   useEffect(() => {
-    console.log(
-      `[AsciiRenderer] Init effect check: canvas=${!!canvasRef.current}, module=${!!moduleRef.current}, setupDone=${setupDoneRef.current}`
-    );
-
     if (!canvasRef.current || !moduleRef.current || setupDoneRef.current) {
-      console.log("[AsciiRenderer] Skipping init (missing dependency or already done)");
       return;
     }
 
@@ -131,22 +126,37 @@ export const AsciiRenderer = forwardRef<
       }
     };
 
-    // Wait for canvas to have layout
-    let timer: number | undefined;
-    if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
-      console.log("[AsciiRenderer] Canvas has dimensions, initializing immediately");
-      initRenderer();
-    } else {
-      console.log(
-        `[AsciiRenderer] Canvas has no dimensions (${canvas.clientWidth}x${canvas.clientHeight}), waiting 100ms...`
-      );
-      timer = window.setTimeout(initRenderer, 100);
-    }
+    // Wait for canvas to have layout by using requestAnimationFrame
+    // This lets the browser complete layout calculations before we check dimensions
+    let rafId: number | undefined;
+    let retryCount = 0;
+    const maxRetries = 100; // Maximum of 100 retries (capped at ~1.6 seconds with RAF)
+
+    const checkAndInit = () => {
+      retryCount++;
+      if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+        console.log(`[AsciiRenderer] Canvas has dimensions on attempt ${retryCount}, initializing`);
+        initRenderer();
+      } else if (retryCount < maxRetries) {
+        console.log(
+          `[AsciiRenderer] Canvas still has no dimensions (${canvas.clientWidth}x${canvas.clientHeight}) on attempt ${retryCount}, retrying...`
+        );
+        // Use RAF to wait for next layout cycle instead of fixed timeout
+        rafId = requestAnimationFrame(checkAndInit);
+      } else {
+        console.warn(`[AsciiRenderer] Canvas never got dimensions after ${maxRetries} attempts, initializing with 0x0`);
+        // Force initialization even if canvas has no dimensions (will use fallback dimensions)
+        initRenderer();
+      }
+    };
+
+    // Start checking on next animation frame
+    rafId = requestAnimationFrame(checkAndInit);
 
     return () => {
-      if (timer !== undefined) {
-        console.log("[AsciiRenderer] Cleanup: clearing init timeout");
-        clearTimeout(timer);
+      if (rafId !== undefined) {
+        console.log("[AsciiRenderer] Cleanup: canceling RAF");
+        cancelAnimationFrame(rafId);
       }
     };
   }, [wasmModule, updateDimensions]);
@@ -251,6 +261,69 @@ export const AsciiRenderer = forwardRef<
           // Free memory
           moduleRef.current._free(ptr);
 
+          // Display framebuffer on canvas
+          try {
+            const canvas = canvasRef.current;
+            if (
+              canvas &&
+              canvas.getContext &&
+              moduleRef.current._ascii_renderer_get_framebuffer
+            ) {
+              const fbPtr = moduleRef.current._ascii_renderer_get_framebuffer?.();
+              const fbWidth = moduleRef.current._ascii_renderer_get_framebuffer_width?.();
+              const fbHeight = moduleRef.current._ascii_renderer_get_framebuffer_height?.();
+              const fbStride = moduleRef.current._ascii_renderer_get_framebuffer_stride?.();
+
+              if (
+                fbPtr &&
+                fbWidth &&
+                fbHeight &&
+                fbWidth > 0 &&
+                fbHeight > 0 &&
+                typeof fbWidth === "number" &&
+                typeof fbHeight === "number"
+              ) {
+                const w: number = fbWidth as number;
+                const h: number = fbHeight as number;
+                const stride: number = fbStride ? (fbStride as number) : w * 3;
+
+                // Read RGB24 framebuffer from WASM memory
+                const fbData: Uint8Array = new Uint8Array(
+                  moduleRef.current.HEAPU8.buffer,
+                  fbPtr,
+                  h * stride
+                );
+
+                // Create ImageData (RGBA)
+                const imageData = new ImageData(w, h);
+                let dstIdx = 0;
+
+                // Convert RGB24 to RGBA32
+                for (let y = 0; y < h; y++) {
+                  const rowStart: number = y * stride;
+                  for (let x = 0; x < w; x++) {
+                    const srcIdx: number = rowStart + x * 3;
+                    const r: number = fbData[srcIdx] ?? 0;
+                    const g: number = fbData[srcIdx + 1] ?? 0;
+                    const b: number = fbData[srcIdx + 2] ?? 0;
+                    imageData.data[dstIdx++] = r;
+                    imageData.data[dstIdx++] = g;
+                    imageData.data[dstIdx++] = b;
+                    imageData.data[dstIdx++] = 255;
+                  }
+                }
+
+                // Display on canvas
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                  ctx.putImageData(imageData, 0, 0);
+                }
+              }
+            }
+          } catch (displayErr) {
+            console.error("[AsciiRenderer] Failed to display framebuffer:", displayErr);
+          }
+
           // Mark first render as done so resize can proceed
           if (!firstRenderDoneRef.current) {
             firstRenderDoneRef.current = true;
@@ -299,6 +372,8 @@ export const AsciiRenderer = forwardRef<
           ref={canvasRef}
           className="flex flex-1 w-full h-full rounded bg-terminal-bg"
           style={{ display: "block" }}
+          width={1280}
+          height={720}
         />
         {connectionState === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">

@@ -187,35 +187,42 @@ export function useMirrorWebcam({
     setError,
   ]);
 
-  // Request camera permission early on page load (browsers require explicit permission)
-  // This helps Firefox and other browsers allow camera access before auto-start
+  // DISABLED: Permission request on page load was blocking React for 30+ seconds
+  // The getUserMedia call would hang waiting for browser permission dialog.
+  // Instead, we'll request permission when user clicks "Start Webcam" button.
+  // useEffect(() => {
+  //   const requestPermission = async () => {
+  //     try {
+  //       console.log("[Mirror] Requesting camera permission on page load");
+  //       // Request minimal 1x1 stream just to trigger permission dialog
+  //       const stream = await navigator.mediaDevices.getUserMedia({
+  //         video: { width: { ideal: 1 }, height: { ideal: 1 } },
+  //         audio: false,
+  //       });
+  //       console.log("[Mirror] Permission granted, stopping stream");
+  //       stream.getTracks().forEach((track) => track.stop());
+  //       // Add a small delay to ensure Firefox properly releases the camera
+  //       // before the auto-start tries to access it
+  //       await new Promise((resolve) => setTimeout(resolve, 100));
+  //       setPermissionGranted(true);
+  //     } catch (err) {
+  //       const message = err instanceof Error ? err.message : String(err);
+  //       console.log(
+  //         "[Mirror] Permission request failed (user may have denied):",
+  //         message,
+  //       );
+  //       // Even if permission request fails, proceed with auto-start
+  //       // (user may deny and then manually grant, or have already granted)
+  //       setPermissionGranted(true);
+  //     }
+  //   };
+  //   void requestPermission();
+  // }, []);
+
+  // Set permissionGranted immediately so auto-start can proceed
+  // The startWebcam function will request permission when needed
   useEffect(() => {
-    const requestPermission = async () => {
-      try {
-        console.log("[Mirror] Requesting camera permission on page load");
-        // Request minimal 1x1 stream just to trigger permission dialog
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1 }, height: { ideal: 1 } },
-          audio: false,
-        });
-        console.log("[Mirror] Permission granted, stopping stream");
-        stream.getTracks().forEach((track) => track.stop());
-        // Add a small delay to ensure Firefox properly releases the camera
-        // before the auto-start tries to access it
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        setPermissionGranted(true);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.log(
-          "[Mirror] Permission request failed (user may have denied):",
-          message,
-        );
-        // Even if permission request fails, proceed with auto-start
-        // (user may deny and then manually grant, or have already granted)
-        setPermissionGranted(true);
-      }
-    };
-    void requestPermission();
+    setPermissionGranted(true);
   }, []);
 
   // Auto-start webcam in development mode

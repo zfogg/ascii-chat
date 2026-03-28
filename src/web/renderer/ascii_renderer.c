@@ -117,7 +117,6 @@ static void blit_glyph(FT_Bitmap *bm, int px, int py, uint8_t fr,
 EMSCRIPTEN_KEEPALIVE
 #endif
 void ascii_renderer_init(int pixel_width, int pixel_height) {
-  log_info("[PERF] ascii_renderer_init START");
   if (renderer.vt) {
     log_warn("ascii_renderer_init called but renderer already initialized");
     return;
@@ -128,11 +127,8 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4; /* Align to 4 bytes */
 
   /* Allocate framebuffer */
-  log_info("[PERF] About to allocate framebuffer: %d bytes",
-           renderer.pitch * pixel_height);
   renderer.framebuffer =
       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
-  log_info("[PERF] Framebuffer allocated");
   if (!renderer.framebuffer) {
     log_error("Failed to allocate framebuffer");
     return;
@@ -140,16 +136,13 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
 
   /* Initialize FreeType */
-  log_info("[PERF] About to FT_Init_FreeType");
   if (FT_Init_FreeType(&renderer.ft_lib)) {
     log_error("Failed to initialize FreeType");
     SAFE_FREE(renderer.framebuffer);
     return;
   }
-  log_info("[PERF] FT_Init_FreeType done");
 
   /* Load embedded DejaVu Sans Mono font */
-  log_info("[PERF] About to FT_New_Memory_Face (font size: %u bytes)", g_font_default_size);
   if (FT_New_Memory_Face(renderer.ft_lib, g_font_default,
                           (FT_Long)g_font_default_size, 0, &renderer.ft_face)) {
     log_error("Failed to load default font");
@@ -157,17 +150,12 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
     SAFE_FREE(renderer.framebuffer);
     return;
   }
-  log_info("[PERF] FT_New_Memory_Face done");
 
   /* Set font size: 12pt at 96 DPI */
-  log_info("[PERF] About to FT_Set_Char_Size");
   FT_Set_Char_Size(renderer.ft_face, 0, 12 * 64, 96, 96);
-  log_info("[PERF] FT_Set_Char_Size done");
 
   /* Measure cell dimensions using 'M' */
-  log_info("[PERF] About to FT_Load_Char");
   FT_Load_Char(renderer.ft_face, 'M', FT_LOAD_RENDER);
-  log_info("[PERF] FT_Load_Char done");
 
   renderer.cell_w = renderer.ft_face->glyph->advance.x >> 6;
   renderer.cell_h = renderer.ft_face->glyph->bitmap.rows;
@@ -184,9 +172,7 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
            renderer.cell_w, renderer.cell_h);
 
   /* Initialize libvterm */
-  log_info("[PERF] About to vterm_new");
   renderer.vt = vterm_new(renderer.rows, renderer.cols);
-  log_info("[PERF] vterm_new done");
   if (!renderer.vt) {
     log_error("Failed to create VTerm");
     FT_Done_Face(renderer.ft_face);
@@ -195,14 +181,11 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
     return;
   }
 
-  log_info("[PERF] About to vterm_obtain_screen");
   renderer.vts = vterm_obtain_screen(renderer.vt);
-  log_info("[PERF] vterm_obtain_screen done");
 
   /* Initialize raylib window on first render (lazy init)
    * This avoids blocking on InitWindow during initialization */
 
-  log_info("[PERF] ascii_renderer_init COMPLETE");
 }
 
 /**
@@ -219,7 +202,83 @@ void ascii_renderer_render_frame(const char *ansi_data, int len) {
     return;
   }
 
-  /* All rendering disabled for testing */
+  if (!ansi_data || len <= 0) {
+    log_warn("ascii_renderer_render_frame: empty ANSI input");
+    return;
+  }
+
+  /* Feed ANSI data to vterm for parsing and cell state updates */
+  vterm_input_write(renderer.vt, ansi_data, len);
+
+  /* Clear framebuffer to black background */
+  memset(renderer.framebuffer, 0, renderer.pitch * renderer.height_px);
+
+  /* Render each cell from the vterm screen state */
+  for (int row = 0; row < renderer.rows; row++) {
+    for (int col = 0; col < renderer.cols; col++) {
+      VTermPos pos = {row, col};
+      VTermScreenCell cell;
+      vterm_screen_get_cell(renderer.vts, pos, &cell);
+
+      /* Skip empty cells */
+      if (cell.chars[0] == 0) {
+        continue;
+      }
+
+      /* Calculate pixel coordinates for this cell */
+      int cell_x = col * renderer.cell_w;
+      int cell_y = row * renderer.cell_h;
+
+      /* Extract background color */
+      uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
+      if (VTERM_COLOR_IS_RGB(&cell.bg)) {
+        bg_r = cell.bg.rgb.red;
+        bg_g = cell.bg.rgb.green;
+        bg_b = cell.bg.rgb.blue;
+      }
+
+      /* Fill cell background */
+      fill_rect(renderer.framebuffer, renderer.pitch, cell_x, cell_y,
+                renderer.cell_w, renderer.cell_h, bg_r, bg_g, bg_b);
+
+      /* Extract foreground color (default white) */
+      uint8_t fg_r = 255, fg_g = 255, fg_b = 255;
+      if (VTERM_COLOR_IS_RGB(&cell.fg)) {
+        fg_r = cell.fg.rgb.red;
+        fg_g = cell.fg.rgb.green;
+        fg_b = cell.fg.rgb.blue;
+      }
+
+      /* Load and render glyph */
+      uint32_t codepoint = cell.chars[0];
+      if (FT_Load_Char(renderer.ft_face, codepoint, FT_LOAD_RENDER)) {
+        continue;
+      }
+
+      /* Get glyph bitmap */
+      FT_Glyph glyph;
+      if (FT_Get_Glyph(renderer.ft_face->glyph, &glyph)) {
+        continue;
+      }
+
+      FT_BitmapGlyph bitmap_glyph = (FT_BitmapGlyph)glyph;
+
+      /* Calculate glyph position with baseline adjustment */
+      int glyph_x = cell_x + bitmap_glyph->left;
+      int glyph_y = cell_y + renderer.baseline - bitmap_glyph->top;
+
+      /* Composite glyph onto framebuffer */
+      blit_glyph(&bitmap_glyph->bitmap, glyph_x, glyph_y,
+                  fg_r, fg_g, fg_b, bg_r, bg_g, bg_b);
+
+      FT_Done_Glyph(glyph);
+    }
+  }
+
+  /* Note: In WASM, texture update would happen here but raylib
+   * requires a window context which isn't available in browser.
+   * The framebuffer is maintained for potential future use.
+   * The actual rendering on screen happens via xterm.js on the JS side. */
 }
 
 /**
@@ -295,7 +354,9 @@ void ascii_renderer_resize(int pixel_width, int pixel_height) {
 #ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
 #endif
-int ascii_renderer_get_cols(void) { return renderer.cols; }
+int ascii_renderer_get_cols(void) {
+  return renderer.cols;
+}
 
 /**
  * Get the current number of rows
@@ -304,7 +365,53 @@ int ascii_renderer_get_cols(void) { return renderer.cols; }
 #ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
 #endif
-int ascii_renderer_get_rows(void) { return renderer.rows; }
+int ascii_renderer_get_rows(void) {
+  return renderer.rows;
+}
+
+/**
+ * Get pointer to the framebuffer for JavaScript access
+ * @return Pointer to RGB24 framebuffer data
+ */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+const uint8_t* ascii_renderer_get_framebuffer(void) {
+  return renderer.framebuffer;
+}
+
+/**
+ * Get framebuffer width in pixels
+ * @return Width in pixels
+ */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+int ascii_renderer_get_framebuffer_width(void) {
+  return renderer.width_px;
+}
+
+/**
+ * Get framebuffer height in pixels
+ * @return Height in pixels
+ */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+int ascii_renderer_get_framebuffer_height(void) {
+  return renderer.height_px;
+}
+
+/**
+ * Get framebuffer stride (pitch) in bytes
+ * @return Stride in bytes (width * 3, padded to 4-byte alignment)
+ */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+int ascii_renderer_get_framebuffer_stride(void) {
+  return renderer.pitch;
+}
 
 /**
  * Shutdown the ASCII renderer and free resources

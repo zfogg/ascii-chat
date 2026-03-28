@@ -46,6 +46,7 @@ import {
 
 export function MirrorPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [wasmModule, setWasmModule] = useState(() => getMirrorModule());
 
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
@@ -135,12 +136,16 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
-  // Debug: log whenever terminalDimensions changes
+  // Update wasmModule state immediately when WASM initialization completes
   useEffect(() => {
-    console.log(
-      `[Mirror] terminalDimensions changed to ${terminalDimensions.cols}x${terminalDimensions.rows} at ${performance.now().toFixed(0)}ms`,
-    );
-  }, [terminalDimensions.cols, terminalDimensions.rows]);
+    if (wasmInitialized && !wasmModule) {
+      const module = getMirrorModule();
+      if (module) {
+        setWasmModule(module);
+      }
+    }
+  }, [wasmInitialized, wasmModule]);
+
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
@@ -249,7 +254,7 @@ export function MirrorPage() {
             onFpsChange={setFps}
             error={error}
             showFps={isWebcamRunning}
-            wasmModule={getMirrorModule()}
+            wasmModule={wasmModule}
           />
         }
         modal={

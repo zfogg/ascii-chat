@@ -1963,14 +1963,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.height != OPT_HEIGHT_DEFAULT && opts.height != 0) {
     opts.auto_height = false;
   }
-  log_info("[PERF] About to call update_dimensions_to_terminal_size");
   update_dimensions_to_terminal_size(&opts);
-  log_info("[PERF] update_dimensions_to_terminal_size done");
   js_log_options("BEFORE_UPDATE_DIMS");
-  // log_info("[PERF] About to call update_dimensions_for_full_height");
   js_log_options("CALLING_UPDATE_DIM");
   update_dimensions_for_full_height(&opts);
-  // log_info("[PERF] update_dimensions_for_full_height done");
   js_log_options("AFTER_UPDATE_DIM");
 
   // SKIP: verbose level adjustment - conflicts with raylib log level system
@@ -2072,7 +2068,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
     js_log_options("About to call url_is_valid");
     js_log_options("Before url_is_valid call");
-    log_info("[PERF] About to call url_is_valid");
     if (!url_is_valid(opts.media_url)) {
       js_log_options("url_is_valid returned false");
       log_error("--url must be a valid HTTP(S) URL: %s", opts.media_url);
@@ -2080,7 +2075,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       return ERROR_INVALID_PARAM;
     }
     js_log_options("url_is_valid returned true");
-    log_info("[PERF] url_is_valid done");
     js_log_options("url_is_valid returned, before strstr check");
 
     // Normalize bare URLs by prepending http:// if not present
@@ -2133,7 +2127,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // This makes the options visible to all threads via lock-free reads
   js_log_options("STAGE 8 RCU: Before options_state_set");
   js_log_options("Before log_info PERF");
-  log_info("[PERF] About to call options_state_set");
   js_log_options("After log_info PERF");
   js_log_options("Calling options_state_set...");
   js_log_options("Before options_state_set call");
@@ -2141,7 +2134,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   js_log_options("After options_state_set call");
   js_log_options("options_state_set returned");
   js_log_options("Before log_info options_state_set done");
-  log_info("[PERF] options_state_set done");
   js_log_options("After log_info options_state_set done");
   js_log_options("Before publish_result check");
   if (publish_result != ASCIICHAT_OK) {
@@ -2167,13 +2159,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.color_scheme_name[0] != '\0') {
     js_log_options("Color scheme name is set");
     js_log_options("Before colorscheme_set_active_scheme");
-    log_info("[PERF] About to call colorscheme_set_active_scheme");
     js_log_options("Before colorscheme_set_active_scheme call");
     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
     js_log_options("After colorscheme_set_active_scheme call");
     js_log_options("colorscheme_set_active_scheme returned");
     js_log_options("Before log_info colorscheme done");
-    log_info("[PERF] colorscheme_set_active_scheme done");
     js_log_options("After log_info colorscheme done");
     js_log_options("Before scheme_result check");
     if (scheme_result == ASCIICHAT_OK) {
@@ -2212,9 +2202,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (has_action) {
     log_set_terminal_output(true);
   }
-  log_info("[PERF] About to call actions_execute_deferred (has_action=%d)", has_action);
   actions_execute_deferred();
-  log_info("[PERF] actions_execute_deferred done");
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;
 }

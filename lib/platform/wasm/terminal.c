@@ -4,7 +4,6 @@
  * @ingroup platform
  */
 
-#include <emscripten.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -13,20 +12,21 @@
 #include <stdint.h>
 
 // ============================================================================
-// EM_JS: JavaScript bridge functions
+// Terminal Bridge Functions
 // ============================================================================
 
-EM_JS(int, js_get_terminal_cols, (), {
+static int js_get_terminal_cols(void) {
   return 80;
-});
+}
 
-EM_JS(int, js_get_terminal_rows, (), {
+static int js_get_terminal_rows(void) {
   return 24;
-});
+}
 
-EM_JS(void, js_terminal_write, (const char *data, int len), {
-  console.log("[C-TERM-WRITE] ignoring output");
-});
+static void js_terminal_write(const char *data, int len) {
+  (void)data;
+  (void)len;
+}
 
 
 // ============================================================================

@@ -109,17 +109,25 @@ export function useClientLike(
 
   // Initialize WASM on mount
   useEffect(() => {
+    const startTime = performance.now();
     console.log(
       "[useClientLike] Starting WASM initialization at",
       new Date().toISOString(),
+      `(perf: ${startTime.toFixed(2)}ms)`,
     );
     initWasm()
       .then(() => {
+        const endTime = performance.now();
         console.log(
           "[useClientLike] WASM initialization complete, setting wasmInitialized=true at",
           new Date().toISOString(),
+          `(perf: ${endTime.toFixed(2)}ms, took ${(endTime - startTime).toFixed(2)}ms)`,
         );
+
+        // Log immediately after setting state
+        console.log("[useClientLike] About to call setWasmInitialized(true)");
         setWasmInitialized(true);
+        console.log("[useClientLike] setWasmInitialized(true) called");
       })
       .catch((err) => {
         console.error("WASM init error:", err);

@@ -27,7 +27,8 @@ int set_width(int value) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_width(void) {
-  return GET_OPTION(width);
+  int result = GET_OPTION(width);
+  return result;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -38,7 +39,8 @@ int set_height(int value) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_height(void) {
-  return GET_OPTION(height);
+  int result = GET_OPTION(height);
+  return result;
 }
 
 // ============================================================================
@@ -53,7 +55,8 @@ int set_color_mode(int mode) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_color_mode(void) {
-  return GET_OPTION(color_mode);
+  int result = GET_OPTION(color_mode);
+  return result;
 }
 
 // ============================================================================
@@ -68,7 +71,8 @@ int set_color_filter(int filter) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_color_filter(void) {
-  return GET_OPTION(color_filter);
+  int result = GET_OPTION(color_filter);
+  return result;
 }
 
 // ============================================================================
@@ -97,7 +101,8 @@ int set_palette(const char *palette_name) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_palette(void) {
-  return GET_OPTION(palette_type);
+  int result = GET_OPTION(palette_type);
+  return result;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -110,7 +115,8 @@ int set_palette_chars(const char *chars) {
 
 EMSCRIPTEN_KEEPALIVE
 const char *get_palette_chars(void) {
-  return GET_OPTION(palette_custom);
+  const char *result = GET_OPTION(palette_custom);
+  return result;
 }
 
 // ============================================================================
@@ -125,7 +131,8 @@ int set_matrix_rain(int enabled) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_matrix_rain(void) {
-  return GET_OPTION(matrix_rain) ? 1 : 0;
+  int result = GET_OPTION(matrix_rain) ? 1 : 0;
+  return result;
 }
 
 // ============================================================================
@@ -140,7 +147,8 @@ int set_flip_x(int enabled) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_flip_x(void) {
-  return GET_OPTION(flip_x) ? 1 : 0;
+  int result = GET_OPTION(flip_x) ? 1 : 0;
+  return result;
 }
 
 // ============================================================================
@@ -155,7 +163,8 @@ int set_flip_y(int enabled) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_flip_y(void) {
-  return GET_OPTION(flip_y) ? 1 : 0;
+  int result = GET_OPTION(flip_y) ? 1 : 0;
+  return result;
 }
 
 // ============================================================================
@@ -170,7 +179,8 @@ int set_render_mode(int mode) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_render_mode(void) {
-  return GET_OPTION(render_mode);
+  int result = GET_OPTION(render_mode);
+  return result;
 }
 
 // ============================================================================
@@ -185,7 +195,8 @@ int set_target_fps(int fps) {
 
 EMSCRIPTEN_KEEPALIVE
 int get_target_fps(void) {
-  return GET_OPTION(fps);
+  int result = GET_OPTION(fps);
+  return result;
 }
 
 // ============================================================================
@@ -205,5 +216,6 @@ const char *get_help_text(int mode, const char *option_name) {
   if (!option_name || !option_name[0])
     return NULL;
   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-  return options_get_help_text(mode_enum, option_name);
+  const char *result = options_get_help_text(mode_enum, option_name);
+  return result;
 }

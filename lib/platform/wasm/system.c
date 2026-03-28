@@ -37,11 +37,9 @@
 // ============================================================================
 
 const char *platform_getenv(const char *name) {
-  write(STDERR_FILENO, "[WASM-GETENV] ENTRY\n", 20);
   (void)name;
   // Environment variables not supported in WASM browser context
   // Calling getenv() causes "memory access out of bounds" errors
-  write(STDERR_FILENO, "[WASM-GETENV] returning NULL\n", 29);
   return NULL;
 }
 
@@ -68,13 +66,8 @@ pid_t platform_get_pid(void) {
 // I/O Redirection for WASM Terminal
 // ============================================================================
 
-// Forward declare the EM_JS bridge from terminal.c
-extern void js_terminal_write(const char *data, int len);
-
 /**
- * Override platform_write to route STDOUT to xterm.js
- * This allows the native C render pipeline (session_display_write_ascii) to
- * output ASCII frames directly to the browser's xterm.js terminal.
+ * Override platform_write to route STDOUT
  */
 ssize_t platform_write(int fd, const void *buf, size_t count) {
   if (!buf || count == 0) {
@@ -82,14 +75,7 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
     return 0;
   }
 
-  if (fd == STDOUT_FILENO) {
-    // Route STDOUT to xterm.js
-    // Cast to avoid alignment warnings on pointer conversion
-    js_terminal_write((const char *)buf, (int)count);
-    return (ssize_t)count;
-  }
-
-  // For stderr and other fds, use the default write()
+  // Use the default write()
   return write(fd, buf, count);
 }
 
