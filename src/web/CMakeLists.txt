@@ -537,12 +537,13 @@ endif()
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(wasm-common PRIVATE
+    __EMSCRIPTEN__
     EMSCRIPTEN_BUILD=1
 )
 
 # Enable Emscripten's pthread support
 target_compile_options(wasm-common PRIVATE -pthread)
-target_link_options(wasm-common PRIVATE -pthread -Wno-error=pthreads-mem-growth)
+target_link_options(wasm-common PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth)
 
 # Add FreeType via Emscripten port, libvterm, and raylib support
 if(DEFINED EMSCRIPTEN)
@@ -592,13 +593,14 @@ add_executable(mirror-web
 
 # Apply EMSCRIPTEN_BUILD and mode-specific define
 target_compile_definitions(mirror-web PRIVATE
+    __EMSCRIPTEN__
     EMSCRIPTEN_BUILD=1
     BUILD_WASM_MIRROR=1
 )
 
 # Enable Emscripten's pthread support and SIMD for video processing
 target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
-target_link_options(mirror-web PRIVATE -pthread -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
+target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies (built for WASM via FetchContent)
 target_link_libraries(mirror-web PRIVATE
@@ -646,13 +648,14 @@ add_executable(client-web
 
 # Apply EMSCRIPTEN_BUILD and mode-specific define
 target_compile_definitions(client-web PRIVATE
+    __EMSCRIPTEN__
     EMSCRIPTEN_BUILD=1
     BUILD_WASM_CLIENT=1
 )
 
 # Enable Emscripten's pthread support and FreeType
 target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
-target_link_options(client-web PRIVATE -pthread -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
+target_link_options(client-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE

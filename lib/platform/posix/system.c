@@ -298,12 +298,15 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
  * helping prevent corruption from malformed environment data.
  */
 const char *platform_getenv(const char *name) {
+  write(STDERR_FILENO, "[POSIX-GETENV] ENTRY\n", 21);
   const char *value = getenv(name);
+  write(STDERR_FILENO, "[POSIX-GETENV] got value\n", 25);
   if (value && !utf8_is_valid(value)) {
     // Invalid UTF-8 detected - log warning and return NULL
     log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
     return NULL;
   }
+  write(STDERR_FILENO, "[POSIX-GETENV] returning\n", 25);
   return value;
 }
 

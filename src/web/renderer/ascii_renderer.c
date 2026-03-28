@@ -26,6 +26,10 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 /* Forward declarations for embedded font (generated at build time) */
 extern const unsigned char g_font_default[];
 extern const unsigned int g_font_default_size;
@@ -109,6 +113,9 @@ static void blit_glyph(FT_Bitmap *bm, int px, int py, uint8_t fr,
  * @param pixel_width  Canvas width in pixels
  * @param pixel_height Canvas height in pixels
  */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 void ascii_renderer_init(int pixel_width, int pixel_height) {
   log_info("[PERF] ascii_renderer_init START");
   if (renderer.vt) {
@@ -205,7 +212,10 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
  * @param ansi_data Pointer to ANSI string data
  * @param len       Length of ANSI string in bytes
  */
-void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+void ascii_renderer_render_frame(const char *ansi_data, int len) {
   if (!renderer.vt || !renderer.framebuffer) {
     log_warn("ascii_renderer_render_frame: renderer not initialized");
     return;
@@ -304,6 +314,9 @@ void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
  * @param pixel_width  New canvas width in pixels
  * @param pixel_height New canvas height in pixels
  */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 void ascii_renderer_resize(int pixel_width, int pixel_height) {
   if (!renderer.vt || !renderer.framebuffer) {
     log_warn("ascii_renderer_resize: renderer not initialized");
@@ -366,17 +379,26 @@ void ascii_renderer_resize(int pixel_width, int pixel_height) {
  * Get the current number of columns
  * @return Number of columns (terminal width)
  */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 int ascii_renderer_get_cols(void) { return renderer.cols; }
 
 /**
  * Get the current number of rows
  * @return Number of rows (terminal height)
  */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 int ascii_renderer_get_rows(void) { return renderer.rows; }
 
 /**
  * Shutdown the ASCII renderer and free resources
  */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 void ascii_renderer_shutdown(void) {
   if (renderer.texture_initialized) {
     UnloadTexture(renderer.texture);

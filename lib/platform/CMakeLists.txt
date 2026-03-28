@@ -10,7 +10,21 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
 )
 
-if(WIN32)
+if(EMSCRIPTEN)
+    # WebAssembly / Emscripten build - check this FIRST before PLATFORM_POSIX
+    set(PLATFORM_SRCS
+        ${PLATFORM_SRCS_COMMON}
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/system.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/console.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/backtrace.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/init.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/lifecycle.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/string.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/threading.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/time.c
+        ${CMAKE_SOURCE_DIR}/lib/video/webcam/wasm/webcam_wasm.c
+    )
+elseif(WIN32)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/thread.c
@@ -84,20 +98,6 @@ elseif(PLATFORM_POSIX)
     else()
         message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
     endif()
-elseif(EMSCRIPTEN)
-    # WebAssembly / Emscripten build
-    set(PLATFORM_SRCS
-        ${PLATFORM_SRCS_COMMON}
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/system.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/console.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/backtrace.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/init.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/lifecycle.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/string.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/threading.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/time.c
-        ${CMAKE_SOURCE_DIR}/lib/video/webcam/wasm/webcam_wasm.c
-    )
 endif()
 
 set(PLATFORM_SRCS ${PLATFORM_SRCS} PARENT_SCOPE)

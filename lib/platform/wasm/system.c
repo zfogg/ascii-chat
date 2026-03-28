@@ -37,9 +37,11 @@
 // ============================================================================
 
 const char *platform_getenv(const char *name) {
+  write(STDERR_FILENO, "[WASM-GETENV] ENTRY\n", 20);
   (void)name;
   // Environment variables not supported in WASM browser context
   // Calling getenv() causes "memory access out of bounds" errors
+  write(STDERR_FILENO, "[WASM-GETENV] returning NULL\n", 29);
   return NULL;
 }
 

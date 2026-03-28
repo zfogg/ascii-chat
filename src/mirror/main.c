@@ -214,6 +214,14 @@
 #include <string.h>
 #include <stdint.h>
 
+static inline void js_mirror_log(const char *msg) {
+  if (msg) {
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "[MIRROR-START] %s\n", msg);
+    write(STDERR_FILENO, buffer, strlen(buffer));
+  }
+}
+
 /* ============================================================================
  * Mode-Specific Keyboard Handler
  * ============================================================================ */
@@ -250,6 +258,7 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
+  js_mirror_log("mirror_run: ENTRY");
   log_info("mirror_run: CALLED - capture=%p display=%p", (void *)capture, (void *)display);
 
   // Get the render loop's should_exit callback from session_client_like
@@ -262,13 +271,13 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   log_info("mirror_run: Calling session_render_loop in synchronous mode");
   // Run the unified render loop with keyboard support using synchronous mode
   // Pass capture context directly (not as callbacks) for proper frame capture
-  asciichat_error_t result = session_render_loop(capture,              // Capture context (synchronous mode)
+  asciichat_error_t result = session_render_loop(capture, // Capture context (synchronous mode)
                                                  display,
                                                  render_should_exit,      // Exit check (checks global + custom)
                                                  NULL,                    // No capture callback (using capture context)
                                                  NULL,                    // No sleep callback (built-in FPS limiting)
                                                  mirror_keyboard_handler, // Keyboard handler
-                                                 display);                // Pass display as user_data for help screen toggle
+                                                 display); // Pass display as user_data for help screen toggle
   log_info("mirror_run: session_render_loop returned with result=%d", result);
   return result;
 }
@@ -366,49 +375,7 @@ static void *test_thread_c_3way(void *arg) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  // Test deadlock detection if env var is set
-  const char *deadlock_mode = getenv("ASCII_CHAT_TEST_DEADLOCK");
-  if (deadlock_mode) {
-    fprintf(stderr, "\n========================================\n");
-    fprintf(stderr, "DEADLOCK TEST MODE ENABLED\n");
-    fprintf(stderr, "========================================\n");
-    fflush(stderr);
-
-    // Initialize test mutexes for deadlock demonstration
-    mutex_init(&g_test_mutex_a, "test_mutex_a");
-    mutex_init(&g_test_mutex_b, "test_mutex_b");
-    mutex_init(&g_test_mutex_c, "test_mutex_c");
-
-    // Check for 3-way mode
-    bool use_3way = (strcmp(deadlock_mode, "3way") == 0);
-
-    if (use_3way) {
-      fprintf(stderr, "Mode: 3-way deadlock (A→B→C→A)\n");
-      fprintf(stderr, "Deadlock will form around second 2-4\n");
-      asciichat_thread_t tid_a, tid_b, tid_c;
-      log_info("Creating 3-way deadlock test threads...");
-      asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a_3way, NULL);
-      asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b_3way, NULL);
-      asciichat_thread_create(&tid_c, "test_deadlock_c", test_thread_c_3way, NULL);
-    } else {
-      fprintf(stderr, "Mode: 2-way deadlock (A↔B)\n");
-      fprintf(stderr, "Deadlock will form around second 2\n");
-      // Create 2-way deadlock threads
-      asciichat_thread_t tid_a, tid_b;
-      log_info("Creating 2-way deadlock test threads...");
-      asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
-      asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
-    }
-
-    fprintf(stderr, "Threads created\n");
-    fprintf(stderr, "Use: kill -SIGUSR1 <pid> to dump state\n");
-    fprintf(stderr, "========================================\n\n");
-    fflush(stderr);
-
-    // Just wait and let deadlock happen
-    while (1)
-      sleep(1);
-  }
+  log_info("[MIRROR] main ENTRY");
 
   // Configure mode-specific session settings
   session_client_like_config_t config = {
@@ -419,7 +386,6 @@ int mirror_main(void) {
       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
   };
 
-  log_info("mirror_main: Starting session_client_like_run");
   // Run shared initialization/teardown with mode-specific loop
   asciichat_error_t result = session_client_like_run(&config);
   log_info("mirror_main: session_client_like_run returned with result=%d", result);

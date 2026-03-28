@@ -93,9 +93,11 @@ static bool session_client_like_is_networked(session_client_like_kind_t kind) {
 }
 
 asciichat_error_t session_client_like_run(const session_client_like_config_t *config) {
+  log_info("session_client_like_run: ENTRY");
   if (!config || !config->run_fn) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "config or run_fn is NULL");
   }
+  log_info("session_client_like_run: config validated");
 
   // Store config globally for adapter callbacks
   g_current_config = config;

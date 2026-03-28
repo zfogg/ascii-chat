@@ -110,16 +110,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-EM_JS(void, js_log_options, (const char *msg), {
-  console.log("[OPTIONS-EM] " + UTF8ToString(msg));
-});
-#else
 static void js_log_options(const char *msg) {
-  (void)msg;
+  if (msg) {
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "[OPTIONS-EM] %s\n", msg);
+    write(STDERR_FILENO, buffer, strlen(buffer));
+  }
 }
-#endif
 
 // ============================================================================
 // Global Action Flag Tracking
@@ -1969,10 +1966,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_info("[PERF] About to call update_dimensions_to_terminal_size");
   update_dimensions_to_terminal_size(&opts);
   log_info("[PERF] update_dimensions_to_terminal_size done");
-  log_info("[PERF] About to call update_dimensions_for_full_height");
+  js_log_options("BEFORE_UPDATE_DIMS");
+  // log_info("[PERF] About to call update_dimensions_for_full_height");
+  js_log_options("CALLING_UPDATE_DIM");
   update_dimensions_for_full_height(&opts);
-  log_info("[PERF] update_dimensions_for_full_height done");
-  js_log_options("After update_dimensions_for_full_height log");
+  // log_info("[PERF] update_dimensions_for_full_height done");
+  js_log_options("AFTER_UPDATE_DIM");
 
   // SKIP: verbose level adjustment - conflicts with raylib log level system
   // TODO: Properly separate our log levels from raylib's
@@ -1985,6 +1984,13 @@ asciichat_error_t options_init(int argc, char **argv) {
   //   log_set_level((log_level_t)new_level);
   // }
 
+  js_log_options("L11");
+  js_log_options("L12");
+  js_log_options("L13");
+  js_log_options("L14");
+  js_log_options("L15");
+  js_log_options("CHECKPOINT B");
+
   // SKIP: Check WEBCAM_DISABLED environment variable to enable test pattern mode
   // TODO: Debug why logging here causes hang
   // const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
@@ -1994,79 +2000,111 @@ asciichat_error_t options_init(int argc, char **argv) {
   //   opts.test_pattern = true;
   // }
 
+  js_log_options("CHECKPOINT C");
+
   // Apply --no-compress interaction with audio encoding
   js_log_options("Before --no-compress check");
   if (opts.no_compress) {
+    js_log_options("In no_compress block");
     opts.encode_audio = false;
+    js_log_options("Set encode_audio to false");
     log_debug("--no-compress set: disabling audio encoding");
+    js_log_options("After log_debug in no_compress");
   }
   js_log_options("After --no-compress check");
 
   // Set media_from_stdin flag if media_file is "-"
   js_log_options("Before media_from_stdin check");
   if (opts.media_file[0] != '\0' && strcmp(opts.media_file, "-") == 0) {
+    js_log_options("In media_from_stdin block");
     opts.media_from_stdin = true;
+    js_log_options("Set media_from_stdin to true");
     log_debug("Media file set to stdin");
+    js_log_options("After log_debug in media_from_stdin");
   }
   js_log_options("After media_from_stdin check");
 
   // Validate --seek option
   js_log_options("Before --seek validation");
+  js_log_options("Checking media_seek_timestamp");
   if (opts.media_seek_timestamp > 0.0) {
+    js_log_options("In seek validation block");
     // Can't seek stdin
     if (opts.media_from_stdin) {
+      js_log_options("Seek error: media_from_stdin");
       log_error("--seek cannot be used with stdin (--file -)");
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
 
     // Require --file or --url
+    js_log_options("Checking media_file and media_url for seek");
     if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
+      js_log_options("Seek error: no media_file or media_url");
       log_error("--seek requires --file or --url");
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
+    js_log_options("Seek validation passed");
   }
   js_log_options("After --seek validation");
 
   // Validate --pause option
   js_log_options("Before --pause validation");
+  js_log_options("Checking pause flag");
   if (opts.pause) {
+    js_log_options("In pause validation block");
     // Require --file or --url (not webcam, not test pattern)
     if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
+      js_log_options("Pause error: no media_file or media_url");
       log_error("--pause requires --file or --url");
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
+    js_log_options("Pause validation passed");
   }
   js_log_options("After --pause validation");
 
   js_log_options("Before media_url check");
+  js_log_options("Checking media_url[0]");
   if (opts.media_url[0] != '\0') {
     js_log_options("Entering media_url block");
     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
-    js_log_options("About to call url_is_valid from js_log");
+    js_log_options("About to call url_is_valid");
+    js_log_options("Before url_is_valid call");
     log_info("[PERF] About to call url_is_valid");
     if (!url_is_valid(opts.media_url)) {
+      js_log_options("url_is_valid returned false");
       log_error("--url must be a valid HTTP(S) URL: %s", opts.media_url);
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
+    js_log_options("url_is_valid returned true");
     log_info("[PERF] url_is_valid done");
+    js_log_options("url_is_valid returned, before strstr check");
 
     // Normalize bare URLs by prepending http:// if not present
+    js_log_options("Before strstr check");
     if (!strstr(opts.media_url, "://")) {
+      js_log_options("URL needs normalization");
       char normalized_url[2048];
+      js_log_options("Before snprintf");
       int result = snprintf(normalized_url, sizeof(normalized_url), "http://%s", opts.media_url);
+      js_log_options("After snprintf");
       if (result > 0 && result < (int)sizeof(normalized_url)) {
+        js_log_options("snprintf successful, before SAFE_STRNCPY");
         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+        js_log_options("URL normalized");
       } else {
+        js_log_options("snprintf failed");
         log_error("Failed to normalize URL (too long): %s", opts.media_url);
         SAFE_FREE(allocated_mode_argv);
         return ERROR_INVALID_PARAM;
       }
     }
+    js_log_options("After normalization check");
   }
+  js_log_options("After media_url block");
 
   // ========================================================================
   // STAGE 8: Publish to RCU
@@ -2074,26 +2112,46 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
   // (file/URL content is typically not horizontally flipped, unlike webcam)
+  js_log_options("Before flip_x check");
   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') && opts.flip_x) {
+    js_log_options("In flip_x adjustment");
     opts.flip_x = false;
+    js_log_options("flip_x set to false");
     log_debug("flip_x auto-adjusted to false for media file/URL");
+    js_log_options("After log_debug for flip_x");
   }
+  js_log_options("After flip_x check");
 
   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  js_log_options("Before quiet_for_memory_report assignment");
   bool quiet_for_memory_report = opts.quiet;
+  js_log_options("After quiet_for_memory_report assignment");
 #endif
 
   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
   // This makes the options visible to all threads via lock-free reads
+  js_log_options("STAGE 8 RCU: Before options_state_set");
+  js_log_options("Before log_info PERF");
   log_info("[PERF] About to call options_state_set");
+  js_log_options("After log_info PERF");
+  js_log_options("Calling options_state_set...");
+  js_log_options("Before options_state_set call");
   asciichat_error_t publish_result = options_state_set(&opts);
+  js_log_options("After options_state_set call");
+  js_log_options("options_state_set returned");
+  js_log_options("Before log_info options_state_set done");
   log_info("[PERF] options_state_set done");
+  js_log_options("After log_info options_state_set done");
+  js_log_options("Before publish_result check");
   if (publish_result != ASCIICHAT_OK) {
+    js_log_options("publish_result not OK");
     log_error("Failed to publish parsed options to RCU state: %d", publish_result);
     SAFE_FREE(allocated_mode_argv);
     return publish_result;
   }
+  js_log_options("publish_result is OK");
+  js_log_options("options_state_set successful");
 
   // Now update debug memory quiet mode with the saved quiet value
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -2104,15 +2162,38 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Apply color scheme to logging
   // ========================================================================
   // Now that options are parsed, set and apply the selected color scheme to logging
+  js_log_options("STAGE 8 ColorScheme: Checking color_scheme_name");
+  js_log_options("Before color_scheme_name[0] check");
   if (opts.color_scheme_name[0] != '\0') {
+    js_log_options("Color scheme name is set");
+    js_log_options("Before colorscheme_set_active_scheme");
     log_info("[PERF] About to call colorscheme_set_active_scheme");
+    js_log_options("Before colorscheme_set_active_scheme call");
     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+    js_log_options("After colorscheme_set_active_scheme call");
+    js_log_options("colorscheme_set_active_scheme returned");
+    js_log_options("Before log_info colorscheme done");
     log_info("[PERF] colorscheme_set_active_scheme done");
+    js_log_options("After log_info colorscheme done");
+    js_log_options("Before scheme_result check");
     if (scheme_result == ASCIICHAT_OK) {
+      js_log_options("scheme_result is OK");
+      js_log_options("Before colorscheme_get_active_scheme");
       const color_scheme_t *scheme = colorscheme_get_active_scheme();
+      js_log_options("After colorscheme_get_active_scheme");
+      js_log_options("Before scheme null check");
       if (scheme) {
+        js_log_options("scheme is not null");
+        js_log_options("Before log_set_color_scheme");
         log_set_color_scheme(scheme);
+        js_log_options("After log_set_color_scheme");
+        js_log_options("Color scheme applied");
+        js_log_options("Before log_debug color scheme");
         log_debug("Color scheme applied: %s", opts.color_scheme_name);
+        js_log_options("After log_debug color scheme");
+      } else {
+        js_log_options("scheme is null");
+        js_log_options("No scheme returned from colorscheme_get_active_scheme");
       }
     } else {
       log_warn("Failed to apply color scheme: %s", opts.color_scheme_name);

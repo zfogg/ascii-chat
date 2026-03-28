@@ -16,15 +16,18 @@
 // EM_JS: JavaScript bridge functions
 // ============================================================================
 
-EM_JS(int, js_get_terminal_cols, (), { return Module.xterm ? Module.xterm.cols : 80; });
+EM_JS(int, js_get_terminal_cols, (), {
+  return 80;
+});
 
-EM_JS(int, js_get_terminal_rows, (), { return Module.xterm ? Module.xterm.rows : 24; });
+EM_JS(int, js_get_terminal_rows, (), {
+  return 24;
+});
 
 EM_JS(void, js_terminal_write, (const char *data, int len), {
-  if (Module.xterm) {
-    Module.xterm.write(UTF8ToString(data, len));
-  }
+  console.log("[C-TERM-WRITE] ignoring output");
 });
+
 
 // ============================================================================
 // Platform API Implementation

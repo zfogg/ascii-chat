@@ -603,33 +603,55 @@ int options_format_default_value(option_type_t type, const void *default_value, 
 // Terminal Dimension Utilities
 // ============================================================================
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+EM_JS(void, js_debug_dims, (const char *msg), {
+  console.log("[DIMS] " + UTF8ToString(msg));
+});
+#else
+static inline void js_debug_dims(const char *msg) { (void)msg; }
+#endif
+
 void update_dimensions_for_full_height(options_t *opts) {
+  js_debug_dims("START");
   if (!opts) {
+    js_debug_dims("opts is NULL");
     return;
   }
 
+  js_debug_dims("After null check");
   unsigned short int term_width, term_height;
 
+  js_debug_dims("Before get_terminal_size");
   // Note: Logging is not available during options_init, so we can't use log_debug here
   asciichat_error_t result = get_terminal_size(&term_width, &term_height);
+  js_debug_dims("After get_terminal_size");
+
   if (result == ASCIICHAT_OK) {
+    js_debug_dims("get_terminal_size OK");
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (opts->auto_height && opts->auto_width) {
       opts->height = term_height;
       opts->width = term_width; // Also set width when both are auto
+      js_debug_dims("Set both auto");
     }
     // If only height is auto, use full terminal height
     else if (opts->auto_height) {
       opts->height = term_height;
+      js_debug_dims("Set height auto");
     }
     // If only width is auto, use full terminal width
     else if (opts->auto_width) {
       opts->width = term_width;
+      js_debug_dims("Set width auto");
     }
+    js_debug_dims("Done with auto checks");
   } else {
+    js_debug_dims("get_terminal_size FAILED");
     // Terminal size detection failed, but we can still continue with defaults
   }
+  js_debug_dims("END");
 }
 
 void update_dimensions_to_terminal_size(options_t *opts) {

@@ -58,6 +58,8 @@ export function useMirrorRenderLoop({
 
     const isTestMode = new URLSearchParams(window.location.search).has("test");
     let lastFrameTime = performance.now();
+    let lastConversionTime = 0;
+    let skipNextConversion = false;
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
@@ -133,11 +135,22 @@ export function useMirrorRenderLoop({
         );
       }
 
+      // If last conversion took > 100ms, skip this frame to prevent blocking
+      if (lastConversionTime > 100) {
+        if (debugCountRef.current % 30 === 0) {
+          console.warn(`[Mirror] Last conversion took ${lastConversionTime.toFixed(1)}ms - skipping frame to prevent RAF blocking`);
+        }
+        return;
+      }
+
+      const conversionStartTime = performance.now();
       const asciiArt = convertFrameToAscii(
         frame.data,
         frame.width,
         frame.height,
       );
+      lastConversionTime = performance.now() - conversionStartTime;
+
       if (!asciiArt) {
         if (debugCountRef.current % 300 === 0) {
           console.log("[Mirror] convertFrameToAscii returned empty");

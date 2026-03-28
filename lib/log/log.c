@@ -45,18 +45,13 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
   // Default: no-op
 }
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-
-/* EM_JS debugging functions for tracing in browser console */
-EM_JS(void, js_debug_log, (const char *msg), {
-  console.log("[C-DEBUG] " + UTF8ToString(msg));
-});
-#else
 static void js_debug_log(const char *msg) {
-  (void)msg;
+  if (msg) {
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "[C-DEBUG] %s\n", msg);
+    write(STDERR_FILENO, buffer, strlen(buffer));
+  }
 }
-#endif
 
 /* ============================================================================
  * Logging System Internal State
@@ -1073,13 +1068,18 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // Safety check: if main format template has been freed during shutdown, skip logging
   // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
+  js_debug_log("log_msg: before checking g_log.format pointer");
   if (!g_log.format) {
     js_debug_log("log_msg: format is null");
     return;
   }
   js_debug_log("log_msg: format ok");
 
-  if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
+  js_debug_log("log_msg: before atomic_load_u64 for level");
+  uint64_t loaded_level = atomic_load_u64(&g_log.level);
+  js_debug_log("log_msg: after atomic_load_u64 for level");
+
+  if (level < (log_level_t)loaded_level) {
     js_debug_log("log_msg: level below threshold");
     return;
   }
