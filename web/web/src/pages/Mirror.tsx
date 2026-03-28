@@ -57,6 +57,7 @@ export function MirrorPage() {
     `[Mirror-Render] Component rendering at ${performance.now().toFixed(0)}ms, wasmModule=${!!wasmModule}`,
   );
 
+
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
   const initWasm = useCallback(() => {
@@ -179,33 +180,13 @@ export function MirrorPage() {
 
   // Update wasmModule state immediately when WASM initialization completes
   useEffect(() => {
-    const now = performance.now();
-    console.log(
-      `[Mirror-SetModule] EFFECT ENTERED at ${now.toFixed(0)}ms: wasmInitialized=${wasmInitialized}, wasmModule=${!!wasmModule}`,
-    );
-
     if (wasmInitialized && !wasmModule) {
-      console.log(
-        `[Mirror-SetModule] CONDITIONS MET at ${performance.now().toFixed(0)}ms - calling getMirrorModule()`,
-      );
-      const getModuleTime = performance.now();
       const module = getMirrorModule();
-      const getModuleElapsed = performance.now() - getModuleTime;
-      console.log(
-        `[Mirror-SetModule] getMirrorModule returned=${!!module} at ${performance.now().toFixed(0)}ms (took ${getModuleElapsed.toFixed(2)}ms)`,
-      );
       if (module) {
-        const setTime = performance.now();
-        console.log(
-          `[Mirror-SetModule] *** CALLING setWasmModule at ${setTime.toFixed(0)}ms ***`,
-        );
         setWasmModule(module);
-        console.log(
-          `[Mirror-SetModule] setWasmModule returned IMMEDIATELY at ${performance.now().toFixed(0)}ms`,
-        );
       }
     }
-  }, [wasmInitialized, wasmModule]);
+  }, [wasmInitialized]);
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
