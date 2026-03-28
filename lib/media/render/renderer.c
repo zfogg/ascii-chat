@@ -122,12 +122,14 @@ void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_sour
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
   // Write to debug file directly to bypass logging system
+#if !defined(NDEBUG) && !defined(_WIN32)
   FILE *dbg = fopen("/tmp/render-debug.txt", "a");
   if (dbg) {
     fprintf(dbg, "[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n", (void *)ctx,
             ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
     fclose(dbg);
   }
+#endif
   log_info("render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
 
   if (!ctx) {

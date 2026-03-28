@@ -284,13 +284,19 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->debug_wav_aec3_out = NULL;
   if (p->flags.echo_cancel) {
     // Open WAV files to capture AEC3 input and output
-    p->debug_wav_aec3_in = wav_writer_open("/tmp/aec3_input.wav", 48000, 1);
-    p->debug_wav_aec3_out = wav_writer_open("/tmp/aec3_output.wav", 48000, 1);
+    char tmp[PLATFORM_MAX_PATH_LENGTH];
+    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(path, sizeof(path), "%s/aec3_input.wav", tmp);
+      p->debug_wav_aec3_in = wav_writer_open(path, 48000, 1);
+      safe_snprintf(path, sizeof(path), "%s/aec3_output.wav", tmp);
+      p->debug_wav_aec3_out = wav_writer_open(path, 48000, 1);
+    }
     if (p->debug_wav_aec3_in) {
-      log_info("Debug: Recording AEC3 input to /tmp/aec3_input.wav");
+      log_info("Debug: Recording AEC3 input WAV to temp dir");
     }
     if (p->debug_wav_aec3_out) {
-      log_info("Debug: Recording AEC3 output to /tmp/aec3_output.wav");
+      log_info("Debug: Recording AEC3 output WAV to temp dir");
     }
 
     log_info("✓ AEC3 echo cancellation enabled (full-duplex mode, no ring buffer delay)");

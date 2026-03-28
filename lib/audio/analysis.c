@@ -155,13 +155,19 @@ int audio_analysis_init(void) {
 
   // Initialize WAV file dumping if enabled
   if (wav_dump_enabled()) {
-    g_sent_wav = wav_writer_open("/tmp/sent_audio.wav", 48000, 1);
-    g_received_wav = wav_writer_open("/tmp/received_audio.wav", 48000, 1);
+    char tmp[PLATFORM_MAX_PATH_LENGTH];
+    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(path, sizeof(path), "%s/sent_audio.wav", tmp);
+      g_sent_wav = wav_writer_open(path, 48000, 1);
+      safe_snprintf(path, sizeof(path), "%s/received_audio.wav", tmp);
+      g_received_wav = wav_writer_open(path, 48000, 1);
+    }
     if (g_sent_wav) {
-      log_info("Dumping sent audio to /tmp/sent_audio.wav");
+      log_info("Dumping sent audio to temp dir");
     }
     if (g_received_wav) {
-      log_info("Dumping received audio to /tmp/received_audio.wav");
+      log_info("Dumping received audio to temp dir");
     }
   }
 

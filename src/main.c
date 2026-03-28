@@ -150,7 +150,10 @@ static void generate_default_log_path(asciichat_mode_t mode, char *buf, size_t b
     temp_dir = SAFE_GETENV("TMP");
   }
   if (!temp_dir) {
-    temp_dir = "C:\\Windows\\Temp";
+    temp_dir = SAFE_GETENV("USERPROFILE");
+  }
+  if (!temp_dir) {
+    temp_dir = ".";
   }
   safe_snprintf(buf, buf_size, "%s\\ascii-chat\\%s", temp_dir, log_filename);
 #else

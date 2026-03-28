@@ -566,9 +566,15 @@ static void *audio_capture_thread_func(void *arg) {
 
   // Initialize WAV dumpers only once (file handles persist)
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
-    g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
-    g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
-    log_debug("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
+    char tmp[PLATFORM_MAX_PATH_LENGTH];
+    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(path, sizeof(path), "%s/audio_capture_raw.wav", tmp);
+      g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      safe_snprintf(path, sizeof(path), "%s/audio_capture_processed.wav", tmp);
+      g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      log_debug("Audio debugging enabled: dumping to %s/audio_capture_*.wav", tmp);
+    }
     wav_dumpers_initialized = true;
   }
 
@@ -954,9 +960,14 @@ int audio_client_init() {
 
   // Initialize WAV dumper for received audio if debugging enabled
   if (wav_dump_enabled()) {
-    g_wav_playback_received = wav_writer_open("/tmp/audio_playback_received.wav", AUDIO_SAMPLE_RATE, 1);
-    if (g_wav_playback_received) {
-      log_debug("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
+    char tmp[PLATFORM_MAX_PATH_LENGTH];
+    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(path, sizeof(path), "%s/audio_playback_received.wav", tmp);
+      g_wav_playback_received = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      if (g_wav_playback_received) {
+        log_debug("Audio debugging enabled: dumping received audio to %s", path);
+      }
     }
   }
 
