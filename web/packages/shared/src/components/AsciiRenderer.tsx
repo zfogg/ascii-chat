@@ -35,6 +35,9 @@ export const AsciiRenderer = forwardRef<
   },
   ref,
 ) {
+  console.log(
+    `[AsciiRenderer-Props] Component called with wasmModule=${!!wasmModule} at ${performance.now().toFixed(0)}ms`,
+  );
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const moduleRef = useRef<any>(null);
   const setupDoneRef = useRef(false);
@@ -50,8 +53,22 @@ export const AsciiRenderer = forwardRef<
     fpsUpdateTimeRef.current = performance.now();
   }, []);
 
+  // Track prop changes
   useEffect(() => {
+    console.log(
+      `[AsciiRenderer-PropTrack] wasmModule prop changed to ${!!wasmModule} at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [wasmModule]);
+
+  useEffect(() => {
+    const now = performance.now();
+    console.log(
+      `[AsciiRenderer-ModuleRef] *** MODULEREF EFFECT ENTERED at ${now.toFixed(0)}ms, wasmModule=${!!wasmModule} ***`,
+    );
     moduleRef.current = wasmModule;
+    console.log(
+      `[AsciiRenderer-ModuleRef] moduleRef.current assigned at ${performance.now().toFixed(0)}ms`,
+    );
   }, [wasmModule]);
 
   const updateDimensions = useCallback(
@@ -63,7 +80,19 @@ export const AsciiRenderer = forwardRef<
   );
 
   useEffect(() => {
+    const now = performance.now();
+    console.log(
+      `[AsciiRenderer-Layout] *** LAYOUT EFFECT ENTERED at ${now.toFixed(0)}ms: canvas=${!!canvasRef.current}, moduleRef=${!!moduleRef.current}, setupDone=${setupDoneRef.current} ***`,
+    );
+
     if (!canvasRef.current || !moduleRef.current || setupDoneRef.current) {
+      const reasons = [];
+      if (!canvasRef.current) reasons.push("no-canvas");
+      if (!moduleRef.current) reasons.push("no-moduleRef");
+      if (setupDoneRef.current) reasons.push("already-setup");
+      console.log(
+        `[AsciiRenderer-Layout] Skipping: ${reasons.join(", ")} at ${performance.now().toFixed(0)}ms`,
+      );
       return;
     }
 
@@ -71,57 +100,77 @@ export const AsciiRenderer = forwardRef<
 
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
+      const initTime = performance.now();
       console.log(
-        `[AsciiRenderer] initRenderer called. Canvas dims: ${canvas.clientWidth}x${canvas.clientHeight}`,
+        `[AsciiRenderer-Init] initRenderer called at ${initTime.toFixed(0)}ms. Canvas dims: ${canvas.clientWidth}x${canvas.clientHeight}`,
       );
 
       try {
         const width = canvas.clientWidth || 1280;
         const height = canvas.clientHeight || 720;
 
-        console.log(`[AsciiRenderer] Using dimensions: ${width}x${height}`);
+        console.log(
+          `[AsciiRenderer-Init] Using dimensions: ${width}x${height}`,
+        );
 
         // Set canvas on module for raylib/Emscripten
         if (!moduleRef.current) {
           throw new Error("moduleRef.current is null during initRenderer");
         }
 
+        console.log(
+          `[AsciiRenderer-Init] Setting canvas on module at ${performance.now().toFixed(0)}ms`,
+        );
         moduleRef.current.canvas = canvas;
-        console.log("[AsciiRenderer] Canvas set on module");
+        console.log(`[AsciiRenderer-Init] Canvas set successfully at ${performance.now().toFixed(0)}ms`);
 
         // Ensure WebGL context is ready before InitWindow
         // requestAnimationFrame guarantees the canvas is properly laid out and WebGL is available
         const doInit = () => {
+          const beforeInit = performance.now();
           console.log(
-            `[AsciiRenderer] Calling _ascii_renderer_init(${width}, ${height})`,
+            `[AsciiRenderer-Init] *** CALLING _ascii_renderer_init at ${beforeInit.toFixed(0)}ms (${width}x${height}) ***`,
           );
           console.time("[TIMING] _ascii_renderer_init");
           moduleRef.current._ascii_renderer_init(width, height);
           console.timeEnd("[TIMING] _ascii_renderer_init");
+          console.log(
+            `[AsciiRenderer-Init] _ascii_renderer_init returned at ${performance.now().toFixed(0)}ms`,
+          );
         };
 
         doInit();
 
-        console.log(`[AsciiRenderer] Getting dimensions...`);
+        const beforeGetCols = performance.now();
+        console.log(`[AsciiRenderer-Init] Getting cols at ${beforeGetCols.toFixed(0)}ms...`);
         const cols = moduleRef.current._ascii_renderer_get_cols();
+        console.log(
+          `[AsciiRenderer-Init] Got cols=${cols} at ${performance.now().toFixed(0)}ms`,
+        );
+        const beforeGetRows = performance.now();
+        console.log(`[AsciiRenderer-Init] Getting rows at ${beforeGetRows.toFixed(0)}ms...`);
         const rows = moduleRef.current._ascii_renderer_get_rows();
+        console.log(
+          `[AsciiRenderer-Init] Got rows=${rows} at ${performance.now().toFixed(0)}ms`,
+        );
 
-        console.log(`[AsciiRenderer] Got dimensions: ${cols}x${rows}`);
+        console.log(`[AsciiRenderer-Init] Dimensions: ${cols}x${rows}`);
 
         if (cols === 0 || rows === 0) {
           console.warn(
-            `[AsciiRenderer] WARNING: Got invalid dimensions from WASM: ${cols}x${rows}`,
+            `[AsciiRenderer-Init] WARNING: Invalid dimensions: ${cols}x${rows}`,
           );
         }
 
+        console.log(`[AsciiRenderer-Init] Calling updateDimensions(${cols}, ${rows}) at ${performance.now().toFixed(0)}ms`);
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
 
         console.log(
-          `[AsciiRenderer] Initialized: ${width}x${height}px, ${cols}x${rows} cells`,
+          `[AsciiRenderer-Init] *** INITIALIZATION COMPLETE at ${performance.now().toFixed(0)}ms: ${width}x${height}px, ${cols}x${rows} cells ***`,
         );
       } catch (err) {
-        console.error("[AsciiRenderer] Initialization failed:", err);
+        console.error("[AsciiRenderer-Init] Initialization failed:", err);
         setupDoneRef.current = false;
       }
     };
@@ -140,23 +189,23 @@ export const AsciiRenderer = forwardRef<
       const dims = canvas ? `${canvas.clientWidth}x${canvas.clientHeight}` : 'NO_CANVAS';
 
       console.log(
-        `[AsciiRenderer-RAF] Attempt ${retryCount} at ${elapsed.toFixed(0)}ms: canvas=${dims}, maxRetries=${maxRetries}, maxWait=${maxWaitTime}ms`,
+        `[AsciiRenderer-RAF] Attempt ${retryCount} at ${elapsed.toFixed(0)}ms: canvas=${dims}`,
       );
 
       if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
         console.log(
-          `[AsciiRenderer] ✓ Canvas has dimensions on attempt ${retryCount} after ${elapsed.toFixed(0)}ms, initializing`,
+          `[AsciiRenderer-RAF] ✓ Canvas has dimensions on attempt ${retryCount} at ${elapsed.toFixed(0)}ms - CALLING initRenderer`,
         );
         initRenderer();
       } else if (retryCount < maxRetries && elapsed < maxWaitTime) {
         console.log(
-          `[AsciiRenderer] ⏳ Retrying (${retryCount}/${maxRetries})...`,
+          `[AsciiRenderer-RAF] Retrying ${retryCount}/${maxRetries} at ${performance.now().toFixed(0)}ms...`,
         );
         // Use RAF to wait for next layout cycle
         rafId = requestAnimationFrame(checkAndInit);
       } else {
         console.warn(
-          `[AsciiRenderer] ⏱️ TIMEOUT after ${retryCount} attempts/${elapsed.toFixed(0)}ms, using fallback`,
+          `[AsciiRenderer-RAF] TIMEOUT after ${retryCount} attempts/${elapsed.toFixed(0)}ms - forcing initRenderer with fallback`,
         );
         // Force initialization with fallback dimensions after timeout
         initRenderer();
@@ -164,6 +213,10 @@ export const AsciiRenderer = forwardRef<
     };
 
     // Start checking on next animation frame
+    const rafStartTime = performance.now();
+    console.log(
+      `[AsciiRenderer-RAF] *** STARTING RAF LOOP at ${rafStartTime.toFixed(0)}ms ***`,
+    );
     rafId = requestAnimationFrame(checkAndInit);
 
     return () => {

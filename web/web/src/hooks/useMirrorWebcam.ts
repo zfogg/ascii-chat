@@ -54,7 +54,9 @@ export function useMirrorWebcam({
 
   const startWebcam = useCallback(async () => {
     const clickTime = performance.now();
-    console.log(`[Mirror] Button clicked / startWebcam called at ${clickTime}`);
+    console.log(
+      `[Mirror] startWebcam CALLED at ${clickTime.toFixed(0)}ms, ${new Date().toISOString()}`,
+    );
     console.time("[Mirror] Total startWebcam time");
 
     console.log(
@@ -67,19 +69,31 @@ export function useMirrorWebcam({
     }
 
     try {
+      const tryStartTime = performance.now();
       console.log(
-        `[Mirror] startWebcam: entering try block at ${performance.now()}`,
+        `[Mirror] startWebcam: entering try block at ${tryStartTime.toFixed(0)}ms`,
       );
       console.time("[Mirror] WASM settings");
+      const wasmReady = isWasmReady();
+      const optsInit = isOptionsInitialized();
       console.log(
-        `[Mirror] WASM ready=${isWasmReady()}, options initialized=${isOptionsInitialized()}`,
+        `[Mirror] WASM ready=${wasmReady}, options initialized=${optsInit} at ${performance.now().toFixed(0)}ms`,
       );
-      if (isWasmReady() && isOptionsInitialized()) {
+      if (wasmReady && optsInit) {
+        console.log(
+          `[Mirror] Applying WASM settings at ${performance.now().toFixed(0)}ms`,
+        );
         // Apply WASM settings but don't fail if any individual setter fails
         // The webcam should start regardless of color settings
         try {
-          console.log("[Mirror] Setting color mode...");
+          const beforeColorMode = performance.now();
+          console.log(
+            `[Mirror] BEFORE setColorMode at ${beforeColorMode.toFixed(0)}ms`,
+          );
           setColorMode(mapColorModeToWasm(settings.colorMode));
+          console.log(
+            `[Mirror] AFTER setColorMode at ${performance.now().toFixed(0)}ms (${performance.now() - beforeColorMode}ms)`,
+          );
         } catch (err) {
           console.warn("[Mirror] Failed to set color mode:", err);
         }
@@ -250,37 +264,50 @@ export function useMirrorWebcam({
   // CRITICAL: Wait for terminalDimensions to be set by AsciiRenderer before starting webcam.
   // If we start before dimensions are available, the render loop will block on 0x0 dimensions.
   useEffect(() => {
+    const effectTime = performance.now();
     const hasDimensions =
       terminalDimensions &&
       terminalDimensions.cols > 0 &&
       terminalDimensions.rows > 0;
 
+    const nodeEnv = import.meta.env["NODE_ENV"];
     console.log(
-      `[Mirror] useMirrorWebcam auto-start effect: NODE_ENV=${
-        import.meta.env["NODE_ENV"]
-      }, wasmInitialized=${wasmInitialized}, permissionGranted=${permissionGranted}, isWebcamRunning=${isWebcamRunning}, devAutoStartRef=${devAutoStartRef.current}, hasDimensions=${hasDimensions}`,
+      `[Mirror] AUTO-START EFFECT at ${effectTime.toFixed(0)}ms: NODE_ENV=${nodeEnv}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, webcamRunning=${isWebcamRunning}, alreadyStarted=${devAutoStartRef.current}, hasDims=${hasDimensions}`,
     );
 
-    if (
-      import.meta.env["NODE_ENV"] !== "production" &&
+    const shouldStart =
+      nodeEnv !== "production" &&
       wasmInitialized &&
       permissionGranted &&
       !isWebcamRunning &&
       !devAutoStartRef.current &&
-      hasDimensions
-    ) {
+      hasDimensions;
+
+    console.log(
+      `[Mirror] AUTO-START check: shouldStart=${shouldStart} (nodeEnv OK=${nodeEnv !== "production"}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, !webcamRunning=${!isWebcamRunning}, !alreadyStarted=${!devAutoStartRef.current}, hasDims=${hasDimensions})`,
+    );
+
+    if (shouldStart) {
       devAutoStartRef.current = true;
       console.log(
-        `[Mirror] Auto-starting webcam with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+        `[Mirror] ✓ AUTO-STARTING webcam at ${performance.now().toFixed(0)}ms with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
       );
       console.time("[Mirror] startWebcam()");
       void Promise.resolve()
         .then(() => {
-          console.log(`[Mirror] Calling startWebcam at ${performance.now()}`);
+          console.log(
+            `[Mirror] Calling startWebcam at ${performance.now().toFixed(0)}ms`,
+          );
           return startWebcam();
         })
         .then(() => {
+          console.log(
+            `[Mirror] startWebcam completed at ${performance.now().toFixed(0)}ms`,
+          );
           console.timeEnd("[Mirror] startWebcam()");
+        })
+        .catch((err) => {
+          console.error(`[Mirror] startWebcam failed: ${err}`);
         });
     }
   }, [

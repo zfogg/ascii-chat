@@ -111,23 +111,23 @@ export function useClientLike(
   useEffect(() => {
     const startTime = performance.now();
     console.log(
-      "[useClientLike] Starting WASM initialization at",
+      `[useClientLike-Init] Starting WASM initialization at ${startTime.toFixed(0)}ms`,
       new Date().toISOString(),
-      `(perf: ${startTime.toFixed(2)}ms)`,
     );
     initWasm()
       .then(() => {
         const endTime = performance.now();
         console.log(
-          "[useClientLike] WASM initialization complete, setting wasmInitialized=true at",
-          new Date().toISOString(),
-          `(perf: ${endTime.toFixed(2)}ms, took ${(endTime - startTime).toFixed(2)}ms)`,
+          `[useClientLike-Init] WASM initialization complete at ${endTime.toFixed(0)}ms (took ${(endTime - startTime).toFixed(2)}ms)`,
         );
 
-        // Log immediately after setting state
-        console.log("[useClientLike] About to call setWasmInitialized(true)");
+        console.log(
+          `[useClientLike-Init] About to call setWasmInitialized(true) at ${performance.now().toFixed(0)}ms`,
+        );
         setWasmInitialized(true);
-        console.log("[useClientLike] setWasmInitialized(true) called");
+        console.log(
+          `[useClientLike-Init] setWasmInitialized(true) enqueued at ${performance.now().toFixed(0)}ms`,
+        );
       })
       .catch((err) => {
         console.error("WASM init error:", err);
@@ -135,60 +135,92 @@ export function useClientLike(
       });
   }, [initWasm]);
 
-  // Apply WASM settings immediately after init completes
+  // Track dependency changes to catch infinite loops
   useEffect(() => {
     console.log(
-      `[useClientLike] Settings effect triggered: wasmInitialized=${wasmInitialized}`,
+      `[useClientLike-Deps] wasmInitialized changed to ${wasmInitialized} at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [wasmInitialized]);
+
+  useEffect(() => {
+    console.log(
+      `[useClientLike-Deps] applyWasmSettings changed at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [applyWasmSettings]);
+
+  useEffect(() => {
+    console.log(
+      `[useClientLike-Deps] settings changed at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [settings]);
+
+  // Apply WASM settings immediately after init completes
+  useEffect(() => {
+    const effectTime = performance.now();
+    console.log(
+      `[useClientLike-Settings] *** SETTINGS EFFECT ENTERED at ${effectTime.toFixed(0)}ms: wasmInitialized=${wasmInitialized} ***`,
     );
 
     if (!wasmInitialized) {
       console.log(
-        "[useClientLike] Skipping settings: WASM not initialized yet",
+        `[useClientLike-Settings] Skipping: wasmInitialized=false at ${performance.now().toFixed(0)}ms`,
       );
       return;
     }
 
     console.log(
-      "[useClientLike] wasmInitialized=true, applying settings at",
-      new Date().toISOString(),
+      `[useClientLike-Settings] Proceeding with settings at ${performance.now().toFixed(0)}ms`,
     );
 
     // Retry up to 5 times if WASM isn't ready yet (typically ready immediately)
     let retries = 0;
     const tryApply = () => {
+      const tryTime = performance.now();
+      const ready = isWasmReady();
       console.log(
-        `[useClientLike] tryApply called: isWasmReady()=${isWasmReady()}, retries=${retries}`,
+        `[useClientLike-Settings-Try] ATTEMPT at ${tryTime.toFixed(0)}ms: retries=${retries}, isWasmReady()=${ready}`,
       );
 
-      if (!isWasmReady()) {
+      if (!ready) {
         if (retries < 5) {
           retries++;
           console.log(
-            `[useClientLike] WASM not ready yet, retrying in 10ms (attempt ${retries}/5)`,
+            `[useClientLike-Settings-Try] WASM not ready, scheduling retry ${retries}/5 at ${performance.now().toFixed(0)}ms`,
           );
           setTimeout(tryApply, 10); // 10ms retry
           return;
         }
         console.warn(
-          "[useClientLike] WASM still not ready after 5 retries, skipping settings",
+          `[useClientLike-Settings-Try] WASM not ready after 5 retries at ${performance.now().toFixed(0)}ms, giving up`,
         );
         return;
       }
 
       try {
-        console.log("[useClientLike] Calling applyWasmSettings...");
-        const settingsStart = performance.now();
-        applyWasmSettings(settings);
-        const settingsTime = performance.now() - settingsStart;
+        const applyStart = performance.now();
         console.log(
-          `[useClientLike] Settings applied successfully in ${settingsTime.toFixed(2)}ms`,
+          `[useClientLike-Settings-Try] CALLING applyWasmSettings at ${applyStart.toFixed(0)}ms`,
+        );
+        applyWasmSettings(settings);
+        const applyEnd = performance.now();
+        console.log(
+          `[useClientLike-Settings-Try] applyWasmSettings completed at ${applyEnd.toFixed(0)}ms (took ${(applyEnd - applyStart).toFixed(2)}ms)`,
         );
       } catch (err) {
-        console.error("Failed to apply WASM settings:", err);
+        console.error(
+          `[useClientLike-Settings-Try] applyWasmSettings failed: ${String(err)}`,
+        );
       }
     };
 
+    const tryApplyTime = performance.now();
+    console.log(
+      `[useClientLike-Settings] BEFORE first tryApply at ${tryApplyTime.toFixed(0)}ms`,
+    );
     tryApply();
+    console.log(
+      `[useClientLike-Settings] AFTER first tryApply at ${performance.now().toFixed(0)}ms (elapsed ${(performance.now() - tryApplyTime).toFixed(2)}ms)`,
+    );
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [wasmInitialized, applyWasmSettings, settings]);
 

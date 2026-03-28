@@ -46,13 +46,31 @@ import {
 
 export function MirrorPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [wasmModule, setWasmModule] = useState(() => getMirrorModule());
+  const [wasmModule, setWasmModule] = useState(() => {
+    const m = getMirrorModule();
+    console.log(
+      `[Mirror-Constructor] Initial state: wasmModule=${!!m} at ${performance.now().toFixed(0)}ms`,
+    );
+    return m;
+  });
+  console.log(
+    `[Mirror-Render] Component rendering at ${performance.now().toFixed(0)}ms, wasmModule=${!!wasmModule}`,
+  );
 
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
-  const initWasm = useCallback(() => initMirrorWasm(MirrorModuleFactory), []);
+  const initWasm = useCallback(() => {
+    console.log(
+      `[Mirror] initWasm callback created at ${performance.now().toFixed(0)}ms`,
+    );
+    return initMirrorWasm(MirrorModuleFactory);
+  }, []);
 
   const applyWasmSettings = useCallback((settings: SettingsConfig) => {
+    const callTime = performance.now();
+    console.log(
+      `[Mirror] applyWasmSettings called at ${callTime.toFixed(0)}ms`,
+    );
     const om = createWasmOptionsManager(
       setColorMode,
       getColorMode,
@@ -73,7 +91,13 @@ export function MirrorPage() {
       mapColorModeToWasm,
       mapColorFilterToWasm,
     );
+    console.log(
+      `[Mirror] applyWasmSettings: om=${!!om} at ${performance.now().toFixed(0)}ms`,
+    );
     om?.applySettings(settings);
+    console.log(
+      `[Mirror] applyWasmSettings completed at ${performance.now().toFixed(0)}ms (took ${(performance.now() - callTime).toFixed(2)}ms)`,
+    );
   }, []);
 
   const setWasmDimensions = useCallback((cols: number, rows: number) => {
@@ -100,12 +124,16 @@ export function MirrorPage() {
     om?.setDimensions(cols, rows);
   }, []);
 
+  const optionsManagerTime = performance.now();
   const optionsManager = useClientLike({
     initWasm,
     isWasmReady,
     applyWasmSettings,
     setWasmDimensions,
   });
+  console.log(
+    `[Mirror] useClientLike completed at ${performance.now().toFixed(0)}ms (took ${(performance.now() - optionsManagerTime).toFixed(2)}ms)`,
+  );
 
   const {
     videoRef,
@@ -136,12 +164,45 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
+  // Track all state changes
+  useEffect(() => {
+    console.log(
+      `[Mirror-Track] wasmModule changed to ${!!wasmModule} at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [wasmModule]);
+
+  useEffect(() => {
+    console.log(
+      `[Mirror-Track] wasmInitialized changed to ${wasmInitialized} at ${performance.now().toFixed(0)}ms`,
+    );
+  }, [wasmInitialized]);
+
   // Update wasmModule state immediately when WASM initialization completes
   useEffect(() => {
+    const now = performance.now();
+    console.log(
+      `[Mirror-SetModule] EFFECT ENTERED at ${now.toFixed(0)}ms: wasmInitialized=${wasmInitialized}, wasmModule=${!!wasmModule}`,
+    );
+
     if (wasmInitialized && !wasmModule) {
+      console.log(
+        `[Mirror-SetModule] CONDITIONS MET at ${performance.now().toFixed(0)}ms - calling getMirrorModule()`,
+      );
+      const getModuleTime = performance.now();
       const module = getMirrorModule();
+      const getModuleElapsed = performance.now() - getModuleTime;
+      console.log(
+        `[Mirror-SetModule] getMirrorModule returned=${!!module} at ${performance.now().toFixed(0)}ms (took ${getModuleElapsed.toFixed(2)}ms)`,
+      );
       if (module) {
+        const setTime = performance.now();
+        console.log(
+          `[Mirror-SetModule] *** CALLING setWasmModule at ${setTime.toFixed(0)}ms ***`,
+        );
         setWasmModule(module);
+        console.log(
+          `[Mirror-SetModule] setWasmModule returned IMMEDIATELY at ${performance.now().toFixed(0)}ms`,
+        );
       }
     }
   }, [wasmInitialized, wasmModule]);
@@ -152,6 +213,7 @@ export function MirrorPage() {
   };
 
   // Render loop that captures and converts frames to ASCII
+  const renderLoopTime = performance.now();
   useMirrorRenderLoop({
     isWebcamRunning,
     terminalDimensions,
@@ -162,8 +224,12 @@ export function MirrorPage() {
     firstFrameTimeRef,
     frameIntervalRef,
   });
+  console.log(
+    `[Mirror] useMirrorRenderLoop completed at ${performance.now().toFixed(0)}ms (took ${(performance.now() - renderLoopTime).toFixed(2)}ms)`,
+  );
 
   // Webcam start logic and auto-start effects
+  const webcamTime = performance.now();
   const { startWebcam, startVideoFile } = useMirrorWebcam({
     settings,
     videoRef,
@@ -178,6 +244,9 @@ export function MirrorPage() {
     isWebcamRunning,
     terminalDimensions,
   });
+  console.log(
+    `[Mirror] useMirrorWebcam completed at ${performance.now().toFixed(0)}ms (took ${(performance.now() - webcamTime).toFixed(2)}ms)`,
+  );
 
   const handleVideoFileSelect = useCallback(
     (file: File) => {
@@ -247,14 +316,21 @@ export function MirrorPage() {
           />
         }
         renderer={
-          <AsciiRenderer
-            ref={rendererRef}
-            onDimensionsChange={handleDimensionsChange}
-            onFpsChange={setFps}
-            error={error}
-            showFps={isWebcamRunning}
-            wasmModule={wasmModule}
-          />
+          (() => {
+            console.log(
+              `[Mirror-JSX] About to render AsciiRenderer with wasmModule=${!!wasmModule} at ${performance.now().toFixed(0)}ms`,
+            );
+            return (
+              <AsciiRenderer
+                ref={rendererRef}
+                onDimensionsChange={handleDimensionsChange}
+                onFpsChange={setFps}
+                error={error}
+                showFps={isWebcamRunning}
+                wasmModule={wasmModule}
+              />
+            );
+          })()
         }
         modal={
           <VideoUploadModal
