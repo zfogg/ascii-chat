@@ -214,167 +214,14 @@ export const AsciiRenderer = forwardRef<
     [showFps, onFpsChange]
   );
 
-  const handleXTermRef = useCallback(
-    (instance: XTermType | null) => {
-      console.log("[AsciiRenderer] handleXTermRef called");
-      xtermRef.current = instance;
-
-      if (!instance) return;
-
-      if (setupDoneRef.current) {
-        console.log("[AsciiRenderer] setup already done, skipping");
-        return;
-      }
-
-      console.log("[AsciiRenderer] Scheduling xterm setup...");
-      setTimeout(() => {
-        console.log("[AsciiRenderer] Setup timeout triggered");
-        if (!instance) return;
-
-        const terminal = (instance as XTermType & { terminal: Terminal })
-          .terminal;
-        if (!terminal) {
-          console.error("[AsciiRenderer] No terminal instance found");
-          return;
-        }
-
-        console.log("[AsciiRenderer] Terminal instance ready, setting up");
-        const fitAddon = new FitAddon();
-        console.log("[AsciiRenderer] Loading FitAddon");
-        terminal.loadAddon(fitAddon);
-
-        fitAddonRef.current = fitAddon;
-
-        // Disable IntersectionObserver pause mechanism
-        console.log(
-          "[AsciiRenderer] Disabling IntersectionObserver pause mechanism",
-        );
-        const core = (
-          terminal as Terminal & {
-            _core?: {
-              _renderService?: {
-                _handleIntersectionChange: {
-                  bind: (
-                    context: unknown,
-                  ) => (entry: IntersectionObserverEntry) => void;
-                };
-                _isPaused: boolean;
-              };
-            };
-          }
-        )._core;
-        if (core) {
-          const renderService = core._renderService;
-          if (renderService) {
-            const originalHandler =
-              renderService._handleIntersectionChange.bind(renderService);
-            renderService._handleIntersectionChange = (
-              entry: IntersectionObserverEntry,
-            ) => {
-              originalHandler(entry);
-              renderService._isPaused = false;
-            };
-            renderService._isPaused = false;
-            console.log(
-              "[AsciiRenderer] IntersectionObserver override applied",
-            );
-          }
-        }
-
-        // Define resize handler used for both initial sizing and window resize
-        const handleResize = () => {
-          try {
-            console.log("[AsciiRenderer] Resizing terminal");
-            fitAddon.fit();
-            console.log(
-              `[AsciiRenderer] FitAddon fit complete: ${terminal.cols}x${terminal.rows}`,
-            );
-            updateDimensions(terminal.cols, terminal.rows);
-          } catch (e) {
-            console.error("[AsciiRenderer] Resize error:", e);
-          }
-        };
-
-        // Use ResizeObserver to detect when the xterm container has actual dimensions
-        const resizeObserver = new ResizeObserver(() => {
-          console.log(
-            "[AsciiRenderer] Container resized, applying initial fit",
-          );
-          handleResize();
-          // Only need initial fit once, then listen to window resize
-          resizeObserver.disconnect();
-        });
-
-        // Observe the xterm viewport to know when container is ready
-        const xtermViewport = (
-          instance as XTermWithElement
-        ).element?.querySelector(".xterm-viewport");
-        if (xtermViewport) {
-          resizeObserver.observe(xtermViewport);
-        } else {
-          console.warn("[AsciiRenderer] Could not find xterm-viewport");
-          handleResize();
-        }
-
-        // Listen for future window resize events
-        window.addEventListener("resize", handleResize);
-
-        // Clear terminal immediately on resize to prevent leftover ASCII art
-        window.addEventListener("resize", () => {
-          const xterm = xtermRef.current;
-          if (xterm) {
-            const terminal = (xterm as XTermType & { terminal: Terminal })
-              .terminal;
-            if (terminal) {
-              terminal.write("\x1b[H\x1b[2J\x1b[3J");
-              terminal.clear();
-            }
-          }
-        });
-        console.log("[AsciiRenderer] Resize event listener added");
-
-        console.log("[AsciiRenderer] Setup complete");
-        setupDoneRef.current = true;
-      }, 100);
-    },
-    [updateDimensions],
-  );
-
   return (
     <>
-      {/* ASCII terminal output */}
+      {/* ASCII canvas output */}
       <div className="h-full flex flex-col flex-1 overflow-hidden min-h-0 relative">
-        <style>
-          {`
-            .xterm {
-              flex: 1 !important;
-              min-height: 0;
-              width: 100%;
-            }
-            .xterm-viewport {
-              overflow-y: hidden !important;
-              overflow-x: hidden !important;
-            }
-          `}
-        </style>
-        <XTerm
-          ref={handleXTermRef}
-          options={{
-            theme: {
-              background: "#0c0c0c",
-              foreground: "#cccccc",
-            },
-            cursorStyle: "block",
-            cursorBlink: false,
-            fontFamily: "Hack, monospace",
-            fontSize: 12,
-            scrollback: 0,
-            disableStdin: true,
-            allowTransparency: false,
-            convertEol: false,
-            drawBoldTextInBrightColors: true,
-          }}
-          className="flex flex-1 rounded bg-terminal-bg"
+        <canvas
+          ref={canvasRef}
+          className="flex flex-1 w-full h-full rounded bg-terminal-bg"
+          style={{ display: "block" }}
         />
         {connectionState === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
@@ -387,7 +234,7 @@ export const AsciiRenderer = forwardRef<
 
       {/* FPS counter - hidden, displayed in control bar instead */}
       {showFps && (
-        <div ref={fpsRef} style={{ display: "none" }}>
+        <div ref={fpsDisplayRef} style={{ display: "none" }}>
           --
         </div>
       )}

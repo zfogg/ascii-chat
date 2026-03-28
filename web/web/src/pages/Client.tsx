@@ -24,6 +24,7 @@ import {
   ConnectionState,
   isWasmReady as isClientWasmReady,
   PacketType,
+  getClientModule,
 } from "../wasm/client";
 import {
   getColorFilter,
@@ -425,6 +426,7 @@ export function ClientPage() {
             error={error}
             showFps={isWebcamRunning}
             connectionState={connectionState}
+            wasmModule={getClientModule()}
           />
         }
         modal={

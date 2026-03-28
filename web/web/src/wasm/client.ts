@@ -1060,3 +1060,10 @@ export function getHeight(): number {
 export function isWasmReady(): boolean {
   return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
 }
+
+/**
+ * Get the WASM module instance
+ */
+export function getClientModule(): ClientModule | null {
+  return wasmModule;
+}

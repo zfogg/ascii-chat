@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_renderer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_renderer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_renderer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_renderer_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">VTerm * <b>vt</b>
+  <br/>
+  VTermScreen * <b>vts</b>
+  <br/>
+  int <b>cols</b>
+  <br/>
+  int <b>rows</b>
+  <br/>
+  FT_Library <b>ft_lib</b>
+  <br/>
+  FT_Face <b>ft_face</b>
+  <br/>
+  int <b>cell_w</b>
+  <br/>
+  int <b>cell_h</b>
+  <br/>
+  int <b>baseline</b>
+  <br/>
+  <b>uint8_t</b> * <b>framebuffer</b>
+  <br/>
+  int <b>width_px</b>
+  <br/>
+  int <b>height_px</b>
+  <br/>
+  int <b>pitch</b>
+  <br/>
+  Texture2D <b>texture</b>
+  <br/>
+  <b>bool</b> <b>texture_initialized</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>37</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::baseline"><a class="permalink" href="#int_ascii_renderer_t::baseline">int
+  ascii_renderer_t::baseline</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::cell_h"><a class="permalink" href="#int_ascii_renderer_t::cell_h">int
+  ascii_renderer_t::cell_h</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::cell_w"><a class="permalink" href="#int_ascii_renderer_t::cell_w">int
+  ascii_renderer_t::cell_w</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::cols"><a class="permalink" href="#int_ascii_renderer_t::cols">int
+  ascii_renderer_t::cols</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* ascii_renderer_t::framebuffer</h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="FT_Face_ascii_renderer_t::ft_face"><a class="permalink" href="#FT_Face_ascii_renderer_t::ft_face">FT_Face
+  ascii_renderer_t::ft_face</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="FT_Library_ascii_renderer_t::ft_lib"><a class="permalink" href="#FT_Library_ascii_renderer_t::ft_lib">FT_Library
+  ascii_renderer_t::ft_lib</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::height_px"><a class="permalink" href="#int_ascii_renderer_t::height_px">int
+  ascii_renderer_t::height_px</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::pitch"><a class="permalink" href="#int_ascii_renderer_t::pitch">int
+  ascii_renderer_t::pitch</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::rows"><a class="permalink" href="#int_ascii_renderer_t::rows">int
+  ascii_renderer_t::rows</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Texture2D_ascii_renderer_t::texture"><a class="permalink" href="#Texture2D_ascii_renderer_t::texture">Texture2D
+  ascii_renderer_t::texture</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_renderer_t::texture_initialized</h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="VTerm*_ascii_renderer_t::vt"><a class="permalink" href="#VTerm*_ascii_renderer_t::vt">VTerm*
+  ascii_renderer_t::vt</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="VTermScreen*_ascii_renderer_t::vts"><a class="permalink" href="#VTermScreen*_ascii_renderer_t::vts">VTermScreen*
+  ascii_renderer_t::vts</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>ascii_renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_t::width_px"><a class="permalink" href="#int_ascii_renderer_t::width_px">int
+  ascii_renderer_t::width_px</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>ascii_renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>ascii_renderer_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
