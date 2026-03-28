@@ -183,6 +183,11 @@ export const AsciiRenderer = forwardRef<
           `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(0)}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
         );
 
+        // Validate _ascii_renderer_render_frame function exists and is callable
+        console.log(
+          `[WASM Function Check] _ascii_renderer_render_frame type=${typeof moduleRef.current!._ascii_renderer_render_frame}, exists=${!!moduleRef.current!._ascii_renderer_render_frame}, isFunction=${typeof moduleRef.current!._ascii_renderer_render_frame === "function"}`,
+        );
+
         const getDimsStart = performance.now();
         const cols = moduleRef.current!._ascii_renderer_get_cols();
         const rows = moduleRef.current!._ascii_renderer_get_rows();
@@ -409,6 +414,9 @@ export const AsciiRenderer = forwardRef<
           moduleRef.current._free(ptr);
 
           // Display framebuffer on canvas
+          console.log(
+            "[Canvas Drawing] Attempting to display framebuffer on canvas",
+          );
           try {
             const canvas = canvasRef.current;
             if (
@@ -441,6 +449,9 @@ export const AsciiRenderer = forwardRef<
                 typeof fbWidth === "number" &&
                 typeof fbHeight === "number"
               ) {
+                console.log(
+                  "[Canvas Check] Condition passed, proceeding to draw",
+                );
                 const w: number = fbWidth as number;
                 const h: number = fbHeight as number;
                 const stride: number = fbStride ? (fbStride as number) : w * 3;
@@ -482,6 +493,16 @@ export const AsciiRenderer = forwardRef<
                   });
                   ctx.putImageData(imageData, 0, 0);
                 }
+              } else {
+                console.log("[Canvas Check] Condition FAILED:", {
+                  fbPtr_valid: !!fbPtr,
+                  fbWidth_valid: !!fbWidth,
+                  fbHeight_valid: !!fbHeight,
+                  fbWidth_gt0: fbWidth > 0,
+                  fbHeight_gt0: fbHeight > 0,
+                  fbWidth_isNum: typeof fbWidth === "number",
+                  fbHeight_isNum: typeof fbHeight === "number",
+                });
               }
             }
           } catch (displayErr) {

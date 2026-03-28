@@ -60,6 +60,7 @@ if(DEFINED EMSCRIPTEN)
             CONFIGURE_COMMAND
                 <SOURCE_DIR>/configure
                 --prefix=${OPUS_PREFIX}
+                --host=wasm32-emscripten
                 --enable-static
                 --disable-shared
                 --disable-doc

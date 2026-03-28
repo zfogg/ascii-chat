@@ -81,6 +81,66 @@ if(PLATFORM_IOS)
     return()
 endif()
 
+# Handle WASM/Emscripten builds - libsodium is built from source
+if(DEFINED EMSCRIPTEN)
+    message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (WASM)...")
+
+    include(ExternalProject)
+    include(FetchContent)
+    FetchContent_Declare(libsodium-src
+        URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+        URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-src"
+        UPDATE_DISCONNECTED ON
+    )
+    FetchContent_Populate(libsodium-src)
+
+    set(LIBSODIUM_PREFIX "${FETCHCONTENT_BASE_DIR}/libsodium-wasm")
+    set(LIBSODIUM_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-build")
+
+    if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+        message(STATUS "  libsodium library not found in cache, will build from source")
+
+        ExternalProject_Add(libsodium-wasm
+            SOURCE_DIR ${libsodium-src_SOURCE_DIR}
+            PREFIX ${LIBSODIUM_BUILD_DIR}
+            STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND
+                <SOURCE_DIR>/configure
+                --prefix=${LIBSODIUM_PREFIX}
+                --host=wasm32-emscripten
+                --enable-static
+                --disable-shared
+                --with-pic
+                --disable-asm
+                --disable-soname-versions
+                CC=emcc
+                CFLAGS=-O2\ -fPIC
+                LDFLAGS=--no-entry
+                ac_cv_func_memset_s=no
+            BUILD_COMMAND make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
+        add_custom_target(libsodium-wasm)
+    endif()
+
+    set(LIBSODIUM_FOUND TRUE)
+    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+
+    message(STATUS "${BoldGreen}✓${ColorReset} libsodium (WASM): ${BoldCyan}libsodium${ColorReset}")
+    return()
+endif()
+
 # Handle musl builds - libsodium is built from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source...")

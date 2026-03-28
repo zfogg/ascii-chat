@@ -30,6 +30,9 @@ export function useMirrorRenderLoop({
   useEffect(() => {
     const effectStartTime = performance.now();
     console.log(
+      `[Mirror] RENDER LOOP EFFECT FIRED at ${effectStartTime.toFixed(0)}ms (dependencies: isWebcamRunning=${isWebcamRunning}, dims=${terminalDimensions?.cols}x${terminalDimensions?.rows})`,
+    );
+    console.log(
       `[Mirror] *** RENDER LOOP EFFECT BODY START at ${effectStartTime.toFixed(0)}ms ***`,
     );
     console.log(

@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <stdarg.h>
 #include <fcntl.h>
 
 // File operations - basic WASM stubs

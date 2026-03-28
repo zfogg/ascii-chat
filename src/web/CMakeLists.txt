@@ -79,8 +79,6 @@ include_directories(
     ${PCRE2_INCLUDE_DIRS}  # pcre2
     ${OPUS_INCLUDE_DIRS}  # opus
     ${ZSTD_INCLUDE_DIRS}  # zstd
-    # FreeType for rendering
-    /usr/include/freetype2
 )
 
 # Source files for WASM mirror entry point
@@ -330,6 +328,23 @@ if(TARGET generate_fonts)
     add_dependencies(wasm-common generate_fonts)
 endif()
 
+# Ensure WASM dependencies are built before compiling wasm-common
+if(TARGET libsodium-wasm)
+    add_dependencies(wasm-common libsodium-wasm)
+endif()
+if(TARGET pcre2-wasm)
+    add_dependencies(wasm-common pcre2-wasm)
+endif()
+if(TARGET opus-wasm)
+    add_dependencies(wasm-common opus-wasm)
+endif()
+if(TARGET zstd-wasm)
+    add_dependencies(wasm-common zstd-wasm)
+endif()
+if(TARGET raylib-wasm)
+    add_dependencies(wasm-common raylib-wasm)
+endif()
+
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(wasm-common PRIVATE
     __EMSCRIPTEN__
@@ -481,6 +496,10 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _ascii_renderer_resize
     _ascii_renderer_get_cols
     _ascii_renderer_get_rows
+    _ascii_renderer_get_framebuffer
+    _ascii_renderer_get_framebuffer_width
+    _ascii_renderer_get_framebuffer_height
+    _ascii_renderer_get_framebuffer_stride
     _ascii_renderer_shutdown
     # Option getters/setters for live option updates (no restart needed)
     _set_width
