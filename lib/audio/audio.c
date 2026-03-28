@@ -236,52 +236,90 @@ static void *audio_worker_thread(void *arg) {
     // STEP 1: Process capture path (mic → AEC3 → encoder)
     // Process capture samples if available (don't wait for full batch - reduces latency)
     // Minimum: 64 samples (1.3ms @ 48kHz) to avoid excessive overhead
-    const size_t MIN_PROCESS_SAMPLES = 64;
-    if (capture_available >= MIN_PROCESS_SAMPLES) {
+    // AEC3 requires 480-sample frames (10ms @ 48kHz). Process only complete
+    // frames where both render and capture are available. Remainders stay in
+    // the ring buffers and get processed next iteration - no zero-padding,
+    // no data corruption, no skipped echo cancellation.
+    const size_t AEC3_FRAME_SIZE = 480;
+    bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline;
+
+    if (want_aec3) {
+      // AEC3 path: process matched render+capture in 480-sample-aligned chunks
+      size_t matched = (capture_available < render_available) ? capture_available : render_available;
+      // Round down to AEC3 frame boundary so no partial frames
+      size_t aligned = (matched / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+      // Cap to batch buffer size
+      if (aligned > WORKER_BATCH_SAMPLES)
+        aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+
+      if (aligned > 0) {
+        START_TIMER("worker_capture_processing");
+
+        size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, aligned);
+        size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, aligned);
+
+        if (capture_read > 0 && render_read > 0) {
+          uint64_t aec3_start_ns = time_get_ns();
+
+          // Both buffers have identical, frame-aligned sample counts - AEC3 sees
+          // the real continuous audio stream with no padding or gaps
+          client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
+                                               ctx->worker_capture_batch, (int)capture_read,
+                                               ctx->worker_capture_batch);
+
+          long aec3_ns = (long)time_elapsed_ns(aec3_start_ns, time_get_ns());
+
+          static int aec3_count = 0;
+          static long aec3_total_ns = 0;
+          static long aec3_max_ns = 0;
+          aec3_count++;
+          aec3_total_ns += aec3_ns;
+          if (aec3_ns > aec3_max_ns)
+            aec3_max_ns = aec3_ns;
+
+          if (aec3_count % 100 == 0) {
+            long avg_ns = aec3_total_ns / aec3_count;
+            char avg_str[32], max_str[32], latest_str[32];
+            time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
+            time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
+            time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
+            log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
+                     latest_str, capture_read, aec3_count);
+          }
+        }
+
+        // Apply microphone sensitivity
+        float mic_sensitivity = GET_OPTION(microphone_sensitivity);
+        if (mic_sensitivity != 1.0f) {
+          if (mic_sensitivity < 0.0f) mic_sensitivity = 0.0f;
+          if (mic_sensitivity > 1.0f) mic_sensitivity = 1.0f;
+          for (size_t i = 0; i < capture_read; i++) {
+            ctx->worker_capture_batch[i] *= mic_sensitivity;
+          }
+        }
+
+        audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
+
+        log_debug_every(NS_PER_MS_INT, "Worker processed %zu samples (AEC3 applied, render=%zu)", capture_read,
+                        render_read);
+
+        double capture_time_ns = STOP_TIMER("worker_capture_processing");
+        total_capture_ns += capture_time_ns;
+        if (capture_time_ns > max_capture_ns)
+          max_capture_ns = capture_time_ns;
+      }
+    } else if (capture_available >= 64) {
+      // No AEC3 (bypassed or no pipeline): process capture directly
       START_TIMER("worker_capture_processing");
 
-      // Read up to WORKER_BATCH_SAMPLES, but process whatever is available
       size_t samples_to_process = (capture_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : capture_available;
-      // Read raw capture samples from callbacks (variable size batch)
       size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, samples_to_process);
 
       if (capture_read > 0) {
-        // For AEC3, we need render samples too. If not available, skip AEC3 but still process capture.
-        if (!bypass_aec3_worker && ctx->audio_pipeline && render_available >= capture_read) {
-          // Read render samples for AEC3 (match capture size)
-          size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, capture_read);
-
-          if (render_read > 0) {
-            // Measure AEC3 processing time
-            uint64_t aec3_start_ns = time_get_ns();
-
-            // AEC3 processing - should be fast enough for real-time on Pi 5
-            // Output is written back to worker_capture_batch (in-place processing)
-            client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
-                                                 ctx->worker_capture_batch, (int)capture_read,
-                                                 ctx->worker_capture_batch); // Process in-place
-
-            long aec3_ns = (long)time_elapsed_ns(aec3_start_ns, time_get_ns());
-
-            // Log AEC3 timing periodically
-            static int aec3_count = 0;
-            static long aec3_total_ns = 0;
-            static long aec3_max_ns = 0;
-            aec3_count++;
-            aec3_total_ns += aec3_ns;
-            if (aec3_ns > aec3_max_ns)
-              aec3_max_ns = aec3_ns;
-
-            if (aec3_count % 100 == 0) {
-              long avg_ns = aec3_total_ns / aec3_count;
-              char avg_str[32], max_str[32], latest_str[32];
-              time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
-              time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
-              time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
-              log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
-                       latest_str, capture_read, aec3_count);
-            }
-          }
+        // Drain render buffer to keep it from growing unbounded
+        if (render_available > 0) {
+          size_t drain = (render_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : render_available;
+          audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, drain);
         }
 
         // TODO: Add optional resampling here if input device rate != 48kHz
@@ -305,9 +343,7 @@ static void *audio_worker_thread(void *arg) {
         audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
 
         log_debug_every(NS_PER_MS_INT, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
-                        bypass_aec3_worker
-                            ? "BYPASSED"
-                            : (render_available >= WORKER_BATCH_SAMPLES ? "applied" : "skipped-no-render"));
+                        bypass_aec3_worker ? "BYPASSED" : "applied");
       }
 
       double capture_time_ns = STOP_TIMER("worker_capture_processing");

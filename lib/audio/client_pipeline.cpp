@@ -583,63 +583,44 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
           int render_offset = 0;
           int capture_offset = 0;
 
-          while (capture_offset < capture_count || render_offset < render_count) {
+          // Process only complete 480-sample frames. The worker thread guarantees
+          // render_count == capture_count and both are multiples of 480, so no
+          // partial frames should occur. If they do (defensive), the tail samples
+          // pass through unprocessed rather than corrupting AEC3 with padded data.
+          while (render_offset + webrtc_frame_size <= render_count &&
+                 capture_offset + webrtc_frame_size <= capture_count) {
+
             // STEP 1: Feed render signal (what's playing to speakers)
-            // In full-duplex, this is THE EXACT audio being played RIGHT NOW
-            if (render_samples && render_offset < render_count) {
-              int render_chunk = (render_offset + webrtc_frame_size <= render_count) ? webrtc_frame_size
-                                                                                     : (render_count - render_offset);
-              if (render_chunk == webrtc_frame_size) {
-                // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
-                copy_buffer_with_gain(&render_samples[render_offset], render_channels[0], webrtc_frame_size, 32768.0f);
-                render_buf->SplitIntoFrequencyBands();
-                wrapper->aec3->AnalyzeRender(render_buf);
-                render_buf->MergeFrequencyBands();
-                g_render_frames_fed.fetch_add(1, std::memory_order_relaxed);
-              }
-              render_offset += render_chunk;
-            }
+            copy_buffer_with_gain(&render_samples[render_offset], render_channels[0], webrtc_frame_size, 32768.0f);
+            render_buf->SplitIntoFrequencyBands();
+            wrapper->aec3->AnalyzeRender(render_buf);
+            render_buf->MergeFrequencyBands();
+            g_render_frames_fed.fetch_add(1, std::memory_order_relaxed);
+            render_offset += webrtc_frame_size;
 
             // STEP 2: Process capture (microphone input)
-            if (capture_offset < capture_count) {
-              int capture_chunk = (capture_offset + webrtc_frame_size <= capture_count)
-                                      ? webrtc_frame_size
-                                      : (capture_count - capture_offset);
-              if (capture_chunk == webrtc_frame_size) {
-                // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
-                copy_buffer_with_gain(&processed_output[capture_offset], capture_channels[0], webrtc_frame_size,
-                                      32768.0f);
+            copy_buffer_with_gain(&processed_output[capture_offset], capture_channels[0], webrtc_frame_size, 32768.0f);
+            wrapper->aec3->AnalyzeCapture(capture_buf);
+            capture_buf->SplitIntoFrequencyBands();
+            wrapper->aec3->ProcessCapture(capture_buf, false);
+            capture_buf->MergeFrequencyBands();
 
-                // AEC3 sequence: AnalyzeCapture, split, ProcessCapture, merge
-                wrapper->aec3->AnalyzeCapture(capture_buf);
-                capture_buf->SplitIntoFrequencyBands();
-
-                // NOTE: SetAudioBufferDelay() is just an initial hint when use_external_delay_estimator=false
-                // (default). AEC3's internal delay estimator will find the actual delay (~144ms in practice). We don't
-                // call it here - let AEC3 estimate delay automatically.
-
-                wrapper->aec3->ProcessCapture(capture_buf, false);
-                capture_buf->MergeFrequencyBands();
-
-                // Scale back to float range and apply soft clip to prevent distortion
-                // Use gentle soft_clip (threshold=0.6, steepness=2.5) to leave headroom for compressor
-                for (int j = 0; j < webrtc_frame_size; j++) {
-                  float sample = capture_channels[0][j] / 32768.0f;
-                  processed_output[capture_offset + j] = soft_clip(sample, 0.6f, 2.5f);
-                }
-
-                // Log AEC3 metrics periodically
-                static int duplex_log_count = 0;
-                if (++duplex_log_count % 100 == 1) {
-                  webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-                  log_info("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
-                           metrics.echo_return_loss_enhancement, metrics.delay_ms);
-                  audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
-                                                  metrics.delay_ms);
-                }
-              }
-              capture_offset += capture_chunk;
+            // Scale back to float range and soft clip
+            for (int j = 0; j < webrtc_frame_size; j++) {
+              float sample = capture_channels[0][j] / 32768.0f;
+              processed_output[capture_offset + j] = soft_clip(sample, 0.6f, 2.5f);
             }
+
+            // Log AEC3 metrics periodically
+            static int duplex_log_count = 0;
+            if (++duplex_log_count % 100 == 1) {
+              webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
+              log_info("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
+                       metrics.echo_return_loss_enhancement, metrics.delay_ms);
+              audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
+                                              metrics.delay_ms);
+            }
+            capture_offset += webrtc_frame_size;
           }
         }
       }
