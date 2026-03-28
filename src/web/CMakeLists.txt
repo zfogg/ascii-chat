@@ -406,6 +406,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/registry/security.c
     ${LIB_ROOT}/options/registry/terminal.c
     ${LIB_ROOT}/options/registry/webcam.c
+    ${LIB_ROOT}/options/registry/debug.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
@@ -444,6 +445,8 @@ set(LIB_SRC_COMMON
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
     ${LIB_ROOT}/debug/sync.c
+    ${LIB_ROOT}/debug/atomic.c
+    ${LIB_ROOT}/debug/mutex.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
     # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c

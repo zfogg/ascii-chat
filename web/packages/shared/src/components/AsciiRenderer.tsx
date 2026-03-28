@@ -137,21 +137,26 @@ export const AsciiRenderer = forwardRef<
     const checkAndInit = () => {
       retryCount++;
       const elapsed = performance.now() - startTime;
+      const dims = canvas ? `${canvas.clientWidth}x${canvas.clientHeight}` : 'NO_CANVAS';
+
+      console.log(
+        `[AsciiRenderer-RAF] Attempt ${retryCount} at ${elapsed.toFixed(0)}ms: canvas=${dims}, maxRetries=${maxRetries}, maxWait=${maxWaitTime}ms`,
+      );
 
       if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
         console.log(
-          `[AsciiRenderer] Canvas has dimensions on attempt ${retryCount} after ${elapsed.toFixed(0)}ms, initializing`,
+          `[AsciiRenderer] ✓ Canvas has dimensions on attempt ${retryCount} after ${elapsed.toFixed(0)}ms, initializing`,
         );
         initRenderer();
       } else if (retryCount < maxRetries && elapsed < maxWaitTime) {
         console.log(
-          `[AsciiRenderer] Canvas still has no dimensions (${canvas.clientWidth}x${canvas.clientHeight}) on attempt ${retryCount}, retrying... (${elapsed.toFixed(0)}ms)`,
+          `[AsciiRenderer] ⏳ Retrying (${retryCount}/${maxRetries})...`,
         );
         // Use RAF to wait for next layout cycle
         rafId = requestAnimationFrame(checkAndInit);
       } else {
         console.warn(
-          `[AsciiRenderer] Canvas never got dimensions after ${retryCount} attempts / ${elapsed.toFixed(0)}ms, initializing with fallback dimensions`,
+          `[AsciiRenderer] ⏱️ TIMEOUT after ${retryCount} attempts/${elapsed.toFixed(0)}ms, using fallback`,
         );
         // Force initialization with fallback dimensions after timeout
         initRenderer();

@@ -21,10 +21,6 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
 void audio_terminate_portaudio_final(void) {
 }
 
-/* Debug sync stubs */
-void debug_sync_cleanup_thread(void) {
-}
-
 /* Terminal/rendering stubs */
 tty_info_t get_current_tty(void) {
   tty_info_t tty = {0};
