@@ -73,7 +73,6 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
-let frameCallCount = 0;
 
 /**
  * Initialize the WASM module (call once at app start)
@@ -202,8 +201,6 @@ export function convertFrameToAscii(
     );
   }
 
-  frameCallCount++;
-
   // Allocate memory for RGBA data
   const dataPtr = wasmModule._malloc(rgbaData.length);
 
@@ -258,8 +255,6 @@ export function convertFrameToAscii(
     }
 
     return asciiString;
-  } catch (err) {
-    throw err;
   } finally {
     // Only free the input data buffer if malloc succeeded (dataPtr is not 0 or null)
     if (dataPtr && dataPtr > 0) {
