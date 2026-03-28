@@ -104,24 +104,47 @@ parse_version() {
 CURRENT_VERSION=$(get_current_version)
 parse_version "$CURRENT_VERSION"
 
-# Handle component queries
-if [[ "$SHOW_MAJOR" == "true" ]]; then
-    echo "${MAJOR}.${MINOR}.${PATCH}"
-    exit 0
-fi
+# Check if any --next* flags are set
+IS_NEXT=$([[ "$NEXT_MAJOR" == "true" ]] || [[ "$NEXT_MINOR" == "true" ]] || [[ "$NEXT_PATCH" == "true" ]] && echo "true" || echo "false")
 
-if [[ "$SHOW_MINOR" == "true" ]]; then
-    echo "${MAJOR}.${MINOR}.${PATCH}"
-    exit 0
-fi
+# Determine which component to bump
+BUMP_MAJOR=false
+BUMP_MINOR=false
+BUMP_PATCH=false
 
-if [[ "$SHOW_PATCH" == "true" ]]; then
-    echo "${MAJOR}.${MINOR}.${PATCH}"
-    exit 0
-fi
-
-# Handle next version calculations
 if [[ "$NEXT_MAJOR" == "true" ]]; then
+    BUMP_MAJOR=true
+fi
+
+if [[ "$NEXT_MINOR" == "true" ]]; then
+    BUMP_MINOR=true
+fi
+
+if [[ "$NEXT_PATCH" == "true" ]]; then
+    BUMP_PATCH=true
+fi
+
+# Component flags can override bump target when combined with --next
+if [[ "$SHOW_MAJOR" == "true" ]] && [[ "$IS_NEXT" == "true" ]]; then
+    BUMP_MAJOR=true
+    BUMP_MINOR=false
+    BUMP_PATCH=false
+fi
+
+if [[ "$SHOW_MINOR" == "true" ]] && [[ "$IS_NEXT" == "true" ]]; then
+    BUMP_MAJOR=false
+    BUMP_MINOR=true
+    BUMP_PATCH=false
+fi
+
+if [[ "$SHOW_PATCH" == "true" ]] && [[ "$IS_NEXT" == "true" ]]; then
+    BUMP_MAJOR=false
+    BUMP_MINOR=false
+    BUMP_PATCH=true
+fi
+
+# Handle next version calculations (always show full version)
+if [[ "$BUMP_MAJOR" == "true" ]]; then
     MAJOR=$((MAJOR + 1))
     MINOR=0
     PATCH=0
@@ -129,18 +152,34 @@ if [[ "$NEXT_MAJOR" == "true" ]]; then
     exit 0
 fi
 
-if [[ "$NEXT_MINOR" == "true" ]]; then
+if [[ "$BUMP_MINOR" == "true" ]]; then
     MINOR=$((MINOR + 1))
     PATCH=0
     echo "${MAJOR}.${MINOR}.${PATCH}"
     exit 0
 fi
 
-if [[ "$NEXT_PATCH" == "true" ]]; then
+if [[ "$BUMP_PATCH" == "true" ]]; then
     PATCH=$((PATCH + 1))
     echo "${MAJOR}.${MINOR}.${PATCH}"
     exit 0
 fi
 
-# Default: print current version
+# Handle component queries for current version (show only that component)
+if [[ "$SHOW_MAJOR" == "true" ]]; then
+    echo "${MAJOR}"
+    exit 0
+fi
+
+if [[ "$SHOW_MINOR" == "true" ]]; then
+    echo "${MINOR}"
+    exit 0
+fi
+
+if [[ "$SHOW_PATCH" == "true" ]]; then
+    echo "${PATCH}"
+    exit 0
+fi
+
+# Default: print current version with all three parts
 echo "${MAJOR}.${MINOR}.${PATCH}"
