@@ -1,6 +1,6 @@
 import { useEffect, type RefObject, type MutableRefObject } from "react";
 import { isWasmReady, convertFrameToAscii } from "../wasm/mirror";
-import type { AsciiRendererHandle } from "../components";
+import type { AsciiRendererHandle } from "../components/AsciiRenderer";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;

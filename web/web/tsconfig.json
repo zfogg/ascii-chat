@@ -8,6 +8,9 @@
       "@ascii-chat/shared/components": [
         "../packages/shared/src/components/index.ts"
       ],
+      "@ascii-chat/shared/components/*": [
+        "../packages/shared/src/components/*"
+      ],
       "@ascii-chat/shared/hooks": ["../packages/shared/src/hooks/index.ts"],
       "@ascii-chat/shared/wasm": ["../packages/shared/src/wasm/index.ts"],
       "@ascii-chat/shared/utils": ["../packages/shared/src/utils/index.ts"],

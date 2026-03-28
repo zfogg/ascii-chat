@@ -15,6 +15,9 @@
     }
   },
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "pnpm -r --filter './www' --filter './discovery' --filter './web' run dev",
     "build": "pnpm -r run build",

@@ -71,7 +71,6 @@ export const AsciiRenderer = forwardRef<
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const firstRenderDoneRef = useRef(false);
-  const rafCallbackFiredRef = useRef(false);
 
   // FPS tracking
   const frameCountRef = useRef(0);
@@ -89,11 +88,14 @@ export const AsciiRenderer = forwardRef<
     );
     if (wasmModuleReady) {
       const getModuleStart = performance.now();
-      // Lazy-load wasm module at runtime to avoid build failures when wasm is not available
-      // @ts-ignore - Module may not exist in all builds (e.g., discovery)
-      import("@ascii-chat/shared/wasm")
-        .then((wasmModule) => {
-          const module = wasmModule.getMirrorModule();
+      // Lazy-load wasm module to avoid build failures when wasm is not available
+      // Use computed string literal to avoid static TypeScript resolution
+      const modulePath = ["@ascii-chat", "shared", "wasm"].join("/");
+      import(modulePath)
+        .then((wasmModule: unknown) => {
+          const module = (
+            wasmModule as { getMirrorModule: () => MirrorModule }
+          ).getMirrorModule();
           const getModuleEnd = performance.now();
           console.log(
             `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
@@ -134,11 +136,8 @@ export const AsciiRenderer = forwardRef<
       return;
     }
 
-    // Reset RAF callback flag for this effect cycle
-    rafCallbackFiredRef.current = false;
-
     console.log(
-      `[AsciiRenderer] EFFECT-2 BODY START at ${performance.now().toFixed(0)}ms - initializing canvas (reset rafCallbackFiredRef)`,
+      `[AsciiRenderer] EFFECT-2 BODY START at ${performance.now().toFixed(0)}ms - initializing canvas`,
     );
     const canvas = canvasRef.current;
     console.log(
@@ -224,98 +223,26 @@ export const AsciiRenderer = forwardRef<
       `[AsciiRenderer] initRenderer function defined at ${performance.now().toFixed(0)}ms`,
     );
 
-    // Use setTimeout instead of RAF for hidden canvas initialization
-    // RAF callbacks don't fire reliably for hidden/non-rendering canvases
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let retryCount = 0;
-    let startTime = performance.now();
-    const maxRetries = 50; // 50 retries * 50ms = 2.5 seconds max wait
-    const retryDelayMs = 50;
-    const maxWaitTime = 2500; // Max 2.5 seconds wait before using fallback dimensions
-
-    const checkAndInit = () => {
-      const checkTimeA = performance.now();
-      if (!rafCallbackFiredRef.current) {
-        rafCallbackFiredRef.current = true;
-        console.log(
-          `[AsciiRenderer checkAndInit] FIRST CALLBACK FIRED at ${checkTimeA.toFixed(0)}ms (${(checkTimeA - startTime).toFixed(0)}ms after scheduled)`,
-        );
-      }
-      retryCount++;
-      const elapsed = performance.now() - startTime;
-      const checkTime = performance.now();
-
-      const canvasRect = canvas.getBoundingClientRect();
+    // Synchronous initialization: check if module is ready and initialize immediately
+    if (moduleRef.current) {
       console.log(
-        `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, module=${!!moduleRef.current}, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}, boundingRect=${canvasRect.width}x${canvasRect.height}@(${canvasRect.left},${canvasRect.top})`,
+        `[AsciiRenderer] EFFECT-2: Module ready, initializing at ${performance.now().toFixed(0)}ms`,
       );
-
-      // Wait for module to be available AND canvas to have layout
-      const moduleReady = !!moduleRef.current;
-      const canvasDimsReady =
-        retryCount === 1 || (canvas.clientWidth > 0 && canvas.clientHeight > 0);
-
-      if (moduleReady && canvasDimsReady) {
-        console.log(
-          `[AsciiRenderer checkAndInit] Module ready and canvas ready at ${performance.now().toFixed(0)}ms, calling initRenderer`,
-        );
-        const initStart = performance.now();
-        initRenderer();
-        console.log(
-          `[AsciiRenderer checkAndInit] initRenderer returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - initStart).toFixed(1)}ms)`,
-        );
-      } else if (retryCount < maxRetries && elapsed < maxWaitTime) {
-        // Use setTimeout to wait for next check
-        console.log(
-          `[AsciiRenderer checkAndInit] Waiting at ${performance.now().toFixed(0)}ms (module=${moduleReady}, canvasDims=${canvasDimsReady}), scheduling next check in ${retryDelayMs}ms`,
-        );
-        timeoutId = setTimeout(checkAndInit, retryDelayMs);
-      } else {
-        // Force initialization with fallback dimensions after timeout
-        console.log(
-          `[AsciiRenderer checkAndInit] Timeout/max retries reached at ${performance.now().toFixed(0)}ms, module=${moduleReady}, forcing init`,
-        );
-        const forceInitStart = performance.now();
-        initRenderer();
-        console.log(
-          `[AsciiRenderer checkAndInit] forced initRenderer returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - forceInitStart).toFixed(1)}ms)`,
-        );
-      }
-    };
-
-    const fnDefTime = performance.now();
-    console.log(
-      `[AsciiRenderer] checkAndInit function defined at ${fnDefTime.toFixed(0)}ms`,
-    );
-
-    console.log(
-      `[AsciiRenderer] About to start timer scheduling block at ${performance.now().toFixed(0)}ms`,
-    );
-
-    // Schedule first check immediately
-    const scheduleInitTime = performance.now();
-    console.log(
-      `[AsciiRenderer Init] Scheduling first check at ${scheduleInitTime.toFixed(0)}ms`,
-    );
-    timeoutId = setTimeout(checkAndInit, 0);
-    console.log(
-      `[AsciiRenderer Init] setTimeout returned at ${performance.now().toFixed(0)}ms`,
-    );
+      initRenderer();
+    } else {
+      console.log(
+        `[AsciiRenderer] EFFECT-2: Module not ready yet, will retry when wasmModuleReady changes at ${performance.now().toFixed(0)}ms`,
+      );
+    }
 
     return () => {
       const cleanupTime = performance.now();
       const timeSinceSchedule = cleanupTime - effectStartTime;
       console.log(
-        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(0)}ms: timeoutId=${timeoutId}, setupDone=${setupDoneRef.current}, callbackFired=${rafCallbackFiredRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(1)}ms`,
+        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(0)}ms: setupDone=${setupDoneRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(1)}ms`,
       );
-      if (timeoutId !== undefined) {
-        console.log(
-          `[AsciiRenderer] EFFECT-2 CLEANUP: Clearing timeout ${timeoutId}`,
-        );
-        clearTimeout(timeoutId);
-      }
     };
-  }, []);
+  }, [wasmModuleReady, updateDimensions]);
 
   // Handle canvas resizes
   useEffect(() => {

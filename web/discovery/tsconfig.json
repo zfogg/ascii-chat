@@ -10,7 +10,8 @@
       "@ascii-chat/shared/styles/*": ["../packages/shared/src/styles/*"]
     },
     "skipLibCheck": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "noImplicitAny": true
   },
   "include": ["src"]
 }
