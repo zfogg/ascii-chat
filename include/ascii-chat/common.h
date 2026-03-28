@@ -91,6 +91,13 @@ typedef unsigned long long uint64_t;
 #define PLATFORM_MAX_PATH_LENGTH 4096
 #endif
 
+// INFO: flightaware/dump1090 dev made this after my pr: https://github.com/flightaware/dump1090/pull/282
+#if ((defined(__clang__) && __clang_major__ >= 21) || (defined(__GNUC__) && __GNUC__ >= 10))
+#define NONSTRING __attribute__((nonstring))
+#else
+#define NONSTRING /* nothing */
+#endif
+
 /* ============================================================================
  * Include organized sub-headers for specific domains
  * ============================================================================ */
