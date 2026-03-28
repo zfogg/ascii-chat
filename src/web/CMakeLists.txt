@@ -81,7 +81,7 @@ set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
 if(BUILD_WEB)
     # libsodium - check cache BEFORE FetchContent declaration
     # Support both old and new cache locations for backwards compatibility
-    set(sodium_a_path "${FETCHCONTENT_BASE_DIR}/sodium-build/src/libsodium.a")
+    set(sodium_a_path "${FETCHCONTENT_BASE_DIR}/sodium-build/libsodium.a")
     if(EXISTS "${sodium_a_path}")
         message(STATUS "Using cached Sodium: ${sodium_a_path}")
         if(NOT TARGET sodium)
@@ -283,6 +283,7 @@ include_directories(
     ${raylib_wasm_SOURCE_DIR}/src  # raylib headers
     # FetchContent dependency includes (needed for all targets)
     ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
+    ${FETCHCONTENT_BASE_DIR}/pcre2-build
     ${FETCHCONTENT_BASE_DIR}/pcre2-src
     ${FETCHCONTENT_BASE_DIR}/opus-src/include
     ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
@@ -566,12 +567,15 @@ target_include_directories(wasm-common PRIVATE
 # See web/web/package.json for ffmpeg.wasm dependency
 
 # Add include directories for wasm-common (FetchContent handles these via IMPORTED targets)
+# FreeType for Emscripten - use CMAKE_FIND_ROOT_PATH to locate port includes
 target_include_directories(wasm-common PRIVATE
     ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
+    ${FETCHCONTENT_BASE_DIR}/pcre2-build
     ${FETCHCONTENT_BASE_DIR}/pcre2-src
     ${FETCHCONTENT_BASE_DIR}/opus-src/include
     ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
     ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
+    ${CMAKE_FIND_ROOT_PATH}/include
 )
 
 # Apply sanitizers

@@ -1,6 +1,3 @@
-/* Import xterm.js CSS */
-@import "xterm/css/xterm.css";
-
 /* Import Tailwind v4 */
 @import "tailwindcss";
 

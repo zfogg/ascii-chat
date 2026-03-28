@@ -274,11 +274,14 @@ export function useMirrorWebcam({
         `[Mirror] Auto-starting webcam with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
       );
       console.time("[Mirror] startWebcam()");
-      void Promise.resolve().then(() => {
-        console.log(`[Mirror] Calling startWebcam at ${performance.now()}`);
-        startWebcam();
-        console.timeEnd("[Mirror] startWebcam()");
-      });
+      void Promise.resolve()
+        .then(() => {
+          console.log(`[Mirror] Calling startWebcam at ${performance.now()}`);
+          return startWebcam();
+        })
+        .then(() => {
+          console.timeEnd("[Mirror] startWebcam()");
+        });
     }
   }, [
     wasmInitialized,
