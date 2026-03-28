@@ -261,68 +261,69 @@ export const AsciiRenderer = forwardRef<
           // Free memory
           moduleRef.current._free(ptr);
 
-          // Display framebuffer on canvas
-          try {
-            const canvas = canvasRef.current;
-            if (
-              canvas &&
-              canvas.getContext &&
-              moduleRef.current._ascii_renderer_get_framebuffer
-            ) {
-              const fbPtr = moduleRef.current._ascii_renderer_get_framebuffer?.();
-              const fbWidth = moduleRef.current._ascii_renderer_get_framebuffer_width?.();
-              const fbHeight = moduleRef.current._ascii_renderer_get_framebuffer_height?.();
-              const fbStride = moduleRef.current._ascii_renderer_get_framebuffer_stride?.();
+          // TODO: Display framebuffer on canvas
+          // Currently disabled - testing if writeFrame itself works first
+          // try {
+          //   const canvas = canvasRef.current;
+          //   if (
+          //     canvas &&
+          //     canvas.getContext &&
+          //     moduleRef.current._ascii_renderer_get_framebuffer
+          //   ) {
+          //     const fbPtr = moduleRef.current._ascii_renderer_get_framebuffer?.();
+          //     const fbWidth = moduleRef.current._ascii_renderer_get_framebuffer_width?.();
+          //     const fbHeight = moduleRef.current._ascii_renderer_get_framebuffer_height?.();
+          //     const fbStride = moduleRef.current._ascii_renderer_get_framebuffer_stride?.();
 
-              if (
-                fbPtr &&
-                fbWidth &&
-                fbHeight &&
-                fbWidth > 0 &&
-                fbHeight > 0 &&
-                typeof fbWidth === "number" &&
-                typeof fbHeight === "number"
-              ) {
-                const w: number = fbWidth as number;
-                const h: number = fbHeight as number;
-                const stride: number = fbStride ? (fbStride as number) : w * 3;
+          //     if (
+          //       fbPtr &&
+          //       fbWidth &&
+          //       fbHeight &&
+          //       fbWidth > 0 &&
+          //       fbHeight > 0 &&
+          //       typeof fbWidth === "number" &&
+          //       typeof fbHeight === "number"
+          //     ) {
+          //       const w: number = fbWidth as number;
+          //       const h: number = fbHeight as number;
+          //       const stride: number = fbStride ? (fbStride as number) : w * 3;
 
-                // Read RGB24 framebuffer from WASM memory
-                const fbData: Uint8Array = new Uint8Array(
-                  moduleRef.current.HEAPU8.buffer,
-                  fbPtr,
-                  h * stride
-                );
+          //       // Read RGB24 framebuffer from WASM memory
+          //       const fbData: Uint8Array = new Uint8Array(
+          //         moduleRef.current.HEAPU8.buffer,
+          //         fbPtr,
+          //         h * stride
+          //       );
 
-                // Create ImageData (RGBA)
-                const imageData = new ImageData(w, h);
-                let dstIdx = 0;
+          //       // Create ImageData (RGBA)
+          //       const imageData = new ImageData(w, h);
+          //       let dstIdx = 0;
 
-                // Convert RGB24 to RGBA32
-                for (let y = 0; y < h; y++) {
-                  const rowStart: number = y * stride;
-                  for (let x = 0; x < w; x++) {
-                    const srcIdx: number = rowStart + x * 3;
-                    const r: number = fbData[srcIdx] ?? 0;
-                    const g: number = fbData[srcIdx + 1] ?? 0;
-                    const b: number = fbData[srcIdx + 2] ?? 0;
-                    imageData.data[dstIdx++] = r;
-                    imageData.data[dstIdx++] = g;
-                    imageData.data[dstIdx++] = b;
-                    imageData.data[dstIdx++] = 255;
-                  }
-                }
+          //       // Convert RGB24 to RGBA32
+          //       for (let y = 0; y < h; y++) {
+          //         const rowStart: number = y * stride;
+          //         for (let x = 0; x < w; x++) {
+          //           const srcIdx: number = rowStart + x * 3;
+          //           const r: number = fbData[srcIdx] ?? 0;
+          //           const g: number = fbData[srcIdx + 1] ?? 0;
+          //           const b: number = fbData[srcIdx + 2] ?? 0;
+          //           imageData.data[dstIdx++] = r;
+          //           imageData.data[dstIdx++] = g;
+          //           imageData.data[dstIdx++] = b;
+          //           imageData.data[dstIdx++] = 255;
+          //         }
+          //       }
 
-                // Display on canvas
-                const ctx = canvas.getContext("2d");
-                if (ctx) {
-                  ctx.putImageData(imageData, 0, 0);
-                }
-              }
-            }
-          } catch (displayErr) {
-            console.error("[AsciiRenderer] Failed to display framebuffer:", displayErr);
-          }
+          //       // Display on canvas
+          //       const ctx = canvas.getContext("2d");
+          //       if (ctx) {
+          //         ctx.putImageData(imageData, 0, 0);
+          //       }
+          //     }
+          //   }
+          // } catch (displayErr) {
+          //   console.error("[AsciiRenderer] Failed to display framebuffer:", displayErr);
+          // }
 
           // Mark first render as done so resize can proceed
           if (!firstRenderDoneRef.current) {
