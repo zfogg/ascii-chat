@@ -287,6 +287,8 @@ include_directories(
     ${FETCHCONTENT_BASE_DIR}/pcre2-src
     ${FETCHCONTENT_BASE_DIR}/opus-src/include
     ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
+    # FreeType for rendering
+    /usr/include/freetype2
 )
 
 # Source files for WASM mirror entry point
@@ -567,7 +569,6 @@ target_include_directories(wasm-common PRIVATE
 # See web/web/package.json for ffmpeg.wasm dependency
 
 # Add include directories for wasm-common (FetchContent handles these via IMPORTED targets)
-# FreeType for Emscripten - use CMAKE_FIND_ROOT_PATH to locate port includes
 target_include_directories(wasm-common PRIVATE
     ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
     ${FETCHCONTENT_BASE_DIR}/pcre2-build
@@ -575,7 +576,6 @@ target_include_directories(wasm-common PRIVATE
     ${FETCHCONTENT_BASE_DIR}/opus-src/include
     ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
     ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
-    ${CMAKE_FIND_ROOT_PATH}/include
 )
 
 # Apply sanitizers

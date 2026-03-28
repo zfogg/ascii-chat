@@ -73,21 +73,43 @@ test("debug mirror 30-second hang - main thread blocking", async ({
   const navTime = performance.now() - navStart;
   console.log(`[HANG-DEBUG] Navigation completed in ${navTime.toFixed(2)}ms`);
 
-  // Wait 2 seconds for page to settle, then click "Start Webcam" button
+  // Wait 2 seconds for page to settle, then look for start button or auto-start
   await page.waitForTimeout(2000);
-  console.log("[HANG-DEBUG] Looking for 'Start Webcam' button...");
+  console.log("[HANG-DEBUG] Checking page state after 2s...");
 
-  const startButton = page
-    .locator("button", { hasText: /start|webcam/i })
-    .first();
-  const buttonCount = await startButton.count();
-
-  if (buttonCount > 0) {
-    console.log("[HANG-DEBUG] Found start button, clicking...");
-    await startButton.click();
-  } else {
+  // Check if AsciiRenderer canvas is visible (indicates page initialization)
+  try {
+    const rendererVisible = await page
+      .locator("canvas")
+      .first()
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
     console.log(
-      "[HANG-DEBUG] No start button found, will monitor for auto-start",
+      `[HANG-DEBUG] AsciiRenderer canvas visible: ${rendererVisible}`,
+    );
+  } catch (err) {
+    console.log(`[HANG-DEBUG] Could not check canvas visibility: ${err}`);
+  }
+
+  // Try to find and click start button, but don't fail if not found (page may auto-start)
+  try {
+    const startButton = page
+      .locator("button")
+      .filter({ hasText: /start|webcam/i })
+      .first();
+
+    const exists = (await startButton.count()) > 0;
+    if (exists) {
+      console.log("[HANG-DEBUG] Found start button, clicking...");
+      await startButton.click({ timeout: 2000 });
+    } else {
+      console.log(
+        "[HANG-DEBUG] No start button found, monitoring for auto-start",
+      );
+    }
+  } catch (err) {
+    console.log(
+      `[HANG-DEBUG] Could not interact with start button: ${err}`,
     );
   }
 
