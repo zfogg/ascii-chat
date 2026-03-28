@@ -5,9 +5,9 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import { getMirrorModule } from "../wasm/mirror";
 
 // Local type definition to avoid import dependency on wasm module
-// This allows the component to work in builds without WASM (e.g., discovery)
 interface MirrorModule {
   canvas?: HTMLCanvasElement;
   _ascii_renderer_init(width: number, height: number): void;
@@ -88,26 +88,15 @@ export const AsciiRenderer = forwardRef<
     );
     if (wasmModuleReady) {
       const getModuleStart = performance.now();
-      // Lazy-load wasm module to avoid build failures when wasm is not available
-      // Use computed string literal to avoid static TypeScript resolution
-      const modulePath = ["@ascii-chat", "shared", "wasm"].join("/");
-      import(modulePath)
-        .then((wasmModule: unknown) => {
-          const module = (
-            wasmModule as { getMirrorModule: () => MirrorModule }
-          ).getMirrorModule();
-          const getModuleEnd = performance.now();
-          console.log(
-            `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
-          );
-          moduleRef.current = module;
-          console.log(
-            `[AsciiRenderer] moduleRef.current set at ${performance.now().toFixed(0)}ms`,
-          );
-        })
-        .catch((err) => {
-          console.error("[AsciiRenderer] Failed to load WASM module:", err);
-        });
+      const module = getMirrorModule();
+      const getModuleEnd = performance.now();
+      console.log(
+        `[AsciiRenderer] getMirrorModule at ${getModuleStart.toFixed(0)}ms returned ${!!module} (took ${(getModuleEnd - getModuleStart).toFixed(1)}ms)`,
+      );
+      moduleRef.current = module;
+      console.log(
+        `[AsciiRenderer] moduleRef.current set at ${performance.now().toFixed(0)}ms`,
+      );
     }
     return () => {
       console.log(
@@ -223,16 +212,32 @@ export const AsciiRenderer = forwardRef<
       `[AsciiRenderer] initRenderer function defined at ${performance.now().toFixed(0)}ms`,
     );
 
-    // Synchronous initialization: check if module is ready and initialize immediately
+    // Try to initialize synchronously
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (moduleRef.current) {
       console.log(
         `[AsciiRenderer] EFFECT-2: Module ready, initializing at ${performance.now().toFixed(0)}ms`,
       );
       initRenderer();
     } else {
+      // Module not ready yet - wait one microtask for it to load, then retry
       console.log(
-        `[AsciiRenderer] EFFECT-2: Module not ready yet, will retry when wasmModuleReady changes at ${performance.now().toFixed(0)}ms`,
+        `[AsciiRenderer] EFFECT-2: Module not ready, scheduling retry at ${performance.now().toFixed(0)}ms`,
       );
+      timeoutId = setTimeout(() => {
+        if (moduleRef.current && !setupDoneRef.current) {
+          console.log(
+            `[AsciiRenderer] EFFECT-2: Retry - module now ready at ${performance.now().toFixed(0)}ms, initializing`,
+          );
+          initRenderer();
+        } else if (setupDoneRef.current) {
+          console.log(`[AsciiRenderer] EFFECT-2: Retry - already initialized`);
+        } else {
+          console.log(
+            `[AsciiRenderer] EFFECT-2: Retry - module still not ready at ${performance.now().toFixed(0)}ms`,
+          );
+        }
+      }, 0);
     }
 
     return () => {
@@ -241,6 +246,9 @@ export const AsciiRenderer = forwardRef<
       console.log(
         `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(0)}ms: setupDone=${setupDoneRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(1)}ms`,
       );
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [wasmModuleReady, updateDimensions]);
 
