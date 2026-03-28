@@ -12,9 +12,6 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <errno.h>
-#if defined(__linux__) || defined(__APPLE__)
-#include <sys/resource.h>
-#endif
 
 #include "discovery-service/main.h"
 #include "discovery-service/server.h"
@@ -97,15 +94,7 @@ int acds_main(void) {
   }
 
   // Increase file descriptor limit for many concurrent connections
-#ifdef __linux__
-  struct rlimit rl = {.rlim_cur = 65536, .rlim_max = 65536};
-  if (setrlimit(RLIMIT_NOFILE, &rl) < 0) {
-    log_warn("couldn't raise fd limit: %s", strerror(errno));
-  }
-#elif defined(__APPLE__)
-  struct rlimit rl = {.rlim_cur = 10240, .rlim_max = RLIM_INFINITY};
-  setrlimit(RLIMIT_NOFILE, &rl);
-#endif
+  platform_raise_fd_limit(65536);
 
   // Options already parsed and shared initialization complete (done by main.c)
   const options_t *opts = options_get();

@@ -194,7 +194,7 @@ static bool find_query_server_path(char *buffer, size_t buffer_size) {
   }
 
   // Try to find via environment variable
-  const char *query_server_path = getenv("ASCIICHAT_QUERY_SERVER");
+  const char *query_server_path = SAFE_GETENV("ASCIICHAT_QUERY_SERVER");
   if (query_server_path != NULL) {
     safe_snprintf(buffer, buffer_size, "%s", query_server_path);
 #ifdef _WIN32
@@ -228,11 +228,7 @@ int query_init(int preferred_port) {
 
 #ifdef _WIN32
   // Windows implementation using CreateProcess
-  WSADATA wsa_data;
-  if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-    fprintf(stderr, "[query] WSAStartup failed\n");
-    return -1;
-  }
+  // Winsock is already initialized by platform_init()
 
   char cmdline[2048];
   safe_snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path,
@@ -332,8 +328,7 @@ void query_destroy(void) {
     g_controller_pid = 0;
   }
 
-  // Clean up Winsock (matches WSAStartup in query_init)
-  WSACleanup();
+  // Winsock cleanup handled by platform_cleanup()
 #else
   if (g_controller_pid > 0) {
     // Send SIGTERM for graceful shutdown

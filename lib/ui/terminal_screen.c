@@ -133,8 +133,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     terminal_size_t new_size = {0};
 
     // PRIORITY 1: COLUMNS and ROWS environment variables (most reliable, user-controlled)
-    const char *cols_env = getenv("COLUMNS");
-    const char *rows_env = getenv("ROWS");
+    const char *cols_env = SAFE_GETENV("COLUMNS");
+    const char *rows_env = SAFE_GETENV("ROWS");
     if (cols_env && rows_env) {
       char *endptr;
       errno = 0;

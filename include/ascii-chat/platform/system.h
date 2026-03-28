@@ -353,6 +353,13 @@ int platform_setenv(const char *name, const char *value);
  */
 int platform_unsetenv(const char *name);
 
+/**
+ * @brief Raise the file descriptor limit for the current process
+ * @param limit Desired soft limit (0 = use platform default maximum)
+ * @ingroup platform_system
+ */
+void platform_raise_fd_limit(unsigned int limit);
+
 // ============================================================================
 // Stream Redirection
 // ============================================================================

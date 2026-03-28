@@ -402,6 +402,33 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
  */
 asciichat_error_t platform_rmdir_recursive(const char *path);
 
+/**
+ * @brief Directory entry information for platform_dir_foreach()
+ * @ingroup platform
+ */
+typedef struct {
+  const char *name; /**< Entry name (filename only, not full path) */
+  bool is_dir;      /**< true if entry is a directory */
+} platform_dir_entry_t;
+
+/**
+ * @brief Callback for platform_dir_foreach()
+ * @param entry Directory entry information
+ * @param user_data User-provided context pointer
+ * @return true to continue iteration, false to stop
+ */
+typedef bool (*platform_dir_foreach_cb)(const platform_dir_entry_t *entry, void *user_data);
+
+/**
+ * @brief Iterate over entries in a directory
+ * @param path Directory path
+ * @param callback Function called for each entry (excluding "." and "..")
+ * @param user_data Opaque pointer passed to callback
+ * @return ASCIICHAT_OK on success, error code if directory cannot be opened
+ * @ingroup platform
+ */
+asciichat_error_t platform_dir_foreach(const char *path, platform_dir_foreach_cb callback, void *user_data);
+
 // ============================================================================
 // Temporary Files
 // ============================================================================

@@ -321,6 +321,26 @@ int platform_unsetenv(const char *name) {
   return unsetenv(name);
 }
 
+void platform_raise_fd_limit(unsigned int limit) {
+#if defined(__linux__) || defined(__APPLE__)
+  struct rlimit rl;
+  if (getrlimit(RLIMIT_NOFILE, &rl) != 0) return;
+
+  rlim_t target = limit > 0 ? (rlim_t)limit : rl.rlim_max;
+#ifdef __APPLE__
+  // macOS caps soft limit lower than hard limit
+  if (target > 10240) target = 10240;
+#endif
+  if (target > rl.rlim_max) target = rl.rlim_max;
+  if (target <= rl.rlim_cur) return;
+
+  rl.rlim_cur = target;
+  if (setrlimit(RLIMIT_NOFILE, &rl) < 0) {
+    log_warn("Failed to raise fd limit to %llu: %s", (unsigned long long)target, strerror(errno));
+  }
+#endif
+}
+
 // ============================================================================
 // Memory Operations
 // ============================================================================

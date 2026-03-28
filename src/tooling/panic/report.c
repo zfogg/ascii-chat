@@ -26,14 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_WIN32)
-#include <io.h>
-#include <windows.h>
+#include <unistd.h>
+#ifdef _WIN32
 #include <ascii-chat/platform/windows/getopt.h>
 #else
 #include <getopt.h>
-#include <dirent.h>
-#include <unistd.h>
 #endif
 
 /**
@@ -160,12 +157,16 @@ static const char *resolve_default_log_dir(void) {
   if (dir != NULL && dir[0] != '\0') {
     return dir;
   }
-#if defined(_WIN32)
-  // Default to current directory on Windows (trace.log is usually in cwd)
-  return ".";
+  // Default to system temp directory
+  const char *tmp = SAFE_GETENV("TMPDIR");
+  if (!tmp) tmp = SAFE_GETENV("TMP");
+  if (!tmp) tmp = SAFE_GETENV("TEMP");
+#ifdef _WIN32
+  if (!tmp) tmp = ".";
 #else
-  return "/tmp";
+  if (!tmp) tmp = "/tmp";
 #endif
+  return tmp;
 }
 
 static void free_record(log_record_t *record) {
@@ -529,37 +530,33 @@ static bool process_file(const report_config_t *config, const char *path, thread
   return true;
 }
 
-#if defined(_WIN32)
-static bool build_windows_glob_pattern(char *buffer, size_t capacity, const char *directory, const char *suffix) {
-  if (buffer == NULL || directory == NULL || suffix == NULL) {
-    return false;
+typedef struct {
+  const report_config_t *config;
+  thread_entry_t **entries;
+  bool success;
+} collect_ctx_t;
+
+static bool collect_entry_cb(const platform_dir_entry_t *entry, void *user_data) {
+  collect_ctx_t *ctx = (collect_ctx_t *)user_data;
+  if (entry->is_dir) return true;
+
+  // Filter: must start with "ascii-instr-" and end with ".log"
+  if (strncmp(entry->name, "ascii-instr-", strlen("ascii-instr-")) != 0) return true;
+  size_t name_len = strlen(entry->name);
+  if (name_len < 5 || strcmp(entry->name + name_len - 4, ".log") != 0) return true;
+
+  char path_buffer[PLATFORM_MAX_PATH_LENGTH];
+  int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", ctx->config->log_dir, entry->name);
+  if (written < 0 || written >= (int)sizeof(path_buffer)) {
+    log_warn("Skipping path that exceeds buffer: %s/%s", ctx->config->log_dir, entry->name);
+    return true;
   }
 
-  size_t length = 0;
-  for (const char *cursor = directory; *cursor != '\0'; ++cursor) {
-    char ch = *cursor == '/' ? '\\' : *cursor;
-    if (length + 1 >= capacity) {
-      return false;
-    }
-    buffer[length++] = ch;
+  if (!process_file(ctx->config, path_buffer, ctx->entries)) {
+    ctx->success = false;
   }
-  if (length == 0) {
-    return false;
-  }
-  if (buffer[length - 1] != '\\') {
-    if (length + 1 >= capacity) {
-      return false;
-    }
-    buffer[length++] = '\\';
-  }
-  const size_t suffix_length = strlen(suffix);
-  if (length + suffix_length >= capacity) {
-    return false;
-  }
-  memcpy(buffer + length, suffix, suffix_length + 1);
   return true;
 }
-#endif
 
 static bool collect_entries(const report_config_t *config, thread_entry_t **entries) {
   // If a single log file is specified, just process that file
@@ -567,76 +564,13 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
     return process_file(config, config->log_file, entries);
   }
 
-#if defined(_WIN32)
-  char pattern[MAX_PATH];
-  if (!build_windows_glob_pattern(pattern, sizeof(pattern), config->log_dir, "ascii-instr-*.log")) {
-    log_error("Instrumentation log directory path is too long: %s", config->log_dir);
+  collect_ctx_t ctx = {.config = config, .entries = entries, .success = true};
+  asciichat_error_t err = platform_dir_foreach(config->log_dir, collect_entry_cb, &ctx);
+  if (err != ASCIICHAT_OK) {
+    log_error("Unable to open instrumentation log directory '%s'", config->log_dir);
     return false;
   }
-
-  struct _finddata_t data = {0};
-  intptr_t handle = _findfirst(pattern, &data);
-  if (handle == -1) {
-    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, SAFE_STRERROR(errno));
-    return false;
-  }
-
-  bool success = true;
-  do {
-    if ((data.attrib & _A_SUBDIR) != 0) {
-      continue;
-    }
-    size_t name_len = strlen(data.name);
-    if (name_len < 4 || strcmp(data.name + name_len - 4, ".log") != 0) {
-      continue;
-    }
-
-    char path_buffer[MAX_PATH];
-    int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, data.name);
-    if (written < 0 || written >= (int)sizeof(path_buffer)) {
-      log_warn("Skipping path that exceeds buffer: %s/%s", config->log_dir, data.name);
-      continue;
-    }
-    if (!process_file(config, path_buffer, entries)) {
-      success = false;
-    }
-  } while (_findnext(handle, &data) == 0);
-
-  _findclose(handle);
-  return success;
-#else
-  DIR *directory = opendir(config->log_dir);
-  if (directory == NULL) {
-    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, SAFE_STRERROR(errno));
-    return false;
-  }
-
-  struct dirent *entry = NULL;
-  while ((entry = readdir(directory)) != NULL) {
-    if (entry->d_name[0] == '.') {
-      continue;
-    }
-    if (strncmp(entry->d_name, "ascii-instr-", strlen("ascii-instr-")) != 0) {
-      continue;
-    }
-    size_t name_length = strlen(entry->d_name);
-    if (name_length < 5 || strcmp(entry->d_name + name_length - 4, ".log") != 0) {
-      continue;
-    }
-
-    char path_buffer[PATH_MAX];
-    int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, entry->d_name);
-    if (written < 0 || written >= (int)sizeof(path_buffer)) {
-      log_warn("Skipping path that exceeds buffer: %s/%s", config->log_dir, entry->d_name);
-      continue;
-    }
-
-    process_file(config, path_buffer, entries);
-  }
-
-  closedir(directory);
-  return true;
-#endif
+  return ctx.success;
 }
 
 int main(int argc, char **argv) {

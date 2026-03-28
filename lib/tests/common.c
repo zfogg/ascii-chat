@@ -32,7 +32,7 @@ const char *test_get_binary_path(void) {
 #else
   // Check if we're in Docker (/.dockerenv file exists)
   bool in_docker = (access("/.dockerenv", F_OK) == 0);
-  const char *build_dir = getenv("BUILD_DIR");
+  const char *build_dir = SAFE_GETENV("BUILD_DIR");
 
   // Try BUILD_DIR first if set
   if (build_dir) {

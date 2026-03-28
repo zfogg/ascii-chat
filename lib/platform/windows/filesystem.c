@@ -276,6 +276,40 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
   return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to create temporary directory");
 }
 
+asciichat_error_t platform_dir_foreach(const char *path, platform_dir_foreach_cb callback, void *user_data) {
+  if (!path || !callback) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "path or callback is NULL");
+  }
+
+  char search_path[MAX_PATH];
+  int written = safe_snprintf(search_path, sizeof(search_path), "%s\\*", path);
+  if (written < 0 || written >= (int)sizeof(search_path)) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Directory path too long: %s", path);
+  }
+
+  WIN32_FIND_DATAA find_data;
+  HANDLE handle = FindFirstFileA(search_path, &find_data);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open directory: %s", path);
+  }
+
+  do {
+    if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
+      continue;
+    }
+    platform_dir_entry_t entry = {
+        .name = find_data.cFileName,
+        .is_dir = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0,
+    };
+    if (!callback(&entry, user_data)) {
+      break;
+    }
+  } while (FindNextFileA(handle, &find_data));
+
+  FindClose(handle);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t platform_rmdir_recursive(const char *path) {
   if (!path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path is NULL");

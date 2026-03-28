@@ -196,6 +196,34 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t platform_dir_foreach(const char *path, platform_dir_foreach_cb callback, void *user_data) {
+  if (!path || !callback) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "path or callback is NULL");
+  }
+
+  DIR *dir = opendir(path);
+  if (!dir) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open directory: %s", path);
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+      continue;
+    }
+    platform_dir_entry_t dir_entry = {
+        .name = entry->d_name,
+        .is_dir = (entry->d_type == DT_DIR),
+    };
+    if (!callback(&dir_entry, user_data)) {
+      break;
+    }
+  }
+
+  closedir(dir);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t platform_rmdir_recursive(const char *path) {
   if (!path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path is NULL");
