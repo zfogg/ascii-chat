@@ -29,9 +29,7 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/terminal/fd/reader.h>
-#ifndef _WIN32
 #include <ascii-chat/media/render/renderer.h>
-#endif
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii/neon.h>
@@ -103,13 +101,11 @@ typedef struct session_display_ctx {
   /** @brief Video FPS for render-file encoding */
   uint32_t render_fps;
 
-#ifndef _WIN32
   /** @brief Render-to-file context (NULL if disabled) */
   render_file_ctx_t *render_file;
 
   /** @brief Stdin frame reader for ASCII-to-video rendering (borrowed ref, not owned) */
   terminal_fd_reader_t *stdin_reader;
-#endif
 } session_display_ctx_t;
 
 /* ============================================================================
@@ -261,7 +257,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
-#ifndef _WIN32
   // Initialize render-file if enabled (FFmpeg encodes to stdout when "-" is specified)
   const char *render_file_opt = GET_OPTION(render_file);
   log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), will initialize=%s",
@@ -313,7 +308,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   } else {
     log_info("render-file: NOT initializing (render_file_opt is %s)", render_file_opt ? "empty" : "NULL");
   }
-#endif
 
   ctx->initialized = true;
   return ctx;
@@ -350,13 +344,11 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     ctx->fps_counter = NULL;
   }
 
-#ifndef _WIN32
   // Cleanup render-file if active
   if (ctx->render_file) {
     render_file_destroy(ctx->render_file);
     ctx->render_file = NULL;
   }
-#endif
 
   ctx->initialized = false;
 
@@ -373,12 +365,8 @@ void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) 
     return;
   }
 
-#ifndef _WIN32
   ctx->stdin_reader = (terminal_fd_reader_t *)reader;
   log_debug("session_display: stdin_reader set");
-#else
-  (void)reader; // Unused on Windows
-#endif
 }
 
 /* ============================================================================
@@ -439,11 +427,7 @@ void *session_display_get_stdin_reader(session_display_ctx_t *ctx) {
     return NULL;
   }
 
-#ifndef _WIN32
   return ctx->stdin_reader;
-#else
-  return NULL;
-#endif
 }
 
 uint32_t session_display_get_render_fps(session_display_ctx_t *ctx) {
@@ -462,17 +446,12 @@ void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
 }
 
 void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source) {
-#ifndef _WIN32
   if (!ctx || !ctx->render_file)
     return;
   render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, audio_source, NULL);
   if (audio_source) {
     log_debug("session_display_set_render_audio_source: Audio source set for render-file encoding");
   }
-#else
-  (void)ctx;
-  (void)audio_source;
-#endif
 }
 
 bool session_display_has_first_frame(session_display_ctx_t *ctx) {
@@ -495,11 +474,7 @@ bool session_display_has_render_file(session_display_ctx_t *ctx) {
   if (!ctx) {
     return false;
   }
-#ifndef _WIN32
   return ctx->render_file != NULL;
-#else
-  return false;
-#endif
 }
 
 /* ============================================================================
@@ -804,11 +779,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     splash_intro_done();
 
     // Perform initial terminal reset
-    if (ctx->has_tty
-#ifndef _WIN32
-        && !ctx->render_file
-#endif
-    ) {
+    if (ctx->has_tty && !ctx->render_file) {
       (void)terminal_reset(STDOUT_FILENO);
       (void)terminal_clear_screen();
       (void)terminal_cursor_home(STDOUT_FILENO);
@@ -890,11 +861,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   } else {
     // Non-interactive piped output
     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file="-")
-    if (true
-#ifndef _WIN32
-        && !ctx->render_file
-#endif
-    ) {
+    if (!ctx->render_file) {
       // No render-file, safe to write ASCII frames to stdout
       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
       if (write_buf) {
@@ -938,10 +905,6 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
 }
 
 void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
-#ifdef _WIN32
-  (void)ctx; (void)image; (void)captured_ns;
-  return; // render-file not supported on Windows
-#else
   static int call_count = 0;
   if (call_count++ < 5) {
     log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
@@ -972,15 +935,12 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
   }
 
   // Write ASCII to render-file encoder
-#ifndef _WIN32
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, ascii, captured_ns);
   if (fe != ASCIICHAT_OK) {
     log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
-#endif
 
   SAFE_FREE(ascii);
-#endif // !_WIN32
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
@@ -1238,9 +1198,6 @@ void keyboard_help_toggle_global(void) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
-#ifdef _WIN32
-  (void)ctx; (void)actual_duration_sec;
-#else
   log_info("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
 
@@ -1256,5 +1213,4 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
 
   log_info("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
   render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
-#endif
 }

@@ -170,6 +170,10 @@ elseif(APPLE)
 elseif(WIN32)
     # Windows: Use vcpkg
     find_package(freetype CONFIG REQUIRED)
+    # Set FREETYPE_LIBRARIES for compatibility with lib/CMakeLists.txt
+    set(FREETYPE_LIBRARIES freetype)
+    # Get include dirs from the target
+    get_target_property(FREETYPE_INCLUDE_DIRS freetype INTERFACE_INCLUDE_DIRECTORIES)
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: vcpkg")
 

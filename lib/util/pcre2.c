@@ -242,8 +242,9 @@ void asciichat_pcre2_cleanup_all(void) {
     /* Free pattern string */
     SAFE_FREE(current->pattern);
 
-    /* Free singleton structure */
-    SAFE_FREE(current);
+    /* Do not free the singleton struct itself - static pointers in other
+     * modules (path.c, url.c, etc.) may still reference it during late
+     * shutdown logging. The struct is tiny and harmless to leak at exit. */
 
     current = next;
   }

@@ -3,7 +3,6 @@
  * @ingroup media
  * @brief render_file_* — ties together font resolution, platform renderer, FFmpeg encoder
  */
-#ifndef _WIN32
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/media/source.h>
@@ -317,4 +316,3 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   SAFE_FREE(ctx);
   return err;
 }
-#endif

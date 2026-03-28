@@ -764,14 +764,12 @@ typedef enum {
 #define OPT_STRING_EMPTY_DEFAULT ""
 
 // ============================================================================
-// Render-to-file Options (macOS and Linux only)
+// Render-to-file Options
 // ============================================================================
-#ifndef _WIN32
 #define OPT_RENDER_FILE_DEFAULT ""
 #define OPT_RENDER_THEME_DEFAULT 0 // 0=dark, 1=light, 2=auto
 #define OPT_RENDER_FONT_DEFAULT ""
 #define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
-#endif
 
 // ============================================================================
 // Static Default Value Variables
@@ -860,10 +858,8 @@ static const double default_debug_memory_report_interval_value = 0.0;
 static const bool default_debug_memory_report_interval_explicit_value = false;
 #endif
 
-#ifndef _WIN32
 static const int default_render_theme_value = OPT_RENDER_THEME_DEFAULT;
 static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAULT;
-#endif
 
 /** @{ @} */
 
@@ -1174,12 +1170,10 @@ typedef struct options_state {
   // ============================================================================
   // Render-to-file Options (macOS and Linux only)
   // ============================================================================
-#ifndef _WIN32
   char render_file[OPTIONS_BUFF_SIZE]; ///< Output file path (e.g. output.mp4)
   int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
   double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
-#endif
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

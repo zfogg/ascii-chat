@@ -132,7 +132,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
   // (implemented via should_force_stderr check above)
-#ifndef _WIN32
   const char *render_file_early = GET_OPTION(render_file);
   log_info("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)",
            render_file_early ? render_file_early : "(null)", (void *)render_file_early);
@@ -140,7 +139,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
     log_info("--render-file=- will output binary video to stdout, logging sent to stderr");
   }
-#endif
 
   // ============================================================================
   // SETUP: Keepawake System
@@ -417,11 +415,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // 3. --height is explicitly specified (user must opt-in to stdin render mode)
   // 4. NO media source is being used (not reading from file/URL/test-pattern)
   // This prevents accidental activation when piping to other processes or using mirror mode
-#ifndef _WIN32
   const char *render_file_opt = GET_OPTION(render_file);
-#else
-  const char *render_file_opt = NULL;
-#endif
   int frame_height = GET_OPTION(height);
   bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
   bool has_media_source = (media_url_val && strlen(media_url_val) > 0) ||
@@ -614,11 +608,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Set audio source for render-file encoding (after capture is created)
     media_source_t *render_audio_source = session_capture_get_media_source(capture);
-#ifndef _WIN32
     const char *render_file_path = GET_OPTION(render_file);
-#else
-    const char *render_file_path = NULL;
-#endif
     log_info("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu",
              render_audio_source, render_file_path ? render_file_path : "(null)",
              render_file_path ? strlen(render_file_path) : 0);

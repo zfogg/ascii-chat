@@ -36,13 +36,11 @@ if(FFMPEG_FOUND)
         "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
         "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
     )
-    # Render-to-file (Unix only) - libvterm + FreeType2 render-file backend
-    if(NOT WIN32)
-        list(APPEND VIDEO_SRCS
-            ${CMAKE_SOURCE_DIR}/lib/media/render/renderer.c
-            ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c
-        )
-    endif()
+    # Render-to-file - libvterm + FreeType2 render-file backend
+    list(APPEND VIDEO_SRCS
+        ${CMAKE_SOURCE_DIR}/lib/media/render/renderer.c
+        ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c
+    )
 endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})

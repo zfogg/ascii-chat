@@ -3,7 +3,6 @@
  * @ingroup media
  * @brief FFmpeg video/image file encoder for render-file output
  */
-#ifndef _WIN32
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
@@ -1074,4 +1073,3 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   SAFE_FREE(enc);
   return ASCIICHAT_OK;
 }
-#endif

@@ -20,7 +20,6 @@
 // Validators
 // ============================================================================
 
-#ifndef _WIN32
 static bool validate_render_font_size(const void *opts_struct, char **error_msg) {
   (void)opts_struct;
   const options_t *opts = (const options_t *)opts_struct;
@@ -31,7 +30,6 @@ static bool validate_render_font_size(const void *opts_struct, char **error_msg)
   }
   return true;
 }
-#endif
 
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
@@ -169,7 +167,6 @@ const registry_entry_t g_media_entries[] = {
      {0},
      NULL},
 
-#ifndef _WIN32
 #define RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
 
     {"render-file",
@@ -254,7 +251,5 @@ const registry_entry_t g_media_entries[] = {
      RENDER_FILE_MODES,
      {.input_type = OPTION_INPUT_NUMERIC},
      NULL},
-
-#endif  // !_WIN32
 
     REGISTRY_TERMINATOR()};

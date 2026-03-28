@@ -156,7 +156,6 @@
  * - VP9 recommended for highest quality requirements when file size isn't critical
  */
 #pragma once
-#ifndef _WIN32
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 
@@ -300,4 +299,3 @@ void ffmpeg_encoder_set_snapshot_actual_duration(ffmpeg_encoder_t *enc, double a
  * @see ffmpeg_encoder_create
  */
 asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc);
-#endif
