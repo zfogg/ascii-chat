@@ -149,7 +149,7 @@ elseif(_use_shared_lib)
     else()
         # Unix: Also need explicit dependencies when linking against shared library
         get_core_deps_libraries(CORE_LIBS)
-        target_link_libraries(ascii-chat
+        target_link_libraries(ascii-chat PRIVATE
             ${CORE_LIBS}
         )
         # Link BearSSL (required)

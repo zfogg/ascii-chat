@@ -2926,28 +2926,28 @@ if (expand_ipv6(&quot;::1&quot;, expanded, sizeof(expanded)) == ASCIICHAT_OK) {
 free(expanded);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>502</b> of file <b>path.c</b>.</p>
-<pre>502                                     {
-503   if (path[0] == PATH_TILDE) {
-504     const char *home = platform_get_home_dir();
-505     if (!home) {
-506       return NULL;
-507     }
-508 
-509     char *expanded;
-510     size_t total_len = strlen(home) + strlen(path) + 1; // path includes the tilde
-511     expanded = SAFE_MALLOC(total_len, char *);
-512     if (!expanded) {
-513       return NULL;
-514     }
-515     safe_snprintf(expanded, total_len, &quot;%s%s&quot;, home, path + 1);
-516 
-517     platform_normalize_path_separators(expanded);
-518 
-519     return expanded;
-520   }
-521   return platform_strdup(path);
-522 }</pre>
+<p class="Pp">Definition at line <b>503</b> of file <b>path.c</b>.</p>
+<pre>503                                     {
+504   if (path[0] == PATH_TILDE) {
+505     const char *home = platform_get_home_dir();
+506     if (!home) {
+507       return NULL;
+508     }
+509 
+510     char *expanded;
+511     size_t total_len = strlen(home) + strlen(path) + 1; // path includes the tilde
+512     expanded = SAFE_MALLOC(total_len, char *);
+513     if (!expanded) {
+514       return NULL;
+515     }
+516     safe_snprintf(expanded, total_len, &quot;%s%s&quot;, home, path + 1);
+517 
+518     platform_normalize_path_separators(expanded);
+519 
+520     return expanded;
+521   }
+522   return platform_strdup(path);
+523 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_TILDE</b>, <b>platform_get_home_dir()</b>,
@@ -3139,55 +3139,55 @@ if (extract_ipv4_from_mapped_ipv6(&quot;::ffff:192.168.1.1&quot;, ipv4, sizeof(i
 // Returns: &quot;lib/path.c&quot;
 </pre>
 </div>
-<p class="Pp">Definition at line <b>453</b> of file <b>path.c</b>.</p>
-<pre>453                                                             {
-454   if (!file) {
-455     SET_ERRNO(ERROR_INVALID_PARAM, &quot;file is null&quot;);
-456     return &quot;unknown&quot;;
-457   }
-458 
-459 #ifdef __EMSCRIPTEN__
-460   // WASM builds: Return raw path to avoid recursion in logging system
-461   // extract_project_relative_path is called from format_log_header, which is part of logging.
-462   // If we call normalize_path or other functions that might use SET_ERRNO or log functions,
-463   // we create infinite recursion: log_msg -&gt; format_log_header -&gt; extract_project_relative_path -&gt; SET_ERRNO -&gt;
-464   // log_error -&gt; log_msg For WASM, just return the filename without path processing.
-465   const char *sep = strrchr(file, '/');
-466   if (!sep) {
-467     sep = strrchr(file, '\\');
-468   }
-469   return sep ? sep + 1 : file;
-470 #endif
-471 
-472   /* First normalize the path to resolve .. and . components */
-473   const char *normalized = normalize_path(file);
-474 
-475   /* Try to find and strip the project root from the absolute path */
-476   char *project_root = find_project_root();
-477   if (project_root) {
-478     size_t root_len = strlen(project_root);
-479     size_t norm_len = strlen(normalized);
-480 
-481     /* Check if normalized path starts with project root */
-482     if (norm_len &gt; root_len &amp;&amp; strncmp(normalized, project_root, root_len) == 0) {
-483       const char *remainder = normalized + root_len;
-484 
-485       /* Skip the separator if present */
-486       if (*remainder == PATH_DELIM || *remainder == '/' || *remainder == '\\') {
-487         remainder++;
-488       }
-489 
-490       free(project_root);
-491       return remainder;
-492     }
-493     free(project_root);
-494   }
-495 
-496   /* Fallback: Project root detection failed, but we should still try to return
-497    * a meaningful relative path, not just the filename. Return the normalized path
-498    * which should contain the full directory structure. */
-499   return normalized;
-500 }</pre>
+<p class="Pp">Definition at line <b>454</b> of file <b>path.c</b>.</p>
+<pre>454                                                             {
+455   if (!file) {
+456     SET_ERRNO(ERROR_INVALID_PARAM, &quot;file is null&quot;);
+457     return &quot;unknown&quot;;
+458   }
+459 
+460 #ifdef __EMSCRIPTEN__
+461   // WASM builds: Return raw path to avoid recursion in logging system
+462   // extract_project_relative_path is called from format_log_header, which is part of logging.
+463   // If we call normalize_path or other functions that might use SET_ERRNO or log functions,
+464   // we create infinite recursion: log_msg -&gt; format_log_header -&gt; extract_project_relative_path -&gt; SET_ERRNO -&gt;
+465   // log_error -&gt; log_msg For WASM, just return the filename without path processing.
+466   const char *sep = strrchr(file, '/');
+467   if (!sep) {
+468     sep = strrchr(file, '\\');
+469   }
+470   return sep ? sep + 1 : file;
+471 #endif
+472 
+473   /* First normalize the path to resolve .. and . components */
+474   const char *normalized = normalize_path(file);
+475 
+476   /* Try to find and strip the project root from the absolute path */
+477   char *project_root = find_project_root();
+478   if (project_root) {
+479     size_t root_len = strlen(project_root);
+480     size_t norm_len = strlen(normalized);
+481 
+482     /* Check if normalized path starts with project root */
+483     if (norm_len &gt; root_len &amp;&amp; strncmp(normalized, project_root, root_len) == 0) {
+484       const char *remainder = normalized + root_len;
+485 
+486       /* Skip the separator if present */
+487       if (*remainder == PATH_DELIM || *remainder == '/' || *remainder == '\\') {
+488         remainder++;
+489       }
+490 
+491       free(project_root);
+492       return remainder;
+493     }
+494     free(project_root);
+495   }
+496 
+497   /* Fallback: Project root detection failed, but we should still try to return
+498    * a meaningful relative path, not just the filename. Return the normalized path
+499    * which should contain the full directory structure. */
+500   return normalized;
+501 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>PATH_DELIM</b>, and
@@ -3508,11 +3508,11 @@ if (format_ip_with_port(&quot;::1&quot;, 8080, output, sizeof(output)) == ASCIIC
 free(config_dir);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>524</b> of file <b>path.c</b>.</p>
-<pre>524                            {
-525   /* Delegate to platform abstraction layer */
-526   return platform_get_config_dir();
-527 }</pre>
+<p class="Pp">Definition at line <b>525</b> of file <b>path.c</b>.</p>
+<pre>525                            {
+526   /* Delegate to platform abstraction layer */
+527   return platform_get_config_dir();
+528 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_get_config_dir()</b>.</p>
@@ -3545,11 +3545,11 @@ free(config_dir);
 free(data_dir);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>529</b> of file <b>path.c</b>.</p>
-<pre>529                          {
-530   /* Delegate to platform abstraction layer */
-531   return platform_get_data_dir();
-532 }</pre>
+<p class="Pp">Definition at line <b>530</b> of file <b>path.c</b>.</p>
+<pre>530                          {
+531   /* Delegate to platform abstraction layer */
+532   return platform_get_data_dir();
+533 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_get_data_dir()</b>.</p>
@@ -3621,101 +3621,101 @@ free(data_dir);
 free(db_dir);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>612</b> of file <b>path.c</b>.</p>
-<pre>612                                        {
-613 #ifdef _WIN32
-614   // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
-615   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
-616   if (program_data &amp;&amp; program_data[0] != '\0') {
-617     size_t len = strlen(program_data) + strlen(&quot;\\ascii-chat\\&quot;) + 1;
-618     char *system_dir = SAFE_MALLOC(len, char *);
-619     if (system_dir) {
-620       safe_snprintf(system_dir, len, &quot;%s\\ascii-chat\\&quot;, program_data);
-621 
-622       // Try to create directory recursively with public permissions (755 equivalent)
-623       asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-624       if (mkdir_result == ASCIICHAT_OK) {
-625         // Directory exists or was created - check if writable
-626         if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-627           return system_dir; // System-wide location is writable
-628         }
-629       }
-630       SAFE_FREE(system_dir);
-631     }
-632   }
-633 
-634   // Fall back to user data directory
-635   char *data_dir = get_data_dir();
-636   if (data_dir) {
-637     // Try to create the directory recursively
-638     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
-639     if (mkdir_result == ASCIICHAT_OK) {
-640       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
-641         return data_dir;
-642       }
-643     }
-644     SAFE_FREE(data_dir);
-645   }
-646 
-647   return NULL;
-648 #else
-649   // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
-650   // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
-651   const char *prefix = ASCIICHAT_INSTALL_PREFIX;
-652   size_t system_len = strlen(prefix) + strlen(&quot;/var/ascii-chat/&quot;) + 1;
-653   char *system_dir = SAFE_MALLOC(system_len, char *);
-654   if (system_dir) {
-655     safe_snprintf(system_dir, system_len, &quot;%s/var/ascii-chat/&quot;, prefix);
-656 
-657     // Try to create directory recursively with public permissions (755) for system-wide use
-658     // platform_mkdir_recursive creates parent directories as needed
-659     asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-660     if (mkdir_result == ASCIICHAT_OK) {
-661       // Directory exists or was created - check if writable
-662       if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-663         return system_dir; // System-wide location is writable
-664       }
-665     }
-666     SAFE_FREE(system_dir);
-667   }
-668 
-669 #ifdef __APPLE__
-670   // On macOS, /usr/local is typically user-writable (set up by Homebrew)
-671   // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
-672   if (strcmp(prefix, &quot;/usr/local&quot;) != 0) {
-673     const char *usr_local_path = &quot;/usr/local/var/ascii-chat/&quot;;
-674     size_t usr_local_len = strlen(usr_local_path) + 1;
-675     char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
-676     if (usr_local_dir) {
-677       safe_snprintf(usr_local_dir, usr_local_len, &quot;%s&quot;, usr_local_path);
-678 
-679       asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
-680       if (mkdir_result == ASCIICHAT_OK) {
-681         if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
-682           return usr_local_dir; // /usr/local is writable
-683         }
-684       }
-685       SAFE_FREE(usr_local_dir);
-686     }
-687   }
-688 #endif
-689 
-690   // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
-691   char *data_dir = get_data_dir();
-692   if (data_dir) {
-693     // Try to create the directory recursively
-694     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
-695     if (mkdir_result == ASCIICHAT_OK) {
-696       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
-697         return data_dir;
-698       }
-699     }
-700     SAFE_FREE(data_dir);
-701   }
-702 
-703   return NULL;
-704 #endif
-705 }</pre>
+<p class="Pp">Definition at line <b>613</b> of file <b>path.c</b>.</p>
+<pre>613                                        {
+614 #ifdef _WIN32
+615   // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
+616   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
+617   if (program_data &amp;&amp; program_data[0] != '\0') {
+618     size_t len = strlen(program_data) + strlen(&quot;\\ascii-chat\\&quot;) + 1;
+619     char *system_dir = SAFE_MALLOC(len, char *);
+620     if (system_dir) {
+621       safe_snprintf(system_dir, len, &quot;%s\\ascii-chat\\&quot;, program_data);
+622 
+623       // Try to create directory recursively with public permissions (755 equivalent)
+624       asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+625       if (mkdir_result == ASCIICHAT_OK) {
+626         // Directory exists or was created - check if writable
+627         if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+628           return system_dir; // System-wide location is writable
+629         }
+630       }
+631       SAFE_FREE(system_dir);
+632     }
+633   }
+634 
+635   // Fall back to user data directory
+636   char *data_dir = get_data_dir();
+637   if (data_dir) {
+638     // Try to create the directory recursively
+639     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+640     if (mkdir_result == ASCIICHAT_OK) {
+641       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+642         return data_dir;
+643       }
+644     }
+645     SAFE_FREE(data_dir);
+646   }
+647 
+648   return NULL;
+649 #else
+650   // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
+651   // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
+652   const char *prefix = ASCIICHAT_INSTALL_PREFIX;
+653   size_t system_len = strlen(prefix) + strlen(&quot;/var/ascii-chat/&quot;) + 1;
+654   char *system_dir = SAFE_MALLOC(system_len, char *);
+655   if (system_dir) {
+656     safe_snprintf(system_dir, system_len, &quot;%s/var/ascii-chat/&quot;, prefix);
+657 
+658     // Try to create directory recursively with public permissions (755) for system-wide use
+659     // platform_mkdir_recursive creates parent directories as needed
+660     asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+661     if (mkdir_result == ASCIICHAT_OK) {
+662       // Directory exists or was created - check if writable
+663       if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+664         return system_dir; // System-wide location is writable
+665       }
+666     }
+667     SAFE_FREE(system_dir);
+668   }
+669 
+670 #ifdef __APPLE__
+671   // On macOS, /usr/local is typically user-writable (set up by Homebrew)
+672   // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
+673   if (strcmp(prefix, &quot;/usr/local&quot;) != 0) {
+674     const char *usr_local_path = &quot;/usr/local/var/ascii-chat/&quot;;
+675     size_t usr_local_len = strlen(usr_local_path) + 1;
+676     char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
+677     if (usr_local_dir) {
+678       safe_snprintf(usr_local_dir, usr_local_len, &quot;%s&quot;, usr_local_path);
+679 
+680       asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
+681       if (mkdir_result == ASCIICHAT_OK) {
+682         if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
+683           return usr_local_dir; // /usr/local is writable
+684         }
+685       }
+686       SAFE_FREE(usr_local_dir);
+687     }
+688   }
+689 #endif
+690 
+691   // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
+692   char *data_dir = get_data_dir();
+693   if (data_dir) {
+694     // Try to create the directory recursively
+695     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+696     if (mkdir_result == ASCIICHAT_OK) {
+697       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+698         return data_dir;
+699       }
+700     }
+701     SAFE_FREE(data_dir);
+702   }
+703 
+704   return NULL;
+705 #endif
+706 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_INSTALL_PREFIX</b>, <b>ASCIICHAT_OK</b>,
@@ -3910,84 +3910,84 @@ free(log_dir);
 free(log_dir);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>534</b> of file <b>path.c</b>.</p>
-<pre>534                         {
-535 #ifdef __EMSCRIPTEN__
-536   // WASM builds: Return NULL to skip SAFE_MALLOC before memory tracking is initialized
-537   // The caller will use a fallback path (temp dir + filename)
-538   return NULL;
-539 #endif
-540 
-541 #ifdef NDEBUG
-542   // Release builds: Use $TMPDIR/ascii-chat/
-543   // Get system temp directory
-544   char temp_dir[PLATFORM_MAX_PATH_LENGTH];
-545   if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
-546     // Fallback: Use current working directory if temp dir unavailable
-547     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-548     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-549       return NULL;
-550     }
-551     char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-552     if (!result) {
-553       return NULL;
-554     }
-555     safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
-556     return result;
-557   }
-558 
-559   // Build path to ascii-chat subdirectory
-560   size_t log_dir_len = strlen(temp_dir) + strlen(PATH_SEPARATOR_STR) + strlen(&quot;ascii-chat&quot;) + 1;
-561   char *log_dir = SAFE_MALLOC(log_dir_len, char *);
-562   if (!log_dir) {
-563     return NULL;
-564   }
-565   safe_snprintf(log_dir, log_dir_len, &quot;%s%sascii-chat&quot;, temp_dir, PATH_SEPARATOR_STR);
-566 
-567   // Create the directory if it doesn't exist (with owner-only permissions)
-568   asciichat_error_t mkdir_result = platform_mkdir(log_dir, DIR_PERM_PRIVATE);
-569   if (mkdir_result != ASCIICHAT_OK) {
-570     // Directory creation failed - fall back to temp_dir without subdirectory
-571     SAFE_FREE(log_dir);
-572     char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
-573     if (!result) {
-574       return NULL;
-575     }
-576     safe_snprintf(result, strlen(temp_dir) + 1, &quot;%s&quot;, temp_dir);
-577     return result;
-578   }
-579 
-580   // Verify the directory is writable
-581   if (platform_access(log_dir, PLATFORM_ACCESS_WRITE) != 0) {
-582     // Directory not writable - fall back to temp_dir
-583     SAFE_FREE(log_dir);
-584     char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
-585     if (!result) {
-586       return NULL;
-587     }
-588     safe_snprintf(result, strlen(temp_dir) + 1, &quot;%s&quot;, temp_dir);
-589     return result;
-590   }
-591 
-592   return log_dir;
-593 #else
-594   // Debug builds: Use repository root for logs
-595   char *repo_root = find_project_root();
-596   if (repo_root) {
-597     return repo_root;
-598   }
-599 
-600   // Fallback to current working directory if repo root not found
-601   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-602   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-603     return NULL;
-604   }
-605 
-606   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-607   safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
-608   return result;
-609 #endif
-610 }</pre>
+<p class="Pp">Definition at line <b>535</b> of file <b>path.c</b>.</p>
+<pre>535                         {
+536 #ifdef __EMSCRIPTEN__
+537   // WASM builds: Return NULL to skip SAFE_MALLOC before memory tracking is initialized
+538   // The caller will use a fallback path (temp dir + filename)
+539   return NULL;
+540 #endif
+541 
+542 #ifdef NDEBUG
+543   // Release builds: Use $TMPDIR/ascii-chat/
+544   // Get system temp directory
+545   char temp_dir[PLATFORM_MAX_PATH_LENGTH];
+546   if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
+547     // Fallback: Use current working directory if temp dir unavailable
+548     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+549     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+550       return NULL;
+551     }
+552     char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
+553     if (!result) {
+554       return NULL;
+555     }
+556     safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
+557     return result;
+558   }
+559 
+560   // Build path to ascii-chat subdirectory
+561   size_t log_dir_len = strlen(temp_dir) + strlen(PATH_SEPARATOR_STR) + strlen(&quot;ascii-chat&quot;) + 1;
+562   char *log_dir = SAFE_MALLOC(log_dir_len, char *);
+563   if (!log_dir) {
+564     return NULL;
+565   }
+566   safe_snprintf(log_dir, log_dir_len, &quot;%s%sascii-chat&quot;, temp_dir, PATH_SEPARATOR_STR);
+567 
+568   // Create the directory if it doesn't exist (with owner-only permissions)
+569   asciichat_error_t mkdir_result = platform_mkdir(log_dir, DIR_PERM_PRIVATE);
+570   if (mkdir_result != ASCIICHAT_OK) {
+571     // Directory creation failed - fall back to temp_dir without subdirectory
+572     SAFE_FREE(log_dir);
+573     char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
+574     if (!result) {
+575       return NULL;
+576     }
+577     safe_snprintf(result, strlen(temp_dir) + 1, &quot;%s&quot;, temp_dir);
+578     return result;
+579   }
+580 
+581   // Verify the directory is writable
+582   if (platform_access(log_dir, PLATFORM_ACCESS_WRITE) != 0) {
+583     // Directory not writable - fall back to temp_dir
+584     SAFE_FREE(log_dir);
+585     char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
+586     if (!result) {
+587       return NULL;
+588     }
+589     safe_snprintf(result, strlen(temp_dir) + 1, &quot;%s&quot;, temp_dir);
+590     return result;
+591   }
+592 
+593   return log_dir;
+594 #else
+595   // Debug builds: Use repository root for logs
+596   char *repo_root = find_project_root();
+597   if (repo_root) {
+598     return repo_root;
+599   }
+600 
+601   // Fallback to current working directory if repo root not found
+602   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+603   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+604     return NULL;
+605   }
+606 
+607   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
+608   safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
+609   return result;
+610 #endif
+611 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>DIR_PERM_PRIVATE</b>,
@@ -6077,10 +6077,10 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
     allocate fresh match data for each operation and free it immediately, so
     there's nothing to clean up. This function is kept for API
   compatibility.</p>
-<p class="Pp">Definition at line <b>83</b> of file <b>path.c</b>.</p>
-<pre>83                                       {
-84   /* No-op: match data is now allocated and freed immediately per operation */
-85 }</pre>
+<p class="Pp">Definition at line <b>84</b> of file <b>path.c</b>.</p>
+<pre>84                                       {
+85   /* No-op: match data is now allocated and freed immediately per operation */
+86 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
@@ -6093,24 +6093,24 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <div class="Bd-indent"><i>path</i> Path string to test (may be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if the path is absolute, false otherwise</div>
-<p class="Pp">Definition at line <b>727</b> of file <b>path.c</b>.</p>
-<pre>727                                         {
-728   if (!path || !*path) {
-729     return false;
-730   }
-731 
-732 #ifdef _WIN32
-733   if ((path[0] == '\\' &amp;&amp; path[1] == '\\')) {
-734     return true; // UNC path
-735   }
-736   if (isalpha((unsigned char)path[0]) &amp;&amp; path[1] == PATH_DRIVE_SEPARATOR &amp;&amp; path[2] == PATH_DELIM) {
-737     return true;
-738   }
-739   return false;
-740 #else
-741   return path[0] == PATH_DELIM;
-742 #endif
-743 }</pre>
+<p class="Pp">Definition at line <b>728</b> of file <b>path.c</b>.</p>
+<pre>728                                         {
+729   if (!path || !*path) {
+730     return false;
+731   }
+732 
+733 #ifdef _WIN32
+734   if ((path[0] == '\\' &amp;&amp; path[1] == '\\')) {
+735     return true; // UNC path
+736   }
+737   if (isalpha((unsigned char)path[0]) &amp;&amp; path[1] == PATH_DRIVE_SEPARATOR &amp;&amp; path[2] == PATH_DELIM) {
+738     return true;
+739   }
+740   return false;
+741 #else
+742   return path[0] == PATH_DELIM;
+743 #endif
+744 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_DELIM</b>, and <b>PATH_DRIVE_SEPARATOR</b>.</p>
@@ -6132,24 +6132,24 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if path is inside any allowed base, false
   otherwise</div>
-<p class="Pp">Definition at line <b>779</b> of file <b>path.c</b>.</p>
-<pre>779                                                                                             {
-780   if (!path || !bases || base_count == 0) {
-781     return false;
-782   }
-783 
-784   for (size_t i = 0; i &lt; base_count; ++i) {
-785     const char *base = bases[i];
-786     if (!base) {
-787       continue;
-788     }
-789     if (path_is_within_base(path, base)) {
-790       return true;
-791     }
-792   }
-793 
-794   return false;
-795 }</pre>
+<p class="Pp">Definition at line <b>780</b> of file <b>path.c</b>.</p>
+<pre>780                                                                                             {
+781   if (!path || !bases || base_count == 0) {
+782     return false;
+783   }
+784 
+785   for (size_t i = 0; i &lt; base_count; ++i) {
+786     const char *base = bases[i];
+787     if (!base) {
+788       continue;
+789     }
+790     if (path_is_within_base(path, base)) {
+791       return true;
+792     }
+793   }
+794 
+795   return false;
+796 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>path_is_within_base()</b>.</p>
@@ -6171,40 +6171,40 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if path is inside base (or exactly equal), false
   otherwise</div>
-<p class="Pp">Definition at line <b>745</b> of file <b>path.c</b>.</p>
-<pre>745                                                              {
-746   if (!path || !base) {
-747     return false;
-748   }
-749 
-750   if (!path_is_absolute(path) || !path_is_absolute(base)) {
-751     return false;
-752   }
-753 
-754   char normalized_path[PLATFORM_MAX_PATH_LENGTH];
-755   char normalized_base[PLATFORM_MAX_PATH_LENGTH];
-756 
-757   if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
-758     return false;
-759   }
-760   if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
-761     return false;
-762   }
-763 
-764   size_t base_len = strlen(normalized_base);
-765   if (base_len == 0) {
-766     return false;
-767   }
-768 
-769   if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
-770     return false;
-771   }
-772   char next = normalized_path[base_len];
-773   if (next == '\0') {
-774     return true;
-775   }
-776   return next == PATH_DELIM;
-777 }</pre>
+<p class="Pp">Definition at line <b>746</b> of file <b>path.c</b>.</p>
+<pre>746                                                              {
+747   if (!path || !base) {
+748     return false;
+749   }
+750 
+751   if (!path_is_absolute(path) || !path_is_absolute(base)) {
+752     return false;
+753   }
+754 
+755   char normalized_path[PLATFORM_MAX_PATH_LENGTH];
+756   char normalized_base[PLATFORM_MAX_PATH_LENGTH];
+757 
+758   if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
+759     return false;
+760   }
+761   if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
+762     return false;
+763   }
+764 
+765   size_t base_len = strlen(normalized_base);
+766   if (base_len == 0) {
+767     return false;
+768   }
+769 
+770   if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
+771     return false;
+772   }
+773   char next = normalized_path[base_len];
+774   if (next == '\0') {
+775     return true;
+776   }
+777   return next == PATH_DELIM;
+778 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_DELIM</b>, <b>path_is_absolute()</b>,
@@ -6224,28 +6224,28 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <div class="Bd-indent"><i>value</i> String to analyze</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if the string looks like a filesystem path</div>
-<p class="Pp">Definition at line <b>797</b> of file <b>path.c</b>.</p>
-<pre>797                                              {
-798   if (!value || *value == '\0') {
-799     return false;
-800   }
-801 
-802   if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
-803     return true;
-804   }
-805 
-806   if (strchr(value, PATH_DELIM)) {
-807     return true;
-808   }
-809 
-810 #ifdef _WIN32
-811   if (isalpha((unsigned char)value[0]) &amp;&amp; value[1] == ':' &amp;&amp; value[2] == PATH_DELIM) {
-812     return true;
-813   }
-814 #endif
-815 
-816   return false;
-817 }</pre>
+<p class="Pp">Definition at line <b>798</b> of file <b>path.c</b>.</p>
+<pre>798                                              {
+799   if (!value || *value == '\0') {
+800     return false;
+801   }
+802 
+803   if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
+804     return true;
+805   }
+806 
+807   if (strchr(value, PATH_DELIM)) {
+808     return true;
+809   }
+810 
+811 #ifdef _WIN32
+812   if (isalpha((unsigned char)value[0]) &amp;&amp; value[1] == ':' &amp;&amp; value[2] == PATH_DELIM) {
+813     return true;
+814   }
+815 #endif
+816 
+817   return false;
+818 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_COMPONENT_DOT</b>, <b>PATH_DELIM</b>, and
@@ -6272,26 +6272,26 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure (invalid arguments or
   buffer too small)</div>
-<p class="Pp">Definition at line <b>707</b> of file <b>path.c</b>.</p>
-<pre>707                                                                       {
-708   if (!path || !out || out_len == 0) {
-709     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null path or out or out_len is 0&quot;);
-710     return false;
-711   }
-712 
-713   const char *normalized = normalize_path(path);
-714   if (!normalized) {
-715     return false;
-716   }
-717 
-718   size_t len = strlen(normalized);
-719   if (len + 1 &gt; out_len) {
-720     return false;
-721   }
-722 
-723   memcpy(out, normalized, len + 1);
-724   return true;
-725 }</pre>
+<p class="Pp">Definition at line <b>708</b> of file <b>path.c</b>.</p>
+<pre>708                                                                       {
+709   if (!path || !out || out_len == 0) {
+710     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null path or out or out_len is 0&quot;);
+711     return false;
+712   }
+713 
+714   const char *normalized = normalize_path(path);
+715   if (!normalized) {
+716     return false;
+717   }
+718 
+719   size_t len = strlen(normalized);
+720   if (len + 1 &gt; out_len) {
+721     return false;
+722   }
+723 
+724   memcpy(out, normalized, len + 1);
+725   return true;
+726 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -6332,261 +6332,261 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure (and
   normalized_out is NULL)</div>
-<p class="Pp">Definition at line <b>1005</b> of file <b>path.c</b>.</p>
-<pre>1005                                                                                                       {
-1006   if (!normalized_out) {
-1007     return SET_ERRNO(map_role_to_error(role), &quot;path_validate_user_path requires output pointer&quot;);
-1008   }
-1009   *normalized_out = NULL;
-1010 
-1011   if (!input || *input == '\0') {
-1012     return SET_ERRNO(map_role_to_error(role), &quot;Path is empty for role %d&quot;, role);
-1013   }
-1014 
-1015   // SECURITY: For log files, if input is a simple filename (no separators or ..), constrain it to a safe directory
-1016   if (role == PATH_ROLE_LOG_FILE) {
-1017     // Check if input contains path separators or parent directory references
-1018     bool is_simple_filename = true;
-1019     for (const char *p = input; *p; p++) {
-1020       if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
-1021         is_simple_filename = false;
-1022         break;
-1023       }
-1024     }
-1025     // Also reject &quot;..&quot; components (even without separators like &quot;..something&quot;)
-1026     if (strstr(input, &quot;..&quot;) != NULL) {
-1027       is_simple_filename = false;
-1028     }
-1029 
-1030     // If it's a simple filename, resolve it to a safe base directory
-1031     if (is_simple_filename) {
-1032       // Always prefer current working directory for simple log filenames
-1033       // This ensures logs go to where the user is running the command from
-1034       char safe_base[PLATFORM_MAX_PATH_LENGTH];
-1035 
-1036       if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
-1037         // If cwd fails, try config dir as fallback
-1038         char *config_dir = get_config_dir();
-1039         if (config_dir) {
-1040           SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
-1041           SAFE_FREE(config_dir);
-1042         } else {
-1043           return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to determine safe directory for log file&quot;);
-1044         }
-1045       }
-1046 
-1047       // Build the full path: safe_base + separator + input
-1048       size_t base_len = strlen(safe_base);
-1049       size_t input_len = strlen(input);
-1050       bool needs_sep = base_len &gt; 0 &amp;&amp; safe_base[base_len - 1] != PATH_DELIM;
-1051       size_t total_len = base_len + (needs_sep ? 1 : 0) + input_len + 1;
-1052 
-1053       if (total_len &gt; PLATFORM_MAX_PATH_LENGTH) {
-1054         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Log file path too long: %s/%s&quot;, safe_base, input);
-1055       }
-1056 
-1057       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
-1058       safe_snprintf(resolved_buf, sizeof(resolved_buf), &quot;%s%s%s&quot;, safe_base, needs_sep ? PATH_SEPARATOR_STR : &quot;&quot;,
-1059                     input);
-1060 
-1061       // Normalize the resolved path
-1062       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
-1063       if (!path_normalize_copy(resolved_buf, normalized_buf, sizeof(normalized_buf))) {
-1064         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to normalize log file path: %s&quot;, resolved_buf);
-1065       }
-1066 
-1067       // Allocate and return the result
-1068       char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
-1069       if (!result) {
-1070         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
-1071       }
-1072       safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
-1073       *normalized_out = result;
-1074       return ASCIICHAT_OK;
-1075     }
-1076     // If not a simple filename (contains separators), continue with normal validation below
-1077   }
-1078 
-1079   // For non-log-files or log files with path separators, validate as usual
-1080   if (role != PATH_ROLE_LOG_FILE &amp;&amp; !path_looks_like_path(input)) {
-1081     return SET_ERRNO(map_role_to_error(role), &quot;Value does not look like a filesystem path: %s&quot;, input);
-1082   }
-1083 
-1084   char *expanded = expand_path(input);
-1085   if (!expanded) {
-1086     return SET_ERRNO(map_role_to_error(role), &quot;Failed to expand path: %s&quot;, input);
-1087   }
-1088 
-1089   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
-1090   const char *candidate_path = expanded;
-1091 
-1092   if (!path_is_absolute(candidate_path)) {
-1093     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-1094     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-1095       SAFE_FREE(expanded);
-1096       return SET_ERRNO(map_role_to_error(role), &quot;Failed to determine current working directory&quot;);
-1097     }
-1098 
-1099     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
-1100     if (total_len &gt;= sizeof(candidate_buf)) {
-1101       SAFE_FREE(expanded);
-1102       return SET_ERRNO(map_role_to_error(role), &quot;Resolved path is too long: %s/%s&quot;, cwd_buf, candidate_path);
-1103     }
-1104     if (strlen(candidate_path) &gt; 0 &amp;&amp; candidate_path[0] == PATH_DELIM) {
-1105       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%s&quot;, cwd_buf, candidate_path);
-1106     } else {
-1107       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%c%s&quot;, cwd_buf, PATH_DELIM, candidate_path);
-1108     }
-1109     candidate_path = candidate_buf;
-1110   }
-1111 
-1112   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
-1113   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
-1114     SAFE_FREE(expanded);
-1115     return SET_ERRNO(map_role_to_error(role), &quot;Failed to normalize path: %s&quot;, candidate_path);
-1116   }
-1117 
-1118   if (!path_is_absolute(normalized_buf)) {
-1119     SAFE_FREE(expanded);
-1120     return SET_ERRNO(map_role_to_error(role), &quot;Normalized path is not absolute: %s&quot;, normalized_buf);
-1121   }
-1122 
-1123   const char *bases[MAX_PATH_BASES] = {0};
-1124   size_t base_count = 0;
-1125 
-1126   // Always add current working directory as an allowed base
-1127   // This is critical for log files and other paths relative to where the user runs the command
-1128   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
-1129   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
-1130     append_base_if_valid(cwd_base, bases, &amp;base_count);
-1131   }
-1132 
-1133   char temp_base[PLATFORM_MAX_PATH_LENGTH];
-1134   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
-1135     append_base_if_valid(temp_base, bases, &amp;base_count);
-1136   }
-1137 
-1138   char *config_dir = get_config_dir();
-1139   if (config_dir) {
-1140     append_base_if_valid(config_dir, bases, &amp;base_count);
-1141   }
-1142 
-1143   const char *home_env = platform_get_home_dir();
-1144   if (home_env) {
-1145     append_base_if_valid(home_env, bases, &amp;base_count);
-1146   }
-1147 
-1148   char ascii_chat_home[PLATFORM_MAX_PATH_LENGTH];
-1149   if (home_env) {
-1150     build_ascii_chat_path(home_env, &quot;.ascii-chat&quot;, ascii_chat_home, sizeof(ascii_chat_home));
-1151     append_base_if_valid(ascii_chat_home, bases, &amp;base_count);
-1152   }
-1153 
-1154 #ifndef _WIN32
-1155   char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
-1156   build_ascii_chat_path(&quot;/tmp&quot;, &quot;.ascii-chat&quot;, ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
-1157   append_base_if_valid(ascii_chat_home_tmp, bases, &amp;base_count);
-1158 #endif
-1159 
-1160   char ssh_home[PLATFORM_MAX_PATH_LENGTH];
-1161   if (home_env) {
-1162     build_ascii_chat_path(home_env, &quot;.ssh&quot;, ssh_home, sizeof(ssh_home));
-1163     append_base_if_valid(ssh_home, bases, &amp;base_count);
-1164   }
-1165 
-1166 #ifdef _WIN32
-1167   char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
-1168   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
-1169   if (program_data) {
-1170     build_ascii_chat_path(program_data, &quot;ascii-chat&quot;, program_data_logs, sizeof(program_data_logs));
-1171     append_base_if_valid(program_data_logs, bases, &amp;base_count);
-1172   }
-1173 #else
-1174   // System-wide config directories (for server deployments)
-1175   append_base_if_valid(&quot;/etc/ascii-chat&quot;, bases, &amp;base_count);
-1176   append_base_if_valid(&quot;/usr/local/etc/ascii-chat&quot;, bases, &amp;base_count);
-1177   append_base_if_valid(&quot;/var/log&quot;, bases, &amp;base_count);
-1178   append_base_if_valid(&quot;/var/tmp&quot;, bases, &amp;base_count);
-1179   append_base_if_valid(&quot;/tmp&quot;, bases, &amp;base_count);
-1180 #ifdef __APPLE__
-1181   // On macOS, /tmp is a symlink to /private/tmp
-1182   append_base_if_valid(&quot;/private/tmp&quot;, bases, &amp;base_count);
-1183   // On macOS, all user home directories are under /Users
-1184   append_base_if_valid(&quot;/Users&quot;, bases, &amp;base_count);
-1185 #endif
+<p class="Pp">Definition at line <b>1006</b> of file <b>path.c</b>.</p>
+<pre>1006                                                                                                       {
+1007   if (!normalized_out) {
+1008     return SET_ERRNO(map_role_to_error(role), &quot;path_validate_user_path requires output pointer&quot;);
+1009   }
+1010   *normalized_out = NULL;
+1011 
+1012   if (!input || *input == '\0') {
+1013     return SET_ERRNO(map_role_to_error(role), &quot;Path is empty for role %d&quot;, role);
+1014   }
+1015 
+1016   // SECURITY: For log files, if input is a simple filename (no separators or ..), constrain it to a safe directory
+1017   if (role == PATH_ROLE_LOG_FILE) {
+1018     // Check if input contains path separators or parent directory references
+1019     bool is_simple_filename = true;
+1020     for (const char *p = input; *p; p++) {
+1021       if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
+1022         is_simple_filename = false;
+1023         break;
+1024       }
+1025     }
+1026     // Also reject &quot;..&quot; components (even without separators like &quot;..something&quot;)
+1027     if (strstr(input, &quot;..&quot;) != NULL) {
+1028       is_simple_filename = false;
+1029     }
+1030 
+1031     // If it's a simple filename, resolve it to a safe base directory
+1032     if (is_simple_filename) {
+1033       // Always prefer current working directory for simple log filenames
+1034       // This ensures logs go to where the user is running the command from
+1035       char safe_base[PLATFORM_MAX_PATH_LENGTH];
+1036 
+1037       if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+1038         // If cwd fails, try config dir as fallback
+1039         char *config_dir = get_config_dir();
+1040         if (config_dir) {
+1041           SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
+1042           SAFE_FREE(config_dir);
+1043         } else {
+1044           return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to determine safe directory for log file&quot;);
+1045         }
+1046       }
+1047 
+1048       // Build the full path: safe_base + separator + input
+1049       size_t base_len = strlen(safe_base);
+1050       size_t input_len = strlen(input);
+1051       bool needs_sep = base_len &gt; 0 &amp;&amp; safe_base[base_len - 1] != PATH_DELIM;
+1052       size_t total_len = base_len + (needs_sep ? 1 : 0) + input_len + 1;
+1053 
+1054       if (total_len &gt; PLATFORM_MAX_PATH_LENGTH) {
+1055         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Log file path too long: %s/%s&quot;, safe_base, input);
+1056       }
+1057 
+1058       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
+1059       safe_snprintf(resolved_buf, sizeof(resolved_buf), &quot;%s%s%s&quot;, safe_base, needs_sep ? PATH_SEPARATOR_STR : &quot;&quot;,
+1060                     input);
+1061 
+1062       // Normalize the resolved path
+1063       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+1064       if (!path_normalize_copy(resolved_buf, normalized_buf, sizeof(normalized_buf))) {
+1065         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to normalize log file path: %s&quot;, resolved_buf);
+1066       }
+1067 
+1068       // Allocate and return the result
+1069       char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+1070       if (!result) {
+1071         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
+1072       }
+1073       safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
+1074       *normalized_out = result;
+1075       return ASCIICHAT_OK;
+1076     }
+1077     // If not a simple filename (contains separators), continue with normal validation below
+1078   }
+1079 
+1080   // For non-log-files or log files with path separators, validate as usual
+1081   if (role != PATH_ROLE_LOG_FILE &amp;&amp; !path_looks_like_path(input)) {
+1082     return SET_ERRNO(map_role_to_error(role), &quot;Value does not look like a filesystem path: %s&quot;, input);
+1083   }
+1084 
+1085   char *expanded = expand_path(input);
+1086   if (!expanded) {
+1087     return SET_ERRNO(map_role_to_error(role), &quot;Failed to expand path: %s&quot;, input);
+1088   }
+1089 
+1090   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+1091   const char *candidate_path = expanded;
+1092 
+1093   if (!path_is_absolute(candidate_path)) {
+1094     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+1095     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+1096       SAFE_FREE(expanded);
+1097       return SET_ERRNO(map_role_to_error(role), &quot;Failed to determine current working directory&quot;);
+1098     }
+1099 
+1100     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
+1101     if (total_len &gt;= sizeof(candidate_buf)) {
+1102       SAFE_FREE(expanded);
+1103       return SET_ERRNO(map_role_to_error(role), &quot;Resolved path is too long: %s/%s&quot;, cwd_buf, candidate_path);
+1104     }
+1105     if (strlen(candidate_path) &gt; 0 &amp;&amp; candidate_path[0] == PATH_DELIM) {
+1106       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%s&quot;, cwd_buf, candidate_path);
+1107     } else {
+1108       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%c%s&quot;, cwd_buf, PATH_DELIM, candidate_path);
+1109     }
+1110     candidate_path = candidate_buf;
+1111   }
+1112 
+1113   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+1114   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
+1115     SAFE_FREE(expanded);
+1116     return SET_ERRNO(map_role_to_error(role), &quot;Failed to normalize path: %s&quot;, candidate_path);
+1117   }
+1118 
+1119   if (!path_is_absolute(normalized_buf)) {
+1120     SAFE_FREE(expanded);
+1121     return SET_ERRNO(map_role_to_error(role), &quot;Normalized path is not absolute: %s&quot;, normalized_buf);
+1122   }
+1123 
+1124   const char *bases[MAX_PATH_BASES] = {0};
+1125   size_t base_count = 0;
+1126 
+1127   // Always add current working directory as an allowed base
+1128   // This is critical for log files and other paths relative to where the user runs the command
+1129   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
+1130   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
+1131     append_base_if_valid(cwd_base, bases, &amp;base_count);
+1132   }
+1133 
+1134   char temp_base[PLATFORM_MAX_PATH_LENGTH];
+1135   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
+1136     append_base_if_valid(temp_base, bases, &amp;base_count);
+1137   }
+1138 
+1139   char *config_dir = get_config_dir();
+1140   if (config_dir) {
+1141     append_base_if_valid(config_dir, bases, &amp;base_count);
+1142   }
+1143 
+1144   const char *home_env = platform_get_home_dir();
+1145   if (home_env) {
+1146     append_base_if_valid(home_env, bases, &amp;base_count);
+1147   }
+1148 
+1149   char ascii_chat_home[PLATFORM_MAX_PATH_LENGTH];
+1150   if (home_env) {
+1151     build_ascii_chat_path(home_env, &quot;.ascii-chat&quot;, ascii_chat_home, sizeof(ascii_chat_home));
+1152     append_base_if_valid(ascii_chat_home, bases, &amp;base_count);
+1153   }
+1154 
+1155 #ifndef _WIN32
+1156   char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
+1157   build_ascii_chat_path(&quot;/tmp&quot;, &quot;.ascii-chat&quot;, ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
+1158   append_base_if_valid(ascii_chat_home_tmp, bases, &amp;base_count);
+1159 #endif
+1160 
+1161   char ssh_home[PLATFORM_MAX_PATH_LENGTH];
+1162   if (home_env) {
+1163     build_ascii_chat_path(home_env, &quot;.ssh&quot;, ssh_home, sizeof(ssh_home));
+1164     append_base_if_valid(ssh_home, bases, &amp;base_count);
+1165   }
+1166 
+1167 #ifdef _WIN32
+1168   char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
+1169   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
+1170   if (program_data) {
+1171     build_ascii_chat_path(program_data, &quot;ascii-chat&quot;, program_data_logs, sizeof(program_data_logs));
+1172     append_base_if_valid(program_data_logs, bases, &amp;base_count);
+1173   }
+1174 #else
+1175   // System-wide config directories (for server deployments)
+1176   append_base_if_valid(&quot;/etc/ascii-chat&quot;, bases, &amp;base_count);
+1177   append_base_if_valid(&quot;/usr/local/etc/ascii-chat&quot;, bases, &amp;base_count);
+1178   append_base_if_valid(&quot;/var/log&quot;, bases, &amp;base_count);
+1179   append_base_if_valid(&quot;/var/tmp&quot;, bases, &amp;base_count);
+1180   append_base_if_valid(&quot;/tmp&quot;, bases, &amp;base_count);
+1181 #ifdef __APPLE__
+1182   // On macOS, /tmp is a symlink to /private/tmp
+1183   append_base_if_valid(&quot;/private/tmp&quot;, bases, &amp;base_count);
+1184   // On macOS, all user home directories are under /Users
+1185   append_base_if_valid(&quot;/Users&quot;, bases, &amp;base_count);
 1186 #endif
-1187 
-1188   // Security check: Reject paths that point to sensitive system files
-1189   // This applies to all path roles, not just logs
-1190   if (is_sensitive_system_path(normalized_buf)) {
-1191     SAFE_FREE(expanded);
-1192     if (config_dir) {
-1193       SAFE_FREE(config_dir);
-1194     }
-1195     return SET_ERRNO(map_role_to_error(role), &quot;Cannot write to protected system path: %s&quot;, normalized_buf);
-1196   }
-1197 
-1198   // For log files, apply special validation rules
-1199   if (role == PATH_ROLE_LOG_FILE) {
-1200     // Check if path is a regular file (not a directory, not non-existent)
-1201     // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
-1202     bool is_regular_file = platform_is_regular_file(normalized_buf);
-1203 
-1204     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
-1205     if (is_regular_file &amp;&amp; !is_existing_ascii_chat_log(normalized_buf) &amp;&amp; !is_file_empty(normalized_buf)) {
-1206       SAFE_FREE(expanded);
-1207       if (config_dir) {
-1208         SAFE_FREE(config_dir);
-1209       }
-1210       return SET_ERRNO(ERROR_LOGGING_INIT,
-1211                        &quot;Cannot overwrite existing non-ascii-chat file: %s\n&quot;
-1212                        &quot;For safety, ascii-chat will only overwrite its own log files or empty files&quot;,
-1213                        normalized_buf);
-1214     }
-1215 
-1216     // If file doesn't exist (or is a directory), check that path is in safe locations
-1217     if (!is_regular_file) {
-1218       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-1219       if (!allowed) {
-1220         SAFE_FREE(expanded);
-1221         if (config_dir) {
-1222           SAFE_FREE(config_dir);
-1223         }
-1224         return SET_ERRNO(ERROR_LOGGING_INIT,
-1225                          &quot;Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or &quot;
-1226                          &quot;relative/absolute paths in safe locations)&quot;,
-1227                          normalized_buf);
-1228       }
-1229     }
-1230   } else {
-1231     // For non-log-file paths, apply standard whitelist validation
-1232     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-1233     if (!allowed) {
-1234       SAFE_FREE(expanded);
-1235       if (config_dir) {
-1236         SAFE_FREE(config_dir);
-1237       }
-1238       return SET_ERRNO(map_role_to_error(role), &quot;Path %s is outside allowed directories&quot;, normalized_buf);
-1239     }
-1240   }
-1241 
-1242   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
-1243   if (!result) {
-1244     SAFE_FREE(expanded);
-1245     if (config_dir) {
-1246       SAFE_FREE(config_dir);
-1247     }
-1248     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
-1249   }
-1250   safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
-1251   *normalized_out = result;
-1252 
-1253   SAFE_FREE(expanded);
-1254   if (config_dir) {
-1255     SAFE_FREE(config_dir);
-1256   }
-1257   return ASCIICHAT_OK;
-1258 }</pre>
+1187 #endif
+1188 
+1189   // Security check: Reject paths that point to sensitive system files
+1190   // This applies to all path roles, not just logs
+1191   if (is_sensitive_system_path(normalized_buf)) {
+1192     SAFE_FREE(expanded);
+1193     if (config_dir) {
+1194       SAFE_FREE(config_dir);
+1195     }
+1196     return SET_ERRNO(map_role_to_error(role), &quot;Cannot write to protected system path: %s&quot;, normalized_buf);
+1197   }
+1198 
+1199   // For log files, apply special validation rules
+1200   if (role == PATH_ROLE_LOG_FILE) {
+1201     // Check if path is a regular file (not a directory, not non-existent)
+1202     // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
+1203     bool is_regular_file = platform_is_regular_file(normalized_buf);
+1204 
+1205     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
+1206     if (is_regular_file &amp;&amp; !is_existing_ascii_chat_log(normalized_buf) &amp;&amp; !is_file_empty(normalized_buf)) {
+1207       SAFE_FREE(expanded);
+1208       if (config_dir) {
+1209         SAFE_FREE(config_dir);
+1210       }
+1211       return SET_ERRNO(ERROR_LOGGING_INIT,
+1212                        &quot;Cannot overwrite existing non-ascii-chat file: %s\n&quot;
+1213                        &quot;For safety, ascii-chat will only overwrite its own log files or empty files&quot;,
+1214                        normalized_buf);
+1215     }
+1216 
+1217     // If file doesn't exist (or is a directory), check that path is in safe locations
+1218     if (!is_regular_file) {
+1219       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+1220       if (!allowed) {
+1221         SAFE_FREE(expanded);
+1222         if (config_dir) {
+1223           SAFE_FREE(config_dir);
+1224         }
+1225         return SET_ERRNO(ERROR_LOGGING_INIT,
+1226                          &quot;Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or &quot;
+1227                          &quot;relative/absolute paths in safe locations)&quot;,
+1228                          normalized_buf);
+1229       }
+1230     }
+1231   } else {
+1232     // For non-log-file paths, apply standard whitelist validation
+1233     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+1234     if (!allowed) {
+1235       SAFE_FREE(expanded);
+1236       if (config_dir) {
+1237         SAFE_FREE(config_dir);
+1238       }
+1239       return SET_ERRNO(map_role_to_error(role), &quot;Path %s is outside allowed directories&quot;, normalized_buf);
+1240     }
+1241   }
+1242 
+1243   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+1244   if (!result) {
+1245     SAFE_FREE(expanded);
+1246     if (config_dir) {
+1247       SAFE_FREE(config_dir);
+1248     }
+1249     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
+1250   }
+1251   safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
+1252   *normalized_out = result;
+1253 
+1254   SAFE_FREE(expanded);
+1255   if (config_dir) {
+1256     SAFE_FREE(config_dir);
+1257   }
+1258   return ASCIICHAT_OK;
+1259 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_LOGGING_INIT</b>,

@@ -948,6 +948,7 @@ Stack trace (11 frames):
     <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
     <b>webrtc_peer_manager_handle_ice()</b>,
     <b>webrtc_peer_manager_handle_sdp()</b>,
+    <b>webrtc_peer_manager_handle_sdp()</b>,
     <b>webrtc_set_remote_description()</b>,
     <b>websocket_client_send_packet()</b>, <b>websocket_server_init()</b>,
     <b>websocket_server_run()</b>, and <b>yt_dlp_extract_stream_url()</b>.</p>
@@ -1067,16 +1068,16 @@ Stack trace (11 frames):
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread ID must be valid (positive integer).</div>
-<p class="Pp">Definition at line <b>483</b> of file
+<p class="Pp">Definition at line <b>486</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>483                                                  {
-484   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
-485     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
-486       thread_errors[i].valid = false;
-487       break;
-488     }
-489   }
-490 }</pre>
+<pre>486                                                  {
+487   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+488     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+489       thread_errors[i].valid = false;
+490       break;
+491     }
+492   }
+493 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>MAX_THREAD_ERRORS</b>, <b>thread_id</b>, and
@@ -1096,23 +1097,23 @@ Stack trace (11 frames):
 <p class="Pp"></p>
 <p class="Pp">All error statistics and context messages are freed.</p>
 </div>
-<p class="Pp">Definition at line <b>501</b> of file
+<p class="Pp">Definition at line <b>504</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>501                                    {
-502   backtrace_t_free(&amp;asciichat_errno_context.backtrace);
-503 
-504   if (asciichat_errno_context.context_message != NULL) {
-505     SAFE_FREE(asciichat_errno_context.context_message);
-506   }
-507 
-508   // Reset the context to a clean state
-509   memset(&amp;asciichat_errno_context, 0, sizeof(asciichat_errno_context));
-510   asciichat_errno_context.code = ASCIICHAT_OK;
-511 
-512   // Suppress any further error context allocation to prevent cleanup-phase leaks
-513   // This prevents other atexit() functions from allocating new contexts after we've cleaned up
-514   g_suppress_error_context = true;
-515 }</pre>
+<pre>504                                    {
+505   backtrace_t_free(&amp;asciichat_errno_context.backtrace);
+506 
+507   if (asciichat_errno_context.context_message != NULL) {
+508     SAFE_FREE(asciichat_errno_context.context_message);
+509   }
+510 
+511   // Reset the context to a clean state
+512   memset(&amp;asciichat_errno_context, 0, sizeof(asciichat_errno_context));
+513   asciichat_errno_context.code = ASCIICHAT_OK;
+514 
+515   // Suppress any further error context allocation to prevent cleanup-phase leaks
+516   // This prevents other atexit() functions from allocating new contexts after we've cleaned up
+517   g_suppress_error_context = true;
+518 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_errno_context</b>, <b>ASCIICHAT_OK</b>,
@@ -1142,11 +1143,11 @@ Stack trace (11 frames):
 <p class="Pp">Errors can still be checked using <b>HAS_ERRNO()</b> and
     <b>GET_ERRNO()</b>.</p>
 </div>
-<p class="Pp">Definition at line <b>497</b> of file
+<p class="Pp">Definition at line <b>500</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>497                                              {
-498   g_suppress_error_context = suppress;
-499 }</pre>
+<pre>500                                              {
+501   g_suppress_error_context = suppress;
+502 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1168,19 +1169,19 @@ Stack trace (11 frames):
 <p class="Pp"></p>
 <p class="Pp">Thread-safe: Can be called from any thread.</p>
 </div>
-<p class="Pp">Definition at line <b>437</b> of file
+<p class="Pp">Definition at line <b>440</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>437                                                         {
-438   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
-439     lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;);
-440   }
-441 
-442   mutex_lock(&amp;g_error_stats.mutex);
-443   asciichat_error_stats_t result = g_error_stats.stats;
-444   mutex_unlock(&amp;g_error_stats.mutex);
-445 
-446   return result;
-447 }</pre>
+<pre>440                                                         {
+441   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+442     lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;);
+443   }
+444 
+445   mutex_lock(&amp;g_error_stats.mutex);
+446   asciichat_error_stats_t result = g_error_stats.stats;
+447   mutex_unlock(&amp;g_error_stats.mutex);
+448 
+449   return result;
+450 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init()</b>,
@@ -1227,48 +1228,48 @@ Stack trace (11 frames):
 <p class="Pp"></p>
 <p class="Pp">Requires statistics system to be initialized.</p>
 </div>
-<p class="Pp">Definition at line <b>388</b> of file
+<p class="Pp">Definition at line <b>391</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>388                                        {
-389   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
-390     log_plain(&quot;No errors recorded.\n&quot;);
-391     return;
-392   }
-393 
-394   mutex_lock(&amp;g_error_stats.mutex);
-395 
-396   if (g_error_stats.stats.total_errors == 0) {
-397     mutex_unlock(&amp;g_error_stats.mutex);
-398     log_plain(&quot;No errors recorded.\n&quot;);
-399     return;
-400   }
-401 
-402   // Copy stats to local variable to minimize lock hold time
-403   asciichat_error_stats_t local_stats = g_error_stats.stats;
-404   mutex_unlock(&amp;g_error_stats.mutex);
-405 
-406   log_plain(&quot;\n=== ascii-chat Error Statistics ===\n&quot;);
-407   log_plain(&quot;Total errors: %llu\n&quot;, (unsigned long long)local_stats.total_errors);
+<pre>391                                        {
+392   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+393     log_plain(&quot;No errors recorded.\n&quot;);
+394     return;
+395   }
+396 
+397   mutex_lock(&amp;g_error_stats.mutex);
+398 
+399   if (g_error_stats.stats.total_errors == 0) {
+400     mutex_unlock(&amp;g_error_stats.mutex);
+401     log_plain(&quot;No errors recorded.\n&quot;);
+402     return;
+403   }
+404 
+405   // Copy stats to local variable to minimize lock hold time
+406   asciichat_error_stats_t local_stats = g_error_stats.stats;
+407   mutex_unlock(&amp;g_error_stats.mutex);
 408 
-409   if (local_stats.last_error_time &gt; 0) {
-410     time_t sec = (time_t)(local_stats.last_error_time / NS_PER_MS_INT);
-411     struct tm tm_info;
-412     if (platform_localtime(&amp;sec, &amp;tm_info) == ASCIICHAT_OK) {
-413       char time_str[64];
-414       strftime(time_str, sizeof(time_str), &quot;%Y-%m-%d %H:%M:%S&quot;, &amp;tm_info);
-415       log_plain(&quot;Last error: %s (code %d)\n&quot;, time_str, (int)local_stats.last_error_code);
-416     }
-417   }
-418 
-419   log_plain(&quot;\nError breakdown:\n&quot;);
-420   for (int i = 0; i &lt; 256; i++) {
-421     if (local_stats.error_counts[i] &gt; 0) {
-422       log_plain(&quot;  %3d (%s): %llu\n&quot;, i, asciichat_error_string((asciichat_error_t)i),
-423                 (unsigned long long)local_stats.error_counts[i]);
-424     }
-425   }
-426   log_plain(&quot;\n&quot;);
-427 }</pre>
+409   log_plain(&quot;\n=== ascii-chat Error Statistics ===\n&quot;);
+410   log_plain(&quot;Total errors: %llu\n&quot;, (unsigned long long)local_stats.total_errors);
+411 
+412   if (local_stats.last_error_time &gt; 0) {
+413     time_t sec = (time_t)(local_stats.last_error_time / NS_PER_MS_INT);
+414     struct tm tm_info;
+415     if (platform_localtime(&amp;sec, &amp;tm_info) == ASCIICHAT_OK) {
+416       char time_str[64];
+417       strftime(time_str, sizeof(time_str), &quot;%Y-%m-%d %H:%M:%S&quot;, &amp;tm_info);
+418       log_plain(&quot;Last error: %s (code %d)\n&quot;, time_str, (int)local_stats.last_error_code);
+419     }
+420   }
+421 
+422   log_plain(&quot;\nError breakdown:\n&quot;);
+423   for (int i = 0; i &lt; 256; i++) {
+424     if (local_stats.error_counts[i] &gt; 0) {
+425       log_plain(&quot;  %3d (%s): %llu\n&quot;, i, asciichat_error_string((asciichat_error_t)i),
+426                 (unsigned long long)local_stats.error_counts[i]);
+427     }
+428   }
+429   log_plain(&quot;\n&quot;);
+430 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1303,25 +1304,28 @@ Stack trace (11 frames):
   <b>asciichat_errno.c</b>.</p>
 <pre>371                                                           {
 372   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
-373     lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;);
-374   }
-375 
-376   mutex_lock(&amp;g_error_stats.mutex);
-377 
-378   if (code &gt;= 0 &amp;&amp; code &lt; 256) {
-379     g_error_stats.stats.error_counts[code]++;
-380   }
-381   g_error_stats.stats.total_errors++;
-382   g_error_stats.stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
-383   g_error_stats.stats.last_error_code = code;
-384 
-385   mutex_unlock(&amp;g_error_stats.mutex);
-386 }</pre>
+373     if (lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;)) {
+374       mutex_init(&amp;g_error_stats.mutex, &quot;error_stats&quot;);
+375       memset(&amp;g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+376     }
+377   }
+378 
+379   mutex_lock(&amp;g_error_stats.mutex);
+380 
+381   if (code &gt;= 0 &amp;&amp; code &lt; 256) {
+382     g_error_stats.stats.error_counts[code]++;
+383   }
+384   g_error_stats.stats.total_errors++;
+385   g_error_stats.stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
+386   g_error_stats.stats.last_error_code = code;
+387 
+388   mutex_unlock(&amp;g_error_stats.mutex);
+389 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    and <b>time_get_realtime_ns()</b>.</p>
+    <b>lifecycle_is_initialized()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>time_get_realtime_ns()</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_set_errno()</b>.</p>
 </section>
 <section class="Ss">
@@ -1339,15 +1343,15 @@ Stack trace (11 frames):
 <p class="Pp">All counters are reset to zero (total_errors, error_counts,
   etc.).</p>
 </div>
-<p class="Pp">Definition at line <b>429</b> of file
+<p class="Pp">Definition at line <b>432</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>429                                        {
-430   if (lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
-431     mutex_lock(&amp;g_error_stats.mutex);
-432     memset(&amp;g_error_stats.stats, 0, sizeof(g_error_stats.stats));
-433     mutex_unlock(&amp;g_error_stats.mutex);
-434   }
-435 }</pre>
+<pre>432                                        {
+433   if (lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+434     mutex_lock(&amp;g_error_stats.mutex);
+435     memset(&amp;g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+436     mutex_unlock(&amp;g_error_stats.mutex);
+437   }
+438 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>,
@@ -1488,16 +1492,16 @@ Stack trace (11 frames):
 <p class="Pp">Returns ASCIICHAT_OK if thread has no error or thread ID is
     invalid.</p>
 </div>
-<p class="Pp">Definition at line <b>454</b> of file
+<p class="Pp">Definition at line <b>457</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>454                                                             {
-455   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
-456     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
-457       return thread_errors[i].error_code;
-458     }
-459   }
-460   return ASCIICHAT_OK;
-461 }</pre>
+<pre>457                                                             {
+458   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+459     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+460       return thread_errors[i].error_code;
+461     }
+462   }
+463   return ASCIICHAT_OK;
+464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>MAX_THREAD_ERRORS</b>,
@@ -1977,27 +1981,27 @@ Stack trace (11 frames):
 <p class="Pp">This is separate from thread-local error state
   (asciichat_errno).</p>
 </div>
-<p class="Pp">Definition at line <b>463</b> of file
+<p class="Pp">Definition at line <b>466</b> of file
   <b>asciichat_errno.c</b>.</p>
-<pre>463                                                                        {
-464   // Find existing entry or empty slot
-465   int slot = -1;
-466   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
-467     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
-468       slot = i;
-469       break;
-470     }
-471     if (!thread_errors[i].valid &amp;&amp; slot == -1) {
-472       slot = i;
+<pre>466                                                                        {
+467   // Find existing entry or empty slot
+468   int slot = -1;
+469   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+470     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+471       slot = i;
+472       break;
 473     }
-474   }
-475 
-476   if (slot &gt;= 0) {
-477     thread_errors[slot].thread_id = thread_id;
-478     thread_errors[slot].error_code = code;
-479     thread_errors[slot].valid = true;
-480   }
-481 }</pre>
+474     if (!thread_errors[i].valid &amp;&amp; slot == -1) {
+475       slot = i;
+476     }
+477   }
+478 
+479   if (slot &gt;= 0) {
+480     thread_errors[slot].thread_id = thread_id;
+481     thread_errors[slot].error_code = code;
+482     thread_errors[slot].valid = true;
+483   }
+484 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>MAX_THREAD_ERRORS</b>, <b>thread_id</b>, and

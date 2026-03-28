@@ -51,13 +51,21 @@
 <p class="Pp">void <b>ascii_renderer_init</b> (int pixel_width, int
     pixel_height)
   <br/>
-  void <b>ascii_renderer_render_frame</b> (const char *ansi_data, size_t len)
+  void <b>ascii_renderer_render_frame</b> (const char *ansi_data, int len)
   <br/>
   void <b>ascii_renderer_resize</b> (int pixel_width, int pixel_height)
   <br/>
   int <b>ascii_renderer_get_cols</b> (void)
   <br/>
   int <b>ascii_renderer_get_rows</b> (void)
+  <br/>
+  const <b>uint8_t</b> * <b>ascii_renderer_get_framebuffer</b> (void)
+  <br/>
+  int <b>ascii_renderer_get_framebuffer_width</b> (void)
+  <br/>
+  int <b>ascii_renderer_get_framebuffer_height</b> (void)
+  <br/>
+  int <b>ascii_renderer_get_framebuffer_stride</b> (void)
   <br/>
   void <b>ascii_renderer_shutdown</b> (void)
   <br/>
@@ -100,8 +108,63 @@
 <p class="Pp">Get the current number of columns</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of columns (terminal width)</div>
-<p class="Pp">Definition at line <b>369</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>369 { return renderer.cols; }</pre>
+<p class="Pp">Definition at line <b>359</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>359                                   {
+360   return renderer.cols;
+361 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>uint8_t</b> * ascii_renderer_get_framebuffer (void )</a></h2>
+<p class="Pp">Get pointer to the framebuffer for JavaScript access</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to RGB24 framebuffer data</div>
+<p class="Pp">Definition at line <b>381</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>381                                                     {
+382   return renderer.framebuffer;
+383 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_get_framebuffer_height_(void_)"><a class="permalink" href="#int_ascii_renderer_get_framebuffer_height_(void_)">int
+  ascii_renderer_get_framebuffer_height (void )</a></h2>
+<p class="Pp">Get framebuffer height in pixels</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Height in pixels</div>
+<p class="Pp">Definition at line <b>403</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>403                                                 {
+404   return renderer.height_px;
+405 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_get_framebuffer_stride_(void_)"><a class="permalink" href="#int_ascii_renderer_get_framebuffer_stride_(void_)">int
+  ascii_renderer_get_framebuffer_stride (void )</a></h2>
+<p class="Pp">Get framebuffer stride (pitch) in bytes</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Stride in bytes (width * 3, padded to 4-byte
+  alignment)</div>
+<p class="Pp">Definition at line <b>414</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>414                                                 {
+415   return renderer.pitch;
+416 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_renderer_get_framebuffer_width_(void_)"><a class="permalink" href="#int_ascii_renderer_get_framebuffer_width_(void_)">int
+  ascii_renderer_get_framebuffer_width (void )</a></h2>
+<p class="Pp">Get framebuffer width in pixels</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Width in pixels</div>
+<p class="Pp">Definition at line <b>392</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>392                                                {
+393   return renderer.width_px;
+394 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -111,8 +174,10 @@
 <p class="Pp">Get the current number of rows</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of rows (terminal height)</div>
-<p class="Pp">Definition at line <b>375</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>375 { return renderer.rows; }</pre>
+<p class="Pp">Definition at line <b>370</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>370                                   {
+371   return renderer.rows;
+372 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -124,41 +189,34 @@
 <div class="Bd-indent"><i>pixel_width</i> Canvas width in pixels
 <br/>
 <i>pixel_height</i> Canvas height in pixels</div>
-<p class="Pp">Definition at line <b>112</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>112                                                             {
-113   log_info(&quot;[PERF] ascii_renderer_init START&quot;);
-114   if (renderer.vt) {
-115     log_warn(&quot;ascii_renderer_init called but renderer already initialized&quot;);
-116     return;
-117   }
-118 
-119   renderer.width_px = pixel_width;
-120   renderer.height_px = pixel_height;
-121   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4; /* Align to 4 bytes */
-122 
-123   /* Allocate framebuffer */
-124   log_info(&quot;[PERF] About to allocate framebuffer: %d bytes&quot;,
-125            renderer.pitch * pixel_height);
-126   renderer.framebuffer =
-127       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
-128   log_info(&quot;[PERF] Framebuffer allocated&quot;);
-129   if (!renderer.framebuffer) {
-130     log_error(&quot;Failed to allocate framebuffer&quot;);
-131     return;
-132   }
-133   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
-134 
-135   /* Initialize FreeType */
-136   log_info(&quot;[PERF] About to FT_Init_FreeType&quot;);
-137   if (FT_Init_FreeType(&amp;renderer.ft_lib)) {
-138     log_error(&quot;Failed to initialize FreeType&quot;);
-139     SAFE_FREE(renderer.framebuffer);
-140     return;
-141   }
-142   log_info(&quot;[PERF] FT_Init_FreeType done&quot;);
-143 
-144   /* Load embedded DejaVu Sans Mono font */
-145   log_info(&quot;[PERF] About to FT_New_Memory_Face (font size: %u bytes)&quot;, g_font_default_size);
+<p class="Pp">Definition at line <b>119</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>119                                                             {
+120   if (renderer.vt) {
+121     log_warn(&quot;ascii_renderer_init called but renderer already initialized&quot;);
+122     return;
+123   }
+124 
+125   renderer.width_px = pixel_width;
+126   renderer.height_px = pixel_height;
+127   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4; /* Align to 4 bytes */
+128 
+129   /* Allocate framebuffer */
+130   renderer.framebuffer =
+131       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
+132   if (!renderer.framebuffer) {
+133     log_error(&quot;Failed to allocate framebuffer&quot;);
+134     return;
+135   }
+136   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
+137 
+138   /* Initialize FreeType */
+139   if (FT_Init_FreeType(&amp;renderer.ft_lib)) {
+140     log_error(&quot;Failed to initialize FreeType&quot;);
+141     SAFE_FREE(renderer.framebuffer);
+142     return;
+143   }
+144 
+145   /* Load embedded DejaVu Sans Mono font */
 146   if (FT_New_Memory_Face(renderer.ft_lib, g_font_default,
 147                           (FT_Long)g_font_default_size, 0, &amp;renderer.ft_face)) {
 148     log_error(&quot;Failed to load default font&quot;);
@@ -166,167 +224,147 @@
 150     SAFE_FREE(renderer.framebuffer);
 151     return;
 152   }
-153   log_info(&quot;[PERF] FT_New_Memory_Face done&quot;);
-154 
-155   /* Set font size: 12pt at 96 DPI */
-156   log_info(&quot;[PERF] About to FT_Set_Char_Size&quot;);
-157   FT_Set_Char_Size(renderer.ft_face, 0, 12 * 64, 96, 96);
-158   log_info(&quot;[PERF] FT_Set_Char_Size done&quot;);
+153 
+154   /* Set font size: 12pt at 96 DPI */
+155   FT_Set_Char_Size(renderer.ft_face, 0, 12 * 64, 96, 96);
+156 
+157   /* Measure cell dimensions using 'M' */
+158   FT_Load_Char(renderer.ft_face, 'M', FT_LOAD_RENDER);
 159 
-160   /* Measure cell dimensions using 'M' */
-161   log_info(&quot;[PERF] About to FT_Load_Char&quot;);
-162   FT_Load_Char(renderer.ft_face, 'M', FT_LOAD_RENDER);
-163   log_info(&quot;[PERF] FT_Load_Char done&quot;);
-164 
-165   renderer.cell_w = renderer.ft_face-&gt;glyph-&gt;advance.x &gt;&gt; 6;
-166   renderer.cell_h = renderer.ft_face-&gt;glyph-&gt;bitmap.rows;
-167   renderer.baseline = (3 * renderer.cell_h) / 4;
-168 
-169   /* Adjust height for 2:1 aspect ratio */
-170   renderer.cell_h = renderer.cell_w * 2;
-171 
-172   renderer.cols = pixel_width / renderer.cell_w;
-173   renderer.rows = pixel_height / renderer.cell_h;
-174 
-175   log_info(&quot;ASCII renderer initialized: %dx%d pixels, %dx%d cells, font size %dx%d&quot;,
-176            pixel_width, pixel_height, renderer.cols, renderer.rows,
-177            renderer.cell_w, renderer.cell_h);
-178 
-179   /* Initialize libvterm */
-180   log_info(&quot;[PERF] About to vterm_new&quot;);
-181   renderer.vt = vterm_new(renderer.rows, renderer.cols);
-182   log_info(&quot;[PERF] vterm_new done&quot;);
-183   if (!renderer.vt) {
-184     log_error(&quot;Failed to create VTerm&quot;);
-185     FT_Done_Face(renderer.ft_face);
-186     FT_Done_FreeType(renderer.ft_lib);
-187     SAFE_FREE(renderer.framebuffer);
-188     return;
-189   }
-190 
-191   log_info(&quot;[PERF] About to vterm_obtain_screen&quot;);
-192   renderer.vts = vterm_obtain_screen(renderer.vt);
-193   log_info(&quot;[PERF] vterm_obtain_screen done&quot;);
-194 
-195   /* Note: raylib window will be initialized on first render (lazy init)
-196    * This avoids blocking the JS event loop on InitWindow during renderer setup.
-197    * In Emscripten, InitWindow can take significant time as it initializes WebGL.
-198    * Deferring it to BeginDrawing ensures the JS thread stays responsive. */
-199 
-200   log_info(&quot;[PERF] ascii_renderer_init COMPLETE&quot;);
-201 }</pre>
+160   renderer.cell_w = renderer.ft_face-&gt;glyph-&gt;advance.x &gt;&gt; 6;
+161   renderer.cell_h = renderer.ft_face-&gt;glyph-&gt;bitmap.rows;
+162   renderer.baseline = (3 * renderer.cell_h) / 4;
+163 
+164   /* Adjust height for 2:1 aspect ratio */
+165   renderer.cell_h = renderer.cell_w * 2;
+166 
+167   renderer.cols = pixel_width / renderer.cell_w;
+168   renderer.rows = pixel_height / renderer.cell_h;
+169 
+170   log_info(&quot;ASCII renderer initialized: %dx%d pixels, %dx%d cells, font size %dx%d&quot;,
+171            pixel_width, pixel_height, renderer.cols, renderer.rows,
+172            renderer.cell_w, renderer.cell_h);
+173 
+174   /* Initialize libvterm */
+175   renderer.vt = vterm_new(renderer.rows, renderer.cols);
+176   if (!renderer.vt) {
+177     log_error(&quot;Failed to create VTerm&quot;);
+178     FT_Done_Face(renderer.ft_face);
+179     FT_Done_FreeType(renderer.ft_lib);
+180     SAFE_FREE(renderer.framebuffer);
+181     return;
+182   }
+183 
+184   renderer.vts = vterm_obtain_screen(renderer.vt);
+185 
+186   /* Initialize raylib window on first render (lazy init)
+187    * This avoids blocking on InitWindow during initialization */
+188 
+189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_font_default</b>, <b>g_font_default_size</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>, <b>SAFE_FREE</b>, and
-    <b>SAFE_MALLOC</b>.</p>
+    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>ascii_renderer_t::width_px</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_ascii_renderer_render_frame_(const_char_*_ansi_data,_size_t_len)"><a class="permalink" href="#void_ascii_renderer_render_frame_(const_char_*_ansi_data,_size_t_len)">void
-  ascii_renderer_render_frame (const char * ansi_data, size_t len)</a></h2>
+<h2 class="Ss" id="void_ascii_renderer_render_frame_(const_char_*_ansi_data,_int_len)"><a class="permalink" href="#void_ascii_renderer_render_frame_(const_char_*_ansi_data,_int_len)">void
+  ascii_renderer_render_frame (const char * ansi_data, int len)</a></h2>
 <p class="Pp">Render an ANSI escape sequence frame</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ansi_data</i> Pointer to ANSI string data
 <br/>
 <i>len</i> Length of ANSI string in bytes</div>
-<p class="Pp">Definition at line <b>208</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>208                                                                     {
-209   if (!renderer.vt || !renderer.framebuffer) {
-210     log_warn(&quot;ascii_renderer_render_frame: renderer not initialized&quot;);
-211     return;
-212   }
-213 
-214   /* Lazy-initialize raylib window on first render
-215    * Deferred from init() to avoid blocking JS event loop on InitWindow */
-216   if (!renderer.window_initialized) {
-217     log_info(&quot;[PERF] About to call InitWindow(%d, %d)&quot;, renderer.width_px, renderer.height_px);
-218     InitWindow(renderer.width_px, renderer.height_px, &quot;ASCII Renderer&quot;);
-219     log_info(&quot;[PERF] InitWindow returned&quot;);
-220     renderer.window_initialized = true;
-221     log_debug(&quot;ascii_renderer: window initialized on first render&quot;);
-222   }
-223 
-224   /* Lazy-initialize raylib texture on first render
-225    * This ensures WebGL context is ready before GPU operations */
-226   if (!renderer.texture_initialized) {
-227     log_info(&quot;[PERF] About to call LoadTextureFromImage&quot;);
-228     Image img = {
-229         .data = renderer.framebuffer,
-230         .width = renderer.width_px,
-231         .height = renderer.height_px,
-232         .mipmaps = 1,
-233         .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-234     };
-235     renderer.texture = LoadTextureFromImage(img);
-236     log_info(&quot;[PERF] LoadTextureFromImage returned&quot;);
-237     renderer.texture_initialized = true;
-238     log_debug(&quot;ascii_renderer: texture created on first render (lazy init)&quot;);
-239   }
-240 
-241   /* Clear framebuffer to black */
-242   memset(renderer.framebuffer, 0, renderer.pitch * renderer.height_px);
-243 
-244   /* Feed ANSI data to libvterm */
-245   vterm_input_write(renderer.vt, ansi_data, len);
-246 
-247   /* Rasterize each cell */
-248   for (int row = 0; row &lt; renderer.rows; row++) {
-249     for (int col = 0; col &lt; renderer.cols; col++) {
-250       VTermScreenCell cell;
-251       vterm_screen_get_cell(renderer.vts, (VTermPos){.row = row, .col = col},
-252                             &amp;cell);
+<p class="Pp">Definition at line <b>199</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>199                                                                  {
+200   log_debug(&quot;[ascii_renderer_render_frame] Called with ansi_data=%p, len=%d&quot;, ansi_data, len);
+201 
+202   if (!renderer.vt || !renderer.framebuffer) {
+203     log_warn(&quot;ascii_renderer_render_frame: renderer not initialized&quot;);
+204     return;
+205   }
+206 
+207   if (!ansi_data || len &lt;= 0) {
+208     log_warn(&quot;ascii_renderer_render_frame: empty ANSI input&quot;);
+209     return;
+210   }
+211 
+212   /* Feed ANSI data to vterm for parsing and cell state updates */
+213   vterm_input_write(renderer.vt, ansi_data, len);
+214 
+215   /* Clear framebuffer to black background */
+216   memset(renderer.framebuffer, 0, renderer.pitch * renderer.height_px);
+217 
+218   /* Render each cell from the vterm screen state */
+219   for (int row = 0; row &lt; renderer.rows; row++) {
+220     for (int col = 0; col &lt; renderer.cols; col++) {
+221       VTermPos pos = {row, col};
+222       VTermScreenCell cell;
+223       vterm_screen_get_cell(renderer.vts, pos, &amp;cell);
+224 
+225       /* Skip empty cells */
+226       if (cell.chars[0] == 0) {
+227         continue;
+228       }
+229 
+230       /* Calculate pixel coordinates for this cell */
+231       int cell_x = col * renderer.cell_w;
+232       int cell_y = row * renderer.cell_h;
+233 
+234       /* Extract background color */
+235       uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
+236       if (VTERM_COLOR_IS_RGB(&amp;cell.bg)) {
+237         bg_r = cell.bg.rgb.red;
+238         bg_g = cell.bg.rgb.green;
+239         bg_b = cell.bg.rgb.blue;
+240       }
+241 
+242       /* Fill cell background */
+243       fill_rect(renderer.framebuffer, renderer.pitch, cell_x, cell_y,
+244                 renderer.cell_w, renderer.cell_h, bg_r, bg_g, bg_b);
+245 
+246       /* Extract foreground color (default white) */
+247       uint8_t fg_r = 255, fg_g = 255, fg_b = 255;
+248       if (VTERM_COLOR_IS_RGB(&amp;cell.fg)) {
+249         fg_r = cell.fg.rgb.red;
+250         fg_g = cell.fg.rgb.green;
+251         fg_b = cell.fg.rgb.blue;
+252       }
 253 
-254       int px = col * renderer.cell_w;
-255       int py = row * renderer.cell_h;
-256 
-257       /* Extract colors from cell */
-258       uint8_t fg_r = cell.fg.rgb.red;
-259       uint8_t fg_g = cell.fg.rgb.green;
-260       uint8_t fg_b = cell.fg.rgb.blue;
-261       uint8_t bg_r = cell.bg.rgb.red;
-262       uint8_t bg_g = cell.bg.rgb.green;
-263       uint8_t bg_b = cell.bg.rgb.blue;
-264 
-265       /* Fill background */
-266       fill_rect(renderer.framebuffer, renderer.pitch, px, py,
-267                 renderer.cell_w, renderer.cell_h, bg_r, bg_g, bg_b);
-268 
-269       /* Render glyph - cell.chars[0] contains the Unicode codepoint */
-270       uint32_t codepoint = cell.chars[0];
-271       if (codepoint != 0 &amp;&amp; codepoint != ' ') {
-272         FT_UInt glyph_idx = FT_Get_Char_Index(renderer.ft_face, codepoint);
-273         if (glyph_idx &amp;&amp; !FT_Load_Glyph(renderer.ft_face, glyph_idx,
-274                                         FT_LOAD_RENDER)) {
-275           FT_GlyphSlot slot = renderer.ft_face-&gt;glyph;
-276           int glyph_x = px + slot-&gt;bitmap_left;
-277           int glyph_y = py + (renderer.baseline - slot-&gt;bitmap_top);
-278 
-279           blit_glyph(&amp;slot-&gt;bitmap, glyph_x, glyph_y, fg_r, fg_g, fg_b,
-280                       bg_r, bg_g, bg_b);
-281         }
-282       }
-283     }
-284   }
-285 
-286   /* Update raylib texture */
-287   if (renderer.texture_initialized) {
-288     UpdateTexture(renderer.texture, renderer.framebuffer);
-289   }
-290 
-291   /* Render to canvas */
-292   log_info(&quot;[PERF] About to call BeginDrawing&quot;);
-293   BeginDrawing();
-294   log_info(&quot;[PERF] BeginDrawing returned, about to draw&quot;);
-295   ClearBackground(BLACK);
-296   DrawTexture(renderer.texture, 0, 0, WHITE);
-297   log_info(&quot;[PERF] About to call EndDrawing&quot;);
-298   EndDrawing();
-299   log_info(&quot;[PERF] EndDrawing returned&quot;);
-300 }</pre>
+254       /* Load and render glyph */
+255       uint32_t codepoint = cell.chars[0];
+256       if (FT_Load_Char(renderer.ft_face, codepoint, FT_LOAD_RENDER)) {
+257         continue;
+258       }
+259 
+260       /* Get glyph bitmap */
+261       FT_Glyph glyph;
+262       if (FT_Get_Glyph(renderer.ft_face-&gt;glyph, &amp;glyph)) {
+263         continue;
+264       }
+265 
+266       FT_BitmapGlyph bitmap_glyph = (FT_BitmapGlyph)glyph;
+267 
+268       /* Calculate glyph position with baseline adjustment */
+269       int glyph_x = cell_x + bitmap_glyph-&gt;left;
+270       int glyph_y = cell_y + renderer.baseline - bitmap_glyph-&gt;top;
+271 
+272       /* Composite glyph onto framebuffer */
+273       blit_glyph(&amp;bitmap_glyph-&gt;bitmap, glyph_x, glyph_y,
+274                   fg_r, fg_g, fg_b, bg_r, bg_g, bg_b);
+275 
+276       FT_Done_Glyph(glyph);
+277     }
+278   }
+279 
+280   /* Note: In WASM, texture update would happen here but raylib
+281    * requires a window context which isn't available in browser.
+282    * The framebuffer is maintained for potential future use.
+283    * The actual rendering on screen happens via xterm.js on the JS side. */
+284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>log_info</b>, and
-  <b>log_warn</b>.</p>
+<p class="Pp">References <b>log_debug</b>, and <b>log_warn</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ascii_renderer_resize_(int_pixel_width,_int_pixel_height)"><a class="permalink" href="#void_ascii_renderer_resize_(int_pixel_width,_int_pixel_height)">void
@@ -336,64 +374,64 @@
 <div class="Bd-indent"><i>pixel_width</i> New canvas width in pixels
 <br/>
 <i>pixel_height</i> New canvas height in pixels</div>
-<p class="Pp">Definition at line <b>307</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>307                                                               {
-308   if (!renderer.vt || !renderer.framebuffer) {
-309     log_warn(&quot;ascii_renderer_resize: renderer not initialized&quot;);
-310     return;
+<p class="Pp">Definition at line <b>294</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>294                                                               {
+295   if (!renderer.vt || !renderer.framebuffer) {
+296     log_warn(&quot;ascii_renderer_resize: renderer not initialized&quot;);
+297     return;
+298   }
+299 
+300   if (pixel_width == renderer.width_px &amp;&amp; pixel_height == renderer.height_px) {
+301     return;
+302   }
+303 
+304   log_info(&quot;ascii_renderer_resize: %dx%d -&gt; %dx%d&quot;, renderer.width_px,
+305            renderer.height_px, pixel_width, pixel_height);
+306 
+307   /* Free old texture */
+308   if (renderer.texture_initialized) {
+309     UnloadTexture(renderer.texture);
+310     renderer.texture_initialized = false;
 311   }
 312 
-313   if (pixel_width == renderer.width_px &amp;&amp; pixel_height == renderer.height_px) {
-314     return;
-315   }
-316 
-317   log_info(&quot;ascii_renderer_resize: %dx%d -&gt; %dx%d&quot;, renderer.width_px,
-318            renderer.height_px, pixel_width, pixel_height);
-319 
-320   /* Free old texture */
-321   if (renderer.texture_initialized) {
-322     UnloadTexture(renderer.texture);
-323     renderer.texture_initialized = false;
+313   /* Reallocate framebuffer */
+314   SAFE_FREE(renderer.framebuffer);
+315   renderer.width_px = pixel_width;
+316   renderer.height_px = pixel_height;
+317   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4;
+318 
+319   renderer.framebuffer =
+320       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
+321   if (!renderer.framebuffer) {
+322     log_error(&quot;Failed to reallocate framebuffer&quot;);
+323     return;
 324   }
-325 
-326   /* Reallocate framebuffer */
-327   SAFE_FREE(renderer.framebuffer);
-328   renderer.width_px = pixel_width;
-329   renderer.height_px = pixel_height;
-330   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4;
-331 
-332   renderer.framebuffer =
-333       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
-334   if (!renderer.framebuffer) {
-335     log_error(&quot;Failed to reallocate framebuffer&quot;);
-336     return;
-337   }
-338   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
-339 
-340   /* Update terminal dimensions */
-341   int new_cols = pixel_width / renderer.cell_w;
-342   int new_rows = pixel_height / renderer.cell_h;
-343 
-344   if (new_cols != renderer.cols || new_rows != renderer.rows) {
-345     renderer.cols = new_cols;
-346     renderer.rows = new_rows;
-347     vterm_set_size(renderer.vt, new_rows, new_cols);
-348   }
-349 
-350   /* Create new texture */
-351   Image img = {
-352       .data = renderer.framebuffer,
-353       .width = pixel_width,
-354       .height = pixel_height,
-355       .mipmaps = 1,
-356       .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-357   };
-358   renderer.texture = LoadTextureFromImage(img);
-359   renderer.texture_initialized = true;
-360 
-361   log_info(&quot;ascii_renderer_resize complete: %dx%d cells&quot;, renderer.cols,
-362            renderer.rows);
-363 }</pre>
+325   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
+326 
+327   /* Update terminal dimensions */
+328   int new_cols = pixel_width / renderer.cell_w;
+329   int new_rows = pixel_height / renderer.cell_h;
+330 
+331   if (new_cols != renderer.cols || new_rows != renderer.rows) {
+332     renderer.cols = new_cols;
+333     renderer.rows = new_rows;
+334     vterm_set_size(renderer.vt, new_rows, new_cols);
+335   }
+336 
+337   /* Create new texture */
+338   Image img = {
+339       .data = renderer.framebuffer,
+340       .width = pixel_width,
+341       .height = pixel_height,
+342       .mipmaps = 1,
+343       .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
+344   };
+345   renderer.texture = LoadTextureFromImage(img);
+346   renderer.texture_initialized = true;
+347 
+348   log_info(&quot;ascii_renderer_resize complete: %dx%d cells&quot;, renderer.cols,
+349            renderer.rows);
+350 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
@@ -403,33 +441,33 @@
 <h2 class="Ss" id="void_ascii_renderer_shutdown_(void_)"><a class="permalink" href="#void_ascii_renderer_shutdown_(void_)">void
   ascii_renderer_shutdown (void )</a></h2>
 <p class="Pp">Shutdown the ASCII renderer and free resources</p>
-<p class="Pp">Definition at line <b>380</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>380                                    {
-381   if (renderer.texture_initialized) {
-382     UnloadTexture(renderer.texture);
-383     renderer.texture_initialized = false;
-384   }
-385 
-386   if (renderer.vt) {
-387     vterm_free(renderer.vt);
-388     renderer.vt = NULL;
-389   }
-390 
-391   if (renderer.ft_face) {
-392     FT_Done_Face(renderer.ft_face);
-393   }
-394 
-395   if (renderer.ft_lib) {
-396     FT_Done_FreeType(renderer.ft_lib);
-397   }
-398 
-399   if (renderer.framebuffer) {
-400     SAFE_FREE(renderer.framebuffer);
-401   }
-402 
-403   memset(&amp;renderer, 0, sizeof(renderer));
-404   log_info(&quot;ASCII renderer shut down&quot;);
-405 }</pre>
+<p class="Pp">Definition at line <b>424</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>424                                    {
+425   if (renderer.texture_initialized) {
+426     UnloadTexture(renderer.texture);
+427     renderer.texture_initialized = false;
+428   }
+429 
+430   if (renderer.vt) {
+431     vterm_free(renderer.vt);
+432     renderer.vt = NULL;
+433   }
+434 
+435   if (renderer.ft_face) {
+436     FT_Done_Face(renderer.ft_face);
+437   }
+438 
+439   if (renderer.ft_lib) {
+440     FT_Done_FreeType(renderer.ft_lib);
+441   }
+442 
+443   if (renderer.framebuffer) {
+444     SAFE_FREE(renderer.framebuffer);
+445   }
+446 
+447   memset(&amp;renderer, 0, sizeof(renderer));
+448   log_info(&quot;ASCII renderer shut down&quot;);
+449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_info</b>, and <b>SAFE_FREE</b>.</p>

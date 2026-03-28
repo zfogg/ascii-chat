@@ -667,15 +667,15 @@ thread_pool_destroy(server_pool);</pre>
   NULL=auto-generate)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>347</b> of file <b>comprehensive.c</b>.</p>
-<pre>347                                                                                                                                {
-348   (void)pool;
-349   (void)thread_func;
-350   (void)thread_arg;
-351   (void)stop_id;
-352   (void)name;
-353   return ASCIICHAT_OK;  // No-op in WASM (no real threads)
-354 }</pre>
+<p class="Pp">Definition at line <b>350</b> of file <b>comprehensive.c</b>.</p>
+<pre>350                                                                                                                                {
+351   (void)pool;
+352   (void)thread_func;
+353   (void)thread_arg;
+354   (void)stop_id;
+355   (void)name;
+356   return ASCIICHAT_OK;  // No-op in WASM (no real threads)
+357 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -718,11 +718,11 @@ thread_pool_destroy(server_pool);</pre>
   stop</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>356</b> of file <b>comprehensive.c</b>.</p>
-<pre>356                                                    {
-357   (void)pool;
-358   return ASCIICHAT_OK;  // No-op in WASM
-359 }</pre>
+<p class="Pp">Definition at line <b>359</b> of file <b>comprehensive.c</b>.</p>
+<pre>359                                                    {
+360   (void)pool;
+361   return ASCIICHAT_OK;  // No-op in WASM
+362 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,

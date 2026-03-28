@@ -223,7 +223,9 @@
 <p class="Pp">void <b>log_init</b> (const char *filename, <b>log_level_t</b>
     level, <b>bool</b> force_stderr, <b>bool</b> use_mmap)
   <br/>
-  Initialize the logging system. void <b>log_destroy</b> (void)
+  Initialize the logging system. void <b>log_init_raylib</b> (void)
+  <br/>
+  Initialize raylib logging integration. void <b>log_destroy</b> (void)
   <br/>
   Destroy the logging system and close log file. void <b>log_system_init</b>
     (void)
@@ -386,7 +388,7 @@
 <pre>log_console_impl((level), __FILE__, __LINE__, __func__, (message))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>994</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>1004</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
@@ -397,7 +399,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited DEBUG logging.</p>
-<p class="Pp">Definition at line <b>693</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>703</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
     <b>audio_ring_buffer_read()</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
@@ -420,7 +422,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log DEBUG message every nth call.</p>
-<p class="Pp">Definition at line <b>799</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>809</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_debug_once(_fmt,__"><a class="permalink" href="#_define_log_debug_once(_fmt,__">#define
@@ -430,7 +432,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log DEBUG message exactly once.</p>
-<p class="Pp">Definition at line <b>824</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>834</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_dev_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_dev_every(_interval_us,__fmt,__">#define
@@ -440,7 +442,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited DEV logging.</p>
-<p class="Pp">Definition at line <b>690</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>700</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
     <b>acip_server_receive_and_dispatch()</b>,
     <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
@@ -461,7 +463,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log DEV message every nth call.</p>
-<p class="Pp">Definition at line <b>796</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>806</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_dev_once(_fmt,__"><a class="permalink" href="#_define_log_dev_once(_fmt,__">#define
@@ -471,7 +473,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log DEV message exactly once.</p>
-<p class="Pp">Definition at line <b>821</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>831</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_error_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_error_every(_interval_us,__fmt,__">#define
@@ -481,7 +483,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited ERROR logging.</p>
-<p class="Pp">Definition at line <b>702</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>712</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
 </section>
 <section class="Ss">
@@ -492,7 +494,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log ERROR message every nth call.</p>
-<p class="Pp">Definition at line <b>808</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>818</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_error_once(_fmt,__"><a class="permalink" href="#_define_log_error_once(_fmt,__">#define
@@ -502,7 +504,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log ERROR message exactly once.</p>
-<p class="Pp">Definition at line <b>833</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>843</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_fatal_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_fatal_every(_interval_us,__fmt,__">#define
@@ -512,7 +514,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited FATAL logging.</p>
-<p class="Pp">Definition at line <b>705</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>715</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_fatal_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_fatal_nth(_n,__fmt,__">#define
@@ -522,7 +524,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log FATAL message every nth call.</p>
-<p class="Pp">Definition at line <b>811</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>821</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_fatal_once(_fmt,__"><a class="permalink" href="#_define_log_fatal_once(_fmt,__">#define
@@ -532,7 +534,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log FATAL message exactly once.</p>
-<p class="Pp">Definition at line <b>836</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>846</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_info_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_info_every(_interval_us,__fmt,__">#define
@@ -542,7 +544,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited INFO logging.</p>
-<p class="Pp">Definition at line <b>696</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>706</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>,
     <b>ffmpeg_decoder_read_audio_samples()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>media_source_read_audio()</b>,
@@ -557,7 +559,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log INFO message every nth call.</p>
-<p class="Pp">Definition at line <b>802</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>812</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_info_once(_fmt,__"><a class="permalink" href="#_define_log_info_once(_fmt,__">#define
@@ -567,7 +569,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log INFO message exactly once.</p>
-<p class="Pp">Definition at line <b>827</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>837</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_warn_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_warn_every(_interval_us,__fmt,__">#define
@@ -577,7 +579,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Rate-limited WARN logging.</p>
-<p class="Pp">Definition at line <b>699</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>709</b> of file <b>log/log.h</b>.</p>
 <p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
     <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_write()</b>,
@@ -596,7 +598,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log WARN message every nth call.</p>
-<p class="Pp">Definition at line <b>805</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>815</b> of file <b>log/log.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_warn_once(_fmt,__"><a class="permalink" href="#_define_log_warn_once(_fmt,__">#define
@@ -606,7 +608,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Log WARN message exactly once.</p>
-<p class="Pp">Definition at line <b>830</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>840</b> of file <b>log/log.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -615,7 +617,7 @@
 <section class="Ss">
 <h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
   struct <b>log_mmap_config</b> <b>log_mmap_config_t</b></a></h2>
-<p class="Pp">Definition at line <b>852</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Definition at line <b>862</b> of file <b>log/log.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -687,33 +689,33 @@
 <h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
   log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
   char * func, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>2110</b> of file <b>log/log.c</b>.</p>
-<pre>2110                                                                                                             {
-2111   if (!message) {
-2112     return;
-2113   }
-2114 
-2115   int fd = terminal_choose_log_fd(level);
-2116   if (fd &lt; 0) {
-2117     return;
-2118   }
-2119 
-2120   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
-2121   int json_fd = atomic_load_int(&amp;g_log.json_file);
-2122   bool use_json = (json_fd &gt;= 0);
-2123 
-2124   if (use_json) {
-2125     // Use async-safe JSON formatter (safe for signal handlers)
-2126     log_json_async_safe(fd, level, file, line, func, message);
-2127   } else {
-2128     // Text output to console using platform_write_all to handle partial writes
-2129     size_t msg_len = strlen(message);
-2130     platform_write_all(fd, (const uint8_t *)message, msg_len);
-2131     if (msg_len == 0 || message[msg_len - 1] != '\n') {
-2132       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
-2133     }
-2134   }
-2135 }</pre>
+<p class="Pp">Definition at line <b>2133</b> of file <b>log/log.c</b>.</p>
+<pre>2133                                                                                                             {
+2134   if (!message) {
+2135     return;
+2136   }
+2137 
+2138   int fd = terminal_choose_log_fd(level);
+2139   if (fd &lt; 0) {
+2140     return;
+2141   }
+2142 
+2143   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
+2144   int json_fd = atomic_load_int(&amp;g_log.json_file);
+2145   bool use_json = (json_fd &gt;= 0);
+2146 
+2147   if (use_json) {
+2148     // Use async-safe JSON formatter (safe for signal handlers)
+2149     log_json_async_safe(fd, level, file, line, func, message);
+2150   } else {
+2151     // Text output to console using platform_write_all to handle partial writes
+2152     size_t msg_len = strlen(message);
+2153     platform_write_all(fd, (const uint8_t *)message, msg_len);
+2154     if (msg_len == 0 || message[msg_len - 1] != '\n') {
+2155       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
+2156     }
+2157   }
+2158 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, <b>log_json_async_safe()</b>,

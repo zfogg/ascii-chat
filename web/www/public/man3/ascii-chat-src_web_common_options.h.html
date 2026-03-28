@@ -99,11 +99,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_color_filter_(void_)"><a class="permalink" href="#int_get_color_filter_(void_)">int
   get_color_filter (void )</a></h2>
-<p class="Pp">Definition at line <b>70</b> of file
+<p class="Pp">Definition at line <b>73</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>70                            {
-71   return GET_OPTION(color_filter);
-72 }</pre>
+<pre>73                            {
+74   int result = GET_OPTION(color_filter);
+75   return result;
+76 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -111,11 +112,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_color_mode_(void_)"><a class="permalink" href="#int_get_color_mode_(void_)">int
   get_color_mode (void )</a></h2>
-<p class="Pp">Definition at line <b>55</b> of file
+<p class="Pp">Definition at line <b>57</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>55                          {
-56   return GET_OPTION(color_mode);
-57 }</pre>
+<pre>57                          {
+58   int result = GET_OPTION(color_mode);
+59   return result;
+60 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -123,11 +125,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_flip_x_(void_)"><a class="permalink" href="#int_get_flip_x_(void_)">int
   get_flip_x (void )</a></h2>
-<p class="Pp">Definition at line <b>142</b> of file
+<p class="Pp">Definition at line <b>149</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>142                      {
-143   return GET_OPTION(flip_x) ? 1 : 0;
-144 }</pre>
+<pre>149                      {
+150   int result = GET_OPTION(flip_x) ? 1 : 0;
+151   return result;
+152 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -135,11 +138,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_flip_y_(void_)"><a class="permalink" href="#int_get_flip_y_(void_)">int
   get_flip_y (void )</a></h2>
-<p class="Pp">Definition at line <b>157</b> of file
+<p class="Pp">Definition at line <b>165</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>157                      {
-158   return GET_OPTION(flip_y) ? 1 : 0;
-159 }</pre>
+<pre>165                      {
+166   int result = GET_OPTION(flip_y) ? 1 : 0;
+167   return result;
+168 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -147,11 +151,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_height_(void_)"><a class="permalink" href="#int_get_height_(void_)">int
   get_height (void )</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file
+<p class="Pp">Definition at line <b>41</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>40                      {
-41   return GET_OPTION(height);
-42 }</pre>
+<pre>41                      {
+42   int result = GET_OPTION(height);
+43   return result;
+44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -168,14 +173,15 @@
 <i>option_name</i> The long name of the option</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Help text string or NULL if not applicable</div>
-<p class="Pp">Definition at line <b>204</b> of file
+<p class="Pp">Definition at line <b>215</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>204                                                              {
-205   if (!option_name || !option_name[0])
-206     return NULL;
-207   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-208   return options_get_help_text(mode_enum, option_name);
-209 }</pre>
+<pre>215                                                              {
+216   if (!option_name || !option_name[0])
+217     return NULL;
+218   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+219   const char *result = options_get_help_text(mode_enum, option_name);
+220   return result;
+221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_get_help_text()</b>.</p>
@@ -183,11 +189,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_matrix_rain_(void_)"><a class="permalink" href="#int_get_matrix_rain_(void_)">int
   get_matrix_rain (void )</a></h2>
-<p class="Pp">Definition at line <b>127</b> of file
+<p class="Pp">Definition at line <b>133</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>127                           {
-128   return GET_OPTION(matrix_rain) ? 1 : 0;
-129 }</pre>
+<pre>133                           {
+134   int result = GET_OPTION(matrix_rain) ? 1 : 0;
+135   return result;
+136 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -195,11 +202,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_palette_(void_)"><a class="permalink" href="#int_get_palette_(void_)">int
   get_palette (void )</a></h2>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">Definition at line <b>103</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>99                       {
-100   return GET_OPTION(palette_type);
-101 }</pre>
+<pre>103                       {
+104   int result = GET_OPTION(palette_type);
+105   return result;
+106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -207,11 +215,12 @@
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_get_palette_chars_(void_)"><a class="permalink" href="#const_char_*_get_palette_chars_(void_)">const
   char * get_palette_chars (void )</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file
+<p class="Pp">Definition at line <b>117</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>112                                     {
-113   return GET_OPTION(palette_custom);
-114 }</pre>
+<pre>117                                     {
+118   const char *result = GET_OPTION(palette_custom);
+119   return result;
+120 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -219,11 +228,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_get_target_fps_(void_)"><a class="permalink" href="#int_get_target_fps_(void_)">int
   get_target_fps (void )</a></h2>
-<p class="Pp">Definition at line <b>187</b> of file
+<p class="Pp">Definition at line <b>197</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>187                          {
-188   return GET_OPTION(fps);
-189 }</pre>
+<pre>197                          {
+198   int result = GET_OPTION(fps);
+199   return result;
+200 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -234,8 +244,9 @@
 <p class="Pp">Definition at line <b>29</b> of file
     <b>src/web/common/options.c</b>.</p>
 <pre>29                     {
-30   return GET_OPTION(width);
-31 }</pre>
+30   int result = GET_OPTION(width);
+31   return result;
+32 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -243,12 +254,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_color_filter_(int_filter)"><a class="permalink" href="#int_set_color_filter_(int_filter)">int
   set_color_filter (int filter)</a></h2>
-<p class="Pp">Definition at line <b>64</b> of file
+<p class="Pp">Definition at line <b>67</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>64                                  {
-65   asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
-66   return (err == ASCIICHAT_OK) ? 0 : -1;
-67 }</pre>
+<pre>67                                  {
+68   asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
+69   return (err == ASCIICHAT_OK) ? 0 : -1;
+70 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>
@@ -256,12 +267,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_color_mode_(int_mode)"><a class="permalink" href="#int_set_color_mode_(int_mode)">int
   set_color_mode (int mode)</a></h2>
-<p class="Pp">Definition at line <b>49</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>49                              {
-50   asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
-51   return (err == ASCIICHAT_OK) ? 0 : -1;
-52 }</pre>
+<pre>51                              {
+52   asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
+53   return (err == ASCIICHAT_OK) ? 0 : -1;
+54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>
@@ -269,12 +280,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_flip_x_(int_enabled)"><a class="permalink" href="#int_set_flip_x_(int_enabled)">int
   set_flip_x (int enabled)</a></h2>
-<p class="Pp">Definition at line <b>136</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>136                             {
-137   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
-138   return (err == ASCIICHAT_OK) ? 0 : -1;
-139 }</pre>
+<pre>143                             {
+144   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
+145   return (err == ASCIICHAT_OK) ? 0 : -1;
+146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>enabled</b>, and
@@ -283,12 +294,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_flip_y_(int_enabled)"><a class="permalink" href="#int_set_flip_y_(int_enabled)">int
   set_flip_y (int enabled)</a></h2>
-<p class="Pp">Definition at line <b>151</b> of file
+<p class="Pp">Definition at line <b>159</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>151                             {
-152   asciichat_error_t err = options_set_bool(&quot;flip_y&quot;, enabled != 0);
-153   return (err == ASCIICHAT_OK) ? 0 : -1;
-154 }</pre>
+<pre>159                             {
+160   asciichat_error_t err = options_set_bool(&quot;flip_y&quot;, enabled != 0);
+161   return (err == ASCIICHAT_OK) ? 0 : -1;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>enabled</b>, and
@@ -297,12 +308,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_height_(int_value)"><a class="permalink" href="#int_set_height_(int_value)">int
   set_height (int value)</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file
+<p class="Pp">Definition at line <b>35</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>34                           {
-35   asciichat_error_t err = options_set_int(&quot;height&quot;, value);
-36   return (err == ASCIICHAT_OK) ? 0 : -1;
-37 }</pre>
+<pre>35                           {
+36   asciichat_error_t err = options_set_int(&quot;height&quot;, value);
+37   return (err == ASCIICHAT_OK) ? 0 : -1;
+38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>
@@ -310,12 +321,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_matrix_rain_(int_enabled)"><a class="permalink" href="#int_set_matrix_rain_(int_enabled)">int
   set_matrix_rain (int enabled)</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file
+<p class="Pp">Definition at line <b>127</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>121                                  {
-122   asciichat_error_t err = options_set_bool(&quot;matrix_rain&quot;, enabled != 0);
-123   return (err == ASCIICHAT_OK) ? 0 : -1;
-124 }</pre>
+<pre>127                                  {
+128   asciichat_error_t err = options_set_bool(&quot;matrix_rain&quot;, enabled != 0);
+129   return (err == ASCIICHAT_OK) ? 0 : -1;
+130 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>enabled</b>, and
@@ -324,26 +335,26 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_palette_(const_char_*_palette_name)"><a class="permalink" href="#int_set_palette_(const_char_*_palette_name)">int
   set_palette (const char * palette_name)</a></h2>
-<p class="Pp">Definition at line <b>79</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>79                                           {
-80   if (!palette_name)
-81     return -1;
-82 
-83   palette_type_t palette_value;
-84   char *error_msg = NULL;
-85 
-86   if (!parse_palette_type(palette_name, &amp;palette_value, &amp;error_msg)) {
-87     if (error_msg) {
-88       log_error(&quot;Failed to parse palette '%s': %s&quot;, palette_name, error_msg);
-89       free(error_msg);
-90     }
-91     return -1;
-92   }
-93 
-94   asciichat_error_t err = options_set_int(&quot;palette_type&quot;, (int)palette_value);
-95   return (err == ASCIICHAT_OK) ? 0 : -1;
-96 }</pre>
+<pre>83                                           {
+84   if (!palette_name)
+85     return -1;
+86 
+87   palette_type_t palette_value;
+88   char *error_msg = NULL;
+89 
+90   if (!parse_palette_type(palette_name, &amp;palette_value, &amp;error_msg)) {
+91     if (error_msg) {
+92       log_error(&quot;Failed to parse palette '%s': %s&quot;, palette_name, error_msg);
+93       free(error_msg);
+94     }
+95     return -1;
+96   }
+97 
+98   asciichat_error_t err = options_set_int(&quot;palette_type&quot;, (int)palette_value);
+99   return (err == ASCIICHAT_OK) ? 0 : -1;
+100 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>,
@@ -352,14 +363,14 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_palette_chars_(const_char_*_chars)"><a class="permalink" href="#int_set_palette_chars_(const_char_*_chars)">int
   set_palette_chars (const char * chars)</a></h2>
-<p class="Pp">Definition at line <b>104</b> of file
+<p class="Pp">Definition at line <b>109</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>104                                          {
-105   if (!chars)
-106     return -1;
-107   asciichat_error_t err = options_set_string(&quot;palette_custom&quot;, chars);
-108   return (err == ASCIICHAT_OK) ? 0 : -1;
-109 }</pre>
+<pre>109                                          {
+110   if (!chars)
+111     return -1;
+112   asciichat_error_t err = options_set_string(&quot;palette_custom&quot;, chars);
+113   return (err == ASCIICHAT_OK) ? 0 : -1;
+114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and
@@ -368,12 +379,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int_set_target_fps_(int_fps)"><a class="permalink" href="#int_set_target_fps_(int_fps)">int
   set_target_fps (int fps)</a></h2>
-<p class="Pp">Definition at line <b>181</b> of file
+<p class="Pp">Definition at line <b>191</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>181                             {
-182   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
-183   return (err == ASCIICHAT_OK) ? 0 : -1;
-184 }</pre>
+<pre>191                             {
+192   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
+193   return (err == ASCIICHAT_OK) ? 0 : -1;
+194 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>

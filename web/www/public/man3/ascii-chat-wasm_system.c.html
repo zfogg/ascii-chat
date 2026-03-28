@@ -51,10 +51,8 @@
   <br/>
   pid_t <b>platform_get_pid</b> (void)
   <br/>
-  Get the current process ID. void <b>js_terminal_write</b> (const char *data,
-    int len)
-  <br/>
-  ssize_t <b>platform_write</b> (int fd, const void *buf, size_t count)
+  Get the current process ID. ssize_t <b>platform_write</b> (int fd, const void
+    *buf, size_t count)
   <br/>
   Platform-safe write function.
   <br/>
@@ -79,12 +77,6 @@
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_js_terminal_write_(const_char_*_data,_int_len)"><a class="permalink" href="#void_js_terminal_write_(const_char_*_data,_int_len)">void
-  js_terminal_write (const char * data, int len) [extern]</a></h2>
-<p class="Pp">Referenced by <b>EM_JS()</b>, <b>platform_write()</b>, and
-    <b>platform_write_terminal()</b>.</p>
-</section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_unsetenv_(const_char_*_name)"><a class="permalink" href="#int_platform_unsetenv_(const_char_*_name)">int
   platform_unsetenv (const char * name)</a></h2>

@@ -292,76 +292,32 @@ session_client_like_run()
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>368</b> of file <b>mirror/main.c</b>.</p>
-<pre>368                       {
-369   // Test deadlock detection if env var is set
-370   const char *deadlock_mode = getenv(&quot;ASCII_CHAT_TEST_DEADLOCK&quot;);
-371   if (deadlock_mode) {
-372     fprintf(stderr, &quot;\n========================================\n&quot;);
-373     fprintf(stderr, &quot;DEADLOCK TEST MODE ENABLED\n&quot;);
-374     fprintf(stderr, &quot;========================================\n&quot;);
-375     fflush(stderr);
-376 
-377     // Initialize test mutexes for deadlock demonstration
-378     mutex_init(&amp;g_test_mutex_a, &quot;test_mutex_a&quot;);
-379     mutex_init(&amp;g_test_mutex_b, &quot;test_mutex_b&quot;);
-380     mutex_init(&amp;g_test_mutex_c, &quot;test_mutex_c&quot;);
-381 
-382     // Check for 3-way mode
-383     bool use_3way = (strcmp(deadlock_mode, &quot;3way&quot;) == 0);
-384 
-385     if (use_3way) {
-386       fprintf(stderr, &quot;Mode: 3-way deadlock (A&#x2192;B&#x2192;C&#x2192;A)\n&quot;);
-387       fprintf(stderr, &quot;Deadlock will form around second 2-4\n&quot;);
-388       asciichat_thread_t tid_a, tid_b, tid_c;
-389       log_info(&quot;Creating 3-way deadlock test threads...&quot;);
-390       asciichat_thread_create(&amp;tid_a, &quot;test_deadlock_a&quot;, test_thread_a_3way, NULL);
-391       asciichat_thread_create(&amp;tid_b, &quot;test_deadlock_b&quot;, test_thread_b_3way, NULL);
-392       asciichat_thread_create(&amp;tid_c, &quot;test_deadlock_c&quot;, test_thread_c_3way, NULL);
-393     } else {
-394       fprintf(stderr, &quot;Mode: 2-way deadlock (A&#x2194;B)\n&quot;);
-395       fprintf(stderr, &quot;Deadlock will form around second 2\n&quot;);
-396       // Create 2-way deadlock threads
-397       asciichat_thread_t tid_a, tid_b;
-398       log_info(&quot;Creating 2-way deadlock test threads...&quot;);
-399       asciichat_thread_create(&amp;tid_a, &quot;test_deadlock_a&quot;, test_thread_a, NULL);
-400       asciichat_thread_create(&amp;tid_b, &quot;test_deadlock_b&quot;, test_thread_b, NULL);
-401     }
-402 
-403     fprintf(stderr, &quot;Threads created\n&quot;);
-404     fprintf(stderr, &quot;Use: kill -SIGUSR1 &lt;pid&gt; to dump state\n&quot;);
-405     fprintf(stderr, &quot;========================================\n\n&quot;);
-406     fflush(stderr);
-407 
-408     // Just wait and let deadlock happen
-409     while (1)
-410       sleep(1);
-411   }
-412 
-413   // Configure mode-specific session settings
-414   session_client_like_config_t config = {
-415       .run_fn = mirror_run,
-416       .run_user_data = NULL,
-417       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
-418       .keyboard_handler = mirror_keyboard_handler,
-419       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-420   };
-421 
-422   log_info(&quot;mirror_main: Starting session_client_like_run&quot;);
-423   // Run shared initialization/teardown with mode-specific loop
-424   asciichat_error_t result = session_client_like_run(&amp;config);
-425   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-426 
-427   if (result != ASCIICHAT_OK) {
-428     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-429   }
-430 
-431   return (int)result;
-432 }</pre>
+<p class="Pp">Definition at line <b>377</b> of file <b>mirror/main.c</b>.</p>
+<pre>377                       {
+378   log_info(&quot;[MIRROR] main ENTRY&quot;);
+379 
+380   // Configure mode-specific session settings
+381   session_client_like_config_t config = {
+382       .run_fn = mirror_run,
+383       .run_user_data = NULL,
+384       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+385       .keyboard_handler = mirror_keyboard_handler,
+386       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+387   };
+388 
+389   // Run shared initialization/teardown with mode-specific loop
+390   asciichat_error_t result = session_client_like_run(&amp;config);
+391   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
+392 
+393   if (result != ASCIICHAT_OK) {
+394     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
+395   }
+396 
+397   return (int)result;
+398 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>mutex_init()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>,
     <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
     <b>session_client_like_run()</b>.</p>
 </section>

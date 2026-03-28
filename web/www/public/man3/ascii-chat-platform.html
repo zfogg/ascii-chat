@@ -2613,7 +2613,7 @@ if (ready &gt; 0) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/socket.h</b>&gt;<b></b></p>
 <p class="Pp">Invalid socket value (POSIX: -1).</p>
-<p class="Pp">Definition at line <b>277</b> of file <b>socket.h</b>.</p>
+<p class="Pp">Definition at line <b>278</b> of file <b>socket.h</b>.</p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
     <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
     <b>acip_client_receive_and_dispatch()</b>,
@@ -3434,7 +3434,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 <p class="Pp">This macro satisfies clang-tidy cert-err33-c by explicitly
     handling the return value of printf family functions.</p>
-<p class="Pp">Definition at line <b>499</b> of file <b>system.h</b>.</p>
+<p class="Pp">Definition at line <b>510</b> of file <b>system.h</b>.</p>
 <p class="Pp">Referenced by <b>format_bytes_pretty()</b>.</p>
 </section>
 <section class="Ss">
@@ -3442,21 +3442,21 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
   SOCKET_ERROR_AGAIN <b>EAGAIN</b></a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/socket.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1083</b> of file <b>socket.h</b>.</p>
+<p class="Pp">Definition at line <b>1084</b> of file <b>socket.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SOCKET_ERROR_INPROGRESS___EINPROGRESS"><a class="permalink" href="#_define_SOCKET_ERROR_INPROGRESS___EINPROGRESS">#define
   SOCKET_ERROR_INPROGRESS EINPROGRESS</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/socket.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1082</b> of file <b>socket.h</b>.</p>
+<p class="Pp">Definition at line <b>1083</b> of file <b>socket.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SOCKET_ERROR_WOULDBLOCK___"><a class="permalink" href="#_define_SOCKET_ERROR_WOULDBLOCK___">#define
   SOCKET_ERROR_WOULDBLOCK <b>EWOULDBLOCK</b></a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/socket.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1081</b> of file <b>socket.h</b>.</p>
+<p class="Pp">Definition at line <b>1082</b> of file <b>socket.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_STATIC_COND_INIT____"><a class="permalink" href="#_define_STATIC_COND_INIT____">#define
@@ -3727,7 +3727,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Signal handler function type.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>sig</i> Signal number</div>
-<p class="Pp">Definition at line <b>45</b> of file <b>system.h</b>.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>system.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="using_"><a class="permalink" href="#using_">using
@@ -3881,9 +3881,9 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>acip_websocket_client_transport_create()</b>,
     <b>audio_start_duplex()</b>, <b>create_client_render_threads()</b>,
     <b>debug_sync_start_thread()</b>, <b>discover_session_parallel()</b>,
-    <b>ffmpeg_decoder_start_prefetch()</b>, <b>mirror_main()</b>,
-    <b>parallel_connect()</b>, <b>server_main()</b>,
-    <b>session_host_start()</b>, <b>session_host_start_render()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, <b>parallel_connect()</b>,
+    <b>server_main()</b>, <b>session_host_start()</b>,
+    <b>session_host_start_render()</b>,
     <b>session_participant_start_audio_capture()</b>,
     <b>session_participant_start_video_capture()</b>,
     <b>session_pipeline_create()</b>, <b>splash_intro_start()</b>,
@@ -5226,19 +5226,20 @@ for (int i = 0; i &lt; count; i++) {
     <b>acip_webrtc_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>, <b>add_client()</b>,
-    <b>add_webrtc_client()</b>, <b>app_client_create()</b>, <b>audio_init()</b>,
+    <b>add_webrtc_client()</b>, <b>app_client_create()</b>,
+    <b>asciichat_error_stats_record()</b>, <b>audio_init()</b>,
     <b>audio_sender_init()</b>, <b>buffer_pool_create()</b>,
     <b>colorscheme_init()</b>, <b>debug_sync_start_thread()</b>,
     <b>discover_session_parallel()</b>, <b>discovery_session_create()</b>,
     <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
     <b>framebuffer_create()</b>, <b>framebuffer_create_multi()</b>,
     <b>lifecycle_init()</b>, <b>media_source_create()</b>,
-    <b>memory_backend_create()</b>, <b>mirror_main()</b>,
-    <b>options_state_init()</b>, <b>parallel_connect()</b>,
-    <b>server_connection_init()</b>, <b>server_main()</b>,
-    <b>session_host_create()</b>, <b>session_log_buffer_create()</b>,
-    <b>splash_set_update_notification()</b>, <b>tcp_client_create()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>memory_backend_create()</b>, <b>options_state_init()</b>,
+    <b>parallel_connect()</b>, <b>server_connection_init()</b>,
+    <b>server_main()</b>, <b>session_host_create()</b>,
+    <b>session_log_buffer_create()</b>, <b>splash_set_update_notification()</b>,
+    <b>tcp_client_create()</b>, <b>thread_pool_create()</b>,
+    <b>thread_pool_create_with_workers()</b>,
     <b>video_frame_buffer_create()</b>, <b>webrtc_peer_manager_create()</b>, and
     <b>websocket_client_create()</b>.</p>
 </section>
@@ -6255,10 +6256,10 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
 <p class="Pp"></p>
 <p class="Pp">Use this sparingly - prefer normal exit() whenever possible.</p>
 </div>
-<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
-<pre>129                                         {
-130   (void)exit_code;
-131 }</pre>
+<p class="Pp">Definition at line <b>125</b> of file <b>misc.c</b>.</p>
+<pre>125                                         {
+126   (void)exit_code;
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
@@ -6443,58 +6444,58 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 <i>path_size</i> Size of the buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
-<p class="Pp">Definition at line <b>189</b> of file <b>filesystem.c</b>.</p>
-<pre>189                                                                     {
-190   if (!exe_path || path_size == 0) {
-191     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: exe_path=%p, path_size=%zu&quot;, (void *)exe_path, path_size);
-192     return false;
-193   }
-194 
-195 #ifdef _WIN32
-196   DWORD len = GetModuleFileNameA(NULL, exe_path, (DWORD)path_size);
-197   if (len == 0) {
-198     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;GetModuleFileNameA failed: error code %lu&quot;, GetLastError());
-199     return false;
-200   }
-201   if (len &gt;= path_size) {
-202     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
-203               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
-204               path_size);
-205     return false;
-206   }
-207   return true;
-208 
-209 #elif defined(__linux__)
-210   ssize_t len = readlink(&quot;/proc/self/exe&quot;, exe_path, path_size - 1);
-211   if (len &lt; 0) {
-212     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;readlink(\&quot;/proc/self/exe\&quot;) failed: %s&quot;, SAFE_STRERROR(errno));
-213     return false;
-214   }
-215   if ((size_t)len &gt;= path_size - 1) {
-216     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
-217               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
-218               path_size);
-219     return false;
-220   }
-221   // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - len bounded by path_size check above
-222   exe_path[len] = '\0';
-223   return true;
-224 
-225 #elif defined(__APPLE__)
-226   uint32_t bufsize = (uint32_t)path_size;
-227   int result = _NSGetExecutablePath(exe_path, &amp;bufsize);
-228   if (result != 0) {
-229     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes&quot;,
-230               bufsize, path_size);
-231     return false;
-232   }
-233   return true;
-234 
-235 #else
-236   SET_ERRNO(ERROR_GENERAL, &quot;Unsupported platform - cannot get executable path&quot;);
-237   return false;
-238 #endif
-239 }</pre>
+<p class="Pp">Definition at line <b>191</b> of file <b>filesystem.c</b>.</p>
+<pre>191                                                                     {
+192   if (!exe_path || path_size == 0) {
+193     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: exe_path=%p, path_size=%zu&quot;, (void *)exe_path, path_size);
+194     return false;
+195   }
+196 
+197 #ifdef _WIN32
+198   DWORD len = GetModuleFileNameA(NULL, exe_path, (DWORD)path_size);
+199   if (len == 0) {
+200     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;GetModuleFileNameA failed: error code %lu&quot;, GetLastError());
+201     return false;
+202   }
+203   if (len &gt;= path_size) {
+204     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
+205               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
+206               path_size);
+207     return false;
+208   }
+209   return true;
+210 
+211 #elif defined(__linux__)
+212   ssize_t len = readlink(&quot;/proc/self/exe&quot;, exe_path, path_size - 1);
+213   if (len &lt; 0) {
+214     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;readlink(\&quot;/proc/self/exe\&quot;) failed: %s&quot;, SAFE_STRERROR(errno));
+215     return false;
+216   }
+217   if ((size_t)len &gt;= path_size - 1) {
+218     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
+219               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
+220               path_size);
+221     return false;
+222   }
+223   // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - len bounded by path_size check above
+224   exe_path[len] = '\0';
+225   return true;
+226 
+227 #elif defined(__APPLE__)
+228   uint32_t bufsize = (uint32_t)path_size;
+229   int result = _NSGetExecutablePath(exe_path, &amp;bufsize);
+230   if (result != 0) {
+231     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes&quot;,
+232               bufsize, path_size);
+233     return false;
+234   }
+235   return true;
+236 
+237 #else
+238   SET_ERRNO(ERROR_GENERAL, &quot;Unsupported platform - cannot get executable path&quot;);
+239   return false;
+240 #endif
+241 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>errno</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
@@ -6980,10 +6981,10 @@ platform_install_crash_handler(my_crash_handler);
   possible</div>
 <p class="Pp">Use this to check before calling prompt functions in contexts
     where non-interactive operation is acceptable (e.g., scripted usage).</p>
-<p class="Pp">Definition at line <b>363</b> of file <b>comprehensive.c</b>.</p>
-<pre>363                                    {
-364   return false;
-365 }</pre>
+<p class="Pp">Definition at line <b>366</b> of file <b>comprehensive.c</b>.</p>
+<pre>366                                    {
+367   return false;
+368 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
@@ -8134,10 +8135,10 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"></p>
 <p class="Pp">POSIX systems return ASCIICHAT_OK but do nothing</p>
 </div>
-<p class="Pp">Definition at line <b>107</b> of file <b>misc.c</b>.</p>
-<pre>107                                                           {
-108   return ASCIICHAT_OK;
-109 }</pre>
+<p class="Pp">Definition at line <b>103</b> of file <b>misc.c</b>.</p>
+<pre>103                                                           {
+104   return ASCIICHAT_OK;
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -8203,12 +8204,12 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Previous signal handler, or SIG_ERR on error</div>
 <p class="Pp">Registers a signal handler for the specified signal.</p>
-<p class="Pp">Definition at line <b>123</b> of file <b>misc.c</b>.</p>
-<pre>123                                                                     {
-124   (void)sig;
-125   (void)handler;
-126   return NULL;
-127 }</pre>
+<p class="Pp">Definition at line <b>119</b> of file <b>misc.c</b>.</p>
+<pre>119                                                                     {
+120   (void)sig;
+121   (void)handler;
+122   return NULL;
+123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>,
@@ -8900,6 +8901,7 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of characters written (excluding null terminator),
   or -1 on error</div>
+<p class="Pp">Referenced by <b>named_register_fmt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_vsnprintf_(char_*_str,_size_t_size,_const_char_*_format,_va_list_ap)"><a class="permalink" href="#int_platform_vsnprintf_(char_*_str,_size_t_size,_const_char_*_format,_va_list_ap)">int
@@ -8964,9 +8966,7 @@ platform_stderr_restore(handle);        // stderr restored
 </div>
 <p class="Pp">Safe file write (write replacement).</p>
 <p class="Pp"></p>
-<p class="Pp">Override platform_write to route STDOUT to xterm.js This allows
-    the native C render pipeline (session_display_write_ascii) to output ASCII
-    frames directly to the browser's xterm.js terminal.</p>
+<p class="Pp">Override platform_write to route STDOUT</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>fd</i> File descriptor to write to
@@ -8986,26 +8986,18 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp"></p>
 <p class="Pp">On POSIX, equivalent to standard write().</p>
 </div>
-<p class="Pp">Definition at line <b>77</b> of file <b>wasm/system.c</b>.</p>
-<pre>77                                                               {
-78   if (!buf || count == 0) {
-79     // Don't warn about these - it's a valid case (empty write)
-80     return 0;
-81   }
-82 
-83   if (fd == STDOUT_FILENO) {
-84     // Route STDOUT to xterm.js
-85     // Cast to avoid alignment warnings on pointer conversion
-86     js_terminal_write((const char *)buf, (int)count);
-87     return (ssize_t)count;
-88   }
-89 
-90   // For stderr and other fds, use the default write()
-91   return write(fd, buf, count);
-92 }</pre>
+<p class="Pp">Definition at line <b>72</b> of file <b>wasm/system.c</b>.</p>
+<pre>72                                                               {
+73   if (!buf || count == 0) {
+74     // Don't warn about these - it's a valid case (empty write)
+75     return 0;
+76   }
+77 
+78   // Use the default write()
+79   return write(fd, buf, count);
+80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>js_terminal_write()</b>.</p>
 <p class="Pp">Referenced by <b>log_json_write()</b>, and
     <b>platform_write_all()</b>.</p>
 </section>
@@ -11601,13 +11593,13 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Screen clearing does not affect scrollback buffer.</p>
 </div>
-<p class="Pp">Definition at line <b>197</b> of file
+<p class="Pp">Definition at line <b>200</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>197                                               {
-198   // Send ANSI clear screen escape sequence
-199   write(STDOUT_FILENO, &quot;\033[2J&quot;, 4);
-200   return ASCIICHAT_OK;
-201 }</pre>
+<pre>200                                               {
+201   // Send ANSI clear screen escape sequence
+202   write(STDOUT_FILENO, &quot;\033[2J&quot;, 4);
+203   return ASCIICHAT_OK;
+204 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11637,11 +11629,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">On Windows, clears console screen buffer.</p>
 </div>
-<p class="Pp">Definition at line <b>80</b> of file <b>misc.c</b>.</p>
-<pre>80                                                     {
-81   (void)fd;
-82   return ASCIICHAT_OK;
-83 }</pre>
+<p class="Pp">Definition at line <b>76</b> of file <b>misc.c</b>.</p>
+<pre>76                                                     {
+77   (void)fd;
+78   return ASCIICHAT_OK;
+79 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11694,14 +11686,14 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Useful for starting new frame rendering at top-left.</p>
 </div>
-<p class="Pp">Definition at line <b>203</b> of file
+<p class="Pp">Definition at line <b>206</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>203                                                {
-204   (void)fd;
-205   // Send ANSI cursor home escape sequence
-206   write(STDOUT_FILENO, &quot;\033[H&quot;, 3);
-207   return ASCIICHAT_OK;
-208 }</pre>
+<pre>206                                                {
+207   (void)fd;
+208   // Send ANSI cursor home escape sequence
+209   write(STDOUT_FILENO, &quot;\033[H&quot;, 3);
+210   return ASCIICHAT_OK;
+211 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11772,12 +11764,12 @@ while (total_sent &lt; len) {
 <p class="Pp">Useful for ensuring output is visible before blocking
   operations.</p>
 </div>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>140                                          {
-141   (void)fd;
-142   return ASCIICHAT_OK; // No-op - xterm.js handles flushing
-143 }</pre>
+<pre>143                                          {
+144   (void)fd;
+145   return ASCIICHAT_OK; // No-op - xterm.js handles flushing
+146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11893,31 +11885,31 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">This function is a no-op if stdout is not a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>210</b> of file
+<p class="Pp">Definition at line <b>213</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>210                                                             {
-211   if (offset == 0) {
-212     return ASCIICHAT_OK;
-213   }
-214 
-215   if (offset &gt; 0) {
-216     // Move right: \x1b[&lt;n&gt;C
-217     char buf[32];
-218     int len = snprintf(buf, sizeof(buf), &quot;\033[%dC&quot;, offset);
-219     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
-220       write(STDOUT_FILENO, buf, len);
-221     }
-222   } else {
-223     // Move left: \x1b[&lt;n&gt;D
-224     char buf[32];
-225     int len = snprintf(buf, sizeof(buf), &quot;\033[%dD&quot;, -offset);
-226     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
-227       write(STDOUT_FILENO, buf, len);
-228     }
-229   }
-230 
-231   return ASCIICHAT_OK;
-232 }</pre>
+<pre>213                                                             {
+214   if (offset == 0) {
+215     return ASCIICHAT_OK;
+216   }
+217 
+218   if (offset &gt; 0) {
+219     // Move right: \x1b[&lt;n&gt;C
+220     char buf[32];
+221     int len = snprintf(buf, sizeof(buf), &quot;\033[%dC&quot;, offset);
+222     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+223       write(STDOUT_FILENO, buf, len);
+224     }
+225   } else {
+226     // Move left: \x1b[&lt;n&gt;D
+227     char buf[32];
+228     int len = snprintf(buf, sizeof(buf), &quot;\033[%dD&quot;, -offset);
+229     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+230       write(STDOUT_FILENO, buf, len);
+231     }
+232   }
+233 
+234   return ASCIICHAT_OK;
+235 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11948,11 +11940,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Terminal state is reset immediately.</p>
 </div>
-<p class="Pp">Definition at line <b>85</b> of file <b>misc.c</b>.</p>
-<pre>85                                          {
-86   (void)fd;
-87   return ASCIICHAT_OK;
-88 }</pre>
+<p class="Pp">Definition at line <b>81</b> of file <b>misc.c</b>.</p>
+<pre>81                                          {
+82   (void)fd;
+83   return ASCIICHAT_OK;
+84 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -12055,17 +12047,17 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Disabling echo is useful for password prompts.</p>
 </div>
-<p class="Pp">Definition at line <b>182</b> of file
+<p class="Pp">Definition at line <b>185</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>182                                                   {
-183   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
-184   if (!enabled) {
-185     write(STDOUT_FILENO, &quot;\033[?25l&quot;, 6);  // Hide cursor
-186   } else {
-187     write(STDOUT_FILENO, &quot;\033[?25h&quot;, 6);  // Show cursor
-188   }
-189   return ASCIICHAT_OK;
-190 }</pre>
+<pre>185                                                   {
+186   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
+187   if (!enabled) {
+188     write(STDOUT_FILENO, &quot;\033[?25l&quot;, 6);  // Hide cursor
+189   } else {
+190     write(STDOUT_FILENO, &quot;\033[?25h&quot;, 6);  // Show cursor
+191   }
+192   return ASCIICHAT_OK;
+193 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>enabled</b>.</p>
@@ -12200,11 +12192,11 @@ while (total_sent &lt; len) {
 <p class="Pp">Use <b>detect_terminal_capabilities()</b> for comprehensive
     capability detection.</p>
 </div>
-<p class="Pp">Definition at line <b>94</b> of file
+<p class="Pp">Definition at line <b>97</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>94                                   {
-95   return true; // xterm.js supports UTF-8
-96 }</pre>
+<pre>97                                   {
+98   return true; // xterm.js supports UTF-8
+99 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>, and

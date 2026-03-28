@@ -78,16 +78,16 @@
 <p class="Pp">Suitable for single-threaded startup or contexts where the caller
     guarantees serialization. If lc-&gt;sync_type != SYNC_NONE, initializes the
     sync primitive.</p>
-<p class="Pp">Definition at line <b>10</b> of file
+<p class="Pp">Definition at line <b>14</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>10                                                        {
-11   (void)name;
-12   if (!lc) return false;
-13 
-14   // Only initialize if not already initialized (matches native CAS behavior)
-15   int expected = LIFECYCLE_UNINITIALIZED;
-16   return atomic_cas_int(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED);
-17 }</pre>
+<pre>14                                                        {
+15   (void)name;
+16   if (!lc) return false;
+17 
+18   // Only initialize if not already initialized (matches native CAS behavior)
+19   int expected = LIFECYCLE_UNINITIALIZED;
+20   return atomic_cas_int(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED);
+21 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_int()</b>, <b>LIFECYCLE_INITIALIZED</b>,
@@ -104,12 +104,12 @@
 <div class="Bd-indent"><i>lc</i> lifecycle state</div>
 <p class="Pp">Allows the next caller to retry initialization. Wakes
   spinners.</p>
-<p class="Pp">Definition at line <b>32</b> of file
+<p class="Pp">Definition at line <b>36</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>32                                            {
-33   if (!lc) return;
-34   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-35 }</pre>
+<pre>36                                            {
+37   if (!lc) return;
+38   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+39 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_int()</b>,
@@ -127,12 +127,12 @@
 <p class="Pp">Wakes all spinners waiting in <b>lifecycle_init_once()</b>. Must
     be called by the <b>lifecycle_init_once()</b> winner after successful init
     work.</p>
-<p class="Pp">Definition at line <b>27</b> of file
+<p class="Pp">Definition at line <b>31</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>27                                             {
-28   if (!lc) return;
-29   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
-30 }</pre>
+<pre>31                                             {
+32   if (!lc) return;
+33   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_int()</b>,
@@ -165,15 +165,15 @@
 <p class="Pp">Safe for concurrent callers. Exactly one caller gets true (the CAS
     winner). Other concurrent callers spin until the winner moves to INITIALIZED
     or DEAD.</p>
-<p class="Pp">Definition at line <b>19</b> of file
+<p class="Pp">Definition at line <b>23</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>19                                           {
-20   if (!lc) return false;
-21 
-22   // Try to transition from UNINITIALIZED to INITIALIZING
-23   int expected = LIFECYCLE_UNINITIALIZED;
-24   return atomic_cas_int(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING);
-25 }</pre>
+<pre>23                                           {
+24   if (!lc) return false;
+25 
+26   // Try to transition from UNINITIALIZED to INITIALIZING
+27   int expected = LIFECYCLE_UNINITIALIZED;
+28   return atomic_cas_int(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING);
+29 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_int()</b>, <b>LIFECYCLE_INITIALIZING</b>,
@@ -189,16 +189,24 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if state == LIFECYCLE_INITIALIZED</div>
 <p class="Pp">Load-only, no side effects. Safe to call from any thread.</p>
-<p class="Pp">Definition at line <b>47</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>47                                                      {
-48   if (!lc) return false;
-49   return atomic_load_int((atomic_t *)&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
-50 }</pre>
+<pre>51                                                      {
+52   if (!lc) {
+53     return false;
+54   }
+55 
+56   // WASM: Use non-tracking atomic load to avoid time_get_ns() which can block
+57   // Simply read the state value without the atomic_on_load callback
+58   int state = (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&amp;lc-&gt;state);
+59   bool result = state == LIFECYCLE_INITIALIZED;
+60 
+61   return result;
+62 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>, <b>LIFECYCLE_INITIALIZED</b>,
-    and <b>lifecycle_t::state</b>.</p>
+<p class="Pp">References <b>LIFECYCLE_INITIALIZED</b>, and
+    <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_shutdown (<b>lifecycle_t</b> * lc)</h2>
@@ -214,13 +222,13 @@
 </div>
 <p class="Pp">Allows re-initialization after shutdown (unlike shutdown_forever).
     If lc-&gt;sync_type != SYNC_NONE, destroys the sync primitive.</p>
-<p class="Pp">Definition at line <b>37</b> of file
+<p class="Pp">Definition at line <b>41</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>37                                          {
-38   if (!lc) return false;
-39   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-40   return true;
-41 }</pre>
+<pre>41                                          {
+42   if (!lc) return false;
+43   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+44   return true;
+45 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_int()</b>,
@@ -243,11 +251,11 @@
 <p class="Pp">Once DEAD, future init/init_once calls always return false. Spins
     if called while init_once is in progress (INITIALIZING state). Used for
     modules that must never be re-initialized.</p>
-<p class="Pp">Definition at line <b>43</b> of file
+<p class="Pp">Definition at line <b>47</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
-<pre>43                                                  {
-44   return lifecycle_shutdown(lc);
-45 }</pre>
+<pre>47                                                  {
+48   return lifecycle_shutdown(lc);
+49 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_shutdown()</b>.</p>

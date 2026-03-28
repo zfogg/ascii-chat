@@ -30,8 +30,8 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main_wasm.c - WASM entry point for both mirror and client
-  modes.</p>
+<p class="Pp">main_wasm.c - WASM entry point that initializes the module without
+    running a blocking loop.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -40,18 +40,24 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">WASM entry point for both mirror and client modes.</p>
-<p class="Pp">This module provides the <b>main()</b> entry point for WASM
-    builds, which calls either <b>mirror_main()</b> or <b>client_main()</b>
-    depending on the build-time define.</p>
+<p class="Pp">WASM entry point that initializes the module without running a
+    blocking loop.</p>
+<p class="Pp">IMPORTANT: Do NOT call <b>mirror_main()</b> or
+    <b>client_main()</b>! Those functions implement terminal-based rendering
+    with blocking main loops that expect TTY I/O and user input - they will hang
+    in the browser.</p>
 <p class="Pp"></p>
-<p class="Pp">Build configuration:</p>
-<ul class="Bl-bullet">
-  <li>mirror-web: Compiled with -DBUILD_WASM_MIRROR &#x2192; calls
-      <b>mirror_main()</b></li>
-  <li>client-web: Compiled with -DBUILD_WASM_CLIENT &#x2192; calls
-      <b>client_main()</b></li>
-</ul>
+<p class="Pp">Instead, JavaScript:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Calls <b>mirror_init_with_args()</b> to initialize the C module</dd>
+  <dt>2.</dt>
+  <dd>Calls <b>mirror_convert_frame()</b> for each video frame</dd>
+  <dt>3.</dt>
+  <dd>Manages the render loop with requestAnimationFrame</dd>
+</dl>
+<p class="Pp">This entry point satisfies the Emscripten linker requirement for
+    <b>main()</b> but doesn't actually do any blocking operations.</p>
 <p class="Pp">Definition in file <b>main_wasm.c</b>.</p>
 </section>
 <section class="Sh">

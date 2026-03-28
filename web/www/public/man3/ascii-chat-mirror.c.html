@@ -77,220 +77,224 @@
   void mirror_cleanup (void )</a></h2>
 <p class="Pp">Definition at line <b>102</b> of file <b>mirror.c</b>.</p>
 <pre>102                           {
-103   if (g_digital_rain) {
-104     digital_rain_destroy(g_digital_rain);
-105     g_digital_rain = NULL;
-106   }
-107   if (g_last_rain_output) {
-108     SAFE_FREE(g_last_rain_output);
-109     g_last_rain_output = NULL;
-110   }
-111   options_state_destroy();
-112   platform_destroy();
-113 }</pre>
+103   WASM_LOG(&quot;mirror_cleanup: START&quot;);
+104   if (g_digital_rain) {
+105     digital_rain_destroy(g_digital_rain);
+106     g_digital_rain = NULL;
+107   }
+108   if (g_last_rain_output) {
+109     SAFE_FREE(g_last_rain_output);
+110     g_last_rain_output = NULL;
+111   }
+112   options_state_destroy();
+113   platform_destroy();
+114   WASM_LOG(&quot;mirror_cleanup: COMPLETE&quot;);
+115 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>digital_rain_destroy()</b>,
-    <b>options_state_destroy()</b>, <b>platform_destroy()</b>, and
-    <b>SAFE_FREE</b>.</p>
+    <b>options_state_destroy()</b>, <b>platform_destroy()</b>, <b>SAFE_FREE</b>,
+    and <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_("><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_(">EMSCRIPTEN_KEEPALIVE
   char * mirror_convert_frame (<b>uint8_t</b> * rgba_data, int src_width, int
   src_height)</a></h2>
-<p class="Pp">Definition at line <b>120</b> of file <b>mirror.c</b>.</p>
-<pre>120                                                                               {
-121   if (!rgba_data || src_width &lt;= 0 || src_height &lt;= 0) {
-122     return NULL;
-123   }
-124 
-125   g_frame_count++;
-126   // Derive a time value from frame count using actual target FPS from options
-127   int target_fps = (int)GET_OPTION(fps);
-128   if (target_fps &lt;= 0) {
-129     target_fps = 60; // Default to 60 FPS if not set
-130   }
-131   float time_seconds = (float)g_frame_count / (float)target_fps;
-132 
-133   // Get current settings from options or terminal detection
-134   int dst_width = (int)terminal_get_effective_width();
-135   int dst_height = (int)terminal_get_effective_height();
-136   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
-137   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
-138   if (g_frame_count &lt;= 3 || g_frame_count % 120 == 0) {
-139     log_debug(&quot;frame=%u color_filter=%d color_mode=%d&quot;, g_frame_count, (int)filter, (int)color_mode);
-140   }
-141   if (color_mode == TERM_COLOR_AUTO) {
-142     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
-143   }
-144   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
-145   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
-146   bool stretch = false;              // Don't stretch - maintain proportions
-147 
-148   // Build terminal capabilities structure with user's color mode
-149   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
-150   caps.color_level = color_mode;
-151   caps.capabilities = 0;
-152   caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
-153                      : (color_mode == TERM_COLOR_16)  ? 16
-154                      : (color_mode == TERM_COLOR_256) ? 256
-155                                                       : 16777216;
-156   caps.utf8_support = true;
-157   caps.detection_reliable = true;
-158   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
-159   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
-160   caps.wants_padding = true;
-161   caps.palette_type = palette_type;
-162   caps.desired_fps = 60;
-163   caps.color_filter = filter;
-164 
-165   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
-166   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
-167   if (!rgb_pixels) {
-168     return NULL;
-169   }
-170 
-171   bool flip_x = GET_OPTION(flip_x);
-172   bool flip_y = GET_OPTION(flip_y);
-173   for (int y = 0; y &lt; src_height; y++) {
-174     for (int x = 0; x &lt; src_width; x++) {
-175       int src_x = flip_x ? (src_width - 1 - x) : x;
-176       int src_y = flip_y ? (src_height - 1 - y) : y;
-177       int src_idx = (src_y * src_width + src_x) * 4;
-178       int dst_idx = y * src_width + x;
-179 
-180       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
-181       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
-182       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
-183       // Alpha (rgba_data[src_idx + 3]) is discarded
-184     }
-185   }
-186 
-187   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
-188   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
-189     // color_filter operates on packed RGB24 format
-190     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
-191     int stride = src_width * 3;
-192     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
-193   }
-194 
-195   // Create image structure
-196   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
-197 
-198   // Get palette characters based on selected palette type
-199   const char *palette_chars;
-200   switch (palette_type) {
-201   case PALETTE_BLOCKS:
-202     palette_chars = PALETTE_CHARS_BLOCKS;
-203     break;
-204   case PALETTE_DIGITAL:
-205     palette_chars = PALETTE_CHARS_DIGITAL;
-206     break;
-207   case PALETTE_MINIMAL:
-208     palette_chars = PALETTE_CHARS_MINIMAL;
-209     break;
-210   case PALETTE_COOL:
-211     palette_chars = PALETTE_CHARS_COOL;
-212     break;
-213   case PALETTE_CUSTOM:
-214     // Custom palette uses user-provided characters from options
-215     palette_chars = GET_OPTION(palette_custom);
-216     if (!palette_chars || palette_chars[0] == '\0') {
-217       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
-218     }
-219     break;
-220   case PALETTE_STANDARD:
-221   default:
-222     palette_chars = PALETTE_CHARS_STANDARD;
+<p class="Pp">Definition at line <b>122</b> of file <b>mirror.c</b>.</p>
+<pre>122                                                                               {
+123   WASM_LOG(&quot;mirror_convert_frame: START&quot;);
+124   if (!rgba_data || src_width &lt;= 0 || src_height &lt;= 0) {
+125     WASM_LOG(&quot;mirror_convert_frame: invalid args, returning NULL&quot;);
+126     return NULL;
+127   }
+128 
+129   g_frame_count++;
+130   // Derive a time value from frame count using actual target FPS from options
+131   int target_fps = (int)GET_OPTION(fps);
+132   if (target_fps &lt;= 0) {
+133     target_fps = 60; // Default to 60 FPS if not set
+134   }
+135   float time_seconds = (float)g_frame_count / (float)target_fps;
+136 
+137   // Get current settings from options or terminal detection
+138   int dst_width = (int)terminal_get_effective_width();
+139   int dst_height = (int)terminal_get_effective_height();
+140   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
+141   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+142   if (g_frame_count &lt;= 3 || g_frame_count % 120 == 0) {
+143     log_debug(&quot;frame=%u color_filter=%d color_mode=%d&quot;, g_frame_count, (int)filter, (int)color_mode);
+144   }
+145   if (color_mode == TERM_COLOR_AUTO) {
+146     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+147   }
+148   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
+149   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
+150   bool stretch = false;              // Don't stretch - maintain proportions
+151 
+152   // Build terminal capabilities structure with user's color mode
+153   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
+154   caps.color_level = color_mode;
+155   caps.capabilities = 0;
+156   caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
+157                      : (color_mode == TERM_COLOR_16)  ? 16
+158                      : (color_mode == TERM_COLOR_256) ? 256
+159                                                       : 16777216;
+160   caps.utf8_support = true;
+161   caps.detection_reliable = true;
+162   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
+163   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
+164   caps.wants_padding = true;
+165   caps.palette_type = palette_type;
+166   caps.desired_fps = 60;
+167   caps.color_filter = filter;
+168 
+169   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
+170   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+171   if (!rgb_pixels) {
+172     return NULL;
+173   }
+174 
+175   bool flip_x = GET_OPTION(flip_x);
+176   bool flip_y = GET_OPTION(flip_y);
+177   for (int y = 0; y &lt; src_height; y++) {
+178     for (int x = 0; x &lt; src_width; x++) {
+179       int src_x = flip_x ? (src_width - 1 - x) : x;
+180       int src_y = flip_y ? (src_height - 1 - y) : y;
+181       int src_idx = (src_y * src_width + src_x) * 4;
+182       int dst_idx = y * src_width + x;
+183 
+184       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
+185       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
+186       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
+187       // Alpha (rgba_data[src_idx + 3]) is discarded
+188     }
+189   }
+190 
+191   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
+192   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
+193     // color_filter operates on packed RGB24 format
+194     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
+195     int stride = src_width * 3;
+196     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
+197   }
+198 
+199   // Create image structure
+200   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
+201 
+202   // Get palette characters based on selected palette type
+203   const char *palette_chars;
+204   switch (palette_type) {
+205   case PALETTE_BLOCKS:
+206     palette_chars = PALETTE_CHARS_BLOCKS;
+207     break;
+208   case PALETTE_DIGITAL:
+209     palette_chars = PALETTE_CHARS_DIGITAL;
+210     break;
+211   case PALETTE_MINIMAL:
+212     palette_chars = PALETTE_CHARS_MINIMAL;
+213     break;
+214   case PALETTE_COOL:
+215     palette_chars = PALETTE_CHARS_COOL;
+216     break;
+217   case PALETTE_CUSTOM:
+218     // Custom palette uses user-provided characters from options
+219     palette_chars = GET_OPTION(palette_custom);
+220     if (!palette_chars || palette_chars[0] == '\0') {
+221       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
+222     }
 223     break;
-224   }
-225 
-226   // Convert to ASCII using capability-aware function
-227   char *ascii_output = ascii_convert_with_capabilities(&amp;img, dst_width, dst_height, &amp;caps, preserve_aspect_ratio,
-228                                                        stretch, palette_chars);
+224   case PALETTE_STANDARD:
+225   default:
+226     palette_chars = PALETTE_CHARS_STANDARD;
+227     break;
+228   }
 229 
-230   // Clean up
-231   SAFE_FREE(rgb_pixels);
-232 
-233   if (!ascii_output) {
-234     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
-235     return NULL;
-236   }
-237 
-238   // Apply rainbow color filter to ANSI output by replacing RGB values
-239   // This preserves character selection while applying rainbow colors
-240   if (filter == COLOR_FILTER_RAINBOW) {
-241     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
-242     if (rainbow_output) {
-243       SAFE_FREE(ascii_output);
-244       ascii_output = rainbow_output;
-245     }
-246   }
-247 
-248   bool matrix_rain = GET_OPTION(matrix_rain);
-249   if (matrix_rain) {
-250     // Initialize digital rain context if needed or dimensions changed
-251     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
-252       if (g_digital_rain) {
-253         digital_rain_destroy(g_digital_rain);
-254       }
-255       if (g_last_rain_output) {
-256         SAFE_FREE(g_last_rain_output);
-257         g_last_rain_output = NULL;
+230   // Convert to ASCII using capability-aware function
+231   char *ascii_output = ascii_convert_with_capabilities(&amp;img, dst_width, dst_height, &amp;caps, preserve_aspect_ratio,
+232                                                        stretch, palette_chars);
+233 
+234   // Clean up
+235   SAFE_FREE(rgb_pixels);
+236 
+237   if (!ascii_output) {
+238     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
+239     return NULL;
+240   }
+241 
+242   // Apply rainbow color filter to ANSI output by replacing RGB values
+243   // This preserves character selection while applying rainbow colors
+244   if (filter == COLOR_FILTER_RAINBOW) {
+245     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
+246     if (rainbow_output) {
+247       SAFE_FREE(ascii_output);
+248       ascii_output = rainbow_output;
+249     }
+250   }
+251 
+252   bool matrix_rain = GET_OPTION(matrix_rain);
+253   if (matrix_rain) {
+254     // Initialize digital rain context if needed or dimensions changed
+255     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
+256       if (g_digital_rain) {
+257         digital_rain_destroy(g_digital_rain);
 258       }
-259       g_digital_rain = digital_rain_init(dst_width, dst_height);
-260       if (!g_digital_rain) {
-261         log_error(&quot;Failed to initialize digital rain effect&quot;);
-262         return ascii_output; // Return without effect on error
-263       }
-264       g_last_rain_update_time = emscripten_get_now();
-265     }
-266 
-267     // Update color from active filter (allows filter changes after initialization)
-268     digital_rain_set_color_from_filter(g_digital_rain, filter);
-269 
-270     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
-271     double current_time = emscripten_get_now();
-272     double elapsed_ms = current_time - g_last_rain_update_time;
+259       if (g_last_rain_output) {
+260         SAFE_FREE(g_last_rain_output);
+261         g_last_rain_output = NULL;
+262       }
+263       g_digital_rain = digital_rain_init(dst_width, dst_height);
+264       if (!g_digital_rain) {
+265         log_error(&quot;Failed to initialize digital rain effect&quot;);
+266         return ascii_output; // Return without effect on error
+267       }
+268       g_last_rain_update_time = emscripten_get_now();
+269     }
+270 
+271     // Update color from active filter (allows filter changes after initialization)
+272     digital_rain_set_color_from_filter(g_digital_rain, filter);
 273 
-274     if (elapsed_ms &gt;= RAIN_UPDATE_INTERVAL_MS) {
-275       // Calculate actual delta time in seconds
-276       float delta_time = (float)(elapsed_ms / 1000.0);
-277       g_last_rain_update_time = current_time;
-278 
-279       // Apply effect and cache a copy
-280       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
-281       if (rain_output) {
-282         // Free old cached output
-283         if (g_last_rain_output) {
-284           SAFE_FREE(g_last_rain_output);
-285         }
-286         // Cache a copy (we'll return the original rain_output)
-287         g_last_rain_output = strdup(rain_output);
-288         // Return the rain output (caller will free it)
-289         SAFE_FREE(ascii_output);
-290         ascii_output = rain_output;
-291       }
-292     } else if (g_last_rain_output) {
-293       // Use cached output
-294       SAFE_FREE(ascii_output);
-295       ascii_output = strdup(g_last_rain_output);
-296     }
-297   } else {
-298     // Clean up digital rain context if it exists but effect is disabled
-299     if (g_digital_rain) {
-300       digital_rain_destroy(g_digital_rain);
-301       g_digital_rain = NULL;
-302     }
-303     if (g_last_rain_output) {
-304       SAFE_FREE(g_last_rain_output);
-305       g_last_rain_output = NULL;
+274     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
+275     double current_time = emscripten_get_now();
+276     double elapsed_ms = current_time - g_last_rain_update_time;
+277 
+278     if (elapsed_ms &gt;= RAIN_UPDATE_INTERVAL_MS) {
+279       // Calculate actual delta time in seconds
+280       float delta_time = (float)(elapsed_ms / 1000.0);
+281       g_last_rain_update_time = current_time;
+282 
+283       // Apply effect and cache a copy
+284       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+285       if (rain_output) {
+286         // Free old cached output
+287         if (g_last_rain_output) {
+288           SAFE_FREE(g_last_rain_output);
+289         }
+290         // Cache a copy (we'll return the original rain_output)
+291         g_last_rain_output = strdup(rain_output);
+292         // Return the rain output (caller will free it)
+293         SAFE_FREE(ascii_output);
+294         ascii_output = rain_output;
+295       }
+296     } else if (g_last_rain_output) {
+297       // Use cached output
+298       SAFE_FREE(ascii_output);
+299       ascii_output = strdup(g_last_rain_output);
+300     }
+301   } else {
+302     // Clean up digital rain context if it exists but effect is disabled
+303     if (g_digital_rain) {
+304       digital_rain_destroy(g_digital_rain);
+305       g_digital_rain = NULL;
 306     }
-307     g_last_rain_update_time = 0.0;
-308   }
-309 
-310   return ascii_output;
-311 }</pre>
+307     if (g_last_rain_output) {
+308       SAFE_FREE(g_last_rain_output);
+309       g_last_rain_output = NULL;
+310     }
+311     g_last_rain_update_time = 0.0;
+312   }
+313 
+314   return ascii_output;
+315 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>apply_color_filter()</b>,
@@ -317,19 +321,21 @@
     <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>,
     <b>terminal_capabilities_t::utf8_support</b>,
-    <b>terminal_capabilities_t::wants_background</b>, and
-    <b>terminal_capabilities_t::wants_padding</b>.</p>
+    <b>terminal_capabilities_t::wants_background</b>,
+    <b>terminal_capabilities_t::wants_padding</b>, and <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
   void mirror_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>314</b> of file <b>mirror.c</b>.</p>
-<pre>314                                    {
-315   SAFE_FREE(ptr);
-316 }</pre>
+<p class="Pp">Definition at line <b>318</b> of file <b>mirror.c</b>.</p>
+<pre>318                                    {
+319   WASM_LOG(&quot;mirror_free_string: START&quot;);
+320   SAFE_FREE(ptr);
+321   WASM_LOG(&quot;mirror_free_string: COMPLETE&quot;);
+322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>SAFE_FREE</b>, and <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)">EMSCRIPTEN_KEEPALIVE

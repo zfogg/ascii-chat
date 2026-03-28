@@ -39,16 +39,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>EM_JS</b> (int, js_get_terminal_cols,(), { return Module.xterm
-    ? Module.xterm.cols :80;})
-  <br/>
-  <b>EM_JS</b> (int, js_get_terminal_rows,(), { return Module.xterm ?
-    Module.xterm.rows :24;})
-  <br/>
-  <b>EM_JS</b> (void, <b>js_terminal_write</b>,(const char *data, int len), {
-    if(Module.xterm) { Module.xterm.write(UTF8ToString(data, len));} })
-  <br/>
-  int <b>platform_get_terminal_size</b> (int *cols, int *rows)
+<p class="Pp">int <b>platform_get_terminal_size</b> (int *cols, int *rows)
   <br/>
   int <b>platform_write_terminal</b> (const char *data, size_t len)
   <br/>
@@ -168,24 +159,24 @@
 <p class="Pp">Use <b>apply_color_mode_override()</b> to apply command-line
     overrides.</p>
 </div>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>149</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>146                                                            {
-147   terminal_capabilities_t caps = {0};
-148   caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
-149   caps.capabilities = 0;
-150   caps.color_count = 16777216;
-151   caps.utf8_support = true; // xterm.js supports UTF-8
-152   caps.detection_reliable = true;
-153   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
-154   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
-155   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
-156   caps.wants_background = true;
-157   caps.palette_type = 0; // Default palette
-158   caps.desired_fps = 30;
-159   caps.color_filter = COLOR_FILTER_NONE;
-160   return caps;
-161 }</pre>
+<pre>149                                                            {
+150   terminal_capabilities_t caps = {0};
+151   caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+152   caps.capabilities = 0;
+153   caps.color_count = 16777216;
+154   caps.utf8_support = true; // xterm.js supports UTF-8
+155   caps.detection_reliable = true;
+156   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
+157   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
+158   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
+159   caps.wants_background = true;
+160   caps.palette_type = 0; // Default palette
+161   caps.desired_fps = 30;
+162   caps.color_filter = COLOR_FILTER_NONE;
+163   return caps;
+164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
@@ -204,22 +195,6 @@
     <b>log_redetect_terminal_capabilities()</b>, <b>main()</b>,
     <b>session_display_create()</b>, and
     <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EM_JS_(int_,_js_get_terminal_cols_,_()_,___return_Module"><a class="permalink" href="#EM_JS_(int_,_js_get_terminal_cols_,_()_,___return_Module">EM_JS
-  (int , js_get_terminal_cols , () , { return Module.xterm ? Module.xterm.cols
-  :80;} )</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EM_JS_(int_,_js_get_terminal_rows_,_()_,___return_Module"><a class="permalink" href="#EM_JS_(int_,_js_get_terminal_rows_,_()_,___return_Module">EM_JS
-  (int , js_get_terminal_rows , () , { return Module.xterm ? Module.xterm.rows
-  :24;} )</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EM_JS_(void_,_"><a class="permalink" href="#EM_JS_(void_,_">EM_JS
-  (void , <b>js_terminal_write</b> , (const char *data, int len) , {
-  if(Module.xterm) { Module.xterm.write(UTF8ToString(data, len));} } )</a></h2>
-<p class="Pp">References <b>js_terminal_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> get_terminal_size (unsigned short int *
@@ -251,20 +226,20 @@
 <p class="Pp">This function is more reliable than <b>terminal_get_size()</b> due
     to fallbacks.</p>
 </div>
-<p class="Pp">Definition at line <b>80</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>80                                                                                            {
-81   if (!width || !height) {
-82     return ERROR_INVALID_PARAM;
-83   }
-84   int cols, rows;
-85   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
-86     return ERROR_PLATFORM_INIT;
-87   }
-88   *width = (unsigned short int)cols;
-89   *height = (unsigned short int)rows;
-90   return ASCIICHAT_OK;
-91 }</pre>
+<pre>83                                                                                            {
+84   if (!width || !height) {
+85     return ERROR_INVALID_PARAM;
+86   }
+87   int cols, rows;
+88   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
+89     return ERROR_PLATFORM_INIT;
+90   }
+91   *width = (unsigned short int)cols;
+92   *height = (unsigned short int)rows;
+93   return ASCIICHAT_OK;
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -276,94 +251,93 @@
 <section class="Ss">
 <h2 class="Ss" id="int_platform_get_cursor_position_(int_*_row,_int_*_col)"><a class="permalink" href="#int_platform_get_cursor_position_(int_*_row,_int_*_col)">int
   platform_get_cursor_position (int * row, int * col)</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file
+<p class="Pp">Definition at line <b>70</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>67                                                      {
-68   (void)row;
-69   (void)col;
-70   return -1; // Not supported in WASM
-71 }</pre>
+<pre>70                                                      {
+71   (void)row;
+72   (void)col;
+73   return -1; // Not supported in WASM
+74 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_get_terminal_size_(int_*_cols,_int_*_rows)"><a class="permalink" href="#int_platform_get_terminal_size_(int_*_cols,_int_*_rows)">int
   platform_get_terminal_size (int * cols, int * rows)</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file
+<p class="Pp">Definition at line <b>36</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>33                                                      {
-34   if (!cols || !rows) {
-35     return -1;
-36   }
-37   *cols = js_get_terminal_cols();
-38   *rows = js_get_terminal_rows();
-39   return 0;
-40 }</pre>
+<pre>36                                                      {
+37   if (!cols || !rows) {
+38     return -1;
+39   }
+40   *cols = js_get_terminal_cols();
+41   *rows = js_get_terminal_rows();
+42   return 0;
+43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>get_terminal_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> platform_is_terminal (int fd)</h2>
-<p class="Pp">Definition at line <b>62</b> of file
+<p class="Pp">Definition at line <b>65</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>62                                   {
-63   (void)fd;
-64   return true; // Always true for WASM terminal
-65 }</pre>
+<pre>65                                   {
+66   (void)fd;
+67   return true; // Always true for WASM terminal
+68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_read_keyboard_(char_*_buffer,_size_t_len)"><a class="permalink" href="#int_platform_read_keyboard_(char_*_buffer,_size_t_len)">int
   platform_read_keyboard (char * buffer, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>59</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>56                                                      {
-57   (void)buffer;
-58   (void)len;
-59   return -1; // Not supported: use JavaScript event listeners
-60 }</pre>
+<pre>59                                                      {
+60   (void)buffer;
+61   (void)len;
+62   return -1; // Not supported: use JavaScript event listeners
+63 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_set_cursor_position_(int_row,_int_col)"><a class="permalink" href="#int_platform_set_cursor_position_(int_row,_int_col)">int
   platform_set_cursor_position (int row, int col)</a></h2>
-<p class="Pp">Definition at line <b>73</b> of file
+<p class="Pp">Definition at line <b>76</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>73                                                    {
-74   (void)row;
-75   (void)col;
-76   return -1; // Not supported in WASM
-77 }</pre>
+<pre>76                                                    {
+77   (void)row;
+78   (void)col;
+79   return -1; // Not supported in WASM
+80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_set_terminal_raw_mode_("><a class="permalink" href="#int_platform_set_terminal_raw_mode_(">int
   platform_set_terminal_raw_mode (<b>bool</b> enable)</a></h2>
-<p class="Pp">Definition at line <b>51</b> of file
+<p class="Pp">Definition at line <b>54</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>51                                                 {
-52   (void)enable;
-53   return 0; // No-op: xterm.js handles this
-54 }</pre>
+<pre>54                                                 {
+55   (void)enable;
+56   return 0; // No-op: xterm.js handles this
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_write_terminal_(const_char_*_data,_size_t_len)"><a class="permalink" href="#int_platform_write_terminal_(const_char_*_data,_size_t_len)">int
   platform_write_terminal (const char * data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>45</b> of file
+<p class="Pp">Definition at line <b>48</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>45                                                           {
-46   js_terminal_write(data, (int)len);
-47   return (int)len;
-48 }</pre>
+<pre>48                                                           {
+49   js_terminal_write(data, (int)len);
+50   return (int)len;
+51 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>js_terminal_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
@@ -413,11 +387,11 @@
 <p class="Pp"></p>
 <p class="Pp">When false, yes/no prompts should use default value or deny</p>
 </div>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>133</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>130                                     {
-131   return false; // Cannot prompt in WASM
-132 }</pre>
+<pre>133                                     {
+134   return false; // Cannot prompt in WASM
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -456,11 +430,11 @@
 <p class="Pp"></p>
 <p class="Pp">User can override via TERM_BACKGROUND environment variable</p>
 </div>
-<p class="Pp">Definition at line <b>135</b> of file
+<p class="Pp">Definition at line <b>138</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>135                                         {
-136   return true; // Default to dark background for xterm.js
-137 }</pre>
+<pre>138                                         {
+139   return true; // Default to dark background for xterm.js
+140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>detect_terminal_background()</b>.</p>
@@ -500,11 +474,11 @@
 <p class="Pp">Snapshot mode is checked separately via
     <b>GET_OPTION(snapshot_mode)</b></p>
 </div>
-<p class="Pp">Definition at line <b>122</b> of file
+<p class="Pp">Definition at line <b>125</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>122                                    {
-123   return false; // WASM mirror mode is not interactive
-124 }</pre>
+<pre>125                                    {
+126   return false; // WASM mirror mode is not interactive
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -535,11 +509,11 @@
 <p class="Pp">Common pattern: force stderr when piped to prevent data
   corruption</p>
 </div>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">Definition at line <b>102</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>99                                     {
-100   return false; // WASM mirror mode is not piped
-101 }</pre>
+<pre>102                                     {
+103   return false; // WASM mirror mode is not piped
+104 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -559,11 +533,11 @@
 <p class="Pp"></p>
 <p class="Pp">stderr is often a TTY even when stdout is piped</p>
 </div>
-<p class="Pp">Definition at line <b>118</b> of file
+<p class="Pp">Definition at line <b>121</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>118                                   {
-119   return true; // xterm.js output is a TTY
-120 }</pre>
+<pre>121                                   {
+122   return true; // xterm.js output is a TTY
+123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -585,11 +559,11 @@
 <p class="Pp">Returns false in non-interactive environments (CI, scripts,
   pipes)</p>
 </div>
-<p class="Pp">Definition at line <b>110</b> of file
+<p class="Pp">Definition at line <b>113</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>110                                  {
-111   return false; // No stdin in WASM
-112 }</pre>
+<pre>113                                  {
+114   return false; // No stdin in WASM
+115 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -614,11 +588,11 @@
 <p class="Pp">Returns false in piped contexts (e.g., ascii-chat client |
   less)</p>
 </div>
-<p class="Pp">Definition at line <b>114</b> of file
+<p class="Pp">Definition at line <b>117</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>114                                   {
-115   return true; // xterm.js output is a TTY
-116 }</pre>
+<pre>117                                   {
+118   return true; // xterm.js output is a TTY
+119 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -646,18 +620,18 @@
 <p class="Pp"></p>
 <p class="Pp">Only works if stdout is a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>164</b> of file
+<p class="Pp">Definition at line <b>167</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>164                                                                                   {
-165   // Return dark background (black) for xterm.js
-166   if (bg_r)
-167     *bg_r = 0;
-168   if (bg_g)
-169     *bg_g = 0;
-170   if (bg_b)
-171     *bg_b = 0;
-172   return true;
-173 }</pre>
+<pre>167                                                                                   {
+168   // Return dark background (black) for xterm.js
+169   if (bg_r)
+170     *bg_r = 0;
+171   if (bg_g)
+172     *bg_g = 0;
+173   if (bg_b)
+174     *bg_b = 0;
+175   return true;
+176 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -682,12 +656,12 @@
   STDERR_FILENO)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if colors should be used, false otherwise</div>
-<p class="Pp">Definition at line <b>104</b> of file
+<p class="Pp">Definition at line <b>107</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>104                                           {
-105   (void)fd;
-106   return true; // WASM mirror mode supports color
-107 }</pre>
+<pre>107                                           {
+108   (void)fd;
+109   return true; // WASM mirror mode supports color
+110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -728,11 +702,11 @@
 <p class="Pp">Typical usage: if (<b>terminal_should_force_stderr()</b>)
     log_set_force_stderr(true);</p>
 </div>
-<p class="Pp">Definition at line <b>126</b> of file
+<p class="Pp">Definition at line <b>129</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>126                                         {
-127   return false; // Don't force stderr in WASM
-128 }</pre>
+<pre>129                                         {
+130   return false; // Don't force stderr in WASM
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -782,12 +756,12 @@
 <p class="Pp"></p>
 <p class="Pp">Note: This does NOT control ANSI COLOR CODES, which are controlled
     by --color-mode option and may be sent to pipes if explicitly requested.</p>
-<p class="Pp">Definition at line <b>192</b> of file
+<p class="Pp">Definition at line <b>195</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>192                                                    {
-193   (void)fd;
-194   return true;  // Always use ANSI sequences in browser
-195 }</pre>
+<pre>195                                                    {
+196   (void)fd;
+197   return true;  // Always use ANSI sequences in browser
+198 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

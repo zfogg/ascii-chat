@@ -587,10 +587,10 @@
 <p class="Pp"></p>
 <p class="Pp">Overrides take precedence over detected capabilities.</p>
 </div>
-<p class="Pp">Definition at line <b>34</b> of file <b>misc.c</b>.</p>
-<pre>34                                                                                 {
-35   return caps;
-36 }</pre>
+<p class="Pp">Definition at line <b>30</b> of file <b>misc.c</b>.</p>
+<pre>30                                                                                 {
+31   return caps;
+32 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>, and
@@ -626,24 +626,24 @@
 <p class="Pp">Use <b>apply_color_mode_override()</b> to apply command-line
     overrides.</p>
 </div>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>149</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>146                                                            {
-147   terminal_capabilities_t caps = {0};
-148   caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
-149   caps.capabilities = 0;
-150   caps.color_count = 16777216;
-151   caps.utf8_support = true; // xterm.js supports UTF-8
-152   caps.detection_reliable = true;
-153   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
-154   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
-155   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
-156   caps.wants_background = true;
-157   caps.palette_type = 0; // Default palette
-158   caps.desired_fps = 30;
-159   caps.color_filter = COLOR_FILTER_NONE;
-160   return caps;
-161 }</pre>
+<pre>149                                                            {
+150   terminal_capabilities_t caps = {0};
+151   caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+152   caps.capabilities = 0;
+153   caps.color_count = 16777216;
+154   caps.utf8_support = true; // xterm.js supports UTF-8
+155   caps.detection_reliable = true;
+156   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
+157   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
+158   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
+159   caps.wants_background = true;
+160   caps.palette_type = 0; // Default palette
+161   caps.desired_fps = 30;
+162   caps.color_filter = COLOR_FILTER_NONE;
+163   return caps;
+164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
@@ -679,11 +679,11 @@
 <p class="Pp">TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
     etc.).</p>
 </div>
-<p class="Pp">Definition at line <b>29</b> of file <b>misc.c</b>.</p>
-<pre>29                                  {
-30   tty_info_t tty = {0};
-31   return tty;
-32 }</pre>
+<p class="Pp">Definition at line <b>25</b> of file <b>misc.c</b>.</p>
+<pre>25                                  {
+26   tty_info_t tty = {0};
+27   return tty;
+28 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_display_create()</b>.</p>
@@ -718,20 +718,20 @@
 <p class="Pp">This function is more reliable than <b>terminal_get_size()</b> due
     to fallbacks.</p>
 </div>
-<p class="Pp">Definition at line <b>80</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>80                                                                                            {
-81   if (!width || !height) {
-82     return ERROR_INVALID_PARAM;
-83   }
-84   int cols, rows;
-85   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
-86     return ERROR_PLATFORM_INIT;
-87   }
-88   *width = (unsigned short int)cols;
-89   *height = (unsigned short int)rows;
-90   return ASCIICHAT_OK;
-91 }</pre>
+<pre>83                                                                                            {
+84   if (!width || !height) {
+85     return ERROR_INVALID_PARAM;
+86   }
+87   int cols, rows;
+88   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
+89     return ERROR_PLATFORM_INIT;
+90   }
+91   *width = (unsigned short int)cols;
+92   *height = (unsigned short int)rows;
+93   return ASCIICHAT_OK;
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -1358,11 +1358,11 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">User can override via TERM_BACKGROUND environment variable</p>
 </div>
-<p class="Pp">Definition at line <b>135</b> of file
+<p class="Pp">Definition at line <b>138</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>135                                         {
-136   return true; // Default to dark background for xterm.js
-137 }</pre>
+<pre>138                                         {
+139   return true; // Default to dark background for xterm.js
+140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>detect_terminal_background()</b>.</p>
@@ -1570,18 +1570,18 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">Only works if stdout is a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>164</b> of file
+<p class="Pp">Definition at line <b>167</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>164                                                                                   {
-165   // Return dark background (black) for xterm.js
-166   if (bg_r)
-167     *bg_r = 0;
-168   if (bg_g)
-169     *bg_g = 0;
-170   if (bg_b)
-171     *bg_b = 0;
-172   return true;
-173 }</pre>
+<pre>167                                                                                   {
+168   // Return dark background (black) for xterm.js
+169   if (bg_r)
+170     *bg_r = 0;
+171   if (bg_g)
+172     *bg_g = 0;
+173   if (bg_b)
+174     *bg_b = 0;
+175   return true;
+176 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1814,9 +1814,9 @@ unsigned short int width = terminal_get_effective_width();
 <h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)"><a class="permalink" href="#void_terminal_stop_resize_detection_(void_)">void
   terminal_stop_resize_detection (void )</a></h2>
 <p class="Pp">No-op stub on POSIX platforms (no resize detection thread).</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>misc.c</b>.</p>
-<pre>96                                           {
-97 }</pre>
+<p class="Pp">Definition at line <b>92</b> of file <b>misc.c</b>.</p>
+<pre>92                                           {
+93 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>

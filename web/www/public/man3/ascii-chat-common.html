@@ -375,14 +375,14 @@ if (result != OK) {
 <br/>
                         crypto_result);
 </pre>
-<p class="Pp">Definition at line <b>609</b> of file <b>common.h</b>.</p>
-<pre>609 #define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                              \
-610   do {                                                                                                                 \
-611     if ((expr) != (ok_value)) {                                                                                        \
-612       log_error(msg, ##__VA_ARGS__);                                                                                   \
-613       return (expr);                                                                                                   \
-614     }                                                                                                                  \
-615   } while (0)</pre>
+<p class="Pp">Definition at line <b>629</b> of file <b>common.h</b>.</p>
+<pre>629 #define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...)                                                              \
+630   do {                                                                                                                 \
+631     if ((expr) != (ok_value)) {                                                                                        \
+632       log_error(msg, ##__VA_ARGS__);                                                                                   \
+633       return (expr);                                                                                                   \
+634     }                                                                                                                  \
+635   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -445,14 +445,14 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp"><b>MUTEX_INIT_OR_RETURN(mutex)</b>; // Mutex initialized
     successfully, continue</p>
-<p class="Pp">Definition at line <b>522</b> of file <b>common.h</b>.</p>
-<pre>522 #define MUTEX_INIT_OR_RETURN(m)                                                                                        \
-523   do {                                                                                                                 \
-524     if (mutex_init(&amp;(m)) != 0) {                                                                                       \
-525       log_error(&quot;Failed to initialize mutex: %s&quot;, #m);                                                                 \
-526       return -1;                                                                                                       \
-527     }                                                                                                                  \
-528   } while (0)</pre>
+<p class="Pp">Definition at line <b>542</b> of file <b>common.h</b>.</p>
+<pre>542 #define MUTEX_INIT_OR_RETURN(m)                                                                                        \
+543   do {                                                                                                                 \
+544     if (mutex_init(&amp;(m)) != 0) {                                                                                       \
+545       log_error(&quot;Failed to initialize mutex: %s&quot;, #m);                                                                 \
+546       return -1;                                                                                                       \
+547     }                                                                                                                  \
+548   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -472,13 +472,13 @@ if (result != OK) {
 <h2 class="Ss" id="_define_read_u16_unaligned___bytes_read_u16_unaligned"><a class="permalink" href="#_define_read_u16_unaligned___bytes_read_u16_unaligned">#define
   read_u16_unaligned bytes_read_u16_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>464</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>484</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_read_u32_unaligned___bytes_read_u32_unaligned"><a class="permalink" href="#_define_read_u32_unaligned___bytes_read_u32_unaligned">#define
   read_u32_unaligned bytes_read_u32_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>485</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)"><a class="permalink" href="#_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)">#define
@@ -571,9 +571,9 @@ if (result != OK) {
 <p class="Pp">Safe buffer size calculation for snprintf. Casts offset to size_t
     to avoid sign conversion warnings when subtracting from buffer_size. Returns
     0 if offset is negative or &gt;= buffer_size (prevents underflow).</p>
-<p class="Pp">Definition at line <b>481</b> of file <b>common.h</b>.</p>
-<pre>481 #define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
-482   ((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
+<p class="Pp">Definition at line <b>501</b> of file <b>common.h</b>.</p>
+<pre>501 #define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
+502   ((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1092,7 +1092,7 @@ if (result != OK) {
 <pre>platform_memcpy((dest), (dest_size), (src), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>448</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>468</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>ansi_expand_rle()</b>, <b>ansi_rle_finish()</b>,
     <b>append_256color_bg()</b>, <b>append_256color_fg()</b>,
     <b>append_truecolor_bg()</b>, <b>append_truecolor_fg()</b>,
@@ -1124,7 +1124,7 @@ if (result != OK) {
 <pre>platform_memmove((dest), (dest_size), (src), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>450</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>470</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)"><a class="permalink" href="#_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)">#define
@@ -1134,7 +1134,7 @@ if (result != OK) {
 <pre>platform_memset((dest), (dest_size), (ch), (count))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>449</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>469</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_create_grid()</b>,
     <b>ascii_pad_frame_width()</b>, <b>audio_analysis_init()</b>,
     <b>audio_init()</b>, <b>audio_ring_buffer_clear()</b>,
@@ -1195,7 +1195,7 @@ if (result != OK) {
 <h2 class="Ss" id="_define_safe_size_mul___bytes_safe_size_mul"><a class="permalink" href="#_define_safe_size_mul___bytes_safe_size_mul">#define
   safe_size_mul bytes_safe_size_mul</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>468</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>488</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>, and
     <b>packet_validate_frame_dimensions()</b>.</p>
 </section>
@@ -1207,7 +1207,7 @@ if (result != OK) {
 <pre>(size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>472</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>492</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
     <b>crypto_get_status()</b>, <b>detect_default_ssh_key()</b>,
@@ -1251,7 +1251,7 @@ if (result != OK) {
 <pre>platform_strcpy((dest), (dest_size), (src))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>451</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>471</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_init_media_source()</b>,
     <b>log_named_format_or_original()</b>, <b>main()</b>,
     <b>mixer_add_source()</b>, and <b>video_frame_buffer_create()</b>.</p>
@@ -1314,7 +1314,7 @@ if (result != OK) {
 <pre>platform_strerror(errnum)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>445</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>,
     <b>add_client()</b>, <b>asciichat_print_error_context()</b>,
     <b>gpg_sign_with_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
@@ -1419,14 +1419,14 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp"><b>THREAD_CREATE_OR_RETURN(thread, thread_func, arg)</b>; //
     Thread created successfully, continue</p>
-<p class="Pp">Definition at line <b>502</b> of file <b>common.h</b>.</p>
-<pre>502 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
-503   do {                                                                                                                 \
-504     if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
-505       log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
-506       return -1;                                                                                                       \
-507     }                                                                                                                  \
-508   } while (0)</pre>
+<p class="Pp">Definition at line <b>522</b> of file <b>common.h</b>.</p>
+<pre>522 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
+523   do {                                                                                                                 \
+524     if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
+525       log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
+526       return -1;                                                                                                       \
+527     }                                                                                                                  \
+528   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1503,13 +1503,13 @@ if (result != OK) {
 <h2 class="Ss" id="_define_write_u16_unaligned___bytes_write_u16_unaligned"><a class="permalink" href="#_define_write_u16_unaligned___bytes_write_u16_unaligned">#define
   write_u16_unaligned bytes_write_u16_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>466</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>486</b> of file <b>common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_write_u32_unaligned___bytes_write_u32_unaligned"><a class="permalink" href="#_define_write_u32_unaligned___bytes_write_u32_unaligned">#define
   write_u32_unaligned bytes_write_u32_unaligned</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>467</b> of file <b>common.h</b>.</p>
+<p class="Pp">Definition at line <b>487</b> of file <b>common.h</b>.</p>
 </section>
 </section>
 <section class="Sh">

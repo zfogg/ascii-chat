@@ -405,61 +405,66 @@
 420   }
 421 
 422   // Install signal handlers for clean shutdown
-423   // Use sigaction with explicit flags to disable SA_RESTART - this ensures
-424   // select() returns EINTR instead of restarting, so the shutdown flag can be checked
-425   struct sigaction sa = {
-426     .sa_handler = acds_handle_signal,
-427     .sa_flags = 0  // No SA_RESTART - we want select() to return EINTR on signal
-428   };
-429   sigemptyset(&amp;sa.sa_mask);
-430   sigaction(SIGINT, &amp;sa, NULL);
-431   sigaction(SIGTERM, &amp;sa, NULL);
-432 
-433 
-434   // Run server
-435   result = acds_server_run(&amp;server);
-436   if (result != ASCIICHAT_OK) {
-437     log_error(&quot;Server run failed&quot;);
-438   }
-439 
-440 cleanup_resources:
-441   // Cleanup
-442   // Disable keepawake before exit
-443   platform_disable_keepawake();
+423 #ifndef _WIN32
+424   // Use sigaction with explicit flags to disable SA_RESTART - this ensures
+425   // select() returns EINTR instead of restarting, so the shutdown flag can be checked
+426   struct sigaction sa = {
+427     .sa_handler = acds_handle_signal,
+428     .sa_flags = 0  // No SA_RESTART - we want select() to return EINTR on signal
+429   };
+430   sigemptyset(&amp;sa.sa_mask);
+431   sigaction(SIGINT, &amp;sa, NULL);
+432   sigaction(SIGTERM, &amp;sa, NULL);
+433 #else
+434   signal(SIGINT, acds_handle_signal);
+435   signal(SIGTERM, acds_handle_signal);
+436 #endif
+437 
+438 
+439   // Run server
+440   result = acds_server_run(&amp;server);
+441   if (result != ASCIICHAT_OK) {
+442     log_error(&quot;Server run failed&quot;);
+443   }
 444 
-445   log_info(&quot;Shutting down discovery server...&quot;);
-446   acds_server_shutdown(&amp;server);
-447   g_server = NULL;
-448 
-449   // Stop and join WebSocket event loop thread
-450   if (g_ws_thread_started) {
-451     atomic_store_bool(&amp;g_websocket_server.running, false);
-452     websocket_server_cancel_service(&amp;g_websocket_server);
-453     int join_result = asciichat_thread_join_timeout(&amp;g_ws_thread, NULL, 500 * NS_PER_MS_INT);
-454     if (join_result != 0) {
-455       log_warn(&quot;WebSocket event loop thread did not exit within 500ms&quot;);
-456     }
-457     g_ws_thread_started = false;
-458   }
-459   websocket_server_destroy(&amp;g_websocket_server);
-460   log_debug(&quot;WebSocket server destroyed&quot;);
-461 
-462   // Clean up UPnP port mapping
-463   if (g_upnp_ctx) {
-464     nat_upnp_close(&amp;g_upnp_ctx);
-465     log_debug(&quot;UPnP port mapping closed&quot;);
-466   }
-467 
-468   // Clean up mDNS context
-469   if (g_mdns_ctx) {
-470     asciichat_mdns_destroy(g_mdns_ctx);
-471     g_mdns_ctx = NULL;
-472     log_debug(&quot;mDNS context shut down&quot;);
-473   }
-474 
-475   log_info(&quot;Discovery server stopped&quot;);
-476   return result;
-477 }</pre>
+445 cleanup_resources:
+446   // Cleanup
+447   // Disable keepawake before exit
+448   platform_disable_keepawake();
+449 
+450   log_info(&quot;Shutting down discovery server...&quot;);
+451   acds_server_shutdown(&amp;server);
+452   g_server = NULL;
+453 
+454   // Stop and join WebSocket event loop thread
+455   if (g_ws_thread_started) {
+456     atomic_store_bool(&amp;g_websocket_server.running, false);
+457     websocket_server_cancel_service(&amp;g_websocket_server);
+458     int join_result = asciichat_thread_join_timeout(&amp;g_ws_thread, NULL, 500 * NS_PER_MS_INT);
+459     if (join_result != 0) {
+460       log_warn(&quot;WebSocket event loop thread did not exit within 500ms&quot;);
+461     }
+462     g_ws_thread_started = false;
+463   }
+464   websocket_server_destroy(&amp;g_websocket_server);
+465   log_debug(&quot;WebSocket server destroyed&quot;);
+466 
+467   // Clean up UPnP port mapping
+468   if (g_upnp_ctx) {
+469     nat_upnp_close(&amp;g_upnp_ctx);
+470     log_debug(&quot;UPnP port mapping closed&quot;);
+471   }
+472 
+473   // Clean up mDNS context
+474   if (g_mdns_ctx) {
+475     asciichat_mdns_destroy(g_mdns_ctx);
+476     g_mdns_ctx = NULL;
+477     log_debug(&quot;mDNS context shut down&quot;);
+478   }
+479 
+480   log_info(&quot;Discovery server stopped&quot;);
+481   return result;
+482 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_identity_fingerprint()</b>,

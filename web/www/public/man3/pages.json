@@ -3708,6 +3708,12 @@
     "sourcePath": null
   },
   {
+    "name": "param.h",
+    "title": "param.h",
+    "file": "ascii-chat-param.h.html",
+    "sourcePath": "include/compat/sys/param.h"
+  },
+  {
     "name": "parsed_section_t",
     "title": "parsed_section_t",
     "file": "ascii-chat-parsed_section_t.html",
@@ -3717,7 +3723,7 @@
     "name": "parser.c",
     "title": "parser.c",
     "file": "ascii-chat-parser.c.html",
-    "sourcePath": "lib/options/manpage/parser.c"
+    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/parser.c"
   },
   {
     "name": "parser.h",
@@ -4240,6 +4246,12 @@
     "title": "rate_limiter_s",
     "file": "ascii-chat-rate_limiter_s.html",
     "sourcePath": null
+  },
+  {
+    "name": "raylib.c",
+    "title": "raylib.c",
+    "file": "ascii-chat-raylib.c.html",
+    "sourcePath": "lib/log/raylib.c"
   },
   {
     "name": "rcu.c",
@@ -5169,7 +5181,7 @@
     "name": "state.c",
     "title": "state.c",
     "file": "ascii-chat-state.c.html",
-    "sourcePath": "lib/network/consensus/state.c"
+    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/state.c"
   },
   {
     "name": "state.h",
@@ -5700,6 +5712,12 @@
     "sourcePath": null
   },
   {
+    "name": "unistd.h",
+    "title": "unistd.h",
+    "file": "ascii-chat-unistd.h.html",
+    "sourcePath": "include/compat/unistd.h"
+  },
+  {
     "name": "update_check_result_t",
     "title": "update_check_result_t",
     "file": "ascii-chat-update_check_result_t.html",
@@ -5775,7 +5793,7 @@
     "name": "utf8.h",
     "title": "utf8.h",
     "file": "ascii-chat-utf8.h.html",
-    "sourcePath": "include/ascii-chat/util/utf8.h"
+    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/utf8.h"
   },
   {
     "name": "utf8_capabilities_t",

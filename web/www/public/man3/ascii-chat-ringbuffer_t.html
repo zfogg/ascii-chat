@@ -71,7 +71,7 @@
 <p class="Pp">Lock-free ring buffer structure.</p>
 <p class="Pp">Implements a lock-free circular buffer using atomic operations for
     thread-safe producer-consumer data transfer without locking overhead.</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>ringbuffer.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -80,7 +80,7 @@
 <h2 class="Ss" id="char*_ringbuffer_t::buffer"><a class="permalink" href="#char*_ringbuffer_t::buffer">char*
   ringbuffer_t::buffer</a></h2>
 <p class="Pp">The actual buffer memory.</p>
-<p class="Pp">Definition at line <b>95</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>,
     <b>ringbuffer_create()</b>, <b>ringbuffer_destroy()</b>,
     <b>ringbuffer_peek()</b>, <b>ringbuffer_read()</b>, and
@@ -90,7 +90,7 @@
 <h2 class="Ss" id="size_t_ringbuffer_t::capacity"><a class="permalink" href="#size_t_ringbuffer_t::capacity">size_t
   ringbuffer_t::capacity</a></h2>
 <p class="Pp">Number of elements that can be stored.</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>,
     <b>framebuffer_write_frame()</b>, <b>ringbuffer_create()</b>,
     <b>ringbuffer_is_full()</b>, and <b>ringbuffer_write()</b>.</p>
@@ -99,7 +99,7 @@
 <h2 class="Ss" id="size_t_ringbuffer_t::capacity_mask"><a class="permalink" href="#size_t_ringbuffer_t::capacity_mask">size_t
   ringbuffer_t::capacity_mask</a></h2>
 <p class="Pp">Mask for fast modulo when capacity is power of 2.</p>
-<p class="Pp">Definition at line <b>109</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>ringbuffer_create()</b>,
     <b>ringbuffer_read()</b>, and <b>ringbuffer_write()</b>.</p>
 </section>
@@ -107,7 +107,7 @@
 <h2 class="Ss" id="size_t_ringbuffer_t::element_size"><a class="permalink" href="#size_t_ringbuffer_t::element_size">size_t
   ringbuffer_t::element_size</a></h2>
 <p class="Pp">Size of each element in bytes.</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>,
     <b>ringbuffer_create()</b>, <b>ringbuffer_peek()</b>,
     <b>ringbuffer_read()</b>, and <b>ringbuffer_write()</b>.</p>
@@ -115,7 +115,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> ringbuffer_t::head</h2>
 <p class="Pp">Write position (producer) - atomic for lock-free operations.</p>
-<p class="Pp">Definition at line <b>101</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>ringbuffer_clear()</b>, and
     <b>ringbuffer_write()</b>.</p>
 </section>
@@ -123,13 +123,13 @@
 <h2 class="Ss"><b>bool</b> ringbuffer_t::is_power_of_two</h2>
 <p class="Pp">Whether capacity is power of 2 (enables bit masking
   optimization).</p>
-<p class="Pp">Definition at line <b>107</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>ringbuffer_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> ringbuffer_t::size</h2>
 <p class="Pp">Current number of elements - atomic for fast size checks.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>ringbuffer_clear()</b>, <b>ringbuffer_peek()</b>,
     <b>ringbuffer_read()</b>, <b>ringbuffer_size()</b>, and
     <b>ringbuffer_write()</b>.</p>
@@ -137,7 +137,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> ringbuffer_t::tail</h2>
 <p class="Pp">Read position (consumer) - atomic for lock-free operations.</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>ringbuffer_clear()</b>, <b>ringbuffer_peek()</b>,
     and <b>ringbuffer_read()</b>.</p>
 <p class="Pp"></p>

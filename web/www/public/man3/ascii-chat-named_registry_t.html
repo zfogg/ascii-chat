@@ -56,22 +56,22 @@
 <p class="Pp">Uses uthash for O(1) lookups protected by rwlock. Rwlock is held
     ONLY during HASH_ADD/HASH_FIND operations. No mutations occur while holding
     the lock - avoids deadlocks.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>debug/named.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>named_entry_t</b>* named_registry_t::entries</h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>debug/named.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>rwlock_t</b> named_registry_t::entries_lock</h2>
 <p class="Pp">Definition at line <b>71</b> of file <b>debug/named.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>lifecycle_t</b> named_registry_t::lifecycle</h2>
+<h2 class="Ss"><b>rwlock_t</b> named_registry_t::entries_lock</h2>
 <p class="Pp">Definition at line <b>72</b> of file <b>debug/named.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>lifecycle_t</b> named_registry_t::lifecycle</h2>
+<p class="Pp">Definition at line <b>73</b> of file <b>debug/named.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

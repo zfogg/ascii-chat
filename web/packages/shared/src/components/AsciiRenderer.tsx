@@ -107,8 +107,14 @@ export const AsciiRenderer = forwardRef<
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
+      console.log(
+        `[AsciiRenderer] updateDimensions called with ${cols}x${rows}, onDimensionsChange=${!!onDimensionsChange}`,
+      );
       dimensionsRef.current = { cols, rows };
       onDimensionsChange?.({ cols, rows });
+      console.log(
+        `[AsciiRenderer] onDimensionsChange callback invoked`,
+      );
     },
     [onDimensionsChange],
   );
@@ -288,6 +294,8 @@ export const AsciiRenderer = forwardRef<
     };
   }, [moduleRef, updateDimensions]);
 
+  const frameCountForLoggingRef = useRef(0);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -301,23 +309,61 @@ export const AsciiRenderer = forwardRef<
           return;
         }
 
+        // Log middle 100 chars of first frame and every 60th frame
+        frameCountForLoggingRef.current++;
+        if (frameCountForLoggingRef.current === 1 || frameCountForLoggingRef.current % 60 === 0) {
+          const start = Math.max(0, Math.floor(ansiString.length / 2) - 50);
+          const middle100 = ansiString.substring(start, start + 100);
+          console.log(`[Frame ${frameCountForLoggingRef.current}] Middle 100 chars:`, middle100);
+        }
+
         try {
+          console.log(`[Frame ${frameCountForLoggingRef.current}] writeFrame called with ${ansiString.length} bytes`);
+
           // Encode string to UTF-8 bytes
           const encoder = new TextEncoder();
           const data = encoder.encode(ansiString);
 
+          console.log("[DEBUG writeFrame] ansiString first 50 chars:", ansiString.substring(0, 50));
+          console.log("[DEBUG writeFrame] ansiString.length:", ansiString.length);
+          console.log("[DEBUG writeFrame] encoded data.length:", data.length);
+          console.log("[DEBUG writeFrame] data is Uint8Array:", data instanceof Uint8Array);
+
           // Allocate memory in WASM and copy data
           const ptr = moduleRef.current._malloc(data.length);
+          console.log("[DEBUG writeFrame] _malloc(", data.length, ") returned:", ptr);
+          console.log("[DEBUG writeFrame] typeof ptr:", typeof ptr);
+
           if (!ptr) {
             console.error("[AsciiRenderer] Failed to allocate memory in WASM");
             return;
           }
 
           const wasmMemory = new Uint8Array(moduleRef.current.HEAPU8.buffer);
+          console.log("[DEBUG writeFrame] wasmMemory.length:", wasmMemory.length);
+          console.log("[DEBUG writeFrame] About to copy data to WASM memory at offset", ptr);
+
           wasmMemory.set(data, ptr);
+          console.log("[DEBUG writeFrame] Memory copy successful");
+
+          // Check the function before calling it
+          console.log("[DEBUG writeFrame] moduleRef.current._ascii_renderer_render_frame type:",
+            typeof moduleRef.current._ascii_renderer_render_frame);
+          console.log("[DEBUG writeFrame] Function exists:",
+            !!moduleRef.current._ascii_renderer_render_frame);
+
+          // Log what we're about to call
+          console.log("[DEBUG writeFrame] About to call _ascii_renderer_render_frame with:", {
+            ptr: ptr,
+            "data.length": data.length,
+            ptr_type: typeof ptr,
+            len_type: typeof data.length,
+          });
 
           // Render frame - direct call to WASM function
+          console.log(`[writeFrame] Calling _ascii_renderer_render_frame(${ptr}, ${data.length})`);
           moduleRef.current._ascii_renderer_render_frame(ptr, data.length);
+          console.log(`[writeFrame] _ascii_renderer_render_frame returned successfully`);
 
           // Free memory
           moduleRef.current._free(ptr);

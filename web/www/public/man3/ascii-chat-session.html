@@ -1477,12 +1477,12 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe using atomic operations</div>
-<p class="Pp">Definition at line <b>1177</b> of file
+<p class="Pp">Definition at line <b>1199</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1177                                              {
-1178   bool expected = true;
-1179   return atomic_cas_bool(&amp;g_help_signal_cancel, &amp;expected, false);
-1180 }</pre>
+<pre>1199                                              {
+1200   bool expected = true;
+1201   return atomic_cas_bool(&amp;g_help_signal_cancel, &amp;expected, false);
+1202 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_bool()</b>.</p>
@@ -1502,21 +1502,21 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe: Uses atomic load</div>
-<p class="Pp">Definition at line <b>1182</b> of file
+<p class="Pp">Definition at line <b>1204</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1182                                                          {
-1183   if (!ctx) {
-1184     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1185     return false;
-1186   }
-1187 
-1188   // Disable help in snapshot mode only - allow help state check even if stdin/stdout aren't TTYs
-1189   if (GET_OPTION(snapshot_mode)) {
-1190     return false;
-1191   }
-1192 
-1193   return atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1194 }</pre>
+<pre>1204                                                          {
+1205   if (!ctx) {
+1206     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1207     return false;
+1208   }
+1209 
+1210   // Disable help in snapshot mode only - allow help state check even if stdin/stdout aren't TTYs
+1211   if (GET_OPTION(snapshot_mode)) {
+1212     return false;
+1213   }
+1214 
+1215   return atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1216 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -1540,19 +1540,19 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1199</b> of file
+<p class="Pp">Definition at line <b>1221</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1199                                           {
-1200   session_display_ctx_t *ctx = get_current_display_ctx();
-1201   if (!ctx) {
-1202     platform_write_all(STDERR_FILENO, &quot;[DEBUG: ctx is NULL]\n&quot;, 20);
-1203     return false;
-1204   }
-1205   bool active = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1206   const char *msg = active ? &quot;[DEBUG: help active]\n&quot; : &quot;[DEBUG: help inactive]\n&quot;;
-1207   platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
-1208   return active;
-1209 }</pre>
+<pre>1221                                           {
+1222   session_display_ctx_t *ctx = get_current_display_ctx();
+1223   if (!ctx) {
+1224     platform_write_all(STDERR_FILENO, &quot;[DEBUG: ctx is NULL]\n&quot;, 20);
+1225     return false;
+1226   }
+1227   bool active = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1228   const char *msg = active ? &quot;[DEBUG: help active]\n&quot; : &quot;[DEBUG: help inactive]\n&quot;;
+1229   platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
+1230   return active;
+1231 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>,
@@ -1913,11 +1913,11 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1172</b> of file
+<p class="Pp">Definition at line <b>1194</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1172                                        {
-1173   atomic_store_bool(&amp;g_help_signal_cancel, true);
-1174 }</pre>
+<pre>1194                                        {
+1195   atomic_store_bool(&amp;g_help_signal_cancel, true);
+1196 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>.</p>
@@ -1937,17 +1937,17 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe: Uses atomic bool for lock-free toggle</div>
 <p class="Pp">Toggle keyboard help on/off.</p>
-<p class="Pp">Definition at line <b>1131</b> of file
+<p class="Pp">Definition at line <b>1153</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1131                                                       {
-1132   if (!ctx) {
-1133     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1134     return;
-1135   }
-1136 
-1137   bool current = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1138   atomic_store_bool(&amp;ctx-&gt;keyboard_help_active, !current);
-1139 }</pre>
+<pre>1153                                                       {
+1154   if (!ctx) {
+1155     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1156     return;
+1157   }
+1158 
+1159   bool current = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1160   atomic_store_bool(&amp;ctx-&gt;keyboard_help_active, !current);
+1161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
@@ -1969,14 +1969,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1211</b> of file
+<p class="Pp">Definition at line <b>1233</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1211                                        {
-1212   session_display_ctx_t *ctx = get_current_display_ctx();
-1213   if (ctx) {
-1214     keyboard_help_toggle(ctx);
-1215   }
-1216 }</pre>
+<pre>1233                                        {
+1234   session_display_ctx_t *ctx = get_current_display_ctx();
+1235   if (ctx) {
+1236     keyboard_help_toggle(ctx);
+1237   }
+1238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>keyboard_help_toggle()</b>.</p>
@@ -3297,25 +3297,25 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Clears the terminal screen and moves cursor to home position.</p>
-<p class="Pp">Definition at line <b>1035</b> of file
+<p class="Pp">Definition at line <b>1057</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1035                                                        {
-1036   if (!ctx || !ctx-&gt;initialized) {
-1037     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1038     return;
-1039   }
-1040 
-1041   // Skip terminal clear in snapshot mode to preserve rendered output
-1042   if (ctx-&gt;snapshot_mode) {
-1043     return;
-1044   }
-1045 
-1046   // Only perform terminal operations when we have a valid TTY (not when piping)
-1047   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-1048     (void)terminal_clear_screen();
-1049     (void)terminal_cursor_home(ctx-&gt;tty_info.fd);
-1050   }
-1051 }</pre>
+<pre>1057                                                        {
+1058   if (!ctx || !ctx-&gt;initialized) {
+1059     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1060     return;
+1061   }
+1062 
+1063   // Skip terminal clear in snapshot mode to preserve rendered output
+1064   if (ctx-&gt;snapshot_mode) {
+1065     return;
+1066   }
+1067 
+1068   // Only perform terminal operations when we have a valid TTY (not when piping)
+1069   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+1070     (void)terminal_clear_screen();
+1071     (void)terminal_cursor_home(ctx-&gt;tty_info.fd);
+1072   }
+1073 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -3350,224 +3350,224 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">The returned string must be freed by caller with
     <b>SAFE_FREE()</b>.</p>
-<p class="Pp">Definition at line <b>500</b> of file
+<p class="Pp">Definition at line <b>509</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>500                                                                                          {
-501   if (!ctx) {
-502     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_display_convert_to_ascii: ctx is NULL&quot;);
-503     return NULL;
-504   }
-505 
-506   if (!ctx-&gt;initialized) {
-507     SET_ERRNO(ERROR_INVALID_STATE, &quot;session_display_convert_to_ascii: ctx not initialized&quot;);
-508     return NULL;
-509   }
-510 
-511   if (!image) {
-512     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_display_convert_to_ascii: image is NULL&quot;);
-513     return NULL;
-514   }
-515 
-516   // Get conversion parameters from command-line options
-517   unsigned short int width = GET_OPTION(width);
-518   unsigned short int height = GET_OPTION(height);
-519   bool stretch = GET_OPTION(stretch);
-520   bool preserve_aspect_ratio = !stretch;
-521 
-522   // Determine if we should apply flip_x and flip_y
-523   bool flip_x_enabled = GET_OPTION(flip_x);
-524   bool flip_y_enabled = GET_OPTION(flip_y);
-525 
-526   color_filter_t color_filter = GET_OPTION(color_filter);
-527 
-528   // Handle dynamic matrix rain effect toggle
-529   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
-530   if (matrix_rain_enabled &amp;&amp; !ctx-&gt;digital_rain) {
-531     // Initialize digital rain if it's now enabled but wasn't before
-532     unsigned short int width_us = terminal_get_effective_width();
-533     unsigned short int height_us = terminal_get_effective_height();
-534     int width_for_rain = (int)width_us;
-535     int height_for_rain = (int)height_us;
-536     ctx-&gt;digital_rain = digital_rain_init(width_for_rain, height_for_rain);
-537     if (ctx-&gt;digital_rain) {
-538       digital_rain_set_color_from_filter(ctx-&gt;digital_rain, color_filter);
-539       log_info(&quot;Matrix rain effect: enabled&quot;);
-540     }
-541   } else if (!matrix_rain_enabled &amp;&amp; ctx-&gt;digital_rain) {
-542     // Disable digital rain if it's now disabled but was enabled before
-543     digital_rain_destroy(ctx-&gt;digital_rain);
-544     ctx-&gt;digital_rain = NULL;
-545     log_info(&quot;Matrix rain effect: disabled&quot;);
-546   }
-547 
-548   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
-549   terminal_capabilities_t caps_copy = ctx-&gt;caps;
-550 
-551   // Re-evaluate render_mode and color_level on every frame to pick up live changes
-552   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
-553   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
-554   if (color_mode_opt != TERM_COLOR_AUTO) {
-555     caps_copy.color_level = color_mode_opt;
-556   }
-557 
-558   // MEASURE EVERY OPERATION - Debug systematic timing
-559   uint64_t t_flip_start = time_get_ns();
-560 
-561   // Apply horizontal and/or vertical flips if requested
-562   image_t *flipped_image = NULL;
-563   const image_t *display_image = image;
-564 
-565   if ((flip_x_enabled || flip_y_enabled) &amp;&amp; image-&gt;w &gt; 1 &amp;&amp; image-&gt;h &gt; 1 &amp;&amp; image-&gt;pixels) {
-566     START_TIMER(&quot;image_flip&quot;);
-567     uint64_t t_flip_alloc_start = time_get_ns();
-568     flipped_image = image_new((size_t)image-&gt;w, (size_t)image-&gt;h);
-569     uint64_t t_flip_alloc_end = time_get_ns();
-570 
-571     if (flipped_image) {
-572       uint64_t t_flip_memcpy_start = time_get_ns();
-573       // OPTIMIZATION: Copy entire image first (sequential memory access - cache-friendly)
-574       memcpy(flipped_image-&gt;pixels, image-&gt;pixels, (size_t)image-&gt;w * (size_t)image-&gt;h * sizeof(rgb_pixel_t));
-575       uint64_t t_flip_memcpy_end = time_get_ns();
-576 
-577       uint64_t t_flip_reverse_start = time_get_ns();
-578 
-579       // Apply horizontal flip (X-axis)
-580       if (flip_x_enabled) {
-581 #if SIMD_SUPPORT_NEON
-582         // Use NEON-accelerated flip on ARM processors
-583         image_flip_horizontal_neon(flipped_image);
-584 #else
-585         // Scalar fallback for non-NEON systems
-586         for (int y = 0; y &lt; image-&gt;h; y++) {
-587           rgb_pixel_t *row = &amp;flipped_image-&gt;pixels[y * image-&gt;w];
-588           for (int x = 0; x &lt; image-&gt;w / 2; x++) {
-589             rgb_pixel_t temp = row[x];
-590             row[x] = row[image-&gt;w - 1 - x];
-591             row[image-&gt;w - 1 - x] = temp;
-592           }
-593         }
-594 #endif
-595       }
-596 
-597       // Apply vertical flip (Y-axis)
-598       if (flip_y_enabled) {
-599         for (int y = 0; y &lt; image-&gt;h / 2; y++) {
-600           rgb_pixel_t *top_row = &amp;flipped_image-&gt;pixels[y * image-&gt;w];
-601           rgb_pixel_t *bottom_row = &amp;flipped_image-&gt;pixels[(image-&gt;h - 1 - y) * image-&gt;w];
-602           for (int x = 0; x &lt; image-&gt;w; x++) {
-603             rgb_pixel_t temp = top_row[x];
-604             top_row[x] = bottom_row[x];
-605             bottom_row[x] = temp;
-606           }
-607         }
-608       }
-609 
-610       uint64_t t_flip_reverse_end = time_get_ns();
-611       display_image = flipped_image;
-612 
-613       log_dev(&quot;TIMING_FLIP: alloc=%llu us, memcpy=%llu us, flip=%llu us (x=%d, y=%d)&quot;,
-614               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
-615               (t_flip_reverse_end - t_flip_reverse_start) / 1000, flip_x_enabled, flip_y_enabled);
-616     }
-617     STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 3 * NS_PER_MS_INT, &quot;image_flip&quot;,
-618                              &quot;IMAGE_FLIP: Flip complete (%.2f ms)&quot;);
-619   }
-620   uint64_t t_flip_end = time_get_ns();
+<pre>509                                                                                          {
+510   if (!ctx) {
+511     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_display_convert_to_ascii: ctx is NULL&quot;);
+512     return NULL;
+513   }
+514 
+515   if (!ctx-&gt;initialized) {
+516     SET_ERRNO(ERROR_INVALID_STATE, &quot;session_display_convert_to_ascii: ctx not initialized&quot;);
+517     return NULL;
+518   }
+519 
+520   if (!image) {
+521     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_display_convert_to_ascii: image is NULL&quot;);
+522     return NULL;
+523   }
+524 
+525   // Get conversion parameters from command-line options
+526   unsigned short int width = GET_OPTION(width);
+527   unsigned short int height = GET_OPTION(height);
+528   bool stretch = GET_OPTION(stretch);
+529   bool preserve_aspect_ratio = !stretch;
+530 
+531   // Determine if we should apply flip_x and flip_y
+532   bool flip_x_enabled = GET_OPTION(flip_x);
+533   bool flip_y_enabled = GET_OPTION(flip_y);
+534 
+535   color_filter_t color_filter = GET_OPTION(color_filter);
+536 
+537   // Handle dynamic matrix rain effect toggle
+538   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+539   if (matrix_rain_enabled &amp;&amp; !ctx-&gt;digital_rain) {
+540     // Initialize digital rain if it's now enabled but wasn't before
+541     unsigned short int width_us = terminal_get_effective_width();
+542     unsigned short int height_us = terminal_get_effective_height();
+543     int width_for_rain = (int)width_us;
+544     int height_for_rain = (int)height_us;
+545     ctx-&gt;digital_rain = digital_rain_init(width_for_rain, height_for_rain);
+546     if (ctx-&gt;digital_rain) {
+547       digital_rain_set_color_from_filter(ctx-&gt;digital_rain, color_filter);
+548       log_info(&quot;Matrix rain effect: enabled&quot;);
+549     }
+550   } else if (!matrix_rain_enabled &amp;&amp; ctx-&gt;digital_rain) {
+551     // Disable digital rain if it's now disabled but was enabled before
+552     digital_rain_destroy(ctx-&gt;digital_rain);
+553     ctx-&gt;digital_rain = NULL;
+554     log_info(&quot;Matrix rain effect: disabled&quot;);
+555   }
+556 
+557   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
+558   terminal_capabilities_t caps_copy = ctx-&gt;caps;
+559 
+560   // Re-evaluate render_mode and color_level on every frame to pick up live changes
+561   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
+562   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
+563   if (color_mode_opt != TERM_COLOR_AUTO) {
+564     caps_copy.color_level = color_mode_opt;
+565   }
+566 
+567   // MEASURE EVERY OPERATION - Debug systematic timing
+568   uint64_t t_flip_start = time_get_ns();
+569 
+570   // Apply horizontal and/or vertical flips if requested
+571   image_t *flipped_image = NULL;
+572   const image_t *display_image = image;
+573 
+574   if ((flip_x_enabled || flip_y_enabled) &amp;&amp; image-&gt;w &gt; 1 &amp;&amp; image-&gt;h &gt; 1 &amp;&amp; image-&gt;pixels) {
+575     START_TIMER(&quot;image_flip&quot;);
+576     uint64_t t_flip_alloc_start = time_get_ns();
+577     flipped_image = image_new((size_t)image-&gt;w, (size_t)image-&gt;h);
+578     uint64_t t_flip_alloc_end = time_get_ns();
+579 
+580     if (flipped_image) {
+581       uint64_t t_flip_memcpy_start = time_get_ns();
+582       // OPTIMIZATION: Copy entire image first (sequential memory access - cache-friendly)
+583       memcpy(flipped_image-&gt;pixels, image-&gt;pixels, (size_t)image-&gt;w * (size_t)image-&gt;h * sizeof(rgb_pixel_t));
+584       uint64_t t_flip_memcpy_end = time_get_ns();
+585 
+586       uint64_t t_flip_reverse_start = time_get_ns();
+587 
+588       // Apply horizontal flip (X-axis)
+589       if (flip_x_enabled) {
+590 #if SIMD_SUPPORT_NEON
+591         // Use NEON-accelerated flip on ARM processors
+592         image_flip_horizontal_neon(flipped_image);
+593 #else
+594         // Scalar fallback for non-NEON systems
+595         for (int y = 0; y &lt; image-&gt;h; y++) {
+596           rgb_pixel_t *row = &amp;flipped_image-&gt;pixels[y * image-&gt;w];
+597           for (int x = 0; x &lt; image-&gt;w / 2; x++) {
+598             rgb_pixel_t temp = row[x];
+599             row[x] = row[image-&gt;w - 1 - x];
+600             row[image-&gt;w - 1 - x] = temp;
+601           }
+602         }
+603 #endif
+604       }
+605 
+606       // Apply vertical flip (Y-axis)
+607       if (flip_y_enabled) {
+608         for (int y = 0; y &lt; image-&gt;h / 2; y++) {
+609           rgb_pixel_t *top_row = &amp;flipped_image-&gt;pixels[y * image-&gt;w];
+610           rgb_pixel_t *bottom_row = &amp;flipped_image-&gt;pixels[(image-&gt;h - 1 - y) * image-&gt;w];
+611           for (int x = 0; x &lt; image-&gt;w; x++) {
+612             rgb_pixel_t temp = top_row[x];
+613             top_row[x] = bottom_row[x];
+614             bottom_row[x] = temp;
+615           }
+616         }
+617       }
+618 
+619       uint64_t t_flip_reverse_end = time_get_ns();
+620       display_image = flipped_image;
 621 
-622   uint64_t t_filter_start = time_get_ns();
-623 
-624   // Apply color filter to RGB pixels before ASCII conversion
-625   // Rainbow filter is handled separately via ANSI color replacement
-626   image_t *filtered_image = NULL;
-627   if (color_filter != COLOR_FILTER_NONE &amp;&amp; color_filter != COLOR_FILTER_RAINBOW) {
-628     // Create a copy to avoid modifying the original
-629     filtered_image = image_new((size_t)display_image-&gt;w, (size_t)display_image-&gt;h);
-630     if (filtered_image &amp;&amp; filtered_image-&gt;pixels &amp;&amp; display_image-&gt;pixels) {
-631       memcpy(filtered_image-&gt;pixels, display_image-&gt;pixels,
-632              (size_t)display_image-&gt;w * (size_t)display_image-&gt;h * sizeof(rgb_pixel_t));
-633 
-634       // Apply filter to the copy
-635       int stride = (int)display_image-&gt;w * 3;
-636       float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
-637       apply_color_filter((uint8_t *)filtered_image-&gt;pixels, (uint32_t)display_image-&gt;w, (uint32_t)display_image-&gt;h,
-638                          (uint32_t)stride, color_filter, time_seconds);
-639     }
-640   }
-641 
-642   const image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
-643   uint64_t t_filter_end = time_get_ns();
-644 
-645   uint64_t t_convert_start = time_get_ns();
-646   // Call the standard ASCII conversion using the filtered (or original) image
-647   START_TIMER(&quot;ascii_convert_with_capabilities&quot;);
-648   char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &amp;caps_copy, preserve_aspect_ratio,
-649                                                  stretch, ctx-&gt;palette_chars);
-650   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;ascii_convert_with_capabilities&quot;,
-651                            &quot;ASCII_CONVERT: Conversion complete (%.2f ms)&quot;);
-652   uint64_t t_convert_end = time_get_ns();
+622       log_dev(&quot;TIMING_FLIP: alloc=%llu us, memcpy=%llu us, flip=%llu us (x=%d, y=%d)&quot;,
+623               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
+624               (t_flip_reverse_end - t_flip_reverse_start) / 1000, flip_x_enabled, flip_y_enabled);
+625     }
+626     STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 3 * NS_PER_MS_INT, &quot;image_flip&quot;,
+627                              &quot;IMAGE_FLIP: Flip complete (%.2f ms)&quot;);
+628   }
+629   uint64_t t_flip_end = time_get_ns();
+630 
+631   uint64_t t_filter_start = time_get_ns();
+632 
+633   // Apply color filter to RGB pixels before ASCII conversion
+634   // Rainbow filter is handled separately via ANSI color replacement
+635   image_t *filtered_image = NULL;
+636   if (color_filter != COLOR_FILTER_NONE &amp;&amp; color_filter != COLOR_FILTER_RAINBOW) {
+637     // Create a copy to avoid modifying the original
+638     filtered_image = image_new((size_t)display_image-&gt;w, (size_t)display_image-&gt;h);
+639     if (filtered_image &amp;&amp; filtered_image-&gt;pixels &amp;&amp; display_image-&gt;pixels) {
+640       memcpy(filtered_image-&gt;pixels, display_image-&gt;pixels,
+641              (size_t)display_image-&gt;w * (size_t)display_image-&gt;h * sizeof(rgb_pixel_t));
+642 
+643       // Apply filter to the copy
+644       int stride = (int)display_image-&gt;w * 3;
+645       float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
+646       apply_color_filter((uint8_t *)filtered_image-&gt;pixels, (uint32_t)display_image-&gt;w, (uint32_t)display_image-&gt;h,
+647                          (uint32_t)stride, color_filter, time_seconds);
+648     }
+649   }
+650 
+651   const image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
+652   uint64_t t_filter_end = time_get_ns();
 653 
-654   // Apply rainbow color filter to ANSI output by replacing RGB values
-655   // This preserves character selection while applying the filter colors
-656   if (result &amp;&amp; color_filter == COLOR_FILTER_RAINBOW) {
-657     uint64_t t_color_replace_start = time_get_ns();
-658     float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
-659 
-660     char *rainbow_result = rainbow_replace_ansi_colors(result, time_seconds);
-661     if (rainbow_result) {
-662       SAFE_FREE(result);
-663       result = rainbow_result;
-664     }
-665 
-666     uint64_t t_color_replace_end = time_get_ns();
-667     char color_replace_str[32];
-668     time_pretty(t_color_replace_end - t_color_replace_start, -1, color_replace_str, sizeof(color_replace_str));
-669     log_dev(&quot;COLOR_REPLACE: %s&quot;, color_replace_str);
-670   }
-671 
-672   // Apply digital rain effect if enabled
-673   if (result &amp;&amp; ctx-&gt;digital_rain) {
-674     uint64_t t_rain_start = time_get_ns();
-675     uint64_t current_time_ns = t_rain_start;
-676     float delta_time = (float)(current_time_ns - ctx-&gt;last_frame_time_ns) / (float)NS_PER_SEC_INT;
-677     ctx-&gt;last_frame_time_ns = current_time_ns;
-678 
-679     // Update digital rain color from current filter (allows live filter changes)
-680     color_filter_t current_filter = GET_OPTION(color_filter);
-681     digital_rain_set_color_from_filter(ctx-&gt;digital_rain, current_filter);
-682 
-683     char *rain_result = digital_rain_apply(ctx-&gt;digital_rain, result, delta_time);
-684     if (rain_result) {
-685       SAFE_FREE(result);
-686       result = rain_result;
-687     }
-688 
-689     uint64_t t_rain_end = time_get_ns();
-690     char rain_str[32];
-691     time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
-692     log_dev(&quot;DIGITAL_RAIN: Effect applied (%s)&quot;, rain_str);
-693   }
-694 
-695   uint64_t t_cleanup_start = time_get_ns();
-696   // Clean up flipped and filtered images if created
-697   START_TIMER(&quot;ascii_convert_cleanup&quot;);
-698   if (filtered_image) {
-699     image_destroy(filtered_image);
-700   }
-701   if (flipped_image) {
-702     image_destroy(flipped_image);
-703   }
-704   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;ascii_convert_cleanup&quot;,
-705                            &quot;ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)&quot;);
-706   uint64_t t_cleanup_end = time_get_ns();
-707 
-708   // Log total breakdown with actual measured times
-709   log_dev(&quot;CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us&quot;,
-710           (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
-711           (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
-712           (t_cleanup_end - t_flip_start) / 1000);
-713 
-714   return result;
-715 }</pre>
+654   uint64_t t_convert_start = time_get_ns();
+655   // Call the standard ASCII conversion using the filtered (or original) image
+656   START_TIMER(&quot;ascii_convert_with_capabilities&quot;);
+657   char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &amp;caps_copy, preserve_aspect_ratio,
+658                                                  stretch, ctx-&gt;palette_chars);
+659   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;ascii_convert_with_capabilities&quot;,
+660                            &quot;ASCII_CONVERT: Conversion complete (%.2f ms)&quot;);
+661   uint64_t t_convert_end = time_get_ns();
+662 
+663   // Apply rainbow color filter to ANSI output by replacing RGB values
+664   // This preserves character selection while applying the filter colors
+665   if (result &amp;&amp; color_filter == COLOR_FILTER_RAINBOW) {
+666     uint64_t t_color_replace_start = time_get_ns();
+667     float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
+668 
+669     char *rainbow_result = rainbow_replace_ansi_colors(result, time_seconds);
+670     if (rainbow_result) {
+671       SAFE_FREE(result);
+672       result = rainbow_result;
+673     }
+674 
+675     uint64_t t_color_replace_end = time_get_ns();
+676     char color_replace_str[32];
+677     time_pretty(t_color_replace_end - t_color_replace_start, -1, color_replace_str, sizeof(color_replace_str));
+678     log_dev(&quot;COLOR_REPLACE: %s&quot;, color_replace_str);
+679   }
+680 
+681   // Apply digital rain effect if enabled
+682   if (result &amp;&amp; ctx-&gt;digital_rain) {
+683     uint64_t t_rain_start = time_get_ns();
+684     uint64_t current_time_ns = t_rain_start;
+685     float delta_time = (float)(current_time_ns - ctx-&gt;last_frame_time_ns) / (float)NS_PER_SEC_INT;
+686     ctx-&gt;last_frame_time_ns = current_time_ns;
+687 
+688     // Update digital rain color from current filter (allows live filter changes)
+689     color_filter_t current_filter = GET_OPTION(color_filter);
+690     digital_rain_set_color_from_filter(ctx-&gt;digital_rain, current_filter);
+691 
+692     char *rain_result = digital_rain_apply(ctx-&gt;digital_rain, result, delta_time);
+693     if (rain_result) {
+694       SAFE_FREE(result);
+695       result = rain_result;
+696     }
+697 
+698     uint64_t t_rain_end = time_get_ns();
+699     char rain_str[32];
+700     time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+701     log_dev(&quot;DIGITAL_RAIN: Effect applied (%s)&quot;, rain_str);
+702   }
+703 
+704   uint64_t t_cleanup_start = time_get_ns();
+705   // Clean up flipped and filtered images if created
+706   START_TIMER(&quot;ascii_convert_cleanup&quot;);
+707   if (filtered_image) {
+708     image_destroy(filtered_image);
+709   }
+710   if (flipped_image) {
+711     image_destroy(flipped_image);
+712   }
+713   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;ascii_convert_cleanup&quot;,
+714                            &quot;ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)&quot;);
+715   uint64_t t_cleanup_end = time_get_ns();
+716 
+717   // Log total breakdown with actual measured times
+718   log_dev(&quot;CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us&quot;,
+719           (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
+720           (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
+721           (t_cleanup_end - t_flip_start) / 1000);
+722 
+723   return result;
+724 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>apply_color_filter()</b>,
@@ -3870,19 +3870,19 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Moves the cursor to the top-left corner (1,1) of the terminal.</p>
-<p class="Pp">Definition at line <b>1053</b> of file
+<p class="Pp">Definition at line <b>1075</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1053                                                              {
-1054   if (!ctx || !ctx-&gt;initialized) {
-1055     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1056     return;
-1057   }
-1058 
-1059   int fd = ctx-&gt;has_tty ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-1060   if (fd &gt;= 0) {
-1061     (void)terminal_cursor_home(fd);
-1062   }
-1063 }</pre>
+<pre>1075                                                              {
+1076   if (!ctx || !ctx-&gt;initialized) {
+1077     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1078     return;
+1079   }
+1080 
+1081   int fd = ctx-&gt;has_tty ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1082   if (fd &gt;= 0) {
+1083     (void)terminal_cursor_home(fd);
+1084   }
+1085 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -3976,48 +3976,53 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Encodes image via render_file/FFmpeg encoder. No-op if
     --render-file not set. Used by the encode thread in the threaded
   pipeline.</p>
-<p class="Pp">Definition at line <b>923</b> of file
+<p class="Pp">Definition at line <b>940</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>923                                                                                                           {
-924   static int call_count = 0;
-925   if (call_count++ &lt; 5) {
-926     log_info(&quot;session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx-&gt;render_file=%p)&quot;,
-927              (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx-&gt;render_file : NULL);
-928   }
-929 
-930   if (!ctx || !ctx-&gt;initialized) {
-931     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
-932     return;
-933   }
-934 
-935   if (!image) {
-936     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image is NULL&quot;);
-937     return;
-938   }
-939 
-940   // Only encode if render_file is active
-941   if (!ctx-&gt;render_file) {
-942     log_warn_every(10 * NS_PER_SEC_INT, &quot;session_display_encode_frame: render_file is NULL, skipping encode&quot;);
-943     return;
-944   }
-945 
-946   // Convert image to ASCII
-947   char *ascii = session_display_convert_to_ascii(ctx, image);
-948   if (!ascii) {
-949     log_warn(&quot;session_display_encode_frame: Failed to convert image to ASCII&quot;);
-950     return;
-951   }
-952 
-953   // Write ASCII to render-file encoder
-954 #ifndef _WIN32
-955   asciichat_error_t fe = render_file_write_frame(ctx-&gt;render_file, ascii, captured_ns);
-956   if (fe != ASCIICHAT_OK) {
-957     log_warn_every(5 * NS_PER_SEC_INT, &quot;render-file: encode failed (%s)&quot;, asciichat_error_string(fe));
-958   }
-959 #endif
+<pre>940                                                                                                           {
+941 #ifdef _WIN32
+942   (void)ctx; (void)image; (void)captured_ns;
+943   return; // render-file not supported on Windows
+944 #else
+945   static int call_count = 0;
+946   if (call_count++ &lt; 5) {
+947     log_info(&quot;session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx-&gt;render_file=%p)&quot;,
+948              (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx-&gt;render_file : NULL);
+949   }
+950 
+951   if (!ctx || !ctx-&gt;initialized) {
+952     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
+953     return;
+954   }
+955 
+956   if (!image) {
+957     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image is NULL&quot;);
+958     return;
+959   }
 960 
-961   SAFE_FREE(ascii);
-962 }</pre>
+961   // Only encode if render_file is active
+962   if (!ctx-&gt;render_file) {
+963     log_warn_every(10 * NS_PER_SEC_INT, &quot;session_display_encode_frame: render_file is NULL, skipping encode&quot;);
+964     return;
+965   }
+966 
+967   // Convert image to ASCII
+968   char *ascii = session_display_convert_to_ascii(ctx, image);
+969   if (!ascii) {
+970     log_warn(&quot;session_display_encode_frame: Failed to convert image to ASCII&quot;);
+971     return;
+972   }
+973 
+974   // Write ASCII to render-file encoder
+975 #ifndef _WIN32
+976   asciichat_error_t fe = render_file_write_frame(ctx-&gt;render_file, ascii, captured_ns);
+977   if (fe != ASCIICHAT_OK) {
+978     log_warn_every(5 * NS_PER_SEC_INT, &quot;render-file: encode failed (%s)&quot;, asciichat_error_string(fe));
+979   }
+980 #endif
+981 
+982   SAFE_FREE(ascii);
+983 #endif // !_WIN32
+984 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -4070,11 +4075,11 @@ fps_counter_destroy(fps);</pre>
     <b>session_display_set_global_context()</b>. Signal handlers and special
     modes (like discovery participant) use this to access the display without
     having a direct pointer.</p>
-<p class="Pp">Definition at line <b>1162</b> of file
+<p class="Pp">Definition at line <b>1184</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1162                                                                 {
-1163   return get_current_display_ctx();
-1164 }</pre>
+<pre>1184                                                                 {
+1185   return get_current_display_ctx();
+1186 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
@@ -4243,15 +4248,15 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if audio playback is available, false
   otherwise</div>
-<p class="Pp">Definition at line <b>1065</b> of file
+<p class="Pp">Definition at line <b>1087</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1065                                                                     {
-1066   if (!ctx || !ctx-&gt;initialized) {
-1067     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1068     return false;
-1069   }
-1070   return ctx-&gt;audio_playback_enabled;
-1071 }</pre>
+<pre>1087                                                                     {
+1088   if (!ctx || !ctx-&gt;initialized) {
+1089     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1090     return false;
+1091   }
+1092   return ctx-&gt;audio_playback_enabled;
+1093 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::audio_playback_enabled</b>,
@@ -4268,15 +4273,15 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if first frame has been rendered, false if not yet
   rendered or ctx is NULL</div>
-<p class="Pp">Definition at line <b>473</b> of file
+<p class="Pp">Definition at line <b>478</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>473                                                                  {
-474   if (!ctx) {
-475     return false;
-476   }
-477   // Return true if first_frame flag is false (meaning first frame has been rendered)
-478   return !atomic_load_bool(&amp;ctx-&gt;first_frame);
-479 }</pre>
+<pre>478                                                                  {
+479   if (!ctx) {
+480     return false;
+481   }
+482   // Return true if first_frame flag is false (meaning first frame has been rendered)
+483   return !atomic_load_bool(&amp;ctx-&gt;first_frame);
+484 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -4291,14 +4296,18 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Display context (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if render-file is configured, false otherwise</div>
-<p class="Pp">Definition at line <b>489</b> of file
+<p class="Pp">Definition at line <b>494</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>489                                                                  {
-490   if (!ctx) {
-491     return false;
-492   }
-493   return ctx-&gt;render_file != NULL;
-494 }</pre>
+<pre>494                                                                  {
+495   if (!ctx) {
+496     return false;
+497   }
+498 #ifndef _WIN32
+499   return ctx-&gt;render_file != NULL;
+500 #else
+501   return false;
+502 #endif
+503 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::render_file</b>.</p>
@@ -4343,39 +4352,39 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Displays the current FPS value as a reverse-video overlay in the
     top-right corner of the terminal. Only renders in TTY mode. Safe to call
     when fps_counter is NULL.</p>
-<p class="Pp">Definition at line <b>984</b> of file
+<p class="Pp">Definition at line <b>1006</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>984                                                                     {
-985   if (!ctx || !ctx-&gt;fps_counter || !ctx-&gt;initialized) {
-986     return;
-987   }
-988 
-989   // Only render overlay in TTY mode
-990   if (!ctx-&gt;has_tty) {
-991     return;
-992   }
-993 
-994   // Get current FPS value from counter
-995   float fps = fps_counter_get(ctx-&gt;fps_counter);
-996 
-997   // Get terminal width for right-alignment
-998   int term_cols = (int)terminal_get_effective_width();
-999 
-1000   // Position at row 1, right side of screen
-1001   // Column = term_cols - 7 (to fit &quot;FPS:144&quot; which is 7 chars)
-1002   // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
-1003   char overlay[64];
-1004   int overlay_len = snprintf(overlay, sizeof(overlay), &quot;\033[1;%dH\033[7mFPS:%3.0f\033[0m&quot;, term_cols - 6, fps);
-1005 
-1006   if (overlay_len &gt; 0 &amp;&amp; overlay_len &lt; (int)sizeof(overlay)) {
-1007     // Write overlay to TTY
-1008     int fd = (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-1009     (void)platform_write_all(fd, overlay, overlay_len);
+<pre>1006                                                                     {
+1007   if (!ctx || !ctx-&gt;fps_counter || !ctx-&gt;initialized) {
+1008     return;
+1009   }
 1010 
-1011     // Flush to ensure overlay appears immediately
-1012     (void)terminal_flush(fd);
-1013   }
-1014 }</pre>
+1011   // Only render overlay in TTY mode
+1012   if (!ctx-&gt;has_tty) {
+1013     return;
+1014   }
+1015 
+1016   // Get current FPS value from counter
+1017   float fps = fps_counter_get(ctx-&gt;fps_counter);
+1018 
+1019   // Get terminal width for right-alignment
+1020   int term_cols = (int)terminal_get_effective_width();
+1021 
+1022   // Position at row 1, right side of screen
+1023   // Column = term_cols - 7 (to fit &quot;FPS:144&quot; which is 7 chars)
+1024   // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
+1025   char overlay[64];
+1026   int overlay_len = snprintf(overlay, sizeof(overlay), &quot;\033[1;%dH\033[7mFPS:%3.0f\033[0m&quot;, term_cols - 6, fps);
+1027 
+1028   if (overlay_len &gt; 0 &amp;&amp; overlay_len &lt; (int)sizeof(overlay)) {
+1029     // Write overlay to TTY
+1030     int fd = (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1031     (void)platform_write_all(fd, overlay, overlay_len);
+1032 
+1033     // Flush to ensure overlay appears immediately
+1034     (void)terminal_flush(fd);
+1035   }
+1036 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tty_info_t::fd</b>,
@@ -4403,20 +4412,20 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">In snapshot mode, renders all frames during the snapshot window.
     (Legacy function; new code should use split functions for threading.)</p>
-<p class="Pp">Definition at line <b>724</b> of file
+<p class="Pp">Definition at line <b>733</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>724                                                                                       {
-725   // Legacy function: shim that calls both new split functions for backward compatibility
-726   // This maintains API compatibility with existing code while delegating to specialized functions
-727 
-728   if (!ctx || !frame_data) {
-729     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context or frame data is NULL&quot;);
-730     return;
-731   }
-732 
-733   // Write ASCII to terminal (main thread output path)
-734   session_display_write_ascii(ctx, frame_data);
-735 }</pre>
+<pre>733                                                                                       {
+734   // Legacy function: shim that calls both new split functions for backward compatibility
+735   // This maintains API compatibility with existing code while delegating to specialized functions
+736 
+737   if (!ctx || !frame_data) {
+738     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context or frame data is NULL&quot;);
+739     return;
+740   }
+741 
+742   // Write ASCII to terminal (main thread output path)
+743   session_display_write_ascii(ctx, frame_data);
+744 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -4433,26 +4442,26 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Resets terminal attributes (colors, cursor visibility, etc.) to
     defaults. Useful for cleanup or error recovery.</p>
-<p class="Pp">Definition at line <b>1016</b> of file
+<p class="Pp">Definition at line <b>1038</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1016                                                        {
-1017   if (!ctx || !ctx-&gt;initialized) {
-1018     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1019     return;
-1020   }
-1021 
-1022   // Skip terminal reset in snapshot mode to preserve rendered output
-1023   if (ctx-&gt;snapshot_mode) {
-1024     return;
-1025   }
-1026 
-1027   // Only perform terminal operations if we have a valid TTY
-1028   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-1029     (void)terminal_reset(ctx-&gt;tty_info.fd);
-1030     (void)terminal_cursor_show();
-1031     (void)terminal_flush(ctx-&gt;tty_info.fd);
-1032   }
-1033 }</pre>
+<pre>1038                                                        {
+1039   if (!ctx || !ctx-&gt;initialized) {
+1040     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1041     return;
+1042   }
+1043 
+1044   // Skip terminal reset in snapshot mode to preserve rendered output
+1045   if (ctx-&gt;snapshot_mode) {
+1046     return;
+1047   }
+1048 
+1049   // Only perform terminal operations if we have a valid TTY
+1050   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+1051     (void)terminal_reset(ctx-&gt;tty_info.fd);
+1052     (void)terminal_cursor_show();
+1053     (void)terminal_flush(ctx-&gt;tty_info.fd);
+1054   }
+1055 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -4476,15 +4485,15 @@ fps_counter_destroy(fps);</pre>
     display. After calling this, the next call to
     <b>session_display_render_frame()</b> will trigger splash cleanup logic,
     allowing the splash to be shown again.</p>
-<p class="Pp">Definition at line <b>481</b> of file
+<p class="Pp">Definition at line <b>486</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>481                                                                    {
-482   if (!ctx) {
-483     return;
-484   }
-485   // Reset first_frame flag to true so splash screen can be shown again on next render
-486   atomic_store_bool(&amp;ctx-&gt;first_frame, true);
-487 }</pre>
+<pre>486                                                                    {
+487   if (!ctx) {
+488     return;
+489   }
+490   // Reset first_frame flag to true so splash screen can be shown again on next render
+491   atomic_store_bool(&amp;ctx-&gt;first_frame, true);
+492 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, and
@@ -4508,11 +4517,11 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Must be called from the render loop
   startup/shutdown</div>
-<p class="Pp">Definition at line <b>1157</b> of file
+<p class="Pp">Definition at line <b>1179</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1157                                                                     {
-1158   atomic_ptr_store(&amp;g_current_display_ctx, (void *)ctx);
-1159 }</pre>
+<pre>1179                                                                     {
+1180   atomic_ptr_store(&amp;g_current_display_ctx, (void *)ctx);
+1181 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>.</p>
@@ -4533,11 +4542,11 @@ fps_counter_destroy(fps);</pre>
     use this to track the active display context. Used by discovery participant
     mode to clear the global context after destroying the display early to
     prevent use-after-free in cleanup code.</p>
-<p class="Pp">Definition at line <b>1167</b> of file
+<p class="Pp">Definition at line <b>1189</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1167                                                                            {
-1168   session_display_set_global_context(ctx);
-1169 }</pre>
+<pre>1189                                                                            {
+1190   session_display_set_global_context(ctx);
+1191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_set_global_context()</b>.</p>
@@ -4559,13 +4568,18 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Definition at line <b>464</b> of file
     <b>src/common/session/display.c</b>.</p>
 <pre>464                                                                                              {
-465   if (!ctx || !ctx-&gt;render_file)
-466     return;
-467   render_file_set_audio_source((render_file_ctx_t *)ctx-&gt;render_file, audio_source, NULL);
-468   if (audio_source) {
-469     log_debug(&quot;session_display_set_render_audio_source: Audio source set for render-file encoding&quot;);
-470   }
-471 }</pre>
+465 #ifndef _WIN32
+466   if (!ctx || !ctx-&gt;render_file)
+467     return;
+468   render_file_set_audio_source((render_file_ctx_t *)ctx-&gt;render_file, audio_source, NULL);
+469   if (audio_source) {
+470     log_debug(&quot;session_display_set_render_audio_source: Audio source set for render-file encoding&quot;);
+471   }
+472 #else
+473   (void)ctx;
+474   (void)audio_source;
+475 #endif
+476 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>,
@@ -4613,30 +4627,29 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">In snapshot mode, this function provides the actual wall-clock
     duration of frame capture, allowing the encoder to calculate correct frame
     durations so the output video spans exactly the specified duration.</p>
-<p class="Pp">Definition at line <b>1218</b> of file
+<p class="Pp">Definition at line <b>1240</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1218                                                                                                           {
-1219   log_info(&quot;session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p&quot;,
-1220            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx-&gt;render_file : NULL);
-1221 
-1222   if (!ctx) {
-1223     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1224     return;
-1225   }
-1226 
-1227   if (!ctx-&gt;render_file) {
-1228     log_warn(&quot;  -&gt; render_file is NULL, cannot set duration&quot;);
-1229     return; // No render_file context, nothing to do
-1230   }
-1231 
-1232 #ifndef _WIN32
-1233   // Pass the actual duration to the render_file module, which passes it to the encoder
-1234   if (ctx-&gt;render_file) {
-1235     log_info(&quot;  -&gt; Passing duration %.3f to render_file encoder&quot;, actual_duration_sec);
-1236     render_file_set_snapshot_actual_duration(ctx-&gt;render_file, actual_duration_sec);
-1237   }
-1238 #endif
-1239 }</pre>
+<pre>1240                                                                                                           {
+1241 #ifdef _WIN32
+1242   (void)ctx; (void)actual_duration_sec;
+1243 #else
+1244   log_info(&quot;session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p&quot;,
+1245            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx-&gt;render_file : NULL);
+1246 
+1247   if (!ctx) {
+1248     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1249     return;
+1250   }
+1251 
+1252   if (!ctx-&gt;render_file) {
+1253     log_warn(&quot;  -&gt; render_file is NULL, cannot set duration&quot;);
+1254     return;
+1255   }
+1256 
+1257   log_info(&quot;  -&gt; Passing duration %.3f to render_file encoder&quot;, actual_duration_sec);
+1258   render_file_set_snapshot_actual_duration(ctx-&gt;render_file, actual_duration_sec);
+1259 #endif
+1260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
@@ -4688,193 +4701,201 @@ fps_counter_destroy(fps);</pre>
 <i>frame_data</i> ASCII frame data (must not be NULL)</div>
 <p class="Pp">Writes ANSI string to terminal/stdout without encoding to file.
     Used by the main thread in the threaded pipeline.</p>
-<p class="Pp">Definition at line <b>737</b> of file
+<p class="Pp">Definition at line <b>746</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>737                                                                                 {
-738   if (!ctx || !ctx-&gt;initialized) {
-739     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
-740     return;
-741   }
-742 
-743   if (!ascii) {
-744     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is NULL&quot;);
-745     return;
-746   }
-747 
-748   // Re-evaluate color_level on every frame to pick up live color_mode changes
-749   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
-750   if (color_mode != TERM_COLOR_AUTO) {
-751     ctx-&gt;caps.color_level = color_mode;
-752   }
-753 
-754   // Suppress frame rendering when help screen is active
-755   if (atomic_load_bool(&amp;ctx-&gt;keyboard_help_active)) {
-756     return;
-757   }
-758 
-759   // Calculate frame length
-760   size_t frame_len = strnlen(ascii, 1024 * 1024); // Max 1MB frame
-761   if (frame_len == 0) {
-762     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is empty&quot;);
-763     return;
-764   }
-765 
-766   // Apply digital rain effect if enabled
-767   char *display_frame = (char *)ascii;
-768   char *rain_result = NULL;
-769   if (ctx-&gt;digital_rain) {
-770     uint64_t t_rain_start = time_get_ns();
-771     uint64_t current_time_ns = t_rain_start;
-772     float delta_time = (float)(current_time_ns - ctx-&gt;last_frame_time_ns) / (float)NS_PER_SEC_INT;
-773     ctx-&gt;last_frame_time_ns = current_time_ns;
+<pre>746                                                                                 {
+747   if (!ctx || !ctx-&gt;initialized) {
+748     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
+749     return;
+750   }
+751 
+752   if (!ascii) {
+753     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is NULL&quot;);
+754     return;
+755   }
+756 
+757   // Re-evaluate color_level on every frame to pick up live color_mode changes
+758   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+759   if (color_mode != TERM_COLOR_AUTO) {
+760     ctx-&gt;caps.color_level = color_mode;
+761   }
+762 
+763   // Suppress frame rendering when help screen is active
+764   if (atomic_load_bool(&amp;ctx-&gt;keyboard_help_active)) {
+765     return;
+766   }
+767 
+768   // Calculate frame length
+769   size_t frame_len = strnlen(ascii, 1024 * 1024); // Max 1MB frame
+770   if (frame_len == 0) {
+771     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is empty&quot;);
+772     return;
+773   }
 774 
-775     // Update digital rain color from current filter
-776     color_filter_t current_filter = GET_OPTION(color_filter);
-777     digital_rain_set_color_from_filter(ctx-&gt;digital_rain, current_filter);
-778 
-779     rain_result = digital_rain_apply(ctx-&gt;digital_rain, (char *)ascii, delta_time);
-780     if (rain_result) {
-781       display_frame = rain_result;
-782       frame_len = strnlen(rain_result, 1024 * 1024);
+775   // Apply digital rain effect if enabled
+776   char *display_frame = (char *)ascii;
+777   char *rain_result = NULL;
+778   if (ctx-&gt;digital_rain) {
+779     uint64_t t_rain_start = time_get_ns();
+780     uint64_t current_time_ns = t_rain_start;
+781     float delta_time = (float)(current_time_ns - ctx-&gt;last_frame_time_ns) / (float)NS_PER_SEC_INT;
+782     ctx-&gt;last_frame_time_ns = current_time_ns;
 783 
-784       uint64_t t_rain_end = time_get_ns();
-785       char rain_str[32];
-786       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
-787       log_info(&quot;DIGITAL_RAIN (write_ascii): Effect applied (%s)&quot;, rain_str);
-788     }
-789   }
-790 
-791   // Handle first frame - perform initial terminal reset and splash cleanup
-792   bool was_first_frame = atomic_exchange_bool(&amp;ctx-&gt;first_frame, false);
-793   if (was_first_frame) {
-794     // Stop splash screen when first frame is ready
-795     splash_intro_done();
-796 
-797     // Perform initial terminal reset
-798     if (ctx-&gt;has_tty &amp;&amp; !ctx-&gt;render_file) {
-799       (void)terminal_reset(STDOUT_FILENO);
-800       (void)terminal_clear_screen();
-801       (void)terminal_cursor_home(STDOUT_FILENO);
-802       (void)terminal_clear_scrollback(STDOUT_FILENO);
-803       (void)terminal_cursor_show();
-804       if (!ctx-&gt;snapshot_mode) {
-805         (void)terminal_cursor_hide();
-806       }
-807       (void)terminal_flush(STDOUT_FILENO);
-808     }
-809   }
-810 
-811   // Output routing logic
-812   bool use_tty_control = ctx-&gt;has_tty &amp;&amp; (!ctx-&gt;snapshot_mode || terminal_is_interactive());
-813 
-814   START_TIMER(&quot;frame_write&quot;);
-815 
-816   // Increment shared frame counter for both client and host rendering
-817   // This metric is used by debug scripts to measure FPS across all modes
-818   static atomic_t g_display_frames_rendered = {0};
-819   int frame_number = atomic_fetch_add_u64(&amp;g_display_frames_rendered, 1) + 1;
-820   log_info(&quot;[FRAMES_RENDERED_TOTAL] %d&quot;, frame_number);
-821 
-822   if (use_tty_control) {
-823     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-824     const char *cursor_home_sequence = &quot;\033[H\033[3J&quot;; // 7 bytes total
-825     size_t cursor_seq_len = 7;
-826     size_t total_size = cursor_seq_len + frame_len;
-827 
-828     char *frame_buffer = SAFE_MALLOC(total_size, char *);
-829     if (frame_buffer) {
-830       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
-831       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
-832 
-833       log_debug(&quot;FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout&quot;, total_size, cursor_seq_len,
-834                 frame_len);
-835       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
-836       log_debug(&quot;FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)&quot;, written, total_size);
-837 
-838       // Start snapshot timer on first ASCII frame rendered
-839       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-840         g_snapshot_first_frame_rendered = true;
-841         g_snapshot_first_frame_rendered_ns = time_get_ns();
-842         log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started&quot;);
-843       }
-844 
-845       // Tick FPS counter
-846       if (ctx-&gt;fps_counter) {
-847         fps_counter_tick(ctx-&gt;fps_counter);
-848       }
-849 
-850       SAFE_FREE(frame_buffer);
-851     }
-852 
-853     // Flush buffers
-854     log_debug(&quot;FRAME_FLUSH: Flushing stdout&quot;);
-855     (void)fflush(stdout);
-856     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-857     (void)terminal_flush(flush_fd);
-858 
-859     // Render FPS counter overlay if enabled
-860     if (ctx-&gt;fps_counter &amp;&amp; GET_OPTION(fps_counter)) {
-861       session_display_render_fps_overlay(ctx);
-862     }
-863   } else if (terminal_is_interactive()) {
-864     // Piped to interactive terminal: output ASCII frames with newline
-865     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-866     if (write_buf) {
-867       memcpy(write_buf, display_frame, frame_len);
-868       write_buf[frame_len] = '\n';
-869       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-870       SAFE_FREE(write_buf);
-871     }
-872 
-873     // Flush buffers
-874     (void)fflush(stdout);
-875     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-876     (void)terminal_flush(flush_fd);
-877   } else {
-878     // Non-interactive piped output
-879     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file=&quot;-&quot;)
-880     if (!ctx-&gt;render_file) {
-881       // No render-file, safe to write ASCII frames to stdout
-882       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-883       if (write_buf) {
-884         memcpy(write_buf, display_frame, frame_len);
-885         write_buf[frame_len] = '\n';
-886         (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-887 
-888         // Start snapshot timer on first ASCII frame rendered
-889         if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-890           g_snapshot_first_frame_rendered = true;
-891           g_snapshot_first_frame_rendered_ns = time_get_ns();
-892           log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started&quot;);
-893         }
-894 
-895         SAFE_FREE(write_buf);
-896       }
-897 
-898       // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
-899       (void)fflush(stdout);
-900       if (!GET_OPTION(snapshot_mode) || ctx-&gt;has_tty) {
-901         int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-902         (void)terminal_flush(flush_fd);
-903       }
-904     } else {
-905       // render_file is using stdout: skip ASCII output to avoid mixing with video
-906       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-907         g_snapshot_first_frame_rendered = true;
-908         g_snapshot_first_frame_rendered_ns = time_get_ns();
-909         log_info(&quot;SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started&quot;);
-910       }
-911     }
-912   }
-913 
-914   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;frame_write&quot;,
-915                            &quot;FRAME_WRITE: Write and flush complete (%.2f ms)&quot;);
-916 
-917   // Clean up digital rain result if allocated
-918   if (rain_result) {
-919     SAFE_FREE(rain_result);
-920   }
-921 }</pre>
+784     // Update digital rain color from current filter
+785     color_filter_t current_filter = GET_OPTION(color_filter);
+786     digital_rain_set_color_from_filter(ctx-&gt;digital_rain, current_filter);
+787 
+788     rain_result = digital_rain_apply(ctx-&gt;digital_rain, (char *)ascii, delta_time);
+789     if (rain_result) {
+790       display_frame = rain_result;
+791       frame_len = strnlen(rain_result, 1024 * 1024);
+792 
+793       uint64_t t_rain_end = time_get_ns();
+794       char rain_str[32];
+795       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+796       log_info(&quot;DIGITAL_RAIN (write_ascii): Effect applied (%s)&quot;, rain_str);
+797     }
+798   }
+799 
+800   // Handle first frame - perform initial terminal reset and splash cleanup
+801   bool was_first_frame = atomic_exchange_bool(&amp;ctx-&gt;first_frame, false);
+802   if (was_first_frame) {
+803     // Stop splash screen when first frame is ready
+804     splash_intro_done();
+805 
+806     // Perform initial terminal reset
+807     if (ctx-&gt;has_tty
+808 #ifndef _WIN32
+809         &amp;&amp; !ctx-&gt;render_file
+810 #endif
+811     ) {
+812       (void)terminal_reset(STDOUT_FILENO);
+813       (void)terminal_clear_screen();
+814       (void)terminal_cursor_home(STDOUT_FILENO);
+815       (void)terminal_clear_scrollback(STDOUT_FILENO);
+816       (void)terminal_cursor_show();
+817       if (!ctx-&gt;snapshot_mode) {
+818         (void)terminal_cursor_hide();
+819       }
+820       (void)terminal_flush(STDOUT_FILENO);
+821     }
+822   }
+823 
+824   // Output routing logic
+825   bool use_tty_control = ctx-&gt;has_tty &amp;&amp; (!ctx-&gt;snapshot_mode || terminal_is_interactive());
+826 
+827   START_TIMER(&quot;frame_write&quot;);
+828 
+829   // Increment shared frame counter for both client and host rendering
+830   // This metric is used by debug scripts to measure FPS across all modes
+831   static atomic_t g_display_frames_rendered = {0};
+832   int frame_number = atomic_fetch_add_u64(&amp;g_display_frames_rendered, 1) + 1;
+833   log_info(&quot;[FRAMES_RENDERED_TOTAL] %d&quot;, frame_number);
+834 
+835   if (use_tty_control) {
+836     // TTY mode: Buffer cursor control + frame data together for atomic frame display
+837     const char *cursor_home_sequence = &quot;\033[H\033[3J&quot;; // 7 bytes total
+838     size_t cursor_seq_len = 7;
+839     size_t total_size = cursor_seq_len + frame_len;
+840 
+841     char *frame_buffer = SAFE_MALLOC(total_size, char *);
+842     if (frame_buffer) {
+843       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
+844       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+845 
+846       log_debug(&quot;FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout&quot;, total_size, cursor_seq_len,
+847                 frame_len);
+848       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+849       log_debug(&quot;FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)&quot;, written, total_size);
+850 
+851       // Start snapshot timer on first ASCII frame rendered
+852       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+853         g_snapshot_first_frame_rendered = true;
+854         g_snapshot_first_frame_rendered_ns = time_get_ns();
+855         log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started&quot;);
+856       }
+857 
+858       // Tick FPS counter
+859       if (ctx-&gt;fps_counter) {
+860         fps_counter_tick(ctx-&gt;fps_counter);
+861       }
+862 
+863       SAFE_FREE(frame_buffer);
+864     }
+865 
+866     // Flush buffers
+867     log_debug(&quot;FRAME_FLUSH: Flushing stdout&quot;);
+868     (void)fflush(stdout);
+869     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+870     (void)terminal_flush(flush_fd);
+871 
+872     // Render FPS counter overlay if enabled
+873     if (ctx-&gt;fps_counter &amp;&amp; GET_OPTION(fps_counter)) {
+874       session_display_render_fps_overlay(ctx);
+875     }
+876   } else if (terminal_is_interactive()) {
+877     // Piped to interactive terminal: output ASCII frames with newline
+878     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+879     if (write_buf) {
+880       memcpy(write_buf, display_frame, frame_len);
+881       write_buf[frame_len] = '\n';
+882       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+883       SAFE_FREE(write_buf);
+884     }
+885 
+886     // Flush buffers
+887     (void)fflush(stdout);
+888     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+889     (void)terminal_flush(flush_fd);
+890   } else {
+891     // Non-interactive piped output
+892     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file=&quot;-&quot;)
+893     if (true
+894 #ifndef _WIN32
+895         &amp;&amp; !ctx-&gt;render_file
+896 #endif
+897     ) {
+898       // No render-file, safe to write ASCII frames to stdout
+899       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+900       if (write_buf) {
+901         memcpy(write_buf, display_frame, frame_len);
+902         write_buf[frame_len] = '\n';
+903         (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+904 
+905         // Start snapshot timer on first ASCII frame rendered
+906         if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+907           g_snapshot_first_frame_rendered = true;
+908           g_snapshot_first_frame_rendered_ns = time_get_ns();
+909           log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started&quot;);
+910         }
+911 
+912         SAFE_FREE(write_buf);
+913       }
+914 
+915       // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
+916       (void)fflush(stdout);
+917       if (!GET_OPTION(snapshot_mode) || ctx-&gt;has_tty) {
+918         int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+919         (void)terminal_flush(flush_fd);
+920       }
+921     } else {
+922       // render_file is using stdout: skip ASCII output to avoid mixing with video
+923       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+924         g_snapshot_first_frame_rendered = true;
+925         g_snapshot_first_frame_rendered_ns = time_get_ns();
+926         log_info(&quot;SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started&quot;);
+927       }
+928     }
+929   }
+930 
+931   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;frame_write&quot;,
+932                            &quot;FRAME_WRITE: Write and flush complete (%.2f ms)&quot;);
+933 
+934   // Clean up digital rain result if allocated
+935   if (rain_result) {
+936     SAFE_FREE(rain_result);
+937   }
+938 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_exchange_bool()</b>,
@@ -4923,58 +4944,58 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Writes audio samples to the playback ring buffer for playback
     through speakers. Used in mirror mode to play file audio or other audio
     sources.</p>
-<p class="Pp">Definition at line <b>1073</b> of file
+<p class="Pp">Definition at line <b>1095</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1073                                                                                                                    {
-1074   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
-1075     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu&quot;, ctx, buffer,
-1076                      num_samples);
-1077   }
-1078 
-1079   if (!ctx-&gt;audio_playback_enabled || !ctx-&gt;audio_ctx) {
-1080     // Audio not enabled, but not an error - just skip silently
-1081     return ASCIICHAT_OK;
-1082   }
-1083 
-1084   // For mirror mode with local files: write samples directly without jitter buffering
-1085   // The jitter buffer is designed for network scenarios with irregular packet arrivals
-1086   // For local playback, we just want raw samples flowing to the speakers
-1087   audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;audio_ctx;
-1088   if (audio_ctx &amp;&amp; audio_ctx-&gt;playback_buffer) {
-1089     audio_ring_buffer_t *rb = audio_ctx-&gt;playback_buffer;
-1090 
-1091     // Simple direct write: append samples to ring buffer without network-oriented complexity
-1092     uint32_t write_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;write_index);
-1093     uint32_t read_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;read_index);
-1094 
-1095     // Calculate available space in ring buffer
-1096     uint32_t available = (read_idx - write_idx - 1) &amp; (AUDIO_RING_BUFFER_SIZE - 1);
-1097 
-1098     if ((uint32_t)num_samples &gt; available) {
-1099       // Buffer full - just skip this write to avoid distortion from overwriting old audio
-1100       return ASCIICHAT_OK;
-1101     }
-1102 
-1103     // Direct memcpy to ring buffer, handling wrap-around
-1104     uint32_t space_before_wrap = AUDIO_RING_BUFFER_SIZE - write_idx;
-1105     if ((uint32_t)num_samples &lt;= space_before_wrap) {
-1106       memcpy(&amp;rb-&gt;data[write_idx], buffer, num_samples * sizeof(float));
-1107     } else {
-1108       // Split write: first part to end of buffer, second part wraps to beginning
-1109       uint32_t first_part = space_before_wrap;
-1110       uint32_t second_part = num_samples - first_part;
-1111       memcpy(&amp;rb-&gt;data[write_idx], buffer, first_part * sizeof(float));
-1112       memcpy(&amp;rb-&gt;data[0], &amp;buffer[first_part], second_part * sizeof(float));
-1113     }
-1114 
-1115     // Update write index atomically
-1116     atomic_store_u64(&amp;rb-&gt;write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
-1117 
-1118     return ASCIICHAT_OK;
-1119   }
-1120 
-1121   return ASCIICHAT_OK;
-1122 }</pre>
+<pre>1095                                                                                                                    {
+1096   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
+1097     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu&quot;, ctx, buffer,
+1098                      num_samples);
+1099   }
+1100 
+1101   if (!ctx-&gt;audio_playback_enabled || !ctx-&gt;audio_ctx) {
+1102     // Audio not enabled, but not an error - just skip silently
+1103     return ASCIICHAT_OK;
+1104   }
+1105 
+1106   // For mirror mode with local files: write samples directly without jitter buffering
+1107   // The jitter buffer is designed for network scenarios with irregular packet arrivals
+1108   // For local playback, we just want raw samples flowing to the speakers
+1109   audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;audio_ctx;
+1110   if (audio_ctx &amp;&amp; audio_ctx-&gt;playback_buffer) {
+1111     audio_ring_buffer_t *rb = audio_ctx-&gt;playback_buffer;
+1112 
+1113     // Simple direct write: append samples to ring buffer without network-oriented complexity
+1114     uint32_t write_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;write_index);
+1115     uint32_t read_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;read_index);
+1116 
+1117     // Calculate available space in ring buffer
+1118     uint32_t available = (read_idx - write_idx - 1) &amp; (AUDIO_RING_BUFFER_SIZE - 1);
+1119 
+1120     if ((uint32_t)num_samples &gt; available) {
+1121       // Buffer full - just skip this write to avoid distortion from overwriting old audio
+1122       return ASCIICHAT_OK;
+1123     }
+1124 
+1125     // Direct memcpy to ring buffer, handling wrap-around
+1126     uint32_t space_before_wrap = AUDIO_RING_BUFFER_SIZE - write_idx;
+1127     if ((uint32_t)num_samples &lt;= space_before_wrap) {
+1128       memcpy(&amp;rb-&gt;data[write_idx], buffer, num_samples * sizeof(float));
+1129     } else {
+1130       // Split write: first part to end of buffer, second part wraps to beginning
+1131       uint32_t first_part = space_before_wrap;
+1132       uint32_t second_part = num_samples - first_part;
+1133       memcpy(&amp;rb-&gt;data[write_idx], buffer, first_part * sizeof(float));
+1134       memcpy(&amp;rb-&gt;data[0], &amp;buffer[first_part], second_part * sizeof(float));
+1135     }
+1136 
+1137     // Update write index atomically
+1138     atomic_store_u64(&amp;rb-&gt;write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
+1139 
+1140     return ASCIICHAT_OK;
+1141   }
+1142 
+1143   return ASCIICHAT_OK;
+1144 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>,
@@ -5000,27 +5021,27 @@ fps_counter_destroy(fps);</pre>
 <i>len</i> Length of data in bytes</div>
 <p class="Pp">Directly writes raw bytes to the terminal without any frame
     processing. Useful for RLE-expanded frames or pre-formatted output.</p>
-<p class="Pp">Definition at line <b>964</b> of file
+<p class="Pp">Definition at line <b>986</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>964                                                                                          {
-965   if (!ctx || !ctx-&gt;initialized || !data || len == 0) {
-966     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, data=%p, len=%zu&quot;, ctx, data, len);
-967     return;
-968   }
-969 
-970   int fd = -1;
-971   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-972     fd = ctx-&gt;tty_info.fd;
-973   } else {
-974     fd = STDOUT_FILENO;
-975   }
-976 
-977   // Write all data with automatic retry on transient errors
-978   (void)platform_write_all(fd, data, len);
-979 
-980   // Flush immediately after write to TTY to ensure data is sent
-981   (void)terminal_flush(fd);
-982 }</pre>
+<pre>986                                                                                          {
+987   if (!ctx || !ctx-&gt;initialized || !data || len == 0) {
+988     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, data=%p, len=%zu&quot;, ctx, data, len);
+989     return;
+990   }
+991 
+992   int fd = -1;
+993   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+994     fd = ctx-&gt;tty_info.fd;
+995   } else {
+996     fd = STDOUT_FILENO;
+997   }
+998 
+999   // Write all data with automatic retry on transient errors
+1000   (void)platform_write_all(fd, data, len);
+1001 
+1002   // Flush immediately after write to TTY to ensure data is sent
+1003   (void)terminal_flush(fd);
+1004 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,

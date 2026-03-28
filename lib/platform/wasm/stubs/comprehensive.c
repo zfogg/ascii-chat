@@ -88,9 +88,11 @@ int socket_get_last_error(void) {
 
 /* ===== H.265 encoding stubs ===== */
 
-asciichat_error_t h265_encode(h265_encoder_t *encoder, const video_frame_t *frame, uint8_t *out_data, size_t *out_len) {
+asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *pixel_data, uint8_t *out_data, size_t *out_len) {
   (void)encoder;
-  (void)frame;
+  (void)width;
+  (void)height;
+  (void)pixel_data;
   (void)out_data;
   (void)out_len;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "H.265 encoding not supported in WASM");
@@ -260,9 +262,10 @@ void wav_writer_close(void *wav) {
 
 typedef void webrtc_peer_manager_t;
 
-void webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *mgr, const char *sdp) {
+asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *mgr, const char *sdp) {
   (void)mgr;
   (void)sdp;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "WebRTC not supported in WASM");
 }
 
 int webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *mgr, const char *candidate) {

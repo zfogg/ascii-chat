@@ -88,7 +88,7 @@
   <li>Crossfade: smoothly fades audio in/out during underrun recovery</li>
   <li>Underrun tracking: counts underruns for diagnostics</li>
 </ul>
-<p class="Pp">Definition at line <b>210</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>205</b> of file <b>ringbuffer.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -96,7 +96,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::crossfade_fade_in</h2>
 <p class="Pp">True if we're fading in (recovering from underrun).</p>
-<p class="Pp">Definition at line <b>222</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>217</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_register_atomics()</b>, and
     <b>audio_ring_buffer_unregister_atomics()</b>.</p>
@@ -105,7 +105,7 @@
 <h2 class="Ss"><b>atomic_t</b>
   audio_ring_buffer::crossfade_samples_remaining</h2>
 <p class="Pp">Samples remaining in crossfade (0 = no crossfade active).</p>
-<p class="Pp">Definition at line <b>220</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>215</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_register_atomics()</b>, and
     <b>audio_ring_buffer_unregister_atomics()</b>.</p>
@@ -114,7 +114,7 @@
 <h2 class="Ss" id="float_audio_ring_buffer::data_192000_"><a class="permalink" href="#float_audio_ring_buffer::data_192000_">float
   audio_ring_buffer::data[192000]</a></h2>
 <p class="Pp">Audio sample data buffer.</p>
-<p class="Pp">Definition at line <b>212</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
     <b>audio_ring_buffer_peek()</b>, <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_write()</b>, and
@@ -124,14 +124,14 @@
 <h2 class="Ss"><b>bool</b> audio_ring_buffer::jitter_buffer_enabled</h2>
 <p class="Pp">Whether jitter buffering is enabled (false for capture, true for
     playback).</p>
-<p class="Pp">Definition at line <b>228</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>223</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>, and
     <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::jitter_buffer_filled</h2>
 <p class="Pp">True after initial jitter buffer fill.</p>
-<p class="Pp">Definition at line <b>218</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>213</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_register_atomics()</b>,
     <b>audio_ring_buffer_unregister_atomics()</b>, and
@@ -142,7 +142,7 @@
   audio_ring_buffer::last_sample</a></h2>
 <p class="Pp">Last sample value for smooth fade-out during underrun - NOT atomic
     (only written by reader).</p>
-<p class="Pp">Definition at line <b>224</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>219</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>, and
     <b>audio_ring_buffer_read()</b>.</p>
 </section>
@@ -150,7 +150,7 @@
 <h2 class="Ss"><b>mutex_t</b> audio_ring_buffer::mutex</h2>
 <p class="Pp">Mutex for SLOW PATH only (clear/destroy operations, not regular
     read/write).</p>
-<p class="Pp">Definition at line <b>230</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>225</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>, and
     <b>audio_ring_buffer_destroy()</b>.</p>
 </section>
@@ -158,7 +158,7 @@
 <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::read_index</h2>
 <p class="Pp">Read index (consumer position) - LOCK-FREE with atomic
   operations.</p>
-<p class="Pp">Definition at line <b>216</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
     <b>audio_ring_buffer_clear()</b>, <b>audio_ring_buffer_peek()</b>,
     <b>audio_ring_buffer_read()</b>,
@@ -170,7 +170,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::underrun_count</h2>
 <p class="Pp">Count of underrun events for diagnostics.</p>
-<p class="Pp">Definition at line <b>226</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>221</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
     <b>audio_ring_buffer_register_atomics()</b>, and
     <b>audio_ring_buffer_unregister_atomics()</b>.</p>
@@ -179,7 +179,7 @@
 <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::write_index</h2>
 <p class="Pp">Write index (producer position) - LOCK-FREE with atomic
     operations.</p>
-<p class="Pp">Definition at line <b>214</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>209</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
     <b>audio_ring_buffer_clear()</b>, <b>audio_ring_buffer_peek()</b>,
     <b>audio_ring_buffer_read()</b>,

@@ -279,7 +279,7 @@
 <p class="Pp">Crossfade duration in samples for smooth underrun recovery. When
     recovering from an underrun, we fade in the audio over this many samples to
     prevent clicks and pops. 256 samples @ 48kHz = ~5.3ms</p>
-<p class="Pp">Definition at line <b>191</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>186</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>.</p>
 </section>
 <section class="Ss">
@@ -300,7 +300,7 @@
   <li>Thread scheduling delays</li>
 </ul>
 <p class="Pp">4800 samples @ 48kHz = 100ms = 5 Opus frames</p>
-<p class="Pp">Definition at line <b>148</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>143</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>.</p>
 </section>
 <section class="Ss">
@@ -317,7 +317,7 @@
 <p class="Pp">Set to 2x jitter threshold = 40ms for LAN. This gives enough
     headroom for network jitter while preventing unbounded latency accumulation.
     1920 samples @ 48kHz = 40ms = 2 Opus frames</p>
-<p class="Pp">Definition at line <b>174</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>169</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
 </section>
 <section class="Ss">
@@ -334,7 +334,7 @@
     stuttering.</p>
 <p class="Pp"></p>
 <p class="Pp">2400 samples @ 48kHz = 50ms = 2.5 Opus frames</p>
-<p class="Pp">Definition at line <b>161</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>156</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>.</p>
 </section>
 <section class="Ss">
@@ -348,7 +348,7 @@
     triggering underrun detection.</p>
 <p class="Pp"></p>
 <p class="Pp">1440 samples @ 48kHz = 30ms = 1.5 Opus frames</p>
-<p class="Pp">Definition at line <b>184</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>179</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
 </section>
 <section class="Ss">
@@ -369,7 +369,7 @@
 <p class="Pp">4 seconds provides headroom for mixer slowdowns and prevents
     overflow during processing spikes. The mixer reads adaptively to catch
   up.</p>
-<p class="Pp">Definition at line <b>133</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
     <b>audio_ring_buffer_available_write()</b>, <b>audio_ring_buffer_peek()</b>,
     <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>, and
@@ -381,7 +381,7 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
 <p class="Pp">Magic number indicating a freed frame (0xFEEDFACE) - Alias for
     backward compatibility.</p>
-<p class="Pp">Definition at line <b>425</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>420</b> of file <b>ringbuffer.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_FRAME_MAGIC___"><a class="permalink" href="#_define_FRAME_MAGIC___">#define
@@ -389,7 +389,7 @@
 <p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
 <p class="Pp">Magic number indicating a valid frame (0xDEADBEEF) - Alias for
     backward compatibility.</p>
-<p class="Pp">Definition at line <b>423</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Definition at line <b>418</b> of file <b>ringbuffer.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>,
     <b>framebuffer_peek_latest_multi_frame()</b>,
     <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>, and

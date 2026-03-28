@@ -203,20 +203,20 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">New <b>options_t</b> with defaults and binary-level
   fields preserved</div>
-<p class="Pp">Definition at line <b>705</b> of file
+<p class="Pp">Definition at line <b>713</b> of file
     <b>lib/options/options.c</b>.</p>
-<pre>705                                                                  {
-706   // Extract binary-level options before reset
-707   binary_level_opts_t binary = extract_binary_level(source);
-708 
-709   // Create fresh options with all defaults
-710   options_t opts = options_t_new();
-711 
-712   // Restore binary-level options (overwrite defaults)
-713   restore_binary_level(&amp;opts, &amp;binary);
-714 
-715   return opts;
-716 }</pre>
+<pre>713                                                                  {
+714   // Extract binary-level options before reset
+715   binary_level_opts_t binary = extract_binary_level(source);
+716 
+717   // Create fresh options with all defaults
+718   options_t opts = options_t_new();
+719 
+720   // Restore binary-level options (overwrite defaults)
+721   restore_binary_level(&amp;opts, &amp;binary);
+722 
+723   return opts;
+724 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_t_new()</b>.</p>

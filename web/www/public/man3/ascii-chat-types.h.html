@@ -36,10 +36,30 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_DEV</b> <b>ASCIICHAT_LOG_DEV</b>
+  <br/>
+  #define <b>LOG_DEBUG</b> <b>ASCIICHAT_LOG_DEBUG</b>
+  <br/>
+  #define <b>LOG_INFO</b> <b>ASCIICHAT_LOG_INFO</b>
+  <br/>
+  #define <b>LOG_WARN</b> <b>ASCIICHAT_LOG_WARN</b>
+  <br/>
+  #define <b>LOG_ERROR</b> <b>ASCIICHAT_LOG_ERROR</b>
+  <br/>
+  #define <b>LOG_FATAL</b> <b>ASCIICHAT_LOG_FATAL</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
-<p class="Pp">enum <b>log_level_t</b> { <b>LOG_DEV</b> = 0, <b>LOG_DEBUG</b>,
-    <b>LOG_INFO</b>, <b>LOG_WARN</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b> }
+<p class="Pp">enum <b>log_level_t</b> { <b>ASCIICHAT_LOG_DEV</b> = 0,
+    <b>ASCIICHAT_LOG_DEBUG</b>, <b>ASCIICHAT_LOG_INFO</b>,
+    <b>ASCIICHAT_LOG_WARN</b>, <b>ASCIICHAT_LOG_ERROR</b>,
+    <b>ASCIICHAT_LOG_FATAL</b> }
   <br/>
   Logging levels enumeration.
   <br/>
@@ -53,6 +73,68 @@
 <p class="Pp">Lightweight header containing only log level definitions. This
     header has NO dependencies to avoid circular inclusion issues.</p>
 <p class="Pp">Definition in file <b>types.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_DEBUG___"><a class="permalink" href="#_define_LOG_DEBUG___">#define
+  LOG_DEBUG <b>ASCIICHAT_LOG_DEBUG</b></a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
+    <b>client_init_with_args()</b>, <b>cond_log_state()</b>,
+    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
+    <b>mirror_init_with_args()</b>, <b>mutex_log_state()</b>,
+    <b>parse_log_level()</b>, <b>rwlock_log_state()</b>,
+    <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_DEV___"><a class="permalink" href="#_define_LOG_DEV___">#define
+  LOG_DEV <b>ASCIICHAT_LOG_DEV</b></a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>get_level_string_padded()</b>,
+    <b>parse_log_level()</b>, <b>validate_opt_log_level()</b>, and
+    <b>wasm_parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_ERROR___"><a class="permalink" href="#_define_LOG_ERROR___">#define
+  LOG_ERROR <b>ASCIICHAT_LOG_ERROR</b></a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
+    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
+    <b>parse_log_level()</b>, <b>validate_opt_log_level()</b>, and
+    <b>wasm_parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_FATAL___"><a class="permalink" href="#_define_LOG_FATAL___">#define
+  LOG_FATAL <b>ASCIICHAT_LOG_FATAL</b></a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>get_level_string_padded()</b>,
+    <b>log_recolor_plain_entry()</b>, <b>packet_parse_remote_log()</b>,
+    <b>packet_send_remote_log()</b>, <b>parse_log_level()</b>,
+    <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_INFO___"><a class="permalink" href="#_define_LOG_INFO___">#define
+  LOG_INFO <b>ASCIICHAT_LOG_INFO</b></a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>,
+    <b>get_level_string_padded()</b>,
+    <b>handle_remote_log_packet_from_client()</b>, <b>log_file_msg()</b>,
+    <b>log_plain_msg()</b>, <b>log_recolor_plain_entry()</b>, <b>main()</b>,
+    <b>parse_log_level()</b>, <b>server_main()</b>,
+    <b>threaded_send_client_join_packet()</b>, <b>validate_opt_log_level()</b>,
+    and <b>wasm_parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_WARN___"><a class="permalink" href="#_define_LOG_WARN___">#define
+  LOG_WARN <b>ASCIICHAT_LOG_WARN</b></a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_print()</b>,
+    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
+    <b>parse_log_level()</b>, <b>terminal_choose_log_fd()</b>,
+    <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
