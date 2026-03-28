@@ -425,6 +425,13 @@ export const AsciiRenderer = forwardRef<
               const fbStride =
                 moduleRef.current._ascii_renderer_get_framebuffer_stride?.();
 
+              console.log("[Canvas Entry] Framebuffer getters:", {
+                fbPtr,
+                fbWidth,
+                fbHeight,
+                fbStride,
+              });
+
               if (
                 fbPtr &&
                 fbWidth &&
@@ -467,6 +474,12 @@ export const AsciiRenderer = forwardRef<
                 // Display on canvas
                 const ctx = canvas.getContext("2d");
                 if (ctx) {
+                  console.log("[Canvas Display] putImageData:", {
+                    width: w,
+                    height: h,
+                    dataLength: imageData.data.length,
+                    canvasSize: canvas.width + "x" + canvas.height,
+                  });
                   ctx.putImageData(imageData, 0, 0);
                 }
               }

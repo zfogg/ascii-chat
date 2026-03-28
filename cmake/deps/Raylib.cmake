@@ -25,29 +25,15 @@
 
 include(FetchContent)
 
-# WASM/Emscripten builds: Build from source
+# WASM/Emscripten builds: Skip raylib - using xterm.js for rendering instead
 if(DEFINED EMSCRIPTEN)
-    message(STATUS "Configuring ${BoldBlue}raylib${ColorReset} from source (WASM)...")
-
-    FetchContent_Declare(raylib-wasm
-        GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG 5.5
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/raylib-src"
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-                   -DPLATFORM=Web
-                   -DGRAPHICS=GRAPHICS_API_OPENGL_ES2
-                   -DBUILD_EXAMPLES=OFF
-                   -DBUILD_GAMES=OFF
-    )
-
-    FetchContent_MakeAvailable(raylib-wasm)
-    set(RAYLIB_LIBRARIES raylib)
-    set(RAYLIB_INCLUDE_DIRS "${raylib-wasm_SOURCE_DIR}/src")
-    set(RAYLIB_LINK_DIR "${raylib-wasm_BINARY_DIR}")
+    message(STATUS "Configuring ${BoldBlue}raylib${ColorReset} (WASM)...")
+    message(STATUS "${BoldYellow}⚠${ColorReset} raylib (WASM): Skipped - using xterm.js for terminal rendering")
+    # raylib has complex graphics/windowing dependencies that don't work in WASM
+    # The ASCII renderer in WASM generates a framebuffer; xterm.js handles display
+    set(RAYLIB_LIBRARIES "")
+    set(RAYLIB_INCLUDE_DIRS "")
     set(RAYLIB_FOUND TRUE)
-
-    message(STATUS "${BoldGreen}✓${ColorReset} raylib (WASM): ${BoldCyan}raylib${ColorReset}")
     return()
 endif()
 

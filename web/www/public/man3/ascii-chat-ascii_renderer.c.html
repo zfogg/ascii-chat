@@ -108,10 +108,10 @@
 <p class="Pp">Get the current number of columns</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of columns (terminal width)</div>
-<p class="Pp">Definition at line <b>359</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>359                                   {
-360   return renderer.cols;
-361 }</pre>
+<p class="Pp">Definition at line <b>347</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>347                                   {
+348   return renderer.cols;
+349 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -121,10 +121,10 @@
 <p class="Pp">Get pointer to the framebuffer for JavaScript access</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to RGB24 framebuffer data</div>
-<p class="Pp">Definition at line <b>381</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>381                                                     {
-382   return renderer.framebuffer;
-383 }</pre>
+<p class="Pp">Definition at line <b>369</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>369                                                     {
+370   return renderer.framebuffer;
+371 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -134,10 +134,10 @@
 <p class="Pp">Get framebuffer height in pixels</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Height in pixels</div>
-<p class="Pp">Definition at line <b>403</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>403                                                 {
-404   return renderer.height_px;
-405 }</pre>
+<p class="Pp">Definition at line <b>391</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>391                                                 {
+392   return renderer.height_px;
+393 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -148,10 +148,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Stride in bytes (width * 3, padded to 4-byte
   alignment)</div>
-<p class="Pp">Definition at line <b>414</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>414                                                 {
-415   return renderer.pitch;
-416 }</pre>
+<p class="Pp">Definition at line <b>402</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>402                                                 {
+403   return renderer.pitch;
+404 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -161,10 +161,10 @@
 <p class="Pp">Get framebuffer width in pixels</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Width in pixels</div>
-<p class="Pp">Definition at line <b>392</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>392                                                {
-393   return renderer.width_px;
-394 }</pre>
+<p class="Pp">Definition at line <b>380</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>380                                                {
+381   return renderer.width_px;
+382 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -174,10 +174,10 @@
 <p class="Pp">Get the current number of rows</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of rows (terminal height)</div>
-<p class="Pp">Definition at line <b>370</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>370                                   {
-371   return renderer.rows;
-372 }</pre>
+<p class="Pp">Definition at line <b>358</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>358                                   {
+359   return renderer.rows;
+360 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -333,7 +333,7 @@
 253 
 254       /* Load and render glyph */
 255       uint32_t codepoint = cell.chars[0];
-256       if (FT_Load_Char(renderer.ft_face, codepoint, FT_LOAD_RENDER)) {
+256       if (FT_Load_Char(renderer.ft_face, (unsigned long)codepoint, 4)) {  /* FT_LOAD_RENDER = 4 */
 257         continue;
 258       }
 259 
@@ -388,50 +388,38 @@
 304   log_info(&quot;ascii_renderer_resize: %dx%d -&gt; %dx%d&quot;, renderer.width_px,
 305            renderer.height_px, pixel_width, pixel_height);
 306 
-307   /* Free old texture */
-308   if (renderer.texture_initialized) {
-309     UnloadTexture(renderer.texture);
-310     renderer.texture_initialized = false;
-311   }
-312 
-313   /* Reallocate framebuffer */
-314   SAFE_FREE(renderer.framebuffer);
-315   renderer.width_px = pixel_width;
-316   renderer.height_px = pixel_height;
-317   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4;
-318 
-319   renderer.framebuffer =
-320       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
-321   if (!renderer.framebuffer) {
-322     log_error(&quot;Failed to reallocate framebuffer&quot;);
-323     return;
-324   }
-325   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
+307   /* Note: Texture management removed for WASM - no window context in browser */
+308 
+309   /* Reallocate framebuffer */
+310   SAFE_FREE(renderer.framebuffer);
+311   renderer.width_px = pixel_width;
+312   renderer.height_px = pixel_height;
+313   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4;
+314 
+315   renderer.framebuffer =
+316       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
+317   if (!renderer.framebuffer) {
+318     log_error(&quot;Failed to reallocate framebuffer&quot;);
+319     return;
+320   }
+321   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
+322 
+323   /* Update terminal dimensions */
+324   int new_cols = pixel_width / renderer.cell_w;
+325   int new_rows = pixel_height / renderer.cell_h;
 326 
-327   /* Update terminal dimensions */
-328   int new_cols = pixel_width / renderer.cell_w;
-329   int new_rows = pixel_height / renderer.cell_h;
-330 
-331   if (new_cols != renderer.cols || new_rows != renderer.rows) {
-332     renderer.cols = new_cols;
-333     renderer.rows = new_rows;
-334     vterm_set_size(renderer.vt, new_rows, new_cols);
-335   }
-336 
-337   /* Create new texture */
-338   Image img = {
-339       .data = renderer.framebuffer,
-340       .width = pixel_width,
-341       .height = pixel_height,
-342       .mipmaps = 1,
-343       .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-344   };
-345   renderer.texture = LoadTextureFromImage(img);
-346   renderer.texture_initialized = true;
-347 
-348   log_info(&quot;ascii_renderer_resize complete: %dx%d cells&quot;, renderer.cols,
-349            renderer.rows);
-350 }</pre>
+327   if (new_cols != renderer.cols || new_rows != renderer.rows) {
+328     renderer.cols = new_cols;
+329     renderer.rows = new_rows;
+330     vterm_set_size(renderer.vt, new_rows, new_cols);
+331   }
+332 
+333   /* Note: Texture creation removed for WASM - no window context in browser.
+334    * Framebuffer is maintained for JavaScript to read via getter functions. */
+335 
+336   log_info(&quot;ascii_renderer_resize complete: %dx%d cells&quot;, renderer.cols,
+337            renderer.rows);
+338 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
@@ -441,33 +429,30 @@
 <h2 class="Ss" id="void_ascii_renderer_shutdown_(void_)"><a class="permalink" href="#void_ascii_renderer_shutdown_(void_)">void
   ascii_renderer_shutdown (void )</a></h2>
 <p class="Pp">Shutdown the ASCII renderer and free resources</p>
-<p class="Pp">Definition at line <b>424</b> of file <b>ascii_renderer.c</b>.</p>
-<pre>424                                    {
-425   if (renderer.texture_initialized) {
-426     UnloadTexture(renderer.texture);
-427     renderer.texture_initialized = false;
-428   }
-429 
-430   if (renderer.vt) {
-431     vterm_free(renderer.vt);
-432     renderer.vt = NULL;
-433   }
-434 
-435   if (renderer.ft_face) {
-436     FT_Done_Face(renderer.ft_face);
-437   }
-438 
-439   if (renderer.ft_lib) {
-440     FT_Done_FreeType(renderer.ft_lib);
-441   }
-442 
-443   if (renderer.framebuffer) {
-444     SAFE_FREE(renderer.framebuffer);
-445   }
-446 
-447   memset(&amp;renderer, 0, sizeof(renderer));
-448   log_info(&quot;ASCII renderer shut down&quot;);
-449 }</pre>
+<p class="Pp">Definition at line <b>412</b> of file <b>ascii_renderer.c</b>.</p>
+<pre>412                                    {
+413   /* Note: Texture cleanup removed for WASM - no window context in browser */
+414 
+415   if (renderer.vt) {
+416     vterm_free(renderer.vt);
+417     renderer.vt = NULL;
+418   }
+419 
+420   if (renderer.ft_face) {
+421     FT_Done_Face(renderer.ft_face);
+422   }
+423 
+424   if (renderer.ft_lib) {
+425     FT_Done_FreeType(renderer.ft_lib);
+426   }
+427 
+428   if (renderer.framebuffer) {
+429     SAFE_FREE(renderer.framebuffer);
+430   }
+431 
+432   memset(&amp;renderer, 0, sizeof(renderer));
+433   log_info(&quot;ASCII renderer shut down&quot;);
+434 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_info</b>, and <b>SAFE_FREE</b>.</p>

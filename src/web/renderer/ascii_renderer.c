@@ -253,7 +253,7 @@ void ascii_renderer_render_frame(const char *ansi_data, int len) {
 
       /* Load and render glyph */
       uint32_t codepoint = cell.chars[0];
-      if (FT_Load_Char(renderer.ft_face, codepoint, FT_LOAD_RENDER)) {
+      if (FT_Load_Char(renderer.ft_face, (unsigned long)codepoint, 4)) {  /* FT_LOAD_RENDER = 4 */
         continue;
       }
 
@@ -304,11 +304,7 @@ void ascii_renderer_resize(int pixel_width, int pixel_height) {
   log_info("ascii_renderer_resize: %dx%d -> %dx%d", renderer.width_px,
            renderer.height_px, pixel_width, pixel_height);
 
-  /* Free old texture */
-  if (renderer.texture_initialized) {
-    UnloadTexture(renderer.texture);
-    renderer.texture_initialized = false;
-  }
+  /* Note: Texture management removed for WASM - no window context in browser */
 
   /* Reallocate framebuffer */
   SAFE_FREE(renderer.framebuffer);
@@ -334,16 +330,8 @@ void ascii_renderer_resize(int pixel_width, int pixel_height) {
     vterm_set_size(renderer.vt, new_rows, new_cols);
   }
 
-  /* Create new texture */
-  Image img = {
-      .data = renderer.framebuffer,
-      .width = pixel_width,
-      .height = pixel_height,
-      .mipmaps = 1,
-      .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-  };
-  renderer.texture = LoadTextureFromImage(img);
-  renderer.texture_initialized = true;
+  /* Note: Texture creation removed for WASM - no window context in browser.
+   * Framebuffer is maintained for JavaScript to read via getter functions. */
 
   log_info("ascii_renderer_resize complete: %dx%d cells", renderer.cols,
            renderer.rows);
@@ -422,10 +410,7 @@ int ascii_renderer_get_framebuffer_stride(void) {
 EMSCRIPTEN_KEEPALIVE
 #endif
 void ascii_renderer_shutdown(void) {
-  if (renderer.texture_initialized) {
-    UnloadTexture(renderer.texture);
-    renderer.texture_initialized = false;
-  }
+  /* Note: Texture cleanup removed for WASM - no window context in browser */
 
   if (renderer.vt) {
     vterm_free(renderer.vt);
