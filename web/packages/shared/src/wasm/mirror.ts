@@ -84,16 +84,10 @@ export async function initMirrorWasm(
   moduleFactory: EmscriptenModuleFactory,
   options?: { locateFile?: (path: string) => string },
 ): Promise<void> {
-  console.log(
-    `[WASM Mirror] initMirrorWasm called at ${new Date().toISOString()}`,
-  );
-
   if (wasmModule) {
-    console.log("[WASM Mirror] WASM module already initialized, returning");
     return;
   }
 
-  console.log("[WASM Mirror] Starting module factory...");
   const moduleOverrides: Record<string, unknown> = {
     // libsodium crypto random - returns 32-bit unsigned integer
     getRandomValue: function () {
@@ -107,60 +101,21 @@ export async function initMirrorWasm(
     moduleOverrides["locateFile"] = options.locateFile;
   }
 
-  console.log("[WASM Mirror] About to await moduleFactory...");
-  const factoryStart = performance.now();
   try {
-    console.time("[TIMING] moduleFactory()");
     wasmModule = await moduleFactory(moduleOverrides);
-    console.timeEnd("[TIMING] moduleFactory()");
   } catch (err) {
-    console.error("[WASM Mirror] moduleFactory failed with error:", err);
+    console.error("Failed to load WASM module:", err);
     throw err;
   }
-  const factoryTime = performance.now() - factoryStart;
-  console.log(
-    `[WASM Mirror] moduleFactory().COMPLETED after ${(factoryTime / 1000).toFixed(2)}s at ${new Date().toISOString()}`,
-  );
 
   if (!wasmModule) {
     throw new Error("Failed to load WASM module");
   }
-  console.log("[WASM] Module loaded successfully");
-
-  const factoryEnd = performance.now();
-  console.log(
-    `[WASM] TOTAL factory time: ${((factoryEnd - factoryStart) / 1000).toFixed(2)}s`,
-  );
 
   try {
-    // Bind renderer functions to module if they exist
-    const rendererFunctions = [
-      "_ascii_renderer_init",
-      "_ascii_renderer_render_frame",
-      "_ascii_renderer_resize",
-      "_ascii_renderer_get_cols",
-      "_ascii_renderer_get_rows",
-      "_ascii_renderer_shutdown",
-    ];
-
-    for (const funcName of rendererFunctions) {
-      if (typeof (wasmModule as any)[funcName] === "undefined") {
-        console.warn(`[WASM] Renderer function not found: ${funcName}`);
-      } else {
-        console.log(`[WASM] Renderer function bound: ${funcName}`);
-      }
-    }
-
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
-      console.log(
-        `[WASM] BEFORE _mirror_init_with_args at ${new Date().toISOString()}`,
-      );
-      const initWithArgsStart = performance.now();
-      console.log(
-        "[WASM] Calling _mirror_init_with_args to initialize C options...",
-      );
       // Pass JSON array of arguments: ["mirror"]
       const argsJson = '["mirror"]';
       const strLen = wasmModule.lengthBytesUTF8(argsJson) + 1;
@@ -171,61 +126,20 @@ export async function initMirrorWasm(
 
       try {
         wasmModule.stringToUTF8(argsJson, strPtr, strLen);
-        console.log(
-          `[WASM] About to call _mirror_init_with_args at ${new Date().toISOString()}`,
-        );
-        const callStart = performance.now();
         const initResult = wasmModule._mirror_init_with_args(strPtr);
-        const callTime = performance.now() - callStart;
-        const initWithArgsTime = performance.now() - initWithArgsStart;
-        console.log(
-          `[WASM] _mirror_init_with_args CALL TOOK ${callTime.toFixed(2)}ms, TOTAL ${initWithArgsTime.toFixed(2)}ms at ${new Date().toISOString()} with result ${initResult}`,
-        );
         if (initResult !== 0) {
-          console.error(
-            "[WASM] _mirror_init_with_args failed with code:",
-            initResult,
-          );
           throw new Error(`Failed to initialize mirror C code: ${initResult}`);
         }
-        console.log("[WASM] C options initialized successfully");
       } finally {
-        const freeStart = performance.now();
         wasmModule._free(strPtr);
-        const freeTime = performance.now() - freeStart;
-        console.log(`[WASM] _free took ${freeTime.toFixed(2)}ms`);
       }
-    } else {
-      console.warn("[WASM] _mirror_init_with_args not found in WASM module");
     }
-
-    console.log(
-      `[WASM] About to createOptionAccessor at ${new Date().toISOString()}`,
-    );
 
     // Initialize shared options module with option accessor
     // This allows React components to call setColorMode, setPalette, etc.
-    const optionsAccessorStart = performance.now();
     const optionsAccessor = createOptionAccessor(wasmModule);
-    const optionsAccessorTime = performance.now() - optionsAccessorStart;
-    console.log(
-      `[WASM] createOptionAccessor DONE in ${optionsAccessorTime.toFixed(2)}ms at ${new Date().toISOString()}`,
-    );
-
-    console.log(
-      `[WASM] About to initializeOptions at ${new Date().toISOString()}`,
-    );
-    const initializeOptionsStart = performance.now();
     initializeOptions(optionsAccessor);
-    const initializeOptionsTime = performance.now() - initializeOptionsStart;
-    console.log(
-      `[WASM] initializeOptions DONE in ${initializeOptionsTime.toFixed(2)}ms at ${new Date().toISOString()}`,
-    );
-    console.log("[WASM] Options module initialized");
 
-    console.log(
-      `[WASM] About to set globalWindow.asciiChatWasm at ${new Date().toISOString()}`,
-    );
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
       asciiChatWasm: AsciiChatWasmExports;
@@ -233,16 +147,6 @@ export async function initMirrorWasm(
     globalWindow.asciiChatWasm = {
       _wasmModule: wasmModule,
     };
-    console.log(
-      `[WASM] Set globalWindow.asciiChatWasm at ${new Date().toISOString()}`,
-    );
-
-    console.log("[WASM] Initialization complete!", performance.now());
-
-    // Force a microtask to check if something blocks after this
-    Promise.resolve().then(() => {
-      console.log("[WASM] After initialization microtask", performance.now());
-    });
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
     throw err;
@@ -254,13 +158,9 @@ export async function initMirrorWasm(
  */
 export function cleanupMirrorWasm(): void {
   if (wasmModule) {
-    console.log("[WASM] Cleaning up mirror module...");
     wasmModule._mirror_cleanup();
     wasmModule = null;
     cleanupOptions();
-    console.log("[WASM] Mirror cleanup complete");
-  } else {
-    console.log("[WASM] Mirror cleanup: no module to clean up");
   }
 }
 

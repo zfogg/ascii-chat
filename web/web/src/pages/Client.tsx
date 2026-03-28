@@ -429,7 +429,7 @@ export function ClientPage() {
             error={error}
             showFps={isWebcamRunning}
             connectionState={connectionState}
-            wasmModule={getClientModule()}
+            wasmModuleReady={!!getClientModule()}
           />
         }
         modal={

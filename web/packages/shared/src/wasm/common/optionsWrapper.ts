@@ -75,7 +75,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     throw new Error("WASM module is required");
   }
 
-  return {
+  const accessor = {
     /**
      * Set an integer option
      * @param name The option name (e.g., 'width', 'color_mode')
@@ -84,25 +84,13 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      */
     setInt(name: string, value: number): void {
       const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
-      console.debug(
-        `[OptionAccessor] setInt: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
-      );
       if (typeof fn !== "function") {
-        console.error(
-          `[OptionAccessor] ERROR: WASM function _set_${name} not found`,
-        );
         throw new Error(
           `WASM function _set_${name} not found. Ensure module is loaded.`,
         );
       }
       const result = (fn as (v: number) => number).call(module, value);
-      console.debug(
-        `[OptionAccessor] setInt result: name=${name}, result=${result}`,
-      );
       if (result !== 0) {
-        console.error(
-          `[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`,
-        );
         throw new Error(`Failed to set ${name}: ${value}`);
       }
     },
@@ -131,25 +119,13 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      */
     setBool(name: string, value: boolean): void {
       const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
-      console.debug(
-        `[OptionAccessor] setBool: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
-      );
       if (typeof fn !== "function") {
-        console.error(
-          `[OptionAccessor] ERROR: WASM function _set_${name} not found`,
-        );
         throw new Error(
           `WASM function _set_${name} not found. Ensure module is loaded.`,
         );
       }
       const result = (fn as (v: number) => number).call(module, value ? 1 : 0);
-      console.debug(
-        `[OptionAccessor] setBool result: name=${name}, result=${result}`,
-      );
       if (result !== 0) {
-        console.error(
-          `[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`,
-        );
         throw new Error(`Failed to set ${name}: ${value}`);
       }
     },
@@ -225,4 +201,5 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
       return module.UTF8ToString(ptr);
     },
   };
+  return accessor;
 }
