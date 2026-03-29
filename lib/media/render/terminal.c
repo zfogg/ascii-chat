@@ -103,36 +103,18 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->rows = cfg->rows;
   r->theme = cfg->theme;
 
-  log_debug_every(1000, "term_renderer_create: Initializing FreeType");
   if (FT_Init_FreeType(&r->ft_lib)) {
     SAFE_FREE(r);
     return SET_ERRNO(ERROR_INIT, "FreeType init failed");
   }
 
-  // Load font from either file path or memory
-  log_debug("STRUCT_OFFSETS: sizeof(term_renderer_config_t)=%zu", sizeof(term_renderer_config_t));
-  log_debug("FIELD_OFFSETS: cols=%zu, rows=%zu, font_size_pt=%zu, theme=%zu, font_spec=%zu, font_is_path=%zu, font_data=%zu, font_data_size=%zu",
-           offsetof(term_renderer_config_t, cols),
-           offsetof(term_renderer_config_t, rows),
-           offsetof(term_renderer_config_t, font_size_pt),
-           offsetof(term_renderer_config_t, theme),
-           offsetof(term_renderer_config_t, font_spec),
-           offsetof(term_renderer_config_t, font_is_path),
-           offsetof(term_renderer_config_t, font_data),
-           offsetof(term_renderer_config_t, font_data_size));
-  log_debug("term_renderer_create: font_data=%p, font_data_size=%zu, font_spec='%s'",
-           cfg->font_data, cfg->font_data_size, cfg->font_spec);
   if (cfg->font_data && cfg->font_data_size > 0) {
-    log_debug_every(1000, "term_renderer_create: Loading font from memory (%zu bytes) at ptr %p",
-                   cfg->font_data_size, cfg->font_data);
     if (FT_New_Memory_Face(r->ft_lib, cfg->font_data, (FT_Long)cfg->font_data_size, 0, &r->ft_face)) {
-      log_debug("FT_New_Memory_Face failed with code %d", 0);  // FreeType returns 0 on success
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
       return SET_ERRNO(ERROR_INIT, "FreeType: cannot load bundled font");
     }
   } else {
-    log_debug_every(1000, "term_renderer_create: Loading font from path '%s'", cfg->font_spec);
     if (FT_New_Face(r->ft_lib, cfg->font_spec, 0, &r->ft_face)) {
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
@@ -149,7 +131,6 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Handle scalable vs bitmap fonts differently
   // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
   // Instead, we need to select the best available bitmap strike
-  log_debug("term_renderer_create: font='%s' num_fixed_sizes=%d", cfg->font_spec, r->ft_face->num_fixed_sizes);
   if (r->ft_face->num_fixed_sizes > 0) {
     // Bitmap font: select the best matching bitmap strike
     int err = FT_Select_Size(r->ft_face, 0); // Use first available strike
@@ -165,8 +146,6 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   int load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
   log_debug("DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
-  log_debug("DEBUG: glyph->bitmap.rows=%d, glyph->bitmap.width=%d, glyph->bitmap_top=%d",
-            r->ft_face->glyph->bitmap.rows, r->ft_face->glyph->bitmap.width, r->ft_face->glyph->bitmap_top);
 
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   FT_Pos advance_x_26_6 = r->ft_face->glyph->advance.x;
@@ -296,7 +275,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   int offset_y = (r->height_px - grid_height_px) / 2;
 
   static int frame_count = 0;
-  static char prev_row_sigs[52][5] = {0};  // Store signatures of previous frame's rows
+  static char prev_row_sigs[52][5] = {0}; // Store signatures of previous frame's rows
   frame_count++;
 
   // Log if any row signature changed to detect vertical shifts
@@ -310,12 +289,6 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         curr_row_sigs[row][col] = (cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.';
       }
       curr_row_sigs[row][4] = 0;
-
-      // Check if row signature changed from previous frame
-      if (prev_row_sigs[row][0] != 0 && strcmp(curr_row_sigs[row], prev_row_sigs[row]) != 0) {
-        log_info("[TermRenderer] Frame %d: Row %d content changed: '%s' -> '%s'", frame_count, row,
-                 prev_row_sigs[row], curr_row_sigs[row]);
-      }
     }
     memcpy(prev_row_sigs, curr_row_sigs, sizeof(curr_row_sigs));
   }
