@@ -121,33 +121,36 @@ export function useInitAsciiRenderer({
 
         // Estimate cols/rows from container size
         // Rough estimate: 10px wide, 20px tall per cell
+        // BUT: cap container dimensions to prevent cascading resize loops
+        // If container is extremely tall, it likely means canvas was incorrectly sized
+        const maxContainerHeight = 2000; // Cap at 2000px (100 rows at 20px/row)
+        const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
         const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
-        const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
+        const estimatedRows = Math.max(24, Math.floor(effectiveHeight / 20));
 
-        // Sanity check: prevent allocating unreasonably large grids
-        // 4K display at 1280x720 grid = reasonable max
-        const MAX_COLS = 1280;
-        const MAX_ROWS = 720;
-        const MAX_TOTAL_CELLS = 4096 * 2160; // 4K pixel count as upper bound
+        // Sanity check: ensure grid dimensions are reasonable
+        // With capped container height of 2000px at 20px/row, max rows = 100
+        // Cols are typically 80-256 depending on window width
+        // This should prevent pathological cases from slipping through
+        const maxReasonableCols = 400;
+        const maxReasonableRows = 150;
 
         if (
-          estimatedCols > MAX_COLS ||
-          estimatedRows > MAX_ROWS ||
-          estimatedCols * estimatedRows > MAX_TOTAL_CELLS
+          estimatedCols > maxReasonableCols ||
+          estimatedRows > maxReasonableRows
         ) {
           moduleRef.current._free(configPtr);
           const error = new Error(
-            `[createConfigStruct] Grid dimensions exceed limits: ${estimatedCols}x${estimatedRows} (${estimatedCols * estimatedRows} cells) exceeds max ${MAX_COLS}x${MAX_ROWS} (${MAX_TOTAL_CELLS} cells)`,
+            `[createConfigStruct] Grid dimensions unreasonable: ${estimatedCols}x${estimatedRows} exceeds ${maxReasonableCols}x${maxReasonableRows} (containerHeight=${containerHeight}px was capped to ${effectiveHeight}px)`,
           );
           console.error("[createConfigStruct] DIMENSION SANITY CHECK FAILED", {
             estimatedCols,
             estimatedRows,
-            totalCells: estimatedCols * estimatedRows,
-            MAX_COLS,
-            MAX_ROWS,
-            MAX_TOTAL_CELLS,
             containerWidth,
             containerHeight,
+            effectiveHeight,
+            maxReasonableCols,
+            maxReasonableRows,
           });
           throw error;
         }
@@ -348,9 +351,9 @@ export function useInitAsciiRenderer({
               "[AsciiRenderer] Dimension validation failed, attempting recovery with smaller grid",
             );
             try {
-              // Retry with a capped grid size
-              const cappedWidth = Math.min(newWidth, 1200);
-              const cappedHeight = Math.min(newHeight, 600);
+              // Retry with a capped grid size to avoid cascading allocation
+              const cappedWidth = Math.min(newWidth, 1280);
+              const cappedHeight = Math.min(newHeight, 2000); // Use same max as createConfigStruct
               const cappedCols = Math.max(80, Math.floor(cappedWidth / 10));
               const cappedRows = Math.max(24, Math.floor(cappedHeight / 20));
 
@@ -359,6 +362,10 @@ export function useInitAsciiRenderer({
                 {
                   cappedCols,
                   cappedRows,
+                  originalWidth: newWidth,
+                  originalHeight: newHeight,
+                  cappedWidth,
+                  cappedHeight,
                 },
               );
 
