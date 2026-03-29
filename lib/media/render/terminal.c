@@ -131,11 +131,17 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   // Handle scalable vs bitmap fonts differently
   // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
-  // Instead, we need to select the best available bitmap strike
+  // Instead, use FT_Set_Pixel_Sizes to request a specific pixel size
   if (r->ft_face->num_fixed_sizes > 0) {
-    // Bitmap font: select the best matching bitmap strike
-    int err = FT_Select_Size(r->ft_face, 0); // Use first available strike
-    log_debug("term_renderer_create: [BITMAP] FT_Select_Size(0) returned %d", err);
+    // Bitmap font: use FT_Set_Pixel_Sizes to select appropriate size (12px is reasonable for ASCII)
+    int err = FT_Set_Pixel_Sizes(r->ft_face, 12, 12);
+    log_debug("term_renderer_create: [BITMAP] FT_Set_Pixel_Sizes(12, 12) returned %d", err);
+
+    // If that fails, try FT_Select_Size as fallback
+    if (err != 0) {
+      err = FT_Select_Size(r->ft_face, 0); // Use first available strike
+      log_debug("term_renderer_create: [BITMAP FALLBACK] FT_Select_Size(0) returned %d", err);
+    }
   } else {
     // Scalable font: use FT_Set_Char_Size
     // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
@@ -148,12 +154,34 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   int load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
   log_debug("DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
 
+  // For bitmap fonts (like matrix), FT_Load_Char may fail if the character doesn't exist.
+  // Try a fallback character if 'M' fails.
+  if (load_err != 0 && r->ft_face->num_fixed_sizes > 0) {
+    log_debug("FT_Load_Char('M') failed for bitmap font, trying fallback character 'A'");
+    load_err = FT_Load_Char(r->ft_face, 'A', FT_LOAD_RENDER);
+    log_debug("FT_Load_Char('A') returned %d", load_err);
+
+    if (load_err != 0) {
+      // Try space character as last resort
+      log_debug("FT_Load_Char('A') also failed, trying space character");
+      load_err = FT_Load_Char(r->ft_face, ' ', FT_LOAD_RENDER);
+      log_debug("FT_Load_Char(' ') returned %d", load_err);
+    }
+  }
+
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   FT_Pos advance_x_26_6 = r->ft_face->glyph->advance.x;
   log_debug("DEBUG: advance.x (26.6pt)=%ld", advance_x_26_6);
 
   // Calculate cell width from font metrics
   r->cell_w = (int)(advance_x_26_6 >> 6);
+
+  // Safeguard: for bitmap fonts, cell_w might be wrong if the font metrics are off
+  // Ensure we have a reasonable minimum width
+  if (r->cell_w <= 0) {
+    log_warn("term_renderer_create: cell_w is %d (invalid), using default 10px", r->cell_w);
+    r->cell_w = 10;
+  }
 
   // Only add spacing to fill entire frame if --stretch is specified
   bool stretch_mode = GET_OPTION(stretch);
@@ -172,6 +200,13 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->cell_h = r->ft_face->glyph->bitmap.rows;
   int raw_bitmap_top = r->ft_face->glyph->bitmap_top;
   log_debug("DEBUG: cell_h=%d (from bitmap.rows), raw_bitmap_top=%d", r->cell_h, raw_bitmap_top);
+
+  // Fallback: if cell_h is 0 (bitmap failed to load), use aspect ratio calculation
+  if (r->cell_h <= 0) {
+    log_warn("term_renderer_create: cell_h is 0 (FT_Load_Char failed or no bitmap), using aspect ratio fallback");
+    r->cell_h = r->cell_w * 2;
+    log_debug("FALLBACK: cell_h set to %d (2x width=%d)", r->cell_h, r->cell_w);
+  }
 
   // Apply aspect ratio correction unless --stretch is specified
   // Terminal characters are typically 2:1 (height:width) to appear normal
