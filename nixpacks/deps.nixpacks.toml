@@ -111,40 +111,19 @@ nixLibs = [
   "abseil-cpp",
 ]
 
-# Clone only submodules that need custom forks, patching, or have hardcoded include paths.
-# All standard libraries (yyjson, x265, libde265, etc.) come from Nix packages above.
+# Clone custom and header-only dependencies not available in nixpkgs
 [phases.submodules]
 dependsOn = ["env_setup"]
 cmds = [
-  # Remove existing submodule dirs from COPY (may be empty stubs from git)
-  "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
-  "mkdir -p deps/ascii-chat-deps deps/doxygen-awesome-css",
-
-  # BearSSL: custom fork (zfogg/BearSSL)
+  "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css && mkdir -p deps/ascii-chat-deps deps/doxygen-awesome-css",
   "git clone --depth 1 https://github.com/zfogg/BearSSL.git deps/ascii-chat-deps/bearssl",
-
-  # tomlc17: requires platform-specific patches (align8 overflow, Windows deprecation)
   "git clone --depth 1 https://github.com/cktan/tomlc17 deps/ascii-chat-deps/tomlc17",
-
-  # libsodium-bcrypt-pbkdf: custom fork with UBSAN and Windows fixes
   "git clone --depth 1 https://github.com/zfogg/libsodium-bcrypt-pbkdf.git deps/ascii-chat-deps/libsodium-bcrypt-pbkdf",
-
-  # sokol: header-only, not in nixpkgs, included via ascii-chat-deps/sokol/
   "git clone --depth 1 https://github.com/floooh/sokol deps/ascii-chat-deps/sokol",
-
-  # mdns: requires patching to exclude main() (#ifndef MDNS_NO_MAIN)
   "git clone --depth 1 https://github.com/mjansson/mdns.git deps/ascii-chat-deps/mdns",
-
-  # uthash: header-only, hardcoded include path (ascii-chat-deps/uthash/src/)
   "git clone --depth 1 https://github.com/troydhanson/uthash.git deps/ascii-chat-deps/uthash",
-
-  # utf8proc: header-only, hardcoded include path (ascii-chat-deps/utf8proc/)
   "git clone --depth 1 https://github.com/JuliaStrings/utf8proc.git deps/ascii-chat-deps/utf8proc",
-
-  # doxygen-awesome-css: docs styling
   "git clone --depth 1 https://github.com/jothepro/doxygen-awesome-css.git deps/doxygen-awesome-css",
-
-  # Clean up .git dirs to save space
   "find deps -name .git -type d -exec rm -rf {} + 2>/dev/null || true",
 ]
 
