@@ -38,17 +38,22 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   size_t font_data_size = 0;
   const char *raw_font = GET_OPTION(render_font);
 
+  // Log the font option value from GET_OPTION (for WASM font debugging)
+  log_info("[WASM_FONT_GETTER] GET_OPTION(render_font) returned: '%s' (empty=%d), GET_OPTION(matrix_rain)=%d",
+           raw_font ? raw_font : "(null)", (!raw_font || raw_font[0] == '\0') ? 1 : 0, GET_OPTION(matrix_rain));
+
   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+  log_debug("raw_font=%s, matrix_rain=%d", raw_font, GET_OPTION(matrix_rain));
   if ((!raw_font || raw_font[0] == '\0') && GET_OPTION(matrix_rain)) {
     raw_font = "matrix";
     log_debug("render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
-
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
-    log_warn("renderer: font resolution failed for '%s' — using system default", raw_font ? raw_font : "(explicit system)");
+    log_warn("renderer: font resolution failed for '%s' — using system default",
+             raw_font ? raw_font : "(explicit system)");
   }
 
   log_debug("render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec,
@@ -91,10 +96,10 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_debug("render_file_create: ffmpeg_encoder created successfully");
 
   // Initialize audio fields
-  ctx->audio_sample_rate = 48000;  // Audio pipeline is 48kHz
+  ctx->audio_sample_rate = 48000; // Audio pipeline is 48kHz
   // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
   // Use 8192 to comfortably handle snapshot reads without excessive overhead
-  ctx->audio_buf_size = 8192;      // Temporary buffer for reading audio (in floats)
+  ctx->audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
   ctx->audio_read_buf = SAFE_MALLOC(ctx->audio_buf_size * sizeof(float), float *);
   ctx->audio_media_source = NULL;
   ctx->audio_capture_rb = NULL;
@@ -109,7 +114,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 }
 
 void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb) {
-  if (!ctx) return;
+  if (!ctx)
+    return;
   ctx->audio_media_source = (media_source_t *)audio_media_source;
   ctx->audio_capture_rb = (audio_ring_buffer_t *)audio_capture_rb;
   log_debug("render_file_set_audio_source: media_source=%p, capture_rb=%p", audio_media_source, audio_capture_rb);
@@ -169,8 +175,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
             sample_b_mid = pixels[(height_px / 2) * pitch + 2];
 
-    log_info("  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)",
-             sample_r, sample_g, sample_b, test_r, test_g, test_b, height_px/2, sample_r_mid, sample_g_mid, sample_b_mid);
+    log_info("  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)", sample_r,
+             sample_g, sample_b, test_r, test_g, test_b, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid);
   }
 
   // CRITICAL: Copy pixel buffer before encoding
@@ -181,8 +187,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
     memcpy(pixels_copy, pixels, pixel_buffer_size);
-    log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)",
-             pixel_buffer_size, (void *)pixels, (void *)pixels_copy);
+    log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)", pixel_buffer_size,
+             (void *)pixels, (void *)pixels_copy);
 
     // DEBUG: Inject test red stripe to verify encoder is working
     static int frame_num = 0;
@@ -192,9 +198,9 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       for (int y = 0; y < height_px; y++) {
         for (int x = 500; x < 600 && x < width_px; x++) {
           uint8_t *pixel = pixels_copy + y * pitch + x * 3;
-          pixel[0] = 255;  // R
-          pixel[1] = 0;    // G
-          pixel[2] = 0;    // B
+          pixel[0] = 255; // R
+          pixel[1] = 0;   // G
+          pixel[2] = 0;   // B
         }
       }
     }
@@ -229,7 +235,7 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       // Simple approach: distribute snapshot_delay * sample_rate evenly across expected ~70 frames
       // This ensures total audio duration = snapshot_delay seconds
       int total_target_samples = (int)(ctx->audio_sample_rate * snapshot_delay);
-      int expected_frame_count = (int)(13.6 * snapshot_delay);  // 13.6 FPS is typical capture rate
+      int expected_frame_count = (int)(13.6 * snapshot_delay); // 13.6 FPS is typical capture rate
       samples_per_frame = total_target_samples / expected_frame_count;
 
       // Ensure minimum to avoid rounding to 0
@@ -252,7 +258,7 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       }
     }
     if (samples_per_frame <= 0) {
-      samples_per_frame = 800;  // Fallback minimum
+      samples_per_frame = 800; // Fallback minimum
     }
 
     int samples_read = 0;
@@ -270,10 +276,9 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       }
     } else if (!audio_eof_reached && ctx->audio_capture_rb) {
       // Read from ring buffer (live mic capture)
-      samples_read =
-          audio_ring_buffer_read(ctx->audio_capture_rb, ctx->audio_read_buf, samples_per_frame);
+      samples_read = audio_ring_buffer_read(ctx->audio_capture_rb, ctx->audio_read_buf, samples_per_frame);
       if (samples_read < 0) {
-        samples_read = 0;  // On error, write silence
+        samples_read = 0; // On error, write silence
         audio_eof_reached = 1;
       } else if (samples_read == 0) {
         audio_eof_reached = 1;
@@ -292,7 +297,6 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       memset(ctx->audio_read_buf, 0, samples_per_frame * sizeof(float));
       ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, samples_per_frame);
     }
-
   }
 
   return err;

@@ -9,7 +9,7 @@ const MATRIX_OPTIONS: DemoOption[] = [
     id: "on",
     label: "Matrix Rain",
     description: "--matrix",
-    settings: { matrixRain: true, palette: "digital" },
+    settings: { matrixRain: true, palette: "standard" },
   },
   {
     id: "rainbow",
@@ -17,7 +17,7 @@ const MATRIX_OPTIONS: DemoOption[] = [
     description: "--matrix --color-filter rainbow",
     settings: {
       matrixRain: true,
-      palette: "digital",
+      palette: "standard",
       colorFilter: ColorFilter.RAINBOW,
     },
   },

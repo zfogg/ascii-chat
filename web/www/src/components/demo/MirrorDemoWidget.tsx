@@ -114,12 +114,21 @@ export default function MirrorDemoWidget({
     // This works whether running on localhost, manjaro-twopal, or production
     const wasmBaseUrl = window.location.origin;
     addDebugLog(`Loading WASM from ${wasmBaseUrl}/wasm/`);
+
+    // Build initial args from the first demo option's settings
+    const initialArgs: string[] = [];
+    const firstOption = demoOptions?.[defaultOptionIndex];
+    if (firstOption?.settings?.matrixRain) {
+      initialArgs.push("--matrix");
+    }
+
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
+      initialArgs,
     });
 
     setWasmReady(true);
-  }, [addDebugLog]);
+  }, [addDebugLog, demoOptions, defaultOptionIndex]);
 
   const stop = useCallback(() => {
     if (frameIntervalRef.current) {

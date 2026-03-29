@@ -85,7 +85,10 @@ let wasmModule: MirrorModule | null = null;
  */
 export async function initMirrorWasm(
   moduleFactory: EmscriptenModuleFactory,
-  options?: { locateFile?: (path: string) => string },
+  options?: {
+    locateFile?: (path: string) => string;
+    initialArgs?: string[];
+  },
 ): Promise<void> {
   if (wasmModule) {
     return;
@@ -119,8 +122,12 @@ export async function initMirrorWasm(
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
-      // Pass JSON array of arguments: ["mirror"]
-      const argsJson = '["mirror"]';
+      // Build arguments array: ["mirror", ...initialArgs]
+      const args = ["mirror"];
+      if (options?.initialArgs) {
+        args.push(...options.initialArgs);
+      }
+      const argsJson = JSON.stringify(args);
       const strLen = wasmModule.lengthBytesUTF8(argsJson) + 1;
       const strPtr = wasmModule._malloc(strLen);
       if (!strPtr) {
