@@ -47,6 +47,11 @@ export const AsciiRenderer = forwardRef<
   const setupDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const firstRenderDoneRef = useRef(false);
+  const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
+    null,
+  );
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // FPS tracking
   const frameCountRef = useRef(0);
@@ -303,7 +308,7 @@ export const AsciiRenderer = forwardRef<
           container?.className,
         );
         if (container) {
-          const resizeObserver = new ResizeObserver((entries) => {
+          resizeObserverRef.current = new ResizeObserver((entries) => {
             const entry = entries[0];
             if (!entry) return;
             const newWidth = Math.round(entry.contentRect.width);
@@ -421,7 +426,22 @@ export const AsciiRenderer = forwardRef<
                     canvas.height,
                 );
 
-                updateDimensions(cols, rows);
+                // Debounce dimension updates with longer timeout to batch multiple resize events
+                // This prevents the render loop from restarting on every single ResizeObserver fire
+                pendingDimensionsRef.current = { cols, rows };
+                if (resizeTimeoutRef.current) {
+                  clearTimeout(resizeTimeoutRef.current);
+                }
+                resizeTimeoutRef.current = setTimeout(() => {
+                  if (pendingDimensionsRef.current) {
+                    updateDimensions(
+                      pendingDimensionsRef.current.cols,
+                      pendingDimensionsRef.current.rows,
+                    );
+                    pendingDimensionsRef.current = null;
+                  }
+                  resizeTimeoutRef.current = null;
+                }, 300);
 
                 moduleRef.current._free(configPtr);
                 moduleRef.current._free(outPtr);
@@ -438,7 +458,7 @@ export const AsciiRenderer = forwardRef<
             "[AsciiRenderer] Attaching ResizeObserver to:",
             container?.className,
           );
-          resizeObserver.observe(container);
+          resizeObserverRef.current.observe(container);
           console.log("[AsciiRenderer] ResizeObserver attached");
         } else {
           console.warn(
@@ -467,6 +487,10 @@ export const AsciiRenderer = forwardRef<
     return () => {
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
+      }
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+        resizeTimeoutRef.current = null;
       }
     };
   }, [wasmModuleReady, updateDimensions]);

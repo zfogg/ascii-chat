@@ -1,4 +1,9 @@
-import { useEffect, type RefObject, type MutableRefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  type RefObject,
+  type MutableRefObject,
+} from "react";
 import { isWasmReady, convertFrameToAscii } from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components/AsciiRenderer";
 
@@ -17,6 +22,8 @@ interface UseMirrorRenderLoopParams {
   frameIntervalRef: MutableRefObject<number>;
 }
 
+let loopCounter = 0;
+
 export function useMirrorRenderLoop({
   isWebcamRunning,
   terminalDimensions,
@@ -27,7 +34,15 @@ export function useMirrorRenderLoop({
   firstFrameTimeRef,
   frameIntervalRef,
 }: UseMirrorRenderLoopParams) {
+  const prevDepsRef = useRef<{
+    isWebcamRunning: boolean;
+    terminalDimensions: { cols: number; rows: number };
+    captureFrame: Function;
+  } | null>(null);
+
   useEffect(() => {
+    const loopId = `loop${++loopCounter}`;
+
     if (!isWebcamRunning) {
       return;
     }
@@ -38,6 +53,35 @@ export function useMirrorRenderLoop({
       return;
     }
 
+    // Check what changed
+    if (prevDepsRef.current) {
+      const {
+        isWebcamRunning: prevRunning,
+        terminalDimensions: prevDims,
+        captureFrame: prevCapture,
+      } = prevDepsRef.current;
+      const changes = [];
+      if (prevRunning !== isWebcamRunning) changes.push("isWebcamRunning");
+      if (
+        prevDims.cols !== terminalDimensions.cols ||
+        prevDims.rows !== terminalDimensions.rows
+      )
+        changes.push(
+          `terminalDimensions(${prevDims.cols}x${prevDims.rows}->${terminalDimensions.cols}x${terminalDimensions.rows})`,
+        );
+      if (prevCapture !== captureFrame) changes.push("captureFrame");
+      if (changes.length > 0) {
+        console.log(`[${loopId}] Effect triggered by: ${changes.join(", ")}`);
+      }
+    }
+    prevDepsRef.current = { isWebcamRunning, terminalDimensions, captureFrame };
+
+    console.log(
+      `[${loopId}] Starting render loop with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+    );
+
+    let isActive = true;
+    let currentRafHandle = 0;
     const isTestMode = new URLSearchParams(window.location.search).has("test");
     let lastFrameTime = performance.now();
     let lastConversionTime = 0;
@@ -125,8 +169,14 @@ export function useMirrorRenderLoop({
       debugCountRef.current++;
     };
 
+    let frameCount = 0;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          console.log(`[${loopId}] Frame ${frameCount}`);
+        }
+
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
 
@@ -135,7 +185,9 @@ export function useMirrorRenderLoop({
           renderFrame();
         }
 
-        requestAnimationFrame(animationFrameRef);
+        if (isActive) {
+          currentRafHandle = requestAnimationFrame(animationFrameRef);
+        }
       } catch {
         // Silent error catch - don't log in hot loop
       }
@@ -143,10 +195,13 @@ export function useMirrorRenderLoop({
 
     lastFrameTime = performance.now();
     const rafHandle = requestAnimationFrame(animationFrameRef);
+    currentRafHandle = rafHandle;
 
     return () => {
+      console.log(`[${loopId}] Cleanup - stopping render loop`);
+      isActive = false;
       cancelAnimationFrame(rafHandle);
+      cancelAnimationFrame(currentRafHandle);
     };
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isWebcamRunning, captureFrame, terminalDimensions]);
 }
