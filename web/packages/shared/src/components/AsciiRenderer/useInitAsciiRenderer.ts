@@ -1,5 +1,6 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
+import { getMatrixRain } from "../../wasm";
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
@@ -13,11 +14,13 @@ interface UseInitAsciiRendererReturn {
 interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   wasmModuleReady: boolean | undefined;
+  matrixMode?: boolean;
 }
 
 export function useInitAsciiRenderer({
   canvasRef,
   wasmModuleReady,
+  matrixMode = false,
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
@@ -30,6 +33,7 @@ export function useInitAsciiRenderer({
   const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
     null,
   );
+  const currentMatrixModeRef = useRef<boolean>(false);
 
   // Load WASM module when ready
   useEffect(() => {
@@ -38,6 +42,11 @@ export function useInitAsciiRenderer({
       moduleRef.current = module;
     }
   }, [wasmModuleReady]);
+
+  // Track matrix mode so resize can recreate renderer with correct font
+  useEffect(() => {
+    currentMatrixModeRef.current = matrixMode;
+  }, [matrixMode]);
 
   // Write config struct fields to WASM memory
   // Struct layout (WASM 32-bit pointers):
@@ -48,7 +57,7 @@ export function useInitAsciiRenderer({
   // size_t font_data_size (4) at offset 540
   // Total: 544 bytes
   const writeConfigStructFields = useCallback(
-    (configPtr: number, cols: number, rows: number) => {
+    (configPtr: number, cols: number, rows: number, isMatrixMode: boolean) => {
       if (!moduleRef.current) {
         throw new Error(
           "moduleRef.current is null during writeConfigStructFields",
@@ -66,7 +75,14 @@ export function useInitAsciiRenderer({
       view.setFloat64(8, 12.0, true); // font_size_pt
       view.setInt32(16, 0, true); // theme
 
-      const fontSpec = "Courier New";
+      // Use "Matrix" font_spec when matrix_rain is enabled, otherwise use default font selection
+      const fontSpec = isMatrixMode ? "Matrix" : "";
+      console.log("[writeConfigStructFields]", {
+        cols,
+        rows,
+        isMatrixMode,
+        fontSpec,
+      });
       for (let i = 0; i < fontSpec.length && i < 511; i++) {
         moduleRef.current.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(i);
       }
@@ -84,7 +100,11 @@ export function useInitAsciiRenderer({
 
   // Allocate and prepare config struct with estimated dimensions
   const createConfigStruct = useCallback(
-    (containerWidth: number, containerHeight: number) => {
+    (
+      containerWidth: number,
+      containerHeight: number,
+      isMatrixMode: boolean = false,
+    ) => {
       if (!moduleRef.current) {
         throw new Error("moduleRef.current is null during createConfigStruct");
       }
@@ -97,7 +117,20 @@ export function useInitAsciiRenderer({
       const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
       const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
 
-      writeConfigStructFields(configPtr, estimatedCols, estimatedRows);
+      console.log("[createConfigStruct] dimensions", {
+        containerWidth,
+        containerHeight,
+        estimatedCols,
+        estimatedRows,
+        isMatrixMode,
+      });
+
+      writeConfigStructFields(
+        configPtr,
+        estimatedCols,
+        estimatedRows,
+        isMatrixMode,
+      );
 
       return { configPtr, estimatedCols, estimatedRows };
     },
@@ -163,14 +196,37 @@ export function useInitAsciiRenderer({
         // Destroy old renderer
         moduleRef.current._term_renderer_destroy(rendererPtrRef.current);
 
-        // Create new renderer with updated dimensions
-        const { configPtr } = createConfigStruct(newWidth, newHeight);
+        // Create new renderer with updated dimensions, using cached matrix mode
+        console.log("[handleContainerResize] recreating with", {
+          newWidth,
+          newHeight,
+          currentMatrixMode: currentMatrixModeRef.current,
+        });
+        const { configPtr } = createConfigStruct(
+          newWidth,
+          newHeight,
+          currentMatrixModeRef.current,
+        );
         const outPtr = moduleRef.current._malloc(8);
 
+        console.log(`[handleContainerResize] Calling term_renderer_create...`);
         const rendererPtr = callRendererCreate(configPtr, outPtr);
         rendererPtrRef.current = rendererPtr;
+        console.log(
+          `[handleContainerResize] term_renderer_create returned ptr=${rendererPtr}`,
+        );
 
         const dims = getRendererDimensions();
+        console.log(
+          `[handleContainerResize] getRendererDimensions returned:`,
+          dims,
+        );
+        console.log("[handleContainerResize] renderer dimensions", {
+          cols: dims.cols,
+          rows: dims.rows,
+          pixelWidth: dims.pixelWidth,
+          pixelHeight: dims.pixelHeight,
+        });
         canvas.width = dims.pixelWidth;
         canvas.height = dims.pixelHeight;
 
@@ -210,6 +266,13 @@ export function useInitAsciiRenderer({
         const newWidth = Math.round(entry.contentRect.width);
         const newHeight = Math.round(entry.contentRect.height);
 
+        console.log("[ResizeObserver] size change", {
+          newWidth,
+          newHeight,
+          canvasCurrentWidth: canvas.width,
+          canvasCurrentHeight: canvas.height,
+        });
+
         handleContainerResize(newWidth, newHeight, canvas);
       });
 
@@ -232,8 +295,14 @@ export function useInitAsciiRenderer({
       const containerWidth = Math.round(containerRect?.width ?? 1200);
       const containerHeight = Math.round(containerRect?.height ?? 1000);
 
-      // Create config and renderer
-      const { configPtr } = createConfigStruct(containerWidth, containerHeight);
+      // Create config and renderer, checking current matrix mode
+      const isMatrixMode = getMatrixRain();
+      currentMatrixModeRef.current = isMatrixMode;
+      const { configPtr } = createConfigStruct(
+        containerWidth,
+        containerHeight,
+        isMatrixMode,
+      );
       const outPtr = moduleRef.current._malloc(8);
 
       const rendererPtr = callRendererCreate(configPtr, outPtr);
@@ -320,7 +389,14 @@ export function useInitAsciiRenderer({
         canvas,
       );
     }
-  }, [handleContainerResize]);
+  }, [handleContainerResize, canvasRef]);
+
+  // Recreate renderer when matrix mode changes
+  useEffect(() => {
+    if (setupDoneRef.current && canvasRef.current) {
+      triggerRendererRecreate();
+    }
+  }, [matrixMode, triggerRendererRecreate, canvasRef]);
 
   return {
     moduleRef,

@@ -148,8 +148,9 @@ export function useAsciiRendererHandle({
                   throw new Error("[AsciiRenderer] Canvas context not found");
                 }
               } else {
-                // Skip rendering if canvas dimensions are invalid (can happen during widget switching)
-                return;
+                throw new Error(
+                  `[AsciiRenderer] Invalid framebuffer dimensions fbPtr=${fbPtr} fbWidth=${fbWidth} fbHeight=${fbHeight}`,
+                );
               }
             } else {
               throw new Error(

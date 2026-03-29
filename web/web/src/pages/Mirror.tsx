@@ -313,6 +313,7 @@ export function MirrorPage() {
               error={error}
               showFps={isWebcamRunning}
               wasmModuleReady={!!wasmModule}
+              matrixMode={settings.matrixRain ?? false}
             />
           );
         })()}

@@ -12,4 +12,5 @@ export interface AsciiRendererProps {
   showFps?: boolean;
   connectionState?: number;
   wasmModuleReady?: boolean;
+  matrixMode?: boolean;
 }

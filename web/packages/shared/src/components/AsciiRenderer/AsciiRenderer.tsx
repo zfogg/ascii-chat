@@ -58,6 +58,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       showFps = true,
       connectionState,
       wasmModuleReady,
+      matrixMode = false,
     },
     ref,
   ) {
@@ -79,6 +80,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     } = useInitAsciiRenderer({
       canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
       wasmModuleReady,
+      matrixMode,
     });
 
     // Set up imperative handle and get updateDimensions + fpsDisplayRef

@@ -42,7 +42,8 @@ let lastMatrixRain = false;
 function applyDemoOption(
   option: DemoOption,
   sourceFlipX: boolean,
-  onMatrixRainChange?: () => void,
+  onMatrixRainChange?: (matrixMode: boolean) => void,
+  onSetMatrixMode?: (mode: boolean) => void,
 ): void {
   const s = option.settings;
   // Reset all options to defaults first, then apply preset overrides.
@@ -52,12 +53,21 @@ function applyDemoOption(
   setRenderMode(s.renderMode ?? RenderMode.FOREGROUND);
   setPalette(s.palette ?? "standard");
   const matrixRainNow = s.matrixRain ?? false;
-  // Trigger renderer recreation if matrix rain changed
+  console.log("[applyDemoOption]", {
+    option: option.label,
+    matrixRainNow,
+    lastMatrixRain,
+  });
+  // Set matrix flag first so C side knows about it before renderer recreation
+  setMatrixRain(matrixRainNow);
+  // Update matrix mode state for renderer prop
+  onSetMatrixMode?.(matrixRainNow);
+  // Trigger renderer recreation if matrix rain changed (after C side is updated)
   if (matrixRainNow !== lastMatrixRain) {
     lastMatrixRain = matrixRainNow;
-    onMatrixRainChange?.();
+    console.log("[applyDemoOption] matrix mode changed, triggering recreate");
+    onMatrixRainChange?.(matrixRainNow);
   }
-  setMatrixRain(matrixRainNow);
   setFlipX(s.flipX !== undefined ? s.flipX : sourceFlipX);
   setFlipY(s.flipY ?? false);
   if (s.paletteChars !== undefined) {
@@ -91,6 +101,7 @@ export default function MirrorDemoWidget({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     demoOptions?.[defaultOptionIndex]?.id ?? null,
   );
+  const [matrixMode, setMatrixMode] = useState(false);
 
   const rendererRef = useRef<AsciiRendererHandle>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -166,9 +177,14 @@ export default function MirrorDemoWidget({
   const applySelectedOption = useCallback(
     (sourceFlipX: boolean) => {
       if (selectedOption && isWasmReady()) {
-        applyDemoOption(selectedOption, sourceFlipX, () => {
-          rendererRef.current?.recreateRenderer();
-        });
+        applyDemoOption(
+          selectedOption,
+          sourceFlipX,
+          () => {
+            rendererRef.current?.recreateRenderer();
+          },
+          setMatrixMode,
+        );
       }
     },
     [selectedOption],
@@ -367,9 +383,14 @@ export default function MirrorDemoWidget({
       setSelectedOptionId(option.id);
       if (isWasmReady() && source) {
         const sourceFlipX = source === MediaSourceType.WEBCAM;
-        applyDemoOption(option, sourceFlipX, () => {
-          rendererRef.current?.recreateRenderer();
-        });
+        applyDemoOption(
+          option,
+          sourceFlipX,
+          () => {
+            rendererRef.current?.recreateRenderer();
+          },
+          setMatrixMode,
+        );
       }
     },
     [source],
@@ -517,6 +538,7 @@ export default function MirrorDemoWidget({
             onDimensionsChange={handleDimensionsChange}
             showFps={false}
             wasmModuleReady={wasmReady}
+            matrixMode={matrixMode}
           />
         </div>
 
