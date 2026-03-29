@@ -7,16 +7,10 @@ import { ColorMode } from "@ascii-chat/shared/wasm";
 
 const COLOR_MODE_OPTIONS: DemoOption[] = [
   {
-    id: "truecolor",
-    label: "Truecolor",
-    description: "--color-mode truecolor",
-    settings: { colorMode: ColorMode.TRUECOLOR },
-  },
-  {
-    id: "256",
-    label: "256-color",
-    description: "--color-mode 256",
-    settings: { colorMode: ColorMode.COLOR_256 },
+    id: "none",
+    label: "Monochrome",
+    description: "--color-mode none",
+    settings: { colorMode: ColorMode.NONE },
   },
   {
     id: "16",
@@ -25,10 +19,16 @@ const COLOR_MODE_OPTIONS: DemoOption[] = [
     settings: { colorMode: ColorMode.COLOR_16 },
   },
   {
-    id: "none",
-    label: "Monochrome",
-    description: "--color-mode none",
-    settings: { colorMode: ColorMode.NONE },
+    id: "256",
+    label: "256-color",
+    description: "--color-mode 256",
+    settings: { colorMode: ColorMode.COLOR_256 },
+  },
+  {
+    id: "truecolor",
+    label: "Truecolor",
+    description: "--color-mode truecolor",
+    settings: { colorMode: ColorMode.TRUECOLOR },
   },
 ];
 
