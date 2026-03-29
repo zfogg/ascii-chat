@@ -1656,6 +1656,10 @@ asciichat_error_t options_init(int argc, char **argv) {
         return option_error_invalid();
       }
     }
+  } else if (opts.matrix_rain && opts.palette_type == PALETTE_STANDARD) {
+    // Auto-select digital palette when --matrix is enabled and no custom palette is set
+    opts.palette_type = PALETTE_DIGITAL;
+    log_debug("Set PALETTE_DIGITAL because --matrix was enabled");
   }
 
   // Auto-enable encryption if key was provided
