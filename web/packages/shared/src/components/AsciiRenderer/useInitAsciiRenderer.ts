@@ -1,11 +1,14 @@
-import { useEffect, type RefObject } from "react";
-import type { MirrorModule } from "../../wasm/mirror";
+import { useEffect, useRef, type RefObject } from "react";
+import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
+
+interface UseInitAsciiRendererReturn {
+  moduleRef: RefObject<MirrorModule | null>;
+  setupDoneRef: RefObject<boolean>;
+  rendererPtrRef: RefObject<number>;
+}
 
 interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
-  moduleRef: RefObject<MirrorModule | null>;
-  rendererPtrRef: RefObject<number>;
-  setupDoneRef: RefObject<boolean>;
   resizeObserverRef: RefObject<ResizeObserver | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   pendingDimensionsRef: RefObject<{ cols: number; rows: number } | null>;
@@ -15,15 +18,24 @@ interface UseInitAsciiRendererParams {
 
 export function useInitAsciiRenderer({
   canvasRef,
-  moduleRef,
-  rendererPtrRef,
-  setupDoneRef,
   resizeObserverRef,
   resizeTimeoutRef,
   pendingDimensionsRef,
   updateDimensions,
   wasmModuleReady,
-}: UseInitAsciiRendererParams) {
+}: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
+  const moduleRef = useRef<MirrorModule | null>(null);
+  const setupDoneRef = useRef(false);
+  const rendererPtrRef = useRef<number>(0);
+
+  // Load WASM module when ready
+  useEffect(() => {
+    if (wasmModuleReady) {
+      const module = getMirrorModule();
+      moduleRef.current = module;
+    }
+  }, [wasmModuleReady]);
+
   useEffect(() => {
     console.log(
       "[EFFECT] Starting, setupDone=" +
@@ -438,4 +450,10 @@ export function useInitAsciiRenderer({
       }
     };
   }, [wasmModuleReady, updateDimensions]);
+
+  return {
+    moduleRef,
+    setupDoneRef,
+    rendererPtrRef,
+  };
 }

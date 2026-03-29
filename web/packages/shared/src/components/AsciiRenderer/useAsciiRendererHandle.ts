@@ -21,8 +21,11 @@ interface UseAsciiRendererHandleParams {
   onDimensionsChange:
     | ((dims: { cols: number; rows: number }) => void)
     | undefined;
+}
+
+interface UseAsciiRendererHandleReturn {
+  updateDimensions: (cols: number, rows: number) => void;
   fpsDisplayRef: RefObject<HTMLDivElement | null>;
-  frameCountRef: RefObject<number>;
 }
 
 export function useAsciiRendererHandle({
@@ -35,14 +38,14 @@ export function useAsciiRendererHandle({
   showFps,
   onFpsChange,
   onDimensionsChange,
-  fpsDisplayRef,
-  frameCountRef,
-}: UseAsciiRendererHandleParams) {
+}: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const frameCountForLoggingRef = useRef(0);
   const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
   const firstRenderDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const fpsUpdateTimeRef = useRef<number | null>(null);
+  const frameCountRef = useRef(0);
+  const fpsDisplayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fpsUpdateTimeRef.current = performance.now();
@@ -325,5 +328,8 @@ export function useAsciiRendererHandle({
     [showFps, onFpsChange],
   );
 
-  return updateDimensions;
+  return {
+    updateDimensions,
+    fpsDisplayRef,
+  };
 }

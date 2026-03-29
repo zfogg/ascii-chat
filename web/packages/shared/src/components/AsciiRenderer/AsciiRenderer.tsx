@@ -1,5 +1,4 @@
-import { forwardRef, useEffect, useRef, type RefObject } from "react";
-import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
+import { forwardRef, useRef, type RefObject } from "react";
 import type { AsciiRendererHandle, AsciiRendererProps } from "./types";
 import { useInitAsciiRenderer } from "./useInitAsciiRenderer";
 import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
@@ -24,31 +23,33 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       previousWasmReadyRef.current = wasmModuleReady;
     }
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const moduleRef = useRef<MirrorModule | null>(null);
-    const rendererPtrRef = useRef<number>(0);
-    const setupDoneRef = useRef(false);
     const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
       null,
     );
     const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-    // FPS tracking
-    const frameCountRef = useRef(0);
-    const fpsDisplayRef = useRef<HTMLDivElement>(null);
-
     // NOTE: Canvas sizing is handled by the renderer initialization code
     // We set canvas to the renderer's actual pixel output dimensions, not the container size
 
-    useEffect(() => {
-      if (wasmModuleReady) {
-        const module = getMirrorModule();
-        moduleRef.current = module;
-      }
-    }, [wasmModuleReady]);
+    // Create a callback for updateDimensions that will be provided by useAsciiRendererHandle
+    const updateDimensionsRef = useRef<(cols: number, rows: number) => void>(
+      () => {},
+    );
 
-    // Set up imperative handle and get updateDimensions callback
-    const updateDimensions = useAsciiRendererHandle({
+    // Initialize renderer and get refs
+    const { moduleRef, setupDoneRef, rendererPtrRef } = useInitAsciiRenderer({
+      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
+      resizeObserverRef,
+      resizeTimeoutRef,
+      pendingDimensionsRef,
+      updateDimensions: (cols, rows) =>
+        updateDimensionsRef.current?.(cols, rows),
+      wasmModuleReady,
+    });
+
+    // Set up imperative handle and get updateDimensions + fpsDisplayRef
+    const { updateDimensions, fpsDisplayRef } = useAsciiRendererHandle({
       ref,
       moduleRef,
       setupDoneRef,
@@ -58,22 +59,10 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       showFps,
       onFpsChange,
       onDimensionsChange,
-      fpsDisplayRef: fpsDisplayRef as RefObject<HTMLDivElement | null>,
-      frameCountRef,
     });
 
-    // Use the initialization hook
-    useInitAsciiRenderer({
-      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
-      moduleRef,
-      rendererPtrRef,
-      setupDoneRef,
-      resizeObserverRef,
-      resizeTimeoutRef,
-      pendingDimensionsRef,
-      updateDimensions,
-      wasmModuleReady,
-    });
+    // Store the real updateDimensions for use by useInitAsciiRenderer
+    updateDimensionsRef.current = updateDimensions;
 
     return (
       <div className="ascii-canvas-container w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
