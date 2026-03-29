@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useRef,
-  type RefObject,
-} from "react";
+import { forwardRef, useEffect, useRef, type RefObject } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 import type { AsciiRendererHandle, AsciiRendererProps } from "./types";
 import { useInitAsciiRenderer } from "./useInitAsciiRenderer";
@@ -33,8 +27,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     const moduleRef = useRef<MirrorModule | null>(null);
     const rendererPtrRef = useRef<number>(0);
     const setupDoneRef = useRef(false);
-    const dimensionsRef = useRef({ cols: 0, rows: 0 });
-    const firstRenderDoneRef = useRef(false);
     const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
       null,
     );
@@ -60,13 +52,21 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       }
     }, [wasmModuleReady]);
 
-    const updateDimensions = useCallback(
-      (cols: number, rows: number) => {
-        dimensionsRef.current = { cols, rows };
-        onDimensionsChange?.({ cols, rows });
-      },
-      [onDimensionsChange],
-    );
+    // Set up imperative handle and get updateDimensions callback
+    const updateDimensions = useAsciiRendererHandle({
+      ref,
+      moduleRef,
+      setupDoneRef,
+      rendererPtrRef,
+      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
+      resizeTimeoutRef,
+      showFps,
+      onFpsChange,
+      onDimensionsChange,
+      fpsDisplayRef: fpsDisplayRef as RefObject<HTMLDivElement | null>,
+      fpsUpdateTimeRef,
+      frameCountRef,
+    });
 
     // Use the initialization hook
     useInitAsciiRenderer({
@@ -79,23 +79,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       pendingDimensionsRef,
       updateDimensions,
       wasmModuleReady,
-    });
-
-    // Set up imperative handle
-    useAsciiRendererHandle({
-      ref,
-      moduleRef,
-      setupDoneRef,
-      rendererPtrRef,
-      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
-      resizeTimeoutRef,
-      firstRenderDoneRef,
-      dimensionsRef,
-      showFps,
-      onFpsChange,
-      fpsDisplayRef: fpsDisplayRef as RefObject<HTMLDivElement | null>,
-      fpsUpdateTimeRef,
-      frameCountRef,
     });
 
     return (

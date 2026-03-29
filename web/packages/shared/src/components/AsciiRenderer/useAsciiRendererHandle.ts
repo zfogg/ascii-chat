@@ -1,6 +1,7 @@
 import {
   useImperativeHandle,
   useRef,
+  useCallback,
   type ForwardedRef,
   type RefObject,
 } from "react";
@@ -14,10 +15,11 @@ interface UseAsciiRendererHandleParams {
   rendererPtrRef: RefObject<number>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
-  firstRenderDoneRef: RefObject<boolean>;
-  dimensionsRef: RefObject<{ cols: number; rows: number }>;
   showFps: boolean;
   onFpsChange: ((fps: number) => void) | undefined;
+  onDimensionsChange:
+    | ((dims: { cols: number; rows: number }) => void)
+    | undefined;
   fpsDisplayRef: RefObject<HTMLDivElement | null>;
   fpsUpdateTimeRef: RefObject<number | null>;
   frameCountRef: RefObject<number>;
@@ -30,16 +32,25 @@ export function useAsciiRendererHandle({
   rendererPtrRef,
   canvasRef,
   resizeTimeoutRef,
-  firstRenderDoneRef,
-  dimensionsRef,
   showFps,
   onFpsChange,
+  onDimensionsChange,
   fpsDisplayRef,
   fpsUpdateTimeRef,
   frameCountRef,
 }: UseAsciiRendererHandleParams) {
   const frameCountForLoggingRef = useRef(0);
   const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
+  const firstRenderDoneRef = useRef(false);
+  const dimensionsRef = useRef({ cols: 0, rows: 0 });
+
+  const updateDimensions = useCallback(
+    (cols: number, rows: number) => {
+      dimensionsRef.current = { cols, rows };
+      onDimensionsChange?.({ cols, rows });
+    },
+    [onDimensionsChange],
+  );
 
   useImperativeHandle(
     ref,
@@ -309,4 +320,6 @@ export function useAsciiRendererHandle({
     }),
     [showFps, onFpsChange],
   );
+
+  return updateDimensions;
 }
