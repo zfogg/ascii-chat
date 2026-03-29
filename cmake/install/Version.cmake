@@ -20,8 +20,42 @@
 include_guard(GLOBAL)
 
 # =============================================================================
+# _get_version_date() - Helper to extract version date from git history
+# Sets: PROJECT_VERSION_DATE
+# Tries: tag date → first commit date → hardcoded fallback
+# =============================================================================
+macro(_get_version_date _tag_name)
+    # Try to get tag date from git history (date tag was created)
+    if(NOT "${_tag_name}" STREQUAL "")
+        execute_process(
+            COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_tag_name}' 2>/dev/null | cut -d' ' -f1"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE PROJECT_VERSION_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
+
+    # If tag date not available, try first commit date
+    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+        execute_process(
+            COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE PROJECT_VERSION_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
+
+    # If still no date (no .git directory), use first commit date from repo history (hardcoded)
+    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+        set(PROJECT_VERSION_DATE "2013-11-20")
+    endif()
+endmacro()
+
+# =============================================================================
 # version_detect() - Call BEFORE project()
-# Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH
+# Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH, PROJECT_VERSION_DATE
 # =============================================================================
 macro(version_detect)
     # If PROJECT_VERSION_FROM_GIT was already provided via command-line (e.g., -DPROJECT_VERSION_FROM_GIT=0.9.13),
@@ -32,29 +66,7 @@ macro(version_detect)
             set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
             set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
             set(_VERSION_TYPE "command-line")
-            # Try to get tag date from git history
-            set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
-            execute_process(
-                COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_TAG_NAME}' 2>/dev/null | cut -d' ' -f1"
-                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                OUTPUT_VARIABLE PROJECT_VERSION_DATE
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            # If tag date not available, try first commit date
-            if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
-                execute_process(
-                    COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                    OUTPUT_VARIABLE PROJECT_VERSION_DATE
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-            endif()
-            # If still no date (no .git directory), use current date
-            if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
-                string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
-            endif()
+            _get_version_date("v${PROJECT_VERSION_FROM_GIT}")
             message(STATUS "Version from command-line: ${PROJECT_VERSION_FROM_GIT} (Release build via Docker)")
             message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
             return()
@@ -100,32 +112,8 @@ macro(version_detect)
         set(_TAG_NAME "")
     endif()
 
-    # Get tag date from git history (date tag was created)
-    if(_TAG_NAME)
-        execute_process(
-            COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_TAG_NAME}' 2>/dev/null | cut -d' ' -f1"
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE PROJECT_VERSION_DATE
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-        )
-    endif()
-
-    # If tag date not available, try first commit date (fallback for no tags or no .git)
-    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
-        execute_process(
-            COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE PROJECT_VERSION_DATE
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-        )
-    endif()
-
-    # If still no date (no .git directory), use current date
-    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
-        string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
-    endif()
+    # Extract version date from git history
+    _get_version_date("${_TAG_NAME}")
 
     # Print version info (colors defined in Init.cmake)
     if(_VERSION_TYPE STREQUAL "development")
