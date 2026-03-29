@@ -147,10 +147,11 @@ else()
 endif()
 
 set(GENERATED_FONT_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/default.c")
+set(GENERATED_FONT_MATRIX_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/matrix_resurrected.c")
 
-# Font is guaranteed to exist because Fonts.cmake generates it at configure time
+# Fonts are guaranteed to exist because Fonts.cmake generates them at configure time
 # before WASM configure runs (fonts are a dependency of WASM build)
-set(GENERATED_FONT_SRC "${GENERATED_FONT_FILE}")
+set(GENERATED_FONT_SRC "${GENERATED_FONT_FILE}" "${GENERATED_FONT_MATRIX_FILE}")
 message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
