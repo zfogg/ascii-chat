@@ -30,10 +30,15 @@
 
 #include <ascii-chat/log/log.h>
 
+// Clang on macOS/Linux uses __has_feature(address_sanitizer).
+// Clang on Windows and GCC define __SANITIZE_ADDRESS__ instead.
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
 #define HAS_ASAN 1
 #endif
+#endif
+#if !defined(HAS_ASAN) && defined(__SANITIZE_ADDRESS__)
+#define HAS_ASAN 1
 #endif
 
 #ifdef HAS_ASAN
