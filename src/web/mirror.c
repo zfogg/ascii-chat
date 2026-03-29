@@ -294,9 +294,11 @@ void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
 
-// Embedded font data (defined in generated/data/fonts/default.c)
+// Embedded font data (defined in generated/data/fonts/default.c and matrix.c)
 extern const unsigned char g_font_default[];
 extern const size_t g_font_default_size;
+extern const unsigned char g_font_matrix_resurrected[];
+extern const size_t g_font_matrix_resurrected_size;
 
 /**
  * Get the pointer to the embedded default font data
@@ -304,6 +306,12 @@ extern const size_t g_font_default_size;
  */
 EMSCRIPTEN_KEEPALIVE
 const unsigned char *get_font_default_ptr(void) {
+  // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+  if (!GET_OPTION(font_spec) || GET_OPTION(font_spec)[0] == '\0') {
+    if (GET_OPTION(matrix_rain)) {
+      return g_font_matrix_resurrected;
+    }
+  }
   return g_font_default;
 }
 
@@ -313,5 +321,11 @@ const unsigned char *get_font_default_ptr(void) {
  */
 EMSCRIPTEN_KEEPALIVE
 unsigned int get_font_default_size(void) {
+  // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+  if (!GET_OPTION(font_spec) || GET_OPTION(font_spec)[0] == '\0') {
+    if (GET_OPTION(matrix_rain)) {
+      return (unsigned int)g_font_matrix_resurrected_size;
+    }
+  }
   return (unsigned int)g_font_default_size;
 }
