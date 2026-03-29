@@ -71,7 +71,9 @@
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/platform/thread.h>
 
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>
@@ -949,18 +951,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // Automatic update check at startup (once per week maximum)
+  // Automatic update check in background thread (once per week maximum)
   if (!GET_OPTION(no_check_update)) {
-    update_check_result_t update_result;
-    asciichat_error_t update_err = update_check_startup(&update_result);
-    if (update_err == ASCIICHAT_OK && update_result.update_available) {
-      char notification[1024];
-      update_check_format_notification(&update_result, notification, sizeof(notification));
-      log_info("%s", notification);
-
-      // Set update notification for splash/status screens
-      splash_set_update_notification(notification);
-    }
+    update_banner_start_check();
   }
 
   // Set up global signal handlers BEFORE mode dispatch

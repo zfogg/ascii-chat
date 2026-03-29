@@ -17,6 +17,8 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 
+#include <yyjson.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -191,88 +193,46 @@ bool update_check_is_cache_fresh(const update_check_result_t *result) {
 }
 
 /**
- * @brief Extract JSON string field value
- * @param json JSON string to parse
- * @param field Field name to extract (e.g., "tag_name")
- * @param[out] output Output buffer
- * @param output_size Size of output buffer
- * @return true if field found and extracted, false otherwise
- */
-static bool parse_json_string_field(const char *json, const char *field, char *output, size_t output_size) {
-  if (!json || !field || !output || output_size == 0) {
-    return false;
-  }
-
-  // Build search pattern: "field":"value"
-  char pattern[128];
-  snprintf(pattern, sizeof(pattern), "\"%s\"", field);
-
-  const char *field_start = strstr(json, pattern);
-  if (!field_start) {
-    return false;
-  }
-
-  // Skip past field name and find opening quote
-  const char *value_start = strchr(field_start + strlen(pattern), '"');
-  if (!value_start) {
-    return false;
-  }
-  value_start++; // Skip opening quote
-
-  // Find closing quote
-  const char *value_end = strchr(value_start, '"');
-  if (!value_end) {
-    return false;
-  }
-
-  // Copy value
-  size_t value_len = value_end - value_start;
-  if (value_len >= output_size) {
-    value_len = output_size - 1;
-  }
-
-  memcpy(output, value_start, value_len);
-  output[value_len] = '\0';
-
-  return true;
-}
-
-/**
- * @brief Parse GitHub releases API response
+ * @brief Parse GitHub releases API response using yyjson
  * @param json JSON response body
  * @param[out] tag_name Latest release tag (e.g., "v0.9.0")
  * @param tag_size Size of tag_name buffer
- * @param[out] commit_sha Commit SHA for the release
- * @param sha_size Size of commit_sha buffer
  * @param[out] html_url Release page URL
  * @param url_size Size of html_url buffer
  * @return true if parsing succeeded, false otherwise
  */
-static bool parse_github_release_json(const char *json, char *tag_name, size_t tag_size, char *commit_sha,
-                                      size_t sha_size, char *html_url, size_t url_size) {
+static bool parse_github_release_json(const char *json, char *tag_name, size_t tag_size, char *html_url,
+                                      size_t url_size) {
   if (!json) {
     return false;
   }
 
-  // Extract tag_name
-  if (!parse_json_string_field(json, "tag_name", tag_name, tag_size)) {
-    log_error("Failed to parse tag_name from GitHub API response");
+  yyjson_doc *doc = yyjson_read(json, strlen(json), 0);
+  if (!doc) {
+    log_error("Failed to parse GitHub API response as JSON");
     return false;
   }
 
-  // Extract target_commitish (the SHA)
-  if (!parse_json_string_field(json, "target_commitish", commit_sha, sha_size)) {
-    log_error("Failed to parse target_commitish from GitHub API response");
-    return false;
+  yyjson_val *root = yyjson_doc_get_root(doc);
+  yyjson_val *tag = yyjson_obj_get(root, "tag_name");
+  yyjson_val *url = yyjson_obj_get(root, "html_url");
+
+  bool ok = false;
+  if (yyjson_is_str(tag) && yyjson_is_str(url)) {
+    SAFE_STRNCPY(tag_name, yyjson_get_str(tag), tag_size);
+    SAFE_STRNCPY(html_url, yyjson_get_str(url), url_size);
+    ok = true;
+  } else {
+    if (!yyjson_is_str(tag)) {
+      log_error("Failed to parse tag_name from GitHub API response");
+    }
+    if (!yyjson_is_str(url)) {
+      log_error("Failed to parse html_url from GitHub API response");
+    }
   }
 
-  // Extract html_url
-  if (!parse_json_string_field(json, "html_url", html_url, url_size)) {
-    log_error("Failed to parse html_url from GitHub API response");
-    return false;
-  }
-
-  return true;
+  yyjson_doc_free(doc);
+  return ok;
 }
 
 asciichat_error_t update_check_perform(update_check_result_t *result) {
@@ -299,23 +259,20 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   char *response = https_get(GITHUB_API_HOSTNAME, GITHUB_RELEASES_PATH);
   if (!response) {
     log_warn("Failed to fetch GitHub releases API (timeout or network error)");
-    // Mark as checked even though it failed (prevents repeated offline attempts)
+    // Don't save cache on network failure — retry next startup
     result->check_succeeded = false;
-    update_check_save_cache(result);
     return SET_ERRNO(ERROR_NETWORK, "Failed to fetch GitHub releases");
   }
 
   // Parse JSON response
   char latest_tag[64] = {0};
-  char latest_sha[41] = {0};
   char release_url[512] = {0};
 
-  if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), latest_sha, sizeof(latest_sha), release_url,
-                                 sizeof(release_url))) {
+  if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), release_url, sizeof(release_url))) {
     log_error("Failed to parse GitHub API response");
     SAFE_FREE(response);
+    // Don't save cache on parse failure — retry next startup
     result->check_succeeded = false;
-    update_check_save_cache(result);
     return SET_ERRNO(ERROR_FORMAT, "Failed to parse GitHub API JSON");
   }
 
@@ -323,8 +280,8 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
 
   // Fill in result
   SAFE_STRNCPY(result->latest_version, latest_tag, sizeof(result->latest_version));
-  SAFE_STRNCPY(result->latest_sha, latest_sha, sizeof(result->latest_sha));
   SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));
+  result->latest_sha[0] = '\0';
   result->check_succeeded = true;
 
   // Compare versions semantically
@@ -341,10 +298,9 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   }
 
   if (result->update_available) {
-    log_info("Update available: %s (%.*s) → %s (%.*s)", result->current_version, 8, result->current_sha,
-             result->latest_version, 8, result->latest_sha);
+    log_info("Update available: %s → %s", result->current_version, result->latest_version);
   } else {
-    log_info("Already on latest version: %s (%.*s)", result->current_version, 8, result->current_sha);
+    log_info("Already on latest version: %s", result->current_version);
   }
 
   // Save to cache
@@ -447,9 +403,8 @@ void update_check_format_notification(const update_check_result_t *result, char 
   char suggestion[512];
   update_check_get_upgrade_suggestion(method, result->latest_version, suggestion, sizeof(suggestion));
 
-  // Format: "Update available: v0.8.1 (f8dc35e1) → v0.9.0 (a1b2c3d4). Run: brew upgrade ascii-chat"
-  snprintf(buffer, buffer_size, "Update available: %s (%.8s) → %s (%.8s). %s%s", result->current_version,
-           result->current_sha, result->latest_version, result->latest_sha,
+  // Format: "Update available: v0.8.1 → v0.9.0. Run: brew upgrade ascii-chat"
+  snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s", result->current_version, result->latest_version,
            (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion);
 }
 

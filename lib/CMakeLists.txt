@@ -30,6 +30,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/keyboard_help.c
     ${LIB_DIR}/ui/splash.c
     ${LIB_DIR}/ui/status.c
+    ${LIB_DIR}/ui/update_banner.c
     ${LIB_DIR}/ui/mdns.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
@@ -620,9 +621,7 @@ if(USE_MIMALLOC)
     endif()
 endif()
 
-# yyjson - Fast JSON library for structured logging
-# Prevents reader API from being declared in our translation units (only writer needed)
-target_compile_definitions(ascii-chat-core PRIVATE YYJSON_DISABLE_READER=1)
+# yyjson - Fast JSON library for structured logging and JSON parsing
 
 # Add yyjson include directory
 target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})

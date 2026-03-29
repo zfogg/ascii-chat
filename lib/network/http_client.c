@@ -106,6 +106,9 @@ static asciichat_error_t check_http_status(const char *response) {
 // HTTPS GET Implementation
 // ============================================================================
 
+// Cap response size at 1 MB to prevent unbounded memory growth
+#define HTTPS_MAX_RESPONSE_SIZE (1024 * 1024)
+
 char *https_get(const char *hostname, const char *path) {
   if (!hostname || !path) {
     log_error("Invalid arguments to https_get");
@@ -153,6 +156,11 @@ char *https_get(const char *hostname, const char *path) {
     freeaddrinfo(result);
     goto cleanup_anchors;
   }
+
+  // Set socket timeouts to avoid blocking indefinitely on stalled connections
+  struct timeval timeout = {.tv_sec = 5, .tv_usec = 0};
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
 
   // Connect to server
   if (connect(sock, result->ai_addr, (int)result->ai_addrlen) != 0) {
@@ -219,6 +227,13 @@ char *https_get(const char *hostname, const char *path) {
     // Ensure we have space to read
     if (response_len + 1024 > response_capacity) {
       response_capacity *= 2;
+      if (response_capacity > HTTPS_MAX_RESPONSE_SIZE) {
+        log_error("Response exceeds maximum size (%d bytes)", HTTPS_MAX_RESPONSE_SIZE);
+        SAFE_FREE(response_buf);
+        SAFE_FREE(iobuf);
+        socket_close(sock);
+        goto cleanup_anchors;
+      }
       response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
     }
 

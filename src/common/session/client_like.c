@@ -15,6 +15,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/debug/sync.h>
 
@@ -219,9 +220,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // This allows logs to appear on screen again after this point
   splash_restore_stderr();
 
-  // ============================================================================
-  // SETUP: Terminal Logging in Snapshot Mode
-  // ============================================================================
+  // Wait for background update check to finish and show prompt if update available
+  update_banner_wait_for_check();
+  if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
+    bool wants_update = update_banner_show_prompt(display);
+    if (wants_update) {
+      update_banner_print_instructions();
+      return ASCIICHAT_OK;
+    }
+    terminal_clear_screen();
+  }
 
   // ============================================================================
   // SETUP: Terminal Logging in Snapshot Mode
