@@ -7,7 +7,7 @@ import {
 } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 import type { AsciiRendererHandle, AsciiRendererProps } from "./types";
-import { useInitRenderer } from "./useInitRenderer";
+import { useInitAsciiRenderer } from "./useInitAsciiRenderer";
 import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 
 const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
@@ -69,7 +69,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     );
 
     // Use the initialization hook
-    useInitRenderer({
+    useInitAsciiRenderer({
       canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
       moduleRef,
       rendererPtrRef,

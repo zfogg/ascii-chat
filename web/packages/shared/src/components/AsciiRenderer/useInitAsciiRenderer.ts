@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import type { MirrorModule } from "../../wasm/mirror";
 
-interface UseInitRendererParams {
+interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   moduleRef: RefObject<MirrorModule | null>;
   rendererPtrRef: RefObject<number>;
@@ -13,7 +13,7 @@ interface UseInitRendererParams {
   wasmModuleReady: boolean | undefined;
 }
 
-export function useInitRenderer({
+export function useInitAsciiRenderer({
   canvasRef,
   moduleRef,
   rendererPtrRef,
@@ -23,7 +23,7 @@ export function useInitRenderer({
   pendingDimensionsRef,
   updateDimensions,
   wasmModuleReady,
-}: UseInitRendererParams) {
+}: UseInitAsciiRendererParams) {
   useEffect(() => {
     console.log(
       "[EFFECT] Starting, setupDone=" +
