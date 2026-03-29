@@ -29,8 +29,9 @@ if(NOT EXISTS "${MATRIX_FONT_SRC}")
     file(DOWNLOAD "${MATRIX_FONT_URL}" "${MATRIX_FONT_SRC}" SHOW_PROGRESS TLS_VERIFY ON)
 endif()
 
-# Convert to C array at configure time
+# Convert to C array at configure time (critical: must exist before WASM configure)
 if(NOT EXISTS "${MATRIX_FONT_GEN}" OR "${MATRIX_FONT_SRC}" IS_NEWER_THAN "${MATRIX_FONT_GEN}")
+    message(STATUS "Generating matrix font C array at configure time...")
     execute_process(
         COMMAND ${CMAKE_COMMAND}
                 "-DINPUT=${MATRIX_FONT_SRC}"
@@ -40,8 +41,9 @@ if(NOT EXISTS "${MATRIX_FONT_GEN}" OR "${MATRIX_FONT_SRC}" IS_NEWER_THAN "${MATR
         RESULT_VARIABLE BIN2C_RESULT
     )
     if(NOT BIN2C_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to convert font to C array")
+        message(FATAL_ERROR "Failed to convert matrix font to C array")
     endif()
+    message(STATUS "Matrix font generated: ${MATRIX_FONT_GEN}")
 endif()
 
 # =============================================================================
@@ -80,6 +82,23 @@ if(NOT EXISTS "${DEFAULT_FONT_SRC}")
 
     # Move extracted file to the right place
     file(RENAME "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf" "${DEFAULT_FONT_SRC}")
+endif()
+
+# Convert to C array at configure time (critical: must exist before WASM configure)
+if(NOT EXISTS "${DEFAULT_FONT_GEN}" OR "${DEFAULT_FONT_SRC}" IS_NEWER_THAN "${DEFAULT_FONT_GEN}")
+    message(STATUS "Generating default font C array at configure time...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND}
+                "-DINPUT=${DEFAULT_FONT_SRC}"
+                "-DOUTPUT=${DEFAULT_FONT_GEN}"
+                "-DVAR_NAME=g_font_default"
+                "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
+        RESULT_VARIABLE BIN2C_RESULT
+    )
+    if(NOT BIN2C_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to convert default font to C array")
+    endif()
+    message(STATUS "Default font generated: ${DEFAULT_FONT_GEN}")
 endif()
 
 # Create custom commands to generate C arrays at build time

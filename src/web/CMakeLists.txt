@@ -133,13 +133,25 @@ set(UTF8PROC_SRC
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
-# Generated font data (created by cmake/targets/Fonts.cmake)
+# Generated font data (created by cmake/targets/Fonts.cmake at configure time)
+# Fonts are generated in the parent build directory before WASM configure runs
 # Note: In web builds, CMAKE_BINARY_DIR points to build/web/, but fonts are generated in root build/
-# Get the parent build directory
 get_filename_component(PARENT_BUILD_DIR "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
-set(GENERATED_FONT_SRC
-    "${PARENT_BUILD_DIR}/generated/data/fonts/default.c"
-)
+
+# Use parent cmake binary dir if provided (from execute_process in parent CMakeLists.txt)
+if(DEFINED PARENT_CMAKE_BINARY_DIR)
+    set(PARENT_BUILD_DIR "${PARENT_CMAKE_BINARY_DIR}")
+    message(STATUS "WASM: Using parent build directory: ${PARENT_BUILD_DIR}")
+else()
+    message(STATUS "WASM: Using computed parent build directory: ${PARENT_BUILD_DIR}")
+endif()
+
+set(GENERATED_FONT_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/default.c")
+
+# Font is guaranteed to exist because Fonts.cmake generates it at configure time
+# before WASM configure runs (fonts are a dependency of WASM build)
+set(GENERATED_FONT_SRC "${GENERATED_FONT_FILE}")
+message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
@@ -579,7 +591,6 @@ set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBy
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
-    -sWASM=1
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=MirrorModule"
@@ -590,7 +601,6 @@ target_link_options(mirror-web PRIVATE
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=128MB
     -sSTACK_SIZE=2097152
-    -sWASM_BIGINT=1
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
@@ -603,7 +613,6 @@ target_link_options(mirror-web PRIVATE
 )
 
 target_link_options(client-web PRIVATE
-    -sWASM=1
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=ClientModule"
@@ -614,7 +623,6 @@ target_link_options(client-web PRIVATE
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=256MB
     -sSTACK_SIZE=2097152
-    -sWASM_BIGINT=1
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1

@@ -429,11 +429,25 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DFETCHCONTENT_BASE_DIR=${FETCHCONTENT_BASE_DIR}
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${ASCIICHAT_DEPS_CACHE_DIR}
+            -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
         )
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
             WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+            RESULT_VARIABLE WASM_CONFIG_RESULT
+            OUTPUT_VARIABLE WASM_CONFIG_OUTPUT
+            ERROR_VARIABLE WASM_CONFIG_ERROR
         )
+
+        if(NOT WASM_CONFIG_RESULT EQUAL 0)
+            message(FATAL_ERROR "WASM configuration failed:\n${WASM_CONFIG_ERROR}")
+        endif()
+
+        # Verify build.ninja was actually created
+        if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja")
+            message(FATAL_ERROR "WASM configuration did not create build.ninja at ${WASM_BUILD_DIR}")
+        endif()
+
         # Create stamp file to mark WASM as configured
         file(WRITE "${WASM_CONFIG_STAMP}" "WASM configured\n")
     endif()
