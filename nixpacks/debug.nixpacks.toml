@@ -22,6 +22,7 @@ VERSION = "0.0.0"
 LIB_VERSION = "0.3.0"
 SOURCE_COMMIT = "docker-build"
 PATH = "/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
+PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 CMAKE_PREFIX_PATH = "/root/.nix-profile"
 LD_LIBRARY_PATH = "/root/.nix-profile/lib"
 LDFLAGS = "-L/root/.nix-profile/lib"
@@ -41,10 +42,16 @@ cmds = [
   "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
   "cp -a /tmp/deps-preserve/* deps/ 2>/dev/null || true",
   "rm -rf /tmp/deps-preserve",
-  # Link compiler-rt libraries for sanitizer support
-  "bash -c 'RESOURCE_DIR=$(clang --print-resource-dir) && mkdir -p \"$RESOURCE_DIR/lib/linux\" && find /nix/store -path \"*/lib/linux/libclang_rt*\" -type f 2>/dev/null | xargs -I {} ln -sf {} \"$RESOURCE_DIR/lib/linux/\" 2>/dev/null || true'",
-  # Build PKG_CONFIG_PATH with all nix store .pc file directories
-  "bash -c 'export PKG_CONFIG_PATH=$(find /nix/store -type d -name pkgconfig 2>/dev/null | paste -sd \":\" -) && echo \"$PKG_CONFIG_PATH:/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig\" > /tmp/pkg_config_path.txt && cat /tmp/pkg_config_path.txt'",
+  # Nix splits compiler-rt into a separate store path, but clang expects it
+  # under --print-resource-dir/lib/linux. Symlink the compiler-rt libs so
+  # cmake's sanitizer detection finds them.
+  "bash -c 'RESOURCE_DIR=$(clang --print-resource-dir) && COMPILER_RT_DIR=$(find /nix/store -maxdepth 1 -name \"*compiler-rt-libc*\" -type d | head -1) && if [ -n \"$COMPILER_RT_DIR\" ] && [ -d \"$COMPILER_RT_DIR/lib/linux\" ]; then mkdir -p \"$RESOURCE_DIR/lib/linux\" && ln -sf \"$COMPILER_RT_DIR/lib/linux/\"* \"$RESOURCE_DIR/lib/linux/\"; fi'",
+  # Nix multi-output packages put .pc files in -dev store paths that aren't
+  # symlinked into the profile. Collect all .pc files from nix store into
+  # the profile's pkgconfig dir so cmake can find them.
+  "bash -c 'mkdir -p /root/.nix-profile/lib/pkgconfig && find /nix/store -name \"*.pc\" -type f 2>/dev/null | while read pc; do ln -sf \"$pc\" /root/.nix-profile/lib/pkgconfig/ 2>/dev/null; done'",
+  # Create opus.pc manually since libopus in nixpkgs doesn't provide it
+  "bash -c 'mkdir -p /root/.nix-profile/lib/pkgconfig && echo \"prefix=/nix/store/rgfdkflfaj85c6h5qjgwq01f2kh46pha-libopus-1.6.1\" > /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"exec_prefix=\\${prefix}\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"libdir=\\${exec_prefix}/lib\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"includedir=\\${prefix}/include\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"Name: Opus\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"Description: Opus audio codec\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"Version: 1.6.1\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"Libs: -L\\${libdir} -lopus\" >> /root/.nix-profile/lib/pkgconfig/opus.pc && echo \"Cflags: -I\\${includedir}\" >> /root/.nix-profile/lib/pkgconfig/opus.pc'",
 ]
 
 # Build ascii-chat Debug binary
@@ -53,8 +60,10 @@ dependsOn = ["restore"]
 cmds = [
   # Create minimal .git for cmake version detection
   "mkdir -p .git && touch .git/HEAD .git/index",
-  # Build and install with expanded PKG_CONFIG_PATH
-  "bash -c 'export PKG_CONFIG_PATH=$(cat /tmp/pkg_config_path.txt) && make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS=\"-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}\" && make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local'",
+  # Build Debug (configure is fast because .deps-cache/ is pre-populated)
+  "make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS='-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}'",
+  # Install to /usr/local
+  "make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local",
 ]
 
 [phases.runtime_setup]
