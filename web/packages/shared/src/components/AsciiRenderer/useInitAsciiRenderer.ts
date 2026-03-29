@@ -290,7 +290,7 @@ export function useInitAsciiRenderer({
         resizeTimeoutRef.current = null;
       }
     };
-  }, [wasmModuleReady, initializeRenderer]);
+  }, [wasmModuleReady, canvasRef, initializeRenderer]);
 
   return {
     moduleRef,

@@ -203,5 +203,14 @@ export function useMirrorRenderLoop({
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
     };
-  }, [isWebcamRunning, captureFrame, terminalDimensions]);
+  }, [
+    isWebcamRunning,
+    captureFrame,
+    terminalDimensions,
+    debugCountRef,
+    rendererRef,
+    frameIntervalRef,
+    canvasRef,
+    firstFrameTimeRef,
+  ]);
 }

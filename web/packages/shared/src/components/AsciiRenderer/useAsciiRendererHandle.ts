@@ -325,7 +325,15 @@ export function useAsciiRendererHandle({
         }
       },
     }),
-    [showFps, onFpsChange],
+    [
+      showFps,
+      onFpsChange,
+      moduleRef,
+      setupDoneRef,
+      rendererPtrRef,
+      resizeTimeoutRef,
+      canvasRef,
+    ],
   );
 
   return {
