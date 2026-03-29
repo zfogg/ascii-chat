@@ -531,9 +531,13 @@ export function useInitAsciiRenderer({
     const container = canvas.parentElement;
     if (container) {
       const rect = container.getBoundingClientRect();
+      // Cap dimensions to prevent cascading growth when toggling matrix mode
+      // Use viewport dimensions as hard limit - canvas should never exceed visible area
+      const maxWidth = Math.min(rect.width, window.innerWidth);
+      const maxHeight = Math.min(rect.height, window.innerHeight);
       handleContainerResize(
-        Math.round(rect.width),
-        Math.round(rect.height),
+        Math.round(maxWidth),
+        Math.round(maxHeight),
         canvas,
       );
     }
