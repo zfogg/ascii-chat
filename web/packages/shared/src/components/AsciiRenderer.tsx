@@ -107,10 +107,20 @@ export const AsciiRenderer = forwardRef<
           configSize,
         );
 
+        // Get container dimensions to calculate initial cols/rows
+        const containerRect = canvas.parentElement?.getBoundingClientRect();
+        const containerWidth = containerRect?.width || 1030;
+        const containerHeight = containerRect?.height || 480;
+
+        // Estimate cell size (will be refined after renderer init)
+        // Rough estimate: 10px wide, 20px tall per cell
+        let estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
+        let estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
+
         // cols (int32) at offset 0
-        view.setInt32(0, 80, true);
+        view.setInt32(0, estimatedCols, true);
         // rows (int32) at offset 4
-        view.setInt32(4, 24, true);
+        view.setInt32(4, estimatedRows, true);
         // font_size_pt (float64) at offset 8
         view.setFloat64(8, 12.0, true);
         // theme (int32) at offset 16
@@ -118,8 +128,9 @@ export const AsciiRenderer = forwardRef<
         // font_spec (char[512]) at offset 20
         const fontSpec = "Courier New";
         for (let i = 0; i < fontSpec.length && i < 511; i++) {
-          moduleRef.current!.HEAPU8[configPtr + 20 + i] =
-            fontSpec.charCodeAt(i);
+          moduleRef.current!.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(
+            i,
+          );
         }
         moduleRef.current!.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
         // font_is_path (bool) at offset 532
@@ -178,6 +189,113 @@ export const AsciiRenderer = forwardRef<
 
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
+
+        // Set up ResizeObserver after initialization is done
+        const container = canvas.parentElement;
+        if (container) {
+          const resizeObserver = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (!entry) return;
+            const newWidth = Math.round(entry.contentRect.width);
+            const newHeight = Math.round(entry.contentRect.height);
+
+            if (newWidth > 0 && newHeight > 0) {
+              canvas.width = newWidth;
+              canvas.height = newHeight;
+
+              // Destroy old renderer and recreate with new dimensions
+              if (moduleRef.current && rendererPtrRef.current) {
+                try {
+                  // Destroy old renderer
+                  moduleRef.current._term_renderer_destroy(
+                    rendererPtrRef.current,
+                  );
+
+                  // Create new renderer with updated dimensions
+                  const configSize = 544;
+                  const configPtr = moduleRef.current._malloc(configSize);
+                  const outPtr = moduleRef.current._malloc(8);
+
+                  const view = new DataView(
+                    moduleRef.current.HEAPU8.buffer,
+                    configPtr,
+                    configSize,
+                  );
+
+                  // Estimate cols/rows from container size
+                  let estimatedCols = Math.max(
+                    80,
+                    Math.floor(newWidth / 10),
+                  );
+                  let estimatedRows = Math.max(
+                    24,
+                    Math.floor(newHeight / 20),
+                  );
+
+                  view.setInt32(0, estimatedCols, true);
+                  view.setInt32(4, estimatedRows, true);
+                  view.setFloat64(8, 12.0, true);
+                  view.setInt32(16, 0, true);
+
+                  const fontSpec = "Courier New";
+                  for (let i = 0; i < fontSpec.length && i < 511; i++) {
+                    moduleRef.current.HEAPU8[configPtr + 20 + i] =
+                      fontSpec.charCodeAt(i);
+                  }
+                  moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] =
+                    0;
+                  moduleRef.current.HEAPU8[configPtr + 532] = 0;
+
+                  const fontDataPtr =
+                    moduleRef.current._get_font_default_ptr();
+                  view.setInt32(536, fontDataPtr, true);
+
+                  const fontDataSize =
+                    moduleRef.current._get_font_default_size();
+                  view.setInt32(540, fontDataSize, true);
+
+                  const result = moduleRef.current._term_renderer_create(
+                    configPtr,
+                    outPtr,
+                  );
+
+                  if (result !== 0) {
+                    throw new Error(
+                      `term_renderer_create failed with error code ${result}`,
+                    );
+                  }
+
+                  const rendererPtr = new DataView(
+                    moduleRef.current.HEAPU8.buffer,
+                    outPtr,
+                    8,
+                  ).getBigInt64(0, true);
+                  rendererPtrRef.current = Number(rendererPtr);
+
+                  // Get actual dimensions from new renderer
+                  const cols = moduleRef.current._term_renderer_get_cols(
+                    rendererPtrRef.current,
+                  );
+                  const rows = moduleRef.current._term_renderer_get_rows(
+                    rendererPtrRef.current,
+                  );
+
+                  updateDimensions(cols, rows);
+
+                  moduleRef.current._free(configPtr);
+                  moduleRef.current._free(outPtr);
+                } catch (err) {
+                  console.error(
+                    "[AsciiRenderer] Failed to resize renderer:",
+                    err,
+                  );
+                }
+              }
+            }
+          });
+
+          resizeObserver.observe(container);
+        }
       } catch (err) {
         console.error("[AsciiRenderer] Initialization failed:", err);
         setupDoneRef.current = false;
@@ -204,57 +322,8 @@ export const AsciiRenderer = forwardRef<
     };
   }, [wasmModuleReady, updateDimensions]);
 
-  // Handle container resizes
-  useEffect(() => {
-    if (!canvasRef.current || !moduleRef.current || !setupDoneRef.current) {
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    const container = canvas.parentElement;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-
-      // Recalculate cols and rows based on container size
-      if (moduleRef.current) {
-        const fbWidth = moduleRef.current._term_renderer_width_px(
-          rendererPtrRef.current,
-        );
-        const fbHeight = moduleRef.current._term_renderer_height_px(
-          rendererPtrRef.current,
-        );
-        const currentCols = moduleRef.current._term_renderer_get_cols(
-          rendererPtrRef.current,
-        );
-        const currentRows = moduleRef.current._term_renderer_get_rows(
-          rendererPtrRef.current,
-        );
-
-        if (fbWidth > 0 && fbHeight > 0 && currentCols > 0 && currentRows > 0) {
-          const cellW = fbWidth / currentCols;
-          const cellH = fbHeight / currentRows;
-          const newCols = Math.floor(rect.width / cellW);
-          const newRows = Math.floor(rect.height / cellH);
-
-          if (newCols > 0 && newRows > 0) {
-            updateDimensions(newCols, newRows);
-          }
-        }
-      }
-    });
-
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [updateDimensions]);
-
   const frameCountForLoggingRef = useRef(0);
+  const prevLinesRef = useRef<string[]>([]);
 
   useImperativeHandle(
     ref,
@@ -265,6 +334,84 @@ export const AsciiRenderer = forwardRef<
         }
 
         frameCountForLoggingRef.current++;
+
+        // Detect content shifts up/down by comparing row signatures
+        frameCountForLoggingRef.current++;
+
+        const currentLines = ansiString.split("\n");
+        const prevLines = prevLinesRef.current;
+
+        if (prevLines.length > 0 && currentLines.length > 0) {
+          // Create signatures for each line (first 40 chars as fingerprint)
+          const getSignature = (line: string) => {
+            return line.length > 0 ? line.substring(0, 40) : "";
+          };
+
+          const prevSigs = prevLines.map(getSignature);
+          const currSigs = currentLines.map(getSignature);
+
+          // Find where each previous signature appears in current frame
+          const movements: Array<{
+            sig: string;
+            prevRow: number;
+            currRow: number;
+          }> = [];
+
+          for (let prevRow = 0; prevRow < prevSigs.length; prevRow++) {
+            const prevSig = prevSigs[prevRow];
+            if (prevSig.length < 20) continue; // Skip short lines
+
+            // Find best matching signature in current frame
+            for (let currRow = 0; currRow < currSigs.length; currRow++) {
+              const currSig = currSigs[currRow];
+              // Check if signatures are similar (allow some variation)
+              const minLen = Math.min(prevSig.length, currSig.length);
+              let matches = 0;
+              for (let i = 0; i < minLen; i++) {
+                if (prevSig[i] === currSig[i]) matches++;
+              }
+              const similarity = matches / minLen;
+
+              if (similarity > 0.7) {
+                // 70% match threshold
+                if (prevRow !== currRow) {
+                  movements.push({
+                    sig: prevSig.substring(0, 20),
+                    prevRow,
+                    currRow,
+                  });
+                }
+                break;
+              }
+            }
+          }
+
+          if (movements.length > 0) {
+            const uniqueShifts = new Set<number>();
+            movements.forEach((m) => {
+              uniqueShifts.add(m.currRow - m.prevRow);
+            });
+
+            let fbHeight = 0;
+            if (moduleRef.current) {
+              fbHeight = moduleRef.current._term_renderer_height_px(
+                rendererPtrRef.current,
+              );
+            }
+
+            uniqueShifts.forEach((shiftAmount) => {
+              const direction = shiftAmount > 0 ? "DOWN" : "UP";
+              const affectedLines = movements.filter(
+                (m) => m.currRow - m.prevRow === shiftAmount,
+              ).length;
+              console.log(
+                `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${Math.abs(shiftAmount)} rows (${affectedLines} lines) | rows=${dimensionsRef.current.rows} fbHeight=${fbHeight}`,
+              );
+            });
+          }
+        }
+
+        prevLinesRef.current = currentLines;
 
         try {
           // Encode string to UTF-8 bytes
@@ -293,13 +440,13 @@ export const AsciiRenderer = forwardRef<
             console.error(
               `[WASM-ERROR-DETAILS] Caught error calling _term_renderer_feed:`,
               {
-                message:
-                  wasmError instanceof Error
-                    ? wasmError.message
-                    : String(wasmError),
+                message: wasmError instanceof Error
+                  ? wasmError.message
+                  : String(wasmError),
                 name: wasmError instanceof Error ? wasmError.name : "Unknown",
-                stack:
-                  wasmError instanceof Error ? wasmError.stack : "No stack",
+                stack: wasmError instanceof Error
+                  ? wasmError.stack
+                  : "No stack",
                 rendererPtr: rendererPtrRef.current,
                 ptr: ptr,
                 len: data.length,
@@ -432,7 +579,7 @@ export const AsciiRenderer = forwardRef<
   );
 
   return (
-    <div className="w-full h-full flex flex-col flex-1 items-center justify-center overflow-hidden relative">
+    <div className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
       <style>
         {`
           canvas {
@@ -442,7 +589,7 @@ export const AsciiRenderer = forwardRef<
           }
         `}
       </style>
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} className="ascii-canvas" />
       {connectionState === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
           <div className="text-5xl font-bold text-red-500 drop-shadow-lg">

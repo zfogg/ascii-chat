@@ -285,6 +285,31 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   int offset_x = (r->width_px - grid_width_px) / 2;
   int offset_y = (r->height_px - grid_height_px) / 2;
 
+  static int frame_count = 0;
+  static char prev_row_sigs[52][5] = {0};  // Store signatures of previous frame's rows
+  frame_count++;
+
+  // Log if any row signature changed to detect vertical shifts
+  if (frame_count % 10 == 0) {
+    char curr_row_sigs[52][5];
+    for (int row = 0; row < r->rows && row < 52; row++) {
+      // Get first 4 chars as signature
+      for (int col = 0; col < 4 && col < r->cols; col++) {
+        VTermScreenCell cell;
+        vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
+        curr_row_sigs[row][col] = (cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.';
+      }
+      curr_row_sigs[row][4] = 0;
+
+      // Check if row signature changed from previous frame
+      if (prev_row_sigs[row][0] != 0 && strcmp(curr_row_sigs[row], prev_row_sigs[row]) != 0) {
+        log_info("[TermRenderer] Frame %d: Row %d content changed: '%s' -> '%s'", frame_count, row,
+                 prev_row_sigs[row], curr_row_sigs[row]);
+      }
+    }
+    memcpy(prev_row_sigs, curr_row_sigs, sizeof(curr_row_sigs));
+  }
+
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
