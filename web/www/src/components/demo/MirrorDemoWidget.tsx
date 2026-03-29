@@ -55,7 +55,7 @@ function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
 export default function MirrorDemoWidget({
   demoOptions,
   defaultOptionIndex = 0,
-  height = "40vh",
+  height = "36vh",
   minHeight = 200,
   showHeader = true,
 }: MirrorDemoWidgetProps) {
