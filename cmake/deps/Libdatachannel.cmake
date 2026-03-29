@@ -59,11 +59,10 @@ if(PLATFORM_IOS)
         UPDATE_DISCONNECTED TRUE
     )
 
-    cmake_policy(SET CMP0169 OLD)
     FetchContent_GetProperties(libdatachannel)
 
     if(NOT libdatachannel_POPULATED)
-        FetchContent_Populate(libdatachannel)
+        FetchContent_MakeAvailable(libdatachannel)
 
         # Initialize submodules for libdatachannel dependencies
         message(STATUS "Initializing libdatachannel submodules (iOS)...")
@@ -376,12 +375,10 @@ FetchContent_Declare(
     UPDATE_DISCONNECTED TRUE  # Don't fetch updates if source already populated
 )
 
-cmake_policy(SET CMP0169 OLD)
-
 FetchContent_GetProperties(libdatachannel)
 if(NOT libdatachannel_POPULATED)
     # Manually populate the source
-    FetchContent_Populate(libdatachannel)
+    FetchContent_MakeAvailable(libdatachannel)
 
     # Initialize submodules for libdatachannel dependencies
     # Note: libdatachannel requires libsrtp, libjuice, and usrsctp as submodules

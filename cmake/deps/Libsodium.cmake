@@ -94,7 +94,7 @@ if(DEFINED EMSCRIPTEN)
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-src"
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_Populate(libsodium-src)
+    FetchContent_MakeAvailable(libsodium-src)
 
     set(LIBSODIUM_PREFIX "${FETCHCONTENT_BASE_DIR}/libsodium-wasm")
     set(LIBSODIUM_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-build")

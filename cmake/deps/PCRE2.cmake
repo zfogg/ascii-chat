@@ -103,7 +103,7 @@ if(DEFINED EMSCRIPTEN)
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-src"
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_Populate(pcre2-src)
+    FetchContent_MakeAvailable(pcre2-src)
 
     set(PCRE2_PREFIX "${FETCHCONTENT_BASE_DIR}/pcre2-wasm")
     set(PCRE2_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-wasm-build")

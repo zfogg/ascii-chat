@@ -38,6 +38,7 @@ if(DEFINED EMSCRIPTEN)
     FetchContent_Declare(zstd-wasm
         URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
         URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-wasm-src"
         UPDATE_DISCONNECTED ON
         CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}

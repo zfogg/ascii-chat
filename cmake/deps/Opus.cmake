@@ -44,7 +44,7 @@ if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (WASM)...")
 
     include(ExternalProject)
-    FetchContent_Populate(opus-src)
+    FetchContent_MakeAvailable(opus-src)
 
     set(OPUS_PREFIX "${FETCHCONTENT_BASE_DIR}/opus-wasm")
     set(OPUS_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/opus-wasm-build")

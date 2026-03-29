@@ -37,7 +37,7 @@ if(DEFINED EMSCRIPTEN)
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/raylib-src"
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_Populate(raylib-src)
+    FetchContent_MakeAvailable(raylib-src)
 
     set(RAYLIB_PREFIX "${FETCHCONTENT_BASE_DIR}/raylib-wasm")
     set(RAYLIB_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/raylib-wasm-build")

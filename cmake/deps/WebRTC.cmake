@@ -41,12 +41,10 @@ FetchContent_Declare(
     UPDATE_DISCONNECTED TRUE  # Don't update if already populated (avoids SSH auth issues)
 )
 
-cmake_policy(SET CMP0169 OLD)
-
 FetchContent_GetProperties(webrtc_aec3)
 if(NOT webrtc_aec3_POPULATED)
     # Manually populate the source
-    FetchContent_Populate(webrtc_aec3)
+    FetchContent_MakeAvailable(webrtc_aec3)
 endif()
 
 # Apply patches every configure (cached source may still need updated patch rules)

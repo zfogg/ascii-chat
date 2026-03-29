@@ -101,7 +101,7 @@ if(DEFINED EMSCRIPTEN)
     if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}/src")
         message(STATUS "  libvterm source not found in ${libvterm_wasm_SOURCE_DIR}")
         # Try the regular FetchContent location
-        FetchContent_Populate(libvterm-src)
+        FetchContent_MakeAvailable(libvterm-src)
         set(libvterm_wasm_SOURCE_DIR "${libvterm-src_SOURCE_DIR}")
         if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}/src")
             message(FATAL_ERROR "libvterm source not found after FetchContent_Populate")
@@ -136,8 +136,6 @@ if(DEFINED EMSCRIPTEN)
         execute_process(
             COMMAND emcc -O3 -fPIC -Wno-error
                 -I${libvterm_wasm_SOURCE_DIR}/include -std=c99
-                -sWASM=1
-                -sWASM_BIGINT=1
                 -msimd128
                 -c ${src} -o ${obj}
             RESULT_VARIABLE CC_RESULT
