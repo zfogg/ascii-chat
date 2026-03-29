@@ -65,7 +65,12 @@ set(CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_DESCRIPTION "Development files for libasc
 This package contains the static and shared libraries, C headers, pkg-config
 files, and CMake configuration files needed to build applications using
 libasciichat.")
-set(CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_REQUIRES "ascii-chat = ${PROJECT_VERSION}, portaudio, libzstd, libsodium")
+# Runtime library dependencies for consumers of libasciichat-devel.
+# Only list packages available in Fedora/RHEL repos.
+# Bundled deps (BearSSL, yyjson, WebRTC AEC3) are not listed.
+# libdatachannel is not packaged in Fedora and is statically linked.
+set(CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_REQUIRES
+    "ascii-chat = ${PROJECT_VERSION}, libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, ffmpeg-free-libs")
 
 # =============================================================================
 # Documentation Package (libasciichat-doc) - HTML docs

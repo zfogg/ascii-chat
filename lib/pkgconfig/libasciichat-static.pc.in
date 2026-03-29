@@ -17,8 +17,9 @@ Description: Video chat in your terminal — static library
 Version: @PROJECT_VERSION@
 URL: @PROJECT_HOMEPAGE_URL@
 
-# Core required dependencies (all platforms)
-# mimalloc is optional, everything else is required
+# Core required dependencies (available in distro package managers).
+# BearSSL, yyjson, and WebRTC AEC3 are bundled in the static archive.
+# libdatachannel is bundled in the static archive (not packaged in distros).
 Requires.private: libsodium >= 1.0.18, libzstd, portaudio-2.0, opus, libpcre2-8, sqlite3, @ASCIICHAT_OPTIONAL_MIMALLOC_PC@libavformat, libavcodec, libavutil, libswscale, libswresample, openssl, freetype2, fontconfig, libwebsockets
 
 # Main library to link
@@ -27,5 +28,6 @@ Libs: -L${libdir} -lasciichat
 # System libraries and platform-specific frameworks
 Libs.private: @ASCIICHAT_STATIC_LIBS_PRIVATE@
 
-# Include directories
-Cflags: -I${includedir} -I${includedir}/ascii-chat
+# Include directories and required compile flags
+# -fPIC is needed when linking the static library into a shared library
+Cflags: -I${includedir} -I${includedir}/ascii-chat -fPIC

@@ -10,10 +10,14 @@
 #   ascii-chat::static - Static library
 #
 # Required dependencies (install via package manager):
-#   libsodium, zstd, portaudio, opus, mimalloc
+#   libsodium, zstd, portaudio, opus, pcre2, sqlite3, openssl,
+#   freetype, fontconfig, ffmpeg, libwebsockets, miniupnpc
+#
+# Optional dependencies:
+#   mimalloc (used if built with USE_MIMALLOC=@USE_MIMALLOC@)
 #
 # Bundled in libasciichat.a (not required to install):
-#   BearSSL, WebRTC AEC3
+#   BearSSL, yyjson, WebRTC AEC3, libdatachannel
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -43,105 +47,62 @@ endif()
 # =============================================================================
 # ascii-chat::static - Static library
 # =============================================================================
-# Bundled: BearSSL, WebRTC AEC3 (baked into the archive)
-# Required: libsodium, zstd, portaudio, opus, libpcre2-8, sqlite3, libwebsockets,
-#           openssl, freetype2, fontconfig (on Linux), ffmpeg libraries (optional)
+# Bundled: BearSSL, yyjson, WebRTC AEC3, libdatachannel (baked into the archive)
+# Required: libsodium, zstd, portaudio, opus, pcre2, sqlite3, libwebsockets,
+#           openssl, freetype, fontconfig, ffmpeg, miniupnpc
+# Optional: mimalloc (if built with USE_MIMALLOC)
 if(NOT TARGET ascii-chat::static)
     add_library(ascii-chat::static STATIC IMPORTED)
     set_target_properties(ascii-chat::static PROPERTIES
         IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat.a"
         VERSION "@ASCIICHAT_LIB_VERSION@"
         INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
+        INTERFACE_COMPILE_OPTIONS "-fPIC"
     )
 
     # Core required dependencies (all platforms)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
-        # Core crypto and compression
+        # Core crypto, compression, and I/O
         pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
         pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
         pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
         pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
         pkg_check_modules(_PCRE2 QUIET IMPORTED_TARGET libpcre2-8)
         pkg_check_modules(_SQLITE3 QUIET IMPORTED_TARGET sqlite3)
-        pkg_check_modules(_WEBRTC_AEC QUIET IMPORTED_TARGET libwebsockets)
+        pkg_check_modules(_LWS QUIET IMPORTED_TARGET libwebsockets)
 
-        # Optional: mimalloc, ffmpeg, openssl, freetype, fontconfig
-        pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
+        # Optional: mimalloc (only if ascii-chat was built with it)
+        set(_ASCIICHAT_BUILT_WITH_MIMALLOC @USE_MIMALLOC@)
+        if(_ASCIICHAT_BUILT_WITH_MIMALLOC)
+            pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
+        endif()
+
+        # Media: FFmpeg components
         pkg_check_modules(_FFMPEG_FORMAT QUIET IMPORTED_TARGET libavformat)
         pkg_check_modules(_FFMPEG_CODEC QUIET IMPORTED_TARGET libavcodec)
         pkg_check_modules(_FFMPEG_UTIL QUIET IMPORTED_TARGET libavutil)
         pkg_check_modules(_FFMPEG_SWSCALE QUIET IMPORTED_TARGET libswscale)
         pkg_check_modules(_FFMPEG_SWRESAMPLE QUIET IMPORTED_TARGET libswresample)
+
+        # Security and rendering
         pkg_check_modules(_OPENSSL QUIET IMPORTED_TARGET openssl)
         pkg_check_modules(_FREETYPE QUIET IMPORTED_TARGET freetype2)
+        pkg_check_modules(_MINIUPNPC QUIET IMPORTED_TARGET miniupnpc)
         pkg_check_modules(_FONTCONFIG QUIET IMPORTED_TARGET fontconfig)
 
         # Add all found libraries to INTERFACE_LINK_LIBRARIES
-        if(_LIBSODIUM_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_LIBSODIUM)
-        endif()
-        if(_ZSTD_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_ZSTD)
-        endif()
-        if(_PORTAUDIO_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_PORTAUDIO)
-        endif()
-        if(_OPUS_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_OPUS)
-        endif()
-        if(_PCRE2_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_PCRE2)
-        endif()
-        if(_SQLITE3_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_SQLITE3)
-        endif()
-        if(_WEBRTC_AEC_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_WEBRTC_AEC)
-        endif()
-        if(_MIMALLOC_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_MIMALLOC)
-        endif()
-        if(_FFMPEG_FORMAT_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FFMPEG_FORMAT)
-        endif()
-        if(_FFMPEG_CODEC_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FFMPEG_CODEC)
-        endif()
-        if(_FFMPEG_UTIL_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FFMPEG_UTIL)
-        endif()
-        if(_FFMPEG_SWSCALE_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FFMPEG_SWSCALE)
-        endif()
-        if(_FFMPEG_SWRESAMPLE_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FFMPEG_SWRESAMPLE)
-        endif()
-        if(_OPENSSL_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_OPENSSL)
-        endif()
-        if(_FREETYPE_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FREETYPE)
-        endif()
-        if(_FONTCONFIG_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES PkgConfig::_FONTCONFIG)
-        endif()
+        foreach(_dep
+            _LIBSODIUM _ZSTD _PORTAUDIO _OPUS _PCRE2 _SQLITE3 _LWS
+            _MIMALLOC
+            _FFMPEG_FORMAT _FFMPEG_CODEC _FFMPEG_UTIL _FFMPEG_SWSCALE _FFMPEG_SWRESAMPLE
+            _OPENSSL _FREETYPE _MINIUPNPC _FONTCONFIG
+        )
+            if(${_dep}_FOUND)
+                set_property(TARGET ascii-chat::static APPEND PROPERTY
+                    INTERFACE_LINK_LIBRARIES PkgConfig::${_dep})
+            endif()
+        endforeach()
     else()
         # Fallback: try to find libraries without pkg-config
         find_library(_LIBSODIUM_LIB sodium REQUIRED)
@@ -150,20 +111,24 @@ if(NOT TARGET ascii-chat::static)
         find_library(_OPUS_LIB opus REQUIRED)
         find_library(_PCRE2_LIB pcre2-8 REQUIRED)
         find_library(_SQLITE3_LIB sqlite3 REQUIRED)
-        find_library(_WEBRTC_AEC_LIB webrtc_aec REQUIRED)
+        find_library(_LWS_LIB websockets REQUIRED)
 
         set_property(TARGET ascii-chat::static APPEND PROPERTY
             INTERFACE_LINK_LIBRARIES ${_LIBSODIUM_LIB} ${_ZSTD_LIB} ${_PORTAUDIO_LIB}
-                ${_OPUS_LIB} ${_PCRE2_LIB} ${_SQLITE3_LIB} ${_WEBRTC_AEC_LIB}
+                ${_OPUS_LIB} ${_PCRE2_LIB} ${_SQLITE3_LIB} ${_LWS_LIB}
         )
 
-        # Optional libraries
-        find_library(_MIMALLOC_LIB mimalloc)
-        if(_MIMALLOC_LIB)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_MIMALLOC_LIB})
+        # Optional: mimalloc (only if ascii-chat was built with it)
+        set(_ASCIICHAT_BUILT_WITH_MIMALLOC @USE_MIMALLOC@)
+        if(_ASCIICHAT_BUILT_WITH_MIMALLOC)
+            find_library(_MIMALLOC_LIB mimalloc)
+            if(_MIMALLOC_LIB)
+                set_property(TARGET ascii-chat::static APPEND PROPERTY
+                    INTERFACE_LINK_LIBRARIES ${_MIMALLOC_LIB})
+            endif()
         endif()
 
+        # FFmpeg
         find_library(_AVFORMAT_LIB avformat)
         find_library(_AVCODEC_LIB avcodec)
         find_library(_AVUTIL_LIB avutil)
@@ -175,20 +140,30 @@ if(NOT TARGET ascii-chat::static)
                     ${_SWSCALE_LIB} ${_SWRESAMPLE_LIB})
         endif()
 
-        find_library(_OPENSSL_LIB ssl crypto)
-        if(_OPENSSL_LIB)
+        # OpenSSL
+        find_package(OpenSSL QUIET)
+        if(OPENSSL_FOUND)
             set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_OPENSSL_LIB})
+                INTERFACE_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
         endif()
 
+        # FreeType
         find_library(_FREETYPE_LIB freetype)
         if(_FREETYPE_LIB)
             set_property(TARGET ascii-chat::static APPEND PROPERTY
                 INTERFACE_LINK_LIBRARIES ${_FREETYPE_LIB})
         endif()
 
+        # miniupnpc
+        find_library(_MINIUPNPC_LIB miniupnpc)
+        if(_MINIUPNPC_LIB)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES ${_MINIUPNPC_LIB})
+        endif()
+
+        # fontconfig
         find_library(_FONTCONFIG_LIB fontconfig)
-        if(_FONTCONFIG_LIB AND UNIX AND NOT APPLE)
+        if(_FONTCONFIG_LIB)
             set_property(TARGET ascii-chat::static APPEND PROPERTY
                 INTERFACE_LINK_LIBRARIES ${_FONTCONFIG_LIB})
         endif()
@@ -219,11 +194,11 @@ if(NOT TARGET ascii-chat::static)
         )
     elseif(UNIX AND NOT APPLE)
         set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES m dl stdc++)
+            INTERFACE_LINK_LIBRARIES m dl rt stdc++)
     elseif(WIN32)
         set_property(TARGET ascii-chat::static APPEND PROPERTY
             INTERFACE_LINK_LIBRARIES ws2_32 user32 advapi32 dbghelp mf mfplat
-                mfreadwrite mfuuid ole32 crypt32)
+                mfreadwrite mfuuid ole32 crypt32 winmm iphlpapi)
     endif()
 endif()
 

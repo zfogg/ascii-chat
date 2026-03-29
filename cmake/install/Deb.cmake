@@ -65,7 +65,13 @@ set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_DESCRIPTION "Development files for lib
  This package contains the static and shared libraries, C headers, pkg-config
  files, and CMake configuration files needed to build applications using
  libasciichat.")
-set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_DEPENDS "ascii-chat (= ${PROJECT_VERSION}), libportaudio2, libzstd1, libsodium23")
+# Runtime library dependencies for consumers of libasciichat-dev.
+# Only list packages available in Debian stable (bookworm/trixie).
+# Bundled deps (BearSSL, yyjson, WebRTC AEC3) are not listed.
+# libdatachannel is not packaged in Debian and is statically linked.
+# FFmpeg soname versions change per release; use virtual package where possible.
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_DEPENDS
+    "ascii-chat (= ${PROJECT_VERSION}), libsodium23, libzstd1, libportaudio2, libopus0, libpcre2-8-0, libsqlite3-0, libfreetype6 | libfreetype-dev, libfontconfig1, libssl3 | libssl3t64, libminiupnpc17, libwebsockets19 | libwebsockets19t64, libavcodec61 | libavcodec-extra61 | libavcodec60 | libavcodec-extra60, libavformat61 | libavformat60, libswscale8 | libswscale7, libswresample5 | libswresample4, libavutil59 | libavutil58")
 
 # =============================================================================
 # Documentation Package (libasciichat-doc) - HTML docs

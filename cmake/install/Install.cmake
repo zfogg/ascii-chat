@@ -317,20 +317,24 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 
     # Configure static library .pc file (needs all transitive dependencies)
-    # Only mimalloc is optional
+    # mimalloc and fontconfig are conditional
     if(USE_MIMALLOC)
         set(ASCIICHAT_OPTIONAL_MIMALLOC_PC "mimalloc, ")
     else()
         set(ASCIICHAT_OPTIONAL_MIMALLOC_PC "")
     endif()
 
-    # Build Libs.private for static build
+    # fontconfig is used on all Unix platforms (Linux font resolution, macOS fallback)
+    # On Windows, vcpkg provides it. Not conditional.
+    set(ASCIICHAT_OPTIONAL_FONTCONFIG_PC "fontconfig, ")
+
+    # Build Libs.private for static build (system libs not covered by pkg-config)
     if(APPLE)
         set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework CoreAudio -framework AudioUnit -framework AudioToolbox -framework CoreServices -framework IOKit -lc++")
     elseif(UNIX AND NOT APPLE)
-        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -ldl -lpthread -lstdc++")
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -ldl -lpthread -lrt -lstdc++")
     elseif(WIN32)
-        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lws2_32 -luser32 -ladvapi32 -ldbghelp -lmf -lmfplat -lmfreadwrite -lmfuuid -lole32 -lcrypt32")
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lws2_32 -luser32 -ladvapi32 -ldbghelp -lmf -lmfplat -lmfreadwrite -lmfuuid -lole32 -lcrypt32 -lwinmm -liphlpapi")
     else()
         set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -lpthread")
     endif()
@@ -949,10 +953,13 @@ ascii-chat [mode] --help  # Show all options (or for [mode])")
         endif()
 
         # Set DEB/RPM dependencies and metadata BEFORE include(CPack)
-        # Runtime dependencies for the shared library (libasciichat.so)
+        # Runtime dependencies for the ascii-chat executable (shared lib linked).
+        # These are the libraries the shared lib (libasciichat.so) links at runtime.
+        # Bundled deps (BearSSL, yyjson, WebRTC AEC3) are statically linked and not listed.
+        # libdatachannel is statically linked (not packaged in distros).
         if(UNIX AND NOT APPLE)
-            set(CPACK_DEBIAN_PACKAGE_DEPENDS "libportaudio2, libzstd1, libsodium23")
-            set(CPACK_RPM_PACKAGE_REQUIRES "portaudio, libzstd, libsodium")
+            set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsodium23, libzstd1, libportaudio2, libopus0, libpcre2-8-0, libsqlite3-0, libfreetype6 | libfreetype-dev, libfontconfig1, libssl3 | libssl3t64, libminiupnpc17, libwebsockets19 | libwebsockets19t64")
+            set(CPACK_RPM_PACKAGE_REQUIRES "libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets")
             if(USE_MIMALLOC)
                 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libmimalloc2.0 | libmimalloc-dev")
                 set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, mimalloc")
