@@ -44,11 +44,6 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     log_debug("render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
-  // BEFORE resolving fonts, check if matrix font and disable it for render-file (causes glyph height=0)
-  if (raw_font && strcmp(raw_font, "matrix") == 0) {
-    log_warn("render_file_create: [MATRIX] Matrix font not supported for render-file output, using system font instead");
-    raw_font = NULL;  // Force fallback to system font
-  }
 
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);

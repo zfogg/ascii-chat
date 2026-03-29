@@ -123,7 +123,8 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   }
 
   // Detect if this is the matrix font (needs character mapping to Private Use Area)
-  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL);
+  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) ||
+                      (cfg->font_data != NULL && GET_OPTION(matrix_rain));
   if (r->is_matrix_font) {
     log_debug("term_renderer_create: Detected matrix font - will use Private Use Area character mapping");
   }
