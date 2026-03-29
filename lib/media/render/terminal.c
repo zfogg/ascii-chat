@@ -35,6 +35,14 @@ struct terminal_renderer_s {
   bool is_matrix_font;
 };
 
+static int screen_damage(VTermRect r, void *u) {
+  (void)r;
+  (void)u;
+  return 1;
+}
+
+static VTermScreenCallbacks g_vterm_cbs = {.damage = screen_damage};
+
 /**
  * Map ASCII characters to Matrix font's Private Use Area glyphs (U+E900-U+E91A).
  * The Matrix-Resurrected font has 27 decorative glyphs in the PUA.
@@ -227,6 +235,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   vterm_set_size(r->vt, r->rows, r->cols);
   log_debug("DEBUG: vterm_set_size called with rows=%d cols=%d", r->rows, r->cols);
 
+  vterm_screen_set_callbacks(r->vts, &g_vterm_cbs, r);
   // Reset MUST come before any input writing to initialize state correctly
   vterm_screen_reset(r->vts, 1);
 
@@ -248,8 +257,9 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
 
-  static const char home[] = "\033[H";
-  vterm_input_write(r->vt, home, sizeof(home) - 1);
+  // Reset scrolling region and cursor position to prevent vertical shifts
+  static const char reset_sequence[] = "\033[2J\033[H\033[r";
+  vterm_input_write(r->vt, reset_sequence, sizeof(reset_sequence) - 1);
 
   // Count newlines to determine CRLF conversion size
   int newline_count = 0;

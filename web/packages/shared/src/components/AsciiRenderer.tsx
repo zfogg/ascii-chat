@@ -315,6 +315,7 @@ export const AsciiRenderer = forwardRef<
   }, [wasmModuleReady, updateDimensions]);
 
   const frameCountForLoggingRef = useRef(0);
+  const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
 
   useImperativeHandle(
     ref,
@@ -436,6 +437,82 @@ export const AsciiRenderer = forwardRef<
           // Mark first render as done so resize can proceed
           if (!firstRenderDoneRef.current) {
             firstRenderDoneRef.current = true;
+          }
+
+          // Detect content bouncing by finding 80% similar text blocks that move
+          try {
+            const lines = ansiString.split('\n');
+            const history = frameHistoryRef.current;
+
+            // Keep only last 60 frames (roughly 1-2 seconds at 30-60 fps)
+            if (history.length > 60) {
+              history.shift();
+            }
+
+            // Look back through recent frames
+            if (history.length > 5) {
+              const currentFrame = history[history.length - 1];
+              const olderFrame = history[Math.max(0, history.length - 20)]; // ~0.3-0.6 sec ago
+
+              if (currentFrame && olderFrame && currentFrame.lines.length > 0 && olderFrame.lines.length > 0) {
+                // Find a contiguous block of 5+ lines that are 80%+ similar between frames
+                for (let blockStart = 0; blockStart < currentFrame.lines.length - 4; blockStart++) {
+                  let matchedOffset = -999;
+                  let blockSimilarity = 0;
+
+                  // Check if this block of 5+ lines matches somewhere in older frame
+                  for (let offset = -15; offset <= 15; offset++) {
+                    let similarLines = 0;
+                    for (let i = 0; i < 5; i++) {
+                      const currIdx = blockStart + i;
+                      const oldIdx = blockStart + i + offset;
+                      if (
+                        currIdx < currentFrame.lines.length &&
+                        oldIdx >= 0 &&
+                        oldIdx < olderFrame.lines.length
+                      ) {
+                        // Compare first 50 chars
+                        const currSig = currentFrame.lines[currIdx].substring(0, 50);
+                        const oldSig = olderFrame.lines[oldIdx].substring(0, 50);
+                        if (currSig === oldSig) {
+                          similarLines++;
+                        } else {
+                          // Check 80% character similarity
+                          let charMatch = 0;
+                          const maxLen = Math.max(currSig.length, oldSig.length);
+                          for (let c = 0; c < Math.min(currSig.length, oldSig.length); c++) {
+                            if (currSig[c] === oldSig[c]) charMatch++;
+                          }
+                          if (charMatch / maxLen >= 0.8) {
+                            similarLines++;
+                          }
+                        }
+                      }
+                    }
+
+                    // Found a matching block that moved
+                    if (similarLines >= 4 && offset !== 0) {
+                      matchedOffset = offset;
+                      blockSimilarity = similarLines / 5;
+                      break;
+                    }
+                  }
+
+                  if (blockSimilarity >= 0.8 && matchedOffset !== -999) {
+                    const direction = matchedOffset > 0 ? 'DOWN' : 'UP';
+                    const magnitude = Math.abs(matchedOffset);
+                    console.log(
+                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${Math.round(blockSimilarity * 5)} lines) | rows=${dimensionsRef.current.rows}`
+                    );
+                    break; // Only log once per frame
+                  }
+                }
+              }
+            }
+
+            history.push({ frame: frameCountForLoggingRef.current, lines });
+          } catch (e) {
+            // ignore
           }
         } catch (err) {
           console.error("[AsciiRenderer] writeFrame error:", err);
