@@ -48,7 +48,16 @@ function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
   setMatrixRain(s.matrixRain ?? false);
   setFlipX(s.flipX !== undefined ? s.flipX : sourceFlipX);
   setFlipY(s.flipY ?? false);
-  if (s.paletteChars !== undefined) setPaletteChars(s.paletteChars);
+  if (s.paletteChars !== undefined) {
+    console.log(
+      "[PALETTE] Setting paletteChars:",
+      Array.from(s.paletteChars).map(
+        (c, i) =>
+          `${i}: U+${c.charCodeAt(0).toString(16).padStart(4, "0")} "${c}"`,
+      ),
+    );
+    setPaletteChars(s.paletteChars);
+  }
   if (s.targetFps !== undefined) setTargetFps(s.targetFps);
 }
 
@@ -384,6 +393,35 @@ export default function MirrorDemoWidget({
         );
         if (ascii) {
           frameCountRef.current++;
+
+          // Log raw output for debugging UTF-8 rendering
+          if (frameCountRef.current % 30 === 0) {
+            // Log every 30 frames to avoid spam
+            // Find a chunk with non-ASCII to inspect
+            let sampleIdx = 0;
+            for (let i = 0; i < Math.min(500, ascii.length); i++) {
+              if (ascii.charCodeAt(i) > 127) {
+                sampleIdx = i;
+                break;
+              }
+            }
+
+            const sample = ascii.substring(
+              sampleIdx,
+              Math.min(sampleIdx + 50, ascii.length),
+            );
+            const bytes = Array.from(sample)
+              .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+              .join(" ");
+            // eslint-disable-next-line no-control-regex
+            const visible = sample.replace(/[\0-\u001f\u007f-\u009f]/gu, ".");
+
+            console.log(`[UTF8 RENDER] Frame ${frameCountRef.current}:`);
+            console.log(`  Sample text: "${visible}"`);
+            console.log(`  Byte values: ${bytes}`);
+            console.log(`  First 200 chars:`, ascii.substring(0, 200));
+          }
+
           rendererRef.current.writeFrame(ascii);
         }
       } catch (err) {

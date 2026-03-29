@@ -25,7 +25,7 @@ PATH = "/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
 PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 CMAKE_PREFIX_PATH = "/root/.nix-profile"
 LD_LIBRARY_PATH = "/root/.nix-profile/lib"
-LDFLAGS = "-L/root/.nix-profile/lib"
+LDFLAGS = "-L/root/.nix-profile/lib -L/lib -L/usr/lib"
 CFLAGS = "-I/root/.nix-profile/include"
 CPPFLAGS = "-I/root/.nix-profile/include"
 
@@ -46,6 +46,8 @@ cmds = [
   # under --print-resource-dir/lib/linux. Symlink the compiler-rt libs so
   # cmake's sanitizer detection finds them.
   "bash -c 'RESOURCE_DIR=$(clang --print-resource-dir) && COMPILER_RT_DIR=$(find /nix/store -maxdepth 1 -name \"*compiler-rt-libc*\" -type d | head -1) && if [ -n \"$COMPILER_RT_DIR\" ] && [ -d \"$COMPILER_RT_DIR/lib/linux\" ]; then mkdir -p \"$RESOURCE_DIR/lib/linux\" && ln -sf \"$COMPILER_RT_DIR/lib/linux/\"* \"$RESOURCE_DIR/lib/linux/\"; fi'",
+  # Find and link CRT files and libgcc from nix store
+  "bash -c 'mkdir -p /root/.nix-profile/lib && for pattern in \"Scrt1.o\" \"crti.o\" \"crtbeginS.o\" \"libgcc.so*\" \"libgcc_s.so*\"; do find /nix/store -name \"$pattern\" -type f 2>/dev/null | head -1 | xargs -r ln -sf -t /root/.nix-profile/lib/; done'",
   # Nix multi-output packages put .pc files in -dev store paths that aren't
   # symlinked into the profile. Collect all .pc files from nix store into
   # the profile's pkgconfig dir so cmake can find them.
@@ -61,7 +63,8 @@ cmds = [
   # Create minimal .git for cmake version detection
   "mkdir -p .git && touch .git/HEAD .git/index",
   # Build Debug (configure is fast because .deps-cache/ is pre-populated)
-  "make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS='-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}'",
+  # Use musl to avoid glibc CRT linking issues in nix containerized environment
+  "make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS='-DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}'",
   # Install to /usr/local
   "make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local",
 ]

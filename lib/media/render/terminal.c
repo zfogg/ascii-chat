@@ -210,6 +210,9 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->vt = vterm_new(r->rows, r->cols);
   r->vts = vterm_obtain_screen(r->vt);
 
+  // Enable UTF-8 encoding so vterm correctly parses multi-byte characters
+  vterm_set_utf8(r->vt, 1);
+
   // Set size BEFORE reset to ensure screen is allocated with correct dimensions
   vterm_set_size(r->vt, r->rows, r->cols);
   log_debug("DEBUG: vterm_set_size called with rows=%d cols=%d", r->rows, r->cols);

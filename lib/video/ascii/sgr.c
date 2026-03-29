@@ -4,6 +4,7 @@
  * @brief 🎨 SIMD-accelerated color matching and palette lookup for ASCII rendering
  */
 
+#include "ascii-chat/common/error_codes.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -411,11 +412,12 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
 
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
   if (!image || !ascii_chars) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print_color_simd: image or ascii_chars is NULL");
     return NULL;
   }
 
-  log_dev_every(4500 * US_PER_MS_INT, "image_print_color_simd called: width=%d, height=%d, use_256color=%d",
-                image->w, image->h, use_256color);
+  log_dev_every(4500 * US_PER_MS_INT, "image_print_color_simd called: width=%d, height=%d, use_256color=%d", image->w,
+                image->h, use_256color);
 
 #if SIMD_SUPPORT_AVX2
   log_debug_every(10 * US_PER_SEC_INT, "Taking AVX2 path: width=%d, height=%d", image->w, image->h);

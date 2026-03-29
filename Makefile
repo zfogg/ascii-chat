@@ -102,6 +102,9 @@ clean:
 	else \
 		echo "Nothing to clean (build directory '$(BUILD_DIR)' not found)"; \
 	fi
+	rm -rf web/*/dist
+	rm -rf web/node_modules/.vite-temp
+	rm -rf web/*/node_modules/.vite-temp
 
 distclean:
 	@echo "Removing build directory '$(BUILD_DIR)'..."
