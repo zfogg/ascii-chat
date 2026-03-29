@@ -45,7 +45,6 @@ import {
 } from "../hooks";
 
 export function MirrorPage() {
-
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();

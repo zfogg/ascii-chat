@@ -119,7 +119,6 @@ export function useClientLike(
       });
   }, [initWasm]);
 
-
   // Apply WASM settings immediately after init completes
   useEffect(() => {
     if (!wasmInitialized) {

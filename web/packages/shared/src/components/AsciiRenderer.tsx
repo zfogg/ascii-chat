@@ -112,7 +112,7 @@ export const AsciiRenderer = forwardRef<
         // rows (int32) at offset 4
         view.setInt32(4, 24, true);
         // font_size_pt (float64) at offset 8
-        view.setFloat64(8, 12.0, true);
+        view.setFloat64(8, 9.0, true);
         // theme (int32) at offset 16
         view.setInt32(16, 0, true);
         // font_spec (char[512]) at offset 20
@@ -208,6 +208,10 @@ export const AsciiRenderer = forwardRef<
       if (width === 0 || height === 0) {
         return;
       }
+
+      // Update canvas internal resolution to match container size
+      canvas.width = width;
+      canvas.height = height;
 
       if (firstRenderDoneRef.current && moduleRef.current) {
         const cols = moduleRef.current._term_renderer_get_cols(
@@ -412,13 +416,11 @@ export const AsciiRenderer = forwardRef<
   return (
     <>
       {/* ASCII canvas output */}
-      <div className="h-full flex flex-col flex-1 overflow-hidden min-h-0 relative">
+      <div className="h-full flex flex-col flex-1 overflow-hidden min-h-0 relative items-center justify-center">
         <canvas
           ref={canvasRef}
-          className="flex flex-1 w-full h-full rounded bg-terminal-bg"
-          style={{ display: "block" }}
-          width={1280}
-          height={720}
+          className="bg-terminal-bg rounded"
+          style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
         />
         {connectionState === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
