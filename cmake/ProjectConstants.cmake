@@ -14,11 +14,11 @@
 # =============================================================================
 
 set(PROJECT_NAME_FULL "ascii-chat" CACHE STRING "Full project name")
-set(PROJECT_DISPLAY_NAME "ascii-chat" CACHE STRING "Display name for installers")
+set(PROJECT_DISPLAY_NAME "${PROJECT_NAME_FULL} - Video chat in your terminal" CACHE STRING "Display name for installers")
 
 # Bundle/Package identifiers (reverse DNS notation)
-set(PROJECT_BUNDLE_ID "gg.zfo.ascii-chat" CACHE STRING "Bundle identifier for macOS")
-set(PROJECT_PACKAGE_ID "gg.zfo.ascii-chat" CACHE STRING "Package identifier")
+set(PROJECT_BUNDLE_ID "com.ascii-chat" CACHE STRING "Bundle identifier for macOS")
+set(PROJECT_PACKAGE_ID "${PROJECT_BUDNLE_ID}" CACHE STRING "Package identifier")
 
 # =============================================================================
 # Author Information
@@ -53,11 +53,11 @@ set(PROJECT_SUPPORT_URL "${PROJECT_HOMEPAGE_URL}" CACHE STRING "Support URL")
 # =============================================================================
 
 # Short summary with emoji (for display/marketing)
-set(PROJECT_DESCRIPTION_SUMMARY "📸 Video chat in your terminal 🔠" CACHE STRING "Short project description")
+set(PROJECT_DESCRIPTION_SUMMARY "💻📸 Video chat in your terminal 🔡💬" CACHE STRING "Short project description")
 
 # Full description (for package metadata)
 set(PROJECT_DESCRIPTION_FULL
-    "ascii-chat is a terminal video chat application that converts video into ASCII art. It has audio support, renders to monochrome/16color/256color/truecolor, has end-to-end encryption, allows multiple clients (3+) to connect and displays them in an video grid like Zoom and Google Hangouts, and has many other neat little features."
+    "ascii-chat is a video chat application that converts between pixels and ASCII art. It supports 3+ clients like Zoom, has audio, can render to 16.7m colors, has end-to-end encryption, and has many other neat little features."
     CACHE STRING "Full project description"
 )
 
@@ -79,9 +79,10 @@ set(PROJECT_COPYRIGHT "Copyright (c) 2013 ${PROJECT_AUTHOR_NAME}" CACHE STRING "
 # Package-Specific Identifiers
 # =============================================================================
 
-# WiX Upgrade GUID (NEVER CHANGE THIS!)
+# NOTE: WiX Upgrade GUID (NEVER CHANGE THIS!)
 # This GUID identifies the product family for upgrade detection
-set(CPACK_WIX_UPGRADE_GUID "A1B2C3D4-E5F6-7890-ABCD-EF1234567890" CACHE STRING "WiX upgrade GUID" FORCE)
+# This was set to something real for the first time on 3-29-2026
+set(CPACK_WIX_UPGRADE_GUID "D9F0A3E2-5B1C-7D4E-8A6F-9B2C3D4E5F6A" CACHE STRING "WiX upgrade GUID" FORCE)
 
 # WiX Product GUID (auto-generated per version)
 set(CPACK_WIX_PRODUCT_GUID "*" CACHE STRING "WiX product GUID" FORCE)

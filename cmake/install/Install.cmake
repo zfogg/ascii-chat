@@ -681,13 +681,12 @@ endif()
 # =============================================================================
 # Install AppStream metadata for software centers (GNOME Software, KDE Discover, etc.)
 if(UNIX AND NOT APPLE)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/metainfo/gg.zfo.ascii-chat.metainfo.xml")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/metainfo/gg.zfo.ascii-chat.metainfo.xml"
-            DESTINATION share/metainfo
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} AppStream metainfo: ${BoldBlue}gg.zfo.ascii-chat.metainfo.xml${ColorReset} → ${BoldYellow}share/metainfo/${ColorReset}")
-    endif()
+    set(_metainfo "${CMAKE_SOURCE_DIR}/share/metainfo/${PROJECT_BUNDLE_ID}.metainfo.xml")
+    install(FILES "${_metainfo}"
+        DESTINATION share/metainfo
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} AppStream metainfo: ${BoldBlue}gg.zfo.ascii-chat.metainfo.xml${ColorReset} → ${BoldYellow}share/metainfo/${ColorReset}")
 endif()
 
 # =============================================================================
@@ -697,15 +696,14 @@ endif()
 # Users must enable with: systemctl --user enable ascii-chat-server
 # Or system-wide: sudo systemctl enable ascii-chat-server
 if(UNIX AND NOT APPLE)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
-        # Install to user systemd directory (lib/systemd/user/)
-        # System-wide would be lib/systemd/system/
-        install(FILES "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service"
-            DESTINATION lib/systemd/user
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
-    endif()
+    set(_server_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
+    # Install to user systemd directory (lib/systemd/user/)
+    # System-wide would be lib/systemd/system/
+    install(FILES"${_server_systemd_service}"
+        DESTINATION lib/systemd/user
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
 endif()
 
 # =============================================================================
@@ -713,41 +711,33 @@ endif()
 # =============================================================================
 # Install example config.toml with documented options
 # Users can copy this to their config directory to customize
-if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/config.toml")
-    install(FILES "${CMAKE_SOURCE_DIR}/share/examples/config.toml"
-        DESTINATION ${INSTALL_DOC_DIR}/examples
-        COMPONENT Documentation
-    )
-    message(STATUS "${BoldGreen}Configured${ColorReset} example config: ${BoldBlue}config.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
-endif()
+install(FILES "${CMAKE_SOURCE_DIR}/share/examples/config.toml"
+    DESTINATION ${INSTALL_DOC_DIR}/examples
+    COMPONENT Documentation
+)
+message(STATUS "${BoldGreen}Configured${ColorReset} example config: ${BoldBlue}config.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
 
 # Install example colors.toml with documented color schemes
 # Users can copy this to their config directory to customize logging colors
-if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/colors.toml")
-    install(FILES "${CMAKE_SOURCE_DIR}/share/examples/colors.toml"
-        DESTINATION ${INSTALL_DOC_DIR}/examples
-        COMPONENT Documentation
-    )
-    message(STATUS "${BoldGreen}Configured${ColorReset} example colors: ${BoldBlue}colors.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
-endif()
+install(FILES "${CMAKE_SOURCE_DIR}/share/examples/colors.toml"
+    DESTINATION ${INSTALL_DOC_DIR}/examples
+    COMPONENT Documentation
+)
+message(STATUS "${BoldGreen}Configured${ColorReset} example colors: ${BoldBlue}colors.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
 
 # Install documentation to share/doc/ascii-chat/
-if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
-    install(FILES README.md
-        DESTINATION share/doc/ascii-chat
-        COMPONENT Runtime
-        OPTIONAL
-    )
-endif()
+install(FILES README.md
+    DESTINATION share/doc/ascii-chat
+    COMPONENT Runtime
+    OPTIONAL
+)
 
 # Install license (if exists)
-if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
-    install(FILES LICENSE.txt
-        DESTINATION share/doc/ascii-chat
-        COMPONENT Runtime
-        OPTIONAL
-    )
-endif()
+install(FILES LICENSE.txt
+    DESTINATION share/doc/ascii-chat
+    COMPONENT Runtime
+    OPTIONAL
+)
 
 # Install Doxygen HTML documentation (if generated)
 # Doxygen HTML docs are generated in ${CMAKE_BINARY_DIR}/share/doc/html/
@@ -881,9 +871,7 @@ This package includes:
 USAGE
 =====
 After installation, run:
-  ascii-chat server     # Start a video chat server
-  ascii-chat client     # Connect to a server
-  ascii-chat --help     # Show all options")
+ascii-chat [mode] --help  # Show all options (or for [mode])")
 
             set(CPACK_RESOURCE_FILE_WELCOME "${CMAKE_BINARY_DIR}/ProductbuildWelcome.txt" CACHE FILEPATH "Welcome file for productbuild" FORCE)
             set(CPACK_RESOURCE_FILE_README "${CMAKE_BINARY_DIR}/ProductbuildReadMe.txt" CACHE FILEPATH "ReadMe file for productbuild" FORCE)
