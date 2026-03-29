@@ -151,21 +151,38 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
               cfg->font_size_pt, (long)(cfg->font_size_pt * 64.0), err);
   }
 
-  int load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
-  log_debug("DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
+  // For matrix fonts, try PUA glyph first (U+E900) since ASCII chars might not have bitmap data
+  // For other fonts, start with 'M'
+  int load_err;
+  if (r->is_matrix_font) {
+    log_debug("Matrix font detected: trying PUA glyph U+E900 first");
+    load_err = FT_Load_Char(r->ft_face, 0xE900, FT_LOAD_RENDER);
+    log_debug("FT_Load_Char(U+E900) returned %d", load_err);
 
-  // For bitmap fonts (like matrix), FT_Load_Char may fail if the character doesn't exist.
-  // Try a fallback character if 'M' fails.
-  if (load_err != 0 && r->ft_face->num_fixed_sizes > 0) {
-    log_debug("FT_Load_Char('M') failed for bitmap font, trying fallback character 'A'");
-    load_err = FT_Load_Char(r->ft_face, 'A', FT_LOAD_RENDER);
-    log_debug("FT_Load_Char('A') returned %d", load_err);
-
+    // If PUA glyph fails, try ASCII fallback
     if (load_err != 0) {
-      // Try space character as last resort
-      log_debug("FT_Load_Char('A') also failed, trying space character");
-      load_err = FT_Load_Char(r->ft_face, ' ', FT_LOAD_RENDER);
-      log_debug("FT_Load_Char(' ') returned %d", load_err);
+      log_debug("U+E900 failed, trying fallback character 'M'");
+      load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
+      log_debug("FT_Load_Char('M') returned %d", load_err);
+    }
+  } else {
+    // For non-matrix fonts, standard approach
+    load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
+    log_debug("DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
+
+    // For bitmap fonts (like matrix), FT_Load_Char may fail if the character doesn't exist.
+    // Try a fallback character if 'M' fails.
+    if (load_err != 0 && r->ft_face->num_fixed_sizes > 0) {
+      log_debug("FT_Load_Char('M') failed for bitmap font, trying fallback character 'A'");
+      load_err = FT_Load_Char(r->ft_face, 'A', FT_LOAD_RENDER);
+      log_debug("FT_Load_Char('A') returned %d", load_err);
+
+      if (load_err != 0) {
+        // Last resort: try a PUA glyph for unknown bitmap fonts
+        log_debug("FT_Load_Char('A') also failed, trying PUA glyph U+E900");
+        load_err = FT_Load_Char(r->ft_face, 0xE900, FT_LOAD_RENDER);
+        log_debug("FT_Load_Char(U+E900) returned %d", load_err);
+      }
     }
   }
 
