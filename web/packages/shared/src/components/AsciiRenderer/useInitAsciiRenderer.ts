@@ -5,6 +5,7 @@ interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
   rendererPtrRef: RefObject<number>;
+  setUpdateDimensions: (fn: (cols: number, rows: number) => void) => void;
 }
 
 interface UseInitAsciiRendererParams {
@@ -12,7 +13,6 @@ interface UseInitAsciiRendererParams {
   resizeObserverRef: RefObject<ResizeObserver | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   pendingDimensionsRef: RefObject<{ cols: number; rows: number } | null>;
-  updateDimensions: (cols: number, rows: number) => void;
   wasmModuleReady: boolean | undefined;
 }
 
@@ -21,12 +21,14 @@ export function useInitAsciiRenderer({
   resizeObserverRef,
   resizeTimeoutRef,
   pendingDimensionsRef,
-  updateDimensions,
   wasmModuleReady,
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
   const rendererPtrRef = useRef<number>(0);
+  const updateDimensionsRef = useRef<
+    ((cols: number, rows: number) => void) | null
+  >(null);
 
   // Load WASM module when ready
   useEffect(() => {
@@ -248,7 +250,7 @@ export function useInitAsciiRenderer({
         moduleRef.current!._free(configPtr);
         moduleRef.current!._free(outPtr);
 
-        updateDimensions(cols, rows);
+        updateDimensionsRef.current?.(cols, rows);
         setupDoneRef.current = true;
         console.log(
           "[SETUP DONE] Setup complete, canvas=" +
@@ -390,7 +392,7 @@ export function useInitAsciiRenderer({
                 }
                 resizeTimeoutRef.current = setTimeout(() => {
                   if (pendingDimensionsRef.current) {
-                    updateDimensions(
+                    updateDimensionsRef.current?.(
                       pendingDimensionsRef.current.cols,
                       pendingDimensionsRef.current.rows,
                     );
@@ -449,11 +451,14 @@ export function useInitAsciiRenderer({
         resizeTimeoutRef.current = null;
       }
     };
-  }, [wasmModuleReady, updateDimensions]);
+  }, [wasmModuleReady]);
 
   return {
     moduleRef,
     setupDoneRef,
     rendererPtrRef,
+    setUpdateDimensions: (fn: (cols: number, rows: number) => void) => {
+      updateDimensionsRef.current = fn;
+    },
   };
 }

@@ -32,21 +32,15 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     // NOTE: Canvas sizing is handled by the renderer initialization code
     // We set canvas to the renderer's actual pixel output dimensions, not the container size
 
-    // Create a callback for updateDimensions that will be provided by useAsciiRendererHandle
-    const updateDimensionsRef = useRef<(cols: number, rows: number) => void>(
-      () => {},
-    );
-
     // Initialize renderer and get refs
-    const { moduleRef, setupDoneRef, rendererPtrRef } = useInitAsciiRenderer({
-      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
-      resizeObserverRef,
-      resizeTimeoutRef,
-      pendingDimensionsRef,
-      updateDimensions: (cols, rows) =>
-        updateDimensionsRef.current?.(cols, rows),
-      wasmModuleReady,
-    });
+    const { moduleRef, setupDoneRef, rendererPtrRef, setUpdateDimensions } =
+      useInitAsciiRenderer({
+        canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
+        resizeObserverRef,
+        resizeTimeoutRef,
+        pendingDimensionsRef,
+        wasmModuleReady,
+      });
 
     // Set up imperative handle and get updateDimensions + fpsDisplayRef
     const { updateDimensions, fpsDisplayRef } = useAsciiRendererHandle({
@@ -61,8 +55,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       onDimensionsChange,
     });
 
-    // Store the real updateDimensions for use by useInitAsciiRenderer
-    updateDimensionsRef.current = updateDimensions;
+    // Provide updateDimensions to the initialization hook
+    setUpdateDimensions(updateDimensions);
 
     return (
       <div className="ascii-canvas-container w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
