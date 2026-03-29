@@ -75,6 +75,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       rendererPtrRef,
       resizeTimeoutRef,
       setUpdateDimensions,
+      triggerRendererRecreate,
     } = useInitAsciiRenderer({
       canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
       wasmModuleReady,
@@ -91,6 +92,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       showFps,
       onFpsChange,
       onDimensionsChange,
+      onRecreateRenderer: triggerRendererRecreate,
     });
 
     // Provide updateDimensions to the initialization hook

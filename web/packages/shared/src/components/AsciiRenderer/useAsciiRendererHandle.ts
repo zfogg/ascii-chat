@@ -20,6 +20,7 @@ interface UseAsciiRendererHandleParams {
   onDimensionsChange:
     | ((dims: { cols: number; rows: number }) => void)
     | undefined;
+  onRecreateRenderer?: () => void;
 }
 
 interface UseAsciiRendererHandleReturn {
@@ -37,6 +38,7 @@ export function useAsciiRendererHandle({
   showFps,
   onFpsChange,
   onDimensionsChange,
+  onRecreateRenderer,
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const frameCountForLoggingRef = useRef(0);
   const firstRenderDoneRef = useRef(false);
@@ -146,9 +148,8 @@ export function useAsciiRendererHandle({
                   throw new Error("[AsciiRenderer] Canvas context not found");
                 }
               } else {
-                throw new Error(
-                  `[AsciiRenderer] Invalid framebuffer dimensions fbPtr=${fbPtr} fbWidth=${fbWidth} fbHeight=${fbHeight}`,
-                );
+                // Skip rendering if canvas dimensions are invalid (can happen during widget switching)
+                return;
               }
             } else {
               throw new Error(
@@ -205,10 +206,15 @@ export function useAsciiRendererHandle({
           moduleRef.current._free(emptyPtr);
         }
       },
+
+      recreateRenderer() {
+        onRecreateRenderer?.();
+      },
     }),
     [
       showFps,
       onFpsChange,
+      onRecreateRenderer,
       moduleRef,
       setupDoneRef,
       rendererPtrRef,

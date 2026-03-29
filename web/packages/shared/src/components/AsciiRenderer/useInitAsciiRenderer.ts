@@ -7,6 +7,7 @@ interface UseInitAsciiRendererReturn {
   rendererPtrRef: RefObject<number>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   setUpdateDimensions: (fn: (cols: number, rows: number) => void) => void;
+  triggerRendererRecreate: () => void;
 }
 
 interface UseInitAsciiRendererParams {
@@ -305,6 +306,22 @@ export function useInitAsciiRenderer({
     };
   }, [wasmModuleReady, canvasRef, initializeRenderer]);
 
+  const triggerRendererRecreate = useCallback(() => {
+    if (!moduleRef.current || !canvasRef.current || !setupDoneRef.current) {
+      return;
+    }
+    const canvas = canvasRef.current;
+    const container = canvas.parentElement;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      handleContainerResize(
+        Math.round(rect.width),
+        Math.round(rect.height),
+        canvas,
+      );
+    }
+  }, [handleContainerResize]);
+
   return {
     moduleRef,
     setupDoneRef,
@@ -313,5 +330,6 @@ export function useInitAsciiRenderer({
     setUpdateDimensions: (fn: (cols: number, rows: number) => void) => {
       updateDimensionsRef.current = fn;
     },
+    triggerRendererRecreate,
   };
 }

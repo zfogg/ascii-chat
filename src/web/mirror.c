@@ -71,6 +71,9 @@ int mirror_init_with_args(const char *args_json) {
     return -1;
   }
 
+  // Log option values after initialization
+  log_info("[mirror_init_with_args] After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));
+
   // Initialize ANSI color code generation (dec3 cache for RGB values)
   ansi_fast_init();
 
@@ -307,12 +310,14 @@ extern const size_t g_font_matrix_resurrected_size;
 EMSCRIPTEN_KEEPALIVE
 const unsigned char *get_font_default_ptr(void) {
   // Auto-select matrix font when --matrix flag is set
-  log_debug("matrix_rain: %d", GET_OPTION(matrix_rain));
-  log_debug("g_font_matrix_resurrected: %p", g_font_matrix_resurrected);
-  log_debug("g_font_default: %p", g_font_default);
-  if (GET_OPTION(matrix_rain)) {
+  int matrix_rain_val = GET_OPTION(matrix_rain);
+  log_info("[get_font_default_ptr] CALLED: matrix_rain=%d, g_font_matrix_resurrected=%p, g_font_default=%p",
+           matrix_rain_val, (void *)g_font_matrix_resurrected, (void *)g_font_default);
+  if (matrix_rain_val) {
+    log_info("[get_font_default_ptr] RETURNING matrix font");
     return g_font_matrix_resurrected;
   }
+  log_info("[get_font_default_ptr] RETURNING default font");
   return g_font_default;
 }
 

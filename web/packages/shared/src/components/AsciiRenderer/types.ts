@@ -2,6 +2,7 @@ export interface AsciiRendererHandle {
   writeFrame(ansiString: string): void;
   getDimensions(): { cols: number; rows: number };
   clear(): void;
+  recreateRenderer(): void;
 }
 
 export interface AsciiRendererProps {

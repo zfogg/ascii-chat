@@ -37,7 +37,13 @@ interface MirrorDemoWidgetProps {
   showHeader?: boolean;
 }
 
-function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
+let lastMatrixRain = false;
+
+function applyDemoOption(
+  option: DemoOption,
+  sourceFlipX: boolean,
+  onMatrixRainChange?: () => void,
+): void {
   const s = option.settings;
   // Reset all options to defaults first, then apply preset overrides.
   // This prevents stale state from a previous demo leaking through.
@@ -45,7 +51,13 @@ function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
   setColorFilter(s.colorFilter ?? ColorFilter.NONE);
   setRenderMode(s.renderMode ?? RenderMode.FOREGROUND);
   setPalette(s.palette ?? "standard");
-  setMatrixRain(s.matrixRain ?? false);
+  const matrixRainNow = s.matrixRain ?? false;
+  // Trigger renderer recreation if matrix rain changed
+  if (matrixRainNow !== lastMatrixRain) {
+    lastMatrixRain = matrixRainNow;
+    onMatrixRainChange?.();
+  }
+  setMatrixRain(matrixRainNow);
   setFlipX(s.flipX !== undefined ? s.flipX : sourceFlipX);
   setFlipY(s.flipY ?? false);
   if (s.paletteChars !== undefined) {
@@ -154,7 +166,9 @@ export default function MirrorDemoWidget({
   const applySelectedOption = useCallback(
     (sourceFlipX: boolean) => {
       if (selectedOption && isWasmReady()) {
-        applyDemoOption(selectedOption, sourceFlipX);
+        applyDemoOption(selectedOption, sourceFlipX, () => {
+          rendererRef.current?.recreateRenderer();
+        });
       }
     },
     [selectedOption],
@@ -200,8 +214,9 @@ export default function MirrorDemoWidget({
       setFlipY(false);
       applySelectedOption(sourceFlipX);
 
-      // setDimensions is called in startDemo after video metadata loads and dimensions are calculated
-      // For webcam, wait for next render to apply dimensions
+      if (termDims.cols > 0 && termDims.rows > 0) {
+        setDimensions(termDims.cols, termDims.rows);
+      }
 
       sourceRef.current = MediaSourceType.WEBCAM;
       setSource(MediaSourceType.WEBCAM);
@@ -242,29 +257,8 @@ export default function MirrorDemoWidget({
             );
             if (canvasRef.current) {
               // Set canvas to video dimensions to preserve aspect ratio
-              const videoWidth = videoRef.current!.videoWidth;
-              const videoHeight = videoRef.current!.videoHeight;
-              console.log(
-                `[MirrorDemoWidget] Setting canvas dimensions: ${videoWidth}x${videoHeight}`,
-              );
-              canvasRef.current.width = videoWidth;
-              canvasRef.current.height = videoHeight;
-              console.log(
-                `[MirrorDemoWidget] Canvas dimensions after set: ${canvasRef.current.width}x${canvasRef.current.height}`,
-              );
-
-              // Calculate terminal dimensions based on video size
-              // Rough estimate: 10px wide, 20px tall per cell
-              const newCols = Math.max(80, Math.floor(videoWidth / 10));
-              const newRows = Math.max(24, Math.floor(videoHeight / 20));
-              console.log(
-                `[MirrorDemoWidget] Calling setTermDims and setDimensions: ${newCols}x${newRows}`,
-              );
-              setTermDims({ cols: newCols, rows: newRows });
-              // Apply the terminal dimensions to the renderer
-              setDimensions(newCols, newRows);
-            } else {
-              console.log("[MirrorDemoWidget] canvasRef.current is null");
+              canvasRef.current.width = videoRef.current!.videoWidth;
+              canvasRef.current.height = videoRef.current!.videoHeight;
             }
             resolve();
           };
@@ -373,7 +367,9 @@ export default function MirrorDemoWidget({
       setSelectedOptionId(option.id);
       if (isWasmReady() && source) {
         const sourceFlipX = source === MediaSourceType.WEBCAM;
-        applyDemoOption(option, sourceFlipX);
+        applyDemoOption(option, sourceFlipX, () => {
+          rendererRef.current?.recreateRenderer();
+        });
       }
     },
     [source],
@@ -546,7 +542,7 @@ export default function MirrorDemoWidget({
                   {demoOptions.map((opt) => (
                     <button
                       key={opt.id}
-                      onClick={() => setSelectedOptionId(opt.id)}
+                      onClick={() => switchOption(opt)}
                       className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                         selectedOptionId === opt.id
                           ? "bg-green-700 hover:bg-green-600 cursor-not-allowed text-white"
