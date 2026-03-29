@@ -50,7 +50,7 @@ export function PageLayout({
       {controlBar}
 
       {/* ASCII output fills remaining space */}
-      <div className="flex-1 min-h-0 overflow-hidden">{renderer}</div>
+      {renderer}
 
       {/* Modals */}
       {modal}

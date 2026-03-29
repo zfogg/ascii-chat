@@ -112,7 +112,7 @@ export const AsciiRenderer = forwardRef<
         // rows (int32) at offset 4
         view.setInt32(4, 24, true);
         // font_size_pt (float64) at offset 8
-        view.setFloat64(8, 9.0, true);
+        view.setFloat64(8, 12.0, true);
         // theme (int32) at offset 16
         view.setInt32(16, 0, true);
         // font_spec (char[512]) at offset 20
@@ -164,6 +164,18 @@ export const AsciiRenderer = forwardRef<
           rendererPtrRef.current,
         );
 
+        // Get the actual pixel dimensions the renderer outputs
+        const fbWidth = moduleRef.current!._term_renderer_width_px(
+          rendererPtrRef.current,
+        );
+        const fbHeight = moduleRef.current!._term_renderer_height_px(
+          rendererPtrRef.current,
+        );
+
+        // Set canvas to match the renderer's output framebuffer size
+        canvas.width = fbWidth;
+        canvas.height = fbHeight;
+
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
       } catch (err) {
@@ -192,49 +204,55 @@ export const AsciiRenderer = forwardRef<
     };
   }, [wasmModuleReady, updateDimensions]);
 
-  // Handle canvas resizes
+  // Handle container resizes
   useEffect(() => {
     if (!canvasRef.current || !moduleRef.current || !setupDoneRef.current) {
       return;
     }
 
     const canvas = canvasRef.current;
-    const handleResize = () => {
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
+    const container = canvas.parentElement;
+    if (!container) return;
 
-      // CRITICAL: Never resize to 0x0 dimensions. ResizeObserver fires before layout is complete,
-      // and 0x0 would reset our valid dimensions from the initial render.
-      if (width === 0 || height === 0) {
-        return;
-      }
+    const resizeObserver = new ResizeObserver(() => {
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
 
-      // Update canvas internal resolution to match container size
-      canvas.width = width;
-      canvas.height = height;
-
-      if (firstRenderDoneRef.current && moduleRef.current) {
-        const cols = moduleRef.current._term_renderer_get_cols(
+      // Recalculate cols and rows based on container size
+      if (moduleRef.current) {
+        const fbWidth = moduleRef.current._term_renderer_width_px(
           rendererPtrRef.current,
         );
-        const rows = moduleRef.current._term_renderer_get_rows(
+        const fbHeight = moduleRef.current._term_renderer_height_px(
+          rendererPtrRef.current,
+        );
+        const currentCols = moduleRef.current._term_renderer_get_cols(
+          rendererPtrRef.current,
+        );
+        const currentRows = moduleRef.current._term_renderer_get_rows(
           rendererPtrRef.current,
         );
 
-        updateDimensions(cols, rows);
+        if (fbWidth > 0 && fbHeight > 0 && currentCols > 0 && currentRows > 0) {
+          const cellW = fbWidth / currentCols;
+          const cellH = fbHeight / currentRows;
+          const newCols = Math.floor(rect.width / cellW);
+          const newRows = Math.floor(rect.height / cellH);
+
+          if (newCols > 0 && newRows > 0) {
+            updateDimensions(newCols, newRows);
+          }
+        }
       }
-    };
+    });
 
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(canvas);
-
-    window.addEventListener("resize", handleResize);
+    resizeObserver.observe(container);
 
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener("resize", handleResize);
     };
-  }, [moduleRef, updateDimensions]);
+  }, [updateDimensions]);
 
   const frameCountForLoggingRef = useRef(0);
 
@@ -414,22 +432,24 @@ export const AsciiRenderer = forwardRef<
   );
 
   return (
-    <>
-      {/* ASCII canvas output */}
-      <div className="h-full flex flex-col flex-1 overflow-hidden min-h-0 relative items-center justify-center">
-        <canvas
-          ref={canvasRef}
-          className="bg-terminal-bg rounded"
-          style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
-        />
-        {connectionState === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
-            <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
-              DISCONNECTED
-            </div>
+    <div className="w-full h-full flex flex-col flex-1 items-center justify-center overflow-hidden relative">
+      <style>
+        {`
+          canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+          }
+        `}
+      </style>
+      <canvas ref={canvasRef} />
+      {connectionState === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
+          <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
+            DISCONNECTED
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* FPS counter - hidden, displayed in control bar instead */}
       {showFps && (
@@ -446,6 +466,6 @@ export const AsciiRenderer = forwardRef<
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 });

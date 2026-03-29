@@ -279,6 +279,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   vterm_input_write(r->vt, fixed_frame, fixed_pos);
   SAFE_FREE(fixed_frame);
 
+  // Calculate centering offsets to position grid in center of canvas
+  int grid_width_px = r->cols * r->cell_w;
+  int grid_height_px = r->rows * r->cell_h;
+  int offset_x = (r->width_px - grid_width_px) / 2;
+  int offset_y = (r->height_px - grid_height_px) / 2;
+
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
@@ -301,7 +307,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         br = bg = bb = def_bg;
       }
 
-      int px = col * r->cell_w, py = row * r->cell_h;
+      int px = offset_x + col * r->cell_w, py = offset_y + row * r->cell_h;
       for (int dy = 0; dy < r->cell_h; dy++) {
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
