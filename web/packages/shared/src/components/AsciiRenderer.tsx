@@ -128,9 +128,8 @@ export const AsciiRenderer = forwardRef<
         // font_spec (char[512]) at offset 20
         const fontSpec = "Courier New";
         for (let i = 0; i < fontSpec.length && i < 511; i++) {
-          moduleRef.current!.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(
-            i,
-          );
+          moduleRef.current!.HEAPU8[configPtr + 20 + i] =
+            fontSpec.charCodeAt(i);
         }
         moduleRef.current!.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
         // font_is_path (bool) at offset 532
@@ -223,14 +222,8 @@ export const AsciiRenderer = forwardRef<
                   );
 
                   // Estimate cols/rows from container size
-                  let estimatedCols = Math.max(
-                    80,
-                    Math.floor(newWidth / 10),
-                  );
-                  let estimatedRows = Math.max(
-                    24,
-                    Math.floor(newHeight / 20),
-                  );
+                  let estimatedCols = Math.max(80, Math.floor(newWidth / 10));
+                  let estimatedRows = Math.max(24, Math.floor(newHeight / 20));
 
                   view.setInt32(0, estimatedCols, true);
                   view.setInt32(4, estimatedRows, true);
@@ -246,8 +239,7 @@ export const AsciiRenderer = forwardRef<
                     0;
                   moduleRef.current.HEAPU8[configPtr + 532] = 0;
 
-                  const fontDataPtr =
-                    moduleRef.current._get_font_default_ptr();
+                  const fontDataPtr = moduleRef.current._get_font_default_ptr();
                   view.setInt32(536, fontDataPtr, true);
 
                   const fontDataSize =
@@ -323,7 +315,6 @@ export const AsciiRenderer = forwardRef<
   }, [wasmModuleReady, updateDimensions]);
 
   const frameCountForLoggingRef = useRef(0);
-  const prevLinesRef = useRef<string[]>([]);
 
   useImperativeHandle(
     ref,
@@ -334,84 +325,6 @@ export const AsciiRenderer = forwardRef<
         }
 
         frameCountForLoggingRef.current++;
-
-        // Detect content shifts up/down by comparing row signatures
-        frameCountForLoggingRef.current++;
-
-        const currentLines = ansiString.split("\n");
-        const prevLines = prevLinesRef.current;
-
-        if (prevLines.length > 0 && currentLines.length > 0) {
-          // Create signatures for each line (first 40 chars as fingerprint)
-          const getSignature = (line: string) => {
-            return line.length > 0 ? line.substring(0, 40) : "";
-          };
-
-          const prevSigs = prevLines.map(getSignature);
-          const currSigs = currentLines.map(getSignature);
-
-          // Find where each previous signature appears in current frame
-          const movements: Array<{
-            sig: string;
-            prevRow: number;
-            currRow: number;
-          }> = [];
-
-          for (let prevRow = 0; prevRow < prevSigs.length; prevRow++) {
-            const prevSig = prevSigs[prevRow];
-            if (prevSig.length < 20) continue; // Skip short lines
-
-            // Find best matching signature in current frame
-            for (let currRow = 0; currRow < currSigs.length; currRow++) {
-              const currSig = currSigs[currRow];
-              // Check if signatures are similar (allow some variation)
-              const minLen = Math.min(prevSig.length, currSig.length);
-              let matches = 0;
-              for (let i = 0; i < minLen; i++) {
-                if (prevSig[i] === currSig[i]) matches++;
-              }
-              const similarity = matches / minLen;
-
-              if (similarity > 0.7) {
-                // 70% match threshold
-                if (prevRow !== currRow) {
-                  movements.push({
-                    sig: prevSig.substring(0, 20),
-                    prevRow,
-                    currRow,
-                  });
-                }
-                break;
-              }
-            }
-          }
-
-          if (movements.length > 0) {
-            const uniqueShifts = new Set<number>();
-            movements.forEach((m) => {
-              uniqueShifts.add(m.currRow - m.prevRow);
-            });
-
-            let fbHeight = 0;
-            if (moduleRef.current) {
-              fbHeight = moduleRef.current._term_renderer_height_px(
-                rendererPtrRef.current,
-              );
-            }
-
-            uniqueShifts.forEach((shiftAmount) => {
-              const direction = shiftAmount > 0 ? "DOWN" : "UP";
-              const affectedLines = movements.filter(
-                (m) => m.currRow - m.prevRow === shiftAmount,
-              ).length;
-              console.log(
-                `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${Math.abs(shiftAmount)} rows (${affectedLines} lines) | rows=${dimensionsRef.current.rows} fbHeight=${fbHeight}`,
-              );
-            });
-          }
-        }
-
-        prevLinesRef.current = currentLines;
 
         try {
           // Encode string to UTF-8 bytes
@@ -440,13 +353,13 @@ export const AsciiRenderer = forwardRef<
             console.error(
               `[WASM-ERROR-DETAILS] Caught error calling _term_renderer_feed:`,
               {
-                message: wasmError instanceof Error
-                  ? wasmError.message
-                  : String(wasmError),
+                message:
+                  wasmError instanceof Error
+                    ? wasmError.message
+                    : String(wasmError),
                 name: wasmError instanceof Error ? wasmError.name : "Unknown",
-                stack: wasmError instanceof Error
-                  ? wasmError.stack
-                  : "No stack",
+                stack:
+                  wasmError instanceof Error ? wasmError.stack : "No stack",
                 rendererPtr: rendererPtrRef.current,
                 ptr: ptr,
                 len: data.length,
