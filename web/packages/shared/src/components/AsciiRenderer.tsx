@@ -698,13 +698,6 @@ export const AsciiRenderer = forwardRef<
                   }
 
                   if (blockSimilarity >= 0.8 && matchedOffset !== -999) {
-                    const direction = matchedOffset > 0 ? "DOWN" : "UP";
-                    const magnitude = Math.abs(matchedOffset);
-                    console.log(
-                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${Math.round(
-                        blockSimilarity * 5,
-                      )} lines) | rows=${dimensionsRef.current.rows}`,
-                    );
                     break; // Only log once per frame
                   }
                 }
