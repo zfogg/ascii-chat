@@ -142,14 +142,6 @@ export function useMirrorWebcam({
         console.log(
           `[Mirror] Test mode enabled at ${performance.now()} - generating synthetic frames`,
         );
-        const canvas = canvasRef.current!;
-        canvas.width =
-          settings.width && settings.width > 0 ? settings.width : 640;
-        canvas.height =
-          settings.height && settings.height > 0 ? settings.height : 480;
-        console.log(
-          `[Mirror] canvas set to ${canvas.width}x${canvas.height} (test mode)`,
-        );
         lastFrameTimeRef.current = performance.now();
         setIsWebcamRunning(true);
         setMediaSource(MediaSourceType.WEBCAM);
@@ -187,17 +179,6 @@ export function useMirrorWebcam({
           "loadedmetadata",
           () => {
             console.timeEnd("[Mirror] loadedmetadata");
-            const canvas = canvasRef.current!;
-            // Use requested dimensions from settings, not video.videoWidth
-            // (which are 2x2 when loadedmetadata fires, before actual stream loads)
-            // Fallback to 640x480 if settings are invalid (0 or undefined)
-            canvas.width =
-              settings.width && settings.width > 0 ? settings.width : 640;
-            canvas.height =
-              settings.height && settings.height > 0 ? settings.height : 480;
-            console.log(
-              `[Mirror] canvas set to ${canvas.width}x${canvas.height} (from settings or defaults)`,
-            );
             resolve();
           },
           { once: true },

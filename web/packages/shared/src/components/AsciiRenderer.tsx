@@ -36,6 +36,7 @@ export const AsciiRenderer = forwardRef<
   },
   ref,
 ) {
+  console.log("[AsciiRenderer] Render with wasmModuleReady=" + wasmModuleReady);
   const previousWasmReadyRef = useRef<boolean | undefined>(undefined);
   if (previousWasmReadyRef.current !== wasmModuleReady) {
     previousWasmReadyRef.current = wasmModuleReady;
@@ -56,6 +57,19 @@ export const AsciiRenderer = forwardRef<
     fpsUpdateTimeRef.current = performance.now();
   }, []);
 
+  // Size canvas to its .ascii-canvas-container parent on every render
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+  });
+
   useEffect(() => {
     if (wasmModuleReady) {
       const module = getMirrorModule();
@@ -72,14 +86,33 @@ export const AsciiRenderer = forwardRef<
   );
 
   useEffect(() => {
-    if (!canvasRef.current || setupDoneRef.current) {
+    console.log(
+      "[EFFECT] Starting, setupDone=" + setupDoneRef.current +
+        ", canvasReady=" + !!canvasRef.current,
+    );
+    if (!canvasRef.current) {
       return;
     }
 
     const canvas = canvasRef.current;
 
+    // Size canvas to .ascii-canvas-container parent
+    const container = canvas.parentElement;
+    const rect = container?.getBoundingClientRect();
+    if (rect && rect.width > 0 && rect.height > 0) {
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+
+    if (setupDoneRef.current) {
+      return;
+    }
+
+    console.log("[INIT START] Canvas element exists, about to init renderer");
+
     // Initialize WASM renderer with canvas dimensions
     const initRenderer = () => {
+      console.log("[INIT RENDERER] Function called");
       try {
         // Set canvas on module for raylib/Emscripten
         if (!moduleRef.current) {
@@ -107,15 +140,76 @@ export const AsciiRenderer = forwardRef<
           configSize,
         );
 
-        // Get container dimensions to calculate initial cols/rows
-        const containerRect = canvas.parentElement?.getBoundingClientRect();
-        const containerWidth = containerRect?.width || 1030;
-        const containerHeight = containerRect?.height || 480;
+        // DEBUG: walk up DOM tree to see parents and their sizes
+        console.log("===== [AsciiRenderer] INIT START =====");
+        console.log("[AsciiRenderer] canvas element:", {
+          tag: canvas.tagName,
+          className: canvas.className,
+          id: canvas.id,
+          clientWidth: canvas.clientWidth,
+          clientHeight: canvas.clientHeight,
+          offsetWidth: canvas.offsetWidth,
+          offsetHeight: canvas.offsetHeight,
+        });
+
+        let current = canvas;
+        let level = 0;
+        const parentChain = [];
+        while (current && level < 15) {
+          const elem = current as HTMLElement;
+          const w = elem.clientWidth || 0;
+          const h = elem.clientHeight || 0;
+          const style = window.getComputedStyle(elem);
+          const info = {
+            level,
+            tag: elem.tagName,
+            className: elem.className,
+            id: elem.id || "(none)",
+            clientSize: `${w}x${h}`,
+            offsetSize: `${elem.offsetWidth}x${elem.offsetHeight}`,
+            display: style.display,
+            position: style.position,
+            visibility: style.visibility,
+            opacity: style.opacity,
+          };
+          parentChain.push(info);
+          console.log(
+            `[Level ${level}] ${elem.tagName}.${elem.className} id=${elem.id} | client:${w}x${h} offset:${elem.offsetWidth}x${elem.offsetHeight} | display:${style.display}`,
+          );
+          current = elem.parentElement as any;
+          level++;
+        }
+        console.log("[AsciiRenderer] Full parent chain:", parentChain);
+
+        // Get container dimensions from .ascii-canvas-container parent
+        const container = canvas.parentElement;
+        const containerRect = container?.getBoundingClientRect();
+        const containerWidth = Math.round(containerRect?.width ?? 1200);
+        const containerHeight = Math.round(containerRect?.height ?? 1000);
+
+        console.log(
+          "[AsciiRenderer] Container (.ascii-canvas-container): " +
+            containerWidth + "x" + containerHeight,
+        );
+
+        // Set canvas to container dimensions NOW, before renderer init
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
+        console.log(
+          "[AsciiRenderer] Canvas set to: " + canvas.width + "x" +
+            canvas.height,
+        );
 
         // Estimate cell size (will be refined after renderer init)
         // Rough estimate: 10px wide, 20px tall per cell
         let estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
         let estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
+        console.log(
+          "[AsciiRenderer] Estimated grid:",
+          estimatedCols,
+          "x",
+          estimatedRows,
+        );
 
         // cols (int32) at offset 0
         view.setInt32(0, estimatedCols, true);
@@ -128,8 +222,9 @@ export const AsciiRenderer = forwardRef<
         // font_spec (char[512]) at offset 20
         const fontSpec = "Courier New";
         for (let i = 0; i < fontSpec.length && i < 511; i++) {
-          moduleRef.current!.HEAPU8[configPtr + 20 + i] =
-            fontSpec.charCodeAt(i);
+          moduleRef.current!.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(
+            i,
+          );
         }
         moduleRef.current!.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
         // font_is_path (bool) at offset 532
@@ -165,6 +260,7 @@ export const AsciiRenderer = forwardRef<
 
         const rendererPtr = doInit();
         rendererPtrRef.current = rendererPtr;
+        console.log("[AsciiRenderer] Renderer created, ptr:", rendererPtr);
 
         // Get actual dimensions from renderer
         const cols = moduleRef.current!._term_renderer_get_cols(
@@ -173,120 +269,166 @@ export const AsciiRenderer = forwardRef<
         const rows = moduleRef.current!._term_renderer_get_rows(
           rendererPtrRef.current,
         );
-
-        // Get the actual pixel dimensions the renderer outputs
-        const fbWidth = moduleRef.current!._term_renderer_width_px(
-          rendererPtrRef.current,
+        console.log("[RENDERER DIMS] cols=" + cols + ", rows=" + rows);
+        console.log(
+          "[RENDERER DIMS] Calling updateDimensions(" + cols + ", " + rows +
+            ")",
         );
-        const fbHeight = moduleRef.current!._term_renderer_height_px(
-          rendererPtrRef.current,
-        );
-
-        // Set canvas to match the renderer's output framebuffer size
-        canvas.width = fbWidth;
-        canvas.height = fbHeight;
 
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
+        console.log(
+          "[SETUP DONE] Setup complete, canvas=" + canvas.width + "x" +
+            canvas.height,
+        );
 
-        // Set up ResizeObserver after initialization is done
-        const container = canvas.parentElement;
+        // Set up ResizeObserver on .ascii-canvas-container parent
+        console.log(
+          "[AsciiRenderer] ResizeObserver container:",
+          !!container,
+          container?.className,
+        );
         if (container) {
           const resizeObserver = new ResizeObserver((entries) => {
             const entry = entries[0];
             if (!entry) return;
             const newWidth = Math.round(entry.contentRect.width);
             const newHeight = Math.round(entry.contentRect.height);
+            console.log("[AsciiRenderer] ResizeObserver fired!");
+            console.log("[AsciiRenderer] New contentRect:", {
+              width: entry.contentRect.width,
+              height: entry.contentRect.height,
+            });
+            console.log(
+              "[AsciiRenderer] Rounded to:",
+              newWidth,
+              "x",
+              newHeight,
+            );
+            console.log(
+              "[AsciiRenderer] Current canvas:",
+              canvas.width,
+              "x",
+              canvas.height,
+            );
+            console.log(
+              "[AsciiRenderer] ResizeObserver fired:",
+              newWidth,
+              "x",
+              newHeight,
+            );
 
-            if (newWidth > 0 && newHeight > 0) {
-              canvas.width = newWidth;
-              canvas.height = newHeight;
+            if (
+              newWidth > 0 && newHeight > 0 && moduleRef.current &&
+              rendererPtrRef.current
+            ) {
+              console.log("[RESIZE HANDLER] Updating canvas and renderer");
+              try {
+                // Set canvas drawing surface to new dimensions
+                console.log(
+                  "[RESIZE HANDLER] Before: canvas=" + canvas.width + "x" +
+                    canvas.height,
+                );
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                console.log(
+                  "[RESIZE HANDLER] After: canvas=" + canvas.width + "x" +
+                    canvas.height + ", newWidth=" + newWidth + ", newHeight=" +
+                    newHeight,
+                );
 
-              // Destroy old renderer and recreate with new dimensions
-              if (moduleRef.current && rendererPtrRef.current) {
-                try {
-                  // Destroy old renderer
-                  moduleRef.current._term_renderer_destroy(
-                    rendererPtrRef.current,
-                  );
+                // Destroy old renderer
+                console.log(
+                  "[AsciiRenderer] Destroying old renderer:",
+                  rendererPtrRef.current,
+                );
+                moduleRef.current._term_renderer_destroy(
+                  rendererPtrRef.current,
+                );
 
-                  // Create new renderer with updated dimensions
-                  const configSize = 544;
-                  const configPtr = moduleRef.current._malloc(configSize);
-                  const outPtr = moduleRef.current._malloc(8);
+                // Create new renderer with updated dimensions
+                const configSize = 544;
+                const configPtr = moduleRef.current._malloc(configSize);
+                const outPtr = moduleRef.current._malloc(8);
 
-                  const view = new DataView(
-                    moduleRef.current.HEAPU8.buffer,
-                    configPtr,
-                    configSize,
-                  );
+                const view = new DataView(
+                  moduleRef.current.HEAPU8.buffer,
+                  configPtr,
+                  configSize,
+                );
 
-                  // Estimate cols/rows from container size
-                  let estimatedCols = Math.max(80, Math.floor(newWidth / 10));
-                  let estimatedRows = Math.max(24, Math.floor(newHeight / 20));
+                // Estimate cols/rows from container size
+                let estimatedCols = Math.max(80, Math.floor(newWidth / 10));
+                let estimatedRows = Math.max(24, Math.floor(newHeight / 20));
 
-                  view.setInt32(0, estimatedCols, true);
-                  view.setInt32(4, estimatedRows, true);
-                  view.setFloat64(8, 12.0, true);
-                  view.setInt32(16, 0, true);
+                view.setInt32(0, estimatedCols, true);
+                view.setInt32(4, estimatedRows, true);
+                view.setFloat64(8, 12.0, true);
+                view.setInt32(16, 0, true);
 
-                  const fontSpec = "Courier New";
-                  for (let i = 0; i < fontSpec.length && i < 511; i++) {
-                    moduleRef.current.HEAPU8[configPtr + 20 + i] =
-                      fontSpec.charCodeAt(i);
-                  }
-                  moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] =
-                    0;
-                  moduleRef.current.HEAPU8[configPtr + 532] = 0;
+                const fontSpec = "Courier New";
+                for (let i = 0; i < fontSpec.length && i < 511; i++) {
+                  moduleRef.current.HEAPU8[configPtr + 20 + i] = fontSpec
+                    .charCodeAt(i);
+                }
+                moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] = 0;
+                moduleRef.current.HEAPU8[configPtr + 532] = 0;
 
-                  const fontDataPtr = moduleRef.current._get_font_default_ptr();
-                  view.setInt32(536, fontDataPtr, true);
+                const fontDataPtr = moduleRef.current._get_font_default_ptr();
+                view.setInt32(536, fontDataPtr, true);
 
-                  const fontDataSize =
-                    moduleRef.current._get_font_default_size();
-                  view.setInt32(540, fontDataSize, true);
+                const fontDataSize = moduleRef.current._get_font_default_size();
+                view.setInt32(540, fontDataSize, true);
 
-                  const result = moduleRef.current._term_renderer_create(
-                    configPtr,
-                    outPtr,
-                  );
+                const result = moduleRef.current._term_renderer_create(
+                  configPtr,
+                  outPtr,
+                );
 
-                  if (result !== 0) {
-                    throw new Error(
-                      `term_renderer_create failed with error code ${result}`,
-                    );
-                  }
-
-                  const rendererPtr = new DataView(
-                    moduleRef.current.HEAPU8.buffer,
-                    outPtr,
-                    8,
-                  ).getBigInt64(0, true);
-                  rendererPtrRef.current = Number(rendererPtr);
-
-                  // Get actual dimensions from new renderer
-                  const cols = moduleRef.current._term_renderer_get_cols(
-                    rendererPtrRef.current,
-                  );
-                  const rows = moduleRef.current._term_renderer_get_rows(
-                    rendererPtrRef.current,
-                  );
-
-                  updateDimensions(cols, rows);
-
-                  moduleRef.current._free(configPtr);
-                  moduleRef.current._free(outPtr);
-                } catch (err) {
-                  console.error(
-                    "[AsciiRenderer] Failed to resize renderer:",
-                    err,
+                if (result !== 0) {
+                  throw new Error(
+                    `term_renderer_create failed with error code ${result}`,
                   );
                 }
+
+                const rendererPtr = new DataView(
+                  moduleRef.current.HEAPU8.buffer,
+                  outPtr,
+                  8,
+                ).getBigInt64(0, true);
+                rendererPtrRef.current = Number(rendererPtr);
+
+                // Get actual dimensions from new renderer
+                const cols = moduleRef.current._term_renderer_get_cols(
+                  rendererPtrRef.current,
+                );
+                const rows = moduleRef.current._term_renderer_get_rows(
+                  rendererPtrRef.current,
+                );
+
+                updateDimensions(cols, rows);
+
+                moduleRef.current._free(configPtr);
+                moduleRef.current._free(outPtr);
+              } catch (err) {
+                console.error(
+                  "[AsciiRenderer] Failed to resize renderer:",
+                  err,
+                );
               }
             }
           });
 
+          console.log(
+            "[AsciiRenderer] Attaching ResizeObserver to:",
+            container?.className,
+          );
           resizeObserver.observe(container);
+          console.log("[AsciiRenderer] ResizeObserver attached");
+        } else {
+          console.warn(
+            "[AsciiRenderer] Container not found for ResizeObserver",
+          );
         }
       } catch (err) {
         console.error("[AsciiRenderer] Initialization failed:", err);
@@ -312,7 +454,7 @@ export const AsciiRenderer = forwardRef<
         clearTimeout(timeoutId);
       }
     };
-  }, [wasmModuleReady, updateDimensions]);
+  }, [wasmModuleReady]);
 
   const frameCountForLoggingRef = useRef(0);
   const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
@@ -354,13 +496,13 @@ export const AsciiRenderer = forwardRef<
             console.error(
               `[WASM-ERROR-DETAILS] Caught error calling _term_renderer_feed:`,
               {
-                message:
-                  wasmError instanceof Error
-                    ? wasmError.message
-                    : String(wasmError),
+                message: wasmError instanceof Error
+                  ? wasmError.message
+                  : String(wasmError),
                 name: wasmError instanceof Error ? wasmError.name : "Unknown",
-                stack:
-                  wasmError instanceof Error ? wasmError.stack : "No stack",
+                stack: wasmError instanceof Error
+                  ? wasmError.stack
+                  : "No stack",
                 rendererPtr: rendererPtrRef.current,
                 ptr: ptr,
                 len: data.length,
@@ -385,15 +527,13 @@ export const AsciiRenderer = forwardRef<
               const fbPtr = moduleRef.current._term_renderer_pixels(
                 rendererPtrRef.current,
               );
-              const fbWidth = moduleRef.current._term_renderer_width_px(
-                rendererPtrRef.current,
-              );
-              const fbHeight = moduleRef.current._term_renderer_height_px(
-                rendererPtrRef.current,
-              );
               const fbStride = moduleRef.current._term_renderer_pitch(
                 rendererPtrRef.current,
               );
+
+              // Use canvas dimensions (set to container size earlier)
+              const fbWidth = canvas.width;
+              const fbHeight = canvas.height;
 
               if (
                 fbPtr &&
@@ -441,7 +581,7 @@ export const AsciiRenderer = forwardRef<
 
           // Detect content bouncing by finding 80% similar text blocks that move
           try {
-            const lines = ansiString.split('\n');
+            const lines = ansiString.split("\n");
             const history = frameHistoryRef.current;
 
             // Keep only last 60 frames (roughly 1-2 seconds at 30-60 fps)
@@ -454,9 +594,16 @@ export const AsciiRenderer = forwardRef<
               const currentFrame = history[history.length - 1];
               const olderFrame = history[Math.max(0, history.length - 20)]; // ~0.3-0.6 sec ago
 
-              if (currentFrame && olderFrame && currentFrame.lines.length > 0 && olderFrame.lines.length > 0) {
+              if (
+                currentFrame && olderFrame && currentFrame.lines.length > 0 &&
+                olderFrame.lines.length > 0
+              ) {
                 // Find a contiguous block of 5+ lines that are 80%+ similar between frames
-                for (let blockStart = 0; blockStart < currentFrame.lines.length - 4; blockStart++) {
+                for (
+                  let blockStart = 0;
+                  blockStart < currentFrame.lines.length - 4;
+                  blockStart++
+                ) {
                   let matchedOffset = -999;
                   let blockSimilarity = 0;
 
@@ -472,15 +619,28 @@ export const AsciiRenderer = forwardRef<
                         oldIdx < olderFrame.lines.length
                       ) {
                         // Compare first 50 chars
-                        const currSig = currentFrame.lines[currIdx].substring(0, 50);
-                        const oldSig = olderFrame.lines[oldIdx].substring(0, 50);
+                        const currSig = currentFrame.lines[currIdx].substring(
+                          0,
+                          50,
+                        );
+                        const oldSig = olderFrame.lines[oldIdx].substring(
+                          0,
+                          50,
+                        );
                         if (currSig === oldSig) {
                           similarLines++;
                         } else {
                           // Check 80% character similarity
                           let charMatch = 0;
-                          const maxLen = Math.max(currSig.length, oldSig.length);
-                          for (let c = 0; c < Math.min(currSig.length, oldSig.length); c++) {
+                          const maxLen = Math.max(
+                            currSig.length,
+                            oldSig.length,
+                          );
+                          for (
+                            let c = 0;
+                            c < Math.min(currSig.length, oldSig.length);
+                            c++
+                          ) {
                             if (currSig[c] === oldSig[c]) charMatch++;
                           }
                           if (charMatch / maxLen >= 0.8) {
@@ -499,10 +659,12 @@ export const AsciiRenderer = forwardRef<
                   }
 
                   if (blockSimilarity >= 0.8 && matchedOffset !== -999) {
-                    const direction = matchedOffset > 0 ? 'DOWN' : 'UP';
+                    const direction = matchedOffset > 0 ? "DOWN" : "UP";
                     const magnitude = Math.abs(matchedOffset);
                     console.log(
-                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${Math.round(blockSimilarity * 5)} lines) | rows=${dimensionsRef.current.rows}`
+                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${
+                        Math.round(blockSimilarity * 5)
+                      } lines) | rows=${dimensionsRef.current.rows}`,
                     );
                     break; // Only log once per frame
                   }
@@ -569,7 +731,7 @@ export const AsciiRenderer = forwardRef<
   );
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
+    <div className="ascii-canvas-container w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
       <style>
         {`
           canvas {
