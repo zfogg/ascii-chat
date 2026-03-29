@@ -462,6 +462,7 @@ export default function MirrorDemoWidget({
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
             showFps={false}
+            wasmModuleReady={wasmReady}
           />
         </div>
 
