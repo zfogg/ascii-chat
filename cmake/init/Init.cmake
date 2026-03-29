@@ -127,6 +127,13 @@ if(POLICY CMP0251)
     cmake_policy(SET CMP0251 NEW)
 endif()
 
+# CMP0135: ExternalProject and FetchContent_Declare(): set timestamps of all extracted contents to the time of the
+# extraction. tldr/basically: this makes sure content gets rebuilt if its url changes.
+# https://cmake.org/cmake/help/latest/policy/CMP0135.html
+if (POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 # =============================================================================
 # Dependency Cache Configuration (persistent across build/ deletions)
 # =============================================================================

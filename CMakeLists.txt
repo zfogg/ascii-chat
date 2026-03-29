@@ -41,11 +41,23 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
     set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
+# Web-specific build-type cache directory for WASM/Emscripten builds
+# Keeps web dependencies separate from native build dependencies
+if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "")
+    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
+endif()
+
 # Shared source download cache for FetchContent (not build-type-qualified)
 # All platforms (iOS, musl, WASM, native) share the same source files via one FETCHCONTENT_BASE_DIR
 # Build artifacts go into ${ASCIICHAT_DEPS_CACHE_DIR}/<dep>/ (build-type-qualified) as needed
 if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "")
     set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/src" CACHE PATH "FetchContent source cache" FORCE)
+endif()
+
+# Web-specific source cache for FetchContent (keeps web sources separate)
+# Sources are shared across build types but kept in web/ subdirectory
+if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
+    set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/src" CACHE PATH "Web FetchContent source cache" FORCE)
 endif()
 
 # Validate paths are not empty (which would create directories at root /)
@@ -438,9 +450,9 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -B "${WASM_BUILD_DIR}"
             "${WASM_SOURCE_DIR}"
             -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
-            -DFETCHCONTENT_BASE_DIR=${FETCHCONTENT_BASE_DIR}
+            -DFETCHCONTENT_BASE_DIR=${WEB_FETCHCONTENT_BASE_DIR}
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
-            -DASCIICHAT_DEPS_CACHE_DIR=${ASCIICHAT_DEPS_CACHE_DIR}
+            -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
         )
         execute_process(
