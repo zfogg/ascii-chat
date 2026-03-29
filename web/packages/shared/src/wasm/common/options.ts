@@ -53,6 +53,27 @@ export type Palette =
 // Module-level options accessor (set by mirror.ts or client.ts during init)
 let options: OptionAccessor | null = null;
 
+// TODO: Query C code's options struct directly instead of caching in JavaScript.
+// Currently caching palette, flipX, flipY in JavaScript because WASM getters
+// (_get_palette, _get_flip_x, _get_flip_y) return unreliable values during rendering.
+// The real fix: the C code has an internal options struct with the actual state.
+// Instead of JavaScript caching, we should expose a getter that queries that struct
+// directly, making the C code the single source of truth. This would eliminate
+// the need for JavaScript-side caching and ensure mirror_init_with_args works
+// correctly with the real state values.
+//
+// Known bugs (WASM only, don't appear in terminal):
+// 1. --palette passed to mirror_init_with_args returns different values each time
+// 2. --flip-x didn't work correctly (needs investigation, may require querying C struct first)
+// 3. --matrix doesn't render green on first frame after resize (renders truecolor instead)
+// These issues don't occur in the terminal version, suggesting WASM-specific state handling.
+
+// Cache for values since WASM getters may not track set values reliably
+let cachedPalette: Palette = "standard";
+let cachedPaletteChars: string = "";
+let cachedFlipX: boolean = false;
+let cachedFlipY: boolean = false;
+
 /**
  * Initialize the options module with an options accessor
  * Called by mirror.ts or client.ts after WASM module initialization
@@ -60,6 +81,10 @@ let options: OptionAccessor | null = null;
  */
 export function initializeOptions(accessor: OptionAccessor): void {
   options = accessor;
+  cachedPalette = "standard";
+  cachedPaletteChars = "";
+  cachedFlipX = false;
+  cachedFlipY = false;
 }
 
 /**
@@ -68,6 +93,10 @@ export function initializeOptions(accessor: OptionAccessor): void {
  */
 export function cleanupOptions(): void {
   options = null;
+  cachedPalette = "standard";
+  cachedPaletteChars = "";
+  cachedFlipX = false;
+  cachedFlipY = false;
 }
 
 /**
@@ -163,30 +192,23 @@ export function getRenderMode(): RenderMode {
 export function setPalette(palette: Palette): void {
   if (!options) throw new Error("Options not initialized");
   options.setString("palette", palette);
+  cachedPalette = palette;
 }
 
 export function getPalette(): Palette {
   if (!options) throw new Error("Options not initialized");
-  const paletteNum = options.getInt("palette");
-  const paletteMap: Record<number, Palette> = {
-    0: "standard",
-    1: "blocks",
-    2: "digital",
-    3: "minimal",
-    4: "cool",
-    5: "custom",
-  };
-  return paletteMap[paletteNum] || "standard";
+  return cachedPalette;
 }
 
 export function setPaletteChars(chars: string): void {
   if (!options) throw new Error("Options not initialized");
   options.setString("palette_chars", chars);
+  cachedPaletteChars = chars;
 }
 
 export function getPaletteChars(): string {
   if (!options) throw new Error("Options not initialized");
-  return options.getString("palette_chars");
+  return cachedPaletteChars;
 }
 
 // ============================================================================
@@ -210,11 +232,12 @@ export function getMatrixRain(): boolean {
 export function setFlipX(enabled: boolean): void {
   if (!options) throw new Error("Options not initialized");
   options.setBool("flip_x", enabled);
+  cachedFlipX = enabled;
 }
 
 export function getFlipX(): boolean {
   if (!options) throw new Error("Options not initialized");
-  return options.getBool("flip_x");
+  return cachedFlipX;
 }
 
 // ============================================================================
@@ -224,11 +247,12 @@ export function getFlipX(): boolean {
 export function setFlipY(enabled: boolean): void {
   if (!options) throw new Error("Options not initialized");
   options.setBool("flip_y", enabled);
+  cachedFlipY = enabled;
 }
 
 export function getFlipY(): boolean {
   if (!options) throw new Error("Options not initialized");
-  return options.getBool("flip_y");
+  return cachedFlipY;
 }
 
 // ============================================================================

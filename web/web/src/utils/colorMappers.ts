@@ -79,3 +79,39 @@ export function mapColorFilterToClient(filter: ColorFilter): ClientColorFilter {
   };
   return mapping[filter] || ClientColorFilter.NONE;
 }
+
+/**
+ * Reverse map: WASM color mode enum to string
+ */
+export function wasmColorModeToString(mode: WasmColorMode): ColorMode {
+  const mapping: Record<WasmColorMode, ColorMode> = {
+    [WasmColorMode.AUTO]: "auto",
+    [WasmColorMode.NONE]: "none",
+    [WasmColorMode.COLOR_16]: "16",
+    [WasmColorMode.COLOR_256]: "256",
+    [WasmColorMode.TRUECOLOR]: "truecolor",
+  };
+  return mapping[mode] || "auto";
+}
+
+/**
+ * Reverse map: WASM color filter enum to string
+ */
+export function wasmColorFilterToString(filter: WasmColorFilter): ColorFilter {
+  const mapping: Record<WasmColorFilter, ColorFilter> = {
+    [WasmColorFilter.NONE]: "none",
+    [WasmColorFilter.BLACK]: "black",
+    [WasmColorFilter.WHITE]: "white",
+    [WasmColorFilter.GREEN]: "green",
+    [WasmColorFilter.MAGENTA]: "magenta",
+    [WasmColorFilter.FUCHSIA]: "fuchsia",
+    [WasmColorFilter.ORANGE]: "orange",
+    [WasmColorFilter.TEAL]: "teal",
+    [WasmColorFilter.CYAN]: "cyan",
+    [WasmColorFilter.PINK]: "pink",
+    [WasmColorFilter.RED]: "red",
+    [WasmColorFilter.YELLOW]: "yellow",
+    [WasmColorFilter.RAINBOW]: "rainbow",
+  };
+  return mapping[filter] || "none";
+}

@@ -1,14 +1,19 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 import {
-  getMatrixRain,
-  getColorMode,
   getColorFilter,
-  getPalette,
+  getColorMode,
   getFlipX,
   getFlipY,
+  getMatrixRain,
+  getPalette,
   getTargetFps,
+  setFlipX,
 } from "../../wasm";
+import {
+  wasmColorModeToString,
+  wasmColorFilterToString,
+} from "../../utils/colorMappers";
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
@@ -53,7 +58,7 @@ export function useInitAsciiRenderer({
     }
 
     try {
-      // Get current settings from WASM options system
+      // Get current rendering settings that affect the renderer appearance
       const matrixRain = getMatrixRain();
       const colorMode = getColorMode();
       const colorFilter = getColorFilter();
@@ -62,15 +67,17 @@ export function useInitAsciiRenderer({
       const flipY = getFlipY();
       const targetFps = getTargetFps();
 
-      // Reconstruct args string with current settings
+      // Reconstruct args string with rendering settings
       const args = ["mirror"];
-      if (matrixRain) args.push("--matrix-rain");
-      args.push(`--color-mode`, String(colorMode));
-      args.push(`--color-filter`, String(colorFilter));
+      if (matrixRain) {
+        args.push("--matrix");
+      }
+      args.push(`--color-mode`, wasmColorModeToString(colorMode));
+      args.push(`--color-filter`, wasmColorFilterToString(colorFilter));
       args.push(`--palette`, palette);
       if (flipX) args.push("--flip-x");
       if (flipY) args.push("--flip-y");
-      args.push(`--target-fps`, String(targetFps));
+      args.push(`--fps`, String(targetFps));
 
       const argsStr = args.join(" ");
       console.log(
@@ -374,6 +381,14 @@ export function useInitAsciiRenderer({
         });
         moduleRef.current._term_renderer_destroy(rendererPtrRef.current);
 
+        // TODO: Fix truecolor flash on resize with matrix mode enabled.
+        // Even after reinitializing WASM with --matrix flag, the first frame
+        // after resize renders in truecolor instead of matrix green. The renderer
+        // appears to lose its settings state during the resize/recreation cycle.
+
+        // Ensure flip-x state is set before reinitialization
+        setFlipX(true);
+
         // Reinitialize WASM module with current settings before creating new renderer
         // This ensures the new renderer is created with all settings already applied
         // (color mode, matrix rain, etc.) instead of showing defaults then updating
@@ -382,16 +397,17 @@ export function useInitAsciiRenderer({
         );
         reinitializeWithCurrentSettings();
 
-        // Create new renderer with updated dimensions, using cached matrix mode
+        // Create new renderer with updated dimensions using the actual WASM matrix rain state
+        const isMatrixMode = getMatrixRain();
         console.log("[handleContainerResize] STARTING RECREATION", {
           newWidth,
           newHeight,
-          currentMatrixMode: currentMatrixModeRef.current,
+          isMatrixMode,
         });
         const { configPtr, estimatedCols, estimatedRows } = createConfigStruct(
           newWidth,
           cappedHeight,
-          currentMatrixModeRef.current,
+          isMatrixMode,
         );
         console.log("[handleContainerResize] createConfigStruct returned", {
           configPtr,
@@ -457,9 +473,8 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
-              const recoveryPixelsPerRow = currentMatrixModeRef.current
-                ? 32
-                : 20;
+              const recoveryIsMatrixMode = getMatrixRain();
+              const recoveryPixelsPerRow = recoveryIsMatrixMode ? 32 : 20;
               const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
                 24,
@@ -475,13 +490,14 @@ export function useInitAsciiRenderer({
                   originalHeight: newHeight,
                   recoveryWidth,
                   recoveryHeight,
+                  recoveryIsMatrixMode,
                 },
               );
 
               const { configPtr: retryConfigPtr } = createConfigStruct(
                 recoveryWidth,
                 recoveryHeight,
-                currentMatrixModeRef.current,
+                recoveryIsMatrixMode,
               );
               const retryOutPtr = moduleRef.current?._malloc(8);
               if (retryOutPtr) {
@@ -552,6 +568,13 @@ export function useInitAsciiRenderer({
 
       moduleRef.current.canvas = canvas;
 
+      // Ensure flip-x state is set before reinitialization
+      setFlipX(true);
+
+      // Apply all current WASM settings before creating the renderer
+      // This ensures flip state, color mode, matrix mode, etc. are all applied
+      reinitializeWithCurrentSettings();
+
       const container = canvas.parentElement;
       const containerRect = container?.getBoundingClientRect();
       const containerWidth = Math.round(containerRect?.width ?? 1200);
@@ -593,6 +616,7 @@ export function useInitAsciiRenderer({
       callRendererCreate,
       getRendererDimensions,
       setupResizeObserver,
+      reinitializeWithCurrentSettings,
     ],
   );
 
