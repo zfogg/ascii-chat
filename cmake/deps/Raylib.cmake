@@ -37,7 +37,12 @@ if(DEFINED EMSCRIPTEN)
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/raylib-src"
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_MakeAvailable(raylib-src)
+    # Use FetchContent_Populate (download only) instead of FetchContent_MakeAvailable (which configures)
+    # ExternalProject_Add will handle the configuration with CMAKE_POLICY_VERSION_MINIMUM
+    FetchContent_GetProperties(raylib-src)
+    if(NOT raylib-src_POPULATED)
+        FetchContent_Populate(raylib-src)
+    endif()
 
     set(RAYLIB_PREFIX "${FETCHCONTENT_BASE_DIR}/raylib-wasm")
     set(RAYLIB_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/raylib-wasm-build")

@@ -43,11 +43,11 @@ FetchContent_Declare(
 
 FetchContent_GetProperties(webrtc_aec3)
 if(NOT webrtc_aec3_POPULATED)
-    # Manually populate the source
-    FetchContent_MakeAvailable(webrtc_aec3)
+    # Download the source (without configuring yet)
+    FetchContent_Populate(webrtc_aec3)
 endif()
 
-# Apply patches every configure (cached source may still need updated patch rules)
+# Apply patches BEFORE configuring (cached source may still need updated patch rules)
 execute_process(
     COMMAND ${CMAKE_COMMAND}
         -DWEBRTC_AEC3_SOURCE_DIR=${webrtc_aec3_SOURCE_DIR}
