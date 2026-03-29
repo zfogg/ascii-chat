@@ -35,12 +35,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
 
     // FPS tracking
     const frameCountRef = useRef(0);
-    const fpsUpdateTimeRef = useRef<number | null>(null);
     const fpsDisplayRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      fpsUpdateTimeRef.current = performance.now();
-    }, []);
 
     // NOTE: Canvas sizing is handled by the renderer initialization code
     // We set canvas to the renderer's actual pixel output dimensions, not the container size
@@ -64,7 +59,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       onFpsChange,
       onDimensionsChange,
       fpsDisplayRef: fpsDisplayRef as RefObject<HTMLDivElement | null>,
-      fpsUpdateTimeRef,
       frameCountRef,
     });
 

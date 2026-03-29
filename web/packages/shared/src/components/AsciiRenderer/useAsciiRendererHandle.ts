@@ -2,6 +2,7 @@ import {
   useImperativeHandle,
   useRef,
   useCallback,
+  useEffect,
   type ForwardedRef,
   type RefObject,
 } from "react";
@@ -21,7 +22,6 @@ interface UseAsciiRendererHandleParams {
     | ((dims: { cols: number; rows: number }) => void)
     | undefined;
   fpsDisplayRef: RefObject<HTMLDivElement | null>;
-  fpsUpdateTimeRef: RefObject<number | null>;
   frameCountRef: RefObject<number>;
 }
 
@@ -36,13 +36,17 @@ export function useAsciiRendererHandle({
   onFpsChange,
   onDimensionsChange,
   fpsDisplayRef,
-  fpsUpdateTimeRef,
   frameCountRef,
 }: UseAsciiRendererHandleParams) {
   const frameCountForLoggingRef = useRef(0);
   const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
   const firstRenderDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
+  const fpsUpdateTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    fpsUpdateTimeRef.current = performance.now();
+  }, []);
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
