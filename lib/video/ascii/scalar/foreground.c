@@ -98,7 +98,8 @@ char *image_print(const image_t *p, const char *palette) {
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
       // Use same 64-entry cache as SIMD for consistency
-      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+      // Use char_idx to properly index into cache64, not luma_idx
+      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
 
       // Find run length for same character (RLE optimization)
       int j = x + 1;
@@ -277,11 +278,22 @@ char *image_print_color(const image_t *p, const char *palette) {
       uint8_t safe_luminance = clamp_rgb(luminance);
       const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
 
-      // For RLE, we need to pass the first byte of the UTF-8 character
-      // Note: RLE system may need updates for full UTF-8 support
-      const char ascii_char = char_info->utf8_bytes[0];
-
-      ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
+      // For single-byte ASCII, use RLE optimization; for multi-byte UTF-8, write directly
+      if (char_info->byte_len == 1 && (unsigned char)char_info->utf8_bytes[0] < 128) {
+        // ASCII character - use RLE optimization
+        const char ascii_char = char_info->utf8_bytes[0];
+        ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
+      } else {
+        // Multi-byte UTF-8 character - write color code and full UTF-8 bytes directly
+        int written = SAFE_SNPRINTF((char *)&rle_ctx.buffer[rle_ctx.length],
+                                   rle_ctx.capacity - rle_ctx.length,
+                                   "\033[38;2;%d;%d;%dm", r, g, b);
+        rle_ctx.length += written;
+        // Write UTF-8 bytes
+        for (int i = 0; i < char_info->byte_len && rle_ctx.length < rle_ctx.capacity; i++) {
+          rle_ctx.buffer[rle_ctx.length++] = char_info->utf8_bytes[i];
+        }
+      }
     }
 
     // Add newline after each row (except the last row)
