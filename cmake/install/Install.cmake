@@ -647,13 +647,11 @@ endif()
 # Install .desktop file for application launchers and menus
 # Note: ascii-chat is a terminal application, so Terminal=true is set
 if(UNIX AND NOT APPLE)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/applications/ascii-chat.desktop")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/applications/ascii-chat.desktop"
-            DESTINATION share/applications
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} desktop entry: ${BoldBlue}ascii-chat.desktop${ColorReset} → ${BoldYellow}share/applications/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_SOURCE_DIR}/share/applications/ascii-chat.desktop"
+        DESTINATION share/applications
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} desktop entry: ${BoldBlue}ascii-chat.desktop${ColorReset} → ${BoldYellow}share/applications/${ColorReset}")
 endif()
 
 # =============================================================================
@@ -681,8 +679,13 @@ endif()
 # =============================================================================
 # Install AppStream metadata for software centers (GNOME Software, KDE Discover, etc.)
 if(UNIX AND NOT APPLE)
-    set(_metainfo "${CMAKE_SOURCE_DIR}/share/metainfo/${PROJECT_BUNDLE_ID}.metainfo.xml")
-    install(FILES "${_metainfo}"
+    set(_metainfo_out "${CMAKE_BINARY_DIR}/share/metainfo/${PROJECT_BUNDLE_ID}.metainfo.xml")
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/share/metainfo/${PROJECT_BUNDLE_ID}.metainfo.xml.in"
+        "${_metainfo_out}"
+        @ONLY
+    )
+    install(FILES "${_metainfo_out}"
         DESTINATION share/metainfo
         COMPONENT Runtime
     )
@@ -697,12 +700,18 @@ endif()
 # Or system-wide: sudo systemctl enable ascii-chat-server
 if(UNIX AND NOT APPLE)
     set(_server_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
-    # Install to user systemd directory (lib/systemd/user/)
-    # System-wide would be lib/systemd/system/
-    install(FILES"${_server_systemd_service}"
+    #set(_discovery_service_systemd_service "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-discovery-service.service")
+
+    # Install to user systemd directory
+    install(FILES "${_server_systemd_service}"
         DESTINATION lib/systemd/user
         COMPONENT Runtime
     )
+    #install(FILES "${_discovery_service_systemd_service}"
+    #    DESTINATION lib/systemd/user
+    #    COMPONENT Runtime
+    #)
+
     message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
 endif()
 

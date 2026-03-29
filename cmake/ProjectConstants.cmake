@@ -39,8 +39,8 @@ set(PROJECT_MAINTAINER_FALLBACK "${PROJECT_NAME_FULL} <${PROJECT_AUTHOR_EMAIL}>"
 # Project URLs
 # =============================================================================
 
-set(PROJECT_HOMEPAGE_URL "https://github.com/${PROJECT_AUTHOR_USERNAME}/${PROJECT_NAME_FULL}" CACHE STRING "Project homepage")
-set(PROJECT_REPOSITORY_URL "${PROJECT_HOMEPAGE_URL}" CACHE STRING "Source repository URL")
+set(PROJECT_HOMEPAGE_URL "https://www.ascii-chat.com" CACHE STRING "Project homepage")
+set(PROJECT_REPOSITORY_URL "https://github.com/${PROJECT_AUTHOR_USERNAME}/${PROJECT_NAME_FULL}" CACHE STRING "Source repository URL")
 set(PROJECT_ISSUES_URL "${PROJECT_HOMEPAGE_URL}/issues" CACHE STRING "Issue tracker URL")
 set(PROJECT_RELEASES_URL "${PROJECT_HOMEPAGE_URL}/releases" CACHE STRING "Releases page URL")
 

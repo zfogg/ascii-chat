@@ -32,8 +32,29 @@ macro(version_detect)
             set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
             set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
             set(_VERSION_TYPE "command-line")
-            # Get current date for man pages and documentation
-            string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+            # Try to get tag date from git history
+            set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
+            execute_process(
+                COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_TAG_NAME}' 2>/dev/null | cut -d' ' -f1"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                OUTPUT_VARIABLE PROJECT_VERSION_DATE
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            # If tag date not available, try first commit date
+            if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+                execute_process(
+                    COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    OUTPUT_VARIABLE PROJECT_VERSION_DATE
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+            endif()
+            # If still no date (no .git directory), use current date
+            if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+                string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+            endif()
             message(STATUS "Version from command-line: ${PROJECT_VERSION_FROM_GIT} (Release build via Docker)")
             message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
             return()
@@ -60,6 +81,7 @@ macro(version_detect)
         set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
         set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
         set(_VERSION_TYPE "development")
+        set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
     elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
         # Exactly on a tag (no -N-g suffix) - release version
         set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
@@ -67,6 +89,7 @@ macro(version_detect)
         set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
         set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
         set(_VERSION_TYPE "release")
+        set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
     else()
         # No tags or git not available - use fallback
         set(GIT_VERSION_MAJOR "0")
@@ -74,10 +97,35 @@ macro(version_detect)
         set(GIT_VERSION_PATCH "0")
         set(PROJECT_VERSION_FROM_GIT "0.0.0")
         set(_VERSION_TYPE "fallback")
+        set(_TAG_NAME "")
     endif()
 
-    # Get current date for man pages and documentation
-    string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+    # Get tag date from git history (date tag was created)
+    if(_TAG_NAME)
+        execute_process(
+            COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_TAG_NAME}' 2>/dev/null | cut -d' ' -f1"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE PROJECT_VERSION_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
+
+    # If tag date not available, try first commit date (fallback for no tags or no .git)
+    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+        execute_process(
+            COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE PROJECT_VERSION_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
+
+    # If still no date (no .git directory), use current date
+    if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
+        string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+    endif()
 
     # Print version info (colors defined in Init.cmake)
     if(_VERSION_TYPE STREQUAL "development")
