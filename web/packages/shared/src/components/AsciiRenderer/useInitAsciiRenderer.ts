@@ -38,37 +38,30 @@ export function useInitAsciiRenderer({
     }
   }, [wasmModuleReady]);
 
-  // Create renderer config struct in WASM memory with estimated dimensions
-  const createConfigStruct = useCallback(
-    (containerWidth: number, containerHeight: number) => {
+  // Write config struct fields to WASM memory
+  // Struct layout (WASM 32-bit pointers):
+  // int cols (4) + int rows (4) + double font_size_pt (8) + int theme (4) = 20 bytes
+  // char font_spec[512] at offset 20 = 512 bytes
+  // bool font_is_path (1) + padding (3) = 4 bytes at offset 532
+  // uint8_t *font_data (4) at offset 536
+  // size_t font_data_size (4) at offset 540
+  // Total: 544 bytes
+  const writeConfigStructFields = useCallback(
+    (configPtr: number, cols: number, rows: number) => {
       if (!moduleRef.current) {
-        throw new Error("moduleRef.current is null during createConfigStruct");
+        throw new Error(
+          "moduleRef.current is null during writeConfigStructFields",
+        );
       }
-
-      const configSize = 544;
-      const configPtr = moduleRef.current._malloc(configSize);
 
       const view = new DataView(
         moduleRef.current.HEAPU8.buffer,
         configPtr,
-        configSize,
+        544,
       );
 
-      // Estimate cols/rows from container size
-      // Rough estimate: 10px wide, 20px tall per cell
-      const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
-      const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
-
-      // Write config struct to WASM memory using direct offsets
-      // Struct layout (WASM 32-bit pointers):
-      // int cols (4) + int rows (4) + double font_size_pt (8) + int theme (4) = 20 bytes
-      // char font_spec[512] at offset 20 = 512 bytes
-      // bool font_is_path (1) + padding (3) = 4 bytes at offset 532
-      // uint8_t *font_data (4) at offset 536
-      // size_t font_data_size (4) at offset 540
-      // Total: 544 bytes
-      view.setInt32(0, estimatedCols, true); // cols
-      view.setInt32(4, estimatedRows, true); // rows
+      view.setInt32(0, cols, true); // cols
+      view.setInt32(4, rows, true); // rows
       view.setFloat64(8, 12.0, true); // font_size_pt
       view.setInt32(16, 0, true); // theme
 
@@ -84,10 +77,30 @@ export function useInitAsciiRenderer({
 
       const fontDataSize = moduleRef.current._get_font_default_size();
       view.setInt32(540, fontDataSize, true); // font_data_size
+    },
+    [],
+  );
+
+  // Allocate and prepare config struct with estimated dimensions
+  const createConfigStruct = useCallback(
+    (containerWidth: number, containerHeight: number) => {
+      if (!moduleRef.current) {
+        throw new Error("moduleRef.current is null during createConfigStruct");
+      }
+
+      const configSize = 544;
+      const configPtr = moduleRef.current._malloc(configSize);
+
+      // Estimate cols/rows from container size
+      // Rough estimate: 10px wide, 20px tall per cell
+      const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
+      const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
+
+      writeConfigStructFields(configPtr, estimatedCols, estimatedRows);
 
       return { configPtr, estimatedCols, estimatedRows };
     },
-    [],
+    [writeConfigStructFields],
   );
 
   // Call WASM renderer creation and return renderer pointer
