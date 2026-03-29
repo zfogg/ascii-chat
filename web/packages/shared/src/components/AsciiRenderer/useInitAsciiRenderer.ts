@@ -105,34 +105,77 @@ export function useInitAsciiRenderer({
       containerHeight: number,
       isMatrixMode: boolean = false,
     ) => {
-      if (!moduleRef.current) {
-        throw new Error("moduleRef.current is null during createConfigStruct");
+      try {
+        if (!moduleRef.current) {
+          throw new Error(
+            "moduleRef.current is null during createConfigStruct",
+          );
+        }
+
+        const configSize = 544;
+        const configPtr = moduleRef.current._malloc(configSize);
+
+        if (!configPtr) {
+          throw new Error("_malloc returned null for config struct");
+        }
+
+        // Estimate cols/rows from container size
+        // Rough estimate: 10px wide, 20px tall per cell
+        const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
+        const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
+
+        // Sanity check: prevent allocating unreasonably large grids
+        // 4K display at 1280x720 grid = reasonable max
+        const MAX_COLS = 1280;
+        const MAX_ROWS = 720;
+        const MAX_TOTAL_CELLS = 4096 * 2160; // 4K pixel count as upper bound
+
+        if (
+          estimatedCols > MAX_COLS ||
+          estimatedRows > MAX_ROWS ||
+          estimatedCols * estimatedRows > MAX_TOTAL_CELLS
+        ) {
+          moduleRef.current._free(configPtr);
+          const error = new Error(
+            `[createConfigStruct] Grid dimensions exceed limits: ${estimatedCols}x${estimatedRows} (${estimatedCols * estimatedRows} cells) exceeds max ${MAX_COLS}x${MAX_ROWS} (${MAX_TOTAL_CELLS} cells)`,
+          );
+          console.error("[createConfigStruct] DIMENSION SANITY CHECK FAILED", {
+            estimatedCols,
+            estimatedRows,
+            totalCells: estimatedCols * estimatedRows,
+            MAX_COLS,
+            MAX_ROWS,
+            MAX_TOTAL_CELLS,
+            containerWidth,
+            containerHeight,
+          });
+          throw error;
+        }
+
+        console.log("[createConfigStruct] ALLOCATING", {
+          configPtr,
+          configSize,
+          containerWidth,
+          containerHeight,
+          estimatedCols,
+          estimatedRows,
+          isMatrixMode,
+        });
+
+        writeConfigStructFields(
+          configPtr,
+          estimatedCols,
+          estimatedRows,
+          isMatrixMode,
+        );
+
+        console.log("[createConfigStruct] CONFIG WRITTEN, returning configPtr");
+
+        return { configPtr, estimatedCols, estimatedRows };
+      } catch (err) {
+        console.error("[createConfigStruct] ERROR:", err);
+        throw err;
       }
-
-      const configSize = 544;
-      const configPtr = moduleRef.current._malloc(configSize);
-
-      // Estimate cols/rows from container size
-      // Rough estimate: 10px wide, 20px tall per cell
-      const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
-      const estimatedRows = Math.max(24, Math.floor(containerHeight / 20));
-
-      console.log("[createConfigStruct] dimensions", {
-        containerWidth,
-        containerHeight,
-        estimatedCols,
-        estimatedRows,
-        isMatrixMode,
-      });
-
-      writeConfigStructFields(
-        configPtr,
-        estimatedCols,
-        estimatedRows,
-        isMatrixMode,
-      );
-
-      return { configPtr, estimatedCols, estimatedRows };
     },
     [writeConfigStructFields],
   );
@@ -144,7 +187,16 @@ export function useInitAsciiRenderer({
         throw new Error("moduleRef.current is null during callRendererCreate");
       }
 
+      console.log("[callRendererCreate] CALLING _term_renderer_create", {
+        configPtr,
+        outPtr,
+      });
+
       const result = moduleRef.current._term_renderer_create(configPtr, outPtr);
+
+      console.log("[callRendererCreate] _term_renderer_create returned", {
+        result,
+      });
 
       if (result !== 0) {
         throw new Error(
@@ -157,6 +209,9 @@ export function useInitAsciiRenderer({
         outPtr,
         8,
       ).getBigInt64(0, true);
+      console.log("[callRendererCreate] EXTRACTED rendererPtr", {
+        rendererPtr: Number(rendererPtr),
+      });
       return Number(rendererPtr);
     },
     [],
@@ -168,15 +223,38 @@ export function useInitAsciiRenderer({
       throw new Error("moduleRef.current is null during getRendererDimensions");
     }
 
+    console.log(
+      "[getRendererDimensions] CALLING getter functions with rendererPtr",
+      {
+        rendererPtr: rendererPtrRef.current,
+      },
+    );
+
+    const cols = moduleRef.current._term_renderer_get_cols(
+      rendererPtrRef.current,
+    );
+    const rows = moduleRef.current._term_renderer_get_rows(
+      rendererPtrRef.current,
+    );
+    const pixelWidth = moduleRef.current._term_renderer_width_px(
+      rendererPtrRef.current,
+    );
+    const pixelHeight = moduleRef.current._term_renderer_height_px(
+      rendererPtrRef.current,
+    );
+
+    console.log("[getRendererDimensions] RETRIEVED", {
+      cols,
+      rows,
+      pixelWidth,
+      pixelHeight,
+    });
+
     return {
-      cols: moduleRef.current._term_renderer_get_cols(rendererPtrRef.current),
-      rows: moduleRef.current._term_renderer_get_rows(rendererPtrRef.current),
-      pixelWidth: moduleRef.current._term_renderer_width_px(
-        rendererPtrRef.current,
-      ),
-      pixelHeight: moduleRef.current._term_renderer_height_px(
-        rendererPtrRef.current,
-      ),
+      cols,
+      rows,
+      pixelWidth,
+      pixelHeight,
     };
   }, []);
 
@@ -194,38 +272,44 @@ export function useInitAsciiRenderer({
 
       try {
         // Destroy old renderer
+        console.log("[handleContainerResize] DESTROYING old renderer", {
+          oldRendererPtr: rendererPtrRef.current,
+        });
         moduleRef.current._term_renderer_destroy(rendererPtrRef.current);
 
         // Create new renderer with updated dimensions, using cached matrix mode
-        console.log("[handleContainerResize] recreating with", {
+        console.log("[handleContainerResize] STARTING RECREATION", {
           newWidth,
           newHeight,
           currentMatrixMode: currentMatrixModeRef.current,
         });
-        const { configPtr } = createConfigStruct(
+        const { configPtr, estimatedCols, estimatedRows } = createConfigStruct(
           newWidth,
           newHeight,
           currentMatrixModeRef.current,
         );
+        console.log("[handleContainerResize] createConfigStruct returned", {
+          configPtr,
+          estimatedCols,
+          estimatedRows,
+        });
         const outPtr = moduleRef.current._malloc(8);
+        console.log("[handleContainerResize] Allocated outPtr", { outPtr });
 
-        console.log(`[handleContainerResize] Calling term_renderer_create...`);
+        console.log(`[handleContainerResize] CALLING callRendererCreate...`);
         const rendererPtr = callRendererCreate(configPtr, outPtr);
         rendererPtrRef.current = rendererPtr;
-        console.log(
-          `[handleContainerResize] term_renderer_create returned ptr=${rendererPtr}`,
-        );
 
+        console.log("[handleContainerResize] CALLING getRendererDimensions");
         const dims = getRendererDimensions();
-        console.log(
-          `[handleContainerResize] getRendererDimensions returned:`,
-          dims,
-        );
-        console.log("[handleContainerResize] renderer dimensions", {
-          cols: dims.cols,
-          rows: dims.rows,
-          pixelWidth: dims.pixelWidth,
-          pixelHeight: dims.pixelHeight,
+
+        if (dims.pixelHeight === 0) {
+          console.error("[handleContainerResize] ERROR: pixelHeight=0!", dims);
+        }
+
+        console.log("[handleContainerResize] SETTING canvas dimensions", {
+          width: dims.pixelWidth,
+          height: dims.pixelHeight,
         });
         canvas.width = dims.pixelWidth;
         canvas.height = dims.pixelHeight;
@@ -250,7 +334,64 @@ export function useInitAsciiRenderer({
         moduleRef.current._free(configPtr);
         moduleRef.current._free(outPtr);
       } catch (err) {
-        console.error("[AsciiRenderer] Failed to resize renderer:", err);
+        console.error("[AsciiRenderer] FATAL: Failed to resize renderer:", err);
+        if (err instanceof Error) {
+          console.error("[AsciiRenderer] Error message:", err.message);
+          console.error("[AsciiRenderer] Stack:", err.stack);
+
+          // If dimension validation failed, try to recover with more conservative dimensions
+          if (
+            err.message.includes("dimension") ||
+            err.message.includes("limit")
+          ) {
+            console.warn(
+              "[AsciiRenderer] Dimension validation failed, attempting recovery with smaller grid",
+            );
+            try {
+              // Retry with a capped grid size
+              const cappedWidth = Math.min(newWidth, 1200);
+              const cappedHeight = Math.min(newHeight, 600);
+              const cappedCols = Math.max(80, Math.floor(cappedWidth / 10));
+              const cappedRows = Math.max(24, Math.floor(cappedHeight / 20));
+
+              console.log(
+                "[AsciiRenderer] Recovery attempt with capped dimensions:",
+                {
+                  cappedCols,
+                  cappedRows,
+                },
+              );
+
+              const { configPtr: retryConfigPtr } = createConfigStruct(
+                cappedWidth,
+                cappedHeight,
+                currentMatrixModeRef.current,
+              );
+              const retryOutPtr = moduleRef.current?._malloc(8);
+              if (retryOutPtr) {
+                const retryRendererPtr = callRendererCreate(
+                  retryConfigPtr,
+                  retryOutPtr,
+                );
+                rendererPtrRef.current = retryRendererPtr;
+                const retryDims = getRendererDimensions();
+                canvas.width = retryDims.pixelWidth;
+                canvas.height = retryDims.pixelHeight;
+                moduleRef.current?._free(retryConfigPtr);
+                moduleRef.current?._free(retryOutPtr);
+                console.log(
+                  "[AsciiRenderer] Recovery successful with dimensions:",
+                  retryDims,
+                );
+              }
+            } catch (recoveryErr) {
+              console.error(
+                "[AsciiRenderer] Recovery also failed:",
+                recoveryErr,
+              );
+            }
+          }
+        }
       }
     },
     [createConfigStruct, callRendererCreate, getRendererDimensions],
