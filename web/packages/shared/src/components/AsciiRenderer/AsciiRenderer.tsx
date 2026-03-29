@@ -120,6 +120,15 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
           </div>
         )}
 
+        {/* Connection status overlay - shows when connecting or in handshake */}
+        {(connectionState === 1 || connectionState === 2) && (
+          <div className="absolute inset-0 flex items-end justify-center pb-8 pointer-events-none">
+            <div className="text-2xl font-semibold text-yellow-400 drop-shadow-lg">
+              {connectionState === 1 ? "Connecting..." : "Handshaking..."}
+            </div>
+          </div>
+        )}
+
         {/* FPS counter - hidden, displayed in control bar instead */}
         {showFps && (
           <div ref={fpsDisplayRef} style={{ display: "none" }}>
