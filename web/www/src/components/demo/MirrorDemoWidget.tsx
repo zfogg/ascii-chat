@@ -20,11 +20,11 @@ import {
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
-import { Heading } from "@ascii-chat/shared/components";
 import {
+  Heading,
   AsciiRenderer,
   type AsciiRendererHandle,
-} from "@ascii-chat/shared/components/AsciiRenderer";
+} from "@ascii-chat/shared/components";
 import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";

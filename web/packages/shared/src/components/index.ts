@@ -1,5 +1,8 @@
 export { AsciiRenderer } from "./AsciiRenderer";
-export type { AsciiRendererHandle, AsciiRendererProps } from "./AsciiRenderer";
+export type {
+  AsciiRendererHandle,
+  AsciiRendererProps,
+} from "./AsciiRenderer/types";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { Card } from "./Card";
