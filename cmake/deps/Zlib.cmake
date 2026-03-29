@@ -201,13 +201,34 @@ endif()
 # Non-musl: Use system package or pkg-config
 # =============================================================================
 
-# Try to find zlib via CMake config first, then fall back to pkg-config
-find_package(ZLIB QUIET CONFIG)
+# Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
+# then config mode, then fall back to pkg-config
+find_package(ZLIB QUIET)
 
 if(NOT ZLIB_FOUND)
-    # Fall back to pkg-config if CMake config not found
-    include(FindPkgConfig)
-    pkg_check_modules(ZLIB REQUIRED zlib)
+    find_package(ZLIB QUIET CONFIG)
+endif()
+
+if(NOT ZLIB_FOUND)
+    # Fall back to pkg-config if CMake find didn't work
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(ZLIB REQUIRED zlib)
+    else()
+        # Last resort: check vcpkg installed directory directly
+        if(DEFINED VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+            set(_vcpkg_zlib_lib "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/zlib.lib")
+            set(_vcpkg_zlib_inc "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+            if(EXISTS "${_vcpkg_zlib_lib}")
+                set(ZLIB_FOUND TRUE)
+                set(ZLIB_LIBRARIES "${_vcpkg_zlib_lib}")
+                set(ZLIB_INCLUDE_DIRS "${_vcpkg_zlib_inc}")
+            endif()
+        endif()
+        if(NOT ZLIB_FOUND)
+            message(FATAL_ERROR "zlib not found: no CMake config, no pkg-config, and no vcpkg fallback")
+        endif()
+    endif()
 
     # Create imported target for compatibility
     if(NOT TARGET ZLIB::zlib)

@@ -169,6 +169,33 @@ elseif(WIN32)
         set(ABSEIL_LIBRARIES absl::base absl::strings)
         set(ABSEIL_INCLUDE_DIRS "")
         message(STATUS "${BoldGreen}✓${ColorReset} Abseil (Windows vcpkg)")
+
+        # Fixup: vcpkg abseil injects raw MSVC linker flags (-ignore:4221) in
+        # INTERFACE_LINK_LIBRARIES. Clang driver doesn't recognize these.
+        # Strip them from all imported absl:: targets.
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Get all target names from abseil's cmake config
+            file(STRINGS "${absl_DIR}/abslTargets.cmake" _absl_tgt_lines REGEX "^set_target_properties\\(absl::")
+            set(_absl_fixed_count 0)
+            foreach(_line IN LISTS _absl_tgt_lines)
+                string(REGEX MATCH "absl::[a-zA-Z0-9_]+" _tgt "${_line}")
+                if(_tgt AND TARGET "${_tgt}")
+                    get_target_property(_libs "${_tgt}" INTERFACE_LINK_LIBRARIES)
+                    if(_libs)
+                        string(FIND "${_libs}" "-ignore:" _has_ignore)
+                        if(NOT _has_ignore EQUAL -1)
+                            # Remove -ignore:NNNN and $<LINK_ONLY:-ignore:NNNN> entries
+                            list(FILTER _libs EXCLUDE REGEX "-ignore:[0-9]+")
+                            set_target_properties("${_tgt}" PROPERTIES INTERFACE_LINK_LIBRARIES "${_libs}")
+                            math(EXPR _absl_fixed_count "${_absl_fixed_count} + 1")
+                        endif()
+                    endif()
+                endif()
+            endforeach()
+            if(_absl_fixed_count GREATER 0)
+                message(STATUS "  Stripped MSVC -ignore:4221 flags from ${_absl_fixed_count} abseil targets for Clang")
+            endif()
+        endif()
     else()
         message(WARNING "Abseil not found via vcpkg")
         set(ABSEIL_LIBRARIES "")

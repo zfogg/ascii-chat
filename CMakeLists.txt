@@ -133,7 +133,20 @@ project(${PROJECT_NAME_FULL}
 
 # Find Threads early - required for abseil and other dependencies
 # On macOS, explicitly set pthread flag to help FindThreads module
-find_package(Threads REQUIRED)
+# On Windows with Clang: prevent FindThreads from detecting pthreads-win32 (vcpkg)
+# and adding -lpthreads. Windows uses native Win32 threads, no extra lib needed.
+if(WIN32)
+    set(CMAKE_THREAD_LIBS_INIT "" CACHE STRING "")
+    set(CMAKE_HAVE_THREADS_LIBRARY 1 CACHE BOOL "")
+    set(CMAKE_USE_WIN32_THREADS_INIT 1 CACHE BOOL "")
+    set(CMAKE_USE_PTHREADS_INIT 0 CACHE BOOL "")
+    set(THREADS_FOUND TRUE)
+    if(NOT TARGET Threads::Threads)
+        add_library(Threads::Threads INTERFACE IMPORTED)
+    endif()
+else()
+    find_package(Threads REQUIRED)
+endif()
 
 # Musl release build optimization adjustment
 # Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors

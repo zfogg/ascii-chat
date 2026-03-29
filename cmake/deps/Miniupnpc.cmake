@@ -140,6 +140,11 @@ if(MINIUPNPC_FOUND)
     message(STATUS "  UPnP/NAT-PMP support: ENABLED")
     add_compile_definitions(HAVE_MINIUPNPC=1)
 
+    # On Windows static builds, tell miniupnpc headers not to use __declspec(dllimport)
+    if(WIN32 AND VCPKG_TARGET_TRIPLET MATCHES "static")
+        add_compile_definitions(MINIUPNP_STATICLIB=1)
+    endif()
+
     # Detect the UPNP_GetValidIGD function signature (changed in API version 14)
     # Some distributions have mismatched header API version vs actual function signature,
     # so we must test at configure time rather than relying on MINIUPNPC_API_VERSION

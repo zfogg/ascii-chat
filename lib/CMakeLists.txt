@@ -740,10 +740,13 @@ endif()
 # that may be called by panic-instrumented code
 # Skip shared library for musl builds (static PIE binary only)
 # Also skip on Linux Release non-musl: static FFmpeg .a can't link into .so (PIC/TLS issues on arm64)
+# Also skip on Windows Release: link object libraries directly into executable for fully static binary
 set(_build_shared_lib TRUE)
 if(USE_MUSL)
     set(_build_shared_lib FALSE)
 elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    set(_build_shared_lib FALSE)
+elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     set(_build_shared_lib FALSE)
 endif()
 if(_build_shared_lib)

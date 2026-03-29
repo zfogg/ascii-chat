@@ -48,6 +48,10 @@ set(GREP_EXCLUDE_PATTERNS
     # User home paths from static library __FILE__ macros (llvm, libc++, libunwind)
     # These come from system /usr/local/lib/ paths and are expected in release builds
     "/usr/local/"
+    # vcpkg build trees - static libraries (FFmpeg, OpenSSL, etc.) compiled by vcpkg
+    # contain __FILE__ macros with vcpkg buildtree paths baked in
+    "scoop/apps/vcpkg/"
+    "vcpkg/current/buildtrees/"
 )
 
 # Build grep exclude arguments
@@ -66,7 +70,7 @@ execute_process(
     COMMAND bash -c "
         SUSPECT=\$(${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\\\\\Users\\\\\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/')
         if [ -z \"\$SUSPECT\" ]; then exit 1; fi
-        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' -e '/home/buildozer/aports/' -e '/home/linuxbrew/' -e '/opt/homebrew/' | head -20
+        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' -e '/home/buildozer/aports/' -e '/home/linuxbrew/' -e '/opt/homebrew/' -e 'scoop.apps.vcpkg.' -e 'vcpkg.current.buildtrees.' -e 'vcpkg.current.packages.' | head -20
     "
     OUTPUT_VARIABLE FOUND_PATHS
     RESULT_VARIABLE GREP_RESULT

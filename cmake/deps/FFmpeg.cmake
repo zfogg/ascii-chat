@@ -296,6 +296,13 @@ if(WIN32)
         # - FFMPEG_INCLUDE_DIRS: include directories
         # - FFMPEG_LIBRARY_DIRS: library search paths
 
+        # vcpkg's FindFFMPEG.cmake may inject Unix-specific flags like -lpthreads,
+        # -pthread, -lm, -latomic that don't exist on Windows. Strip them.
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
+            list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
+        endif()
+
         message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (Windows vcpkg)")
         message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
         message(STATUS "  - FFMPEG_LIBRARY_DIRS: ${FFMPEG_LIBRARY_DIRS}")

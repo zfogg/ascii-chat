@@ -59,8 +59,11 @@ option(BUILD_TESTS "Build test executables" OFF)
 # Automatically disable when USE_MUSL is OFF on Linux (no static linking available)
 # - Docker without musl: dynamic glibc linking
 # - ARM64 Linux: musl not enabled by default (limited GitHub runner support)
-if(WIN32)
-    # Windows uses shared libraries (DLLs), not static linking
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Windows Release uses static linking (all deps compiled into binary)
+    set(_default_enforce_static ON)
+elseif(WIN32)
+    # Windows non-Release uses shared libraries (DLLs)
     set(_default_enforce_static OFF)
 elseif(NOT USE_MUSL AND UNIX AND NOT APPLE)
     # Check if we're on ARM64 (CMAKE_SYSTEM_PROCESSOR may not be set yet, use uname)

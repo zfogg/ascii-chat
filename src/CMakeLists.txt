@@ -79,13 +79,17 @@ set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
     if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
+    elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        set(_use_shared_lib FALSE)
     else()
         set(_use_shared_lib TRUE)
     endif()
 endif()
 
 if(NOT _use_shared_lib AND NOT USE_MUSL)
-    # Linux Release non-musl: link object libraries directly (static FFmpeg can't go into .so)
+    # Static release linking: link object libraries directly into executable
+    # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
+    # and Windows Release (fully static binary with all deps compiled in)
     add_dependencies(ascii-chat generate_version)
     target_link_libraries(ascii-chat PRIVATE
         ascii-chat-util
@@ -104,6 +108,70 @@ if(NOT _use_shared_lib AND NOT USE_MUSL)
     if(FFMPEG_LIBRARIES)
         target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
     endif()
+
+    if(WIN32)
+        # Windows static release: link all dependencies directly
+        target_link_libraries(ascii-chat PRIVATE
+            ${LIBSODIUM_LIBRARIES}
+            ${OPUS_LIBRARIES}
+            ${SQLITE3_LIBRARIES}
+            ${PCRE2_LIBRARIES}
+            ${YYJSON_LIBRARIES}
+            ${PORTAUDIO_LIBRARIES}
+        )
+        # zstd
+        if(TARGET zstd::libzstd)
+            target_link_libraries(ascii-chat PRIVATE zstd::libzstd)
+        endif()
+        # WebRTC audio processing (safe to link directly in Release - no ASan conflict)
+        if(TARGET webrtc_audio_processing)
+            target_link_libraries(ascii-chat PRIVATE webrtc_audio_processing)
+        endif()
+        # libdatachannel and its dependencies (static linking)
+        if(TARGET libdatachannel)
+            target_link_libraries(ascii-chat PRIVATE libdatachannel)
+        endif()
+        target_link_libraries(ascii-chat PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        # libwebsockets
+        if(TARGET websockets)
+            target_link_libraries(ascii-chat PRIVATE websockets)
+        elseif(LIBWEBSOCKETS_LIBRARIES)
+            target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
+        endif()
+        # FreeType and Fontconfig
+        if(FREETYPE_LIBRARY_DIRS)
+            target_link_directories(ascii-chat PRIVATE ${FREETYPE_LIBRARY_DIRS})
+        endif()
+        target_link_libraries(ascii-chat PRIVATE ${FREETYPE_LIBRARIES})
+        if(FONTCONFIG_LINK_LIBRARIES)
+            target_link_libraries(ascii-chat PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
+        endif()
+        # vterm
+        if(VTERM_LDFLAGS)
+            target_link_libraries(ascii-chat PRIVATE ${VTERM_LDFLAGS})
+        endif()
+        # miniupnpc
+        if(MINIUPNPC_FOUND)
+            target_include_directories(ascii-chat PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+            target_link_libraries(ascii-chat PRIVATE ${MINIUPNPC_LIBRARIES})
+            if(NATPMP_LIBRARY)
+                target_include_directories(ascii-chat PRIVATE ${NATPMP_INCLUDE_DIR})
+                target_link_libraries(ascii-chat PRIVATE ${NATPMP_LIBRARY})
+            endif()
+        endif()
+        # mimalloc
+        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
+            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
+        endif()
+        # Windows system libraries
+        target_link_libraries(ascii-chat PRIVATE
+            ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
+            ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
+            crypt32
+            Winmm
+        )
+    endif()
+
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
@@ -599,7 +667,8 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 # Copy DLL dependencies to bin directory on Windows (for non-static builds)
-if(WIN32)
+# Skip for static Release builds where all deps are linked into the executable
+if(WIN32 AND _use_shared_lib)
     copy_windows_dlls(ascii-chat)
 endif()
 # Check static linking for Release builds
