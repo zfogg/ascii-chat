@@ -120,16 +120,15 @@ export function useInitAsciiRenderer({
         }
 
         // Estimate cols/rows from container size
-        // Both normal and matrix fonts use same grid dimensions (cols × rows)
-        // The only difference is character width: matrix font cells are 2x wider
-        // So we use same pixels-per-row estimate (20px) for both modes
+        // Rough estimate: 10px wide, 20px tall per cell (for normal fonts)
+        // For matrix fonts: cell height is typically 32px (2x width) due to aspect ratio correction
         // BUT: cap container dimensions to prevent cascading resize loops
         const maxContainerHeight = 2000;
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
         const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
 
-        // Same pixels-per-row estimate for both normal and matrix modes
-        const pixelsPerRow = 20;
+        // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
+        const pixelsPerRow = isMatrixMode ? 32 : 20;
         const estimatedRows = Math.max(
           24,
           Math.floor(effectiveHeight / pixelsPerRow),
@@ -374,7 +373,9 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
-              const recoveryPixelsPerRow = 20; // Same for both normal and matrix modes
+              const recoveryPixelsPerRow = currentMatrixModeRef.current
+                ? 32
+                : 20;
               const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
                 24,
