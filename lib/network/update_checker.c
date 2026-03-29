@@ -374,15 +374,29 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
     snprintf(buffer, buffer_size, "brew upgrade ascii-chat");
     break;
 
-  case INSTALL_METHOD_ARCH_AUR:
-    // Check if paru is available, otherwise suggest yay
-    const char *argv_paru[] = {"paru", NULL};
-    if (platform_execute_subprocess("paru", argv_paru, NULL, 0) == 0) {
+  case INSTALL_METHOD_ARCH_AUR: {
+    // Cache AUR helper detection to avoid spawning subprocesses on every call
+    static int aur_helper = -1; // -1 = unknown, 0 = none, 1 = paru, 2 = yay
+    if (aur_helper == -1) {
+      const char *argv_paru[] = {"paru", "--version", NULL};
+      const char *argv_yay[] = {"yay", "--version", NULL};
+      if (platform_execute_subprocess("paru", argv_paru, NULL, 0) == 0) {
+        aur_helper = 1;
+      } else if (platform_execute_subprocess("yay", argv_yay, NULL, 0) == 0) {
+        aur_helper = 2;
+      } else {
+        aur_helper = 0;
+      }
+    }
+    if (aur_helper == 1) {
       snprintf(buffer, buffer_size, "paru -S ascii-chat");
-    } else {
+    } else if (aur_helper == 2) {
       snprintf(buffer, buffer_size, "yay -S ascii-chat");
+    } else {
+      snprintf(buffer, buffer_size, "<your-aur-helper> -Ss ascii-chat");
     }
     break;
+  }
 
   case INSTALL_METHOD_GITHUB:
   case INSTALL_METHOD_UNKNOWN:

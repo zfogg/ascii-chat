@@ -130,8 +130,8 @@ static void render_ui_status_header(frame_buffer_t *buf, terminal_size_t term_si
   snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %s", status->mode_name,
            status->connected_count, uptime_str);
 
-  // Truncate if needed
-  truncate_utf8_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
+  // Truncate if needed (ANSI-aware)
+  truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
   snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line_truncated);
 
   int padding = display_center_horizontal(status_line_truncated, term_size.cols);
@@ -174,8 +174,8 @@ static void render_ui_status_header(frame_buffer_t *buf, terminal_size_t term_si
     }
   }
 
-  // Truncate if needed
-  truncate_utf8_with_ellipsis(addr_line, addr_line_truncated, sizeof(addr_line_truncated), term_size.cols - 2);
+  // Truncate if needed (ANSI-aware)
+  truncate_with_ellipsis(addr_line, addr_line_truncated, sizeof(addr_line_truncated), term_size.cols - 2);
 
   int addr_padding = display_center_horizontal(addr_line_truncated, term_size.cols);
   for (int i = 0; i < addr_padding; i++) {

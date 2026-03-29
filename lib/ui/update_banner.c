@@ -15,8 +15,8 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
 
 #include <stdio.h>
@@ -65,6 +65,7 @@ bool update_banner_has_update(void) {
 }
 
 // Build a box line: "║  <content><padding>║"
+// Content may contain ANSI escape sequences — truncate_with_ellipsis handles them.
 static void build_box_line(char *output, size_t output_size, const char *content, int box_width) {
   if (!output || output_size < 256 || !content || box_width < 6) {
     return;
@@ -75,10 +76,10 @@ static void build_box_line(char *output, size_t output_size, const char *content
     content_available = 1;
   }
 
-  char truncated[256];
-  truncate_utf8_with_ellipsis(content, truncated, sizeof(truncated), content_available);
+  char truncated[512];
+  truncate_with_ellipsis(content, truncated, sizeof(truncated), content_available);
 
-  int content_width = utf8_display_width(truncated);
+  int content_width = display_width(truncated);
   int padding = content_available - content_width;
   if (padding < 0) {
     padding = 0;
@@ -356,6 +357,12 @@ void update_banner_wait_for_check(void) {
   if (!g_update_thread_started) {
     return;
   }
-  asciichat_thread_join_timeout(&g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+  int ret = asciichat_thread_join_timeout(&g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+  if (ret != 0) {
+    // Timeout — thread is still alive. Do a blocking join to avoid orphaning it.
+    // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
+    log_warn("Update check thread did not finish within 5s, waiting for completion");
+    asciichat_thread_join(&g_update_thread, NULL);
+  }
   g_update_thread_started = false;
 }

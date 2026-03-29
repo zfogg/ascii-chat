@@ -237,8 +237,8 @@ char *https_get(const char *hostname, const char *path) {
       response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
     }
 
-    // Read data
-    int n = br_sslio_read(&ioc, response_buf + response_len, response_capacity - response_len);
+    // Read data (reserve 1 byte for null terminator)
+    int n = br_sslio_read(&ioc, response_buf + response_len, response_capacity - response_len - 1);
     if (n < 0) {
       // Check for TLS errors
       int err = br_ssl_engine_last_error(&sc.eng);

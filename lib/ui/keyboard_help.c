@@ -10,6 +10,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/rgba/color_filter.h>
@@ -126,11 +127,11 @@ static void build_help_line(char *output, size_t output_size, const char *conten
   if (content_available < 1)
     content_available = 1;
 
-  // Truncate content if needed (with ellipsis indicator)
+  // Truncate content if needed (ANSI-aware, with ellipsis indicator)
   char truncated[256];
-  truncate_utf8_with_ellipsis(content, truncated, sizeof(truncated), content_available);
+  truncate_with_ellipsis(content, truncated, sizeof(truncated), content_available);
 
-  int content_width = utf8_display_width(truncated);
+  int content_width = display_width(truncated);
   int padding = content_available - content_width;
   if (padding < 0)
     padding = 0;
@@ -198,11 +199,11 @@ static void build_settings_line(char *output, size_t output_size, const char *la
   if (available < 4)
     available = 4; // Minimum space for truncated value
 
-  // Truncate value if needed (with ellipsis indicator)
+  // Truncate value if needed (ANSI-aware, with ellipsis indicator)
   char truncated_value[256];
-  truncate_utf8_with_ellipsis(value, truncated_value, sizeof(truncated_value), available);
+  truncate_with_ellipsis(value, truncated_value, sizeof(truncated_value), available);
 
-  int value_width = utf8_display_width(truncated_value);
+  int value_width = display_width(truncated_value);
   int padding = available - value_width;
   if (padding < 0)
     padding = 0;

@@ -71,6 +71,30 @@ char *ansi_strip_escapes(const char *input, size_t input_len) {
   return output;
 }
 
+const char *ansi_skip_escape(const char *ptr, const char *end) {
+  if (!ptr || ptr >= end || *ptr != '\x1b') {
+    return ptr ? ptr + 1 : ptr;
+  }
+
+  const char *p = ptr + 1;
+  if (p >= end || *p != '[') {
+    return p; // Not a CSI sequence, skip just the ESC byte
+  }
+  p++; // Skip '['
+
+  // Skip parameter bytes (0x30-0x3F) and intermediate bytes (0x20-0x2F)
+  while (p < end && ((*p >= 0x30 && *p <= 0x3F) || (*p >= 0x20 && *p <= 0x2F))) {
+    p++;
+  }
+
+  // Skip final byte (0x40-0x7E)
+  if (p < end && *p >= 0x40 && *p <= 0x7E) {
+    p++;
+  }
+
+  return p;
+}
+
 bool ansi_is_already_colorized(const char *message, size_t pos) {
   if (!message) {
     return false;

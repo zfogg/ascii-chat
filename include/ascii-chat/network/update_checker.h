@@ -11,7 +11,7 @@
  * - Checks once per week automatically at startup
  * - Manual check via --check-update flag
  * - DNS connectivity test before attempting HTTP request
- * - Compares git commit SHA to detect updates
+ * - Compares semantic versions to detect updates
  * - Caches results in ~/.config/ascii-chat/last_update_check
  * - Detects installation method (Homebrew, Arch AUR, GitHub)
  *

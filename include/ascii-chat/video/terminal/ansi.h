@@ -81,6 +81,19 @@ typedef struct {
 char *ansi_strip_escapes(const char *input, size_t input_len);
 
 /**
+ * @brief Find the end of an ANSI CSI escape sequence
+ *
+ * Given a pointer to an ESC character (\x1b) that starts a CSI sequence,
+ * returns a pointer past the final byte of the sequence. If the pointer
+ * does not point to a valid CSI sequence start, returns ptr + 1.
+ *
+ * @param ptr Pointer to the ESC (\x1b) character
+ * @param end Pointer past the end of the string
+ * @return Pointer to the first byte after the escape sequence
+ */
+const char *ansi_skip_escape(const char *ptr, const char *end);
+
+/**
  * @brief Check if a position in text is already colored
  *
  * Scans from the start of the message to the given position, tracking ANSI

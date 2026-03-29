@@ -258,31 +258,23 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 const char *colored_string(log_color_t color, const char *text);
 
 /**
- * @brief Truncate UTF-8 string to fit within max display width, adding ellipsis if truncated
+ * @brief Truncate a string to a maximum display width, with ellipsis
  *
- * Truncates a UTF-8 string to fit within a maximum display width (accounting for
- * multi-byte characters), and appends "..." if truncation occurred.
+ * Handles ANSI escape sequences (never cuts inside one), multi-byte UTF-8,
+ * and wide characters (CJK = 2 columns). If truncation is needed, appends
+ * a color reset (\033[0m) followed by "…" (Unicode ellipsis, 1 column).
  *
- * BEHAVIOR:
- * - If string fits within max_width: Returns truncated string without ellipsis
- * - If string exceeds max_width: Returns truncated string with "..." appended
- * - Properly handles UTF-8 multi-byte characters (won't cut in the middle)
+ * Safe for strings with or without ANSI codes. For plain text the reset
+ * is harmless (terminals ignore redundant resets).
  *
- * EXAMPLE:
- * @code
- * char buf[256];
- * truncate_utf8_with_ellipsis("Hello, World!", buf, sizeof(buf), 10);
- * // buf now contains "Hello, ..." (10 columns max, including ellipsis)
- * @endcode
- *
- * @param input Input string (may be UTF-8)
+ * @param input Input string (may contain ANSI escape sequences and UTF-8)
  * @param output Output buffer for truncated string
- * @param output_size Size of output buffer
- * @param max_width Maximum display width in columns (must account for "..." if truncating)
+ * @param output_size Size of output buffer (must be >= 10 for reset + ellipsis + NUL)
+ * @param max_width Maximum display width in columns
  *
  * @ingroup util
  */
-void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_size, int max_width);
+void truncate_with_ellipsis(const char *input, char *output, size_t output_size, int max_width);
 
 /**
  * @brief Strip ANSI escape codes from a string

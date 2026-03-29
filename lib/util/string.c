@@ -5,7 +5,10 @@
  */
 
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/video/terminal/ansi.h>
+#include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
@@ -316,61 +319,89 @@ const char *colored_string(log_color_t color, const char *text) {
   return current_buf;
 }
 
-void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_size, int max_width) {
-  if (!input || !output || output_size < 2) {
-    if (output && output_size > 0)
+void truncate_with_ellipsis(const char *input, char *output, size_t output_size, int max_width) {
+  if (!input || !output || output_size < 4) {
+    if (output && output_size > 0) {
       output[0] = '\0';
+    }
     return;
   }
 
-  // Copy input to output first
-  int input_len = strlen(input);
-  if (input_len >= (int)output_size) {
-    input_len = output_size - 1;
-  }
-  memcpy(output, input, input_len);
-  output[input_len] = '\0';
+  int content_width = display_width(input);
 
-  // Get display width of current string
-  int current_width = utf8_display_width(output);
-
-  // If it fits, we're done
-  if (current_width <= max_width) {
+  // Content fits — copy as-is
+  if (content_width <= max_width) {
+    size_t len = strlen(input);
+    if (len >= output_size) {
+      len = output_size - 1;
+    }
+    memcpy(output, input, len);
+    output[len] = '\0';
     return;
   }
 
-  // Need to truncate - reserve space for "..." (3 chars, 3 width)
-  int available_width = max_width - 3;
-  if (available_width <= 0) {
-    // No room for ellipsis, just show "..."
-    output[0] = '.';
-    output[1] = '.';
-    output[2] = '.';
-    output[3] = '\0';
-    return;
+  // Need to truncate. Walk forward copying bytes while counting visible
+  // columns. ANSI escape sequences are copied whole (zero display width).
+  // UTF-8 multi-byte characters are decoded to get their display width
+  // (e.g., CJK = 2 columns, emoji = 2 columns) and copied as whole
+  // codepoints so we never split a multi-byte sequence.
+  const char *src = input;
+  const char *src_end = input + strlen(input);
+  char *dst = output;
+  char *dst_end = output + output_size - 10; // Reserve for reset + ellipsis + NUL
+  int cols = 0;
+  int target = max_width - 1; // Reserve 1 column for "…"
+
+  if (target < 0) {
+    target = 0;
   }
 
-  // Truncate byte by byte until we fit in available_width
-  for (int i = input_len - 1; i > 0; i--) {
-    output[i] = '\0';
-    current_width = utf8_display_width(output);
-    if (current_width <= available_width) {
-      // Found the right length - add ellipsis
-      size_t current_len = strlen(output);
-      size_t remaining = output_size - current_len;
-      int snprintf_result = SAFE_SNPRINTF(output + current_len, remaining, "%s", "...");
-      if (snprintf_result < 0) {
-        log_error("Failed to append ellipsis: snprintf returned %d", snprintf_result);
+  while (src < src_end && dst < dst_end) {
+    if (*src == '\x1b') {
+      // Copy the entire escape sequence (zero display width)
+      const char *esc_end = ansi_skip_escape(src, src_end);
+      size_t esc_len = (size_t)(esc_end - src);
+      if (dst + esc_len < dst_end) {
+        memcpy(dst, src, esc_len);
+        dst += esc_len;
       }
-      return;
+      src = esc_end;
+    } else {
+      // Decode one UTF-8 codepoint to get its byte length and display width
+      utf8proc_int32_t codepoint;
+      utf8proc_ssize_t cp_len = utf8proc_iterate((const utf8proc_uint8_t *)src, src_end - src, &codepoint);
+      if (cp_len <= 0) {
+        // Invalid UTF-8 — copy single byte, count as 1 column
+        cp_len = 1;
+        codepoint = (unsigned char)*src;
+      }
+
+      int char_width = utf8proc_charwidth(codepoint);
+      if (char_width < 0) {
+        char_width = 0; // Control characters
+      }
+
+      if (cols + char_width > target) {
+        break;
+      }
+
+      // Copy the full codepoint bytes
+      if (dst + cp_len < dst_end) {
+        memcpy(dst, src, (size_t)cp_len);
+        dst += cp_len;
+      }
+      src += cp_len;
+      cols += char_width;
     }
   }
 
-  // Fallback: just "..."
-  output[0] = '.';
-  output[1] = '.';
-  output[2] = '.';
-  output[3] = '\0';
+  // Reset colors and append ellipsis (U+2026, 3 bytes)
+  size_t remaining = output_size - (size_t)(dst - output);
+  int n = snprintf(dst, remaining, "\033[0m…");
+  if (n > 0) {
+    dst += n;
+  }
+  *dst = '\0';
 }
 
 void strip_ansi_codes(const char *input, char *output, size_t output_size) {
