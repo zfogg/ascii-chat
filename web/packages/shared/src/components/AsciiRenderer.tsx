@@ -87,8 +87,10 @@ export const AsciiRenderer = forwardRef<
 
   useEffect(() => {
     console.log(
-      "[EFFECT] Starting, setupDone=" + setupDoneRef.current +
-        ", canvasReady=" + !!canvasRef.current,
+      "[EFFECT] Starting, setupDone=" +
+        setupDoneRef.current +
+        ", canvasReady=" +
+        !!canvasRef.current,
     );
     if (!canvasRef.current) {
       return;
@@ -152,7 +154,7 @@ export const AsciiRenderer = forwardRef<
           offsetHeight: canvas.offsetHeight,
         });
 
-        let current = canvas;
+        let current: HTMLElement = canvas;
         let level = 0;
         const parentChain = [];
         while (current && level < 15) {
@@ -176,7 +178,7 @@ export const AsciiRenderer = forwardRef<
           console.log(
             `[Level ${level}] ${elem.tagName}.${elem.className} id=${elem.id} | client:${w}x${h} offset:${elem.offsetWidth}x${elem.offsetHeight} | display:${style.display}`,
           );
-          current = elem.parentElement as any;
+          current = elem.parentElement as HTMLElement;
           level++;
         }
         console.log("[AsciiRenderer] Full parent chain:", parentChain);
@@ -189,14 +191,18 @@ export const AsciiRenderer = forwardRef<
 
         console.log(
           "[AsciiRenderer] Container (.ascii-canvas-container): " +
-            containerWidth + "x" + containerHeight,
+            containerWidth +
+            "x" +
+            containerHeight,
         );
 
         // Set canvas to container dimensions NOW, before renderer init
         canvas.width = containerWidth;
         canvas.height = containerHeight;
         console.log(
-          "[AsciiRenderer] Canvas set to: " + canvas.width + "x" +
+          "[AsciiRenderer] Canvas set to: " +
+            canvas.width +
+            "x" +
             canvas.height,
         );
 
@@ -222,9 +228,8 @@ export const AsciiRenderer = forwardRef<
         // font_spec (char[512]) at offset 20
         const fontSpec = "Courier New";
         for (let i = 0; i < fontSpec.length && i < 511; i++) {
-          moduleRef.current!.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(
-            i,
-          );
+          moduleRef.current!.HEAPU8[configPtr + 20 + i] =
+            fontSpec.charCodeAt(i);
         }
         moduleRef.current!.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
         // font_is_path (bool) at offset 532
@@ -271,14 +276,19 @@ export const AsciiRenderer = forwardRef<
         );
         console.log("[RENDERER DIMS] cols=" + cols + ", rows=" + rows);
         console.log(
-          "[RENDERER DIMS] Calling updateDimensions(" + cols + ", " + rows +
+          "[RENDERER DIMS] Calling updateDimensions(" +
+            cols +
+            ", " +
+            rows +
             ")",
         );
 
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
         console.log(
-          "[SETUP DONE] Setup complete, canvas=" + canvas.width + "x" +
+          "[SETUP DONE] Setup complete, canvas=" +
+            canvas.width +
+            "x" +
             canvas.height,
         );
 
@@ -319,21 +329,30 @@ export const AsciiRenderer = forwardRef<
             );
 
             if (
-              newWidth > 0 && newHeight > 0 && moduleRef.current &&
+              newWidth > 0 &&
+              newHeight > 0 &&
+              moduleRef.current &&
               rendererPtrRef.current
             ) {
               console.log("[RESIZE HANDLER] Updating canvas and renderer");
               try {
                 // Set canvas drawing surface to new dimensions
                 console.log(
-                  "[RESIZE HANDLER] Before: canvas=" + canvas.width + "x" +
+                  "[RESIZE HANDLER] Before: canvas=" +
+                    canvas.width +
+                    "x" +
                     canvas.height,
                 );
                 canvas.width = newWidth;
                 canvas.height = newHeight;
                 console.log(
-                  "[RESIZE HANDLER] After: canvas=" + canvas.width + "x" +
-                    canvas.height + ", newWidth=" + newWidth + ", newHeight=" +
+                  "[RESIZE HANDLER] After: canvas=" +
+                    canvas.width +
+                    "x" +
+                    canvas.height +
+                    ", newWidth=" +
+                    newWidth +
+                    ", newHeight=" +
                     newHeight,
                 );
 
@@ -368,8 +387,8 @@ export const AsciiRenderer = forwardRef<
 
                 const fontSpec = "Courier New";
                 for (let i = 0; i < fontSpec.length && i < 511; i++) {
-                  moduleRef.current.HEAPU8[configPtr + 20 + i] = fontSpec
-                    .charCodeAt(i);
+                  moduleRef.current.HEAPU8[configPtr + 20 + i] =
+                    fontSpec.charCodeAt(i);
                 }
                 moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] = 0;
                 moduleRef.current.HEAPU8[configPtr + 532] = 0;
@@ -454,7 +473,7 @@ export const AsciiRenderer = forwardRef<
         clearTimeout(timeoutId);
       }
     };
-  }, [wasmModuleReady]);
+  }, [wasmModuleReady, updateDimensions]);
 
   const frameCountForLoggingRef = useRef(0);
   const frameHistoryRef = useRef<{ frame: number; lines: string[] }[]>([]);
@@ -496,13 +515,13 @@ export const AsciiRenderer = forwardRef<
             console.error(
               `[WASM-ERROR-DETAILS] Caught error calling _term_renderer_feed:`,
               {
-                message: wasmError instanceof Error
-                  ? wasmError.message
-                  : String(wasmError),
+                message:
+                  wasmError instanceof Error
+                    ? wasmError.message
+                    : String(wasmError),
                 name: wasmError instanceof Error ? wasmError.name : "Unknown",
-                stack: wasmError instanceof Error
-                  ? wasmError.stack
-                  : "No stack",
+                stack:
+                  wasmError instanceof Error ? wasmError.stack : "No stack",
                 rendererPtr: rendererPtrRef.current,
                 ptr: ptr,
                 len: data.length,
@@ -595,7 +614,9 @@ export const AsciiRenderer = forwardRef<
               const olderFrame = history[Math.max(0, history.length - 20)]; // ~0.3-0.6 sec ago
 
               if (
-                currentFrame && olderFrame && currentFrame.lines.length > 0 &&
+                currentFrame &&
+                olderFrame &&
+                currentFrame.lines.length > 0 &&
                 olderFrame.lines.length > 0
               ) {
                 // Find a contiguous block of 5+ lines that are 80%+ similar between frames
@@ -613,20 +634,18 @@ export const AsciiRenderer = forwardRef<
                     for (let i = 0; i < 5; i++) {
                       const currIdx = blockStart + i;
                       const oldIdx = blockStart + i + offset;
+                      const currLine = currentFrame.lines[currIdx];
+                      const oldLine = olderFrame.lines[oldIdx];
                       if (
                         currIdx < currentFrame.lines.length &&
                         oldIdx >= 0 &&
-                        oldIdx < olderFrame.lines.length
+                        oldIdx < olderFrame.lines.length &&
+                        currLine &&
+                        oldLine
                       ) {
                         // Compare first 50 chars
-                        const currSig = currentFrame.lines[currIdx].substring(
-                          0,
-                          50,
-                        );
-                        const oldSig = olderFrame.lines[oldIdx].substring(
-                          0,
-                          50,
-                        );
+                        const currSig = currLine.substring(0, 50);
+                        const oldSig = oldLine.substring(0, 50);
                         if (currSig === oldSig) {
                           similarLines++;
                         } else {
@@ -662,9 +681,9 @@ export const AsciiRenderer = forwardRef<
                     const direction = matchedOffset > 0 ? "DOWN" : "UP";
                     const magnitude = Math.abs(matchedOffset);
                     console.log(
-                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${
-                        Math.round(blockSimilarity * 5)
-                      } lines) | rows=${dimensionsRef.current.rows}`,
+                      `[AsciiRenderer] Frame ${frameCountForLoggingRef.current}: Content shifted ${direction} by ${magnitude} rows (${Math.round(
+                        blockSimilarity * 5,
+                      )} lines) | rows=${dimensionsRef.current.rows}`,
                     );
                     break; // Only log once per frame
                   }
@@ -673,7 +692,7 @@ export const AsciiRenderer = forwardRef<
             }
 
             history.push({ frame: frameCountForLoggingRef.current, lines });
-          } catch (e) {
+          } catch {
             // ignore
           }
         } catch (err) {
