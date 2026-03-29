@@ -506,6 +506,11 @@ export const AsciiRenderer = forwardRef<
           return;
         }
 
+        // Skip rendering during resize debounce to avoid dimension mismatches
+        if (resizeTimeoutRef.current) {
+          return;
+        }
+
         frameCountForLoggingRef.current++;
 
         try {
