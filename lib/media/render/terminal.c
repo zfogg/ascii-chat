@@ -227,11 +227,29 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   // Apply aspect ratio correction unless --stretch is specified
   // Terminal characters are typically 2:1 (height:width) to appear normal
-  if (!stretch_mode) {
+  // BUT: only correct if the loaded glyph height is reasonably close (±30%)
+  // This prevents huge jumps from small glyphs (e.g., 8px → 32px)
+  if (!stretch_mode && r->cell_h > 0) {
     int corrected_h = r->cell_w * 2;
-    if (corrected_h != r->cell_h && r->cell_h > 0) {
-      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)", r->cell_h, corrected_h, r->cell_w);
+    int min_acceptable = (corrected_h * 70) / 100;  // 70% of target
+    int max_acceptable = (corrected_h * 130) / 100; // 130% of target
+
+    if (r->cell_h < min_acceptable || r->cell_h > max_acceptable) {
+      // Loaded height is far from expected, apply correction
+      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (out of range [%d,%d], 2x width=%d)",
+                r->cell_h, corrected_h, min_acceptable, max_acceptable, r->cell_w);
       r->cell_h = corrected_h;
+    } else if (corrected_h != r->cell_h) {
+      // Loaded height is close to expected, fine-tune by small amount only
+      int delta = corrected_h - r->cell_h;
+      if (delta > 4 || delta < -4) {
+        // Only apply if difference is more than 4px
+        log_debug("ASPECT_RATIO: Fine-tuning cell_h from %d to %d (within acceptable range, 2x width=%d)",
+                  r->cell_h, corrected_h, r->cell_w);
+        r->cell_h = corrected_h;
+      } else {
+        log_debug("ASPECT_RATIO: Keeping cell_h=%d (close to target %d, delta=%d)", r->cell_h, corrected_h, delta);
+      }
     }
   }
 
