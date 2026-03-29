@@ -9,13 +9,17 @@ const MATRIX_OPTIONS: DemoOption[] = [
     id: "on",
     label: "Matrix Rain",
     description: "--matrix",
-    settings: { matrixRain: true },
+    settings: { matrixRain: true, palette: "digital" },
   },
   {
     id: "rainbow",
     label: "Matrix Rainbow",
     description: "--matrix --color-filter rainbow",
-    settings: { matrixRain: true, colorFilter: ColorFilter.RAINBOW },
+    settings: {
+      matrixRain: true,
+      palette: "digital",
+      colorFilter: ColorFilter.RAINBOW,
+    },
   },
 ];
 
@@ -49,11 +53,12 @@ export default function AnimationsEffectsSection() {
         </div>
         <div className="info-box-note mt-3">
           <p className="text-gray-300 text-sm">
-            Using <code>--color-filter</code> together with{" "}
-            <code>--matrix</code> automatically switches the built-in font to a
-            replica of the one used to make <em>The Matrix Resurrections</em>.
-            This means the ASCII art rendered will have the cool glyphs that
-            rain down as green code from the movies.
+            The <code>--matrix</code> effect automatically uses the{" "}
+            <code>digital</code> palette, which is a replica of the font used in{" "}
+            <em>The Matrix Resurrections</em>. This means the ASCII art rendered
+            will have the cool glyphs that rain down as green code from the
+            movies. Combine with <code>--color-filter</code> for different color
+            schemes.
           </p>
         </div>
       </div>
