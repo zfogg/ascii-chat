@@ -58,11 +58,7 @@ export default function AnimationsEffectsSection() {
         </div>
       </div>
       <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={MATRIX_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
+        <MirrorDemoWidget demoOptions={MATRIX_OPTIONS} />
       </div>
     </section>
   );

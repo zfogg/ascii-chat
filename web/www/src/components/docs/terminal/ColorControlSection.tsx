@@ -127,11 +127,7 @@ export default function ColorControlSection() {
         </CodeBlock>
       </div>
       <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={COLOR_MODE_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
+        <MirrorDemoWidget demoOptions={COLOR_MODE_OPTIONS} />
       </div>
     </section>
   );

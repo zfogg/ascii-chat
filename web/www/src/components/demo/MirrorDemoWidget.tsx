@@ -440,24 +440,15 @@ export default function MirrorDemoWidget({
       </div>
 
       <div
-        className="relative bg-[#0c0c0c] overflow-hidden"
-        style={{
-          height,
-          minHeight: `${minHeight}px`,
-          width: "100%",
-          padding: 0,
-          margin: 0,
-        }}
+        className="relative bg-[#0c0c0c] overflow-hidden demo-widget-container"
+        style={
+          {
+            "--demo-widget-height": height,
+            "--demo-widget-min-height": `${minHeight}px`,
+          } as unknown as React.CSSProperties
+        }
       >
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            padding: 0,
-            margin: 0,
-            overflow: "hidden",
-          }}
-        >
+        <div className="demo-widget-inner">
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}

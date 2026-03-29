@@ -31,3 +31,21 @@
     word-break: break-word;
   }
 }
+
+@layer components {
+  .demo-widget-container {
+    height: var(--demo-widget-height, 36vh);
+    min-height: var(--demo-widget-min-height, 180px);
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .demo-widget-inner {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+}

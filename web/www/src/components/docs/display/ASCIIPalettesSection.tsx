@@ -117,11 +117,7 @@ export default function ASCIIPalettesSection() {
       </div>
 
       <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={PALETTE_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
+        <MirrorDemoWidget demoOptions={PALETTE_OPTIONS} />
       </div>
 
       <div className="docs-subsection-spacing">

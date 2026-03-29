@@ -135,11 +135,7 @@ export default function ColorFiltersSection() {
         </div>
       </div>
       <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={COLOR_FILTER_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
+        <MirrorDemoWidget demoOptions={COLOR_FILTER_OPTIONS} />
       </div>
     </section>
   );

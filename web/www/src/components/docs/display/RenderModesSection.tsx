@@ -65,11 +65,7 @@ export default function RenderModesSection() {
         </div>
       </div>
       <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={RENDER_MODE_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
+        <MirrorDemoWidget demoOptions={RENDER_MODE_OPTIONS} />
       </div>
     </section>
   );
