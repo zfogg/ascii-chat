@@ -120,20 +120,27 @@ export function useInitAsciiRenderer({
         }
 
         // Estimate cols/rows from container size
-        // Rough estimate: 10px wide, 20px tall per cell
+        // Rough estimate: 10px wide, 20px tall per cell (for normal fonts)
+        // For matrix fonts: cell height is typically 32px (2x width) due to aspect ratio correction
         // BUT: cap container dimensions to prevent cascading resize loops
-        // If container is extremely tall, it likely means canvas was incorrectly sized
-        const maxContainerHeight = 2000; // Cap at 2000px (100 rows at 20px/row)
+        const maxContainerHeight = 2000;
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
         const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
-        const estimatedRows = Math.max(24, Math.floor(effectiveHeight / 20));
+
+        // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
+        const pixelsPerRow = isMatrixMode ? 32 : 20;
+        const estimatedRows = Math.max(
+          24,
+          Math.floor(effectiveHeight / pixelsPerRow),
+        );
 
         // Sanity check: ensure grid dimensions are reasonable
-        // With capped container height of 2000px at 20px/row, max rows = 100
+        // With capped container height of 2000px:
+        //   - Normal fonts: 2000px / 20px per row = max 100 rows
+        //   - Matrix fonts: 2000px / 32px per row = max 62 rows
         // Cols are typically 80-256 depending on window width
-        // This should prevent pathological cases from slipping through
         const maxReasonableCols = 400;
-        const maxReasonableRows = 150;
+        const maxReasonableRows = isMatrixMode ? 100 : 150;
 
         if (
           estimatedCols > maxReasonableCols ||
@@ -366,10 +373,13 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
+              const recoveryPixelsPerRow = currentMatrixModeRef.current
+                ? 32
+                : 20;
               const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
                 24,
-                Math.floor(recoveryHeight / 20),
+                Math.floor(recoveryHeight / recoveryPixelsPerRow),
               );
 
               console.log(
