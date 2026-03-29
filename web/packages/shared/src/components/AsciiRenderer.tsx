@@ -57,18 +57,8 @@ export const AsciiRenderer = forwardRef<
     fpsUpdateTimeRef.current = performance.now();
   }, []);
 
-  // Size canvas to its .ascii-canvas-container parent on every render
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      canvas.width = Math.round(rect.width);
-      canvas.height = Math.round(rect.height);
-    }
-  });
+  // NOTE: Canvas sizing is handled by the renderer initialization code
+  // We set canvas to the renderer's actual pixel output dimensions, not the container size
 
   useEffect(() => {
     if (wasmModuleReady) {
@@ -97,14 +87,6 @@ export const AsciiRenderer = forwardRef<
     }
 
     const canvas = canvasRef.current;
-
-    // Size canvas to .ascii-canvas-container parent
-    const container = canvas.parentElement;
-    const rect = container?.getBoundingClientRect();
-    if (rect && rect.width > 0 && rect.height > 0) {
-      canvas.width = Math.round(rect.width);
-      canvas.height = Math.round(rect.height);
-    }
 
     if (setupDoneRef.current) {
       return;
@@ -196,15 +178,8 @@ export const AsciiRenderer = forwardRef<
             containerHeight,
         );
 
-        // Set canvas to container dimensions NOW, before renderer init
-        canvas.width = containerWidth;
-        canvas.height = containerHeight;
-        console.log(
-          "[AsciiRenderer] Canvas set to: " +
-            canvas.width +
-            "x" +
-            canvas.height,
-        );
+        // NOTE: Canvas dimensions will be set to renderer's actual pixel output
+        // after the renderer is created (below), not to container dimensions
 
         // Estimate cell size (will be refined after renderer init)
         // Rough estimate: 10px wide, 20px tall per cell
@@ -267,14 +242,39 @@ export const AsciiRenderer = forwardRef<
         rendererPtrRef.current = rendererPtr;
         console.log("[AsciiRenderer] Renderer created, ptr:", rendererPtr);
 
-        // Get actual dimensions from renderer
+        // Get actual dimensions from renderer (grid AND pixel)
         const cols = moduleRef.current!._term_renderer_get_cols(
           rendererPtrRef.current,
         );
         const rows = moduleRef.current!._term_renderer_get_rows(
           rendererPtrRef.current,
         );
-        console.log("[RENDERER DIMS] cols=" + cols + ", rows=" + rows);
+        const pixelWidth = moduleRef.current!._term_renderer_width_px(
+          rendererPtrRef.current,
+        );
+        const pixelHeight = moduleRef.current!._term_renderer_height_px(
+          rendererPtrRef.current,
+        );
+        console.log(
+          "[RENDERER DIMS] cols=" +
+            cols +
+            ", rows=" +
+            rows +
+            ", pixels=" +
+            pixelWidth +
+            "x" +
+            pixelHeight,
+        );
+
+        // CRITICAL: Set canvas to renderer's actual pixel output dimensions, not container dimensions
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+        console.log(
+          "[AsciiRenderer] Canvas set to renderer pixel dims: " +
+            canvas.width +
+            "x" +
+            canvas.height,
+        );
         console.log(
           "[RENDERER DIMS] Calling updateDimensions(" +
             cols +
@@ -336,31 +336,7 @@ export const AsciiRenderer = forwardRef<
             ) {
               console.log("[RESIZE HANDLER] Updating canvas and renderer");
               try {
-                // Set canvas drawing surface to new dimensions
-                console.log(
-                  "[RESIZE HANDLER] Before: canvas=" +
-                    canvas.width +
-                    "x" +
-                    canvas.height,
-                );
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-                console.log(
-                  "[RESIZE HANDLER] After: canvas=" +
-                    canvas.width +
-                    "x" +
-                    canvas.height +
-                    ", newWidth=" +
-                    newWidth +
-                    ", newHeight=" +
-                    newHeight,
-                );
-
                 // Destroy old renderer
-                console.log(
-                  "[AsciiRenderer] Destroying old renderer:",
-                  rendererPtrRef.current,
-                );
                 moduleRef.current._term_renderer_destroy(
                   rendererPtrRef.current,
                 );
@@ -417,12 +393,28 @@ export const AsciiRenderer = forwardRef<
                 ).getBigInt64(0, true);
                 rendererPtrRef.current = Number(rendererPtr);
 
-                // Get actual dimensions from new renderer
+                // Get actual dimensions from new renderer (grid AND pixel)
                 const cols = moduleRef.current._term_renderer_get_cols(
                   rendererPtrRef.current,
                 );
                 const rows = moduleRef.current._term_renderer_get_rows(
                   rendererPtrRef.current,
+                );
+                const pixelWidth = moduleRef.current._term_renderer_width_px(
+                  rendererPtrRef.current,
+                );
+                const pixelHeight = moduleRef.current._term_renderer_height_px(
+                  rendererPtrRef.current,
+                );
+
+                // CRITICAL: Update canvas to match renderer's actual pixel output dimensions
+                canvas.width = pixelWidth;
+                canvas.height = pixelHeight;
+                console.log(
+                  "[RESIZE HANDLER] Canvas updated to renderer pixel dims: " +
+                    canvas.width +
+                    "x" +
+                    canvas.height,
                 );
 
                 updateDimensions(cols, rows);
