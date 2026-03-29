@@ -307,6 +307,9 @@ extern const size_t g_font_matrix_resurrected_size;
 EMSCRIPTEN_KEEPALIVE
 const unsigned char *get_font_default_ptr(void) {
   // Auto-select matrix font when --matrix flag is set
+  log_debug("matrix_rain: %d", GET_OPTION(matrix_rain));
+  log_debug("g_font_matrix_resurrected: %p", g_font_matrix_resurrected);
+  log_debug("g_font_default: %p", g_font_default);
   if (GET_OPTION(matrix_rain)) {
     return g_font_matrix_resurrected;
   }

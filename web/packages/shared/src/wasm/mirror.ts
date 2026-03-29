@@ -122,20 +122,20 @@ export async function initMirrorWasm(
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
-      // Build arguments array: ["mirror", ...initialArgs]
+      // Build space-separated argument string: "mirror ...initialArgs"
       const args = ["mirror"];
       if (options?.initialArgs) {
         args.push(...options.initialArgs);
       }
-      const argsJson = JSON.stringify(args);
-      const strLen = wasmModule.lengthBytesUTF8(argsJson) + 1;
+      const argsStr = args.join(" ");
+      const strLen = wasmModule.lengthBytesUTF8(argsStr) + 1;
       const strPtr = wasmModule._malloc(strLen);
       if (!strPtr) {
         throw new Error("Failed to allocate memory for args");
       }
 
       try {
-        wasmModule.stringToUTF8(argsJson, strPtr, strLen);
+        wasmModule.stringToUTF8(argsStr, strPtr, strLen);
         const initResult = wasmModule._mirror_init_with_args(strPtr);
         if (initResult !== 0) {
           throw new Error(`Failed to initialize mirror C code: ${initResult}`);

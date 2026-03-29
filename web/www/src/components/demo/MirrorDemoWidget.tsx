@@ -200,9 +200,8 @@ export default function MirrorDemoWidget({
       setFlipY(false);
       applySelectedOption(sourceFlipX);
 
-      if (termDims.cols > 0 && termDims.rows > 0) {
-        setDimensions(termDims.cols, termDims.rows);
-      }
+      // setDimensions is called in startDemo after video metadata loads and dimensions are calculated
+      // For webcam, wait for next render to apply dimensions
 
       sourceRef.current = MediaSourceType.WEBCAM;
       setSource(MediaSourceType.WEBCAM);
@@ -243,8 +242,29 @@ export default function MirrorDemoWidget({
             );
             if (canvasRef.current) {
               // Set canvas to video dimensions to preserve aspect ratio
-              canvasRef.current.width = videoRef.current!.videoWidth;
-              canvasRef.current.height = videoRef.current!.videoHeight;
+              const videoWidth = videoRef.current!.videoWidth;
+              const videoHeight = videoRef.current!.videoHeight;
+              console.log(
+                `[MirrorDemoWidget] Setting canvas dimensions: ${videoWidth}x${videoHeight}`,
+              );
+              canvasRef.current.width = videoWidth;
+              canvasRef.current.height = videoHeight;
+              console.log(
+                `[MirrorDemoWidget] Canvas dimensions after set: ${canvasRef.current.width}x${canvasRef.current.height}`,
+              );
+
+              // Calculate terminal dimensions based on video size
+              // Rough estimate: 10px wide, 20px tall per cell
+              const newCols = Math.max(80, Math.floor(videoWidth / 10));
+              const newRows = Math.max(24, Math.floor(videoHeight / 20));
+              console.log(
+                `[MirrorDemoWidget] Calling setTermDims and setDimensions: ${newCols}x${newRows}`,
+              );
+              setTermDims({ cols: newCols, rows: newRows });
+              // Apply the terminal dimensions to the renderer
+              setDimensions(newCols, newRows);
+            } else {
+              console.log("[MirrorDemoWidget] canvasRef.current is null");
             }
             resolve();
           };

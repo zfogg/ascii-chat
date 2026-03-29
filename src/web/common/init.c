@@ -9,6 +9,7 @@
 #include "init.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /**
  * Parse space-separated args_str into argv[]
@@ -42,6 +43,13 @@ int wasm_parse_args(const char *args_str, char **argv, int max_args, char **out_
     token = strtok(NULL, " ");
   }
   argv[argc] = NULL;
+
+  // Log for debugging
+  fprintf(stderr, "[wasm_parse_args] Parsed input: %s\n", args_str);
+  fprintf(stderr, "[wasm_parse_args] argc=%d\n", argc);
+  for (int i = 0; i < argc; i++) {
+    fprintf(stderr, "[wasm_parse_args] argv[%d]=%s\n", i, argv[i]);
+  }
 
   return argc;
 }
