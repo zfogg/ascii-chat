@@ -258,11 +258,19 @@ export function MirrorPage() {
           terminalDimensions.cols,
           terminalDimensions.rows,
         );
+        // Reapply all settings after resize to keep C side in sync with JS cache
+        applyWasmSettings(settings);
       } catch (err) {
         console.error("Failed to sync dimensions to WASM:", err);
       }
     }
-  }, [terminalDimensions, wasmInitialized, optionsManager]);
+  }, [
+    terminalDimensions,
+    wasmInitialized,
+    optionsManager,
+    settings,
+    applyWasmSettings,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
