@@ -283,6 +283,10 @@ export const AsciiRenderer = forwardRef<
             ")",
         );
 
+        // Free temporary config/output buffers after renderer creation
+        moduleRef.current!._free(configPtr);
+        moduleRef.current!._free(outPtr);
+
         updateDimensions(cols, rows);
         setupDoneRef.current = true;
         console.log(
