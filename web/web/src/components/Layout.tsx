@@ -1,12 +1,15 @@
 import { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { useInitializeWasm } from "../hooks";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
+  useInitializeWasm();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

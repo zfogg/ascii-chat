@@ -299,24 +299,52 @@ export interface ParsedPacket {
 }
 
 /**
- * Initialize the WASM module (call once at app start)
+ * Load the WASM module without client-specific initialization.
+ * Called early to make help text available for Settings tooltips.
+ * Safe to call multiple times - returns early if already loaded.
  */
-export async function initClientWasm(
-  options: ClientInitOptions = {},
-): Promise<void> {
+export async function ensureWasmModuleLoaded(): Promise<void> {
   if (wasmModule) return;
 
-  console.log("[Client WASM] Starting module factory...");
-  // Provide runtime environment functions for Emscripten
+  console.log("[WASM] Loading module for help text...");
   wasmModule = await ClientModuleFactory({
-    // libsodium crypto random - returns 32-bit unsigned integer
     getRandomValue: function () {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);
       return buf[0];
     },
   });
-  console.log("[Client WASM] Module factory completed");
+
+  if (!wasmModule) {
+    throw new Error("Failed to load WASM module");
+  }
+
+  // Expose WASM module to window for help text access
+  const globalWindow = globalThis as typeof globalThis & {
+    asciiChatWasm: AsciiChatWasmExports;
+  };
+  globalWindow.asciiChatWasm = {
+    _wasmModule: wasmModule,
+    get_help_text: wasmModule._get_help_text.bind(wasmModule),
+  };
+  console.log("[WASM] Module loaded and help text available");
+}
+
+/**
+ * Initialize the WASM module (call once at app start)
+ */
+export async function initClientWasm(
+  options: ClientInitOptions = {},
+): Promise<void> {
+  // Ensure WASM module is loaded first (may already be loaded by ensureWasmModuleLoaded)
+  await ensureWasmModuleLoaded();
+
+  if (!wasmModule) {
+    throw new Error("WASM module failed to load");
+  }
+
+  console.log("[Client WASM] Starting module initialization...");
+  // WASM module is already loaded, proceed with client-specific initialization
 
   if (!wasmModule) {
     throw new Error("Failed to load client WASM module");
@@ -357,15 +385,6 @@ export async function initClientWasm(
     // Initialize shared options module with option accessor
     const optionsAccessor = createOptionAccessor(wasmModule);
     initializeOptions(optionsAccessor);
-
-    // Expose WASM module to window for JavaScript access (e.g., tooltips)
-    const globalWindow = globalThis as typeof globalThis & {
-      asciiChatWasm: AsciiChatWasmExports;
-    };
-    globalWindow.asciiChatWasm = {
-      _wasmModule: wasmModule,
-      get_help_text: wasmModule._get_help_text.bind(wasmModule),
-    };
   } finally {
     wasmModule._free(strPtr);
   }

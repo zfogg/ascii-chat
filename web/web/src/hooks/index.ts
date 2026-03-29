@@ -1,6 +1,7 @@
 export { useCanvasCapture } from "@ascii-chat/shared/hooks";
 export { useClientConnection } from "./useClientConnection";
 export { useClientLike, MediaSourceType } from "./useClientLike";
+export { useInitializeWasm } from "./useInitializeWasm";
 export type {
   UseClientLikeOptions,
   UseClientLikeReturn,
