@@ -5,12 +5,6 @@ import type { DemoOption } from "../../demo";
 
 const PALETTE_OPTIONS: DemoOption[] = [
   {
-    id: "standard",
-    label: "Standard",
-    description: "--palette standard",
-    settings: { palette: "standard" },
-  },
-  {
     id: "blocks",
     label: "Blocks",
     description: "--palette blocks",
@@ -23,16 +17,22 @@ const PALETTE_OPTIONS: DemoOption[] = [
     settings: { palette: "digital" },
   },
   {
+    id: "cool",
+    label: "Cool",
+    description: "--palette cool",
+    settings: { palette: "cool" },
+  },
+  {
     id: "minimal",
     label: "Minimal",
     description: "--palette minimal",
     settings: { palette: "minimal" },
   },
   {
-    id: "cool",
-    label: "Cool",
-    description: "--palette cool",
-    settings: { palette: "cool" },
+    id: "standard",
+    label: "Standard",
+    description: "--palette standard",
+    settings: { palette: "standard" },
   },
 ];
 
