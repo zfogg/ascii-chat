@@ -1,6 +1,14 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
-import { getMatrixRain } from "../../wasm";
+import {
+  getMatrixRain,
+  getColorMode,
+  getColorFilter,
+  getPalette,
+  getFlipX,
+  getFlipY,
+  getTargetFps,
+} from "../../wasm";
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
@@ -34,6 +42,73 @@ export function useInitAsciiRenderer({
     null,
   );
   const currentMatrixModeRef = useRef<boolean>(false);
+
+  // Rebuild and apply args with current settings from WASM state
+  const reinitializeWithCurrentSettings = useCallback(() => {
+    if (!moduleRef.current) {
+      console.warn(
+        "[reinitializeWithCurrentSettings] moduleRef.current is null, skipping reinitialization",
+      );
+      return;
+    }
+
+    try {
+      // Get current settings from WASM options system
+      const matrixRain = getMatrixRain();
+      const colorMode = getColorMode();
+      const colorFilter = getColorFilter();
+      const palette = getPalette();
+      const flipX = getFlipX();
+      const flipY = getFlipY();
+      const targetFps = getTargetFps();
+
+      // Reconstruct args string with current settings
+      const args = ["mirror"];
+      if (matrixRain) args.push("--matrix-rain");
+      args.push(`--color-mode`, String(colorMode));
+      args.push(`--color-filter`, String(colorFilter));
+      args.push(`--palette`, palette);
+      if (flipX) args.push("--flip-x");
+      if (flipY) args.push("--flip-y");
+      args.push(`--target-fps`, String(targetFps));
+
+      const argsStr = args.join(" ");
+      console.log(
+        "[reinitializeWithCurrentSettings] Calling mirror_init_with_args with:",
+        argsStr,
+      );
+
+      // Allocate and copy args string to WASM memory
+      const strLen = moduleRef.current.lengthBytesUTF8(argsStr) + 1;
+      const strPtr = moduleRef.current._malloc(strLen);
+      if (!strPtr) {
+        throw new Error("Failed to allocate memory for args");
+      }
+
+      try {
+        moduleRef.current.stringToUTF8(argsStr, strPtr, strLen);
+        if (!moduleRef.current._mirror_init_with_args) {
+          throw new Error("_mirror_init_with_args is not available");
+        }
+        const initResult = moduleRef.current._mirror_init_with_args(strPtr);
+        if (initResult !== 0) {
+          throw new Error(
+            `Failed to reinitialize mirror C code: ${initResult}`,
+          );
+        }
+        console.log(
+          "[reinitializeWithCurrentSettings] Successfully reinitialized with current settings",
+        );
+      } finally {
+        moduleRef.current._free(strPtr);
+      }
+    } catch (err) {
+      console.error(
+        "[reinitializeWithCurrentSettings] Error reapplying settings:",
+        err,
+      );
+    }
+  }, []);
 
   // Load WASM module when ready
   useEffect(() => {
@@ -299,6 +374,14 @@ export function useInitAsciiRenderer({
         });
         moduleRef.current._term_renderer_destroy(rendererPtrRef.current);
 
+        // Reinitialize WASM module with current settings before creating new renderer
+        // This ensures the new renderer is created with all settings already applied
+        // (color mode, matrix rain, etc.) instead of showing defaults then updating
+        console.log(
+          "[handleContainerResize] Reinitializing WASM with current settings",
+        );
+        reinitializeWithCurrentSettings();
+
         // Create new renderer with updated dimensions, using cached matrix mode
         console.log("[handleContainerResize] STARTING RECREATION", {
           newWidth,
@@ -356,6 +439,7 @@ export function useInitAsciiRenderer({
         moduleRef.current._free(configPtr);
         moduleRef.current._free(outPtr);
       } catch (err) {
+        // Attempt recovery without reinitialization
         console.error("[AsciiRenderer] FATAL: Failed to resize renderer:", err);
         if (err instanceof Error) {
           console.error("[AsciiRenderer] Error message:", err.message);
@@ -426,7 +510,12 @@ export function useInitAsciiRenderer({
         }
       }
     },
-    [createConfigStruct, callRendererCreate, getRendererDimensions],
+    [
+      createConfigStruct,
+      callRendererCreate,
+      getRendererDimensions,
+      reinitializeWithCurrentSettings,
+    ],
   );
 
   // Set up ResizeObserver on container
