@@ -34,6 +34,7 @@ export function useInitAsciiRenderer({
     null,
   );
   const currentMatrixModeRef = useRef<boolean>(false);
+  const lastCellHeightRef = useRef<number>(20); // Track actual cell height from previous renderer
 
   // Load WASM module when ready
   useEffect(() => {
@@ -127,20 +128,21 @@ export function useInitAsciiRenderer({
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
         const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
 
-        // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
-        const pixelsPerRow = isMatrixMode ? 32 : 20;
+        // Use actual cell height from previous renderer, not hardcoded estimates
+        // This adapts automatically to whatever font the C code loads
+        // Fallback to default 20px if no previous renderer (initial load)
+        const cellHeightEstimate = lastCellHeightRef.current || 20;
         const estimatedRows = Math.max(
           24,
-          Math.floor(effectiveHeight / pixelsPerRow),
+          Math.floor(effectiveHeight / cellHeightEstimate),
         );
 
         // Sanity check: ensure grid dimensions are reasonable
-        // With capped container height of 2000px:
-        //   - Normal fonts: 2000px / 20px per row = max 100 rows
-        //   - Matrix fonts: 2000px / 32px per row = max 62 rows
+        // With capped container height of 2000px and actual cell height estimate:
+        // 2000px / cellHeightEstimate = max reasonable rows
         // Cols are typically 80-256 depending on window width
         const maxReasonableCols = 400;
-        const maxReasonableRows = isMatrixMode ? 100 : 150;
+        const maxReasonableRows = Math.ceil(2000 / cellHeightEstimate) + 10; // Add buffer
 
         if (
           estimatedCols > maxReasonableCols ||
@@ -329,6 +331,18 @@ export function useInitAsciiRenderer({
           console.error("[handleContainerResize] ERROR: pixelHeight=0!", dims);
         }
 
+        // Store actual cell height for next resize estimation
+        // Calculate it from the renderer's final dimensions
+        if (dims.rows > 0) {
+          const actualCellHeight = Math.round(dims.pixelHeight / dims.rows);
+          lastCellHeightRef.current = actualCellHeight;
+          console.log("[handleContainerResize] Updated cellHeight estimate:", {
+            actualCellHeight,
+            pixelHeight: dims.pixelHeight,
+            rows: dims.rows,
+          });
+        }
+
         console.log("[handleContainerResize] SETTING canvas dimensions", {
           width: dims.pixelWidth,
           height: dims.pixelHeight,
@@ -373,13 +387,11 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
-              const recoveryPixelsPerRow = currentMatrixModeRef.current
-                ? 32
-                : 20;
+              const recoveryCellHeight = lastCellHeightRef.current || 20;
               const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
                 24,
-                Math.floor(recoveryHeight / recoveryPixelsPerRow),
+                Math.floor(recoveryHeight / recoveryCellHeight),
               );
 
               console.log(
@@ -485,6 +497,17 @@ export function useInitAsciiRenderer({
       const dims = getRendererDimensions();
       canvas.width = dims.pixelWidth;
       canvas.height = dims.pixelHeight;
+
+      // Store actual cell height for resize estimation
+      if (dims.rows > 0) {
+        const actualCellHeight = Math.round(dims.pixelHeight / dims.rows);
+        lastCellHeightRef.current = actualCellHeight;
+        console.log("[initializeRenderer] Initial cellHeight estimate:", {
+          actualCellHeight,
+          pixelHeight: dims.pixelHeight,
+          rows: dims.rows,
+        });
+      }
 
       // Free temporary buffers
       moduleRef.current._free(configPtr);
