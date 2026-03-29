@@ -273,6 +273,18 @@ export function useInitAsciiRenderer({
         return;
       }
 
+      // Cap container height to prevent feedback loops where expanding canvas
+      // causes ResizeObserver to report larger container, creating even larger renderer
+      // Use viewport height as the hard limit - content should fit in visible area
+      const cappedHeight = Math.min(newHeight, window.innerHeight);
+      if (cappedHeight < newHeight) {
+        console.log("[handleContainerResize] Capping height to viewport:", {
+          originalHeight: newHeight,
+          cappedHeight,
+          viewportHeight: window.innerHeight,
+        });
+      }
+
       try {
         // Destroy old renderer
         console.log("[handleContainerResize] DESTROYING old renderer", {
@@ -288,7 +300,7 @@ export function useInitAsciiRenderer({
         });
         const { configPtr, estimatedCols, estimatedRows } = createConfigStruct(
           newWidth,
-          newHeight,
+          cappedHeight,
           currentMatrixModeRef.current,
         );
         console.log("[handleContainerResize] createConfigStruct returned", {
@@ -352,26 +364,29 @@ export function useInitAsciiRenderer({
             );
             try {
               // Retry with a capped grid size to avoid cascading allocation
-              const cappedWidth = Math.min(newWidth, 1280);
-              const cappedHeight = Math.min(newHeight, 2000); // Use same max as createConfigStruct
-              const cappedCols = Math.max(80, Math.floor(cappedWidth / 10));
-              const cappedRows = Math.max(24, Math.floor(cappedHeight / 20));
+              const recoveryWidth = Math.min(newWidth, 1280);
+              const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
+              const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
+              const recoveryRows = Math.max(
+                24,
+                Math.floor(recoveryHeight / 20),
+              );
 
               console.log(
                 "[AsciiRenderer] Recovery attempt with capped dimensions:",
                 {
-                  cappedCols,
-                  cappedRows,
+                  recoveryCols,
+                  recoveryRows,
                   originalWidth: newWidth,
                   originalHeight: newHeight,
-                  cappedWidth,
-                  cappedHeight,
+                  recoveryWidth,
+                  recoveryHeight,
                 },
               );
 
               const { configPtr: retryConfigPtr } = createConfigStruct(
-                cappedWidth,
-                cappedHeight,
+                recoveryWidth,
+                recoveryHeight,
                 currentMatrixModeRef.current,
               );
               const retryOutPtr = moduleRef.current?._malloc(8);
