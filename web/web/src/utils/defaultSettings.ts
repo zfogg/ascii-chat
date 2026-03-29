@@ -4,7 +4,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   width: 640,
   height: 480,
   targetFps: 60,
-  colorMode: "none",
+  colorMode: "truecolor",
   colorFilter: "none",
   palette: "standard",
   paletteChars: " =#░░▒▒▓▓██",
