@@ -104,7 +104,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     }
     log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");
 
+    // Disable logging to stdout/stderr during rendering (same as event-driven mode).
+    // This prevents logs from mixing with ASCII art output. Logs still go to file.
+    log_set_terminal_output(false);
     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
+    log_set_terminal_output(true);
 
     // In snapshot mode, pass actual capture-based elapsed time to encoder for correct video duration
     if (GET_OPTION(snapshot_mode) && display && g_snapshot_first_capture_ns > 0) {

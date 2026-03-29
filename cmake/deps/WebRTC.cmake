@@ -26,7 +26,9 @@ include(FetchContent)
 
 # Allow FetchContent_Populate() for patching before configuration.
 # CMP0169: We need the lower-level Populate API to download, patch, then configure.
-set_policy(CMP0169 OLD)
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif()
 
 set(WEBRTC_AEC3_REPO "https://github.com/zhixingheyixsh/webrtc_AEC3")
 set(WEBRTC_AEC3_TAG "main")
