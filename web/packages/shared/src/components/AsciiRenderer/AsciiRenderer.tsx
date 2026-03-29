@@ -1,4 +1,50 @@
-import { forwardRef, useRef, type RefObject } from "react";
+/**
+ * AsciiRenderer - WASM-based terminal video rendering component
+ *
+ * Architecture:
+ * This component is a thin orchestrator for two specialized hooks that handle rendering initialization
+ * and imperative handle methods. State is distributed across the hooks based on concern:
+ *
+ * Component Responsibilities:
+ * - Own DOM-related refs: canvasRef (the HTML canvas element)
+ * - Track WASM module readiness: previousWasmReadyRef (to detect readiness transitions)
+ * - Orchestrate hook initialization in dependency order
+ * - Pass resizeTimeoutRef between hooks (synchronization point for debounce)
+ *
+ * useInitAsciiRenderer Hook:
+ * - Handles WASM module loading and renderer creation (C++ termrenderer struct)
+ * - Sets up canvas dimensions based on renderer's pixel output
+ * - Manages ResizeObserver for responsive canvas sizing
+ * - Owns debounce timeout (resizeTimeoutRef) to prevent mid-resize frame rendering
+ * - Owns: moduleRef, setupDoneRef, rendererPtrRef, resizeTimeoutRef, updateDimensionsRef, resizeObserverRef, pendingDimensionsRef
+ * - Returns: moduleRef, setupDoneRef, rendererPtrRef, resizeTimeoutRef, setUpdateDimensions callback
+ * - Input: wasmModuleReady flag
+ *
+ * useAsciiRendererHandle Hook:
+ * - Implements imperative methods exposed via forwardRef: writeFrame(), getDimensions(), clear()
+ * - writeFrame() handles WASM memory allocation, frame rendering, and framebuffer display
+ * - Monitors resizeTimeoutRef to skip rendering during resize debounce (prevents dimension mismatches)
+ * - Tracks FPS and calls onFpsChange callback
+ * - Owns: frameCountRef, fpsDisplayRef, dimensionsRef, fpsUpdateTimeRef, firstRenderDoneRef
+ * - Returns: updateDimensions callback and fpsDisplayRef
+ * - Input: moduleRef, setupDoneRef, rendererPtrRef, canvasRef, resizeTimeoutRef
+ *
+ * Data Flow:
+ * 1. Component receives wasmModuleReady prop → passes to useInitAsciiRenderer
+ * 2. useInitAsciiRenderer initializes WASM renderer, sets up ResizeObserver
+ * 3. useInitAsciiRenderer calls setUpdateDimensions(callback) to register dimension change handler
+ * 4. Parent calls imperative handle methods (writeFrame) → useAsciiRendererHandle receives frames
+ * 5. useAsciiRendererHandle uses resizeTimeoutRef (from initialization hook) to skip rendering during resize
+ * 6. ResizeObserver fires → updates debounce timeout, batches dimension change callbacks
+ *
+ * Synchronization Points:
+ * - resizeTimeoutRef: Shared between initialization hook (sets timeout) and handle hook (checks it)
+ *   prevents rendering frames with mismatched dimensions during resize
+ * - setUpdateDimensions callback: Passes handle hook's updateDimensions to init hook
+ *   allows init hook to notify parent when grid dimensions change
+ */
+
+import { forwardRef, type RefObject, useRef } from "react";
 import type { AsciiRendererHandle, AsciiRendererProps } from "./types";
 import { useInitAsciiRenderer } from "./useInitAsciiRenderer";
 import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
@@ -15,32 +61,24 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     },
     ref,
   ) {
-    console.log(
-      "[AsciiRenderer] Render with wasmModuleReady=" + wasmModuleReady,
-    );
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
     const previousWasmReadyRef = useRef<boolean | undefined>(undefined);
     if (previousWasmReadyRef.current !== wasmModuleReady) {
       previousWasmReadyRef.current = wasmModuleReady;
     }
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
-      null,
-    );
-    const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-    // NOTE: Canvas sizing is handled by the renderer initialization code
-    // We set canvas to the renderer's actual pixel output dimensions, not the container size
 
     // Initialize renderer and get refs
-    const { moduleRef, setupDoneRef, rendererPtrRef, setUpdateDimensions } =
-      useInitAsciiRenderer({
-        canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
-        resizeObserverRef,
-        resizeTimeoutRef,
-        pendingDimensionsRef,
-        wasmModuleReady,
-      });
+    const {
+      moduleRef,
+      setupDoneRef,
+      rendererPtrRef,
+      resizeTimeoutRef,
+      setUpdateDimensions,
+    } = useInitAsciiRenderer({
+      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
+      wasmModuleReady,
+    });
 
     // Set up imperative handle and get updateDimensions + fpsDisplayRef
     const { updateDimensions, fpsDisplayRef } = useAsciiRendererHandle({
