@@ -174,6 +174,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Use centralized executables from FindPrograms.cmake
     set(STRIP_EXECUTABLE "${ASCIICHAT_STRIP_EXECUTABLE}")
     set(OBJCOPY_EXECUTABLE "${ASCIICHAT_OBJCOPY_EXECUTABLE}")
+    # On Windows, ensure tool paths have drive letter prefix for timeout command
+    if(WIN32 AND STRIP_EXECUTABLE)
+        file(TO_CMAKE_PATH "${STRIP_EXECUTABLE}" STRIP_EXECUTABLE)
+        cmake_path(ABSOLUTE_PATH STRIP_EXECUTABLE NORMALIZE)
+    endif()
+    if(WIN32 AND OBJCOPY_EXECUTABLE)
+        file(TO_CMAKE_PATH "${OBJCOPY_EXECUTABLE}" OBJCOPY_EXECUTABLE)
+        cmake_path(ABSOLUTE_PATH OBJCOPY_EXECUTABLE NORMALIZE)
+    endif()
     if(STRIP_EXECUTABLE AND OBJCOPY_EXECUTABLE)
         # Only run .comment cleaning on Linux (ELF format)
         # Windows (PE) and macOS (Mach-O) don't have .comment sections

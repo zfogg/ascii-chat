@@ -148,6 +148,13 @@ if(EMSCRIPTEN)
     )
 endif()
 
+# Apple unified logging (os_log) for macOS/iOS
+if(PLATFORM_DARWIN)
+    list(APPEND CORE_SRCS
+        ${LIB_DIR}/log/apple.c
+    )
+endif()
+
 # Include subdirectories that define module source variables
 add_subdirectory(${LIB_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
 add_subdirectory(${LIB_DIR}/platform ${CMAKE_BINARY_DIR}/lib/platform)
