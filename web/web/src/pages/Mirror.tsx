@@ -207,6 +207,8 @@ export function MirrorPage() {
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
     setSettings(newSettings);
+    // Apply WASM settings immediately so renderer recreates if needed
+    applyWasmSettings(newSettings);
   };
 
   // Render loop that captures and converts frames to ASCII
