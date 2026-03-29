@@ -299,12 +299,12 @@ export function useInitAsciiRenderer({
       const rendererPtr = new DataView(
         moduleRef.current.HEAPU8.buffer,
         outPtr,
-        8,
-      ).getBigInt64(0, true);
+        4,
+      ).getUint32(0, true);
       console.log("[callRendererCreate] EXTRACTED rendererPtr", {
-        rendererPtr: Number(rendererPtr),
+        rendererPtr,
       });
-      return Number(rendererPtr);
+      return rendererPtr;
     },
     [],
   );
@@ -389,13 +389,9 @@ export function useInitAsciiRenderer({
         // Ensure flip-x state is set before reinitialization
         setFlipX(true);
 
-        // Reinitialize WASM module with current settings before creating new renderer
-        // This ensures the new renderer is created with all settings already applied
-        // (color mode, matrix rain, etc.) instead of showing defaults then updating
-        console.log(
-          "[handleContainerResize] Reinitializing WASM with current settings",
-        );
-        reinitializeWithCurrentSettings();
+        // Skip reinitialization during rapid resizes to avoid "Too many string options" errors.
+        // Only reinitialize once per resize debounce cycle to preserve WASM options state.
+        // The new renderer will use whatever settings were last applied.
 
         // Create new renderer with updated dimensions using the actual WASM matrix rain state
         const isMatrixMode = getMatrixRain();
@@ -414,7 +410,7 @@ export function useInitAsciiRenderer({
           estimatedCols,
           estimatedRows,
         });
-        const outPtr = moduleRef.current._malloc(8);
+        const outPtr = moduleRef.current._malloc(4);
         console.log("[handleContainerResize] Allocated outPtr", { outPtr });
 
         console.log(`[handleContainerResize] CALLING callRendererCreate...`);
