@@ -112,19 +112,20 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
         `}
         </style>
         <canvas ref={canvasRef} className="ascii-canvas" />
-        {connectionState === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
-            <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
-              DISCONNECTED
-            </div>
-          </div>
-        )}
-
         {/* Connection status overlay - shows when connecting or in handshake */}
         {(connectionState === 1 || connectionState === 2) && (
           <div className="absolute inset-0 flex items-end justify-center pb-8 pointer-events-none">
             <div className="text-2xl font-semibold text-yellow-400 drop-shadow-lg">
               {connectionState === 1 ? "Connecting..." : "Handshaking..."}
+            </div>
+          </div>
+        )}
+
+        {/* Disconnected overlay - only show if error or explicitly disconnected */}
+        {connectionState === 4 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
+            <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
+              CONNECTION ERROR
             </div>
           </div>
         )}
