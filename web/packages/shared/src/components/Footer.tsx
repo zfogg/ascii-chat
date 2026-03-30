@@ -54,12 +54,12 @@ export function Footer({
       <p className="text-xs md:text-sm text-gray-400 mt-2">
         made with ❤️ by{" "}
         <Link
-          href="https://zfo.gg"
+          href="https://zfo.gg/"
           target="_blank"
           rel="noopener noreferrer"
           className={authorLinkColor}
         >
-          @zfogg
+          zfo.gg/
         </Link>
         {" · "}
         <CommitLink
