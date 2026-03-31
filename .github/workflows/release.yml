@@ -477,6 +477,12 @@ jobs:
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
           fi
+          # Intel macOS: disable mimalloc and fast-math to avoid segfaults
+          # (first time Intel release builds are being tested)
+          if [ "$(uname -m)" = "x86_64" ]; then
+            echo "Intel macOS detected - disabling mimalloc and fast-math for stability"
+            CMAKE_ARGS="$CMAKE_ARGS -DUSE_MIMALLOC=OFF -DASCIICHAT_RELEASE_ENABLE_FAST_MATH=OFF"
+          fi
           cmake $CMAKE_ARGS
 
       - name: Save CMake dependency cache
