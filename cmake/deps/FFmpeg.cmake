@@ -286,18 +286,69 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
-    # vcpkg integrates with CMake and provides FFmpeg via find_package
-    # vcpkg's FindFFMPEG.cmake sets: FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, FFMPEG_LIBRARY_DIRS
+    # Try prebuilt FFmpeg first (user-provided or auto-downloaded)
+    set(_ffmpeg_prebuilt_dir "${ASCIICHAT_FFMPEG_DIR}")
+
+    # Auto-download prebuilt FFmpeg if not provided and not available via vcpkg
+    if(NOT _ffmpeg_prebuilt_dir)
+        set(_ffmpeg_version "7.1")
+        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+            set(_ffmpeg_arch "winarm64")
+        else()
+            set(_ffmpeg_arch "win64")
+        endif()
+        set(_ffmpeg_archive "ffmpeg-n${_ffmpeg_version}-latest-${_ffmpeg_arch}-lgpl-shared-${_ffmpeg_version}")
+        set(_ffmpeg_prebuilt_dir "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}")
+
+        if(NOT EXISTS "${_ffmpeg_prebuilt_dir}/include/libavcodec/avcodec.h")
+            set(_ffmpeg_url "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${_ffmpeg_archive}.zip")
+            set(_ffmpeg_zip "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}.zip")
+            message(STATUS "Downloading prebuilt FFmpeg ${_ffmpeg_version} (${_ffmpeg_arch})...")
+            file(DOWNLOAD "${_ffmpeg_url}" "${_ffmpeg_zip}" STATUS _dl_status SHOW_PROGRESS)
+            list(GET _dl_status 0 _dl_code)
+            if(_dl_code EQUAL 0)
+                message(STATUS "Extracting prebuilt FFmpeg...")
+                file(ARCHIVE_EXTRACT INPUT "${_ffmpeg_zip}" DESTINATION "${ASCIICHAT_DEPS_CACHE_DIR}")
+                file(REMOVE "${_ffmpeg_zip}")
+            else()
+                message(WARNING "Failed to download prebuilt FFmpeg (status: ${_dl_status})")
+                set(_ffmpeg_prebuilt_dir "")
+            endif()
+        endif()
+    endif()
+
+    if(_ffmpeg_prebuilt_dir AND EXISTS "${_ffmpeg_prebuilt_dir}/include/libavcodec/avcodec.h")
+        set(FFMPEG_INCLUDE_DIRS "${_ffmpeg_prebuilt_dir}/include")
+        set(FFMPEG_LIBRARY_DIRS "${_ffmpeg_prebuilt_dir}/lib")
+
+        set(FFMPEG_LIBRARIES "")
+        foreach(_lib avcodec avformat avutil swresample swscale)
+            if(EXISTS "${_ffmpeg_prebuilt_dir}/lib/${_lib}.lib")
+                list(APPEND FFMPEG_LIBRARIES "${_ffmpeg_prebuilt_dir}/lib/${_lib}.lib")
+            endif()
+        endforeach()
+
+        if(FFMPEG_LIBRARIES)
+            set(FFMPEG_FOUND TRUE)
+            message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (prebuilt: ${_ffmpeg_prebuilt_dir})")
+            message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
+            message(STATUS "  - FFMPEG_LIBRARY_DIRS: ${FFMPEG_LIBRARY_DIRS}")
+            message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
+
+            # Copy DLLs to binary output dir so the executable can find them
+            file(GLOB _ffmpeg_dlls "${_ffmpeg_prebuilt_dir}/bin/*.dll")
+            foreach(_dll ${_ffmpeg_dlls})
+                get_filename_component(_dll_name "${_dll}" NAME)
+                configure_file("${_dll}" "${CMAKE_BINARY_DIR}/bin/${_dll_name}" COPYONLY)
+            endforeach()
+            return()
+        endif()
+    endif()
+
+    # Fallback: vcpkg-provided FFmpeg
     find_package(FFMPEG QUIET)
 
     if(FFMPEG_FOUND)
-        # vcpkg sets these variables:
-        # - FFMPEG_LIBRARIES: list of library paths
-        # - FFMPEG_INCLUDE_DIRS: include directories
-        # - FFMPEG_LIBRARY_DIRS: library search paths
-
-        # vcpkg's FindFFMPEG.cmake may inject Unix-specific flags like -lpthreads,
-        # -pthread, -lm, -latomic that don't exist on Windows. Strip them.
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
             list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
@@ -309,8 +360,7 @@ if(WIN32)
         message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
         return()
     else()
-        message(WARNING "FFmpeg not found via vcpkg - media file streaming will be disabled")
-        message(STATUS "Make sure ffmpeg is in vcpkg.json and vcpkg install has been run")
+        message(WARNING "FFmpeg not found - media file streaming will be disabled")
         set(FFMPEG_FOUND FALSE)
         return()
     endif()
