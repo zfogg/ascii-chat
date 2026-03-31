@@ -649,7 +649,8 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
-          cmake --preset windows-release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
+          # Pass triplet explicitly so vcpkg toolchain uses correct architecture
+          cmake --preset windows-release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg-static-triplet }}"
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
