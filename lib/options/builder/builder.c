@@ -24,6 +24,12 @@
 #define asprintf platform_asprintf
 
 // ============================================================================
+// Static counters for default value storage
+// ============================================================================
+static int g_int_defaults[256];
+static size_t g_int_defaults_counter = 0;
+
+// ============================================================================
 // ============================================================================
 // Help Formatting Helper Functions
 // ============================================================================
@@ -370,6 +376,9 @@ bool is_option_set(const options_config_t *config, const void *options_struct, c
 // ============================================================================
 
 options_builder_t *options_builder_create(size_t struct_size) {
+  // Reset int defaults counter for new builder
+  g_int_defaults_counter = 0;
+
   options_builder_t *builder = SAFE_MALLOC(sizeof(options_builder_t), options_builder_t *);
   if (!builder) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate options builder");
@@ -674,16 +683,12 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
                              const char *env_var_name, bool (*validate)(const void *, char **)) {
   ensure_descriptor_capacity(builder);
 
-  // Store default value statically
-  static int defaults[256]; // Assume we won't have more than 256 int options
-  static size_t num_defaults = 0;
-
-  if (num_defaults >= 256) {
+  if (g_int_defaults_counter >= 256) {
     log_error("Too many int options (max 256)");
     return;
   }
 
-  defaults[num_defaults] = default_value;
+  g_int_defaults[g_int_defaults_counter] = default_value;
 
   option_descriptor_t desc = {.long_name = long_name,
                               .short_name = short_name,
@@ -691,7 +696,7 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
                               .offset = offset,
                               .help_text = help_text,
                               .group = group,
-                              .default_value = &defaults[num_defaults++],
+                              .default_value = &g_int_defaults[g_int_defaults_counter++],
                               .required = required,
                               .env_var_name = env_var_name,
                               .validate = validate,
@@ -709,16 +714,12 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
                                            const option_metadata_t *metadata) {
   ensure_descriptor_capacity(builder);
 
-  // Store default value statically
-  static int defaults[256]; // Assume we won't have more than 256 int options
-  static size_t num_defaults = 0;
-
-  if (num_defaults >= 256) {
+  if (g_int_defaults_counter >= 256) {
     log_error("Too many int options (max 256)");
     return;
   }
 
-  defaults[num_defaults] = default_value;
+  g_int_defaults[g_int_defaults_counter] = default_value;
 
   option_descriptor_t desc = {.long_name = long_name,
                               .short_name = short_name,
@@ -726,7 +727,7 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
                               .offset = offset,
                               .help_text = help_text,
                               .group = group,
-                              .default_value = &defaults[num_defaults++],
+                              .default_value = &g_int_defaults[g_int_defaults_counter++],
                               .required = required,
                               .env_var_name = env_var_name,
                               .validate = validate,
