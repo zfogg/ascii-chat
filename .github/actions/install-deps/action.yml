@@ -473,87 +473,48 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
         $arch = "${{ runner.arch }}"
-        Write-Host "Detected architecture: $arch"
-
+        $LLVM_VERSION = "19.1.6"
         if ($arch -eq "X64") {
-          # AMD64: Use official LLVM 19.1.6 installer (same version as ARM64 for consistency)
-          $LLVM_VERSION = "19.1.6"
+          $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-win64.exe"
           $LLVM_INSTALL_DIR = "C:\LLVM"
-          $LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-win64.exe"
-
-          if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
-            Write-Host "LLVM already installed at ${LLVM_INSTALL_DIR}"
-          } else {
-            Write-Host "Downloading official LLVM ${LLVM_VERSION} for Windows AMD64..."
-            $installerPath = "$env:TEMP\LLVM-${LLVM_VERSION}-win64.exe"
-            Invoke-WebRequest -Uri $LLVM_URL -OutFile $installerPath -UseBasicParsing
-
-            if (Test-Path $LLVM_INSTALL_DIR) {
-              Remove-Item -Recurse -Force $LLVM_INSTALL_DIR
-            }
-
-            Write-Host "Running silent installer to ${LLVM_INSTALL_DIR}..."
-            Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_INSTALL_DIR}"
-            Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
-
-            if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
-              Write-Host "LLVM ${LLVM_VERSION} installed successfully"
-            } else {
-              Write-Host "ERROR: clang.exe not found after installation" -ForegroundColor Red
-              exit 1
-            }
-          }
-
-          $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
         } else {
-          # ARM64: Download official LLVM woa64 installer (GitHub releases)
-          # LLVM 21.x doesn't ship woa64 binaries, so use 19.1.6 which has native ARM64 support
-          $LLVM_ARM64_VERSION = "19.1.6"
-          $LLVM_ARM64_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_ARM64_VERSION}/LLVM-${LLVM_ARM64_VERSION}-woa64.exe"
-          Write-Host "Detected architecture: ARM64"
-          Write-Host "Installing official LLVM ${LLVM_ARM64_VERSION} for Windows ARM64..."
+          $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-woa64.exe"
+          $LLVM_INSTALL_DIR = "C:\LLVM-ARM64"
+        }
 
-          $installerPath = "$env:TEMP\LLVM-${LLVM_ARM64_VERSION}-woa64.exe"
-          Write-Host "Downloading from: $LLVM_ARM64_URL"
-          Invoke-WebRequest -Uri $LLVM_ARM64_URL -OutFile $installerPath -UseBasicParsing
+        $LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_INSTALLER}"
 
-          # Run installer silently (NSIS installer uses /S for silent mode)
-          # Install to C:\LLVM-ARM64 to avoid conflicts with x64 LLVM
-          $LLVM_ARM64_INSTALL_DIR = "C:\LLVM-ARM64"
-          Write-Host "Running silent installer to ${LLVM_ARM64_INSTALL_DIR}..."
-          Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_ARM64_INSTALL_DIR}"
+        if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
+          Write-Host "LLVM ${LLVM_VERSION} already installed at ${LLVM_INSTALL_DIR}"
+        } else {
+          Write-Host "Installing official LLVM ${LLVM_VERSION} (${arch})..."
+          $installerPath = "$env:TEMP\${LLVM_INSTALLER}"
+          Invoke-WebRequest -Uri $LLVM_URL -OutFile $installerPath -UseBasicParsing
+          if (Test-Path $LLVM_INSTALL_DIR) { Remove-Item -Recurse -Force $LLVM_INSTALL_DIR }
+          Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_INSTALL_DIR}"
           Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
-
-          $llvmBinPath = "${LLVM_ARM64_INSTALL_DIR}\bin"
-          if (-not (Test-Path "$llvmBinPath\clang.exe")) {
-            Write-Host "ERROR: LLVM ARM64 installation failed - clang.exe not found" -ForegroundColor Red
-            Get-ChildItem -Path $LLVM_ARM64_INSTALL_DIR -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20
+          if (-not (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe")) {
+            Write-Host "ERROR: LLVM installation failed - clang.exe not found" -ForegroundColor Red
             exit 1
           }
-          Write-Host "LLVM ${LLVM_ARM64_VERSION} ARM64 installed successfully"
+          Write-Host "LLVM ${LLVM_VERSION} installed successfully"
+        }
 
-          # For ARM64: Also set LLVM/Clang CMake directories so CMake finds the right installation
-          # and remove or hide any conflicting x64 LLVM
-          $llvmCMakeDir = "${LLVM_ARM64_INSTALL_DIR}\lib\cmake\llvm"
-          $clangCMakeDir = "${LLVM_ARM64_INSTALL_DIR}\lib\cmake\clang"
-          if (Test-Path $llvmCMakeDir) {
-            Add-Content -Path $env:GITHUB_ENV -Value "LLVM_DIR=${llvmCMakeDir}"
-            Write-Host "Set LLVM_DIR: ${llvmCMakeDir}"
-          }
-          if (Test-Path $clangCMakeDir) {
-            Add-Content -Path $env:GITHUB_ENV -Value "Clang_DIR=${clangCMakeDir}"
-            Write-Host "Set Clang_DIR: ${clangCMakeDir}"
-          }
+        $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
 
-          # Rename conflicting x64 LLVM if present (so llvm-config isn't found there)
-          if (Test-Path "C:\Program Files\LLVM") {
-            Write-Host "Renaming conflicting x64 LLVM at 'C:\Program Files\LLVM'"
-            Rename-Item -Path "C:\Program Files\LLVM" -NewName "LLVM-x64-disabled" -ErrorAction SilentlyContinue
-          }
+        # Set CMake directories so it finds this LLVM installation
+        $llvmCMakeDir = "${LLVM_INSTALL_DIR}\lib\cmake\llvm"
+        $clangCMakeDir = "${LLVM_INSTALL_DIR}\lib\cmake\clang"
+        if (Test-Path $llvmCMakeDir) {
+          Add-Content -Path $env:GITHUB_ENV -Value "LLVM_DIR=${llvmCMakeDir}"
+        }
+        if (Test-Path $clangCMakeDir) {
+          Add-Content -Path $env:GITHUB_ENV -Value "Clang_DIR=${clangCMakeDir}"
+        }
 
-          # Set vcpkg triplet for ARM64 to ensure CMake uses ARM64 packages
-          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=arm64-windows-static"
-          Write-Host "Set VCPKG_TARGET_TRIPLET: arm64-windows-static"
+        # Hide any conflicting pre-installed LLVM
+        if ($arch -ne "X64" -and (Test-Path "C:\Program Files\LLVM")) {
+          Rename-Item -Path "C:\Program Files\LLVM" -NewName "LLVM-x64-disabled" -ErrorAction SilentlyContinue
         }
 
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
