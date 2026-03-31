@@ -46,7 +46,9 @@ endif()
 # run it from their terminal of choice (PowerShell, cmd, Windows Terminal, etc.)
 # Create Start Menu shortcut for the documentation (opens in browser)
 # Only if Doxygen is available to generate the docs
-if(WIN32 AND ASCIICHAT_DOXYGEN_EXECUTABLE)
+if(WIN32)
+    # Always create the Documentation shortcut - release builds generate docs,
+    # and the wix_patch.xml Uninstall shortcut depends on this component existing
     set_property(INSTALL "doc/html/index.html"
         PROPERTY CPACK_START_MENU_SHORTCUTS "ascii-chat Documentation"
     )
