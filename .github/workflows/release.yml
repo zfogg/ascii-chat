@@ -501,7 +501,7 @@ jobs:
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          cmake --build build_release --target docs || echo "Warning: docs generation failed (non-fatal)"
+          cmake --build build_release --target docs
           cmake --build build_release --target package
 
       - name: Print ccache stats
