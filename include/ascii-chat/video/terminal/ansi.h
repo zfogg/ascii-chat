@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define ANSI_RESET "\033[0m"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

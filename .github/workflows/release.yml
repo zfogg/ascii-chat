@@ -403,8 +403,7 @@ jobs:
     strategy:
       matrix:
         include:
-          # Intel macOS disabled (macos-26-large requires paid runner)
-          # - os: macos-26-large
+          - os: macos-15-intel
           - os: macos-26
 
     steps:
@@ -573,10 +572,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package-windows:
-    name: Package Windows installers
+    name: Package Windows installers (${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: amd64
+            vcpkg-triplet: "x64-windows"
+            vcpkg-static-triplet: "x64-windows-static"
+          - runner: windows-11-arm
+            arch: arm64
+            vcpkg-triplet: "arm64-windows"
+            vcpkg-static-triplet: "arm64-windows-static"
 
     steps:
       - name: Checkout code
@@ -615,8 +625,8 @@ jobs:
           os: windows
           vcpkg-packages: "zstd portaudio libsodium opus"
           vcpkg-static-packages: "zstd portaudio libsodium opus mimalloc"
-          vcpkg-triplet: "x64-windows"
-          vcpkg-static-triplet: "x64-windows-static"
+          vcpkg-triplet: ${{ matrix.vcpkg-triplet }}
+          vcpkg-static-triplet: ${{ matrix.vcpkg-static-triplet }}
           windows-libs-mode: static
           github-token: ${{ secrets.GITHUB_TOKEN }}
 

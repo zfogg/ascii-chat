@@ -14,6 +14,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/string.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -122,16 +123,7 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
   return (int)(selection - 1); // Convert to 0-based index
 }
 
-/**
- * @brief ANSI escape codes for TUI
- */
-#define ANSI_CLEAR "\033[2J\033[H" // Clear screen and move cursor to top
-#define ANSI_BOLD "\033[1m"        // Bold text
-#define ANSI_RESET "\033[0m"       // Reset formatting
-#define ANSI_CYAN "\033[36m"       // Cyan text
-#define ANSI_GREEN "\033[32m"      // Green text
-#define ANSI_YELLOW "\033[33m"     // Yellow text
-#define ANSI_CLEAR_LINE "\033[K"   // Clear to end of line
+
 
 /**
  * @brief TUI-based server selection with formatted display
@@ -157,29 +149,34 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   bool prev_lock_state = log_lock_terminal();
 
   // Clear terminal
-  log_plain("%s", ANSI_CLEAR);
+  log_plain("\033[2J\033[H");
 
   // Display header
   log_plain("\n");
-  log_plain("%s╭─ 🔍 ascii-chat Server Discovery %s────────────╮%s\n", ANSI_BOLD, ANSI_RESET, ANSI_BOLD);
-  log_plain("│%s\n", ANSI_RESET);
-  log_plain("%s│%s Found %d server%s on your local network:%s\n", ANSI_BOLD, ANSI_GREEN, count, count == 1 ? "" : "s",
-            ANSI_RESET);
-  log_plain("%s│%s\n", ANSI_BOLD, ANSI_RESET);
+  log_plain("\033[1m╭─ 🔍 ascii-chat Server Discovery ────────────╮\033[0m\n");
+  log_plain("\033[1m│\033[0m\n");
+  char found_buf[64];
+  snprintf(found_buf, sizeof(found_buf), "Found %d server%s on your local network:", count, count == 1 ? "" : "s");
+  log_plain("\033[1m│\033[0m %s\n", colored_string(LOG_COLOR_INFO, found_buf));
+  log_plain("\033[1m│\033[0m\n");
 
   // Display server list with formatting
   for (int i = 0; i < count; i++) {
     const ui_mdns_server_t *srv = &servers[i];
     const char *addr = ui_mdns_get_best_address(srv);
 
-    log_plain("%s│%s  ", ANSI_BOLD, ANSI_RESET);
-    log_plain("%s[%d]%s %-30s %s%s:%u%s", ANSI_CYAN, i + 1, ANSI_RESET, srv->name, ANSI_YELLOW, addr, srv->port,
-              ANSI_RESET);
-    log_plain("\n");
+    char idx_buf[8];
+    snprintf(idx_buf, sizeof(idx_buf), "[%d]", i + 1);
+    char addr_buf[128];
+    snprintf(addr_buf, sizeof(addr_buf), "%s:%u", addr, srv->port);
+
+    log_plain("\033[1m│\033[0m  %s %-30s %s\n",
+              colored_string(LOG_COLOR_DEBUG, idx_buf), srv->name,
+              colored_string(LOG_COLOR_WARN, addr_buf));
   }
 
-  log_plain("%s│%s\n", ANSI_BOLD, ANSI_RESET);
-  log_plain("%s╰────────────────────────────────────────────╯%s\n", ANSI_BOLD, ANSI_RESET);
+  log_plain("\033[1m│\033[0m\n");
+  log_plain("\033[1m╰────────────────────────────────────────────╯\033[0m\n");
 
   // Prompt for selection
   log_plain("\n");
@@ -206,7 +203,9 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
 
   // Validate input
   if (selection < 1 || selection > count) {
-    printf("%sError:%s Please enter a number between 1 and %d\n\n", ANSI_YELLOW, ANSI_RESET, count);
+    char err_buf[64];
+    snprintf(err_buf, sizeof(err_buf), "Please enter a number between 1 and %d", count);
+    printf("%s\n\n", colored_string(LOG_COLOR_WARN, err_buf));
     return ui_mdns_select(servers, count); // Re-prompt
   }
 
@@ -214,9 +213,11 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   prev_lock_state = log_lock_terminal();
 
   // Clear screen and show connection status
-  log_plain("%s", ANSI_CLEAR);
+  log_plain("\033[2J\033[H");
   log_plain("\n");
-  log_plain("%s🔗 Connecting to %s...%s\n", ANSI_GREEN, servers[selection - 1].name, ANSI_RESET);
+  char connect_buf[128];
+  snprintf(connect_buf, sizeof(connect_buf), "🔗 Connecting to %s...", servers[selection - 1].name);
+  log_plain("%s\n", colored_string(LOG_COLOR_INFO, connect_buf));
   log_plain("\n");
   fflush(stdout);
 

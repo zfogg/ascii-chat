@@ -377,8 +377,8 @@ FetchContent_Declare(
 
 FetchContent_GetProperties(libdatachannel)
 if(NOT libdatachannel_POPULATED)
-    # Manually populate the source
-    FetchContent_MakeAvailable(libdatachannel)
+    # Populate source without adding subdirectory (patches must run first)
+    FetchContent_Populate(libdatachannel)
 
     # Initialize submodules for libdatachannel dependencies
     # Note: libdatachannel requires libsrtp, libjuice, and usrsctp as submodules

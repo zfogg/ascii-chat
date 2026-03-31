@@ -114,7 +114,6 @@ extern global_dec3_cache_t g_dec3_cache;
 // static const char ANSI_FG_PREFIX[] = "\033[38;2;";  // Unused, replaced by inline constants
 // static const char ANSI_BG_PREFIX[] = "\033[48;2;";  // Unused, replaced by inline constants
 // static const char ANSI_SUFFIX[] = "m";
-static const char ANSI_RESET[] = "\033[0m";
 
 /**
  * @brief Initialize decimal lookup table
