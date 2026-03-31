@@ -477,11 +477,13 @@ jobs:
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
           fi
-          # Intel macOS: disable mimalloc and fast-math to avoid segfaults
-          # (first time Intel release builds are being tested)
+          # Intel macOS: disable mimalloc, fast-math, and skip static libc++
+          # LLVM 19.1.6 static libc++ may be ABI-incompatible with Homebrew clang
           if [ "$(uname -m)" = "x86_64" ]; then
-            echo "Intel macOS detected - disabling mimalloc and fast-math for stability"
+            echo "Intel macOS detected - using dynamic libc++ for stability"
             CMAKE_ARGS="$CMAKE_ARGS -DUSE_MIMALLOC=OFF -DASCIICHAT_RELEASE_ENABLE_FAST_MATH=OFF"
+            # Remove static libc++ flag if it was added
+            CMAKE_ARGS=$(echo "$CMAKE_ARGS" | sed 's/-DASCIICHAT_LIBCXX_STATIC_ROOT=[^ ]*//')
           fi
           cmake $CMAKE_ARGS
 
