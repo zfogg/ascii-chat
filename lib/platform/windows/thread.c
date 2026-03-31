@@ -19,6 +19,22 @@
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
 
+// Architecture-aware CONTEXT register access
+// ARM64 Windows uses Pc/Sp/Fp instead of Rip/Rsp/Rbp
+#if defined(_M_ARM64) || defined(__aarch64__)
+#define CTX_PC(ctx)    ((ctx)->Pc)
+#define CTX_SP(ctx)    ((ctx)->Sp)
+#define CTX_FP(ctx)    ((ctx)->Fp)
+#define CTX_PC_NAME    "PC"
+#define IMAGE_FILE_MACHINE_CURRENT IMAGE_FILE_MACHINE_ARM64
+#else
+#define CTX_PC(ctx)    ((ctx)->Rip)
+#define CTX_SP(ctx)    ((ctx)->Rsp)
+#define CTX_FP(ctx)    ((ctx)->Rbp)
+#define CTX_PC_NAME    "RIP"
+#define IMAGE_FILE_MACHINE_CURRENT IMAGE_FILE_MACHINE_AMD64
+#endif
+
 // Thread wrapper structure to bridge POSIX and Windows thread APIs
 typedef struct {
   void *(*posix_func)(void *);
@@ -101,10 +117,10 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   // Exception location
   if (IsBadReadPtr(ctx, sizeof(CONTEXT)) == 0) {
     offset +=
-        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: 0x%016llX\n", ctx->Rip);
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  " CTX_PC_NAME ": 0x%016llX\n", (unsigned long long)CTX_PC(ctx));
   } else {
     offset +=
-        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: <invalid context>\n");
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  " CTX_PC_NAME ": <invalid context>\n");
   }
 
   // Try to resolve the symbol at the crash address - wrap in try/except for safety
@@ -115,7 +131,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
     pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSymbol->MaxNameLen = MAX_SYM_NAME;
 
-    if (g_thread_symbols_initialized && SymFromAddr(hProcess, ctx->Rip, &dwDisplacement, pSymbol)) {
+    if (g_thread_symbols_initialized && SymFromAddr(hProcess, CTX_PC(ctx), &dwDisplacement, pSymbol)) {
       offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Function: %s + 0x%llX\n", pSymbol->Name,
                               dwDisplacement);
     } else {
@@ -124,12 +140,12 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
         HMODULE hModule;
         CHAR moduleName[MAX_PATH];
         if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                              (LPCTSTR)ctx->Rip, &hModule)) {
+                              (LPCTSTR)CTX_PC(ctx), &hModule)) {
           if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
             char *lastSlash = strrchr(moduleName, '\\');
             char *fileName = lastSlash ? lastSlash + 1 : moduleName;
             offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Module: %s + 0x%llX\n", fileName,
-                                    ctx->Rip - (DWORD64)hModule);
+                                    CTX_PC(ctx) - (DWORD64)hModule);
           }
         }
       } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -148,11 +164,11 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   // Validate stack pointer before attempting to read from it
   // Check if the pointer is valid and in a reasonable address range
   BOOL canReadStack = FALSE;
-  if (ctx->Rsp != 0 && ctx->Rsp > 0x10000 && ctx->Rsp < 0x7FFFFFFFFFFF) {
+  if (CTX_SP(ctx) != 0 && CTX_SP(ctx) > 0x10000 && CTX_SP(ctx) < 0x7FFFFFFFFFFF) {
     __try {
       // Try to verify the pointer is readable using IsBadReadPtr
       // Note: IsBadReadPtr is deprecated but still works for this check
-      if (IsBadReadPtr((void *)ctx->Rsp, sizeof(DWORD64)) == 0) {
+      if (IsBadReadPtr((void *)CTX_SP(ctx), sizeof(DWORD64)) == 0) {
         canReadStack = TRUE;
       }
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -162,18 +178,18 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   }
 
   if (!canReadStack) {
-    offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Invalid stack pointer: 0x%016llX\n", ctx->Rsp);
+    offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Invalid stack pointer: 0x%016llX\n", CTX_SP(ctx));
   } else {
     // Copy stack data to local buffer to avoid ASan stack-use-after-scope errors
     // We're reading from another thread's stack, so copy it to our stack frame first
-    // IMPORTANT: Use ReadProcessMemory ONLY - never use direct memcpy on ctx->Rsp
+    // IMPORTANT: Use ReadProcessMemory ONLY - never use direct memcpy on CTX_SP(ctx)
     // Direct memcpy can crash if the stack pointer is invalid or points to unmapped memory
     DWORD64 stackData[50] = {0};
     SIZE_T bytesRead = 0;
     __try {
       // Read the stack memory safely using ReadProcessMemory
-      // This is safe even if ctx->Rsp points to invalid memory - ReadProcessMemory will return FALSE
-      if (!ReadProcessMemory(GetCurrentProcess(), (LPCVOID)ctx->Rsp, stackData, sizeof(stackData), &bytesRead)) {
+      // This is safe even if CTX_SP(ctx) points to invalid memory - ReadProcessMemory will return FALSE
+      if (!ReadProcessMemory(GetCurrentProcess(), (LPCVOID)CTX_SP(ctx), stackData, sizeof(stackData), &bytesRead)) {
         // ReadProcessMemory failed - stack pointer might be invalid or point to unmapped memory
         // Don't try direct access (memcpy) as that would crash - just skip manual walking
         bytesRead = 0;
@@ -276,11 +292,11 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   // StackWalk64 trace
   offset += safe_snprintf(buffer + offset, buffer_size - offset, "\nSTACK TRACE\n");
   STACKFRAME64 stackFrame = {0};
-  stackFrame.AddrPC.Offset = ctx->Rip;
+  stackFrame.AddrPC.Offset = CTX_PC(ctx);
   stackFrame.AddrPC.Mode = AddrModeFlat;
-  stackFrame.AddrStack.Offset = ctx->Rsp;
+  stackFrame.AddrStack.Offset = CTX_SP(ctx);
   stackFrame.AddrStack.Mode = AddrModeFlat;
-  stackFrame.AddrFrame.Offset = ctx->Rbp;
+  stackFrame.AddrFrame.Offset = CTX_FP(ctx);
   stackFrame.AddrFrame.Mode = AddrModeFlat;
 
   HANDLE hThread = GetCurrentThread();
@@ -292,7 +308,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
       break;
     }
 
-    if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, ctx, NULL, SymFunctionTableAccess64,
+    if (!StackWalk64(IMAGE_FILE_MACHINE_CURRENT, hProcess, hThread, &stackFrame, ctx, NULL, SymFunctionTableAccess64,
                      SymGetModuleBase64, NULL)) {
       DWORD error = GetLastError();
       if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
