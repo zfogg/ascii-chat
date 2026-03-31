@@ -24,7 +24,8 @@
     {
       "name": "ffmpeg",
       "default-features": false,
-      "features": ["avcodec", "avformat", "swscale", "swresample"]
+      "features": ["avcodec", "avformat", "swscale", "swresample"],
+      "platform": "!windows"
     },
     "abseil",
     "freetype",

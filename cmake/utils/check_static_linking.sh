@@ -29,7 +29,7 @@ case "$PLATFORM" in
         ;;
     windows)
         # Check that only system DLLs are linked (case-insensitive)
-        NON_SYSTEM=$(ldd "$BINARY" | grep -viE '(ntdll\.dll|kernel32\.dll|kernelbase\.dll|ws2_32\.dll|ucrtbase\.dll|advapi32\.dll|bcrypt\.dll|user32\.dll|msvcrt\.dll|secur32\.dll|crypt32\.dll|rpcrt4\.dll|ole32\.dll|oleaut32\.dll|shell32\.dll|shlwapi\.dll|shcore\.dll|winmm\.dll|mfplat\.dll|mf\.dll|mfreadwrite\.dll|mfuuid\.dll|dbghelp\.dll|vcruntime.*\.dll|msvcp.*\.dll|api-ms-win.*\.dll|/c/WINDOWS)' | grep -i '\.dll')
+        NON_SYSTEM=$(ldd "$BINARY" | grep -viE '(ntdll\.dll|kernel32\.dll|kernelbase\.dll|ws2_32\.dll|ucrtbase\.dll|advapi32\.dll|bcrypt\.dll|user32\.dll|msvcrt\.dll|secur32\.dll|crypt32\.dll|rpcrt4\.dll|ole32\.dll|oleaut32\.dll|shell32\.dll|shlwapi\.dll|shcore\.dll|winmm\.dll|mfplat\.dll|mf\.dll|mfreadwrite\.dll|mfuuid\.dll|dbghelp\.dll|vcruntime.*\.dll|msvcp.*\.dll|api-ms-win.*\.dll|/c/WINDOWS|avcodec.*\.dll|avformat.*\.dll|avutil.*\.dll|swresample.*\.dll|swscale.*\.dll|avdevice.*\.dll|avfilter.*\.dll)' | grep -i '\.dll')
         if [ -n "$NON_SYSTEM" ]; then
             echo -e "${YELLOW}WARNING: Release build links against non-system DLLs!${RESET}"
             echo "$NON_SYSTEM"

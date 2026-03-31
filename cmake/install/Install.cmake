@@ -419,21 +419,18 @@ install(CODE "
 # These DLLs are copied to build/bin by vcpkg's applocal.ps1 during linking.
 # We install them to bin/ so the executable can find them at runtime.
 #
-# Release builds use static libraries, so no dependency DLLs are needed.
+# Release builds with prebuilt shared FFmpeg still need FFmpeg DLLs bundled.
+# Debug/Dev builds need all dependency DLLs.
 # =============================================================================
-if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
-    # Install all DLLs from build/bin directory to bin/ (Runtime component)
-    # This includes both dependency DLLs (zstd, libsodium, etc.) AND asciichat.dll
-    # Note: asciichat.dll is already installed to lib/ above (Development component)
-    # but we also need it in bin/ for the executable to run
+if(WIN32)
     install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
         DESTINATION bin
         COMPONENT Runtime
         FILES_MATCHING
         PATTERN "*.dll"
-        PATTERN "*.exe" EXCLUDE  # Exclude exe (already installed by install(TARGETS))
+        PATTERN "*.exe" EXCLUDE
     )
-    message(STATUS "Configured dependency DLL installation: all DLLs → bin/ (runtime, dynamic build)")
+    message(STATUS "Configured DLL installation: ${CMAKE_BINARY_DIR}/bin/*.dll → bin/ (runtime)")
 endif()
 
 # Platform-specific installation paths (must be set before using INSTALL_DOC_DIR)

@@ -201,6 +201,7 @@
       "description": "Windows Release build using vcpkg with static linking",
       "inherits": ["base-release", "base-vcpkg"],
       "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
       },
       "condition": {
         "type": "equals",
