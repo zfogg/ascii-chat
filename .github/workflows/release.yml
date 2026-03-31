@@ -477,11 +477,11 @@ jobs:
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
           fi
-          # Intel macOS: disable mimalloc, fast-math, and skip static libc++
-          # LLVM 19.1.6 static libc++ may be ABI-incompatible with Homebrew clang
+          # Intel macOS: conservative build settings to avoid startup segfaults
+          # (first time Intel release builds are being tested on CI)
           if [ "$(uname -m)" = "x86_64" ]; then
-            echo "Intel macOS detected - using dynamic libc++ for stability"
-            CMAKE_ARGS="$CMAKE_ARGS -DUSE_MIMALLOC=OFF -DASCIICHAT_RELEASE_ENABLE_FAST_MATH=OFF"
+            echo "Intel macOS detected - conservative build for stability"
+            CMAKE_ARGS="$CMAKE_ARGS -DUSE_MIMALLOC=OFF -DASCIICHAT_RELEASE_ENABLE_FAST_MATH=OFF -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF"
             # Remove static libc++ flag if it was added
             CMAKE_ARGS=$(echo "$CMAKE_ARGS" | sed 's/-DASCIICHAT_LIBCXX_STATIC_ROOT=[^ ]*//')
           fi
@@ -649,9 +649,12 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
-          # Use windows-release preset which inherits vcpkg toolchain
-          # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
-          cmake --preset windows-release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
+          $cmakeArgs = @("--preset", "windows-release", "-DASCIICHAT_DEFER_TOOL=$deferTool", "-DASCIICHAT_ENABLE_ANALYZERS=OFF")
+          # Strawberry Perl's pkg-config is x86-only and fails on ARM64 Windows
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            $cmakeArgs += "-DPKG_CONFIG_EXECUTABLE="
+          }
+          cmake @cmakeArgs
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
