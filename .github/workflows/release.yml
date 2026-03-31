@@ -501,7 +501,7 @@ jobs:
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          cmake --build build_release --target docs
+          cmake --build build_release --target docs || echo "Warning: docs generation failed (non-fatal)"
           cmake --build build_release --target package
 
       - name: Print ccache stats
@@ -649,12 +649,7 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
-          $cmakeArgs = @("--preset", "windows-release", "-DASCIICHAT_DEFER_TOOL=$deferTool", "-DASCIICHAT_ENABLE_ANALYZERS=OFF")
-          # Strawberry Perl's pkg-config is x86-only and fails on ARM64 Windows
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            $cmakeArgs += "-DPKG_CONFIG_EXECUTABLE="
-          }
-          cmake @cmakeArgs
+          cmake --preset windows-release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'

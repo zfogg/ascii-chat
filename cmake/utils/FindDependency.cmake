@@ -142,9 +142,11 @@ macro(find_dependency_library)
 
         # Try pkg-config if not found yet
         if(NOT ${_DEP_NAME}_FOUND AND _DEP_PKG_CONFIG)
-            # Debug/Dev builds or Linux: Use pkg-config (dynamic linking is fine)
-            find_package(PkgConfig QUIET REQUIRED)
-            pkg_check_modules(${_DEP_NAME} QUIET IMPORTED_TARGET ${_DEP_PKG_CONFIG})
+            # Use pkg-config if available (not required - vcpkg handles deps on Windows)
+            find_package(PkgConfig QUIET)
+            if(PkgConfig_FOUND)
+                pkg_check_modules(${_DEP_NAME} QUIET IMPORTED_TARGET ${_DEP_PKG_CONFIG})
+            endif()
 
             if(${_DEP_NAME}_FOUND)
                 if(TARGET PkgConfig::${_DEP_NAME})
