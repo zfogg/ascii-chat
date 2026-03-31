@@ -10,6 +10,7 @@
 #include <ascii-chat/common.h>
 #include <windows.h>
 #include <dbghelp.h>
+#include "context_regs.h"
 
 int platform_backtrace(void **buffer, int size) {
   if (!buffer || size <= 0) {
@@ -40,9 +41,9 @@ int platform_backtrace(void **buffer, int size) {
   ZeroMemory(&frame, sizeof(frame));
 
 #ifdef _WIN64
-  frame.AddrPC.Offset = context.Rip;
-  frame.AddrFrame.Offset = context.Rbp;
-  frame.AddrStack.Offset = context.Rsp;
+  frame.AddrPC.Offset = CTX_PC(&context);
+  frame.AddrFrame.Offset = CTX_FP(&context);
+  frame.AddrStack.Offset = CTX_SP(&context);
 #else
   frame.AddrPC.Offset = context.Eip;
   frame.AddrFrame.Offset = context.Ebp;
@@ -57,7 +58,7 @@ int platform_backtrace(void **buffer, int size) {
   while (count < size) {
     BOOL result = StackWalk64(
 #ifdef _WIN64
-        IMAGE_FILE_MACHINE_AMD64,
+        IMAGE_FILE_MACHINE_CURRENT,
 #else
         IMAGE_FILE_MACHINE_I386,
 #endif

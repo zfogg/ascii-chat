@@ -19,21 +19,7 @@
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
 
-// Architecture-aware CONTEXT register access
-// ARM64 Windows uses Pc/Sp/Fp instead of Rip/Rsp/Rbp
-#if defined(_M_ARM64) || defined(__aarch64__)
-#define CTX_PC(ctx)    ((ctx)->Pc)
-#define CTX_SP(ctx)    ((ctx)->Sp)
-#define CTX_FP(ctx)    ((ctx)->Fp)
-#define CTX_PC_NAME    "PC"
-#define IMAGE_FILE_MACHINE_CURRENT IMAGE_FILE_MACHINE_ARM64
-#else
-#define CTX_PC(ctx)    ((ctx)->Rip)
-#define CTX_SP(ctx)    ((ctx)->Rsp)
-#define CTX_FP(ctx)    ((ctx)->Rbp)
-#define CTX_PC_NAME    "RIP"
-#define IMAGE_FILE_MACHINE_CURRENT IMAGE_FILE_MACHINE_AMD64
-#endif
+#include "context_regs.h"
 
 // Thread wrapper structure to bridge POSIX and Windows thread APIs
 typedef struct {
