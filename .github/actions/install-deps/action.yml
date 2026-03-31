@@ -476,43 +476,30 @@ runs:
         Write-Host "Detected architecture: $arch"
 
         if ($arch -eq "X64") {
-          # AMD64: Download from vovkos/llvm-package-windows
-          $LLVM_VERSION = "20.1.8"
+          # AMD64: Use official LLVM 19.1.6 installer (same version as ARM64 for consistency)
+          $LLVM_VERSION = "19.1.6"
           $LLVM_INSTALL_DIR = "C:\LLVM"
-          $LLVM_ARCHIVE = "clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt.7z"
-          $LLVM_URL = "https://github.com/vovkos/llvm-package-windows/releases/download/clang-${LLVM_VERSION}/${LLVM_ARCHIVE}"
+          $LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-win64.exe"
 
-          if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
-            Write-Host "LLVM with dev libraries already installed at ${LLVM_INSTALL_DIR}"
+          if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
+            Write-Host "LLVM already installed at ${LLVM_INSTALL_DIR}"
           } else {
-            Write-Host "Downloading LLVM ${LLVM_VERSION} with dev libraries from vovkos/llvm-package-windows..."
-            $tempArchive = "$env:TEMP\${LLVM_ARCHIVE}"
-            Invoke-WebRequest -Uri $LLVM_URL -OutFile $tempArchive -UseBasicParsing
-            Write-Host "Downloaded to ${tempArchive}"
+            Write-Host "Downloading official LLVM ${LLVM_VERSION} for Windows AMD64..."
+            $installerPath = "$env:TEMP\LLVM-${LLVM_VERSION}-win64.exe"
+            Invoke-WebRequest -Uri $LLVM_URL -OutFile $installerPath -UseBasicParsing
 
             if (Test-Path $LLVM_INSTALL_DIR) {
               Remove-Item -Recurse -Force $LLVM_INSTALL_DIR
             }
 
-            Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
-            # Download standalone 7zr.exe (small ~500KB extractor, no install needed)
-            $7zrUrl = "https://www.7-zip.org/a/7zr.exe"
-            $7zr = "$env:TEMP\7zr.exe"
-            Invoke-WebRequest -Uri $7zrUrl -OutFile $7zr -UseBasicParsing
-            & $7zr x $tempArchive -o"C:\" -y | Out-Null
-            Remove-Item $7zr -Force
+            Write-Host "Running silent installer to ${LLVM_INSTALL_DIR}..."
+            Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_INSTALL_DIR}"
+            Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
 
-            $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
-            if (Test-Path $extractedDir) {
-              Rename-Item -Path $extractedDir -NewName "LLVM"
-            }
-            Remove-Item $tempArchive -Force
-
-            # Verify installation
-            if (Test-Path "${LLVM_INSTALL_DIR}\lib\clangTooling.lib") {
-              Write-Host "LLVM ${LLVM_VERSION} with dev libraries installed successfully"
+            if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
+              Write-Host "LLVM ${LLVM_VERSION} installed successfully"
             } else {
-              Write-Host "ERROR: clangTooling.lib not found" -ForegroundColor Red
+              Write-Host "ERROR: clang.exe not found after installation" -ForegroundColor Red
               exit 1
             }
           }
