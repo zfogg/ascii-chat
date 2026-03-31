@@ -222,8 +222,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Note: Windows PE format doesn't have .comment sections
             if(WIN32)
                 # Strip symbols first
+                # Note: no `timeout` wrapper - Windows timeout.exe is a wait command, not a command runner
                 add_custom_command(TARGET ascii-chat POST_BUILD
-                    COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                    COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols and debug info from ascii-chat"
                 )
                 # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
