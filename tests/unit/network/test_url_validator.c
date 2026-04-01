@@ -537,7 +537,8 @@ ParameterizedTest(url_test_case_t *test, url_validator, userinfo) {
 static url_test_case_t scheme_valid_urls[] = {
     {"http://example.com", "http"},           {"https://example.com", "https"},
     {"HTTP://EXAMPLE.COM", "HTTP uppercase"}, {"HTTPS://EXAMPLE.COM", "HTTPS uppercase"},
-    {"Http://Example.com", "mixed case"},
+    {"Http://Example.com", "mixed case"},     {"ws://example.com", "websocket"},
+    {"wss://example.com", "websocket secure"},
 };
 
 ParameterizedTestParameters(url_validator, schemes_valid) {
@@ -552,8 +553,6 @@ static url_test_case_t scheme_invalid_urls[] = {
     {"ftp://example.com", "ftp"},
     {"ftps://example.com", "ftps"},
     {"sftp://example.com", "sftp"},
-    {"ws://example.com", "websocket"},
-    {"wss://example.com", "websocket secure"},
     {"file:///path/to/file", "file"},
     {"ssh://example.com", "ssh"},
     {"git://example.com/repo", "git"},
