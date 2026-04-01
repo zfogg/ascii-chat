@@ -340,10 +340,27 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
-        # Coverage builds need the gcov runtime linked into test executables
+        # Coverage builds need the profile runtime linked into test executables
+        # Clang uses libclang_rt.profile, not libgcov
         if(IS_COVERAGE_BUILD)
             target_link_options(${test_exe_name} PRIVATE --coverage)
-            target_link_libraries(${test_exe_name} gcov)
+            if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+                execute_process(
+                    COMMAND ${CMAKE_C_COMPILER} --print-runtime-dir
+                    OUTPUT_VARIABLE CLANG_RUNTIME_DIR
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+                find_library(CLANG_RT_PROFILE
+                    NAMES clang_rt.profile-x86_64 clang_rt.profile
+                    PATHS "${CLANG_RUNTIME_DIR}"
+                    NO_DEFAULT_PATH
+                )
+                if(CLANG_RT_PROFILE)
+                    target_link_libraries(${test_exe_name} "${CLANG_RT_PROFILE}")
+                endif()
+            else()
+                target_link_libraries(${test_exe_name} gcov)
+            endif()
         endif()
 
         # External dependencies needed because shared library has them as undefined symbols
