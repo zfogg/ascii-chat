@@ -403,8 +403,11 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
   rwlock_rdlock(&g_named_registry.entries_lock);
   for (named_entry_t *e = g_named_registry.entries; e != NULL && count < 256; e = e->hh.next) {
     entries[count].key = e->key;
-    strncpy(entries[count].name, e->name ? e->name : "?", MAX_NAME_LEN - 1);
-    entries[count].name[MAX_NAME_LEN - 1] = '\0';
+    const char *src = e->name ? e->name : "?";
+    size_t src_len = strlen(src);
+    if (src_len >= MAX_NAME_LEN) src_len = MAX_NAME_LEN - 1;
+    memcpy(entries[count].name, src, src_len);
+    entries[count].name[src_len] = '\0';
     count++;
   }
   rwlock_rdunlock(&g_named_registry.entries_lock);

@@ -184,8 +184,7 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   log_info("Connecting WebSocket client to %s", url);
 
   // Store URL for reference
-  strncpy(client->url, url, sizeof(client->url) - 1);
-  client->url[sizeof(client->url) - 1] = '\0';
+  SAFE_STRNCPY(client->url, url, sizeof(client->url));
 
   // Create transport using ACIP layer
   acip_transport_t *transport = acip_websocket_client_transport_create("client", url, crypto_ctx);

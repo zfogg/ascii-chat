@@ -37,7 +37,7 @@ asciichat_error_t platform_font_resolve(const char *spec,
     if (len == 0 || len >= sizeof(fonts_dir) - 8) {
         return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to get Windows directory");
     }
-    strcat(fonts_dir, "\\Fonts\\");
+    snprintf(fonts_dir + len, sizeof(fonts_dir) - len, "\\Fonts\\");
 
     // If spec is an absolute path, use it directly
     if (spec && spec[0] != '\0') {

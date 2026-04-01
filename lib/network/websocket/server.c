@@ -854,11 +854,11 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
       config->tls_key_path[0] != '\0') {
 #ifdef LWS_WITH_TLS
     // Validate certificate and key files are readable
-    if (access(config->tls_cert_path, R_OK) != 0) {
+    if (platform_access(config->tls_cert_path, R_OK) != 0) {
       return SET_ERRNO(ERROR_NETWORK_BIND, "TLS certificate file not readable: %s (errno=%d)", config->tls_cert_path,
                        errno);
     }
-    if (access(config->tls_key_path, R_OK) != 0) {
+    if (platform_access(config->tls_key_path, R_OK) != 0) {
       return SET_ERRNO(ERROR_NETWORK_BIND, "TLS key file not readable: %s (errno=%d)", config->tls_key_path, errno);
     }
 

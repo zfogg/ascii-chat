@@ -414,7 +414,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr)                                                                   \
   named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) (name)
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) ((void)(lock), (void)(parent_ptr), (name))
 #endif
 
 /**
@@ -953,7 +953,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
 #define NAMED_REGISTER_WEBSOCKET_IMPL(data, name, parent_ptr)                                                                      \
   named_register((uintptr_t)(const void *)(data), (name), "websocket_impl", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name, parent_ptr) (name)
+#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name, parent_ptr) ((void)(data), (void)(name), (void)(parent_ptr))
 #endif
 
 /**
@@ -1035,8 +1035,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
   do {                                                                                                                 \
     const char *_name = named_get(key);                                                                               \
     if (_name) {                                                                                                       \
-      strncpy((buffer), (_name), (size) - 1);                                                                         \
-      (buffer)[(size) - 1] = '\0';                                                                                    \
+      size_t _len = strlen(_name);                                                                                     \
+      if (_len >= (size)) _len = (size) - 1;                                                                           \
+      memcpy((buffer), (_name), _len);                                                                                 \
+      (buffer)[_len] = '\0';                                                                                           \
     } else {                                                                                                           \
       snprintf((buffer), (size), "0x%tx", (ptrdiff_t)(key));                                                          \
     }                                                                                                                  \
@@ -1059,8 +1061,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
   do {                                                                                                                 \
     const char *_name = named_get((uintptr_t)(id));                                                                   \
     if (_name) {                                                                                                       \
-      strncpy((buffer), (_name), (size) - 1);                                                                         \
-      (buffer)[(size) - 1] = '\0';                                                                                    \
+      size_t _len = strlen(_name);                                                                                     \
+      if (_len >= (size)) _len = (size) - 1;                                                                           \
+      memcpy((buffer), (_name), _len);                                                                                 \
+      (buffer)[_len] = '\0';                                                                                           \
     } else {                                                                                                           \
       snprintf((buffer), (size), "0x%lx", (unsigned long)(id));                                                       \
     }                                                                                                                  \

@@ -999,8 +999,9 @@ const char *colorize_named_string(const char *name_str) {
   /* Extract type (before slash) */
   size_t type_len = slash - name_str;
   char type_buf[256];
-  strncpy(type_buf, name_str, type_len < sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
-  type_buf[type_len] = '\0';
+  size_t copy_len = type_len < sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1;
+  memcpy(type_buf, name_str, copy_len);
+  type_buf[copy_len] = '\0';
 
   /* Extract name (between slash and paren, or end of string) */
   const char *name_start = slash + 1;
@@ -1017,8 +1018,9 @@ const char *colorize_named_string(const char *name_str) {
   }
 
   char name_buf[256];
-  strncpy(name_buf, name_start, name_len < sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
-  name_buf[name_len] = '\0';
+  size_t name_copy_len = name_len < sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1;
+  memcpy(name_buf, name_start, name_copy_len);
+  name_buf[name_copy_len] = '\0';
 
   /* Apply colors */
   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
@@ -1032,8 +1034,9 @@ const char *colorize_named_string(const char *name_str) {
     if (addr_end) {
       size_t addr_len = addr_end - addr_start;
       char addr_buf[128];
-      strncpy(addr_buf, addr_start, addr_len < sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
-      addr_buf[addr_len] = '\0';
+      size_t addr_copy_len = addr_len < sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1;
+      memcpy(addr_buf, addr_start, addr_copy_len);
+      addr_buf[addr_copy_len] = '\0';
 
       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, "%s/%s (%s)", type_colored, name_colored, addr_colored);

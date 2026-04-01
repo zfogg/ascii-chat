@@ -984,7 +984,11 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
 
   // Get or create decoder for this client
   uint32_t client_id_num = 0;
-  if (sscanf(client->client_id, "%u", &client_id_num) != 1) {
+  char *end = NULL;
+  unsigned long parsed = strtoul(client->client_id, &end, 10);
+  if (end != client->client_id && *end == '\0') {
+    client_id_num = (uint32_t)parsed;
+  } else {
     // Fallback to string hash if can't parse as number
     client_id_num = 0;
     for (int i = 0; client->client_id[i]; i++) {

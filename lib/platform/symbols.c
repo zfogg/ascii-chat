@@ -652,7 +652,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     }
 
     // Suppress stderr
-    strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
+    safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "2>/dev/null");
 
     // Note: No LOG_IO here because output is read and consumed by this function
     FILE *fp = NULL;

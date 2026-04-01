@@ -1936,8 +1936,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (level_len >= sizeof(level_str) || level_len == 0) {
     return 0; // Level string too long or empty
   }
-  /* Use strncpy directly for substring extraction (not null-terminated source) */
-  strncpy(level_str, level_start, level_len);
+  memcpy(level_str, level_start, level_len);
   level_str[level_len] = '\0';
 
   // Determine log level for color selection
@@ -1999,8 +1998,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (file_len >= sizeof(file_path)) {
     return 0;
   }
-  /* Use strncpy directly for substring extraction (not null-terminated source) */
-  strncpy(file_path, file_start, file_len);
+  memcpy(file_path, file_start, file_len);
   file_path[file_len] = '\0';
   p++; // Skip :
 
@@ -2054,8 +2052,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     func_len = sizeof(func_name) - 1;
   }
   if (func_len > 0) {
-    /* Use strncpy directly for substring extraction (not null-terminated source) */
-    strncpy(func_name, func_start, func_len);
+    memcpy(func_name, func_start, func_len);
   }
   func_name[func_len] = '\0';
 

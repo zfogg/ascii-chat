@@ -246,16 +246,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
     // Proactive eviction: free space before attempting insertion
     utf8_palette_cache_t *victim_cache = utf8_heap_extract_min();
     if (victim_cache) {
-      uint32_t victim_key = victim_cache->key;
-
-      // Log clean eviction
-      uint32_t victim_access_count = atomic_load_u64(&victim_cache->access_count);
-      uint64_t current_time = time_get_ns();
-      uint64_t victim_age = (current_time - atomic_load_u64(&victim_cache->last_access_time)) / NS_PER_SEC_INT;
-
       // WASM: Skip debug log to avoid blocking render loop
-      // log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
-      //           victim_age, victim_access_count);
 
       HASH_DEL(g_utf8_cache_table, victim_cache);
       SAFE_FREE(victim_cache);

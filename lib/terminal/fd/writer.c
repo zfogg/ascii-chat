@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <ascii-chat/platform/abstraction.h>
 
 typedef struct terminal_fd_writer_s {
   FILE *fp;          // File pointer created from FD
@@ -21,7 +21,7 @@ asciichat_error_t terminal_fd_writer_create(int fd, terminal_fd_writer_t **out) 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid fd: %d", fd);
   }
 
-  FILE *fp = fdopen(fd, "w");
+  FILE *fp = platform_fdopen("terminal_fd_writer", fd, "w");
   if (!fp) {
     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fdopen failed for FD %d", fd);
   }

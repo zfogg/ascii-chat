@@ -71,7 +71,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
       .font_data = font_data,
       .font_data_size = font_data_size,
   };
-  strncpy(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec) - 1);
+  SAFE_STRNCPY(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec));
 
   asciichat_error_t err = term_renderer_create(&tr_cfg, &ctx->renderer);
   if (err != ASCIICHAT_OK) {

@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <ascii-chat/platform/abstraction.h>
 
 typedef struct terminal_fd_reader_s {
   FILE *fp;          // File pointer created from FD
@@ -30,7 +30,7 @@ asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_f
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid fd or frame height: fd=%d, height=%d", fd, frame_height);
   }
 
-  FILE *fp = fdopen(fd, "r");
+  FILE *fp = platform_fdopen("terminal_fd_reader", fd, "r");
   if (!fp) {
     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fdopen failed for FD %d", fd);
   }

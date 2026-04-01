@@ -418,7 +418,8 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
  * Attempts to receive peer's NETWORK_QUALITY from ACDS.
  * Stores result in session->negotiate.peer_quality
  */
-static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
+// TODO: Wire up once ACDS relay-based quality exchange is enabled
+__attribute__((unused)) static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
   if (!session || !session->acds_transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
   }

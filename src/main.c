@@ -790,8 +790,7 @@ int main(int argc, char *argv[]) {
         }
       } else {
         // File doesn't end with .log - just append .json
-        SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
-        strncat(json_filename_buf, ".json", sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
+        snprintf(json_filename_buf, sizeof(json_filename_buf), "%s.json", final_log_file);
       }
     }
     final_log_file = json_filename_buf;

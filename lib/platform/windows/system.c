@@ -1244,7 +1244,9 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
   handle.original_fd = _dup(STDERR_FILENO);
   if (handle.original_fd < 0) return handle;
 
-  handle.devnull_fd = _open("NUL", _O_WRONLY);
+  if (_sopen_s(&handle.devnull_fd, "NUL", _O_WRONLY, _SH_DENYNO, 0) != 0) {
+    handle.devnull_fd = -1;
+  }
   if (handle.devnull_fd < 0) {
     _close(handle.original_fd);
     handle.original_fd = -1;
@@ -1272,8 +1274,8 @@ void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
 }
 
 void platform_stdio_redirect_to_null_permanent(void) {
-  int devnull = _open("NUL", _O_WRONLY);
-  if (devnull >= 0) {
+  int devnull = -1;
+  if (_sopen_s(&devnull, "NUL", _O_WRONLY, _SH_DENYNO, 0) == 0 && devnull >= 0) {
     _dup2(devnull, STDOUT_FILENO);
     _dup2(devnull, STDERR_FILENO);
     _close(devnull);
@@ -1291,8 +1293,8 @@ platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) 
     return handle;
   }
 
-  int devnull = _open("NUL", _O_WRONLY);
-  if (devnull < 0) {
+  int devnull = -1;
+  if (_sopen_s(&devnull, "NUL", _O_WRONLY, _SH_DENYNO, 0) != 0 || devnull < 0) {
     _close(saved_stdout);
     _close(saved_stderr);
     return handle;
@@ -1452,30 +1454,6 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 // ============================================================================
 // Binary Path Detection
 // ============================================================================
-
-/**
- * @brief Check if a file exists and is executable (Windows)
- */
-static bool is_executable_file(const char *path) {
-  if (!path) {
-    return false;
-  }
-
-  DWORD attrs = GetFileAttributesA(path);
-  if (attrs == INVALID_FILE_ATTRIBUTES) {
-    return false;
-  }
-  if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
-    return false;
-  }
-
-  HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  if (h == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-  CloseHandle(h);
-  return true;
-}
 
 /**
  * Execute a subprocess using CreateProcess (Windows implementation)

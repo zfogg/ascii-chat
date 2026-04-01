@@ -245,7 +245,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
           size_t line_len = content - line_start;
           char line_buf[1024];
           if (line_len < sizeof(line_buf)) {
-            strncpy(line_buf, line_start, line_len);
+            memcpy(line_buf, line_start, line_len);
             line_buf[line_len] = '\0';
 
             int line_height = display_height(line_buf, g_cached_term_size.cols);

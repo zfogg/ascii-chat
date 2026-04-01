@@ -282,6 +282,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   return result;
 }
 
+#ifndef NDEBUG
 /* ============================================================================
  * Deadlock Test Code
  * ============================================================================ */
@@ -359,6 +360,7 @@ static void *test_thread_c_3way(void *arg) {
   mutex_unlock(&g_test_mutex_c);
   return NULL;
 }
+#endif // !NDEBUG
 
 /* ============================================================================
  * Mirror Mode Entry Point

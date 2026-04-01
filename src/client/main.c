@@ -220,12 +220,6 @@ static void client_handle_sigwinch(int sigwinch) {
     }
   }
 }
-#else
-// Windows-compatible signal handler (no-op implementation)
-static void client_handle_sigwinch(int sigwinch) {
-  (void)(sigwinch);
-  log_console(LOG_DEBUG, "SIGWINCH received (Windows no-op implementation)");
-}
 #endif
 
 /**
