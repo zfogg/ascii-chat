@@ -358,8 +358,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 if(CLANG_RT_PROFILE)
                     target_link_libraries(${test_exe_name} "${CLANG_RT_PROFILE}")
                 endif()
-            else()
-                target_link_libraries(${test_exe_name} gcov)
             endif()
         endif()
 
