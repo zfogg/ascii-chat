@@ -1,11 +1,12 @@
 /**
  * @file ascii_simd_integration_test.c
- * @brief SIMD ASCII rendering integration tests
+ * @brief Video frame buffer and output buffer integration tests
  */
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -18,13 +19,9 @@ TestSuite(ascii_simd_integration);
 
 Test(ascii_simd_integration, frame_buffer_with_output_buffer) {
   video_frame_buffer_t *vfb = video_frame_buffer_create("integration_test");
-  ascii_output_buffer_t output;
+  outbuf_t output = {0};
 
   cr_assert_not_null(vfb, "Should create frame buffer");
-
-  // Create output buffer
-  asciichat_error_t result = ascii_output_buffer_create(&output, 80, 24);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create output buffer");
 
   // Write frame to buffer
   video_frame_t *frame = video_frame_begin_write(vfb);
@@ -37,25 +34,28 @@ Test(ascii_simd_integration, frame_buffer_with_output_buffer) {
   const video_frame_t *read_frame = video_frame_get_latest(vfb);
   cr_assert_not_null(read_frame, "Should get frame after commit");
 
+  // Test output buffer works
+  ob_reserve(&output, 64);
+  ob_write(&output, "test", 4);
+  ob_term(&output);
+  cr_assert_eq(output.len, 4);
+
   // Cleanup
-  ascii_output_buffer_destroy(&output);
+  free(output.buf);
   video_frame_buffer_destroy(vfb);
 }
 
 Test(ascii_simd_integration, multiple_clients_concurrent) {
   int num_clients = 3;
-  video_frame_buffer_t *buffers[num_clients];
-  ascii_output_buffer_t outputs[num_clients];
+  video_frame_buffer_t *buffers[3];
+  outbuf_t outputs[3];
 
-  // Create frame buffers and output buffers for each client
   for (int i = 0; i < num_clients; i++) {
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "client_%d", i);
     buffers[i] = video_frame_buffer_create(client_id);
     cr_assert_not_null(buffers[i], "Should create buffer for client %d", i);
-
-    asciichat_error_t result = ascii_output_buffer_create(&outputs[i], 80, 24);
-    cr_assert_eq(result, ASCIICHAT_OK, "Should create output for client %d", i);
+    memset(&outputs[i], 0, sizeof(outbuf_t));
   }
 
   // Write frames from all clients
@@ -76,44 +76,29 @@ Test(ascii_simd_integration, multiple_clients_concurrent) {
 
   // Cleanup
   for (int i = 0; i < num_clients; i++) {
-    ascii_output_buffer_destroy(&outputs[i]);
+    free(outputs[i].buf);
     video_frame_buffer_destroy(buffers[i]);
   }
 }
 
 Test(ascii_simd_integration, frame_swap_integration) {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
-  ascii_output_buffer_t output;
-
   cr_assert_not_null(sfs, "Should create frame swap");
 
-  asciichat_error_t result = ascii_output_buffer_create(&output, 80, 24);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create output buffer");
-
-  // Create test data
   uint8_t data[2048];
   memset(data, 200, sizeof(data));
 
-  // Update frame swap
   simple_frame_swap_update(sfs, data, sizeof(data));
 
-  // Get frame
   const video_frame_t *frame = simple_frame_swap_get(sfs);
   cr_assert_not_null(frame, "Should get frame from swap");
 
-  // Cleanup
-  ascii_output_buffer_destroy(&output);
   simple_frame_swap_destroy(sfs);
 }
 
 Test(ascii_simd_integration, streaming_sequence) {
   video_frame_buffer_t *vfb = video_frame_buffer_create("stream_test");
-  ascii_output_buffer_t output;
 
-  asciichat_error_t result = ascii_output_buffer_create(&output, 80, 24);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create output buffer");
-
-  // Simulate frame stream
   for (int frame_num = 0; frame_num < 10; frame_num++) {
     video_frame_t *frame = video_frame_begin_write(vfb);
     frame->width = 640;
@@ -126,15 +111,12 @@ Test(ascii_simd_integration, streaming_sequence) {
     cr_assert_eq(latest->sequence_number, frame_num + 1, "Sequence should match");
   }
 
-  // Cleanup
-  ascii_output_buffer_destroy(&output);
   video_frame_buffer_destroy(vfb);
 }
 
 Test(ascii_simd_integration, quality_metrics_collection) {
   video_frame_buffer_t *vfb = video_frame_buffer_create("quality_test");
 
-  // Write multiple frames
   for (int i = 0; i < 10; i++) {
     video_frame_t *frame = video_frame_begin_write(vfb);
     frame->sequence_number = i + 1;
@@ -142,7 +124,6 @@ Test(ascii_simd_integration, quality_metrics_collection) {
     video_frame_commit(vfb);
   }
 
-  // Get statistics
   video_frame_stats_t stats;
   video_frame_get_stats(vfb, &stats);
 
@@ -152,22 +133,16 @@ Test(ascii_simd_integration, quality_metrics_collection) {
   video_frame_buffer_destroy(vfb);
 }
 
-Test(ascii_simd_integration, multiple_resolutions) {
-  uint32_t resolutions[][2] = {
-      {320, 240},
-      {640, 480},
-      {800, 600},
-      {1280, 720},
-  };
+Test(ascii_simd_integration, output_buffer_emit_colors) {
+  outbuf_t ob = {0};
 
-  ascii_output_buffer_t outputs[4];
+  emit_set_truecolor_fg(&ob, 255, 128, 0);
+  cr_assert_gt(ob.len, 0, "Should emit truecolor fg");
 
-  for (size_t i = 0; i < sizeof(resolutions) / sizeof(resolutions[0]); i++) {
-    asciichat_error_t result = ascii_output_buffer_create(&outputs[i], 80, 24);
-    cr_assert_eq(result, ASCIICHAT_OK, "Should create output for resolution %zu", i);
-  }
+  emit_set_truecolor_bg(&ob, 0, 128, 255);
+  emit_reset(&ob);
+  ob_term(&ob);
+  cr_assert_not_null(ob.buf);
 
-  for (size_t i = 0; i < sizeof(resolutions) / sizeof(resolutions[0]); i++) {
-    ascii_output_buffer_destroy(&outputs[i]);
-  }
+  free(ob.buf);
 }
