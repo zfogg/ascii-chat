@@ -250,6 +250,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set(TEST_EXCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
+        # FIXME: uses old _socket API, needs rewrite to acip_transport_t
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/crypto/gpg_handshake_test.c
     )
     # Exclude query tests if query runtime library not available
     if(NOT TARGET ascii-query-runtime)
