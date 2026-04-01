@@ -38,7 +38,7 @@ void setup_real_sockets(void) {
 
   // Create a connected socket pair (bidirectional pipe)
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
-    cr_assert_fail("Failed to create socket pair: %s", strerror(errno));
+    cr_assert(false, "Failed to create socket pair: %s", strerror(errno));
     return;
   }
 

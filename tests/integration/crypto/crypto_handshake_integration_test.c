@@ -40,7 +40,7 @@ static void setup_test_network(void) {
 
   int sv[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
-    cr_assert_fail("Failed to create socket pair: %s", strerror(errno));
+    cr_assert(false, "Failed to create socket pair: %s", strerror(errno));
     return;
   }
   g_network.server_fd = sv[0];

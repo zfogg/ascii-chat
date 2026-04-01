@@ -70,11 +70,11 @@ static void make_unique_directory(char *buffer, size_t buffer_size) {
     }
 #endif
     if (errno != EEXIST) {
-      cr_assert_fail("Failed to create temporary directory '%s': %s", buffer, strerror(errno));
+      cr_assert(false, "Failed to create temporary directory '%s': %s", buffer, strerror(errno));
     }
   }
 
-  cr_assert_fail("Unable to allocate unique temporary directory after multiple attempts");
+  cr_assert(false, "Unable to allocate unique temporary directory after multiple attempts");
 }
 
 #if defined(_WIN32)
