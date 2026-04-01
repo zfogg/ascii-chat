@@ -33,8 +33,6 @@ static bool is_network_available(void) {
 // =============================================================================
 // Basic HTTPS GET Tests
 // =============================================================================
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(crypto_http_client);
 
 Test(crypto_http_client, https_get_github_zen) {
   if (!is_network_available()) {

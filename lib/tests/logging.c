@@ -37,7 +37,7 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   }
 
   // Open /dev/null for writing
-  dev_null_fd = platform_open("/dev/null", PLATFORM_O_WRONLY);
+  dev_null_fd = platform_open("test-logging", "/dev/null", PLATFORM_O_WRONLY);
   if (dev_null_fd == -1) {
     return -1;
   }
