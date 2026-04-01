@@ -302,7 +302,7 @@ Test(zsh_completions, action_options_no_values) {
 
   // --help should NOT be in the case block (it's an action option)
   // This test verifies action options are properly excluded
-  cr_assert(!contains(case_block, "--help"),
+  cr_assert_not(contains(case_block, "--help"),
             "--help action option should not have value completion");
 
   free(completion);

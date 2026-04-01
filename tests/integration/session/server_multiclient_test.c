@@ -16,7 +16,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/util/overflow.h>
 
 void setup_server_quiet_logging(void);
@@ -153,17 +153,20 @@ static int connect_to_server(const char *address, int port) {
 }
 
 static int send_test_frame(int socket, int frame_id) {
-  // Create test ASCII frame
-  char ascii_data[1000];
-  safe_snprintf(ascii_data, sizeof(ascii_data),
-                "Test Frame %d\n"
-                "████████████\n"
-                "██  %04d  ██\n"
-                "████████████\n",
-                frame_id, frame_id);
+  // Create test image frame (send_ascii_frame_packet doesn't exist in current API)
+  int width = 16, height = 3;
 
-  // Use the send_ascii_frame_packet function from packet.h
-  asciichat_error_t result = send_ascii_frame_packet(socket, ascii_data, strlen(ascii_data));
+  size_t buffer_size = (size_t)width * (size_t)height * sizeof(rgb_pixel_t);
+  rgb_pixel_t *image_data = SAFE_MALLOC(buffer_size, rgb_pixel_t *);
+
+  // Fill with test pattern based on frame_id
+  uint8_t color_val = (uint8_t)((frame_id * 50) % 256);
+  for (int i = 0; i < width * height; i++) {
+    image_data[i] = (rgb_pixel_t){.r = color_val, .g = color_val, .b = color_val};
+  }
+
+  asciichat_error_t result = send_image_frame_packet(socket, image_data, width, height, 0);
+  SAFE_FREE(image_data);
   return (result == ASCIICHAT_OK) ? 0 : -1;
 }
 
