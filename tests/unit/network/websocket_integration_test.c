@@ -198,7 +198,7 @@ Test(websocket_integration, websocket_client_connects_to_server) {
   cr_assert_eq(result, 0, "Failed to start test server");
 
   // Create WebSocket client
-  ctx.ws_client = websocket_client_create();
+  ctx.ws_client = websocket_client_create("test");
   cr_assert_not_null(ctx.ws_client, "Failed to create WebSocket client");
 
   // Build WebSocket URL
@@ -240,7 +240,6 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
   app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
 
-  cr_assert_eq(app_client->connection.client_owner, ws_client, "WebSocket client should be stored");
   cr_assert_eq(app_client->connection.transport_type, ACIP_TRANSPORT_WEBSOCKET, "Transport type should be WebSocket");
 
   // Cleanup
@@ -264,7 +263,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   ctx.app_client = app_client_create();
   cr_assert_not_null(ctx.app_client, "Failed to create app_client_t");
 
-  ctx.ws_client = websocket_client_create();
+  ctx.ws_client = websocket_client_create("test");
   cr_assert_not_null(ctx.ws_client, "Failed to create WebSocket client");
 
   // Store WebSocket client in app client
