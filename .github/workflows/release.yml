@@ -654,19 +654,9 @@ jobs:
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
           # CMake misdetects CMAKE_SYSTEM_PROCESSOR as AMD64 on ARM64 Windows (cmake#25466)
-          # This causes it to link x64 CRT libs. Override processor and CRT lib paths.
+          # This causes it to link x64 CRT libs. Chainload our ARM64 toolchain via vcpkg.
           if ("${{ matrix.arch }}" -eq "arm64") {
-            $args += "-DCMAKE_SYSTEM_PROCESSOR=ARM64"
-            $winkitLib = "C:\Program Files (x86)\Windows Kits\10\Lib\10.0.26100.0"
-            $msvcLib = (Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*\lib\arm64" -ErrorAction SilentlyContinue | Select-Object -Last 1).FullName
-            if (-not $msvcLib) {
-              $msvcLib = (Get-ChildItem "C:\Program Files (x86)\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\lib\arm64" -ErrorAction SilentlyContinue | Select-Object -Last 1).FullName
-            }
-            Write-Host "UCRT arm64: ${winkitLib}\ucrt\arm64"
-            Write-Host "MSVC arm64: ${msvcLib}"
-            $stdLibs = "`"${winkitLib}\ucrt\arm64\libucrt.lib`" `"${msvcLib}\libvcruntime.lib`" `"${msvcLib}\libcmt.lib`" `"${msvcLib}\legacy_stdio_definitions.lib`""
-            $args += "-DCMAKE_C_STANDARD_LIBRARIES=$stdLibs"
-            $args += "-DCMAKE_CXX_STANDARD_LIBRARIES=$stdLibs"
+            $args += "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/WindowsARM64.cmake"
           }
           cmake @args
 
