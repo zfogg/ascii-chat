@@ -329,8 +329,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # Link test dependencies via shared library + external dependencies
-        # Ensure shared library is built first
-        add_dependencies(${test_exe_name} ascii-chat-shared)
+        # Ensure shared library is built first (not available on all platforms)
+        if(TARGET ascii-chat-shared)
+            add_dependencies(${test_exe_name} ascii-chat-shared)
+        endif()
 
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
