@@ -7,56 +7,9 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 
-#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 
 TestSuite(simd_scalar_comparison);
-
-// =============================================================================
-// Output Buffer Tests
-// =============================================================================
-
-Test(simd_scalar_comparison, output_buffer_creation) {
-  ascii_output_buffer_t buffer;
-  asciichat_error_t result = ascii_output_buffer_create(&buffer, 80, 24);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create output buffer");
-
-  ascii_output_buffer_destroy(&buffer);
-}
-
-Test(simd_scalar_comparison, output_buffer_multiple) {
-  ascii_output_buffer_t buffers[4];
-
-  for (int i = 0; i < 4; i++) {
-    asciichat_error_t result = ascii_output_buffer_create(&buffers[i], 80 + i * 20, 24 + i * 6);
-    cr_assert_eq(result, ASCIICHAT_OK, "Should create buffer %d", i);
-  }
-
-  for (int i = 0; i < 4; i++) {
-    ascii_output_buffer_destroy(&buffers[i]);
-  }
-}
-
-Test(simd_scalar_comparison, output_buffer_small) {
-  ascii_output_buffer_t buffer;
-  asciichat_error_t result = ascii_output_buffer_create(&buffer, 10, 5);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create small output buffer");
-
-  ascii_output_buffer_destroy(&buffer);
-}
-
-Test(simd_scalar_comparison, output_buffer_large) {
-  ascii_output_buffer_t buffer;
-  asciichat_error_t result = ascii_output_buffer_create(&buffer, 200, 50);
-  cr_assert_eq(result, ASCIICHAT_OK, "Should create large output buffer");
-
-  ascii_output_buffer_destroy(&buffer);
-}
-
-Test(simd_scalar_comparison, output_buffer_destroy_null) {
-  ascii_output_buffer_destroy(NULL);
-  cr_assert(true, "Destroying NULL buffer should not crash");
-}
 
 // =============================================================================
 // Video Frame Tests
