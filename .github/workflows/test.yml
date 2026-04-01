@@ -135,7 +135,9 @@ jobs:
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
 
-          cmake -B build --debug-output "${cmake_args[@]}" -DCMAKE_VERBOSE_MAKEFILE=ON
+          # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
+          rm -f build/CMakeCache.txt
+          cmake -B build "${cmake_args[@]}"
 
       - name: Save configure cache (unit-tests)
         if: always()
@@ -557,7 +559,9 @@ jobs:
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )
 
-          cmake -B build --debug-output "${cmake_args[@]}" -DCMAKE_VERBOSE_MAKEFILE=ON
+          # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
+          rm -f build/CMakeCache.txt
+          cmake -B build "${cmake_args[@]}"
 
       - name: Save configure cache (performance-tests)
         if: always()
