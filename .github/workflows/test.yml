@@ -175,9 +175,9 @@ jobs:
           echo "Looking for test executables:"
           find . -name "test_unit_*" -type f 2>/dev/null | head -10
 
-          # Run unit tests via ctest preset
+          # Run unit tests (filtered by label)
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --preset github-unit | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 0 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -423,7 +423,7 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --preset github-integration | tee integration-tests-${{ matrix.os-name }}.log
+          ctest --test-dir build --label-regex "^integration$" --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
 
           echo "Integration tests completed successfully"
 
@@ -583,7 +583,7 @@ jobs:
 
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --preset github-performance | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^performance$" --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
