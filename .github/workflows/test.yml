@@ -115,6 +115,7 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
+            -DUSE_MUSL=OFF
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
