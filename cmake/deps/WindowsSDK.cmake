@@ -106,10 +106,13 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
 
             # Validate SDK has required components
             if(EXISTS "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/ucrt" AND
-               EXISTS "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/x64")
+               (EXISTS "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/x64" OR
+                EXISTS "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/arm64"))
 
                 # Architecture detection
-                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+                    set(WIN_ARCH arm64)
+                elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     set(WIN_ARCH x64)
                 else()
                     set(WIN_ARCH x86)
