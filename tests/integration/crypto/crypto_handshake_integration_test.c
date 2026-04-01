@@ -251,8 +251,8 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
   setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
-  cr_assert_eq(crypto_handshake_init(&server_ctx, true), ASCIICHAT_OK);
-  cr_assert_eq(crypto_handshake_init(&client_ctx, false), ASCIICHAT_OK);
+  cr_assert_eq(crypto_handshake_init("test-server", &server_ctx, true), ASCIICHAT_OK);
+  cr_assert_eq(crypto_handshake_init("test-client", &client_ctx, false), ASCIICHAT_OK);
   setup_client_ctx_for_socketpair(&client_ctx);
 
   // Start client thread
@@ -328,8 +328,8 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
-  crypto_handshake_init(&server_ctx, true);
-  crypto_handshake_init(&client_ctx, false);
+  crypto_handshake_init("test-server", &server_ctx, true);
+  crypto_handshake_init("test-client", &client_ctx, false);
   setup_client_ctx_for_socketpair(&client_ctx);
 
   // Run handshake via client thread

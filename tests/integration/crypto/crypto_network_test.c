@@ -24,8 +24,6 @@ void restore_crypto_network_logging(void) {
 // =============================================================================
 // End-to-End Crypto Integration Tests
 // =============================================================================
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(crypto_network_integration);
 
 Test(crypto_network_integration, full_handshake_simulation) {
   crypto_context_t client_ctx, server_ctx;
