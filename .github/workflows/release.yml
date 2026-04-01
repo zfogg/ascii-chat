@@ -653,11 +653,7 @@ jobs:
             "-DASCIICHAT_DEFER_TOOL=$deferTool",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
-          # CMake misdetects CMAKE_SYSTEM_PROCESSOR as AMD64 on ARM64 Windows (cmake#25466)
-          # This causes it to link x64 CRT libs. Chainload our ARM64 toolchain via vcpkg.
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            $args += "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/WindowsARM64.cmake"
-          }
+          # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args
 
       - name: Save CMake dependency cache

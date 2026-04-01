@@ -16,7 +16,6 @@ function(fix_windows_clang_linking)
     # Remove the problematic flags if they exist in CMAKE_C_STANDARD_LIBRARIES
     string(REPLACE "-nostdlib" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
     string(REPLACE "-nostartfiles" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
-    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}" PARENT_SCOPE)
 
     # Remove from linker flags too
     string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
@@ -25,6 +24,21 @@ function(fix_windows_clang_linking)
     string(REPLACE "-nostartfiles" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}" PARENT_SCOPE)
+
+    # Fix ARM64 CRT library paths (cmake#25466)
+    # CMAKE_SYSTEM_PROCESSOR reports AMD64 on ARM64 Windows, so CMake's platform
+    # module bakes x64 CRT paths into CMAKE_C_STANDARD_LIBRARIES. Replace them.
+    if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+        string(REPLACE "/x64/" "/arm64/" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
+        string(REPLACE "/x64/" "/arm64/" CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES}")
+        string(REPLACE "\\x64\\" "\\arm64\\" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
+        string(REPLACE "\\x64\\" "\\arm64\\" CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES}")
+        message(STATUS "Applied ${BoldGreen}ARM64${ColorReset} CRT library path fix (replaced x64 → arm64)")
+    endif()
+
+    # Propagate all standard library changes to parent scope
+    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}" PARENT_SCOPE)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES}" PARENT_SCOPE)
 
     message(STATUS "Applied ${BoldGreen}Windows-Clang${ColorReset} linking fixes for normal userspace application")
 endfunction()
