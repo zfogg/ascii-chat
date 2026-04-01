@@ -343,6 +343,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Coverage builds need the gcov runtime linked into test executables
         if(IS_COVERAGE_BUILD)
             target_link_options(${test_exe_name} PRIVATE --coverage)
+            target_link_libraries(${test_exe_name} gcov)
         endif()
 
         # External dependencies needed because shared library has them as undefined symbols
