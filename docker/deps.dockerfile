@@ -25,6 +25,11 @@ RUN apt-get update && \
 RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
 
+# Ensure SQLite3 development files are available (needed for ACDS)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libsqlite3-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
+
 # Install yyjson via Homebrew
 RUN useradd -m -s /bin/bash linuxbrew && \
     echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
