@@ -523,6 +523,9 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
 endif()
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
+  if(BUILD_TESTS)
+    enable_testing()
+  endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
 endif()
 # Optional CTest dashboard integration
