@@ -340,6 +340,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
+        # Coverage builds need the gcov runtime linked into test executables
+        if(IS_COVERAGE_BUILD)
+            target_link_options(${test_exe_name} PRIVATE --coverage)
+        endif()
+
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
