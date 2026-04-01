@@ -385,6 +385,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
+        # Apply sanitizers to test binaries (needed when loading sanitized shared library)
+        apply_sanitizers_to_target(${test_exe_name})
+
         # For musl static builds, allow undefined boxfort references (they won't be called)
         if(USE_MUSL)
             target_link_options(${test_exe_name} PRIVATE
