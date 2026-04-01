@@ -1,52 +1,62 @@
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
 
 #include <ascii-chat/network/connection_endpoint.h>
 
-#include <string.h>
+TestSuite(connection_endpoint);
 
-typedef struct {
-  const char *input;
-  uint16_t default_port;
-  connection_endpoint_protocol_t protocol;
-  const char *host;
-  uint16_t port;
-  bool valid;
-} endpoint_case_t;
-
-static void assert_endpoint_case(const endpoint_case_t *tc) {
+Test(connection_endpoint, resolve_ws_with_port) {
   connection_endpoint_t endpoint = {0};
-  asciichat_error_t result = connection_endpoint_resolve(tc->input, tc->default_port, &endpoint);
+  asciichat_error_t result = connection_endpoint_resolve("ws://example.com:443", 27225, &endpoint);
 
-  if (!tc->valid) {
-    cr_assert_neq(result, ASCIICHAT_OK, "Expected endpoint resolution to fail for %s", tc->input);
-    return;
-  }
-
-  cr_assert_eq(result, ASCIICHAT_OK, "Expected endpoint resolution to succeed for %s", tc->input);
-  cr_assert_eq(endpoint.protocol, tc->protocol, "Unexpected protocol for %s", tc->input);
-  cr_assert_str_eq(endpoint.host, tc->host, "Unexpected host for %s", tc->input);
-  cr_assert_eq(endpoint.port, tc->port, "Unexpected port for %s", tc->input);
+  cr_assert_eq(result, ASCIICHAT_OK, "Expected resolution to succeed");
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_WEBSOCKET, "Unexpected protocol");
+  cr_assert_str_eq(endpoint.host, "example.com", "Unexpected host");
+  cr_assert_eq(endpoint.port, 443, "Unexpected port");
 }
 
-static endpoint_case_t endpoint_cases[] = {
-    {.input = "ws://example.com:443", .default_port = 27225, .protocol = CONNECTION_ENDPOINT_WEBSOCKET,
-     .host = "example.com", .port = 443, .valid = true},
-    {.input = "wss://example.com", .default_port = 27225, .protocol = CONNECTION_ENDPOINT_WEBSOCKET,
-     .host = "example.com", .port = 27225, .valid = true},
-    {.input = "tcp://example.com:5000", .default_port = 27225, .protocol = CONNECTION_ENDPOINT_TCP,
-     .host = "example.com", .port = 5000, .valid = true},
-    {.input = "example.com", .default_port = 27224, .protocol = CONNECTION_ENDPOINT_TCP, .host = "example.com",
-     .port = 27224, .valid = true},
-    {.input = "example.com:6000", .default_port = 27224, .protocol = CONNECTION_ENDPOINT_TCP, .host = "example.com",
-     .port = 6000, .valid = true},
-    {.input = "http://example.com", .default_port = 27224, .valid = false},
-};
+Test(connection_endpoint, resolve_wss_without_port) {
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t result = connection_endpoint_resolve("wss://example.com", 27225, &endpoint);
 
-ParameterizedTestParameters(connection_endpoint, cases) {
-  return cr_make_param_array(endpoint_case_t, endpoint_cases, sizeof(endpoint_cases) / sizeof(endpoint_case_t));
+  cr_assert_eq(result, ASCIICHAT_OK, "Expected resolution to succeed");
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_WEBSOCKET, "Unexpected protocol");
+  cr_assert_str_eq(endpoint.host, "example.com", "Unexpected host");
+  cr_assert_eq(endpoint.port, 27225, "Should use default port");
 }
 
-ParameterizedTest(endpoint_case_t *tc, connection_endpoint, cases) {
-  assert_endpoint_case(tc);
+Test(connection_endpoint, resolve_tcp_with_port) {
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t result = connection_endpoint_resolve("tcp://example.com:5000", 27225, &endpoint);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Expected resolution to succeed");
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_TCP, "Unexpected protocol");
+  cr_assert_str_eq(endpoint.host, "example.com", "Unexpected host");
+  cr_assert_eq(endpoint.port, 5000, "Unexpected port");
+}
+
+Test(connection_endpoint, resolve_bare_hostname) {
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t result = connection_endpoint_resolve("example.com", 27224, &endpoint);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Expected resolution to succeed");
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_TCP, "Unexpected protocol");
+  cr_assert_str_eq(endpoint.host, "example.com", "Unexpected host");
+  cr_assert_eq(endpoint.port, 27224, "Should use default port");
+}
+
+Test(connection_endpoint, resolve_hostname_with_port) {
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t result = connection_endpoint_resolve("example.com:6000", 27224, &endpoint);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Expected resolution to succeed");
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_TCP, "Unexpected protocol");
+  cr_assert_str_eq(endpoint.host, "example.com", "Unexpected host");
+  cr_assert_eq(endpoint.port, 6000, "Unexpected port");
+}
+
+Test(connection_endpoint, resolve_invalid_scheme) {
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t result = connection_endpoint_resolve("http://example.com", 27224, &endpoint);
+
+  cr_assert_neq(result, ASCIICHAT_OK, "Expected resolution to fail for invalid scheme");
 }

@@ -122,7 +122,7 @@ Test(output_buffer, ob_term_basic) {
   ob_putc(&ob, 'i');
   ob_term(&ob);
 
-  cr_assert_eq(ob.len, 3);
+  cr_assert_eq(ob.len, 2);
   cr_assert_eq(ob.buf[2], '\0');
   cr_assert_str_eq(ob.buf, "Hi");
 

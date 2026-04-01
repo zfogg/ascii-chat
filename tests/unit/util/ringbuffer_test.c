@@ -421,7 +421,9 @@ Test(framebuffer, multi_source_write_and_read) {
   result = framebuffer_read_multi_frame(fb, &frame);
   cr_assert(result);
   cr_assert_eq(frame.magic, FRAME_MAGIC);
-  cr_assert_eq(frame.source_client_id, client_id);
+  char expected_client_id[64];
+  snprintf(expected_client_id, sizeof(expected_client_id), "%u", client_id);
+  cr_assert_str_eq(frame.source_client_id, expected_client_id);
   cr_assert_eq(frame.frame_sequence, sequence);
   cr_assert_eq(frame.timestamp, timestamp);
   cr_assert_eq(frame.size, frame_size);
