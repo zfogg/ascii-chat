@@ -18,6 +18,12 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
 
+# NSIS is x86-only; skip on ARM64
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+    message(STATUS "${Yellow}CPack:${ColorReset} NSIS skipped on ARM64 (x86-only toolset)")
+    return()
+endif()
+
 enable_cpack_generator(
     NAME "NSIS"
     PLATFORM WIN32
