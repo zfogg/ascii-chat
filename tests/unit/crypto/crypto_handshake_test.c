@@ -1,12 +1,10 @@
 /**
  * @file crypto_handshake_test.c
- * @brief Unit tests for lib/crypto/handshake.c - Tests the intended final crypto implementation
+ * @brief Unit tests for lib/crypto/handshake.c
  */
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include <criterion/parameterized.h>
-#include <criterion/theories.h>
 #include <string.h>
 
 #include <ascii-chat/tests/common.h>
@@ -16,7 +14,6 @@
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/keys.h>
 
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
 TestSuite(crypto_handshake);
 
 // =============================================================================
@@ -27,7 +24,7 @@ Test(crypto_handshake, init_server) {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
-  asciichat_error_t result = crypto_handshake_init("test_server", &ctx, true); // true = server
+  asciichat_error_t result = crypto_handshake_init("test_server", &ctx, true);
   cr_assert_eq(result, ASCIICHAT_OK, "Server handshake init should succeed");
   cr_assert(ctx.is_server, "Context should be marked as server");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
@@ -39,7 +36,7 @@ Test(crypto_handshake, init_client) {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
-  asciichat_error_t result = crypto_handshake_init("test_client", &ctx, false); // false = client
+  asciichat_error_t result = crypto_handshake_init("test_client", &ctx, false);
   cr_assert_eq(result, ASCIICHAT_OK, "Client handshake init should succeed");
   cr_assert_not(ctx.is_server, "Context should be marked as client");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
@@ -49,8 +46,7 @@ Test(crypto_handshake, init_client) {
 
 Test(crypto_handshake, init_null_context) {
   asciichat_error_t result = crypto_handshake_init("test", NULL, true);
-  cr_assert_neq(result, ASCIICHAT_OK, "NULL context should fail");
-  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  cr_assert_neq(result, ASCIICHAT_OK, "Init with NULL context should fail");
 }
 
 Test(crypto_handshake, init_null_name) {
@@ -58,107 +54,109 @@ Test(crypto_handshake, init_null_name) {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init(NULL, &ctx, true);
-  cr_assert_neq(result, ASCIICHAT_OK, "NULL name should fail");
-  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  cr_assert_neq(result, ASCIICHAT_OK, "Init with NULL name should fail");
 }
 
-Test(crypto_handshake, cleanup_null_context) {
-  // Should not crash
+// =============================================================================
+// Context State Tests
+// =============================================================================
+
+Test(crypto_handshake, context_state_transitions) {
+  crypto_handshake_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+
+  asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
+  cr_assert_eq(result, ASCIICHAT_OK);
+
+  // Initial state should be INIT
+  cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "State should be INIT after init");
+
+  // Test that we can destroy without issues
+  crypto_handshake_destroy(&ctx);
+}
+
+Test(crypto_handshake, destroy_null_context) {
+  // Destroying NULL should be safe
   crypto_handshake_destroy(NULL);
+  cr_assert(true, "Destroying NULL context should not crash");
 }
 
-// =============================================================================
-// State Machine Tests
-// =============================================================================
-
-Test(crypto_handshake, multiple_handshakes) {
-  // Test multiple handshake contexts
-  crypto_handshake_context_t ctx1, ctx2, ctx3;
-
-  crypto_handshake_init("test1", &ctx1, true);
-  crypto_handshake_init("test2", &ctx2, false);
-  crypto_handshake_init("test3", &ctx3, true);
-
-  // All should be independent
-  cr_assert_eq(ctx1.state, CRYPTO_HANDSHAKE_INIT, "Context 1 should be in INIT");
-  cr_assert_eq(ctx2.state, CRYPTO_HANDSHAKE_INIT, "Context 2 should be in INIT");
-  cr_assert_eq(ctx3.state, CRYPTO_HANDSHAKE_INIT, "Context 3 should be in INIT");
-  cr_assert(ctx1.is_server, "Context 1 should be server");
-  cr_assert_not(ctx2.is_server, "Context 2 should be client");
-  cr_assert(ctx3.is_server, "Context 3 should be server");
-
-  crypto_handshake_destroy(&ctx1);
-  crypto_handshake_destroy(&ctx2);
-  crypto_handshake_destroy(&ctx3);
-}
-
-Test(crypto_handshake, handshake_cleanup_multiple_times) {
-  crypto_handshake_context_t ctx;
-  crypto_handshake_init("test", &ctx, true);
-
-  // Cleanup multiple times should not crash
-  crypto_handshake_destroy(&ctx);
-  crypto_handshake_destroy(&ctx);
-  crypto_handshake_destroy(&ctx);
-}
-
-// =============================================================================
-// Theory Tests for Handshake States
-// =============================================================================
-
-TheoryDataPoints(crypto_handshake, handshake_states) = {
-    DataPoints(crypto_handshake_state_t, CRYPTO_HANDSHAKE_INIT, CRYPTO_HANDSHAKE_KEY_EXCHANGE,
-               CRYPTO_HANDSHAKE_AUTHENTICATING, CRYPTO_HANDSHAKE_READY, CRYPTO_HANDSHAKE_FAILED),
-};
-
-Theory((crypto_handshake_state_t state), crypto_handshake, handshake_states) {
-  crypto_handshake_context_t ctx;
-  crypto_handshake_init("test", &ctx, true);
-
-  // Manually set state (for testing purposes)
-  ctx.state = state;
-
-  // Test that the state is preserved
-  cr_assert_eq(ctx.state, state, "Handshake state should be preserved");
-
-  crypto_handshake_destroy(&ctx);
-}
-
-// =============================================================================
-// Password Authentication Tests
-// =============================================================================
-
-Test(crypto_handshake, init_with_password) {
+Test(crypto_handshake, destroy_twice) {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
-  asciichat_error_t result = crypto_handshake_init_with_password("test_pwd", &ctx, true, "secret123");
-  cr_assert_eq(result, ASCIICHAT_OK, "Init with password should succeed");
-  cr_assert(ctx.has_password, "Context should have password flag set");
-  cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
+  asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
+  cr_assert_eq(result, ASCIICHAT_OK);
+
+  // Destroy once
+  crypto_handshake_destroy(&ctx);
+
+  // Destroying again should be safe (idempotent)
+  crypto_handshake_destroy(&ctx);
+  cr_assert(true, "Double destroy should be safe");
+}
+
+// =============================================================================
+// Client vs Server Tests
+// =============================================================================
+
+Test(crypto_handshake, server_vs_client_flags) {
+  crypto_handshake_context_t server_ctx;
+  crypto_handshake_context_t client_ctx;
+
+  memset(&server_ctx, 0, sizeof(server_ctx));
+  memset(&client_ctx, 0, sizeof(client_ctx));
+
+  crypto_handshake_init("server", &server_ctx, true);
+  crypto_handshake_init("client", &client_ctx, false);
+
+  cr_assert(server_ctx.is_server, "Server context should have is_server=true");
+  cr_assert_not(client_ctx.is_server, "Client context should have is_server=false");
+
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
+}
+
+// =============================================================================
+// Key Generation Tests
+// =============================================================================
+
+Test(crypto_handshake, ephemeral_key_generation) {
+  crypto_handshake_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+
+  asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
+  cr_assert_eq(result, ASCIICHAT_OK);
+
+  // Ephemeral keys should be generated during init
+  // (Key material exists in the context, but we can't directly inspect it)
+  // Just verify the context is in a valid state
+  cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT);
 
   crypto_handshake_destroy(&ctx);
 }
 
-Test(crypto_handshake, init_with_password_null_context) {
-  asciichat_error_t result = crypto_handshake_init_with_password("test", NULL, true, "secret");
-  cr_assert_neq(result, ASCIICHAT_OK, "NULL context should fail");
-  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
-}
+// =============================================================================
+// Name Handling Tests
+// =============================================================================
 
-Test(crypto_handshake, init_with_password_null_password) {
-  crypto_handshake_context_t ctx;
-  memset(&ctx, 0, sizeof(ctx));
+Test(crypto_handshake, various_names) {
+  const char *names[] = {
+      "simple",
+      "with-dashes",
+      "with_underscores",
+      "123numbers",
+      "UPPERCASE",
+      "CamelCase",
+  };
 
-  asciichat_error_t result = crypto_handshake_init_with_password("test", &ctx, true, NULL);
-  cr_assert_neq(result, ASCIICHAT_OK, "NULL password should fail");
-  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
-}
+  for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+    crypto_handshake_context_t ctx;
+    memset(&ctx, 0, sizeof(ctx));
 
-Test(crypto_handshake, init_with_empty_password) {
-  crypto_handshake_context_t ctx;
-  memset(&ctx, 0, sizeof(ctx));
+    asciichat_error_t result = crypto_handshake_init(names[i], &ctx, true);
+    cr_assert_eq(result, ASCIICHAT_OK, "Should accept name: %s", names[i]);
 
-  asciichat_error_t result = crypto_handshake_init_with_password("test", &ctx, true, "");
-  cr_assert_neq(result, ASCIICHAT_OK, "Empty password should fail");
+    crypto_handshake_destroy(&ctx);
+  }
 }

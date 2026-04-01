@@ -4,7 +4,6 @@
 #include <criterion/theories.h>
 #include <string.h>
 #include <math.h>
-#include <stdio.h>
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -12,7 +11,6 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/util/atomic.h>
 
 // Custom init function
 void mixer_test_init(void) {}
@@ -57,7 +55,7 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
 
   // For tests, mark jitter buffer as filled immediately so reads work
   // (Normally this happens after AUDIO_JITTER_BUFFER_THRESHOLD samples are written)
-  // Note: Direct access to jitter_buffer_filled no longer supported - buffer should auto-fill on writes
+  atomic_store_bool(&buffer->jitter_buffer_filled, true);
 
   return buffer;
 }
@@ -114,11 +112,11 @@ Test(mixer, add_and_remove_sources) {
   audio_ring_buffer_t *buffer2 = create_test_buffer_with_data(test_data, 256);
 
   // Add sources
-  int slot1 = mixer_add_source(mixer, "client_100", buffer1);
+  int slot1 = mixer_add_source(mixer, "100", buffer1);
   cr_assert_geq(slot1, 0);
   cr_assert_eq(mixer->num_sources, 1);
 
-  int slot2 = mixer_add_source(mixer, "client_200", buffer2);
+  int slot2 = mixer_add_source(mixer, "200", buffer2);
   cr_assert_geq(slot2, 0);
   cr_assert_eq(mixer->num_sources, 2);
 
@@ -127,9 +125,9 @@ Test(mixer, add_and_remove_sources) {
   audio_ring_buffer_t *buffer4 = create_test_buffer_with_data(test_data, 256);
   audio_ring_buffer_t *buffer5 = create_test_buffer_with_data(test_data, 256);
 
-  int slot3 = mixer_add_source(mixer, "client_300", buffer3);
-  int slot4 = mixer_add_source(mixer, "client_400", buffer4);
-  int slot5 = mixer_add_source(mixer, "client_500", buffer5);
+  int slot3 = mixer_add_source(mixer, "300", buffer3);
+  int slot4 = mixer_add_source(mixer, "400", buffer4);
+  int slot5 = mixer_add_source(mixer, "500", buffer5);
 
   cr_assert_geq(slot3, 0);
   cr_assert_geq(slot4, 0);
@@ -137,10 +135,10 @@ Test(mixer, add_and_remove_sources) {
   cr_assert_eq(mixer->num_sources, 4);
 
   // Remove sources
-  mixer_remove_source(mixer, "client_100");
+  mixer_remove_source(mixer, "100");
   cr_assert_eq(mixer->num_sources, 3);
 
-  mixer_remove_source(mixer, "client_200");
+  mixer_remove_source(mixer, "200");
   cr_assert_eq(mixer->num_sources, 2);
 
   // Clean up
@@ -160,18 +158,18 @@ Test(mixer, set_source_active) {
   generate_sine_wave(test_data, 256, 440.0f, 44100.0f, 0.5f);
 
   audio_ring_buffer_t *buffer = create_test_buffer_with_data(test_data, 256);
-  int slot = mixer_add_source(mixer, "client_100", buffer);
+  int slot = mixer_add_source(mixer, "100", buffer);
   cr_assert_geq(slot, 0);
 
   // Source should be active by default
   cr_assert(mixer->source_active[slot]);
 
   // Deactivate source
-  mixer_set_source_active(mixer, "client_100", false);
+  mixer_set_source_active(mixer, "100", false);
   cr_assert_not(mixer->source_active[slot]);
 
   // Reactivate source
-  mixer_set_source_active(mixer, "client_100", true);
+  mixer_set_source_active(mixer, "100", true);
   cr_assert(mixer->source_active[slot]);
 
   // Clean up
@@ -188,7 +186,7 @@ Test(mixer, process_single_source) {
   generate_sine_wave(test_data, 256, 440.0f, 44100.0f, 0.5f);
 
   audio_ring_buffer_t *buffer = create_test_buffer_with_data(test_data, 256);
-  mixer_add_source(mixer, "client_100", buffer);
+  mixer_add_source(mixer, "100", buffer);
 
   // Process audio
   float output[256];
@@ -219,8 +217,8 @@ Test(mixer, process_multiple_sources) {
   audio_ring_buffer_t *buffer1 = create_test_buffer_with_data(test_data1, 256);
   audio_ring_buffer_t *buffer2 = create_test_buffer_with_data(test_data2, 256);
 
-  mixer_add_source(mixer, "client_100", buffer1);
-  mixer_add_source(mixer, "client_200", buffer2);
+  mixer_add_source(mixer, "100",buffer1);
+  mixer_add_source(mixer, "200",buffer2);
 
   // Process audio
   float output[256];
@@ -252,8 +250,8 @@ Test(mixer, process_excluding_source) {
   audio_ring_buffer_t *buffer1 = create_test_buffer_with_data(test_data1, 256);
   audio_ring_buffer_t *buffer2 = create_test_buffer_with_data(test_data2, 256);
 
-  mixer_add_source(mixer, "client_100", buffer1);
-  mixer_add_source(mixer, "client_200", buffer2);
+  mixer_add_source(mixer, "100",buffer1);
+  mixer_add_source(mixer, "200",buffer2);
 
   // Process normally
   float output_normal[256];
@@ -656,8 +654,8 @@ Test(mixer_integration, full_pipeline_with_processing) {
   audio_ring_buffer_t *sine_buffer = create_test_buffer_with_data(sine_data, 256);
   audio_ring_buffer_t *noise_buffer = create_test_buffer_with_data(noise_data, 256);
 
-  mixer_add_source(mixer, "client_100", sine_buffer);
-  mixer_add_source(mixer, "client_200", noise_buffer);
+  mixer_add_source(mixer, "100",sine_buffer);
+  mixer_add_source(mixer, "200",noise_buffer);
 
   // Process through full pipeline
   float output[256];
@@ -692,16 +690,13 @@ Test(mixer_integration, stress_test_multiple_sources) {
   // Add maximum number of sources
   audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
   for (int i = 0; i < MIXER_MAX_SOURCES; i++) {
-    buffers[i] = audio_ring_buffer_create();
-    cr_assert_not_null(buffers[i]);
-
     float test_data[256];
-    generate_sine_wave(test_data, 256, 440.0f + (float)i * 50.0f, 44100.0f, 0.1f);
-    audio_ring_buffer_write(buffers[i], test_data, 256);
-
-    char client_id_buf[32];
-    snprintf(client_id_buf, sizeof(client_id_buf), "client_%d", 100 + i);
-    mixer_add_source(mixer, client_id_buf, buffers[i]);
+    generate_sine_wave(test_data, 256, 440.0f + i * 100.0f, 44100.0f, 0.1f);
+    buffers[i] = create_test_buffer_with_data(test_data, 256);
+    char client_id[32];
+    snprintf(client_id, sizeof(client_id), "%d", 100 + i);
+    int slot = mixer_add_source(mixer, client_id, buffers[i]);
+    cr_assert_geq(slot, 0);
   }
 
   cr_assert_eq(mixer->num_sources, MIXER_MAX_SOURCES);
@@ -728,26 +723,35 @@ Test(mixer_integration, stress_test_multiple_sources) {
 // Audio Mixing Property-Based Tests
 // =============================================================================
 
-// Test: Mixed audio output should always be bounded to [-1.0, 1.0] range
-Test(mixer_integration, audio_output_bounded) {
-  mixer_t *mixer = mixer_create(4, 48000);
-  cr_assert_not_null(mixer, "Mixer creation should succeed");
+// Theory: Mixed audio output should always be bounded to [-1.0, 1.0] range
+// regardless of number of sources or their amplitudes
+TheoryDataPoints(mixer_integration, audio_bounds_property) = {
+    DataPoints(size_t, 1, 2, 3, 4, 8),         // num_sources
+    DataPoints(float, 0.1f, 0.5f, 1.0f, 2.0f), // amplitude per source
+};
 
-  // Create multiple sources with different signals
-  audio_ring_buffer_t *buffers[4];
-  for (int i = 0; i < 4; i++) {
+Theory((size_t num_sources, float amplitude), mixer_integration, audio_bounds_property) {
+  cr_assume(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES);
+  cr_assume(amplitude > 0.0f && amplitude <= 2.0f);
+
+  mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
+  cr_assume(mixer != NULL);
+
+  // Create sources with specified amplitude
+  audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
+  for (size_t i = 0; i < num_sources; i++) {
     buffers[i] = audio_ring_buffer_create();
-    cr_assert_not_null(buffers[i], "Buffer %d creation should succeed", i);
+    cr_assume(buffers[i] != NULL);
 
+    // Generate test signal with specified amplitude
     float test_data[256];
-    generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, 0.5f);
+    generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, amplitude);
 
     asciichat_error_t write_result = audio_ring_buffer_write(buffers[i], test_data, 256);
-    cr_assert_eq(write_result, ASCIICHAT_OK, "Write to buffer %d should succeed", i);
-
-    char client_id_buf[32];
-    snprintf(client_id_buf, sizeof(client_id_buf), "client_%d", i);
-    mixer_add_source(mixer, client_id_buf, buffers[i]);
+    cr_assume(write_result == ASCIICHAT_OK);
+    char client_id[32];
+    snprintf(client_id, sizeof(client_id), "%u", 100 + (uint32_t)i);
+    mixer_add_source(mixer, client_id, buffers[i]);
   }
 
   // Process mixed output
@@ -757,12 +761,14 @@ Test(mixer_integration, audio_output_bounded) {
 
   // Verify property: ALL output samples must be in [-1.0, 1.0] range
   for (int i = 0; i < 256; i++) {
-    cr_assert_geq(output[i], -1.0f, "Output sample %d must be >= -1.0 (got %.4f)", i, output[i]);
-    cr_assert_leq(output[i], 1.0f, "Output sample %d must be <= 1.0 (got %.4f)", i, output[i]);
+    cr_assert_geq(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
+                  num_sources, amplitude, output[i]);
+    cr_assert_leq(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
+                  num_sources, amplitude, output[i]);
   }
 
   // Clean up
-  for (int i = 0; i < 4; i++) {
+  for (size_t i = 0; i < num_sources; i++) {
     audio_ring_buffer_destroy(buffers[i]);
   }
   mixer_destroy(mixer);

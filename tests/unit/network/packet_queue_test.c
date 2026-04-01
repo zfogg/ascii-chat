@@ -110,8 +110,7 @@ Test(packet_queue, basic_creation) {
   cr_assert_eq(atomic_load_int(&queue->count), 0, "Initial count should be 0");
   cr_assert_null(atomic_ptr_load(&queue->head), "Head should be NULL initially");
   cr_assert_null(atomic_ptr_load(&queue->tail), "Tail should be NULL initially");
-  // Note: queue->shutdown is atomic_t and cannot be directly compared
-  // The implementation ensures it's false initially through zeroed memory
+  cr_assert_eq(atomic_load_bool(&queue->shutdown), false, "Should not be shutdown initially");
 
   packet_queue_destroy(queue);
 }
@@ -435,15 +434,21 @@ Test(packet_queue, shutdown_behavior) {
   packet_queue_t *queue = packet_queue_create(5);
   cr_assert_not_null(queue, "Queue creation should succeed");
 
-  // Add a packet (should succeed before shutdown)
+  // Initially, queue should not be shutdown
+  bool initially_shutdown = atomic_load_bool(&queue->shutdown);
+  cr_assert_eq(initially_shutdown, false, "Queue should not be shutdown initially");
+
+  // Add a packet
   char data[] = "Test";
   int enqueue_result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), 123, true);
-  cr_assert_eq(enqueue_result, 0, "Enqueue should succeed before shutdown");
+  cr_assert_eq(enqueue_result, 0, "Enqueue should succeed");
   size_t queue_size = packet_queue_size(queue);
   cr_assert_eq(queue_size, 1, "Queue should have 1 packet");
 
   // Shutdown the queue
   packet_queue_stop(queue);
+  bool is_shutdown = atomic_load_bool(&queue->shutdown);
+  cr_assert_eq(is_shutdown, true, "Queue should be marked as shutdown");
 
   // Try to dequeue (should return NULL due to shutdown)
   queued_packet_t *packet = packet_queue_try_dequeue(queue);

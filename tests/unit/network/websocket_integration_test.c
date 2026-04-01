@@ -152,6 +152,8 @@ Test(websocket_integration, app_client_context_created, .init = NULL, .fini = NU
   cr_assert_not_null(client, "Failed to create app_client_t");
 
   // Verify basic fields are initialized
+  cr_assert_eq(client->connection.transport, NULL, "Transport should be NULL initially");
+  cr_assert_eq(client->connection.owner, NULL, "Connection owner should be NULL");
   cr_assert_eq(client->my_client_id, 0, "Client ID should be 0");
 
   app_client_destroy(&client);
@@ -160,7 +162,7 @@ Test(websocket_integration, app_client_context_created, .init = NULL, .fini = NU
 
 Test(websocket_integration, websocket_client_created, .init = NULL, .fini = NULL) {
   // Test that websocket_client_t can be created and destroyed
-  websocket_client_t *ws_client = websocket_client_create("test_ws_client");
+  websocket_client_t *ws_client = websocket_client_create("test_client");
   cr_assert_not_null(ws_client, "Failed to create websocket_client_t");
 
   // Verify basic fields
@@ -196,7 +198,7 @@ Test(websocket_integration, websocket_client_connects_to_server) {
   cr_assert_eq(result, 0, "Failed to start test server");
 
   // Create WebSocket client
-  ctx.ws_client = websocket_client_create("test_ws_client");
+  ctx.ws_client = websocket_client_create();
   cr_assert_not_null(ctx.ws_client, "Failed to create WebSocket client");
 
   // Build WebSocket URL
@@ -230,15 +232,16 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   app_client_t *app_client = app_client_create();
   cr_assert_not_null(app_client, "Failed to create app_client_t");
 
-  websocket_client_t *ws_client = websocket_client_create("test_ws_client");
+  websocket_client_t *ws_client = websocket_client_create("test_client");
   cr_assert_not_null(ws_client, "Failed to create WebSocket client");
 
-  // Note: Direct connection owner assignment is no longer supported via public API
-  // The connection struct members are no longer directly accessible
+  // Simulate app_client holding reference to WebSocket client
+  app_client->connection.owner = ws_client;
+  app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
+  app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
 
-  // Just verify both objects were created successfully
-  cr_assert_not_null(ws_client, "WebSocket client should be valid");
-  cr_assert_not_null(app_client, "App client should be valid");
+  cr_assert_eq(app_client->connection.client_owner, ws_client, "WebSocket client should be stored");
+  cr_assert_eq(app_client->connection.transport_type, ACIP_TRANSPORT_WEBSOCKET, "Transport type should be WebSocket");
 
   // Cleanup
   websocket_client_destroy(&ws_client);
@@ -261,14 +264,12 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   ctx.app_client = app_client_create();
   cr_assert_not_null(ctx.app_client, "Failed to create app_client_t");
 
-  ctx.ws_client = websocket_client_create("test_ws_client");
+  ctx.ws_client = websocket_client_create();
   cr_assert_not_null(ctx.ws_client, "Failed to create WebSocket client");
 
-  // Note: Direct connection member assignment is no longer supported via public API
-  // WebSocket client is internally managed by the connection handling code
-  // ctx.app_client->connection.client_owner = ctx.ws_client;
-  // ctx.app_client->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
-  // ctx.app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
+  // Store WebSocket client in app client
+  ctx.app_client->connection.owner = ctx.ws_client;
+  ctx.app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
 
   // Build WebSocket URL
   char ws_url[256];
@@ -456,7 +457,9 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   if (ctx.ws_client) {
     websocket_client_destroy(&ctx.ws_client);
   }
-  // Note: connection.client_owner no longer accessible via public API
+  if (ctx.app_client) {
+    ctx.app_client->connection.owner = NULL;
+  }
   if (ctx.app_client) {
     app_client_destroy(&ctx.app_client);
   }

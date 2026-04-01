@@ -221,3 +221,5 @@
  * @endcode
  */
 #define ATOMIC_SUB_UINT32(ptr, delta) atomic_fetch_sub((atomic_uint32_t *)(ptr), (delta))
+
+#endif
