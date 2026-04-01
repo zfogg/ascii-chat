@@ -18,6 +18,7 @@
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/lifecycle.h>
 
 #include <stdio.h>
 #include <string.h>
