@@ -71,7 +71,9 @@ COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.ubsan_mi
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/acds-entrypoint.sh /usr/local/bin/acds-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/acds-entrypoint.sh
 
 # Create ACDS directory for keys
 RUN mkdir -p /acds && chmod 755 /acds
