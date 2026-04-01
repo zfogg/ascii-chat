@@ -642,6 +642,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install WiX toolset
+        if: matrix.arch != 'arm64'
         run: |
           choco install wixtoolset --no-progress -y
 
