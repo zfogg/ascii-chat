@@ -664,7 +664,7 @@ jobs:
             }
             Write-Host "UCRT arm64: ${winkitLib}\ucrt\arm64"
             Write-Host "MSVC arm64: ${msvcLib}"
-            $stdLibs = "${winkitLib}\ucrt\arm64\libucrt.lib ${msvcLib}\libvcruntime.lib ${msvcLib}\libcmt.lib ${msvcLib}\legacy_stdio_definitions.lib"
+            $stdLibs = "`"${winkitLib}\ucrt\arm64\libucrt.lib`" `"${msvcLib}\libvcruntime.lib`" `"${msvcLib}\libcmt.lib`" `"${msvcLib}\legacy_stdio_definitions.lib`""
             $args += "-DCMAKE_C_STANDARD_LIBRARIES=$stdLibs"
             $args += "-DCMAKE_CXX_STANDARD_LIBRARIES=$stdLibs"
           }
