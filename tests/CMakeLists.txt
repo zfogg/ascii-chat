@@ -350,6 +350,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             libdatachannel
             OpenSSL::Crypto
             -lc++  # C++ stdlib needed for libdatachannel
+            ${FFMPEG_LIBRARIES}
         )
         if(APPLE)
             target_link_libraries(${test_exe_name}
