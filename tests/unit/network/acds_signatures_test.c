@@ -15,7 +15,7 @@
 // Test suite setup - initialize libsodium
 static void acds_signatures_init(void) {
   if (sodium_init() < 0) {
-    cr_fatal("Failed to initialize libsodium");
+    cr_assert_fail("Failed to initialize libsodium");
   }
 }
 
