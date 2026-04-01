@@ -174,20 +174,10 @@ if(USE_VCPKG AND VCPKG_ROOT)
 endif()
 
 # =============================================================================
-# Fallback: System SQLite3 via CMake's find_package or pkg-config
+# Fallback: System SQLite3 via pkg-config or find_package
 # =============================================================================
 
-# Try CMake's built-in FindSQLite3
-find_package(SQLite3 QUIET)
-if(SQLite3_FOUND)
-    set(SQLITE3_FOUND TRUE)
-    set(SQLITE3_LIBRARIES SQLite3::SQLite3)
-    set(SQLITE3_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
-    message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via find_package: ${SQLite3_VERSION}")
-    return()
-endif()
-
-# Try pkg-config
+# Try pkg-config first (more reliable for getting library paths)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SQLITE3 QUIET sqlite3)
@@ -195,6 +185,21 @@ if(PkgConfig_FOUND)
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via pkg-config: ${SQLITE3_VERSION}")
         return()
     endif()
+endif()
+
+# Try CMake's built-in FindSQLite3
+find_package(SQLite3 QUIET)
+if(SQLite3_FOUND)
+    set(SQLITE3_FOUND TRUE)
+    set(SQLITE3_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
+    # Check if the target exists; if not, use the library path directly
+    if(TARGET SQLite3::SQLite3)
+        set(SQLITE3_LIBRARIES SQLite3::SQLite3)
+    else()
+        set(SQLITE3_LIBRARIES ${SQLite3_LIBRARIES})
+    endif()
+    message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via find_package: ${SQLite3_VERSION}")
+    return()
 endif()
 
 # Last resort: just link to sqlite3 and hope it's in the system path

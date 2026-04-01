@@ -10,6 +10,12 @@ FROM zfogg/ascii-chat-deps:latest AS builder
 
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install SQLite3 development files (needed for ACDS discovery service)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libsqlite3-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Submodules are baked into the deps image — no git clone needed at build time.
 # Preserve submodules from deps image before COPY overwrites them
@@ -56,7 +62,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates curl wget unzip openssh-client gpg \
       libportaudio2 libopus0 libsodium23 libzstd1 \
-      libssl3 libfreetype6 libfontconfig1 libvterm0 && \
+      libssl3 libfreetype6 libfontconfig1 libvterm0 libsqlite3-0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
 
 # Copy installed files from builder
