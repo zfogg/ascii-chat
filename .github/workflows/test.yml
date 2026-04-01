@@ -174,11 +174,22 @@ jobs:
       - name: Run unit tests
         run: |
           echo "Running tests with build type: ${{ matrix.build_type }}"
-          echo "Looking for test executables:"
-          find . -name "test_unit_*" -type f 2>/dev/null | head -10
+
+          # Debug: check CTestTestfile
+          echo "=== CTestTestfile.cmake ==="
+          cat build/CTestTestfile.cmake 2>/dev/null || echo "No CTestTestfile.cmake in build/"
+          echo "=== tests/CTestTestfile.cmake ==="
+          head -30 build/tests/CTestTestfile.cmake 2>/dev/null || echo "No CTestTestfile.cmake in build/tests/"
+
+          # Debug: list all tests ctest knows about
+          echo "=== ctest -N (list tests) ==="
+          ctest --test-dir build -N 2>&1 | head -20
+
+          # Debug: try running one test directly
+          echo "=== Direct test run ==="
+          ls -la build/bin/test_unit_crypto_common 2>/dev/null && build/bin/test_unit_crypto_common --help 2>&1 | head -5 || echo "test binary not found"
 
           # Run unit tests (filtered by label)
-          # Criterion generates detailed XML in build/Testing/criterion-xml/
           ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 0 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
