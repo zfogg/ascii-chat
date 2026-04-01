@@ -51,10 +51,15 @@ endif()
 
 # If WiX v4+ not found, try WiX Toolset v3 from FindPrograms.cmake
 if(NOT WIX_FOUND AND ASCIICHAT_WIX_CANDLE_EXECUTABLE AND ASCIICHAT_WIX_LIGHT_EXECUTABLE)
-    set(CPACK_WIX_VERSION "3")
-    set(WIX_FOUND TRUE)
-    message(STATUS "${Yellow}CPack:${ColorReset} WiX v3 detected (${BoldBlue}candle.exe${ColorReset} found at ${BoldBlue}${ASCIICHAT_WIX_CANDLE_EXECUTABLE}${ColorReset})")
-    message(STATUS "${Yellow}CPack:${ColorReset} ${Magenta}WiX${ColorReset} generator will be enabled using ${BoldBlue}WiX Toolset v3${ColorReset}")
+    # WiX v3 is x86-only; skip on ARM64 where candle.exe can't run reliably
+    if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+        message(STATUS "${Yellow}CPack:${ColorReset} WiX v3 skipped on ARM64 (x86-only toolset)")
+    else()
+        set(CPACK_WIX_VERSION "3")
+        set(WIX_FOUND TRUE)
+        message(STATUS "${Yellow}CPack:${ColorReset} WiX v3 detected (${BoldBlue}candle.exe${ColorReset} found at ${BoldBlue}${ASCIICHAT_WIX_CANDLE_EXECUTABLE}${ColorReset})")
+        message(STATUS "${Yellow}CPack:${ColorReset} ${Magenta}WiX${ColorReset} generator will be enabled using ${BoldBlue}WiX Toolset v3${ColorReset}")
+    endif()
 endif()
 
 if(NOT WIX_FOUND)

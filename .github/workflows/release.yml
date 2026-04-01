@@ -716,7 +716,10 @@ jobs:
           Get-ChildItem dist
 
           $missing = @()
-          if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.msi" }
+          # MSI only on amd64 (WiX v3 is x86-only, can't run on ARM64)
+          if ("${{ matrix.arch }}" -ne "arm64") {
+            if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.msi" }
+          }
           if (-not (Get-ChildItem dist/*ascii-chat*.zip -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.zip" }
           if (-not (Get-ChildItem dist/*libasciichat*.zip -ErrorAction SilentlyContinue)) { $missing += "libasciichat.zip" }
 
