@@ -137,7 +137,7 @@ jobs:
 
           # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
           rm -f build/CMakeCache.txt
-          cmake -B build "${cmake_args[@]}"
+          cmake -B build -G Ninja "${cmake_args[@]}"
 
       - name: Save configure cache (unit-tests)
         if: always()
@@ -561,7 +561,7 @@ jobs:
 
           # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
           rm -f build/CMakeCache.txt
-          cmake -B build "${cmake_args[@]}"
+          cmake -B build -G Ninja "${cmake_args[@]}"
 
       - name: Save configure cache (performance-tests)
         if: always()
