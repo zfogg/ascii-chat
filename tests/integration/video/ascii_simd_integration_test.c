@@ -14,12 +14,16 @@ TestSuite(ascii_simd_integration);
 Test(ascii_simd_integration, quality_metrics_collection) {
   video_frame_buffer_t *vfb = video_frame_buffer_create("quality_test");
 
-  // Write multiple frames
+  // Write multiple frames and consume them to avoid dropping
   for (int i = 0; i < 10; i++) {
     video_frame_t *frame = video_frame_begin_write(vfb);
     frame->sequence_number = i + 1;
     frame->encoding_time_ns = 16666667;
     video_frame_commit(vfb);
+
+    // Consume the frame to prevent drops
+    const video_frame_t *read_frame = video_frame_get_latest(vfb);
+    (void)read_frame;  // Suppress unused variable warning
   }
 
   // Get statistics
