@@ -114,8 +114,9 @@ jobs:
 
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
-            --preset github
             -DBUILD_TESTS=ON
+            -DASCIICHAT_FORCE_CRITERION_TESTS=ON
+            -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
