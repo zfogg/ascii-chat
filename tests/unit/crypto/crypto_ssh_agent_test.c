@@ -18,7 +18,6 @@ TestSuite(crypto_ssh_agent, .description = "SSH agent integration");
 // SSH Agent Availability Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(crypto_ssh_agent);
 
 Test(crypto_ssh_agent, check_availability) {
   // Test that function doesn't crash

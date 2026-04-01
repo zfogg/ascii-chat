@@ -15,7 +15,6 @@
 // Test suite setup
 TestSuite(options_help_api);
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(options_help_api);
 
 Test(options_help_api, returns_help_text_for_valid_option_client_mode) {
   // Get help text for a known option in client mode
