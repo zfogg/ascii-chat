@@ -4,9 +4,11 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+set -x
+
 which coolify >/dev/null || { echo "Please install coolify-cli first"; exit 1; }
 
-app_uuid=$(coolify app list --format json | jq '.[] | select(.name=="zfogg/ascii-chat:discovery-service").uuid' -r)
+app_uuid=$(coolify app list --format json | jq '.[] | select(.name=="zfogg/ascii-chat/discovery-service").uuid' -r)
 version_json=$(coolify app env get "$app_uuid" VERSION --show-sensitive --format json)
 version_uuid=$(echo "$version_json" | jq '.uuid' -r)
 
