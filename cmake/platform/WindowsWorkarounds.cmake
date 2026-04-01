@@ -36,9 +36,9 @@ function(fix_windows_clang_linking)
         message(STATUS "Applied ${BoldGreen}ARM64${ColorReset} CRT library path fix (replaced x64 → arm64)")
     endif()
 
-    # Propagate all standard library changes to parent scope
-    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}" PARENT_SCOPE)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES}" PARENT_SCOPE)
+    # Propagate all standard library changes (cache variable requires FORCE)
+    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}" CACHE STRING "" FORCE)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES}" CACHE STRING "" FORCE)
 
     message(STATUS "Applied ${BoldGreen}Windows-Clang${ColorReset} linking fixes for normal userspace application")
 endfunction()
