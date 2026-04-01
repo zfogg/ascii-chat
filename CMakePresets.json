@@ -198,11 +198,9 @@
     {
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
-      "description": "Windows Release build using vcpkg with static linking",
+      "description": "Windows Release build using vcpkg with static linking (triplet auto-detected or passed via -D)",
       "inherits": ["base-release", "base-vcpkg"],
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
-      },
+      "cacheVariables": {},
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
