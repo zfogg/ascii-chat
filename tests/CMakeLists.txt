@@ -341,23 +341,26 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         )
 
         # Coverage builds need the profile runtime linked into test executables
-        # Clang uses libclang_rt.profile, not libgcov
         if(IS_COVERAGE_BUILD)
+            target_compile_options(${test_exe_name} PRIVATE --coverage)
             target_link_options(${test_exe_name} PRIVATE --coverage)
-            if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Clang with lld needs explicit profile runtime
+            if(NOT DEFINED _CLANG_PROFILE_LIB)
                 execute_process(
-                    COMMAND ${CMAKE_C_COMPILER} --print-runtime-dir
-                    OUTPUT_VARIABLE CLANG_RUNTIME_DIR
+                    COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.profile-x86_64.a
+                    OUTPUT_VARIABLE _CLANG_PROFILE_LIB
                     OUTPUT_STRIP_TRAILING_WHITESPACE
                 )
-                find_library(CLANG_RT_PROFILE
-                    NAMES clang_rt.profile-x86_64 clang_rt.profile
-                    PATHS "${CLANG_RUNTIME_DIR}"
-                    NO_DEFAULT_PATH
-                )
-                if(CLANG_RT_PROFILE)
-                    target_link_libraries(${test_exe_name} "${CLANG_RT_PROFILE}")
+                if(EXISTS "${_CLANG_PROFILE_LIB}")
+                    message(STATUS "Found Clang profile runtime: ${_CLANG_PROFILE_LIB}")
+                    set(_CLANG_PROFILE_LIB "${_CLANG_PROFILE_LIB}" CACHE INTERNAL "")
+                else()
+                    message(WARNING "Clang profile runtime not found: ${_CLANG_PROFILE_LIB}")
+                    set(_CLANG_PROFILE_LIB "" CACHE INTERNAL "")
                 endif()
+            endif()
+            if(_CLANG_PROFILE_LIB)
+                target_link_libraries(${test_exe_name} "${_CLANG_PROFILE_LIB}")
             endif()
         endif()
 
