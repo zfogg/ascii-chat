@@ -318,7 +318,6 @@ static bool extract_session_string(const char *log_line, char *session_string, s
  * 6. Clean shutdown preserves logs
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(webrtc_discovery_e2e);
 
 Test(webrtc_discovery_e2e, full_connection_flow) {
   const char *binary_path = test_get_binary_path();

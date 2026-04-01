@@ -65,7 +65,6 @@ ParameterizedTest(image_new_test_case_t *tc, image, image_new_dimensions) {
   }
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(image);
 
 Test(image, image_destroy_null) {
   // Should not crash when destroying NULL image

@@ -51,7 +51,6 @@ static void run_ascii_conversion_batch(image_t *image, const ssize_t width, cons
   cr_assert_gt(total_output, 0, "ascii_convert produced empty output across iterations");
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(performance_ascii_render);
 
 Test(performance_ascii_render, convert_full_hd_mono_batch) {
   const int width = 320;

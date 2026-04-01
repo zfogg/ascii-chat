@@ -253,7 +253,6 @@ static void write_sample_record(const char *file_path) {
   asciichat_instr_runtime_global_destroy();
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(instrument_log);
 
 Test(instrument_log, writes_log_with_defaults) {
   char temp_dir[PATH_MAX];

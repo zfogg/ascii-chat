@@ -76,7 +76,6 @@ TestSuite(crypto_pem, .description = "PEM utility functions");
 // Basic PEM Parsing Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(crypto_pem);
 
 Test(crypto_pem, parse_pem_certificate) {
   anchor_list anchors = ANCHOR_LIST_INIT;

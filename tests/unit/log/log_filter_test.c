@@ -72,7 +72,6 @@ static bool line_matches_pos(const char *line, size_t *match_start, size_t *matc
  * Basic Pattern Format Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(log_filter);
 
 Test(log_filter, pattern_format_valid) {
   // Valid formats

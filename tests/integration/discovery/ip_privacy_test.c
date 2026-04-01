@@ -47,7 +47,6 @@ static void cleanup_test_db(const char *path) {
  * @brief Test that IP is revealed for password-protected session with correct password
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(acds_ip_privacy);
 
 Test(acds_ip_privacy, password_protected_reveals_ip) {
   char db_path[256];
