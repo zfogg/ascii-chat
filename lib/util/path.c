@@ -592,10 +592,19 @@ char *get_log_dir(void) {
 
   return log_dir;
 #else
-  // Debug builds: Use repository root for logs
+  // Debug builds: Use repository root for logs.
+  // find_project_root() returns a raw malloc() allocation (to avoid debug_malloc
+  // recursion), but callers free with SAFE_FREE. Re-allocate with SAFE_MALLOC
+  // so the allocator matches.
   char *repo_root = find_project_root();
   if (repo_root) {
-    return repo_root;
+    size_t len = strlen(repo_root) + 1;
+    char *result = SAFE_MALLOC(len, char *);
+    if (result) {
+      memcpy(result, repo_root, len);
+    }
+    free(repo_root);
+    return result;
   }
 
   // Fallback to current working directory if repo root not found
