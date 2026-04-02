@@ -58,6 +58,11 @@ endmacro()
 # Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH, PROJECT_VERSION_DATE
 # =============================================================================
 macro(version_detect)
+    # If VERSION env var is set (e.g., from Coolify), use it as PROJECT_VERSION_FROM_GIT
+    if(NOT DEFINED PROJECT_VERSION_FROM_GIT AND DEFINED ENV{VERSION} AND "$ENV{VERSION}" MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+        set(PROJECT_VERSION_FROM_GIT "$ENV{VERSION}")
+    endif()
+
     # If PROJECT_VERSION_FROM_GIT was already provided via command-line (e.g., -DPROJECT_VERSION_FROM_GIT=0.9.13),
     # skip git detection and use the provided version
     if(DEFINED PROJECT_VERSION_FROM_GIT AND PROJECT_VERSION_FROM_GIT MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
@@ -67,7 +72,7 @@ macro(version_detect)
             set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
             set(_VERSION_TYPE "command-line")
             _get_version_date("v${PROJECT_VERSION_FROM_GIT}")
-            message(STATUS "Version from command-line: ${PROJECT_VERSION_FROM_GIT} (Release build via Docker)")
+            message(STATUS "Version from command-line/env: ${PROJECT_VERSION_FROM_GIT}")
             message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
             return()
         endif()
@@ -199,10 +204,15 @@ function(version_setup_targets)
     # Create a script that generates version.h on every build
     set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
     file(WRITE "${VERSION_SCRIPT_PATH}" "
-# Check if PROJECT_VERSION_OVERRIDE is provided (e.g., from Docker release builds)
+# Check VERSION env var first (e.g., from Coolify), then PROJECT_VERSION_OVERRIDE
 # If set, skip git detection and use this version directly (format: X.Y.Z)
-if(DEFINED ENV{PROJECT_VERSION_OVERRIDE})
+if(DEFINED ENV{VERSION} AND NOT \"\$ENV{VERSION}\" STREQUAL \"0.0.0\")
+    set(OVERRIDE_VERSION \"\$ENV{VERSION}\")
+elseif(DEFINED ENV{PROJECT_VERSION_OVERRIDE})
     set(OVERRIDE_VERSION \"\$ENV{PROJECT_VERSION_OVERRIDE}\")
+endif()
+
+if(DEFINED OVERRIDE_VERSION AND NOT OVERRIDE_VERSION STREQUAL \"\")
     if(OVERRIDE_VERSION MATCHES \"^([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)\$\")
         set(PROJECT_VERSION_MAJOR \"\${CMAKE_MATCH_1}\")
         set(PROJECT_VERSION_MINOR \"\${CMAKE_MATCH_2}\")
@@ -222,7 +232,7 @@ if(DEFINED ENV{PROJECT_VERSION_OVERRIDE})
             set(GIT_COMMIT_HASH \"docker-build\")
         endif()
     else()
-        message(FATAL_ERROR \"Invalid PROJECT_VERSION_OVERRIDE format: \${OVERRIDE_VERSION} (expected X.Y.Z)\")
+        message(FATAL_ERROR \"Invalid VERSION/PROJECT_VERSION_OVERRIDE format: \${OVERRIDE_VERSION} (expected X.Y.Z)\")
     endif()
 endif()
 

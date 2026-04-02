@@ -23,8 +23,9 @@ COPY . /build/
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Accept VERSION build arg in builder stage
-ENV VERSION=0.0.0
+# Accept VERSION build arg from Docker build / Coolify
+ARG VERSION=0.0.0
+ENV VERSION=${VERSION}
 ENV LIB_VERSION=0.3.0
 
 # Build ascii-chat (Debug build, configure is fast because .deps-cache/ is pre-populated)
