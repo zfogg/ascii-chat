@@ -797,3 +797,4 @@ Test(ansi_fast, integration_color_mode_switching) {
   cr_assert(strstr(buffer, "\033[") != NULL, "16-color should work");
 }
 // trigger test workflow
+// coverage fix
