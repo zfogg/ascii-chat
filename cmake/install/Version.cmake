@@ -63,72 +63,69 @@ macro(version_detect)
         set(PROJECT_VERSION_FROM_GIT "$ENV{VERSION}")
     endif()
 
-    # If PROJECT_VERSION_FROM_GIT was already provided via command-line (e.g., -DPROJECT_VERSION_FROM_GIT=0.9.13),
+    # If PROJECT_VERSION_FROM_GIT was already provided via command-line or VERSION env var,
     # skip git detection and use the provided version
-    if(DEFINED PROJECT_VERSION_FROM_GIT AND PROJECT_VERSION_FROM_GIT MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
-        if(PROJECT_VERSION_FROM_GIT MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+    if(DEFINED PROJECT_VERSION_FROM_GIT AND PROJECT_VERSION_FROM_GIT MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+        set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+        set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+        set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+        set(_VERSION_TYPE "command-line")
+        _get_version_date("v${PROJECT_VERSION_FROM_GIT}")
+        message(STATUS "Version from command-line/env: ${PROJECT_VERSION_FROM_GIT}")
+        message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
+    else()
+        # Get git describe output at configure time
+        # Use bash -c to invoke GNU timeout (Windows' timeout.exe is a "wait N seconds"
+        # utility, not a command wrapper, and CMake's execute_process finds it first)
+        execute_process(
+            COMMAND bash -c "timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # Parse git describe output
+        # Format: v0.3.2-6-g0b715d6-dirty
+        if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
+            # Has a tag with commits since - extract tag version
             set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
             set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
             set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-            set(_VERSION_TYPE "command-line")
-            _get_version_date("v${PROJECT_VERSION_FROM_GIT}")
-            message(STATUS "Version from command-line/env: ${PROJECT_VERSION_FROM_GIT}")
-            message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
-            return()
+            set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
+            set(_VERSION_TYPE "development")
+            set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
+        elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
+            # Exactly on a tag (no -N-g suffix) - release version
+            set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+            set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+            set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+            set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
+            set(_VERSION_TYPE "release")
+            set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
+        else()
+            # No tags or git not available - use fallback
+            set(GIT_VERSION_MAJOR "0")
+            set(GIT_VERSION_MINOR "0")
+            set(GIT_VERSION_PATCH "0")
+            set(PROJECT_VERSION_FROM_GIT "0.0.0")
+            set(_VERSION_TYPE "fallback")
+            set(_TAG_NAME "")
         endif()
+
+        # Extract version date from git history
+        _get_version_date("${_TAG_NAME}")
+
+        # Print version info (colors defined in Init.cmake)
+        if(_VERSION_TYPE STREQUAL "development")
+            message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${Yellow}(development)${ColorReset}")
+        elseif(_VERSION_TYPE STREQUAL "release")
+            message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${BoldCyan}(release)${ColorReset}")
+        else()
+            message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION_FROM_GIT}${ColorReset})")
+        endif()
+        message(STATUS "Release date: ${BoldBlue}${PROJECT_VERSION_DATE}${ColorReset}")
     endif()
-
-    # Get git describe output at configure time
-    # Use bash -c to invoke GNU timeout (Windows' timeout.exe is a "wait N seconds"
-    # utility, not a command wrapper, and CMake's execute_process finds it first)
-    execute_process(
-        COMMAND bash -c "timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-
-    # Parse git describe output
-    # Format: v0.3.2-6-g0b715d6-dirty
-    if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
-        # Has a tag with commits since - extract tag version
-        set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
-        set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
-        set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-        set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
-        set(_VERSION_TYPE "development")
-        set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
-    elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
-        # Exactly on a tag (no -N-g suffix) - release version
-        set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
-        set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
-        set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-        set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
-        set(_VERSION_TYPE "release")
-        set(_TAG_NAME "v${PROJECT_VERSION_FROM_GIT}")
-    else()
-        # No tags or git not available - use fallback
-        set(GIT_VERSION_MAJOR "0")
-        set(GIT_VERSION_MINOR "0")
-        set(GIT_VERSION_PATCH "0")
-        set(PROJECT_VERSION_FROM_GIT "0.0.0")
-        set(_VERSION_TYPE "fallback")
-        set(_TAG_NAME "")
-    endif()
-
-    # Extract version date from git history
-    _get_version_date("${_TAG_NAME}")
-
-    # Print version info (colors defined in Init.cmake)
-    if(_VERSION_TYPE STREQUAL "development")
-        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${Yellow}(development)${ColorReset}")
-    elseif(_VERSION_TYPE STREQUAL "release")
-        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${BoldCyan}(release)${ColorReset}")
-    else()
-        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION_FROM_GIT}${ColorReset})")
-    endif()
-    message(STATUS "Release date: ${BoldBlue}${PROJECT_VERSION_DATE}${ColorReset}")
 endmacro()
 
 # =============================================================================
