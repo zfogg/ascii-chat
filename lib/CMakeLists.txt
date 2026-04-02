@@ -981,15 +981,23 @@ add_library(ascii-chat-shared SHARED
 
     # Coverage builds: link Clang profile runtime into shared library
     if(ASCIICHAT_ENABLE_COVERAGE)
-        execute_process(
-            COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.profile-x86_64.a
-            OUTPUT_VARIABLE _SHARED_CLANG_PROFILE_LIB
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        if(EXISTS "${_SHARED_CLANG_PROFILE_LIB}")
-            target_link_libraries(ascii-chat-shared PRIVATE "${_SHARED_CLANG_PROFILE_LIB}")
-            message(STATUS "Linked Clang profile runtime into shared library: ${_SHARED_CLANG_PROFILE_LIB}")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
+            set(_profile_names "libclang_rt.profile_osx.a" "libclang_rt.profile-arm64.a")
+        else()
+            set(_profile_names "libclang_rt.profile-x86_64.a" "libclang_rt.profile_osx.a")
         endif()
+        foreach(_name ${_profile_names})
+            execute_process(
+                COMMAND ${CMAKE_C_COMPILER} --print-file-name=${_name}
+                OUTPUT_VARIABLE _SHARED_CLANG_PROFILE_LIB
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            if(EXISTS "${_SHARED_CLANG_PROFILE_LIB}")
+                target_link_libraries(ascii-chat-shared PRIVATE "${_SHARED_CLANG_PROFILE_LIB}")
+                message(STATUS "Linked Clang profile runtime into shared library: ${_SHARED_CLANG_PROFILE_LIB}")
+                break()
+            endif()
+        endforeach()
         target_link_options(ascii-chat-shared PRIVATE --coverage)
     endif()
 

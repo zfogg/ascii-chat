@@ -346,11 +346,24 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_link_options(${test_exe_name} PRIVATE --coverage)
             # Clang with lld needs explicit profile runtime
             if(NOT DEFINED _CLANG_PROFILE_LIB)
-                execute_process(
-                    COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.profile-x86_64.a
-                    OUTPUT_VARIABLE _CLANG_PROFILE_LIB
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                )
+                # Try architecture-specific name first, then platform name
+                if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
+                    set(_profile_names "libclang_rt.profile_osx.a" "libclang_rt.profile-arm64.a")
+                else()
+                    set(_profile_names "libclang_rt.profile-x86_64.a" "libclang_rt.profile_osx.a")
+                endif()
+                set(_CLANG_PROFILE_LIB "")
+                foreach(_name ${_profile_names})
+                    execute_process(
+                        COMMAND ${CMAKE_C_COMPILER} --print-file-name=${_name}
+                        OUTPUT_VARIABLE _candidate
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                    )
+                    if(EXISTS "${_candidate}")
+                        set(_CLANG_PROFILE_LIB "${_candidate}")
+                        break()
+                    endif()
+                endforeach()
                 if(EXISTS "${_CLANG_PROFILE_LIB}")
                     message(STATUS "Found Clang profile runtime: ${_CLANG_PROFILE_LIB}")
                     set(_CLANG_PROFILE_LIB "${_CLANG_PROFILE_LIB}" CACHE INTERNAL "")
