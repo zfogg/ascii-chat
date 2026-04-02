@@ -1,9 +1,10 @@
 /**
  * @file acds/main.c
- * @brief 🔍 ascii-chat Discovery Service (acds) main entry point
+ * @brief ascii-chat Discovery Service (acds) main entry point
  *
  * Discovery server for session management and WebRTC signaling using
- * ACIP binary protocol over raw TCP.
+ * ACIP binary protocol over raw TCP. Uses the server_like abstraction
+ * for TCP/WebSocket/mDNS/UPnP lifecycle management.
  */
 
 #include <stdio.h>
@@ -15,88 +16,49 @@
 
 #include "discovery-service/main.h"
 #include "discovery-service/server.h"
+#include "common/session/server_like.h"
 #include <ascii-chat/discovery/identity.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/network/nat/upnp.h>
-#include <ascii-chat/network/mdns/mdns.h>
-#include <ascii-chat/network/websocket/server.h>
 
-// Global server instance for signal handler
-static acds_server_t *g_server = NULL;
+/* ============================================================================
+ * Static State
+ * ============================================================================ */
 
-// Global WebSocket server for browser clients
-static websocket_server_t g_websocket_server;
+static acds_server_t g_server;
 
-// Global UPnP context for cleanup on signal
-static nat_upnp_context_t *g_upnp_ctx = NULL;
+/* ============================================================================
+ * server_like Callbacks
+ * ============================================================================ */
 
-// Global mDNS context for LAN service discovery
-// Allows clients on local network to discover the ACDS server without knowing its IP
-static asciichat_mdns_t *g_mdns_ctx = NULL;
-
-// WebSocket event loop thread
-static asciichat_thread_t g_ws_thread;
-static bool g_ws_thread_started = false;
-
-static void *websocket_server_thread_wrapper(void *arg) {
-  websocket_server_t *server = (websocket_server_t *)arg;
-  asciichat_error_t result = websocket_server_run(server);
-  if (result != ASCIICHAT_OK) {
-    log_error("WebSocket server thread exited with error");
-  }
-  return NULL;
-}
-
-// Status screen tracking
-static time_t g_discovery_start_time = 0;
-static time_t g_last_status_update = 0;
-
-/**
- * @brief Flag for shutdown request (volatile for signal handler safety)
- */
-static volatile sig_atomic_t g_shutdown_requested = 0;
-
-static bool acds_should_exit(void) {
-  return g_shutdown_requested != 0;
-}
-
-/**
- * @brief Signal handler for clean shutdown
- */
-static void acds_handle_signal(int sig) {
-  (void)sig;
-  g_shutdown_requested = 1;
-  // Stop TCP server immediately so it doesn't restart select()
-  if (g_server) {
-    atomic_store_bool(&g_server->tcp_server.running, false);
+static void acds_interrupt_fn(void) {
+  // Set TCP server running flag to false so select() exits
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (tcp) {
+    atomic_store_bool(&tcp->running, false);
+    // Close listen sockets to interrupt select()
+    if (tcp->listen_socket != INVALID_SOCKET_VALUE) {
+      socket_close(tcp->listen_socket);
+      tcp->listen_socket = INVALID_SOCKET_VALUE;
+    }
+    if (tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
+      socket_close(tcp->listen_socket6);
+      tcp->listen_socket6 = INVALID_SOCKET_VALUE;
+    }
   }
 }
 
-int acds_main(void) {
+static asciichat_error_t acds_init_fn(void *user_data) {
+  (void)user_data;
   asciichat_error_t result;
 
-  // Handle keepawake: check for mutual exclusivity and apply mode default
-  // Discovery-service default: keepawake DISABLED (use --keepawake to enable)
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
-    log_error("--keepawake and --no-keepawake are mutually exclusive");
-    return ERROR_INVALID_PARAM;
-  }
-  if (GET_OPTION(enable_keepawake)) {
-    (void)platform_enable_keepawake();
-  }
-
-  // Increase file descriptor limit for many concurrent connections
-  platform_raise_fd_limit(65536);
-
-  // Options already parsed and shared initialization complete (done by main.c)
   const options_t *opts = options_get();
 
   log_info("ascii-chat Discovery Service (acds) starting...");
@@ -114,7 +76,6 @@ int acds_main(void) {
   uint8_t secret_key[64];
 
   const char *acds_key_path = GET_OPTION(encrypt_key);
-  // If no key provided, use default path in config directory
   char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
   if (!acds_key_path || acds_key_path[0] == '\0') {
     const char *config_dir = get_config_dir();
@@ -149,12 +110,11 @@ int acds_main(void) {
   acds_identity_fingerprint(public_key, fingerprint);
   log_info("Discovery server identity: SHA256:%s", fingerprint);
   char msg[256];
-  safe_snprintf(msg, sizeof(msg), "🔑 Server fingerprint: SHA256:%s", fingerprint);
+  safe_snprintf(msg, sizeof(msg), "Server fingerprint: SHA256:%s", fingerprint);
   log_console(LOG_INFO, msg);
 
   // Create config from options for server initialization
   acds_config_t config;
-  // Read validated port option (discovery-service listens on 'port', not 'acds_port')
   int port_num = GET_OPTION(port);
   if (port_num < 1 || port_num > 65535) {
     log_error("Invalid port: %d (must be 1-65535)", port_num);
@@ -174,7 +134,6 @@ int acds_main(void) {
   config.require_server_identity = GET_OPTION(require_server_identity) != 0;
   config.require_client_identity = GET_OPTION(require_client_identity) != 0;
 
-  // Log security policy
   if (config.require_server_identity) {
     log_info("Security: Requiring signed identity from servers creating sessions");
   }
@@ -193,7 +152,6 @@ int acds_main(void) {
     char *saveptr = NULL;
     char *token = platform_strtok_r(stun_copy, ",", &saveptr);
     while (token && config.stun_count < 4) {
-      // Trim whitespace
       while (*token == ' ' || *token == '\t')
         token++;
       size_t len = strlen(token);
@@ -229,7 +187,6 @@ int acds_main(void) {
     char *saveptr = NULL;
     char *token = platform_strtok_r(turn_copy, ",", &saveptr);
     while (token && config.turn_count < 4) {
-      // Trim whitespace
       while (*token == ' ' || *token == '\t')
         token++;
       size_t len = strlen(token);
@@ -242,7 +199,6 @@ int acds_main(void) {
         SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token,
                      sizeof(config.turn_servers[config.turn_count].url));
 
-        // Set username if provided
         if (turn_username_str && turn_username_str[0] != '\0') {
           size_t username_len = strlen(turn_username_str);
           if (username_len < sizeof(config.turn_servers[0].username)) {
@@ -252,7 +208,6 @@ int acds_main(void) {
           }
         }
 
-        // Set credential if provided
         if (turn_credential_str && turn_credential_str[0] != '\0') {
           size_t credential_len = strlen(turn_credential_str);
           if (credential_len < sizeof(config.turn_servers[0].credential)) {
@@ -282,190 +237,78 @@ int acds_main(void) {
     config.turn_secret[0] = '\0';
   }
 
-  // Initialize server
-  acds_server_t server;
-  memset(&server, 0, sizeof(server));
-  g_server = &server;
+  // Copy identity keys to server struct (needed by handlers for handshake)
+  memcpy(g_server.identity_public, public_key, 32);
+  memcpy(g_server.identity_secret, secret_key, 64);
 
-  result = acds_server_init(&server, &config);
+  // Initialize server (DB, rate limiter, worker pool — TCP server comes from server_like)
+  result = acds_server_init(&g_server, &config);
   if (result != ASCIICHAT_OK) {
     log_error("Server initialization failed");
-    g_server = NULL;
     return result;
   }
 
-  // Initialize WebSocket server (for browser clients)
-  websocket_server_config_t ws_config = {
-      .port = GET_OPTION(websocket_port),
-      .client_handler = acds_websocket_client_handler,
-      .user_data = &server,
-      .tls_cert_path = GET_OPTION(websocket_tls_cert),
-      .tls_key_path = GET_OPTION(websocket_tls_key),
-  };
+  log_info("Discovery service initialized");
+  return ASCIICHAT_OK;
+}
 
-  memset(&g_websocket_server, 0, sizeof(g_websocket_server));
-  asciichat_error_t ws_init_result = websocket_server_init(&g_websocket_server, &ws_config);
-  if (ws_init_result != ASCIICHAT_OK) {
-    log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
-  } else {
-    log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
-    // Start WebSocket event loop in background thread (services lws callbacks)
-    if (asciichat_thread_create(&g_ws_thread, "websocket_event_loop", websocket_server_thread_wrapper,
-                                &g_websocket_server) == 0) {
-      g_ws_thread_started = true;
-      log_info("WebSocket event loop thread started");
-    } else {
-      log_error("Failed to start WebSocket event loop thread");
-    }
-  }
-
-  // Initialize status tracking variables
-  g_discovery_start_time = time(NULL);
-  g_last_status_update = g_discovery_start_time;
-
-  // Check if shutdown was requested during initialization
-  if (acds_should_exit()) {
-    log_info("Shutdown signal received during initialization, skipping server startup");
-    return 0;
-  }
-
-  // =========================================================================
-  // UPnP Port Mapping (Quick Win for Direct TCP)
-  // =========================================================================
-  // Try to open port via UPnP so direct TCP works for ~70% of home users.
-  // If this fails, clients fall back to WebRTC automatically - not fatal.
-  //
-  // Strategy:
-  //   1. UPnP (works on ~90% of home routers)
-  //   2. NAT-PMP fallback (Apple routers)
-  //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-
-  // Check again before expensive UPnP initialization (might timeout trying to reach router)
-  if (acds_should_exit()) {
-    log_info("Shutdown signal received before UPnP initialization");
-    result = ASCIICHAT_OK;
-    goto cleanup_resources;
-  }
-
-  if (GET_OPTION(enable_upnp)) {
-    asciichat_error_t upnp_result = nat_upnp_open(config.port, "ascii-chat ACDS", &g_upnp_ctx);
-
-    if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
-      char public_addr[22];
-      if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        char msg[256];
-        safe_snprintf(msg, sizeof(msg), "🌐 Public endpoint: %s (direct TCP)", public_addr);
-        log_console(LOG_INFO, msg);
-        log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
-      }
-    } else {
-      log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-      log_console(LOG_INFO, "📡 Clients behind strict NATs will use WebRTC fallback");
-    }
-  } else {
-    log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
-  }
-
-  // Check if shutdown was requested before initializing mDNS
-  if (acds_should_exit()) {
-    log_info("Shutdown signal received before mDNS initialization");
-    result = ASCIICHAT_OK;
-    goto cleanup_resources;
-  }
-
-  // Initialize mDNS for LAN discovery of ACDS server
-  // This allows clients on the local network to discover the discovery service itself
-
-  log_debug("Initializing mDNS for ACDS LAN service discovery...");
-  g_mdns_ctx = asciichat_mdns_init();
-  if (!g_mdns_ctx) {
-    LOG_ERRNO_IF_SET("Failed to initialize mDNS (non-fatal, LAN discovery disabled)");
-    log_warn("mDNS disabled for ACDS - LAN discovery of discovery service will not be available");
-  } else {
-    // Advertise ACDS service on the LAN
-    // Build hostname if available
-    char hostname[256] = {0};
-    gethostname(hostname, sizeof(hostname) - 1);
-
-    asciichat_mdns_service_t service = {
-        .name = "ascii-chat-Discovery-Service",
-        .type = "_ascii-chat-discovery-service._tcp",
-        .host = hostname,
-        .port = config.port,
-        .txt_records = NULL,
-        .txt_count = 0,
-    };
-
-    asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
-    if (mdns_advertise_result != ASCIICHAT_OK) {
-      LOG_ERRNO_IF_SET("Failed to advertise ACDS mDNS service");
-      log_warn("mDNS advertising failed for ACDS - LAN discovery disabled");
-      asciichat_mdns_destroy(g_mdns_ctx);
-      g_mdns_ctx = NULL;
-    } else {
-      log_console(LOG_INFO, "🌐 mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN");
-      log_info("mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)", config.port);
-    }
-  }
-
-  // Install signal handlers for clean shutdown
-#ifndef _WIN32
-  // Use sigaction with explicit flags to disable SA_RESTART - this ensures
-  // select() returns EINTR instead of restarting, so the shutdown flag can be checked
-  struct sigaction sa = {
-    .sa_handler = acds_handle_signal,
-    .sa_flags = 0  // No SA_RESTART - we want select() to return EINTR on signal
-  };
-  sigemptyset(&sa.sa_mask);
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
-#else
-  signal(SIGINT, acds_handle_signal);
-  signal(SIGTERM, acds_handle_signal);
-#endif
-
-
-  // Run server
-  result = acds_server_run(&server);
-  if (result != ASCIICHAT_OK) {
-    log_error("Server run failed");
-  }
-
-cleanup_resources:
-  // Cleanup
-  // Disable keepawake before exit
-  platform_disable_keepawake();
-
+static void acds_cleanup_fn(void *user_data) {
+  (void)user_data;
   log_info("Shutting down discovery server...");
-  acds_server_shutdown(&server);
-  g_server = NULL;
-
-  // Stop and join WebSocket event loop thread
-  if (g_ws_thread_started) {
-    atomic_store_bool(&g_websocket_server.running, false);
-    websocket_server_cancel_service(&g_websocket_server);
-    int join_result = asciichat_thread_join_timeout(&g_ws_thread, NULL, 500 * NS_PER_MS_INT);
-    if (join_result != 0) {
-      log_warn("WebSocket event loop thread did not exit within 500ms");
-    }
-    g_ws_thread_started = false;
-  }
-  websocket_server_destroy(&g_websocket_server);
-  log_debug("WebSocket server destroyed");
-
-  // Clean up UPnP port mapping
-  if (g_upnp_ctx) {
-    nat_upnp_close(&g_upnp_ctx);
-    log_debug("UPnP port mapping closed");
-  }
-
-  // Clean up mDNS context
-  if (g_mdns_ctx) {
-    asciichat_mdns_destroy(g_mdns_ctx);
-    g_mdns_ctx = NULL;
-    log_debug("mDNS context shut down");
-  }
-
+  acds_server_shutdown(&g_server);
   log_info("Discovery server stopped");
-  return result;
+}
+
+/* ============================================================================
+ * Entry Point
+ * ============================================================================ */
+
+int acds_main(void) {
+  session_server_like_config_t config = {
+      // Required callbacks
+      .init_fn = acds_init_fn,
+      .init_user_data = NULL,
+      .interrupt_fn = acds_interrupt_fn,
+
+      // Cleanup
+      .cleanup_fn = acds_cleanup_fn,
+      .cleanup_user_data = NULL,
+
+      // No status screen for ACDS (for now)
+      .status_fn = NULL,
+      .status_user_data = NULL,
+
+      // TCP handler
+      .tcp_handler = acds_client_handler,
+      .tcp_user_data = &g_server,
+
+      // WebSocket
+      .websocket =
+          {
+              .enabled = true,
+              .handler = acds_websocket_client_handler,
+              .user_data = &g_server,
+          },
+
+      // mDNS
+      .mdns =
+          {
+              .enabled = true,
+              .service_name = "ascii-chat-Discovery-Service",
+              .service_type = "_ascii-chat-discovery-service._tcp",
+          },
+
+      // UPnP
+      .upnp =
+          {
+              .enabled = true,
+              .description = "ascii-chat ACDS",
+          },
+
+      // System
+      .raise_fd_limit = true,
+      .fd_limit_target = 65536,
+  };
+
+  return session_server_like_run(&config);
 }

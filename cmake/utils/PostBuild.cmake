@@ -48,10 +48,8 @@ function(copy_windows_dlls TARGET_NAME)
             endif()
 
             # DLLs to copy from vcpkg
-            # Core dependencies
+            # Core dependencies (FFmpeg is NOT from vcpkg on Windows - copied separately below)
             set(VCPKG_DLLS zstd.dll portaudio.dll libsodium.dll opus.dll sqlite3.dll miniupnpc.dll)
-            # FFmpeg libraries
-            list(APPEND VCPKG_DLLS avformat-61.dll avcodec-61.dll swresample-5.dll swscale-8.dll avutil-59.dll)
             # WebRTC/datachannel and its dependencies
             list(APPEND VCPKG_DLLS datachannel.dll juice.dll libssl-3-x64.dll libcrypto-3-x64.dll)
             # Regex, websocket, and libuv libraries
@@ -89,6 +87,31 @@ function(copy_windows_dlls TARGET_NAME)
             message(STATUS "DLL/PDB copying: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
         else()
             message(STATUS "DLL/PDB copying: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
+        endif()
+
+        # FFmpeg DLLs are from .deps-cache, not vcpkg
+        if(DEFINED ASCIICHAT_DEPS_CACHE_DIR)
+            set(FFMPEG_DLL_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/bin")
+            # Try versioned directory name if generic doesn't exist
+            if(NOT EXISTS "${FFMPEG_DLL_DIR}")
+                file(GLOB _ffmpeg_dirs "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-*/bin")
+                list(LENGTH _ffmpeg_dirs _ffmpeg_dirs_len)
+                if(_ffmpeg_dirs_len GREATER 0)
+                    list(GET _ffmpeg_dirs 0 FFMPEG_DLL_DIR)
+                endif()
+            endif()
+            if(EXISTS "${FFMPEG_DLL_DIR}")
+                set(FFMPEG_DLLS avformat-61.dll avcodec-61.dll swresample-5.dll swscale-8.dll avutil-59.dll)
+                copy_dlls_post_build(
+                    TARGET ${TARGET_NAME}
+                    NAMES ${FFMPEG_DLLS}
+                    SOURCE_DIR "${FFMPEG_DLL_DIR}"
+                    COMMENT "from deps-cache FFmpeg"
+                )
+                message(STATUS "FFmpeg DLLs: from ${BoldBlue}${FFMPEG_DLL_DIR}${ColorReset}")
+            else()
+                message(STATUS "FFmpeg DLLs: ${BoldYellow}skipped${ColorReset} (not found in deps-cache)")
+            endif()
         endif()
     endif()
 endfunction()

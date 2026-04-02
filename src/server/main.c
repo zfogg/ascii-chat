@@ -72,6 +72,7 @@
 
 #include "main.h"
 #include "../main.h" // For should_exit() and signal_exit() API
+#include "common/session/server_like.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -215,37 +216,9 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  */
 rate_limiter_t *g_rate_limiter = NULL;
 
-/**
- * @brief TCP server instance for accepting client connections
- *
- * Uses lib/network/tcp_server abstraction for dual-stack IPv4/IPv6 support.
- * Handles socket creation, binding, listening, and provides thread-safe
- * client registry for managing connected clients.
- *
- * PLATFORM NOTE: tcp_server_t handles platform-abstracted socket_t types
- * internally for proper cross-platform Windows/POSIX support.
- *
- * @ingroup server_main
- */
-static tcp_server_t g_tcp_server;
+// TCP server is now owned by session_server_like; access via session_server_like_get_tcp_server().
 
-/**
- * @brief WebSocket server instance for accepting browser client connections
- *
- * Runs in parallel with TCP server to support WASM browser clients.
- * Uses libwebsockets to handle WebSocket protocol, shares same client handler.
- *
- * @ingroup server_main
- */
-static websocket_server_t g_websocket_server;
-
-/**
- * @brief WebSocket server thread handle
- *
- * Dedicated thread for WebSocket event loop, runs independently of TCP accept loop.
- */
-static asciichat_thread_t g_websocket_server_thread;
-static bool g_websocket_server_thread_started = false;
+// WebSocket server is now owned by session_server_like; access via session_server_like_get_websocket_server().
 
 /**
  * @brief Server start time for uptime calculation and status display
@@ -263,76 +236,7 @@ static time_t g_server_start_time = 0;
  */
 static uint64_t g_last_status_update = 0; // Microseconds from platform_get_monotonic_time_us()
 
-/**
- * @brief Status screen thread handle
- *
- * Dedicated thread for rendering status screen at target FPS, independent
- * of network accept loop timing.
- */
-static asciichat_thread_t g_status_screen_thread;
-
-/**
- * @brief Keyboard input thread for instant keypress capture.
- *
- * This is the ONLY thing that reads from stdin. It polls
- * keyboard_read_with_timeout() (platform-abstracted) and pushes complete
- * key codes into a lock-free ring buffer queue.
- * The main (render) thread only pops from the queue.
- */
-static asciichat_thread_t g_keyboard_thread;
-static atomic_t g_keyboard_thread_running = {0};
-
-/**
- * @brief Thread-safe keyboard queue (lock-free SPSC ring buffer)
- */
-#define KEYBOARD_QUEUE_SIZE 256
-static keyboard_key_t g_keyboard_queue[KEYBOARD_QUEUE_SIZE];
-static atomic_t g_keyboard_queue_head = {0};
-static atomic_t g_keyboard_queue_tail = {0};
-
-static bool keyboard_queue_push(keyboard_key_t key) {
-  size_t head = atomic_load_u64(&g_keyboard_queue_head);
-  size_t next_head = (head + 1) % KEYBOARD_QUEUE_SIZE;
-  if (next_head == atomic_load_u64(&g_keyboard_queue_tail)) {
-    return false;
-  }
-  g_keyboard_queue[head] = key;
-  atomic_store_u64(&g_keyboard_queue_head, next_head);
-  return true;
-}
-
-static keyboard_key_t keyboard_queue_pop(void) {
-  size_t tail = atomic_load_u64(&g_keyboard_queue_tail);
-  if (tail == atomic_load_u64(&g_keyboard_queue_head)) {
-    return KEY_NONE;
-  }
-  keyboard_key_t key = g_keyboard_queue[tail];
-  atomic_store_u64(&g_keyboard_queue_tail, (tail + 1) % KEYBOARD_QUEUE_SIZE);
-  return key;
-}
-
-/**
- * @brief Keyboard thread: sole reader of stdin.
- *
- * Polls keyboard_read_with_timeout() (platform-abstracted) in a loop.
- * The platform keyboard module handles raw mode, escape sequence resolution,
- * and extended key codes, so this thread just pushes complete key codes
- * into the queue.
- */
-static void *keyboard_thread_func(void *arg) {
-  (void)arg;
-  log_debug("Keyboard thread started (polling mode, 100ms interval)");
-
-  while (atomic_load_u64(&g_keyboard_thread_running)) {
-    keyboard_key_t key = keyboard_read_with_timeout(100);
-    if (key != KEY_NONE) {
-      keyboard_queue_push(key);
-    }
-  }
-
-  log_debug("Keyboard thread exiting");
-  return NULL;
-}
+// Status screen thread, keyboard thread, and SPSC queue are now owned by session_server_like.
 
 /**
  * @brief Current session string for status display
@@ -347,27 +251,7 @@ static char g_session_string[64] = {0};
  */
 static bool g_session_is_mdns_only = false;
 
-/**
- * @brief Global UPnP context for port mapping on home routers
- *
- * Stores the active UPnP/NAT-PMP port mapping state. Enables direct TCP
- * connectivity for ~70% of home users without requiring WebRTC.
- * Set to NULL if UPnP is disabled, unavailable, or failed to map.
- *
- * @ingroup server_main
- */
-static nat_upnp_context_t *g_upnp_ctx = NULL;
-
-/**
- * @brief Global mDNS context for LAN service discovery
- *
- * Used to advertise the server on the local network via mDNS (Multicast DNS).
- * Set to NULL if mDNS is disabled or fails to initialize.
- * Advertises service as "_ascii-chat._tcp.local"
- *
- * @ingroup server_main
- */
-static asciichat_mdns_t *g_mdns_ctx = NULL;
+// UPnP and mDNS contexts are now owned by session_server_like; access via accessors.
 
 /**
  * @brief Global ACDS client for WebRTC signaling relay
@@ -579,9 +463,7 @@ size_t g_num_whitelisted_clients = 0;
  *
  * @param sigint The signal number (unused, required by signal handler signature)
  */
-static void server_handle_sigint(int sigint) {
-  (void)(sigint);
-
+static void server_handle_sigint(void) {
   // If in grep input mode, cancel grep instead of shutting down.
   // Uses atomic reads only (no mutex) - safe from signal context.
   if (log_search_is_entering_atomic()) {
@@ -610,21 +492,27 @@ static void server_handle_sigint(int sigint) {
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
-  atomic_store_bool(&g_tcp_server.running, false);
-  if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
-    socket_close(g_tcp_server.listen_socket);
-    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
-  }
-  if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
-    socket_close(g_tcp_server.listen_socket6);
-    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (tcp) {
+    atomic_store_bool(&tcp->running, false);
+    if (tcp->listen_socket != INVALID_SOCKET_VALUE) {
+      socket_close(tcp->listen_socket);
+      tcp->listen_socket = INVALID_SOCKET_VALUE;
+    }
+    if (tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
+      socket_close(tcp->listen_socket6);
+      tcp->listen_socket6 = INVALID_SOCKET_VALUE;
+    }
   }
 
   // STEP 3b: Signal WebSocket server to stop
   // Without this, lws_service() could block for up to 50ms before checking the running flag.
   // websocket_server_cancel_service() is async-signal-safe (uses only atomic operations).
-  atomic_store_u64(&g_websocket_server.running, false);
-  websocket_server_cancel_service(&g_websocket_server);
+  websocket_server_t *ws = session_server_like_get_websocket_server();
+  if (ws) {
+    atomic_store_u64(&ws->running, false);
+    websocket_server_cancel_service(ws);
+  }
 
   // STEP 4: DO NOT access client data structures in signal handler
   // Signal handlers CANNOT safely use mutexes, rwlocks, or access complex data structures
@@ -923,7 +811,8 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
  * @param port Server port
  */
 static void advertise_mdns_with_session(const char *session_string, uint16_t port) {
-  if (!g_mdns_ctx) {
+  asciichat_mdns_t *mdns_ctx = session_server_like_get_mdns_ctx();
+  if (!mdns_ctx) {
     log_debug("mDNS context not initialized, skipping advertisement");
     return;
   }
@@ -972,12 +861,10 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
       .txt_count = txt_count,
   };
 
-  asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
+  asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(mdns_ctx, &service);
   if (mdns_advertise_result != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Failed to advertise mDNS service");
     log_warn("mDNS advertising failed - LAN discovery disabled");
-    asciichat_mdns_destroy(g_mdns_ctx);
-    g_mdns_ctx = NULL;
   } else {
     log_info("🌐 mDNS: Server advertised as '%s.local' on LAN", session_name);
     log_debug("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
@@ -1132,218 +1019,8 @@ static void *acds_receive_thread(void *arg) {
  * ============================================================================
  */
 
-/**
- * @brief Handler for SIGTERM (termination request) signals
- *
- * SIGTERM is the standard "please terminate gracefully" signal sent by process
- * managers, systemd, Docker, etc. Unlike SIGINT (user Ctrl+C), SIGTERM indicates
- * a system-initiated shutdown request that should be honored promptly.
- *
- * IMPLEMENTATION STRATEGY:
- * This handler must aggressively interrupt the accept loop, just like SIGINT,
- * to ensure responsive shutdown when triggered by automated systems like docker stop.
- * Process managers and Docker expect clean shutdown within a timeout window.
- *
- * SIGNAL SAFETY:
- * - Sets atomic flags (signal-safe)
- * - Closes listening sockets to interrupt accept() (signal-safe)
- * - Does NOT access complex data structures (avoids deadlocks)
- *
- * @param sigterm The signal number (unused, required by signal handler signature)
- */
-static void server_handle_sigterm(int sigterm) {
-  (void)(sigterm);
-  atomic_store_bool(&g_should_exit, true);
-
-  // Log to console only (text or JSON depending on --json flag)
-  // Using log_console() which is signal-safe and handles both formats
-  log_console(LOG_INFO, "SIGTERM received - shutting down server...");
-
-  // Stop the TCP server accept loop immediately.
-  // Without this, the select() call with ACCET_TIMEOUT could delay shutdown.
-  atomic_store_bool(&g_tcp_server.running, false);
-  if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
-    socket_close(g_tcp_server.listen_socket);
-    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
-  }
-  if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
-    socket_close(g_tcp_server.listen_socket6);
-    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
-  }
-
-  // Stop the WebSocket server event loop immediately.
-  // Without this, lws_service() could block for up to 50ms before checking the running flag.
-  atomic_store_u64(&g_websocket_server.running, false);
-  websocket_server_cancel_service(&g_websocket_server);
-}
-
-/* ============================================================================
- * Status Screen Update Callback (for tcp_server integration)
- * ============================================================================
- */
-
-/**
- * @brief Periodic status screen update callback
- *
- * Called by tcp_server_run() on select() timeout to update the status display.
- * Updates server status including session string, bind addresses, connected clients, and uptime.
- * Rate-limited to update every 1-2 seconds.
- *
- * @param user_data Pointer to server context (server_context_t*)
- */
-/**
- * @brief Status screen thread function
- *
- * Runs independently at target FPS (default 60 Hz), rendering the status
- * screen with server stats and recent logs. Decoupled from network accept loop.
- */
-/**
- * @brief Thread wrapper for websocket_server_run
- *
- * Converts asciichat_error_t return type to void * for pthread compatibility.
- */
-static void *websocket_server_thread_wrapper(void *arg) {
-  websocket_server_t *server = (websocket_server_t *)arg;
-  asciichat_error_t result = websocket_server_run(server);
-  if (result != ASCIICHAT_OK) {
-    log_error("WebSocket server thread exited with error");
-  }
-
-  return NULL;
-}
-
-static void *status_screen_thread(void *arg) {
-  (void)arg; // Unused
-
-  uint32_t fps = GET_OPTION(fps);
-  if (fps == 0) {
-    fps = 60; // Default
-  }
-  uint64_t frame_interval_us = US_PER_SEC_INT / fps;
-
-  log_debug("Status screen thread started (target %u FPS)", fps);
-
-  // Redirect stderr to /dev/null during status screen mode to prevent async logs
-  // from other threads from appearing on the terminal and pushing the header off-screen.
-  // This ensures the status screen remains the only output visible.
-  platform_stderr_redirect_handle_t stderr_redirect = platform_stderr_redirect_to_null();
-
-  // Register keyboard atomics with named debug registry
-  static bool keyboard_atomics_registered = false;
-  if (!keyboard_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_keyboard_thread_running, "server_keyboard_thread_running_flag", NULL);
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_head, "server_keyboard_queue_head_position", NULL);
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_tail, "server_keyboard_queue_tail_position", NULL);
-    keyboard_atomics_registered = true;
-  }
-
-  // Keyboard is pre-initialized from asciichat_shared_init()
-  // Only spawn keyboard thread if terminal is interactive
-  bool keyboard_enabled = false;
-  if (terminal_is_interactive()) {
-    log_info("Terminal is interactive, starting keyboard thread...");
-    atomic_store_u64(&g_keyboard_thread_running, true);
-    if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
-      keyboard_enabled = true;
-      log_info("Keyboard thread started - press '/' to activate grep");
-    } else {
-      log_warn("Failed to create keyboard thread");
-      atomic_store_u64(&g_keyboard_thread_running, false);
-      keyboard_destroy();
-    }
-  } else {
-    log_warn("Terminal is NOT interactive, keyboard disabled");
-  }
-
-  // Track when we just entered grep mode to skip the triggering '/' from buffer
-  bool skip_next_slash = false;
-  bool grep_was_just_cancelled = false;
-
-  while (!atomic_load_bool(&g_should_exit)) {
-    uint64_t frame_start = platform_get_monotonic_time_us();
-
-    // Check if SIGINT handler cancelled grep mode (Ctrl+C while in grep).
-    // The signal handler sets an atomic flag instead of touching mutex-protected state.
-    if (log_search_check_signal_cancel()) {
-      log_search_exit_mode(false);
-      grep_was_just_cancelled = true;
-    }
-
-    // Process all keys from the queue (keyboard thread captures them).
-    // Ctrl+C is NOT in the queue (ISIG is enabled, so it generates SIGINT
-    // which is handled above). The queue only has regular keypresses.
-    if (keyboard_enabled) {
-      // Reset the "just cancelled" flag each frame
-      grep_was_just_cancelled = false;
-
-      // Pull all keys from queue
-      keyboard_key_t key = keyboard_queue_pop();
-      while (key != KEY_NONE && !grep_was_just_cancelled) {
-        // Skip the '/' that just triggered grep mode entry
-        if (skip_next_slash && key == '/') {
-          skip_next_slash = false;
-          key = keyboard_queue_pop(); // Get next key from queue
-          continue;
-        }
-        skip_next_slash = false;
-
-        // Let grep handle its keys
-        if (log_search_should_handle(key)) {
-          bool was_not_in_grep = !log_search_is_entering();
-          bool was_in_grep = log_search_is_entering();
-
-          log_search_handle_key(key);
-
-          // If we just entered grep mode with '/', skip next '/' from buffer
-          if (was_not_in_grep && log_search_is_entering() && key == '/') {
-            skip_next_slash = true;
-          }
-
-          // If grep was cancelled, stop processing keys
-          if (was_in_grep && !log_search_is_entering()) {
-            grep_was_just_cancelled = true;
-            break;
-          }
-        }
-
-        // Get next key from queue
-        key = keyboard_queue_pop();
-      }
-    }
-
-    // Get the IPv4 and IPv6 addresses from TCP server config
-    const char *ipv4_address = g_tcp_server.config.ipv4_address;
-    const char *ipv6_address = g_tcp_server.config.ipv6_address;
-
-    // Render status screen (ui_status_update handles rate limiting internally)
-    ui_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
-                         g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
-
-    // Sleep to maintain frame rate
-    uint64_t frame_end = platform_get_monotonic_time_us();
-    uint64_t frame_time = frame_end - frame_start;
-
-    // Maintain frame rate (keyboard thread captures keys instantly)
-    if (frame_time < frame_interval_us) {
-      platform_sleep_us(frame_interval_us - frame_time);
-    }
-  }
-
-  // Stop keyboard thread (polls at 100ms, so join completes within ~100ms)
-  if (keyboard_enabled) {
-    log_debug("Stopping keyboard thread...");
-    atomic_store_u64(&g_keyboard_thread_running, false);
-    asciichat_thread_join(&g_keyboard_thread, NULL);
-    log_debug("Keyboard thread stopped");
-    keyboard_destroy();
-  }
-
-  // Restore stderr before exiting
-  platform_stderr_restore(stderr_redirect);
-
-  log_debug("Status screen thread exiting");
-  return NULL;
-}
+// SIGTERM handling is now done by session_server_like (both SIGINT and SIGTERM call interrupt_fn).
+// WebSocket server thread wrapper and status screen thread are now in session_server_like.
 
 /* ============================================================================
  * Client Handler Thread (for tcp_server integration)
@@ -1773,277 +1450,61 @@ static int init_server_crypto(void) {
   return 0;
 }
 
-int server_main(void) {
-  // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
-  // This function focuses on server-specific initialization
+/* ============================================================================
+ * Static server context (populated during init, used by callbacks)
+ * ============================================================================ */
+static server_context_t g_server_ctx;
 
-  // Register atomic for debug tracking
-  ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
+/* ============================================================================
+ * Status screen callback (populates ui_status_t from server state)
+ * ============================================================================ */
+static void server_status_fn(void *user_data, ui_status_t *out_status) {
+  (void)user_data;
 
-  // Register shutdown check callback for library code
-  shutdown_register_callback(check_shutdown);
-
-  // Initialize status screen log buffer if:
-  // 1. Terminal is interactive AND status_screen is enabled, OR
-  // 2. User explicitly set --status-screen on command line AND option is enabled (force it regardless of terminal)
-  // In non-interactive mode without explicit flag, logs go directly to stdout/stderr
-  if ((GET_OPTION(status_screen) && terminal_is_interactive()) ||
-      (GET_OPTION(status_screen_explicitly_set) && GET_OPTION(status_screen))) {
-    ui_status_log_init();
-
-    // Initialize interactive grep for status screen
-    log_search_init();
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (!tcp) {
+    return;
   }
 
-  // Initialize crypto after logging is ready
-  log_debug("Initializing crypto...");
-  if (init_server_crypto() != 0) {
-    // Print detailed error context if available
-    LOG_ERRNO_IF_SET("Crypto initialization failed");
-    FATAL(ERROR_CRYPTO, "Crypto initialization failed");
-  }
-  log_debug("Crypto initialized successfully");
+  ui_status_gather(tcp, g_session_string,
+                   tcp->config.ipv4_address, tcp->config.ipv6_address,
+                   GET_OPTION(port), g_server_start_time, "Server",
+                   g_session_is_mdns_only, out_status);
+}
 
-  // Handle keepawake: check for mutual exclusivity and apply mode default
-  // Server default: keepawake DISABLED (use --keepawake to enable)
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
-    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
-  }
-  if (GET_OPTION(enable_keepawake)) {
-    (void)platform_enable_keepawake();
-  }
-
-  log_info("ascii-chat server starting...");
-
-  // log_info("SERVER: Options initialized, using log file: %s", log_filename);
+/* ============================================================================
+ * Mode-specific initialization callback
+ * ============================================================================ */
+static asciichat_error_t server_init_fn(void *user_data) {
+  (void)user_data;
   int port = GET_OPTION(port);
-  if (port < 1 || port > 65535) {
-    log_error("Invalid port configuration: %d", port);
-    FATAL(ERROR_CONFIG, "Invalid port configuration: %d", port);
+
+  // Get TCP server from server_like (it's already initialized at this point)
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (!tcp) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
   }
 
-  ascii_simd_init();
-  precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+  // Point server context at the server_like-owned TCP server
+  g_server_ctx.tcp_server = tcp;
 
-  // Simple signal handling (temporarily disable complex threading signal handling)
-  log_debug("Setting up simple signal handlers...");
-
-  // Handle Ctrl+C for cleanup
-  platform_signal(SIGINT, server_handle_sigint);
-  // Handle termination signal (SIGTERM is defined with limited support on Windows)
-  platform_signal(SIGTERM, server_handle_sigterm);
-#ifndef _WIN32
-  // SIGPIPE not supported on Windows
-  platform_signal(SIGPIPE, SIG_IGN);
-  // Note: SIGUSR1 is registered in src/main.c for all modes
-#endif
-
-#ifndef NDEBUG
-  // Lock debug thread is now started in src/main.c (all modes)
-  // Initialize statistics system
-  if (stats_init() != 0) {
-    FATAL(ERROR_THREAD, "Statistics system initialization failed");
-  }
-#endif
-
-  // Create background worker thread pool for server operations
-  g_server_worker_pool = thread_pool_create("server_workers");
-  if (!g_server_worker_pool) {
-    LOG_ERRNO_IF_SET("Failed to create server worker thread pool");
-    FATAL(ERROR_MEMORY, "Failed to create server worker thread pool");
-  }
-
-  // Spawn statistics logging thread in worker pool
-  if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, "stats_logger") != ASCIICHAT_OK) {
-    LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
-  } else {
-    log_debug("Statistics logger thread started");
-  }
-
-  // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
-  log_debug("Config check: GET_OPTION(address)='%s', GET_OPTION(address6)='%s'", GET_OPTION(address),
-            GET_OPTION(address6));
-
-  bool ipv4_has_value = (strlen(GET_OPTION(address)) > 0);
-  bool ipv6_has_value = (strlen(GET_OPTION(address6)) > 0);
-  // Check if address is localhost (any loopback address, not just exact default)
-  bool ipv4_is_default = is_localhost_ipv4(GET_OPTION(address));
-  bool ipv6_is_default = is_localhost_ipv6(GET_OPTION(address6));
-
-  log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
-            ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
-
-  // Determine bind configuration
-  bool bind_ipv4 = false;
-  bool bind_ipv6 = false;
-  const char *ipv4_address = NULL;
-  const char *ipv6_address = NULL;
-
-  if (ipv4_has_value && ipv6_has_value && ipv4_is_default && ipv6_is_default) {
-    // Both are defaults: dual-stack with default localhost addresses
-    bind_ipv4 = true;
-    bind_ipv6 = true;
-    ipv4_address = "127.0.0.1";
-    ipv6_address = "::1";
-    log_info("Default dual-stack: binding to 127.0.0.1 (IPv4) and ::1 (IPv6)");
-  } else if (ipv4_has_value && !ipv4_is_default && (!ipv6_has_value || ipv6_is_default)) {
-    // IPv4 explicitly set, IPv6 is default or empty: bind only IPv4
-    bind_ipv4 = true;
-    bind_ipv6 = false;
-    ipv4_address = GET_OPTION(address);
-    log_info("Binding only to IPv4 address: %s", ipv4_address);
-  } else if (ipv6_has_value && !ipv6_is_default && (ipv4_is_default || !ipv4_has_value)) {
-    // IPv6 explicitly set, IPv4 is default or empty: bind only IPv6
-    bind_ipv4 = false;
-    bind_ipv6 = true;
-    ipv6_address = GET_OPTION(address6);
-    log_info("Binding only to IPv6 address: %s", ipv6_address);
-  } else {
-    // Both explicitly set or one explicit + one default: dual-stack
-    bind_ipv4 = true;
-    bind_ipv6 = true;
-    ipv4_address = ipv4_has_value ? GET_OPTION(address) : "127.0.0.1";
-    ipv6_address = ipv6_has_value ? GET_OPTION(address6) : "::1";
-    log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
-  }
-
-  // Create server context - encapsulates all server state for passing to client handlers
-  // This reduces global state and improves modularity by using tcp_server.user_data
-  // Create H.265 server decoder context for multi-client codec support
-  h265_server_context_t *h265_server_ctx = h265_server_context_create();
-  if (!h265_server_ctx) {
-    log_error("Failed to create H.265 server context");
-    FATAL(ERROR_MEDIA_INIT, "Cannot initialize H.265 codec support");
-  }
-
-  server_context_t server_ctx = {
-      .tcp_server = &g_tcp_server,
-      .rate_limiter = g_rate_limiter,
-      .client_manager = &g_client_manager,
-      .client_manager_rwlock = &g_client_manager_rwlock,
-      .server_should_exit = &g_should_exit,
-      .audio_mixer = g_audio_mixer,
-      .stats = &g_stats,
-      .stats_mutex = &g_stats_mutex,
-      .encryption_enabled = g_server_encryption_enabled,
-      .server_private_key = &g_server_private_key,
-      .client_whitelist = g_client_whitelist,
-      .num_whitelisted_clients = g_num_whitelisted_clients,
-      .session_host = NULL,           // Will be created after TCP server init
-      .h265_server = h265_server_ctx, // H.265 codec support
-  };
-
-  // Configure TCP server
-  tcp_server_config_t tcp_config = {
-      .port = port,
-      .ipv4_address = ipv4_address,
-      .ipv6_address = ipv6_address,
-      .bind_ipv4 = bind_ipv4,
-      .bind_ipv6 = bind_ipv6,
-      .accept_timeout_sec = ACCEPT_TIMEOUT,
-      .client_handler = ascii_chat_client_handler,
-      .user_data = &server_ctx, // Pass server context to client handlers
-      .status_update_fn = NULL, // Status screen runs in its own thread
-      .status_update_data = NULL,
-  };
-
-  // Initialize TCP server (creates and binds sockets)
-  memset(&g_tcp_server, 0, sizeof(g_tcp_server));
-  asciichat_error_t tcp_init_result = tcp_server_init(&g_tcp_server, &tcp_config);
-  if (tcp_init_result != ASCIICHAT_OK) {
-    // Signal shutdown to allow threads to exit before we call FATAL
-    atomic_store_bool(&g_should_exit, true);
-    log_debug("TCP server init failed, signaling shutdown to threads");
-
-    // Clean up worker thread pool if it was created
-    if (g_server_worker_pool) {
-      log_debug("Early cleanup: destroying server worker pool");
-      thread_pool_destroy(g_server_worker_pool);
-      g_server_worker_pool = NULL;
-    }
-
-    FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
-  }
-
-  // Initialize WebSocket server (for browser clients)
-  websocket_server_config_t ws_config = {
-      .port = GET_OPTION(websocket_port),
-      .client_handler = websocket_client_handler,
-      .user_data = &server_ctx,
-      .tls_cert_path = GET_OPTION(websocket_tls_cert),
-      .tls_key_path = GET_OPTION(websocket_tls_key),
-  };
-
-  // Log WSS configuration if provided
-  if (ws_config.tls_cert_path && ws_config.tls_key_path) {
-    log_info("WebSocket server configured for WSS with cert=%s key=%s",
-             ws_config.tls_cert_path, ws_config.tls_key_path);
-  }
-
-  memset(&g_websocket_server, 0, sizeof(g_websocket_server));
-  asciichat_error_t ws_init_result = websocket_server_init(&g_websocket_server, &ws_config);
-  if (ws_init_result != ASCIICHAT_OK) {
-    log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
-  } else {
-    log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
-  }
-
-  // DEBUG: Print lock state immediately after WebSocket init
-  log_info("★★★ LOCK STATE AFTER WEBSOCKET INIT ★★★");
-  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
-
-  // =========================================================================
-  // UPnP Port Mapping (Quick Win for Direct TCP)
-  // =========================================================================
-  // Track UPnP success for ACDS session type decision
-  // If UPnP fails, we need to create a WebRTC session to enable client connectivity
-  bool upnp_succeeded = false;
-
-  // Try to open port via UPnP so direct TCP works for ~70% of home users.
-  // If this fails, clients fall back to WebRTC automatically - not fatal.
-  //
-  // Strategy:
-  //   1. UPnP (works on ~90% of home routers)
-  //   2. NAT-PMP fallback (Apple routers)
-  //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-  if (GET_OPTION(enable_upnp)) {
-    asciichat_error_t upnp_result = nat_upnp_open(port, "ascii-chat Server", &g_upnp_ctx);
-
-    if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
-      char public_addr[22];
-      if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        char msg[256];
-        safe_snprintf(msg, sizeof(msg), "🌐 Public endpoint: %s (direct TCP)", public_addr);
-        log_console(LOG_INFO, msg);
-        log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
-        upnp_succeeded = true;
-      }
-    } else {
-      log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-      log_console(LOG_INFO, "📡 Clients behind strict NATs will use WebRTC fallback");
-    }
-  } else {
-    log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
-  }
+  // UPnP success check for ACDS session type decision
+  nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
+  bool upnp_succeeded = (upnp_ctx != NULL);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
-    FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
   // Register global sync primitives for debugging
   NAMED_REGISTER_RWLOCK(&g_client_manager_rwlock, "client_manager_rwlock", NULL);
 
-  // Lock debug system already initialized earlier in main()
-
   // Check if SIGINT/SIGTERM was received during initialization
-  // If so, skip the accept loop entirely and go to cleanup
   if (atomic_load_bool(&g_should_exit)) {
     log_info("Shutdown signal received during initialization, skipping server startup");
-    goto cleanup;
+    return ASCIICHAT_OK;
   }
-
-  // Lock debug thread already started earlier in main()
 
   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
   // We only need to initialize the mutex
@@ -2059,7 +1520,7 @@ int server_main(void) {
     if (!g_rate_limiter) {
       LOG_ERRNO_IF_SET("Failed to initialize rate limiter");
       if (!atomic_load_bool(&g_should_exit)) {
-        FATAL(ERROR_MEMORY, "Failed to create connection rate limiter");
+        return SET_ERRNO(ERROR_MEMORY, "Failed to create connection rate limiter");
       }
     } else {
       log_info("Connection rate limiter initialized (50 connections/min per IP)");
@@ -2073,7 +1534,7 @@ int server_main(void) {
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
       if (!atomic_load_bool(&g_should_exit)) {
-        FATAL(ERROR_AUDIO, "Failed to initialize audio mixer");
+        return SET_ERRNO(ERROR_AUDIO, "Failed to initialize audio mixer");
       }
     } else {
       if (!atomic_load_bool(&g_should_exit)) {
@@ -2089,7 +1550,7 @@ int server_main(void) {
     if (!g_h265_server) {
       LOG_ERRNO_IF_SET("Failed to initialize H.265 codec context");
       if (!atomic_load_bool(&g_should_exit)) {
-        FATAL(ERROR_MEDIA_INIT, "Failed to initialize H.265 codec context");
+        return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize H.265 codec context");
       }
     } else {
       if (!atomic_load_bool(&g_should_exit)) {
@@ -2098,30 +1559,12 @@ int server_main(void) {
     }
   }
 
-  // Initialize mDNS context for LAN service discovery (optional)
-  // mDNS allows clients on the LAN to discover this server without knowing its IP
-  // Can be disabled with --no-mdns-advertise
-  // Note: Actual advertisement is deferred until after ACDS session creation (if --acds is enabled)
-  if (!atomic_load_bool(&g_should_exit) && !GET_OPTION(no_mdns_advertise)) {
-    log_debug("Initializing mDNS for LAN service discovery...");
-    g_mdns_ctx = asciichat_mdns_init();
-    if (!g_mdns_ctx) {
-      LOG_ERRNO_IF_SET("Failed to initialize mDNS (non-fatal, LAN discovery disabled)");
-      log_warn("mDNS disabled - LAN service discovery will not be available");
-      g_mdns_ctx = NULL;
-    } else {
-      log_debug("mDNS context initialized, advertisement deferred until session string is ready");
-    }
-  } else if (GET_OPTION(no_mdns_advertise)) {
-    log_info("mDNS service advertisement disabled via --no-mdns-advertise");
-  }
-
-  // ========================================================================
   // Session Host Creation (for discovery mode support)
-  // ========================================================================
   // Create session_host to track clients in a transport-agnostic way.
-  // This enables future discovery mode where participants can become hosts.
   if (!atomic_load_bool(&g_should_exit)) {
+    const char *ipv4_address = tcp->config.ipv4_address;
+    const char *ipv6_address = tcp->config.ipv6_address;
+
     session_host_config_t host_config = {
         .port = port,
         .ipv4_address = ipv4_address,
@@ -2134,8 +1577,8 @@ int server_main(void) {
         .user_data = NULL,
     };
 
-    server_ctx.session_host = session_host_create(&host_config);
-    if (!server_ctx.session_host) {
+    g_server_ctx.session_host = session_host_create(&host_config);
+    if (!g_server_ctx.session_host) {
       // Non-fatal: session_host is optional, server can work without it
       log_warn("Failed to create session_host (discovery mode support disabled)");
     } else {
@@ -2143,20 +1586,9 @@ int server_main(void) {
     }
   }
 
-  // ========================================================================
-  // MAIN CONNECTION LOOP - Delegated to tcp_server
-  // ========================================================================
-  //
-  // The tcp_server module handles:
-  // 1. Dual-stack IPv4/IPv6 accept loop with select() timeout
-  // 2. Spawning client_handler threads for each connection
-  // 3. Responsive shutdown when g_tcp_server.running is set to false
-  //
-  // Client lifecycle is managed by ascii_chat_client_handler() which:
-  // - Performs rate limiting
-  // - Calls add_client() to initialize structures and spawn workers
-  // - Blocks until client disconnects
-  // - Calls remove_client() to cleanup and stop worker threads
+  // Update server context fields that depend on init results
+  g_server_ctx.rate_limiter = g_rate_limiter;
+  g_server_ctx.audio_mixer = g_audio_mixer;
 
   // ACDS Session Creation: Register this server with discovery service
   // This also determines the session string for mDNS (if --acds is enabled)
@@ -2181,7 +1613,7 @@ int server_main(void) {
     if (has_password || has_identity) {
       // Auto-enable privacy: IP revealed only after verification
       acds_expose_ip_flag = false;
-      log_plain("🔒 ACDS privacy enabled: IP disclosed only after %s verification",
+      log_plain("ACDS privacy enabled: IP disclosed only after %s verification",
                 has_password ? "password" : "identity");
     } else if (explicit_expose) {
       // Explicit opt-in to public IP disclosure
@@ -2190,7 +1622,7 @@ int server_main(void) {
       bool is_interactive = terminal_can_prompt_user();
 
       if (is_interactive) {
-        log_warn("WARNING: You are about to allow PUBLIC IP disclosure!\n"
+        log_warn("You are about to allow PUBLIC IP disclosure.\n"
                  "Anyone with the session string will be able to see your IP address.\n"
                  "This is NOT RECOMMENDED unless you understand the privacy implications.");
 
@@ -2420,7 +1852,7 @@ int server_main(void) {
                 .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
                 .turn_count = 0,
                 .on_transport_ready = on_webrtc_transport_ready,
-                .user_data = &server_ctx,
+                .user_data = &g_server_ctx,
                 .crypto_ctx = NULL // WebRTC handles crypto internally
             };
 
@@ -2477,14 +1909,14 @@ int server_main(void) {
 skip_acds_session:
   // Fallback: If no session string was set by ACDS (either disabled or failed),
   // generate a random session string for mDNS discovery only
-  if (session_string[0] == '\0' && g_mdns_ctx) {
+  if (session_string[0] == '\0' && session_server_like_get_mdns_ctx()) {
     log_debug("No ACDS session string available, generating random session for mDNS");
 
     // Use the proper session string generation from discovery module
     // This generates adjective-noun-noun format using the full wordlists
     if (acds_string_generate(session_string, sizeof(session_string)) != ASCIICHAT_OK) {
       log_error("Failed to generate session string for mDNS");
-      return 1;
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to generate session string for mDNS");
     }
 
     log_debug("Generated random session string for mDNS: '%s'", session_string);
@@ -2518,85 +1950,29 @@ skip_acds_session:
   SAFE_STRNCPY(g_session_string, session_string, sizeof(g_session_string));
   g_session_is_mdns_only = session_is_mdns_only;
 
-  log_debug("Server entering accept loop (port %d)...", port);
-
-  // Initialize status screen
+  // Initialize status screen timestamps
   g_server_start_time = time(NULL);
   g_last_status_update = platform_get_monotonic_time_us();
 
-  // Clear status screen log buffer to discard initialization logs
-  // This ensures only NEW logs (generated after status screen starts) are displayed
-  if (GET_OPTION(status_screen)) {
-    ui_status_log_clear();
-  }
+  log_debug("Server init_fn complete");
+  return ASCIICHAT_OK;
+}
 
-  // Start status screen thread if enabled
-  // Runs independently at target FPS (default 60 Hz), decoupled from network accept loop
-  if (GET_OPTION(status_screen)) {
-    if (asciichat_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread, NULL) != 0) {
-      log_error("Failed to create status screen thread");
-      goto cleanup;
-    }
-    log_debug("Status screen thread started");
-  }
+/* ============================================================================
+ * Mode-specific cleanup callback
+ * ============================================================================ */
+static void server_cleanup_fn(void *user_data) {
+  (void)user_data;
 
-  // Start WebSocket server thread if initialized
-  if (g_websocket_server.context != NULL) {
-    if (asciichat_thread_create(&g_websocket_server_thread, "ws_server", websocket_server_thread_wrapper,
-                                &g_websocket_server) != 0) {
-      log_error("Failed to create WebSocket server thread");
-    } else {
-      g_websocket_server_thread_started = true;
-      log_info("WebSocket server thread started");
-    }
-  }
-
-  // Run TCP server (blocks until shutdown signal received)
-  // tcp_server_run() handles:
-  // - select() on IPv4/IPv6 sockets with timeout
-  // - accept() new connections
-  // - Spawn ascii_chat_client_handler() thread for each connection
-  // - Responsive shutdown when atomic_store_bool(&g_tcp_server.running, false)
-  asciichat_error_t run_result = tcp_server_run(&g_tcp_server);
-  if (run_result != ASCIICHAT_OK) {
-    log_error("TCP server exited with error");
-  }
-
-  log_debug("Server accept loop exited");
-
-cleanup:
-  // Signal status screen thread to exit
-  atomic_store_bool(&g_should_exit, true);
-
-  // Wait for status screen thread to finish if it was started
-  if (GET_OPTION(status_screen)) {
-    log_debug("Waiting for status screen thread to exit...");
-    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, NS_PER_SEC_INT); // 1 second
-    if (join_result != 0) {
-      log_warn("Status screen thread did not exit cleanly (timeout)");
-    } else {
-      log_debug("Status screen thread exited");
-    }
-  }
-
-  // Cleanup
   log_debug("Server shutting down...");
   memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
 
   // Wake up any threads that might be blocked on condition variables
   // (like packet queues) to ensure responsive shutdown
-  // This must happen BEFORE client cleanup to wake up any blocked threads
   static_cond_broadcast(&g_shutdown_cond);
-  // NOTE: Do NOT call cond_destroy() on statically-initialized condition variables
-  // g_shutdown_cond uses STATIC_COND_INIT which doesn't allocate resources that need cleanup
-  // Calling cond_destroy() on a static cond is undefined behavior on some platforms
 
   // Close all client sockets immediately to unblock receive threads.
-  // The signal handler only closed the listening socket, but client receive threads
-  // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_debug("Closing all client sockets to unblock receive threads...");
-
-  // Use write lock since we're modifying client->socket
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
@@ -2622,46 +1998,8 @@ cleanup:
     g_rate_limiter = NULL;
   }
 
-  // Shutdown WebSocket server BEFORE removing clients.
-  // The LWS event thread runs callbacks that access transport data (impl_data).
-  // If we destroy transports via remove_client while LWS is still running,
-  // callbacks access freed memory (heap-use-after-free).
-  // lws_context_destroy fires LWS_CALLBACK_CLOSED for all connections, which
-  // closes transports and NULLs the per-session conn_data->transport pointer.
-  // After this, remove_client can safely destroy the transport objects.
-  bool websocket_exited_cleanly = true;  // Default to clean unless timeout detected
-  if (g_websocket_server.context != NULL) {
-    log_debug("Shutting down WebSocket server before client cleanup");
-    atomic_store_u64(&g_websocket_server.running, false);
-    // Wake the LWS event loop immediately instead of waiting for the 50ms
-    // lws_service timeout. This is safe because the event loop thread can't
-    // destroy the context until after it exits its loop (which requires
-    // seeing running=false, which we just set).
-    websocket_server_cancel_service(&g_websocket_server);
-
-    // Join with 500ms timeout. If the WebSocket thread is deadlocked in lws_service(),
-    // it won't exit and we skip the graceful handler thread cleanup to avoid prolonged
-    // shutdown hangs. Forceful cleanup will happen in websocket_server_destroy().
-    if (g_websocket_server_thread_started) {
-      int join_result =
-          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 500 * NS_PER_MS_INT); // 500ms in ns
-      if (join_result != 0) {
-        log_warn("WebSocket thread did not exit within 500ms, skipping graceful handler cleanup");
-        websocket_exited_cleanly = false;
-      }
-      g_websocket_server_thread_started = false;
-    }
-
-    if (websocket_exited_cleanly) {
-      log_debug("WebSocket thread confirmed exited, waiting for handler threads to complete...");
-    }
-  }
-
-  // Wait for all client handler threads to exit BEFORE destroying WebSocket context
-  // Handler threads may still be working with WebSocket connections, so we must
-  // ensure they complete before destroying the context (which would abort their operations).
-  // Skip this if WebSocket thread didn't exit cleanly (deadlock detected).
-  if (websocket_exited_cleanly) {
+  // Wait for all client handler threads to exit
+  {
     int retry_count = 0;
     while (retry_count < 50) { // Max 500ms wait
       rwlock_rdlock(&g_client_manager_rwlock);
@@ -2679,81 +2017,44 @@ cleanup:
       platform_sleep_us(10 * US_PER_MS_INT); // 10ms
       retry_count++;
     }
-    log_debug("Client handler threads cleaned up, destroying WebSocket server");
-  } else {
-    log_warn("Skipping graceful handler thread cleanup due to WebSocket deadlock");
+    log_debug("Client handler threads cleaned up");
   }
 
-  // ★ CRITICAL: Cleanup debug sync BEFORE destroying websocket_server
-  // The debug_sync thread runs concurrently and accesses the named registry.
-  // If websocket_server_destroy() frees thread pool memory first, the debug thread
-  // will get a use-after-free error trying to check condition variables.
-  // Moving this before websocket destroy prevents the race condition.
+  // Cleanup debug sync BEFORE destroying websocket_server
 #ifndef NDEBUG
   debug_sync_destroy();
 #endif
 
-  // Now destroy WebSocket server after all handler threads have completed
-  // This ensures no handler threads are still accessing the context.
-  // (It's safe to call even if context was already destroyed forcefully above)
-  websocket_server_destroy(&g_websocket_server);
-  log_debug("WebSocket server destroyed");
-
-  // Cleanup status screen log capture (must be AFTER all client threads exit to avoid use-after-free)
-  // Client threads may still be appending logs during the wait loop above, so we destroy the buffer only
-  // after we've confirmed they've all exited.
-  ui_status_log_destroy();
-
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
-  // FIXED: Simplified to collect client IDs first, then remove them without holding locks
   char clients_to_remove[MAX_CLIENTS][MAX_CLIENT_ID_LEN];
   int client_count = 0;
 
   rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-
-    // Only attempt to clean up clients that were actually connected
-    // (client_id is empty string for uninitialized clients)
-    // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
     if (client->client_id[0] == '\0') {
-      continue; // Skip uninitialized clients
+      continue;
     }
-
-    // Use snapshot pattern to avoid holding both locks simultaneously
-    // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
     SAFE_STRNCPY(clients_to_remove[client_count], client->client_id, MAX_CLIENT_ID_LEN - 1);
-
-    // Clean up ANY client that was allocated, whether active or not
-    // (disconnected clients may not be active but still have resources)
     client_count++;
   }
   rwlock_rdunlock(&g_client_manager_rwlock);
 
-  // Remove all clients without holding any locks
   for (int i = 0; i < client_count; i++) {
-    if (remove_client(&server_ctx, clients_to_remove[i]) != 0) {
+    if (remove_client(&g_server_ctx, clients_to_remove[i]) != 0) {
       log_error("Failed to remove client %s during shutdown", clients_to_remove[i]);
     }
   }
 
   // Clean up hash table
-  // Cannot use HASH_ITER when deleting - HASH_DELETE modifies the table and can set
-  // the pointer to NULL, causing HASH_ITER to dereference a null pointer.
-  // Instead, repeatedly delete the first item until the table is empty.
   while (g_client_manager.clients_by_id) {
     client_info_t *current_client = g_client_manager.clients_by_id;
     HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
-    // Note: We don't free current_client here because it's part of the clients[] array
   }
 
   // Clean up audio mixer
   if (g_audio_mixer) {
-    // Set to NULL first before destroying.
-    // Client handler threads may still be running and checking g_audio_mixer.
-    // Setting it to NULL first prevents use-after-free race condition.
-    // volatile ensures this write is visible to other threads immediately
     mixer_t *mixer_to_destroy = g_audio_mixer;
     g_audio_mixer = NULL;
     mixer_destroy(mixer_to_destroy);
@@ -2761,19 +2062,10 @@ cleanup:
 
   // Clean up H.265 codec server context
   if (g_h265_server) {
-    // Set to NULL first before destroying, similar to g_audio_mixer
-    // Client handler threads may still be running and checking g_h265_server.
     h265_server_context_t *h265_to_destroy = g_h265_server;
     g_h265_server = NULL;
     h265_server_context_destroy(h265_to_destroy);
     log_debug("H.265 codec server context shut down");
-  }
-
-  // Clean up mDNS context
-  if (g_mdns_ctx) {
-    asciichat_mdns_destroy(g_mdns_ctx);
-    g_mdns_ctx = NULL;
-    log_debug("mDNS context shut down");
   }
 
   // Clean up synchronization primitives
@@ -2781,34 +2073,26 @@ cleanup:
   mutex_destroy(&g_client_manager.mutex);
 
 #ifndef NDEBUG
-  // Clean up statistics system
   stats_cleanup();
-
-  // Note: debug_sync_destroy() is now called earlier (before websocket_server_destroy)
-  // to avoid use-after-free race condition with the debug monitoring thread
 #endif
 
-  // Destroy session host (before TCP server shutdown)
-  if (server_ctx.session_host) {
+  // Destroy session host
+  if (g_server_ctx.session_host) {
     log_debug("Destroying session host");
-    session_host_destroy(server_ctx.session_host);
-    server_ctx.session_host = NULL;
+    session_host_destroy(g_server_ctx.session_host);
+    g_server_ctx.session_host = NULL;
   }
 
-  // Destroy H.265 server codec context
-  if (server_ctx.h265_server) {
+  // Destroy H.265 server codec context from server_ctx
+  if (g_server_ctx.h265_server) {
     log_debug("Destroying H.265 server context");
-    h265_server_context_destroy(server_ctx.h265_server);
-    server_ctx.h265_server = NULL;
+    h265_server_context_destroy(g_server_ctx.h265_server);
+    g_server_ctx.h265_server = NULL;
   }
 
-  // Shutdown TCP server (closes listen sockets and cleans up)
-  tcp_server_destroy(&g_tcp_server);
-
-  // WebSocket server already shut down before client cleanup (above).
+  // TCP server, WebSocket server, mDNS, UPnP are destroyed by server_like.
 
   // Join ACDS threads (if started)
-  // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
   if (g_acds_ping_thread_started) {
     log_debug("Joining ACDS ping thread");
     asciichat_thread_join(&g_acds_ping_thread, NULL);
@@ -2823,39 +2107,142 @@ cleanup:
     log_debug("ACDS receive thread joined");
   }
 
-  // Clean up WebRTC peer manager (if initialized for ACDS signaling relay)
+  // Clean up WebRTC peer manager
   if (g_webrtc_peer_manager) {
     log_debug("Destroying WebRTC peer manager");
     webrtc_peer_manager_destroy(g_webrtc_peer_manager);
     g_webrtc_peer_manager = NULL;
   }
 
-  // Clean up ACDS transport wrapper (if created)
+  // Clean up ACDS transport wrapper
   if (g_acds_transport) {
     log_debug("Destroying ACDS transport wrapper");
     acip_transport_destroy(g_acds_transport);
     g_acds_transport = NULL;
   }
 
-  // Disconnect from ACDS server (if connected for WebRTC signaling relay)
+  // Disconnect from ACDS server
   if (g_acds_client) {
     log_debug("Disconnecting from ACDS server");
     acds_client_disconnect(g_acds_client);
     SAFE_FREE(g_acds_client);
     g_acds_client = NULL;
   }
-  // Disable keepawake mode (re-allow OS to sleep)
-  platform_disable_keepawake();
 
-  // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
-  // POSIX: minimal cleanup (symbol cache already handled above on Windows)
+  // Clean up platform-specific resources
   socket_cleanup();
 
   log_info("Server shutdown complete");
-
   asciichat_error_stats_print();
+}
 
-  // Use exit() to allow atexit() handlers to run
-  // Cleanup functions are idempotent (check if initialized first)
-  return 0;
+/* ============================================================================
+ * server_main() - Entry point, delegates to session_server_like_run()
+ * ============================================================================ */
+int server_main(void) {
+  // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
+
+  // Register atomic for debug tracking
+  ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
+
+  // Register shutdown check callback for library code
+  shutdown_register_callback(check_shutdown);
+
+  // Initialize crypto after logging is ready
+  log_debug("Initializing crypto...");
+  if (init_server_crypto() != 0) {
+    LOG_ERRNO_IF_SET("Crypto initialization failed");
+    FATAL(ERROR_CRYPTO, "Crypto initialization failed");
+  }
+  log_debug("Crypto initialized successfully");
+
+  log_info("ascii-chat server starting...");
+
+  int port = GET_OPTION(port);
+  if (port < 1 || port > 65535) {
+    log_error("Invalid port configuration: %d", port);
+    FATAL(ERROR_CONFIG, "Invalid port configuration: %d", port);
+  }
+
+  ascii_simd_init();
+  precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+
+#ifndef NDEBUG
+  if (stats_init() != 0) {
+    FATAL(ERROR_THREAD, "Statistics system initialization failed");
+  }
+#endif
+
+  // Create background worker thread pool for server operations
+  g_server_worker_pool = thread_pool_create("server_workers");
+  if (!g_server_worker_pool) {
+    LOG_ERRNO_IF_SET("Failed to create server worker thread pool");
+    FATAL(ERROR_MEMORY, "Failed to create server worker thread pool");
+  }
+
+  // Spawn statistics logging thread in worker pool
+  if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, "stats_logger") != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
+  } else {
+    log_debug("Statistics logger thread started");
+  }
+
+  // Create H.265 server decoder context for multi-client codec support
+  h265_server_context_t *h265_server_ctx = h265_server_context_create();
+  if (!h265_server_ctx) {
+    log_error("Failed to create H.265 server context");
+    FATAL(ERROR_MEDIA_INIT, "Cannot initialize H.265 codec support");
+  }
+
+  // Initialize static server context (populated further in server_init_fn)
+  g_server_ctx = (server_context_t){
+      .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
+      .rate_limiter = g_rate_limiter,
+      .client_manager = &g_client_manager,
+      .client_manager_rwlock = &g_client_manager_rwlock,
+      .server_should_exit = &g_should_exit,
+      .audio_mixer = g_audio_mixer,
+      .stats = &g_stats,
+      .stats_mutex = &g_stats_mutex,
+      .encryption_enabled = g_server_encryption_enabled,
+      .server_private_key = &g_server_private_key,
+      .client_whitelist = g_client_whitelist,
+      .num_whitelisted_clients = g_num_whitelisted_clients,
+      .session_host = NULL,
+      .h265_server = h265_server_ctx,
+  };
+
+  session_server_like_config_t config = {
+      .init_fn = server_init_fn,
+      .init_user_data = NULL,
+      .interrupt_fn = server_handle_sigint,
+      .cleanup_fn = server_cleanup_fn,
+      .cleanup_user_data = NULL,
+      .status_fn = server_status_fn,
+      .status_user_data = NULL,
+      .tcp_handler = ascii_chat_client_handler,
+      .tcp_user_data = &g_server_ctx,
+      .websocket =
+          {
+              .enabled = true,
+              .handler = websocket_client_handler,
+              .user_data = &g_server_ctx,
+          },
+      .mdns =
+          {
+              .enabled = !GET_OPTION(no_mdns_advertise),
+              .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
+              .service_type = "_ascii-chat._tcp",
+          },
+      .upnp =
+          {
+              .enabled = GET_OPTION(enable_upnp),
+              .description = "ascii-chat Server",
+          },
+      .raise_fd_limit = false,
+      .fd_limit_target = 0,
+  };
+
+  asciichat_error_t result = session_server_like_run(&config);
+  return (result == ASCIICHAT_OK) ? 0 : 1;
 }

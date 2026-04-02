@@ -1411,13 +1411,26 @@ void debug_memory_thread_cleanup(void) {
   }
 }
 
-#elif defined(DEBUG_MEMORY)
+#else
+
+// ============================================================================
+// Release Build Stubs (for when DEBUG_MEMORY is not defined or NDEBUG is set)
+// ============================================================================
+
+#include <stdlib.h>
+
+void debug_memory_ensure_init(void) {
+  // No-op in release builds
+}
 
 void debug_memory_set_quiet_mode(bool quiet) {
   (void)quiet;
+  // No-op in release builds
 }
 
-void debug_memory_report(void) {}
+void debug_memory_report(void) {
+  // No-op in release builds
+}
 
 int debug_memory_thread_init(void) {
   return 0;
@@ -1427,9 +1440,13 @@ int debug_memory_thread_start(void) {
   return 0;
 }
 
-void debug_memory_trigger_report(void) {}
+void debug_memory_trigger_report(void) {
+  // No-op in release builds
+}
 
-void debug_memory_thread_cleanup(void) {}
+void debug_memory_thread_cleanup(void) {
+  // No-op in release builds
+}
 
 void *debug_malloc(size_t size, const char *file, int line) {
   (void)file;
@@ -1462,77 +1479,8 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   (void)line;
 }
 
-/**
- * @brief Asynchronously symbolize unsymbolized backtraces from memory allocations
- * Called by debug sync thread to avoid blocking the memory report during shutdown
- */
-void debug_sync_symbolize_allocations(void) {
-  if (!g_site_cache) {
-    return; // No allocations to symbolize
-  }
+bool g_in_debug_memory = false;
 
-  if (!ensure_mutex_initialized()) {
-    return; // Can't acquire mutex
-  }
-
-  // Try to acquire mutex with short timeout (don't block the debug thread)
-  if (!acquire_mutex_with_polling(&g_mem.mutex, 50)) {
-    return; // Mutex busy, skip this iteration
-  }
-
-  // Iterate site cache and symbolize backtraces that haven't been tried yet
-  alloc_site_t *site, *tmp;
-  int symbolized_count = 0;
-  const int max_per_iteration = 5; // Symbolize max 5 backtraces per iteration
-
-  HASH_ITER(hh, g_site_cache, site, tmp) {
-    if (symbolized_count >= max_per_iteration) {
-      break; // Don't symbolize too many in one iteration
-    }
-
-    // Only symbolize backtraces that haven't been tried yet
-    if (site->backtrace.count > 0 && !site->backtrace.tried_symbolize) {
-      backtrace_symbolize(&site->backtrace);
-      symbolized_count++;
-    }
-  }
-
-  mutex_unlock(&g_mem.mutex);
-}
-
-#else
-
-// ============================================================================
-// Release Build Stubs (for when DEBUG_MEMORY is not defined or NDEBUG is set)
-// ============================================================================
-
-void debug_memory_ensure_init(void) {
-  // No-op in release builds
-}
-
-void debug_memory_set_quiet_mode(bool quiet) {
-  (void)quiet;
-  // No-op in release builds
-}
-
-void debug_memory_report(void) {
-  // No-op in release builds
-}
-
-int debug_memory_thread_init(void) {
-  return 0;
-}
-
-int debug_memory_thread_start(void) {
-  return 0;
-}
-
-void debug_memory_trigger_report(void) {
-  // No-op in release builds
-}
-
-void debug_memory_thread_cleanup(void) {
-  // No-op in release builds
-}
+void debug_sync_symbolize_allocations(void) {}
 
 #endif

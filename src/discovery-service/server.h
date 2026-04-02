@@ -113,7 +113,7 @@ typedef struct {
  * directly in SQLite as the single source of truth.
  */
 typedef struct {
-  tcp_server_t tcp_server; ///< TCP server abstraction
+  tcp_server_t *tcp_server; ///< TCP server (owned by server_like)
 
   // Identity
   uint8_t identity_public[32]; ///< Ed25519 public key
@@ -151,17 +151,6 @@ typedef struct {
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *config);
-
-/**
- * @brief Run discovery server main loop
- *
- * Accepts client connections and spawns handler threads. Blocks
- * until shutdown signal received.
- *
- * @param server Initialized server structure
- * @return ASCIICHAT_OK on success, error code otherwise
- */
-asciichat_error_t acds_server_run(acds_server_t *server);
 
 /**
  * @brief Shutdown discovery server

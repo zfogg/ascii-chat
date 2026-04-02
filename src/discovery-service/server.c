@@ -13,6 +13,7 @@
  */
 
 #include "discovery-service/server.h"
+#include "common/session/server_like.h"
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/session.h>
 #include <ascii-chat/discovery/identity.h>
@@ -221,24 +222,12 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   // Set the database handle for the rate limiter
   rate_limiter_set_sqlite_db(server->rate_limiter, server->db);
 
-  // Configure TCP server
-  tcp_server_config_t tcp_config = {
-      .port = config->port,
-      .ipv4_address = (config->address[0] != '\0') ? config->address : NULL,
-      .ipv6_address = (config->address6[0] != '\0') ? config->address6 : NULL,
-      .bind_ipv4 = (config->address[0] != '\0') || (config->address[0] == '\0' && config->address6[0] == '\0'),
-      .bind_ipv6 = (config->address6[0] != '\0') || (config->address[0] == '\0' && config->address6[0] == '\0'),
-      .accept_timeout_sec = 1,
-      .client_handler = acds_client_handler,
-      .user_data = server,
-  };
-
-  // Initialize TCP server
-  result = tcp_server_init(&server->tcp_server, &tcp_config);
-  if (result != ASCIICHAT_OK) {
+  // Get TCP server from server_like (it owns the lifecycle)
+  server->tcp_server = session_server_like_get_tcp_server();
+  if (!server->tcp_server) {
     rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
-    return result;
+    return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
   }
 
   // Initialize background worker thread pool
@@ -246,7 +235,6 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   server->worker_pool = thread_pool_create("acds_workers");
   if (!server->worker_pool) {
     log_warn("Failed to create worker thread pool");
-    tcp_server_destroy(&server->tcp_server);
     rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
@@ -261,17 +249,6 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_server_run(acds_server_t *server) {
-  if (!server) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
-  }
-
-  log_info("Discovery server accepting connections on port %d", server->config.port);
-
-  // Delegate to TCP server abstraction
-  return tcp_server_run(&server->tcp_server);
-}
-
 void acds_server_shutdown(acds_server_t *server) {
   if (!server) {
     return;
@@ -280,27 +257,27 @@ void acds_server_shutdown(acds_server_t *server) {
   // Signal shutdown to worker threads
   atomic_store_bool(&server->shutdown, true);
 
-  // Shutdown TCP server (closes listen sockets, stops accept loop)
-  tcp_server_destroy(&server->tcp_server);
-
   // Wait for all client handler threads to exit
-  size_t remaining_clients;
-  int shutdown_attempts = 0;
-  const int max_shutdown_attempts = 100; // 10 seconds (100 * 100ms)
+  // TCP server is still alive (server_like destroys it after cleanup_fn)
+  if (server->tcp_server) {
+    size_t remaining_clients;
+    int shutdown_attempts = 0;
+    const int max_shutdown_attempts = 100; // 10 seconds (100 * 100ms)
 
-  while ((remaining_clients = tcp_server_get_client_count(&server->tcp_server)) > 0 &&
-         shutdown_attempts < max_shutdown_attempts) {
-    log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)", remaining_clients,
-              shutdown_attempts + 1, max_shutdown_attempts);
-    APP_CALLBACK_VOID(platform_pump_events);
-    platform_sleep_ms(100);
-    shutdown_attempts++;
-  }
+    while ((remaining_clients = tcp_server_get_client_count(server->tcp_server)) > 0 &&
+           shutdown_attempts < max_shutdown_attempts) {
+      log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)", remaining_clients,
+                shutdown_attempts + 1, max_shutdown_attempts);
+      APP_CALLBACK_VOID(platform_pump_events);
+      platform_sleep_ms(100);
+      shutdown_attempts++;
+    }
 
-  if (remaining_clients > 0) {
-    log_warn("Server shutdown: %zu client handler threads still running after 10 seconds", remaining_clients);
-  } else if (shutdown_attempts > 0) {
-    log_debug("All client handler threads exited gracefully");
+    if (remaining_clients > 0) {
+      log_warn("Server shutdown: %zu client handler threads still running after 10 seconds", remaining_clients);
+    } else if (shutdown_attempts > 0) {
+      log_debug("All client handler threads exited gracefully");
+    }
   }
 
   // Stop and destroy worker thread pool (cleanup thread, etc.)
@@ -777,7 +754,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     participant_joined.current_participant_count = resp.peer_count + 1;
 
     asciichat_error_t broadcast_result =
-        signaling_broadcast(server->db, &server->tcp_server, resp.session_id, PACKET_TYPE_ACIP_PARTICIPANT_JOINED,
+        signaling_broadcast(server->db, server->tcp_server, resp.session_id, PACKET_TYPE_ACIP_PARTICIPANT_JOINED,
                             &participant_joined, sizeof(participant_joined), resp.participant_id);
 
     if (broadcast_result != ASCIICHAT_OK) {
@@ -821,7 +798,7 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len,
   log_debug("WEBRTC_SDP packet from %s", client_ip);
 
   // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
-  asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_len);
+  asciichat_error_t relay_result = signaling_relay_sdp(server->db, server->tcp_server, sdp, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "SDP relay failed");
     log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
@@ -836,7 +813,7 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   log_debug("WEBRTC_ICE packet from %s", client_ip);
 
   // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
-  asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_len);
+  asciichat_error_t relay_result = signaling_relay_ice(server->db, server->tcp_server, ice, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "ICE relay failed");
     log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
@@ -858,7 +835,7 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
 
   // Validation and relay
   asciichat_error_t relay_result =
-      signaling_relay_network_quality(server->db, &server->tcp_server, quality, payload_len);
+      signaling_relay_network_quality(server->db, server->tcp_server, quality, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
     log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
@@ -987,7 +964,7 @@ void *acds_client_handler(void *arg) {
   memcpy(client_data->handshake_ctx.server_public_key.key, server->identity_public, 32);
   memcpy(client_data->handshake_ctx.server_private_key.key.ed25519, server->identity_secret, 64);
 
-  if (tcp_server_add_client(&server->tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
+  if (tcp_server_add_client(server->tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
     SAFE_FREE(client_data);
     tcp_server_reject_client(client_socket, "Failed to register client in registry");
     SAFE_FREE(ctx);
@@ -995,119 +972,26 @@ void *acds_client_handler(void *arg) {
   }
 
   log_debug("Client %s registered (socket=%d, total=%zu)", client_ip, client_socket,
-            tcp_server_get_client_count(&server->tcp_server));
+            tcp_server_get_client_count(server->tcp_server));
 
   // Create transport for handshake and subsequent client communication
   acip_transport_t *transport = acip_tcp_transport_create("acds_tcp_client", client_socket, NULL);
   if (!transport) {
     log_error("Failed to create TCP transport for client %s", client_ip);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
+    tcp_server_remove_client(server->tcp_server, client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
-  // Perform crypto handshake (three-step process)
+  // Perform crypto handshake using shared server_like implementation
   log_debug("Performing crypto handshake with client %s", client_ip);
-
-  // Step -1: Receive and discard protocol version from client
-  {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    handshake_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (handshake_result != ASCIICHAT_OK) {
-      log_warn("Failed to receive PROTOCOL_VERSION from client %s", client_ip);
-      acip_transport_destroy(transport);
-      tcp_server_remove_client(&server->tcp_server, client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-
-    if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-      log_warn("Expected PROTOCOL_VERSION, got packet type %u from client %s", pkt_type, client_ip);
-      buffer_pool_free(NULL, alloc_buffer, 0);
-      acip_transport_destroy(transport);
-      tcp_server_remove_client(&server->tcp_server, client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-
-    buffer_pool_free(NULL, alloc_buffer, 0);
-    log_debug("Received PROTOCOL_VERSION from client %s", client_ip);
-  }
-
-  // Step 0: Send crypto parameters
-  handshake_result = crypto_handshake_server_send_parameters(&client_data->handshake_ctx, transport);
+  handshake_result = session_server_like_handshake(&client_data->handshake_ctx, transport);
   if (handshake_result != ASCIICHAT_OK) {
-    log_warn("Crypto parameters send failed for client %s", client_ip);
+    log_warn("Crypto handshake failed for client %s", client_ip);
     acip_transport_destroy(transport);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
+    tcp_server_remove_client(server->tcp_server, client_socket);
     SAFE_FREE(ctx);
     return NULL;
-  }
-
-  // Step 1: Start handshake (send server key, receive client key)
-  handshake_result = crypto_handshake_server_start(&client_data->handshake_ctx, transport);
-  if (handshake_result != ASCIICHAT_OK) {
-    log_warn("Crypto handshake start failed for client %s", client_ip);
-    acip_transport_destroy(transport);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  // Step 2: Authentication challenge (if required)
-  {
-    packet_type_t packet_type;
-    uint8_t *payload = NULL;
-    size_t payload_len = 0;
-    int recv_result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
-    if (recv_result != ASCIICHAT_OK) {
-      log_warn("Failed to receive KEY_EXCHANGE_RESPONSE from client %s", client_ip);
-      acip_transport_destroy(transport);
-      tcp_server_remove_client(&server->tcp_server, client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-    handshake_result = crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, packet_type,
-                                                              payload, payload_len);
-    buffer_pool_free(NULL, payload, payload_len);
-  }
-  if (handshake_result != ASCIICHAT_OK) {
-    log_warn("Crypto handshake auth challenge failed for client %s", client_ip);
-    acip_transport_destroy(transport);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  // Step 3: Complete handshake (verify and finalize) - skip if already complete
-  if (client_data->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    packet_type_t packet_type = 0;
-    uint8_t *payload = NULL;
-    size_t payload_len = 0;
-    int recv_result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
-    if (recv_result != ASCIICHAT_OK) {
-      log_warn("Failed to receive AUTH_RESPONSE from client %s", client_ip);
-      acip_transport_destroy(transport);
-      tcp_server_remove_client(&server->tcp_server, client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-    handshake_result =
-        crypto_handshake_server_complete(&client_data->handshake_ctx, transport, packet_type, payload, payload_len);
-    buffer_pool_free(NULL, payload, payload_len);
-    if (handshake_result != ASCIICHAT_OK) {
-      log_warn("Crypto handshake complete failed for client %s", client_ip);
-      acip_transport_destroy(transport);
-      tcp_server_remove_client(&server->tcp_server, client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-  } else {
-    log_debug("Crypto handshake already complete from auth_challenge step for client %s", client_ip);
   }
 
   client_data->handshake_complete = true;
@@ -1122,7 +1006,7 @@ void *acds_client_handler(void *arg) {
   uint64_t last_packet_time_ns = time_get_ns();
   const uint64_t idle_disconnect_ns = 60ULL * NS_PER_SEC_INT; // Disconnect after 60s idle
 
-  while (atomic_load_bool(&server->tcp_server.running)) {
+  while (atomic_load_bool(&server->tcp_server->running)) {
     packet_type_t packet_type;
     void *payload = NULL;
     size_t payload_size = 0;
@@ -1224,8 +1108,8 @@ void *acds_client_handler(void *arg) {
   }
 
   // Cleanup - handler always cleans up since it runs until connection closes
-  tcp_server_remove_client(&server->tcp_server, client_socket);
-  log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
+  tcp_server_remove_client(server->tcp_server, client_socket);
+  log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(server->tcp_server));
 
   // Destroy transport before closing socket
   acip_transport_destroy(transport);
@@ -1290,7 +1174,7 @@ void *acds_websocket_client_handler(void *arg) {
   client_data->registry_id = synthetic_id;
 
   // Register in tcp_server with synthetic ID (so callbacks can find client_data)
-  if (tcp_server_add_client(&server->tcp_server, synthetic_id, client_data) != ASCIICHAT_OK) {
+  if (tcp_server_add_client(server->tcp_server, synthetic_id, client_data) != ASCIICHAT_OK) {
     log_error("Failed to register WebSocket client %s in registry", client_ip);
     SAFE_FREE(client_data);
     SAFE_FREE(ctx);
@@ -1298,7 +1182,7 @@ void *acds_websocket_client_handler(void *arg) {
   }
 
   log_debug("WebSocket client %s registered (synthetic_id=%d, total=%zu)", client_ip, synthetic_id,
-            tcp_server_get_client_count(&server->tcp_server));
+            tcp_server_get_client_count(server->tcp_server));
 
   // Determine if client authentication is required by checking server configuration
   bool auth_required = server->config.require_client_identity;
@@ -1317,107 +1201,14 @@ void *acds_websocket_client_handler(void *arg) {
     log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
              auth_required ? " (client authentication required)" : "");
 
-    // Perform crypto handshake (three-step process)
+    // Perform crypto handshake using shared server_like implementation
     log_debug("Performing crypto handshake with WebSocket client %s", client_ip);
-
-    // Step -1: Receive and discard protocol version from client
-    {
-      packet_type_t pkt_type;
-      void *pkt_data = NULL;
-      size_t pkt_len = 0;
-      void *alloc_buffer = NULL;
-
-      asciichat_error_t hs_result =
-          packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-      if (hs_result != ASCIICHAT_OK) {
-        log_warn("Failed to receive PROTOCOL_VERSION from WebSocket client %s", client_ip);
-        buffer_pool_free(NULL, alloc_buffer, 0);
-        tcp_server_remove_client(&server->tcp_server, synthetic_id);
-        SAFE_FREE(ctx);
-        return NULL;
-      }
-
-      if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-        log_warn("Expected PROTOCOL_VERSION, got packet type %u from WebSocket client %s", pkt_type, client_ip);
-        buffer_pool_free(NULL, alloc_buffer, 0);
-        tcp_server_remove_client(&server->tcp_server, synthetic_id);
-        SAFE_FREE(ctx);
-        return NULL;
-      }
-
-      buffer_pool_free(NULL, alloc_buffer, 0);
-      log_debug("Received PROTOCOL_VERSION from WebSocket client %s", client_ip);
-    }
-
-    // Step 0: Send crypto parameters
-    asciichat_error_t hs_result = crypto_handshake_server_send_parameters(&client_data->handshake_ctx, transport);
+    asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport);
     if (hs_result != ASCIICHAT_OK) {
-      log_warn("Crypto parameters send failed for WebSocket client %s", client_ip);
-      tcp_server_remove_client(&server->tcp_server, synthetic_id);
+      log_warn("Crypto handshake failed for WebSocket client %s", client_ip);
+      tcp_server_remove_client(server->tcp_server, synthetic_id);
       SAFE_FREE(ctx);
       return NULL;
-    }
-
-    // Step 1: Start handshake (send server key, receive client key)
-    hs_result = crypto_handshake_server_start(&client_data->handshake_ctx, transport);
-    if (hs_result != ASCIICHAT_OK) {
-      log_warn("Crypto handshake start failed for WebSocket client %s", client_ip);
-      tcp_server_remove_client(&server->tcp_server, synthetic_id);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-
-    // Step 2: Authentication challenge (if required)
-    {
-      packet_type_t pkt_type;
-      void *pkt_data = NULL;
-      size_t pkt_len = 0;
-      void *alloc_buffer = NULL;
-
-      hs_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-      if (hs_result != ASCIICHAT_OK) {
-        log_warn("Failed to receive KEY_EXCHANGE_RESPONSE from WebSocket client %s", client_ip);
-        buffer_pool_free(NULL, alloc_buffer, 0);
-        tcp_server_remove_client(&server->tcp_server, synthetic_id);
-        SAFE_FREE(ctx);
-        return NULL;
-      }
-
-      hs_result =
-          crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, pkt_type, pkt_data, pkt_len);
-      buffer_pool_free(NULL, alloc_buffer, 0);
-    }
-    if (hs_result != ASCIICHAT_OK) {
-      log_warn("Crypto handshake auth challenge failed for WebSocket client %s", client_ip);
-      tcp_server_remove_client(&server->tcp_server, synthetic_id);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-
-    // Step 3: Complete handshake (verify and finalize) - skip if already complete
-    if (client_data->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-      packet_type_t pkt_type = 0;
-      void *pkt_data = NULL;
-      size_t pkt_len = 0;
-      void *alloc_buffer = NULL;
-
-      hs_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-      if (hs_result != ASCIICHAT_OK) {
-        log_warn("Failed to receive AUTH_RESPONSE from WebSocket client %s", client_ip);
-        buffer_pool_free(NULL, alloc_buffer, 0);
-        tcp_server_remove_client(&server->tcp_server, synthetic_id);
-        SAFE_FREE(ctx);
-        return NULL;
-      }
-
-      hs_result = crypto_handshake_server_complete(&client_data->handshake_ctx, transport, pkt_type, pkt_data, pkt_len);
-      buffer_pool_free(NULL, alloc_buffer, 0);
-      if (hs_result != ASCIICHAT_OK) {
-        log_warn("Crypto handshake complete failed for WebSocket client %s", client_ip);
-        tcp_server_remove_client(&server->tcp_server, synthetic_id);
-        SAFE_FREE(ctx);
-        return NULL;
-      }
     }
 
     client_data->handshake_complete = true;
@@ -1425,7 +1216,7 @@ void *acds_websocket_client_handler(void *arg) {
   }
 
   // Main packet processing loop using transport recv
-  while (atomic_load_bool(&server->tcp_server.running)) {
+  while (atomic_load_bool(&server->tcp_server->running)) {
     void *recv_buffer = NULL;
     size_t recv_len = 0;
     void *alloc_buffer = NULL;
@@ -1511,9 +1302,9 @@ void *acds_websocket_client_handler(void *arg) {
   }
 
   // Cleanup
-  tcp_server_remove_client(&server->tcp_server, synthetic_id);
+  tcp_server_remove_client(server->tcp_server, synthetic_id);
   log_debug("WebSocket client %s unregistered (total=%zu)", client_ip,
-            tcp_server_get_client_count(&server->tcp_server));
+            tcp_server_get_client_count(server->tcp_server));
 
   // Transport is owned by WebSocket server, don't destroy it here
 
