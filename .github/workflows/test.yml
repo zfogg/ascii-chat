@@ -136,8 +136,8 @@ jobs:
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
 
-          # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
-          rm -f build/CMakeCache.txt
+          # Clean configure (cached builds may have USE_MUSL=ON or stale settings)
+          rm -rf build/
           cmake -B build -G Ninja "${cmake_args[@]}"
 
       - name: Save configure cache (unit-tests)
@@ -560,8 +560,8 @@ jobs:
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )
 
-          # Clear cached CMake state (USE_MUSL=ON may persist from previous cached builds)
-          rm -f build/CMakeCache.txt
+          # Clean configure (cached builds may have USE_MUSL=ON or stale settings)
+          rm -rf build/
           cmake -B build -G Ninja "${cmake_args[@]}"
 
       - name: Save configure cache (performance-tests)
