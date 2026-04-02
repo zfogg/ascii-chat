@@ -128,26 +128,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
         # Prepare CMake args for WebRTC build
-        # Force static CRT by patching the WebRTC CMakeLists.txt.
-        # CMAKE_MSVC_RUNTIME_LIBRARY passed via -D or -C is ignored because CMake's
-        # Windows-Clang platform module sets it as UNINITIALIZED:MultiThreadedDLL.
-        # The only reliable way is to set it in CMakeLists.txt after project().
-        if(WIN32)
-            set(_webrtc_crt_patch_file "${webrtc_aec3_SOURCE_DIR}/CMakeLists.txt")
-            file(READ "${_webrtc_crt_patch_file}" _webrtc_crt_content)
-            if(NOT _webrtc_crt_content MATCHES "CMP0091")
-                # CMP0091 NEW makes CMAKE_MSVC_RUNTIME_LIBRARY actually work
-                string(REGEX REPLACE "(cmake_minimum_required[^\n]*)" "\\1\ncmake_policy(SET CMP0091 NEW)\nset(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded\")" _webrtc_crt_content "${_webrtc_crt_content}")
-                file(WRITE "${_webrtc_crt_patch_file}" "${_webrtc_crt_content}")
-                message(STATUS "Patched WebRTC CMakeLists.txt: CMP0091 NEW + static CRT")
-            endif()
-        endif()
         set(_webrtc_msvc_runtime "")
-        # On Windows with Clang, strip sanitizer flags from the WebRTC C++ build.
-        # The main project enables ASan/UBSan in Debug, which causes MSVC's STL to
-        # emit annotate_string=1 and annotate_vector=1 directives. Our main project's
-        # C++ objects are compiled without these annotations (different target settings),
-        # creating a /failifmismatch linker error. WebRTC AEC3 doesn't need sanitizers.
         set(_webrtc_c_flags_clean "${CMAKE_C_FLAGS}")
         set(_webrtc_cxx_flags_clean "${CMAKE_CXX_FLAGS}")
         set(WEBRTC_CMAKE_ARGS
@@ -289,17 +270,16 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
 
-            # For Debug builds, do not add sanitizer flags to WebRTC AEC3.
-            # Sanitizers are for our code, not third-party dependencies.
-            # ASan forces dynamic CRT (/MD) causing RuntimeLibrary mismatch,
-            # and enables STL annotations causing annotate_string mismatch.
-            # Use static CRT and disabled annotations to match our objects.
+            # For Debug builds, add sanitizer flags to match the main project.
+            # ASan forces dynamic CRT (/MD) and enables MSVC STL annotations
+            # (annotate_string=1, annotate_vector=1). The WebRTC AEC3 lib must
+            # match these settings to avoid lld-link /failifmismatch errors.
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(_webrtc_crt_flags "-D_ITERATOR_DEBUG_LEVEL=0")
-                set(_webrtc_annotation_flags "-D_DISABLE_STRING_ANNOTATION -D_DISABLE_VECTOR_ANNOTATION")
-                string(APPEND _webrtc_win_c_flags " ${_webrtc_crt_flags}")
-                string(APPEND _webrtc_win_cxx_flags " ${_webrtc_crt_flags} ${_webrtc_annotation_flags}")
-                message(STATUS "WebRTC Windows Debug build: static CRT, no sanitizers, annotations disabled")
+                set(_webrtc_sanitizer_flags "-fsanitize=address -fsanitize=undefined -fsanitize=integer -fsanitize=nullability -fsanitize=implicit-conversion -fsanitize=float-divide-by-zero")
+                set(_webrtc_crt_flags "-D_MT -D_DLL -D_ITERATOR_DEBUG_LEVEL=0")
+                string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
+                string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
+                message(STATUS "WebRTC Windows Debug build: ASan + dynamic CRT (matching main project)")
             endif()
 
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try
