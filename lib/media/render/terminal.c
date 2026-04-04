@@ -47,15 +47,15 @@ typedef struct {
 static glyph_cache_entry_t *g_glyph_cache = NULL;
 
 /**
- * Lookup or create glyph cache entry using global cache.
- * If glyph is already cached, returns cached bitmap.
+ * Lookup or create glyph cache entry.
+ * If glyph is already cached in the renderer's font-specific cache, returns cached bitmap.
  * Otherwise, loads and renders glyph, caches it, returns rendered bitmap.
  */
-static FT_Bitmap *glyph_cache_get(FT_Face face, uint32_t codepoint) {
+static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t codepoint) {
   glyph_cache_entry_t *entry = NULL;
 
-  // Lookup in global cache
-  HASH_FIND_INT(g_glyph_cache, &codepoint, entry);
+  // Lookup in renderer's per-font cache
+  HASH_FIND_INT(r->glyph_cache, &codepoint, entry);
   if (entry) {
     // Return cached bitmap
     static FT_Bitmap cached_result;
@@ -95,8 +95,8 @@ static FT_Bitmap *glyph_cache_get(FT_Face face, uint32_t codepoint) {
   entry->bitmap_left = face->glyph->bitmap_left;
   entry->bitmap_top = face->glyph->bitmap_top;
 
-  // Add to global hash table
-  HASH_ADD_INT(g_glyph_cache, codepoint, entry);
+  // Add to renderer's per-font hash table
+  HASH_ADD_INT(r->glyph_cache, codepoint, entry);
 
   // Return the cached bitmap
   static FT_Bitmap new_result;
@@ -130,6 +130,7 @@ struct terminal_renderer_s {
   int width_px, height_px, pitch;
   term_renderer_theme_t theme;
   bool is_matrix_font;
+  glyph_cache_entry_t *glyph_cache; // Per-renderer glyph cache (per-font)
 };
 
 static int screen_damage(VTermRect r, void *u) {
@@ -397,6 +398,9 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   vterm_set_size(r->vt, r->rows, r->cols);
   log_debug("DEBUG: vterm_set_size called AGAIN after reset");
 
+  // Initialize per-renderer glyph cache (empty, will populate on demand)
+  r->glyph_cache = NULL;
+
   *out = r;
   return ASCIICHAT_OK;
 }
@@ -506,12 +510,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
 
-        // Use global glyph cache to avoid rasterizing every glyph every frame
-        FT_Bitmap *cached_bitmap = glyph_cache_get(r->ft_face, char_to_render);
+        // Use per-renderer glyph cache to avoid rasterizing every glyph every frame
+        FT_Bitmap *cached_bitmap = glyph_cache_get(r, r->ft_face, char_to_render);
         if (cached_bitmap && cached_bitmap->width > 0 && cached_bitmap->rows > 0) {
           // Find cache entry to get positioning offsets
           glyph_cache_entry_t *cache_entry = NULL;
-          HASH_FIND_INT(g_glyph_cache, &char_to_render, cache_entry);
+          HASH_FIND_INT(r->glyph_cache, &char_to_render, cache_entry);
           if (cache_entry) {
             blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
                         fr, fg, fb, br, bg, bb);
@@ -558,9 +562,6 @@ void term_renderer_destroy(terminal_renderer_t *r) {
   FT_Done_Face(r->ft_face);
   FT_Done_FreeType(r->ft_lib);
   SAFE_FREE(r->framebuffer);
+  glyph_cache_destroy(&r->glyph_cache);
   SAFE_FREE(r);
-}
-
-void term_renderer_glyph_cache_cleanup(void) {
-  glyph_cache_destroy(&g_glyph_cache);
 }

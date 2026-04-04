@@ -48,7 +48,6 @@ int term_renderer_width_px(terminal_renderer_t *r);
 int term_renderer_height_px(terminal_renderer_t *r);
 int term_renderer_pitch(terminal_renderer_t *r);
 void term_renderer_destroy(terminal_renderer_t *r);
-void term_renderer_glyph_cache_cleanup(void);
 
 // ── Render-file orchestrator ──────────────────────────────────────────────
 

@@ -23,7 +23,6 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/media/render/renderer.h>
 
 // Global digital rain effect context
 static digital_rain_t *g_digital_rain = NULL;
@@ -91,7 +90,6 @@ void mirror_cleanup(void) {
     SAFE_FREE(g_last_rain_output);
     g_last_rain_output = NULL;
   }
-  term_renderer_glyph_cache_cleanup();
   options_state_destroy();
   platform_destroy();
 }

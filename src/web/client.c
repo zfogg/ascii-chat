@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include "common/init.h"
-#include <ascii-chat/media/render/renderer.h>
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)
@@ -186,7 +185,6 @@ void client_cleanup(void) {
   g_handshake_complete = false;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   g_initialized = false;
-  term_renderer_glyph_cache_cleanup();
   options_state_destroy();
   platform_destroy();
 
