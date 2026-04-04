@@ -181,7 +181,7 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
         continue;
       uint8_t a = bm->buffer[row * bm->pitch + col];
 
-      uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 4;
+      uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 3; // RGB24: 3 bytes per pixel
       uint8_t r_val = (uint8_t)((fr * a + br * (255 - a)) / 255);
       uint8_t g_val = (uint8_t)((fg * a + bg * (255 - a)) / 255);
       uint8_t b_val = (uint8_t)((fb * a + bb * (255 - a)) / 255);
@@ -189,7 +189,6 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
       dst[0] = r_val;
       dst[1] = g_val;
       dst[2] = b_val;
-      dst[3] = 255; // Alpha (fully opaque)
     }
   }
 }
@@ -365,12 +364,12 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->height_px = r->rows * r->cell_h;
   log_debug("DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)",
             r->width_px, r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
-  // Pitch in bytes: each pixel is 4 bytes (RGBA), already aligned to 4-byte boundary
-  // No padding needed since 4 is already a multiple of 4
-  int base_pitch = r->width_px * 4;
-  r->pitch = base_pitch;
-  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (RGBA, no padding needed)", r->width_px, base_pitch,
-            r->pitch);
+  // Pitch in bytes: each pixel is 3 bytes (RGB24)
+  // Align to 4-byte boundary for better performance
+  int base_pitch = r->width_px * 3;
+  r->pitch = ((base_pitch + 3) / 4) * 4; // Round up to nearest multiple of 4
+  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d (unaligned), final_pitch=%d (RGB24, aligned to 4-byte)", r->width_px,
+            base_pitch, r->pitch);
   log_debug("DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)",
             (int)((size_t)r->pitch * r->height_px), r->pitch, r->height_px);
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
@@ -464,6 +463,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     memcpy(prev_row_sigs, curr_row_sigs, sizeof(curr_row_sigs));
   }
 
+  int glyph_rendered_count = 0;
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
@@ -491,15 +491,14 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
-        uint8_t *line = r->framebuffer + y * r->pitch + px * 4;
+        uint8_t *line = r->framebuffer + y * r->pitch + px * 3; // RGB24: 3 bytes per pixel
         for (int dx = 0; dx < r->cell_w; dx++) {
           int x = px + dx;
           if (x < 0 || x >= r->width_px)
             continue;
-          line[dx * 4] = br;
-          line[dx * 4 + 1] = bg;
-          line[dx * 4 + 2] = bb;
-          line[dx * 4 + 3] = 255; // Alpha (fully opaque)
+          line[dx * 3] = br;
+          line[dx * 3 + 1] = bg;
+          line[dx * 3 + 2] = bb;
         }
       }
 
@@ -516,11 +515,13 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           if (cache_entry) {
             blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
                         fr, fg, fb, br, bg, bb);
+            glyph_rendered_count++;
           }
         }
       }
     }
   }
+  log_info("term_renderer_feed: Rendered %d glyphs out of %d cells", glyph_rendered_count, r->rows * r->cols);
 
   return ASCIICHAT_OK;
 }
