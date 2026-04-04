@@ -84,8 +84,8 @@
 <p class="Pp">Current commit SHA.</p>
 <p class="Pp">Definition at line <b>35</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
-    <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
-    and <b>update_check_perform()</b>.</p>
+    <b>update_banner_show_prompt()</b>, <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_update_check_result_t::current_version_64_"><a class="permalink" href="#char_update_check_result_t::current_version_64_">char
@@ -93,6 +93,8 @@
 <p class="Pp">Current version string.</p>
 <p class="Pp">Definition at line <b>34</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
+    <b>update_banner_print_instructions()</b>,
+    <b>update_banner_show_prompt()</b>,
     <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
     and <b>update_check_perform()</b>.</p>
 </section>
@@ -110,32 +112,33 @@
   update_check_result_t::latest_sha[41]</a></h2>
 <p class="Pp">Latest release commit SHA (full 40 chars + null).</p>
 <p class="Pp">Definition at line <b>33</b> of file <b>update_checker.h</b>.</p>
-<p class="Pp">Referenced by <b>update_check_format_notification()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>, and
-    <b>update_check_save_cache()</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_update_check_result_t::latest_version_64_"><a class="permalink" href="#char_update_check_result_t::latest_version_64_">char
   update_check_result_t::latest_version[64]</a></h2>
 <p class="Pp">Latest version tag (e.g., &quot;v0.9.0&quot;).</p>
 <p class="Pp">Definition at line <b>32</b> of file <b>update_checker.h</b>.</p>
-<p class="Pp">Referenced by <b>update_check_format_notification()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>, and
-    <b>update_check_save_cache()</b>.</p>
+<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>,
+    <b>update_banner_show_prompt()</b>,
+    <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_update_check_result_t::release_url_512_"><a class="permalink" href="#char_update_check_result_t::release_url_512_">char
   update_check_result_t::release_url[512]</a></h2>
 <p class="Pp">GitHub release page URL.</p>
 <p class="Pp">Definition at line <b>36</b> of file <b>update_checker.h</b>.</p>
-<p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
+<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>, and
+    <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> update_check_result_t::update_available</h2>
 <p class="Pp">True if newer version exists.</p>
 <p class="Pp">Definition at line <b>31</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
-    <b>main()</b>, <b>update_check_load_cache()</b>, and
+    <b>update_banner_set_result()</b>, <b>update_check_load_cache()</b>, and
     <b>update_check_perform()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -147,7 +150,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

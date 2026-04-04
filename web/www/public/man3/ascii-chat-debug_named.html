@@ -523,9 +523,13 @@
 <br/>
   if (_name) {                                                                                                       \
 <br/>
-    strncpy((buffer), (_name), (size) - 1);                                                                         \
+    size_t _len = strlen(_name);                                                                                     \
 <br/>
-    (buffer)[(size) - 1] = '\0';                                                                                    \
+    if (_len &gt;= (size)) _len = (size) - 1;                                                                           \
+<br/>
+    memcpy((buffer), (_name), _len);                                                                                 \
+<br/>
+    (buffer)[_len] = '\0';                                                                                           \
 <br/>
   } else {                                                                                                           \
 <br/>
@@ -549,17 +553,19 @@
 <p class="Pp"></p>
 <p class="Pp">Use this for thread IDs and other small integer identifiers. In
     release builds (NDEBUG), always formats as hex.</p>
-<p class="Pp">Definition at line <b>1058</b> of file <b>debug/named.h</b>.</p>
-<pre>1058 #define NAMED_GET_BY_INT(id, buffer, size)                                                                             \
-1059   do {                                                                                                                 \
-1060     const char *_name = named_get((uintptr_t)(id));                                                                   \
-1061     if (_name) {                                                                                                       \
-1062       strncpy((buffer), (_name), (size) - 1);                                                                         \
-1063       (buffer)[(size) - 1] = '\0';                                                                                    \
-1064     } else {                                                                                                           \
-1065       snprintf((buffer), (size), &quot;0x%lx&quot;, (unsigned long)(id));                                                       \
-1066     }                                                                                                                  \
-1067   } while (0)</pre>
+<p class="Pp">Definition at line <b>1060</b> of file <b>debug/named.h</b>.</p>
+<pre>1060 #define NAMED_GET_BY_INT(id, buffer, size)                                                                             \
+1061   do {                                                                                                                 \
+1062     const char *_name = named_get((uintptr_t)(id));                                                                   \
+1063     if (_name) {                                                                                                       \
+1064       size_t _len = strlen(_name);                                                                                     \
+1065       if (_len &gt;= (size)) _len = (size) - 1;                                                                           \
+1066       memcpy((buffer), (_name), _len);                                                                                 \
+1067       (buffer)[_len] = '\0';                                                                                           \
+1068     } else {                                                                                                           \
+1069       snprintf((buffer), (size), &quot;0x%lx&quot;, (unsigned long)(id));                                                       \
+1070     }                                                                                                                  \
+1071   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -574,9 +580,13 @@
 <br/>
   if (_name) {                                                                                                       \
 <br/>
-    strncpy((buffer), (_name), (size) - 1);                                                                         \
+    size_t _len = strlen(_name);                                                                                     \
 <br/>
-    (buffer)[(size) - 1] = '\0';                                                                                    \
+    if (_len &gt;= (size)) _len = (size) - 1;                                                                           \
+<br/>
+    memcpy((buffer), (_name), _len);                                                                                 \
+<br/>
+    (buffer)[_len] = '\0';                                                                                           \
 <br/>
   } else {                                                                                                           \
 <br/>
@@ -606,12 +616,14 @@
 1035   do {                                                                                                                 \
 1036     const char *_name = named_get(key);                                                                               \
 1037     if (_name) {                                                                                                       \
-1038       strncpy((buffer), (_name), (size) - 1);                                                                         \
-1039       (buffer)[(size) - 1] = '\0';                                                                                    \
-1040     } else {                                                                                                           \
-1041       snprintf((buffer), (size), &quot;0x%tx&quot;, (ptrdiff_t)(key));                                                          \
-1042     }                                                                                                                  \
-1043   } while (0)</pre>
+1038       size_t _len = strlen(_name);                                                                                     \
+1039       if (_len &gt;= (size)) _len = (size) - 1;                                                                           \
+1040       memcpy((buffer), (_name), _len);                                                                                 \
+1041       (buffer)[_len] = '\0';                                                                                           \
+1042     } else {                                                                                                           \
+1043       snprintf((buffer), (size), &quot;0x%tx&quot;, (ptrdiff_t)(key));                                                          \
+1044     }                                                                                                                  \
+1045   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
@@ -648,16 +660,16 @@
     termination. Useful for formatting optional or variable string fields.</p>
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), copies the string as-is.</p>
-<p class="Pp">Definition at line <b>1081</b> of file <b>debug/named.h</b>.</p>
-<pre>1081 #define NAMED_GET_BY_STR(str, buffer, size)                                                                            \
-1082   do {                                                                                                                 \
-1083     if ((str)) {                                                                                                       \
-1084       strncpy((buffer), (str), (size) - 1);                                                                           \
-1085       (buffer)[(size) - 1] = '\0';                                                                                    \
-1086     } else {                                                                                                           \
-1087       (buffer)[0] = '\0';                                                                                              \
-1088     }                                                                                                                  \
-1089   } while (0)</pre>
+<p class="Pp">Definition at line <b>1085</b> of file <b>debug/named.h</b>.</p>
+<pre>1085 #define NAMED_GET_BY_STR(str, buffer, size)                                                                            \
+1086   do {                                                                                                                 \
+1087     if ((str)) {                                                                                                       \
+1088       strncpy((buffer), (str), (size) - 1);                                                                           \
+1089       (buffer)[(size) - 1] = '\0';                                                                                    \
+1090     } else {                                                                                                           \
+1091       (buffer)[0] = '\0';                                                                                              \
+1092     }                                                                                                                  \
+1093   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1470,8 +1482,8 @@
 415   named_register((uintptr_t)(const void *)(lock), (name), &quot;rwlock&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>mixer_create()</b>, <b>server_main()</b>, and
-    <b>tcp_server_init()</b>.</p>
+<p class="Pp">Referenced by <b>mixer_create()</b>, and
+  <b>tcp_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_NAMED_REGISTER_SIMPLE_FRAME_SWAP(_swap,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_SIMPLE_FRAME_SWAP(_swap,__name,__parent_ptr)">#define
@@ -1739,7 +1751,7 @@
   NAMED_REGISTER_WEBSOCKET_IMPL( data, name, parent_ptr)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>(name)</pre>
+<pre>((void)(data), (void)(name), (void)(parent_ptr))</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>956</b> of file <b>debug/named.h</b>.</p>
@@ -2075,22 +2087,22 @@
 <p class="Pp">Looks up an FD using the same namespace encoding as
     <b>named_register_fd()</b>. In release builds (NDEBUG), this always returns
     NULL.</p>
-<p class="Pp">Definition at line <b>471</b> of file <b>debug/named.c</b>.</p>
-<pre>471                                  {
-472   if (fd &lt; 0) return NULL;
-473 
-474   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-475     return NULL;
-476   }
-477 
-478   uintptr_t key = encode_fd_key(fd);
-479   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-480   named_entry_t *entry = NULL;
-481   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-482   const char *result = entry ? entry-&gt;name : NULL;
-483   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-484   return result;
-485 }</pre>
+<p class="Pp">Definition at line <b>474</b> of file <b>debug/named.c</b>.</p>
+<pre>474                                  {
+475   if (fd &lt; 0) return NULL;
+476 
+477   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+478     return NULL;
+479   }
+480 
+481   uintptr_t key = encode_fd_key(fd);
+482   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+483   named_entry_t *entry = NULL;
+484   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+485   const char *result = entry ? entry-&gt;name : NULL;
+486   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+487   return result;
+488 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2109,22 +2121,22 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
   if not registered</div>
-<p class="Pp">Definition at line <b>487</b> of file <b>debug/named.c</b>.</p>
-<pre>487                                              {
-488   if (fd &lt; 0) return NULL;
-489 
-490   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-491     return NULL;
-492   }
-493 
-494   uintptr_t key = encode_fd_key(fd);
-495   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-496   named_entry_t *entry = NULL;
-497   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-498   const char *result = entry ? entry-&gt;format_spec : NULL;
-499   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-500   return result;
-501 }</pre>
+<p class="Pp">Definition at line <b>490</b> of file <b>debug/named.c</b>.</p>
+<pre>490                                              {
+491   if (fd &lt; 0) return NULL;
+492 
+493   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+494     return NULL;
+495   }
+496 
+497   uintptr_t key = encode_fd_key(fd);
+498   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+499   named_entry_t *entry = NULL;
+500   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+501   const char *result = entry ? entry-&gt;format_spec : NULL;
+502   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+503   return result;
+504 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::format_spec</b>,
@@ -2178,22 +2190,22 @@
 <p class="Pp">Looks up a packet type using the same namespace encoding as
     <b>named_register_packet_type()</b>. In release builds (NDEBUG), this always
     returns NULL.</p>
-<p class="Pp">Definition at line <b>532</b> of file <b>debug/named.c</b>.</p>
-<pre>532                                                 {
-533   if (pkt_type &lt; 0) return NULL;
-534 
-535   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-536     return NULL;
-537   }
-538 
-539   uintptr_t key = encode_pkt_type_key(pkt_type);
-540   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-541   named_entry_t *entry = NULL;
-542   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-543   const char *result = entry ? entry-&gt;name : NULL;
-544   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-545   return result;
-546 }</pre>
+<p class="Pp">Definition at line <b>535</b> of file <b>debug/named.c</b>.</p>
+<pre>535                                                 {
+536   if (pkt_type &lt; 0) return NULL;
+537 
+538   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+539     return NULL;
+540   }
+541 
+542   uintptr_t key = encode_pkt_type_key(pkt_type);
+543   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+544   named_entry_t *entry = NULL;
+545   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+546   const char *result = entry ? entry-&gt;name : NULL;
+547   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+548   return result;
+549 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2212,22 +2224,22 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
   if not registered</div>
-<p class="Pp">Definition at line <b>548</b> of file <b>debug/named.c</b>.</p>
-<pre>548                                                             {
-549   if (pkt_type &lt; 0) return NULL;
-550 
-551   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-552     return NULL;
-553   }
-554 
-555   uintptr_t key = encode_pkt_type_key(pkt_type);
-556   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-557   named_entry_t *entry = NULL;
-558   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-559   const char *result = entry ? entry-&gt;format_spec : NULL;
-560   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-561   return result;
-562 }</pre>
+<p class="Pp">Definition at line <b>551</b> of file <b>debug/named.c</b>.</p>
+<pre>551                                                             {
+552   if (pkt_type &lt; 0) return NULL;
+553 
+554   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+555     return NULL;
+556   }
+557 
+558   uintptr_t key = encode_pkt_type_key(pkt_type);
+559   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+560   named_entry_t *entry = NULL;
+561   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+562   const char *result = entry ? entry-&gt;format_spec : NULL;
+563   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+564   return result;
+565 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::format_spec</b>,
@@ -2441,39 +2453,39 @@
     uses &quot;name (fd=N)&quot; format; otherwise auto-generates as
     &quot;fd=N&quot;. In release builds (NDEBUG), this is a no-op and returns
     &quot;fd=%d&quot; string.</p>
-<p class="Pp">Definition at line <b>438</b> of file <b>debug/named.c</b>.</p>
-<pre>438                                                                                                       {
-439   if (fd &lt; 0) {
-440     return &quot;?&quot;;
-441   }
-442 
-443   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-444     return &quot;?&quot;;
-445   }
-446 
-447   char name_buffer[256];
-448   if (name) {
-449     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, name);
-450   } else {
-451     snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
-452   }
-453 
-454   // Allocate entry BEFORE acquiring lock
-455   named_entry_t *entry = malloc(sizeof(named_entry_t));
-456   if (!entry) return &quot;?&quot;;
-457 
-458   uintptr_t key = encode_fd_key(fd);
-459   entry-&gt;key = key;
-460   entry-&gt;name = entry_strdup(name_buffer);
-461   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
-462 
-463   // Only hold lock for the hash table operation
-464   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-465   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-466   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-467 
-468   return entry-&gt;name;
-469 }</pre>
+<p class="Pp">Definition at line <b>441</b> of file <b>debug/named.c</b>.</p>
+<pre>441                                                                                                       {
+442   if (fd &lt; 0) {
+443     return &quot;?&quot;;
+444   }
+445 
+446   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+447     return &quot;?&quot;;
+448   }
+449 
+450   char name_buffer[256];
+451   if (name) {
+452     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, name);
+453   } else {
+454     snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
+455   }
+456 
+457   // Allocate entry BEFORE acquiring lock
+458   named_entry_t *entry = malloc(sizeof(named_entry_t));
+459   if (!entry) return &quot;?&quot;;
+460 
+461   uintptr_t key = encode_fd_key(fd);
+462   entry-&gt;key = key;
+463   entry-&gt;name = entry_strdup(name_buffer);
+464   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
+465 
+466   // Only hold lock for the hash table operation
+467   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+468   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+469   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+470 
+471   return entry-&gt;name;
+472 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::key</b>,
@@ -2585,35 +2597,35 @@
     avoid collisions with FDs or other numeric values. Name is auto-generated as
     &quot;PACKET_TYPE=%d&quot;. In release builds (NDEBUG), this is a no-op and
     returns &quot;PACKET_TYPE=%d&quot; string.</p>
-<p class="Pp">Definition at line <b>503</b> of file <b>debug/named.c</b>.</p>
-<pre>503                                                                                                    {
-504   if (pkt_type &lt; 0) {
-505     return &quot;?&quot;;
-506   }
-507 
-508   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-509     return &quot;?&quot;;
-510   }
-511 
-512   char name_buffer[256];
-513   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+<p class="Pp">Definition at line <b>506</b> of file <b>debug/named.c</b>.</p>
+<pre>506                                                                                                    {
+507   if (pkt_type &lt; 0) {
+508     return &quot;?&quot;;
+509   }
+510 
+511   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+512     return &quot;?&quot;;
+513   }
 514 
-515   // Allocate entry BEFORE acquiring lock
-516   named_entry_t *entry = malloc(sizeof(named_entry_t));
-517   if (!entry) return &quot;?&quot;;
-518 
-519   uintptr_t key = encode_pkt_type_key(pkt_type);
-520   entry-&gt;key = key;
-521   entry-&gt;name = entry_strdup(name_buffer);
-522   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
-523 
-524   // Only hold lock for the hash table operation
-525   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-526   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-527   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-528 
-529   return entry-&gt;name;
-530 }</pre>
+515   char name_buffer[256];
+516   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+517 
+518   // Allocate entry BEFORE acquiring lock
+519   named_entry_t *entry = malloc(sizeof(named_entry_t));
+520   if (!entry) return &quot;?&quot;;
+521 
+522   uintptr_t key = encode_pkt_type_key(pkt_type);
+523   entry-&gt;key = key;
+524   entry-&gt;name = entry_strdup(name_buffer);
+525   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
+526 
+527   // Only hold lock for the hash table operation
+528   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+529   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+530   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+531 
+532   return entry-&gt;name;
+533 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::key</b>,
@@ -2647,17 +2659,20 @@
 403   rwlock_rdlock(&amp;g_named_registry.entries_lock);
 404   for (named_entry_t *e = g_named_registry.entries; e != NULL &amp;&amp; count &lt; 256; e = e-&gt;hh.next) {
 405     entries[count].key = e-&gt;key;
-406     strncpy(entries[count].name, e-&gt;name ? e-&gt;name : &quot;?&quot;, MAX_NAME_LEN - 1);
-407     entries[count].name[MAX_NAME_LEN - 1] = '\0';
-408     count++;
-409   }
-410   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-411 
-412   // Call callback outside the lock
-413   for (int i = 0; i &lt; count; i++) {
-414     callback(entries[i].key, entries[i].name, user_data);
-415   }
-416 }</pre>
+406     const char *src = e-&gt;name ? e-&gt;name : &quot;?&quot;;
+407     size_t src_len = strlen(src);
+408     if (src_len &gt;= MAX_NAME_LEN) src_len = MAX_NAME_LEN - 1;
+409     memcpy(entries[count].name, src, src_len);
+410     entries[count].name[src_len] = '\0';
+411     count++;
+412   }
+413   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+414 
+415   // Call callback outside the lock
+416   for (int i = 0; i &lt; count; i++) {
+417     callback(entries[i].key, entries[i].name, user_data);
+418   }
+419 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_iter_entry_t::key</b>,
@@ -2677,10 +2692,10 @@
     the format &quot;PACKET_TYPE=%d&quot; where d is the enum value. This should
     be called once during initialization to enable packet type identification in
     log message formatting.</p>
-<p class="Pp">Definition at line <b>564</b> of file <b>debug/named.c</b>.</p>
-<pre>564                                                 {
-565   // No-op
-566 }</pre>
+<p class="Pp">Definition at line <b>567</b> of file <b>debug/named.c</b>.</p>
+<pre>567                                                 {
+568   // No-op
+569 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
@@ -2762,7 +2777,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

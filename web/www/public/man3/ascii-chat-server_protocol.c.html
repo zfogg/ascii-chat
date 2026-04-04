@@ -330,12 +330,12 @@
 <p class="Pp"></p>
 <p class="Pp">Non-blocking - just sets atomic flags</p>
 </div>
-<p class="Pp">Definition at line <b>1934</b> of file
+<p class="Pp">Definition at line <b>1938</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1934                                                   {
-1935   SET_ERRNO(ERROR_INVALID_STATE, &quot;broadcast_clear_console_to_all_clients() called - unexpected usage&quot;);
-1936   log_warn(&quot;CLEAR_CONSOLE is now sent from render threads, not broadcast&quot;);
-1937 }</pre>
+<pre>1938                                                   {
+1939   SET_ERRNO(ERROR_INVALID_STATE, &quot;broadcast_clear_console_to_all_clients() called - unexpected usage&quot;);
+1940   log_warn(&quot;CLEAR_CONSOLE is now sent from render threads, not broadcast&quot;);
+1941 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_STATE</b>, <b>log_warn</b>, and
@@ -412,99 +412,99 @@
 <p class="Pp"></p>
 <p class="Pp"><b>AUDIO_BATCH_SAMPLES</b> For maximum batch size constant</p>
 </div>
-<p class="Pp">Definition at line <b>1190</b> of file
+<p class="Pp">Definition at line <b>1194</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1190                                                                                     {
-1191   // Log every audio batch packet reception
-1192   log_debug_every(LOG_RATE_DEFAULT, &quot;Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)&quot;,
-1193                   client-&gt;client_id, len, atomic_load_bool(&amp;client-&gt;is_sending_audio));
-1194 
-1195   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_BATCH&quot;);
-1196   VALIDATE_MIN_SIZE(client, len, sizeof(audio_batch_packet_t), &quot;AUDIO_BATCH&quot;);
-1197   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO_BATCH&quot;);
+<pre>1194                                                                                     {
+1195   // Log every audio batch packet reception
+1196   log_debug_every(LOG_RATE_DEFAULT, &quot;Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)&quot;,
+1197                   client-&gt;client_id, len, atomic_load_bool(&amp;client-&gt;is_sending_audio));
 1198 
-1199   // Parse batch header using utility function
-1200   audio_batch_info_t batch_info;
-1201   asciichat_error_t parse_result = audio_parse_batch_header(data, len, &amp;batch_info);
-1202   if (parse_result != ASCIICHAT_OK) {
-1203     disconnect_client_for_bad_data(client, &quot;Failed to parse audio batch header&quot;);
-1204     return;
-1205   }
-1206 
-1207   uint32_t packet_batch_count = batch_info.batch_count;
-1208   uint32_t total_samples = batch_info.total_samples;
-1209   uint32_t sample_rate = batch_info.sample_rate;
+1199   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_BATCH&quot;);
+1200   VALIDATE_MIN_SIZE(client, len, sizeof(audio_batch_packet_t), &quot;AUDIO_BATCH&quot;);
+1201   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO_BATCH&quot;);
+1202 
+1203   // Parse batch header using utility function
+1204   audio_batch_info_t batch_info;
+1205   asciichat_error_t parse_result = audio_parse_batch_header(data, len, &amp;batch_info);
+1206   if (parse_result != ASCIICHAT_OK) {
+1207     disconnect_client_for_bad_data(client, &quot;Failed to parse audio batch header&quot;);
+1208     return;
+1209   }
 1210 
-1211   (void)packet_batch_count;
-1212   (void)sample_rate;
-1213 
-1214   VALIDATE_NONZERO(client, packet_batch_count, &quot;batch_count&quot;, &quot;AUDIO_BATCH&quot;);
-1215   VALIDATE_NONZERO(client, total_samples, &quot;total_samples&quot;, &quot;AUDIO_BATCH&quot;);
-1216 
-1217   size_t samples_bytes = 0;
-1218   if (safe_size_mul(total_samples, sizeof(uint32_t), &amp;samples_bytes)) {
-1219     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH sample size overflow (samples=%u)&quot;, total_samples);
-1220     return;
-1221   }
-1222 
-1223   size_t expected_size = sizeof(audio_batch_packet_t) + samples_bytes;
-1224   if (len != expected_size) {
-1225     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH length mismatch: got %zu expected %zu&quot;, len, expected_size);
-1226     return;
-1227   }
-1228 
-1229   // Bounds check to prevent integer overflow on allocation
-1230   // Maximum allowed samples: AUDIO_BATCH_SAMPLES * 2 (2048 samples)
-1231   // This prevents total_samples * sizeof(float) from exceeding 8KB
-1232   const uint32_t MAX_AUDIO_SAMPLES = AUDIO_BATCH_SAMPLES * 2;
-1233   if (total_samples &gt; MAX_AUDIO_SAMPLES) {
-1234     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH too many samples: %u (max: %u)&quot;, total_samples,
-1235                                    MAX_AUDIO_SAMPLES);
-1236     return;
-1237   }
-1238 
-1239   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
-1240 
-1241   // Safe allocation: total_samples is bounded above, so multiplication won't overflow
-1242   size_t alloc_size = (size_t)total_samples * sizeof(float);
-1243   float *samples = SAFE_MALLOC(alloc_size, float *);
-1244   if (!samples) {
-1245     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for audio sample conversion&quot;);
-1246     return;
-1247   }
-1248 
-1249   // Use helper function to dequantize samples
-1250   asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
-1251   if (dq_result != ASCIICHAT_OK) {
-1252     SAFE_FREE(samples);
-1253     return;
-1254   }
-1255 
-1256 #ifndef NDEBUG
-1257   static int recv_count = 0;
-1258   recv_count++;
-1259   if (recv_count % 100 == 0) {
-1260     uint32_t raw0 = bytes_read_u32_unaligned(samples_ptr + 0 * sizeof(uint32_t));
-1261     uint32_t raw1 = bytes_read_u32_unaligned(samples_ptr + 1 * sizeof(uint32_t));
-1262     uint32_t raw2 = bytes_read_u32_unaligned(samples_ptr + 2 * sizeof(uint32_t));
-1263     int32_t scaled0 = (int32_t)NET_TO_HOST_U32(raw0);
-1264     int32_t scaled1 = (int32_t)NET_TO_HOST_U32(raw1);
-1265     int32_t scaled2 = (int32_t)NET_TO_HOST_U32(raw2);
-1266     log_info(&quot;RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x&quot;, raw0, raw1, raw2);
-1267     log_info(&quot;RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d&quot;, scaled0, scaled1, scaled2);
-1268     log_info(&quot;RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f&quot;, samples[0], samples[1], samples[2]);
-1269   }
-1270 #endif
-1271 
-1272   if (client-&gt;incoming_audio_buffer) {
-1273     asciichat_error_t write_result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, samples, total_samples);
-1274     if (write_result != ASCIICHAT_OK) {
-1275       log_error(&quot;Failed to write decoded audio batch to buffer: %s&quot;, asciichat_error_string(write_result));
-1276     }
-1277   }
-1278 
-1279   SAFE_FREE(samples);
-1280 }</pre>
+1211   uint32_t packet_batch_count = batch_info.batch_count;
+1212   uint32_t total_samples = batch_info.total_samples;
+1213   uint32_t sample_rate = batch_info.sample_rate;
+1214 
+1215   (void)packet_batch_count;
+1216   (void)sample_rate;
+1217 
+1218   VALIDATE_NONZERO(client, packet_batch_count, &quot;batch_count&quot;, &quot;AUDIO_BATCH&quot;);
+1219   VALIDATE_NONZERO(client, total_samples, &quot;total_samples&quot;, &quot;AUDIO_BATCH&quot;);
+1220 
+1221   size_t samples_bytes = 0;
+1222   if (safe_size_mul(total_samples, sizeof(uint32_t), &amp;samples_bytes)) {
+1223     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH sample size overflow (samples=%u)&quot;, total_samples);
+1224     return;
+1225   }
+1226 
+1227   size_t expected_size = sizeof(audio_batch_packet_t) + samples_bytes;
+1228   if (len != expected_size) {
+1229     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH length mismatch: got %zu expected %zu&quot;, len, expected_size);
+1230     return;
+1231   }
+1232 
+1233   // Bounds check to prevent integer overflow on allocation
+1234   // Maximum allowed samples: AUDIO_BATCH_SAMPLES * 2 (2048 samples)
+1235   // This prevents total_samples * sizeof(float) from exceeding 8KB
+1236   const uint32_t MAX_AUDIO_SAMPLES = AUDIO_BATCH_SAMPLES * 2;
+1237   if (total_samples &gt; MAX_AUDIO_SAMPLES) {
+1238     disconnect_client_for_bad_data(client, &quot;AUDIO_BATCH too many samples: %u (max: %u)&quot;, total_samples,
+1239                                    MAX_AUDIO_SAMPLES);
+1240     return;
+1241   }
+1242 
+1243   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
+1244 
+1245   // Safe allocation: total_samples is bounded above, so multiplication won't overflow
+1246   size_t alloc_size = (size_t)total_samples * sizeof(float);
+1247   float *samples = SAFE_MALLOC(alloc_size, float *);
+1248   if (!samples) {
+1249     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for audio sample conversion&quot;);
+1250     return;
+1251   }
+1252 
+1253   // Use helper function to dequantize samples
+1254   asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
+1255   if (dq_result != ASCIICHAT_OK) {
+1256     SAFE_FREE(samples);
+1257     return;
+1258   }
+1259 
+1260 #ifndef NDEBUG
+1261   static int recv_count = 0;
+1262   recv_count++;
+1263   if (recv_count % 100 == 0) {
+1264     uint32_t raw0 = bytes_read_u32_unaligned(samples_ptr + 0 * sizeof(uint32_t));
+1265     uint32_t raw1 = bytes_read_u32_unaligned(samples_ptr + 1 * sizeof(uint32_t));
+1266     uint32_t raw2 = bytes_read_u32_unaligned(samples_ptr + 2 * sizeof(uint32_t));
+1267     int32_t scaled0 = (int32_t)NET_TO_HOST_U32(raw0);
+1268     int32_t scaled1 = (int32_t)NET_TO_HOST_U32(raw1);
+1269     int32_t scaled2 = (int32_t)NET_TO_HOST_U32(raw2);
+1270     log_info(&quot;RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x&quot;, raw0, raw1, raw2);
+1271     log_info(&quot;RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d&quot;, scaled0, scaled1, scaled2);
+1272     log_info(&quot;RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f&quot;, samples[0], samples[1], samples[2]);
+1273   }
+1274 #endif
+1275 
+1276   if (client-&gt;incoming_audio_buffer) {
+1277     asciichat_error_t write_result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, samples, total_samples);
+1278     if (write_result != ASCIICHAT_OK) {
+1279       log_error(&quot;Failed to write decoded audio batch to buffer: %s&quot;, asciichat_error_string(write_result));
+1280     }
+1281   }
+1282 
+1283   SAFE_FREE(samples);
+1284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
@@ -580,149 +580,149 @@
 <p class="Pp"><b>handle_audio_batch_packet()</b> For raw PCM <b>Audio</b> batch
     handling</p>
 </div>
-<p class="Pp">Definition at line <b>1317</b> of file
+<p class="Pp">Definition at line <b>1321</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1317                                                                                          {
-1318   log_debug_every(LOG_RATE_SLOW, &quot;Received Opus audio batch from client %u (len=%zu)&quot;, client-&gt;client_id, len);
-1319 
-1320   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_OPUS_BATCH&quot;);
-1321   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO_OPUS_BATCH&quot;);
-1322   VALIDATE_RESOURCE_INITIALIZED(client, client-&gt;opus_decoder, &quot;Opus decoder&quot;);
+<pre>1321                                                                                          {
+1322   log_debug_every(LOG_RATE_SLOW, &quot;Received Opus audio batch from client %u (len=%zu)&quot;, client-&gt;client_id, len);
 1323 
-1324   // Parse Opus batch packet
-1325   const uint8_t *opus_data = NULL;
-1326   size_t opus_size = 0;
-1327   const uint16_t *frame_sizes = NULL;
-1328   int sample_rate = 0;
-1329   int frame_duration = 0;
-1330   int frame_count = 0;
-1331 
-1332   asciichat_error_t result = packet_parse_opus_batch(data, len, &amp;opus_data, &amp;opus_size, &amp;frame_sizes, &amp;sample_rate,
-1333                                                      &amp;frame_duration, &amp;frame_count);
-1334 
-1335   if (result != ASCIICHAT_OK) {
-1336     disconnect_client_for_bad_data(client, &quot;Failed to parse AUDIO_OPUS_BATCH packet&quot;);
-1337     return;
-1338   }
-1339 
-1340   VALIDATE_NONZERO(client, frame_count, &quot;frame_count&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
-1341   VALIDATE_NONZERO(client, opus_size, &quot;opus_size&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
-1342 
-1343   // Calculate samples per frame (20ms @ 48kHz = 960 samples)
-1344   int samples_per_frame = (sample_rate * frame_duration) / 1000;
-1345   VALIDATE_RANGE(client, samples_per_frame, 1, 4096, &quot;samples_per_frame&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1324   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_OPUS_BATCH&quot;);
+1325   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO_OPUS_BATCH&quot;);
+1326   VALIDATE_RESOURCE_INITIALIZED(client, client-&gt;opus_decoder, &quot;Opus decoder&quot;);
+1327 
+1328   // Parse Opus batch packet
+1329   const uint8_t *opus_data = NULL;
+1330   size_t opus_size = 0;
+1331   const uint16_t *frame_sizes = NULL;
+1332   int sample_rate = 0;
+1333   int frame_duration = 0;
+1334   int frame_count = 0;
+1335 
+1336   asciichat_error_t result = packet_parse_opus_batch(data, len, &amp;opus_data, &amp;opus_size, &amp;frame_sizes, &amp;sample_rate,
+1337                                                      &amp;frame_duration, &amp;frame_count);
+1338 
+1339   if (result != ASCIICHAT_OK) {
+1340     disconnect_client_for_bad_data(client, &quot;Failed to parse AUDIO_OPUS_BATCH packet&quot;);
+1341     return;
+1342   }
+1343 
+1344   VALIDATE_NONZERO(client, frame_count, &quot;frame_count&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1345   VALIDATE_NONZERO(client, opus_size, &quot;opus_size&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
 1346 
-1347   // Use static buffer for common case to avoid malloc in hot path
-1348   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
-1349   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
-1350 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
-1351   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
-1352 
-1353   size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
-1354   float *decoded_samples;
-1355   bool used_malloc = false;
+1347   // Calculate samples per frame (20ms @ 48kHz = 960 samples)
+1348   int samples_per_frame = (sample_rate * frame_duration) / 1000;
+1349   VALIDATE_RANGE(client, samples_per_frame, 1, 4096, &quot;samples_per_frame&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1350 
+1351   // Use static buffer for common case to avoid malloc in hot path
+1352   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
+1353   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
+1354 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+1355   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 1356 
-1357   if (total_samples &lt;= OPUS_DECODE_STATIC_MAX_SAMPLES) {
-1358     decoded_samples = static_decode_buffer;
-1359   } else {
-1360     // Unusual large batch - fall back to malloc
-1361     log_warn(&quot;Client %u: Large audio batch requires malloc (%zu samples)&quot;, client-&gt;client_id, total_samples);
-1362     decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
-1363     if (!decoded_samples) {
-1364       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for Opus decoded samples&quot;);
-1365       return;
-1366     }
-1367     used_malloc = true;
-1368   }
-1369 
-1370   // Decode each Opus frame using frame_sizes array
-1371   int total_decoded = 0;
-1372   size_t opus_offset = 0;
+1357   size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
+1358   float *decoded_samples;
+1359   bool used_malloc = false;
+1360 
+1361   if (total_samples &lt;= OPUS_DECODE_STATIC_MAX_SAMPLES) {
+1362     decoded_samples = static_decode_buffer;
+1363   } else {
+1364     // Unusual large batch - fall back to malloc
+1365     log_warn(&quot;Client %u: Large audio batch requires malloc (%zu samples)&quot;, client-&gt;client_id, total_samples);
+1366     decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+1367     if (!decoded_samples) {
+1368       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for Opus decoded samples&quot;);
+1369       return;
+1370     }
+1371     used_malloc = true;
+1372   }
 1373 
-1374   for (int i = 0; i &lt; frame_count; i++) {
-1375     // Get exact frame size from frame_sizes array (convert from network byte order)
-1376     size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
+1374   // Decode each Opus frame using frame_sizes array
+1375   int total_decoded = 0;
+1376   size_t opus_offset = 0;
 1377 
-1378     // DEBUG: Log the actual bytes of each Opus frame
-1379     if (frame_size &gt; 0) {
-1380       log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
-1381                       client-&gt;client_id, i, frame_size, opus_data[opus_offset] &amp; 0xFF,
-1382                       frame_size &gt; 1 ? (opus_data[opus_offset + 1] &amp; 0xFF) : 0,
-1383                       frame_size &gt; 2 ? (opus_data[opus_offset + 2] &amp; 0xFF) : 0,
-1384                       frame_size &gt; 3 ? (opus_data[opus_offset + 3] &amp; 0xFF) : 0);
-1385     }
-1386 
-1387     if (opus_offset + frame_size &gt; opus_size) {
-1388       log_error(&quot;Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)&quot;, client-&gt;client_id, i + 1,
-1389                 opus_offset, frame_size, opus_size);
-1390       if (used_malloc) {
-1391         SAFE_FREE(decoded_samples);
-1392       }
-1393       return;
-1394     }
-1395 
-1396     // SECURITY: Bounds check before writing decoded samples to prevent buffer overflow
-1397     // An attacker could send malicious Opus frames that decode to more samples than expected
-1398     if ((size_t)total_decoded + (size_t)samples_per_frame &gt; total_samples) {
-1399       log_error(&quot;Client %u: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)&quot;,
-1400                 client-&gt;client_id, total_decoded, samples_per_frame, total_samples);
-1401       if (used_malloc) {
-1402         SAFE_FREE(decoded_samples);
-1403       }
-1404       return;
-1405     }
-1406 
-1407     int decoded_count = opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, &amp;opus_data[opus_offset], frame_size,
-1408                                           &amp;decoded_samples[total_decoded], samples_per_frame);
-1409 
-1410     if (decoded_count &lt; 0) {
-1411       log_error(&quot;Client %u: Opus decoding failed for frame %d/%d (size=%zu)&quot;, client-&gt;client_id, i + 1, frame_count,
-1412                 frame_size);
-1413       if (used_malloc) {
-1414         SAFE_FREE(decoded_samples);
-1415       }
-1416       return;
-1417     }
-1418 
-1419     total_decoded += decoded_count;
-1420     opus_offset += frame_size;
-1421   }
+1378   for (int i = 0; i &lt; frame_count; i++) {
+1379     // Get exact frame size from frame_sizes array (convert from network byte order)
+1380     size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
+1381 
+1382     // DEBUG: Log the actual bytes of each Opus frame
+1383     if (frame_size &gt; 0) {
+1384       log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
+1385                       client-&gt;client_id, i, frame_size, opus_data[opus_offset] &amp; 0xFF,
+1386                       frame_size &gt; 1 ? (opus_data[opus_offset + 1] &amp; 0xFF) : 0,
+1387                       frame_size &gt; 2 ? (opus_data[opus_offset + 2] &amp; 0xFF) : 0,
+1388                       frame_size &gt; 3 ? (opus_data[opus_offset + 3] &amp; 0xFF) : 0);
+1389     }
+1390 
+1391     if (opus_offset + frame_size &gt; opus_size) {
+1392       log_error(&quot;Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)&quot;, client-&gt;client_id, i + 1,
+1393                 opus_offset, frame_size, opus_size);
+1394       if (used_malloc) {
+1395         SAFE_FREE(decoded_samples);
+1396       }
+1397       return;
+1398     }
+1399 
+1400     // SECURITY: Bounds check before writing decoded samples to prevent buffer overflow
+1401     // An attacker could send malicious Opus frames that decode to more samples than expected
+1402     if ((size_t)total_decoded + (size_t)samples_per_frame &gt; total_samples) {
+1403       log_error(&quot;Client %u: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)&quot;,
+1404                 client-&gt;client_id, total_decoded, samples_per_frame, total_samples);
+1405       if (used_malloc) {
+1406         SAFE_FREE(decoded_samples);
+1407       }
+1408       return;
+1409     }
+1410 
+1411     int decoded_count = opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, &amp;opus_data[opus_offset], frame_size,
+1412                                           &amp;decoded_samples[total_decoded], samples_per_frame);
+1413 
+1414     if (decoded_count &lt; 0) {
+1415       log_error(&quot;Client %u: Opus decoding failed for frame %d/%d (size=%zu)&quot;, client-&gt;client_id, i + 1, frame_count,
+1416                 frame_size);
+1417       if (used_malloc) {
+1418         SAFE_FREE(decoded_samples);
+1419       }
+1420       return;
+1421     }
 1422 
-1423   log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Decoded %d Opus frames -&gt; %d samples&quot;, client-&gt;client_id, frame_count,
-1424                   total_decoded);
-1425 
-1426   // DEBUG: Log sample values to detect all-zero issue
-1427   static int server_decode_count = 0;
-1428   server_decode_count++;
-1429   if (total_decoded &gt; 0 &amp;&amp; (server_decode_count &lt;= 10 || server_decode_count % 100 == 0)) {
-1430     float peak = 0.0f, rms = 0.0f;
-1431     for (int i = 0; i &lt; total_decoded &amp;&amp; i &lt; 100; i++) {
-1432       float abs_val = fabsf(decoded_samples[i]);
-1433       if (abs_val &gt; peak)
-1434         peak = abs_val;
-1435       rms += decoded_samples[i] * decoded_samples[i];
-1436     }
-1437     rms = sqrtf(rms / (total_decoded &gt; 100 ? 100 : total_decoded));
-1438     // Log first 4 bytes of Opus data to compare with client encode
-1439     log_info(&quot;SERVER OPUS DECODE #%d from client %u: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
-1440              server_decode_count, client-&gt;client_id, rms, opus_size &gt; 0 ? opus_data[0] : 0,
-1441              opus_size &gt; 1 ? opus_data[1] : 0, opus_size &gt; 2 ? opus_data[2] : 0, opus_size &gt; 3 ? opus_data[3] : 0);
-1442   }
-1443 
-1444   // Write decoded samples to client's incoming audio buffer
-1445   // Note: audio_ring_buffer_write returns error code, not sample count
-1446   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
-1447   if (client-&gt;incoming_audio_buffer &amp;&amp; total_decoded &gt; 0) {
-1448     asciichat_error_t result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, total_decoded);
-1449     if (result != ASCIICHAT_OK) {
-1450       log_error(&quot;Client %u: Failed to write decoded audio to buffer: %d&quot;, client-&gt;client_id, result);
-1451     }
-1452   }
-1453 
-1454   if (used_malloc) {
-1455     SAFE_FREE(decoded_samples);
+1423     total_decoded += decoded_count;
+1424     opus_offset += frame_size;
+1425   }
+1426 
+1427   log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Decoded %d Opus frames -&gt; %d samples&quot;, client-&gt;client_id, frame_count,
+1428                   total_decoded);
+1429 
+1430   // DEBUG: Log sample values to detect all-zero issue
+1431   static int server_decode_count = 0;
+1432   server_decode_count++;
+1433   if (total_decoded &gt; 0 &amp;&amp; (server_decode_count &lt;= 10 || server_decode_count % 100 == 0)) {
+1434     float peak = 0.0f, rms = 0.0f;
+1435     for (int i = 0; i &lt; total_decoded &amp;&amp; i &lt; 100; i++) {
+1436       float abs_val = fabsf(decoded_samples[i]);
+1437       if (abs_val &gt; peak)
+1438         peak = abs_val;
+1439       rms += decoded_samples[i] * decoded_samples[i];
+1440     }
+1441     rms = sqrtf(rms / (total_decoded &gt; 100 ? 100 : total_decoded));
+1442     // Log first 4 bytes of Opus data to compare with client encode
+1443     log_info(&quot;SERVER OPUS DECODE #%d from client %u: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
+1444              server_decode_count, client-&gt;client_id, rms, opus_size &gt; 0 ? opus_data[0] : 0,
+1445              opus_size &gt; 1 ? opus_data[1] : 0, opus_size &gt; 2 ? opus_data[2] : 0, opus_size &gt; 3 ? opus_data[3] : 0);
+1446   }
+1447 
+1448   // Write decoded samples to client's incoming audio buffer
+1449   // Note: audio_ring_buffer_write returns error code, not sample count
+1450   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
+1451   if (client-&gt;incoming_audio_buffer &amp;&amp; total_decoded &gt; 0) {
+1452     asciichat_error_t result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, total_decoded);
+1453     if (result != ASCIICHAT_OK) {
+1454       log_error(&quot;Client %u: Failed to write decoded audio to buffer: %d&quot;, client-&gt;client_id, result);
+1455     }
 1456   }
-1457 }</pre>
+1457 
+1458   if (used_malloc) {
+1459     SAFE_FREE(decoded_samples);
+1460   }
+1461 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_ring_buffer_write()</b>,
@@ -760,82 +760,82 @@
 <i>data</i> Packet payload
 <br/>
 <i>len</i> Packet length</div>
-<p class="Pp">Definition at line <b>1477</b> of file
+<p class="Pp">Definition at line <b>1481</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1477                                                                                    {
-1478   log_debug_every(LOG_RATE_DEFAULT, &quot;Received Opus audio from client %u (len=%zu)&quot;, client-&gt;client_id, len);
-1479 
-1480   if (VALIDATE_PACKET_NOT_NULL(client, data, &quot;AUDIO_OPUS&quot;)) {
-1481     return;
-1482   }
+<pre>1481                                                                                    {
+1482   log_debug_every(LOG_RATE_DEFAULT, &quot;Received Opus audio from client %u (len=%zu)&quot;, client-&gt;client_id, len);
 1483 
-1484   // Minimum size: 16-byte header + at least 1 byte of Opus data
-1485   if (len &lt; 17) {
-1486     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS packet too small: %zu bytes&quot;, len);
-1487     return;
-1488   }
-1489 
-1490   if (!atomic_load_bool(&amp;client-&gt;is_sending_audio)) {
-1491     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS received before audio stream enabled&quot;);
-1492     return;
-1493   }
-1494 
-1495   if (!client-&gt;opus_decoder) {
-1496     disconnect_client_for_bad_data(client, &quot;Opus decoder not initialized&quot;);
-1497     return;
-1498   }
-1499 
-1500   // Parse header (16 bytes) - convert from network byte order
-1501   const uint8_t *buf = (const uint8_t *)data;
-1502   uint32_t sample_rate_net, frame_duration_net;
-1503   memcpy(&amp;sample_rate_net, buf, 4);
-1504   memcpy(&amp;frame_duration_net, buf + 4, 4);
-1505   uint32_t sample_rate = NET_TO_HOST_U32(sample_rate_net);
-1506   uint32_t frame_duration = NET_TO_HOST_U32(frame_duration_net);
-1507 
-1508   // Extract Opus data (after 16-byte header)
-1509   const uint8_t *opus_data = buf + 16;
-1510   size_t opus_size = len - 16;
+1484   if (VALIDATE_PACKET_NOT_NULL(client, data, &quot;AUDIO_OPUS&quot;)) {
+1485     return;
+1486   }
+1487 
+1488   // Minimum size: 16-byte header + at least 1 byte of Opus data
+1489   if (len &lt; 17) {
+1490     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS packet too small: %zu bytes&quot;, len);
+1491     return;
+1492   }
+1493 
+1494   if (!atomic_load_bool(&amp;client-&gt;is_sending_audio)) {
+1495     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS received before audio stream enabled&quot;);
+1496     return;
+1497   }
+1498 
+1499   if (!client-&gt;opus_decoder) {
+1500     disconnect_client_for_bad_data(client, &quot;Opus decoder not initialized&quot;);
+1501     return;
+1502   }
+1503 
+1504   // Parse header (16 bytes) - convert from network byte order
+1505   const uint8_t *buf = (const uint8_t *)data;
+1506   uint32_t sample_rate_net, frame_duration_net;
+1507   memcpy(&amp;sample_rate_net, buf, 4);
+1508   memcpy(&amp;frame_duration_net, buf + 4, 4);
+1509   uint32_t sample_rate = NET_TO_HOST_U32(sample_rate_net);
+1510   uint32_t frame_duration = NET_TO_HOST_U32(frame_duration_net);
 1511 
-1512   // Validate parameters
-1513   if (sample_rate == 0 || sample_rate &gt; 192000) {
-1514     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid sample_rate: %u&quot;, sample_rate);
-1515     return;
-1516   }
-1517 
-1518   if (frame_duration == 0 || frame_duration &gt; 120) {
-1519     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid frame_duration: %u ms&quot;, frame_duration);
-1520     return;
-1521   }
-1522 
-1523   // Calculate expected samples per frame
-1524   int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
-1525   if (samples_per_frame &lt;= 0 || samples_per_frame &gt; 5760) { // Max 120ms @ 48kHz
-1526     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid samples_per_frame: %d&quot;, samples_per_frame);
-1527     return;
-1528   }
-1529 
-1530   // Decode Opus frame
-1531   float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
-1532   int decoded_count =
-1533       opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
-1534 
-1535   if (decoded_count &lt; 0) {
-1536     log_error(&quot;Client %u: Opus decoding failed (size=%zu)&quot;, client-&gt;client_id, opus_size);
-1537     return;
-1538   }
-1539 
-1540   log_debug_every(LOG_RATE_VERY_FAST, &quot;Client %u: Decoded Opus frame -&gt; %d samples&quot;, client-&gt;client_id, decoded_count);
-1541 
-1542   // Write decoded samples to client's incoming audio buffer
-1543   if (client-&gt;incoming_audio_buffer &amp;&amp; decoded_count &gt; 0) {
-1544     asciichat_error_t write_result =
-1545         audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, decoded_count);
-1546     if (write_result != ASCIICHAT_OK) {
-1547       log_error(&quot;Failed to write decoded Opus samples to buffer: %s&quot;, asciichat_error_string(write_result));
-1548     }
-1549   }
-1550 }</pre>
+1512   // Extract Opus data (after 16-byte header)
+1513   const uint8_t *opus_data = buf + 16;
+1514   size_t opus_size = len - 16;
+1515 
+1516   // Validate parameters
+1517   if (sample_rate == 0 || sample_rate &gt; 192000) {
+1518     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid sample_rate: %u&quot;, sample_rate);
+1519     return;
+1520   }
+1521 
+1522   if (frame_duration == 0 || frame_duration &gt; 120) {
+1523     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid frame_duration: %u ms&quot;, frame_duration);
+1524     return;
+1525   }
+1526 
+1527   // Calculate expected samples per frame
+1528   int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
+1529   if (samples_per_frame &lt;= 0 || samples_per_frame &gt; 5760) { // Max 120ms @ 48kHz
+1530     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid samples_per_frame: %d&quot;, samples_per_frame);
+1531     return;
+1532   }
+1533 
+1534   // Decode Opus frame
+1535   float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
+1536   int decoded_count =
+1537       opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
+1538 
+1539   if (decoded_count &lt; 0) {
+1540     log_error(&quot;Client %u: Opus decoding failed (size=%zu)&quot;, client-&gt;client_id, opus_size);
+1541     return;
+1542   }
+1543 
+1544   log_debug_every(LOG_RATE_VERY_FAST, &quot;Client %u: Decoded Opus frame -&gt; %d samples&quot;, client-&gt;client_id, decoded_count);
+1545 
+1546   // Write decoded samples to client's incoming audio buffer
+1547   if (client-&gt;incoming_audio_buffer &amp;&amp; decoded_count &gt; 0) {
+1548     asciichat_error_t write_result =
+1549         audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, decoded_count);
+1550     if (write_result != ASCIICHAT_OK) {
+1551       log_error(&quot;Failed to write decoded Opus samples to buffer: %s&quot;, asciichat_error_string(write_result));
+1552     }
+1553   }
+1554 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
@@ -904,23 +904,23 @@
 <p class="Pp"></p>
 <p class="Pp"><b>audio_ring_buffer_write()</b> For storage implementation</p>
 </div>
-<p class="Pp">Definition at line <b>1093</b> of file
+<p class="Pp">Definition at line <b>1097</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1093                                                                               {
-1094   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO&quot;);
-1095   VALIDATE_AUDIO_ALIGNMENT(client, len, sizeof(float), &quot;AUDIO&quot;);
-1096   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO&quot;);
-1097 
-1098   int num_samples = (int)(len / sizeof(float));
-1099   VALIDATE_AUDIO_SAMPLE_COUNT(client, num_samples, AUDIO_SAMPLES_PER_PACKET, &quot;AUDIO&quot;);
-1100   VALIDATE_RESOURCE_INITIALIZED(client, client-&gt;incoming_audio_buffer, &quot;audio buffer&quot;);
+<pre>1097                                                                               {
+1098   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO&quot;);
+1099   VALIDATE_AUDIO_ALIGNMENT(client, len, sizeof(float), &quot;AUDIO&quot;);
+1100   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO&quot;);
 1101 
-1102   const float *samples = (const float *)data;
-1103   asciichat_error_t result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, samples, num_samples);
-1104   if (result != ASCIICHAT_OK) {
-1105     log_error(&quot;Failed to write audio samples to buffer: %s&quot;, asciichat_error_string(result));
-1106   }
-1107 }</pre>
+1102   int num_samples = (int)(len / sizeof(float));
+1103   VALIDATE_AUDIO_SAMPLE_COUNT(client, num_samples, AUDIO_SAMPLES_PER_PACKET, &quot;AUDIO&quot;);
+1104   VALIDATE_RESOURCE_INITIALIZED(client, client-&gt;incoming_audio_buffer, &quot;audio buffer&quot;);
+1105 
+1106   const float *samples = (const float *)data;
+1107   asciichat_error_t result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, samples, num_samples);
+1108   if (result != ASCIICHAT_OK) {
+1109     log_error(&quot;Failed to write audio samples to buffer: %s&quot;, asciichat_error_string(result));
+1110   }
+1111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_ring_buffer_write()</b>,
@@ -1030,142 +1030,142 @@
 <p class="Pp"><b>terminal_color_level_name()</b> For color level
   descriptions</p>
 </div>
-<p class="Pp">Definition at line <b>1621</b> of file
+<p class="Pp">Definition at line <b>1625</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1621                                                                                             {
-1622   const char *client_id = client-&gt;client_id;
-1623   log_warn(&quot;[CAPS_HANDLER] &#x1F7E2; CAPS_RECEIVED: client_id=%u, data_ptr=%p, len=%zu bytes&quot;, client_id, data, len);
-1624 
-1625   log_debug(&quot;[CAPS_HANDLER] Step 1: Validating packet size (expected=%zu, actual=%zu)&quot;,
-1626             sizeof(terminal_capabilities_packet_t), len);
-1627   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), &quot;CLIENT_CAPABILITIES&quot;);
-1628   log_debug(&quot;[CAPS_HANDLER] &#x2705; Size validation passed&quot;);
-1629 
-1630   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
-1631 
-1632   // Extract and validate dimensions
-1633   uint16_t width = NET_TO_HOST_U16(caps-&gt;width);
-1634   uint16_t height = NET_TO_HOST_U16(caps-&gt;height);
-1635   log_warn(&quot;[CAPS_HANDLER] &#x1F4D0; DIMENSIONS: width=%u, height=%u&quot;, width, height);
-1636 
-1637   log_debug(&quot;[CAPS_HANDLER] Step 2: Validating width (value=%u, must be nonzero)&quot;, width);
-1638   VALIDATE_NONZERO(client, width, &quot;width&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1639   log_debug(&quot;[CAPS_HANDLER] &#x2705; Width nonzero check passed&quot;);
+<pre>1625                                                                                             {
+1626   const char *client_id = client-&gt;client_id;
+1627   log_warn(&quot;[CAPS_HANDLER] &#x1F7E2; CAPS_RECEIVED: client_id=%u, data_ptr=%p, len=%zu bytes&quot;, client_id, data, len);
+1628 
+1629   log_debug(&quot;[CAPS_HANDLER] Step 1: Validating packet size (expected=%zu, actual=%zu)&quot;,
+1630             sizeof(terminal_capabilities_packet_t), len);
+1631   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), &quot;CLIENT_CAPABILITIES&quot;);
+1632   log_debug(&quot;[CAPS_HANDLER] &#x2705; Size validation passed&quot;);
+1633 
+1634   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
+1635 
+1636   // Extract and validate dimensions
+1637   uint16_t width = NET_TO_HOST_U16(caps-&gt;width);
+1638   uint16_t height = NET_TO_HOST_U16(caps-&gt;height);
+1639   log_warn(&quot;[CAPS_HANDLER] &#x1F4D0; DIMENSIONS: width=%u, height=%u&quot;, width, height);
 1640 
-1641   log_debug(&quot;[CAPS_HANDLER] Step 3: Validating height (value=%u, must be nonzero)&quot;, height);
-1642   VALIDATE_NONZERO(client, height, &quot;height&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1643   log_debug(&quot;[CAPS_HANDLER] &#x2705; Height nonzero check passed&quot;);
+1641   log_debug(&quot;[CAPS_HANDLER] Step 2: Validating width (value=%u, must be nonzero)&quot;, width);
+1642   VALIDATE_NONZERO(client, width, &quot;width&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1643   log_debug(&quot;[CAPS_HANDLER] &#x2705; Width nonzero check passed&quot;);
 1644 
-1645   log_debug(&quot;[CAPS_HANDLER] Step 4: Validating width range (value=%u, range=1-4096)&quot;, width);
-1646   VALIDATE_RANGE(client, width, 1, 4096, &quot;width&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1647   log_debug(&quot;[CAPS_HANDLER] &#x2705; Width range check passed&quot;);
+1645   log_debug(&quot;[CAPS_HANDLER] Step 3: Validating height (value=%u, must be nonzero)&quot;, height);
+1646   VALIDATE_NONZERO(client, height, &quot;height&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1647   log_debug(&quot;[CAPS_HANDLER] &#x2705; Height nonzero check passed&quot;);
 1648 
-1649   log_debug(&quot;[CAPS_HANDLER] Step 5: Validating height range (value=%u, range=1-4096)&quot;, height);
-1650   VALIDATE_RANGE(client, height, 1, 4096, &quot;height&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1651   log_debug(&quot;[CAPS_HANDLER] &#x2705; Height range check passed&quot;);
+1649   log_debug(&quot;[CAPS_HANDLER] Step 4: Validating width range (value=%u, range=1-4096)&quot;, width);
+1650   VALIDATE_RANGE(client, width, 1, 4096, &quot;width&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1651   log_debug(&quot;[CAPS_HANDLER] &#x2705; Width range check passed&quot;);
 1652 
-1653   // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
-1654   uint32_t color_level = NET_TO_HOST_U32(caps-&gt;color_level);
-1655   log_debug(&quot;[CAPS_HANDLER] Step 6: Validating color_level (value=%u, range=0-3)&quot;, color_level);
-1656   VALIDATE_RANGE(client, color_level, 0, 3, &quot;color_level&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1657   log_debug(&quot;[CAPS_HANDLER] &#x2705; Color level check passed&quot;);
-1658 
-1659   // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
-1660   uint32_t render_mode = NET_TO_HOST_U32(caps-&gt;render_mode);
-1661   log_debug(&quot;[CAPS_HANDLER] Step 7: Validating render_mode (value=%u, range=0-2)&quot;, render_mode);
-1662   VALIDATE_RANGE(client, render_mode, 0, 2, &quot;render_mode&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1663   log_debug(&quot;[CAPS_HANDLER] &#x2705; Render mode check passed&quot;);
-1664 
-1665   // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
-1666   uint32_t palette_type = NET_TO_HOST_U32(caps-&gt;palette_type);
-1667   log_debug(&quot;[CAPS_HANDLER] Step 8: Validating palette_type (value=%u, range=0-5)&quot;, palette_type);
-1668   VALIDATE_RANGE(client, palette_type, 0, 5, &quot;palette_type&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1669   log_debug(&quot;[CAPS_HANDLER] &#x2705; Palette type check passed&quot;);
-1670 
-1671   // Validate desired FPS (1-144)
-1672   log_debug(&quot;[CAPS_HANDLER] Step 9: Validating desired_fps (value=%u, range=1-144)&quot;, caps-&gt;desired_fps);
-1673   VALIDATE_RANGE(client, caps-&gt;desired_fps, 1, 144, &quot;desired_fps&quot;, &quot;CLIENT_CAPABILITIES&quot;);
-1674   log_debug(&quot;[CAPS_HANDLER] &#x2705; FPS check passed&quot;);
-1675 
-1676   mutex_lock(&amp;client-&gt;client_state_mutex);
-1677 
-1678   client-&gt;width = width;
-1679   client-&gt;height = height;
-1680 
-1681   log_debug(&quot;Client %u dimensions: %ux%u, desired_fps=%u&quot;, client-&gt;client_id, client-&gt;width, client-&gt;height,
-1682             caps-&gt;desired_fps);
-1683 
-1684   client-&gt;terminal_caps.capabilities = NET_TO_HOST_U32(caps-&gt;capabilities);
-1685   client-&gt;terminal_caps.color_level = color_level;
-1686   client-&gt;terminal_caps.color_count = NET_TO_HOST_U32(caps-&gt;color_count);
-1687   client-&gt;terminal_caps.render_mode = render_mode;
-1688   client-&gt;terminal_caps.detection_reliable = caps-&gt;detection_reliable;
-1689   client-&gt;terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
-1690 
-1691   SAFE_STRNCPY(client-&gt;terminal_caps.term_type, caps-&gt;term_type, sizeof(client-&gt;terminal_caps.term_type));
-1692   SAFE_STRNCPY(client-&gt;terminal_caps.colorterm, caps-&gt;colorterm, sizeof(client-&gt;terminal_caps.colorterm));
-1693 
-1694   client-&gt;terminal_caps.utf8_support = NET_TO_HOST_U32(caps-&gt;utf8_support);
-1695   client-&gt;terminal_caps.palette_type = palette_type;
-1696   SAFE_STRNCPY(client-&gt;terminal_caps.palette_custom, caps-&gt;palette_custom,
-1697                sizeof(client-&gt;terminal_caps.palette_custom));
-1698 
-1699   client-&gt;terminal_caps.desired_fps = caps-&gt;desired_fps;
-1700 
-1701   // Extract wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
-1702   client-&gt;terminal_caps.wants_padding = (caps-&gt;wants_padding != 0);
-1703 
-1704   const char *custom_chars =
-1705       (client-&gt;terminal_caps.palette_type == PALETTE_CUSTOM &amp;&amp; client-&gt;terminal_caps.palette_custom[0])
-1706           ? client-&gt;terminal_caps.palette_custom
-1707           : NULL;
-1708 
-1709   if (initialize_client_palette((palette_type_t)client-&gt;terminal_caps.palette_type, custom_chars,
-1710                                 client-&gt;client_palette_chars, &amp;client-&gt;client_palette_len,
-1711                                 client-&gt;client_luminance_palette) == 0) {
-1712     client-&gt;client_palette_type = (palette_type_t)client-&gt;terminal_caps.palette_type;
-1713     client-&gt;client_palette_initialized = true;
-1714     log_info(&quot;Client %d palette initialized: type=%u, %zu chars, utf8=%u&quot;, client-&gt;client_id,
-1715              client-&gt;terminal_caps.palette_type, client-&gt;client_palette_len, client-&gt;terminal_caps.utf8_support);
-1716   } else {
-1717     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to initialize palette for client %d&quot;, client-&gt;client_id);
-1718     client-&gt;client_palette_initialized = false;
-1719   }
-1720 
-1721   // Extract and store codec capabilities
-1722   client-&gt;codec_capabilities_video = NET_TO_HOST_U32(caps-&gt;codec_capabilities_video);
-1723   client-&gt;codec_capabilities_audio = NET_TO_HOST_U32(caps-&gt;codec_capabilities_audio);
-1724   log_info(&quot;Client %u codec capabilities: video=0x%x audio=0x%x&quot;, client-&gt;client_id,
-1725            client-&gt;codec_capabilities_video, client-&gt;codec_capabilities_audio);
-1726 
-1727   client-&gt;has_terminal_caps = true;
-1728 
-1729   log_info(&quot;Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, &quot;
-1730            &quot;render_mode=%s, reliable=%s, fps=%u, wants_padding=%d&quot;,
-1731            client-&gt;client_id, client-&gt;width, client-&gt;height,
-1732            terminal_color_level_name(client-&gt;terminal_caps.color_level), client-&gt;terminal_caps.color_count,
-1733            client-&gt;terminal_caps.capabilities, client-&gt;terminal_caps.term_type, client-&gt;terminal_caps.colorterm,
-1734            (client-&gt;terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-1735                 ? &quot;half-block&quot;
-1736                 : (client-&gt;terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? &quot;background&quot; : &quot;foreground&quot;)),
-1737            client-&gt;terminal_caps.detection_reliable ? &quot;yes&quot; : &quot;no&quot;, client-&gt;terminal_caps.desired_fps,
-1738            client-&gt;terminal_caps.wants_padding);
-1739 
-1740   // Send capabilities acknowledgment to client
-1741   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-1742     log_info_client(client, &quot;Terminal configured: %ux%u, %s, %s mode, %u fps&quot;, client-&gt;width, client-&gt;height,
-1743                     terminal_color_level_name(client-&gt;terminal_caps.color_level),
-1744                     (client-&gt;terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-1745                          ? &quot;half-block&quot;
-1746                          : (client-&gt;terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? &quot;background&quot; : &quot;foreground&quot;)),
-1747                     client-&gt;terminal_caps.desired_fps);
-1748   }
-1749 
-1750   mutex_unlock(&amp;client-&gt;client_state_mutex);
-1751 
-1752   log_warn(&quot;[CAPS_HANDLER] &#x2705; CAPS_COMPLETE: client_id=%u - all validations passed, capabilities stored&quot;,
-1753            client-&gt;client_id);
-1754 }</pre>
+1653   log_debug(&quot;[CAPS_HANDLER] Step 5: Validating height range (value=%u, range=1-4096)&quot;, height);
+1654   VALIDATE_RANGE(client, height, 1, 4096, &quot;height&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1655   log_debug(&quot;[CAPS_HANDLER] &#x2705; Height range check passed&quot;);
+1656 
+1657   // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
+1658   uint32_t color_level = NET_TO_HOST_U32(caps-&gt;color_level);
+1659   log_debug(&quot;[CAPS_HANDLER] Step 6: Validating color_level (value=%u, range=0-3)&quot;, color_level);
+1660   VALIDATE_RANGE(client, color_level, 0, 3, &quot;color_level&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1661   log_debug(&quot;[CAPS_HANDLER] &#x2705; Color level check passed&quot;);
+1662 
+1663   // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
+1664   uint32_t render_mode = NET_TO_HOST_U32(caps-&gt;render_mode);
+1665   log_debug(&quot;[CAPS_HANDLER] Step 7: Validating render_mode (value=%u, range=0-2)&quot;, render_mode);
+1666   VALIDATE_RANGE(client, render_mode, 0, 2, &quot;render_mode&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1667   log_debug(&quot;[CAPS_HANDLER] &#x2705; Render mode check passed&quot;);
+1668 
+1669   // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
+1670   uint32_t palette_type = NET_TO_HOST_U32(caps-&gt;palette_type);
+1671   log_debug(&quot;[CAPS_HANDLER] Step 8: Validating palette_type (value=%u, range=0-5)&quot;, palette_type);
+1672   VALIDATE_RANGE(client, palette_type, 0, 5, &quot;palette_type&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1673   log_debug(&quot;[CAPS_HANDLER] &#x2705; Palette type check passed&quot;);
+1674 
+1675   // Validate desired FPS (1-144)
+1676   log_debug(&quot;[CAPS_HANDLER] Step 9: Validating desired_fps (value=%u, range=1-144)&quot;, caps-&gt;desired_fps);
+1677   VALIDATE_RANGE(client, caps-&gt;desired_fps, 1, 144, &quot;desired_fps&quot;, &quot;CLIENT_CAPABILITIES&quot;);
+1678   log_debug(&quot;[CAPS_HANDLER] &#x2705; FPS check passed&quot;);
+1679 
+1680   mutex_lock(&amp;client-&gt;client_state_mutex);
+1681 
+1682   client-&gt;width = width;
+1683   client-&gt;height = height;
+1684 
+1685   log_debug(&quot;Client %u dimensions: %ux%u, desired_fps=%u&quot;, client-&gt;client_id, client-&gt;width, client-&gt;height,
+1686             caps-&gt;desired_fps);
+1687 
+1688   client-&gt;terminal_caps.capabilities = NET_TO_HOST_U32(caps-&gt;capabilities);
+1689   client-&gt;terminal_caps.color_level = color_level;
+1690   client-&gt;terminal_caps.color_count = NET_TO_HOST_U32(caps-&gt;color_count);
+1691   client-&gt;terminal_caps.render_mode = render_mode;
+1692   client-&gt;terminal_caps.detection_reliable = caps-&gt;detection_reliable;
+1693   client-&gt;terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
+1694 
+1695   SAFE_STRNCPY(client-&gt;terminal_caps.term_type, caps-&gt;term_type, sizeof(client-&gt;terminal_caps.term_type));
+1696   SAFE_STRNCPY(client-&gt;terminal_caps.colorterm, caps-&gt;colorterm, sizeof(client-&gt;terminal_caps.colorterm));
+1697 
+1698   client-&gt;terminal_caps.utf8_support = NET_TO_HOST_U32(caps-&gt;utf8_support);
+1699   client-&gt;terminal_caps.palette_type = palette_type;
+1700   SAFE_STRNCPY(client-&gt;terminal_caps.palette_custom, caps-&gt;palette_custom,
+1701                sizeof(client-&gt;terminal_caps.palette_custom));
+1702 
+1703   client-&gt;terminal_caps.desired_fps = caps-&gt;desired_fps;
+1704 
+1705   // Extract wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
+1706   client-&gt;terminal_caps.wants_padding = (caps-&gt;wants_padding != 0);
+1707 
+1708   const char *custom_chars =
+1709       (client-&gt;terminal_caps.palette_type == PALETTE_CUSTOM &amp;&amp; client-&gt;terminal_caps.palette_custom[0])
+1710           ? client-&gt;terminal_caps.palette_custom
+1711           : NULL;
+1712 
+1713   if (initialize_client_palette((palette_type_t)client-&gt;terminal_caps.palette_type, custom_chars,
+1714                                 client-&gt;client_palette_chars, &amp;client-&gt;client_palette_len,
+1715                                 client-&gt;client_luminance_palette) == 0) {
+1716     client-&gt;client_palette_type = (palette_type_t)client-&gt;terminal_caps.palette_type;
+1717     client-&gt;client_palette_initialized = true;
+1718     log_info(&quot;Client %d palette initialized: type=%u, %zu chars, utf8=%u&quot;, client-&gt;client_id,
+1719              client-&gt;terminal_caps.palette_type, client-&gt;client_palette_len, client-&gt;terminal_caps.utf8_support);
+1720   } else {
+1721     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to initialize palette for client %d&quot;, client-&gt;client_id);
+1722     client-&gt;client_palette_initialized = false;
+1723   }
+1724 
+1725   // Extract and store codec capabilities
+1726   client-&gt;codec_capabilities_video = NET_TO_HOST_U32(caps-&gt;codec_capabilities_video);
+1727   client-&gt;codec_capabilities_audio = NET_TO_HOST_U32(caps-&gt;codec_capabilities_audio);
+1728   log_info(&quot;Client %u codec capabilities: video=0x%x audio=0x%x&quot;, client-&gt;client_id,
+1729            client-&gt;codec_capabilities_video, client-&gt;codec_capabilities_audio);
+1730 
+1731   client-&gt;has_terminal_caps = true;
+1732 
+1733   log_info(&quot;Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, &quot;
+1734            &quot;render_mode=%s, reliable=%s, fps=%u, wants_padding=%d&quot;,
+1735            client-&gt;client_id, client-&gt;width, client-&gt;height,
+1736            terminal_color_level_name(client-&gt;terminal_caps.color_level), client-&gt;terminal_caps.color_count,
+1737            client-&gt;terminal_caps.capabilities, client-&gt;terminal_caps.term_type, client-&gt;terminal_caps.colorterm,
+1738            (client-&gt;terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+1739                 ? &quot;half-block&quot;
+1740                 : (client-&gt;terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? &quot;background&quot; : &quot;foreground&quot;)),
+1741            client-&gt;terminal_caps.detection_reliable ? &quot;yes&quot; : &quot;no&quot;, client-&gt;terminal_caps.desired_fps,
+1742            client-&gt;terminal_caps.wants_padding);
+1743 
+1744   // Send capabilities acknowledgment to client
+1745   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
+1746     log_info_client(client, &quot;Terminal configured: %ux%u, %s, %s mode, %u fps&quot;, client-&gt;width, client-&gt;height,
+1747                     terminal_color_level_name(client-&gt;terminal_caps.color_level),
+1748                     (client-&gt;terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+1749                          ? &quot;half-block&quot;
+1750                          : (client-&gt;terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? &quot;background&quot; : &quot;foreground&quot;)),
+1751                     client-&gt;terminal_caps.desired_fps);
+1752   }
+1753 
+1754   mutex_unlock(&amp;client-&gt;client_state_mutex);
+1755 
+1756   log_warn(&quot;[CAPS_HANDLER] &#x2705; CAPS_COMPLETE: client_id=%u - all validations passed, capabilities stored&quot;,
+1757            client-&gt;client_id);
+1758 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_packet_t::capabilities</b>,
@@ -1500,70 +1500,74 @@
 984 
 985   // Get or create decoder for this client
 986   uint32_t client_id_num = 0;
-987   if (sscanf(client-&gt;client_id, &quot;%u&quot;, &amp;client_id_num) != 1) {
-988     // Fallback to string hash if can't parse as number
-989     client_id_num = 0;
-990     for (int i = 0; client-&gt;client_id[i]; i++) {
-991       client_id_num = (client_id_num * 31 + (unsigned char)client-&gt;client_id[i]) &amp; 0xFFFFFFFF;
-992     }
-993   }
-994 
-995   h265_server_client_t *client_decoder = h265_server_get_client_decoder(h265_ctx, client_id_num);
-996   if (!client_decoder) {
-997     log_error(&quot;Failed to get H.265 decoder for client %s&quot;, client-&gt;client_id);
-998     disconnect_client_for_bad_data(client, &quot;Failed to initialize H.265 decoder&quot;);
-999     return;
-1000   }
-1001 
-1002   // Allocate temporary RGBA buffer for decoding
-1003   // H.265 frames from client are sent as [flags:u8][width:u16][height:u16][h265_data...]
-1004   // Max frame is (256x256 = 65536 pixels) * 4 bytes/pixel = 262KB
-1005   uint8_t *rgba_buf = SAFE_MALLOC(512 * 512 * 4, uint8_t *);
-1006   if (!rgba_buf) {
-1007     log_error(&quot;Failed to allocate RGBA buffer for H.265 decoding&quot;);
-1008     disconnect_client_for_bad_data(client, &quot;Out of memory for H.265 frame decoding&quot;);
-1009     return;
-1010   }
-1011 
-1012   uint16_t frame_width = 0;
-1013   uint16_t frame_height = 0;
-1014   size_t rgba_size = 512 * 512 * 4;
+987   char *end = NULL;
+988   unsigned long parsed = strtoul(client-&gt;client_id, &amp;end, 10);
+989   if (end != client-&gt;client_id &amp;&amp; *end == '\0') {
+990     client_id_num = (uint32_t)parsed;
+991   } else {
+992     // Fallback to string hash if can't parse as number
+993     client_id_num = 0;
+994     for (int i = 0; client-&gt;client_id[i]; i++) {
+995       client_id_num = (client_id_num * 31 + (unsigned char)client-&gt;client_id[i]) &amp; 0xFFFFFFFF;
+996     }
+997   }
+998 
+999   h265_server_client_t *client_decoder = h265_server_get_client_decoder(h265_ctx, client_id_num);
+1000   if (!client_decoder) {
+1001     log_error(&quot;Failed to get H.265 decoder for client %s&quot;, client-&gt;client_id);
+1002     disconnect_client_for_bad_data(client, &quot;Failed to initialize H.265 decoder&quot;);
+1003     return;
+1004   }
+1005 
+1006   // Allocate temporary RGBA buffer for decoding
+1007   // H.265 frames from client are sent as [flags:u8][width:u16][height:u16][h265_data...]
+1008   // Max frame is (256x256 = 65536 pixels) * 4 bytes/pixel = 262KB
+1009   uint8_t *rgba_buf = SAFE_MALLOC(512 * 512 * 4, uint8_t *);
+1010   if (!rgba_buf) {
+1011     log_error(&quot;Failed to allocate RGBA buffer for H.265 decoding&quot;);
+1012     disconnect_client_for_bad_data(client, &quot;Out of memory for H.265 frame decoding&quot;);
+1013     return;
+1014   }
 1015 
-1016   // Decode H.265 packet to RGBA
-1017   asciichat_error_t decode_result = h265_server_decode_and_convert(client_decoder, (const uint8_t *)data, len, rgba_buf,
-1018                                                                    &amp;frame_width, &amp;frame_height, &amp;rgba_size);
+1016   uint16_t frame_width = 0;
+1017   uint16_t frame_height = 0;
+1018   size_t rgba_size = 512 * 512 * 4;
 1019 
-1020   if (decode_result != ASCIICHAT_OK) {
-1021     log_error(&quot;H.265 decoding failed for client %s: %s&quot;, client-&gt;client_id, asciichat_error_string(decode_result));
-1022     SAFE_FREE(rgba_buf);
-1023     disconnect_client_for_bad_data(client, &quot;H.265 frame decode error&quot;);
-1024     return;
-1025   }
-1026 
-1027   // Write decoded frame to video buffer
-1028   video_frame_t *frame = video_frame_begin_write(client-&gt;incoming_video_buffer);
-1029   if (frame &amp;&amp; frame-&gt;data) {
-1030     memcpy(frame-&gt;data, rgba_buf, rgba_size);
-1031     frame-&gt;size = rgba_size;
-1032     frame-&gt;width = frame_width;
-1033     frame-&gt;height = frame_height;
-1034     frame-&gt;is_keyframe = is_keyframe;
-1035 
-1036     // Update frame metadata
-1037     frame-&gt;receive_timestamp_ns = time_get_realtime_ns();
-1038     frame-&gt;sequence_number = client-&gt;frames_received++;
+1020   // Decode H.265 packet to RGBA
+1021   asciichat_error_t decode_result = h265_server_decode_and_convert(client_decoder, (const uint8_t *)data, len, rgba_buf,
+1022                                                                    &amp;frame_width, &amp;frame_height, &amp;rgba_size);
+1023 
+1024   if (decode_result != ASCIICHAT_OK) {
+1025     log_error(&quot;H.265 decoding failed for client %s: %s&quot;, client-&gt;client_id, asciichat_error_string(decode_result));
+1026     SAFE_FREE(rgba_buf);
+1027     disconnect_client_for_bad_data(client, &quot;H.265 frame decode error&quot;);
+1028     return;
+1029   }
+1030 
+1031   // Write decoded frame to video buffer
+1032   video_frame_t *frame = video_frame_begin_write(client-&gt;incoming_video_buffer);
+1033   if (frame &amp;&amp; frame-&gt;data) {
+1034     memcpy(frame-&gt;data, rgba_buf, rgba_size);
+1035     frame-&gt;size = rgba_size;
+1036     frame-&gt;width = frame_width;
+1037     frame-&gt;height = frame_height;
+1038     frame-&gt;is_keyframe = is_keyframe;
 1039 
-1040     log_info_every(100, &quot;RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s&quot;, frame-&gt;sequence_number,
-1041                    client-&gt;client_id, rgba_size, frame_width, frame_height, is_keyframe ? &quot;yes&quot; : &quot;no&quot;);
-1042 
-1043     video_frame_commit(client-&gt;incoming_video_buffer);
-1044   } else {
-1045     log_warn(&quot;Failed to get write buffer for client %s (frame=%p, frame-&gt;data=%p)&quot;, client-&gt;client_id, (void *)frame,
-1046              frame ? frame-&gt;data : NULL);
-1047   }
-1048 
-1049   SAFE_FREE(rgba_buf);
-1050 }</pre>
+1040     // Update frame metadata
+1041     frame-&gt;receive_timestamp_ns = time_get_realtime_ns();
+1042     frame-&gt;sequence_number = client-&gt;frames_received++;
+1043 
+1044     log_info_every(100, &quot;RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s&quot;, frame-&gt;sequence_number,
+1045                    client-&gt;client_id, rgba_size, frame_width, frame_height, is_keyframe ? &quot;yes&quot; : &quot;no&quot;);
+1046 
+1047     video_frame_commit(client-&gt;incoming_video_buffer);
+1048   } else {
+1049     log_warn(&quot;Failed to get write buffer for client %s (frame=%p, frame-&gt;data=%p)&quot;, client-&gt;client_id, (void *)frame,
+1050              frame ? frame-&gt;data : NULL);
+1051   }
+1052 
+1053   SAFE_FREE(rgba_buf);
+1054 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_exchange_bool()</b>,
@@ -2027,42 +2031,42 @@
 <h2 class="Ss" id="void_handle_remote_log_packet_from_client_("><a class="permalink" href="#void_handle_remote_log_packet_from_client_(">void
   handle_remote_log_packet_from_client (<b>client_info_t</b> * client, const
   void * data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>1109</b> of file
+<p class="Pp">Definition at line <b>1113</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1109                                                                                                {
-1110   if (!client) {
-1111     return;
-1112   }
-1113 
-1114   log_level_t remote_level = LOG_INFO;
-1115   remote_log_direction_t direction = REMOTE_LOG_DIRECTION_UNKNOWN;
-1116   uint16_t flags = 0;
-1117   char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1] = {0};
-1118 
-1119   asciichat_error_t parse_result =
-1120       packet_parse_remote_log(data, len, &amp;remote_level, &amp;direction, &amp;flags, message, sizeof(message), NULL);
-1121   if (parse_result != ASCIICHAT_OK) {
-1122     disconnect_client_for_bad_data(client, &quot;Invalid REMOTE_LOG packet: %s&quot;, asciichat_error_string(parse_result));
-1123     return;
-1124   }
-1125 
-1126   if (direction != REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
-1127     disconnect_client_for_bad_data(client, &quot;REMOTE_LOG direction mismatch: %u&quot;, direction);
-1128     return;
-1129   }
-1130 
-1131   const bool truncated = (flags &amp; REMOTE_LOG_FLAG_TRUNCATED) != 0;
-1132   const char *display_name = client-&gt;display_name[0] ? client-&gt;display_name : &quot;(unnamed)&quot;;
-1133   const char *client_id = client-&gt;client_id;
+<pre>1113                                                                                                {
+1114   if (!client) {
+1115     return;
+1116   }
+1117 
+1118   log_level_t remote_level = LOG_INFO;
+1119   remote_log_direction_t direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+1120   uint16_t flags = 0;
+1121   char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1] = {0};
+1122 
+1123   asciichat_error_t parse_result =
+1124       packet_parse_remote_log(data, len, &amp;remote_level, &amp;direction, &amp;flags, message, sizeof(message), NULL);
+1125   if (parse_result != ASCIICHAT_OK) {
+1126     disconnect_client_for_bad_data(client, &quot;Invalid REMOTE_LOG packet: %s&quot;, asciichat_error_string(parse_result));
+1127     return;
+1128   }
+1129 
+1130   if (direction != REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
+1131     disconnect_client_for_bad_data(client, &quot;REMOTE_LOG direction mismatch: %u&quot;, direction);
+1132     return;
+1133   }
 1134 
-1135   if (truncated) {
-1136     log_msg(remote_level, __FILE__, __LINE__, __func__, &quot;[REMOTE CLIENT %u \&quot;%s\&quot;] %s [message truncated]&quot;, client_id,
-1137             display_name, message);
-1138   } else {
-1139     log_msg(remote_level, __FILE__, __LINE__, __func__, &quot;[REMOTE CLIENT %u \&quot;%s\&quot;] %s&quot;, client_id, display_name,
-1140             message);
-1141   }
-1142 }</pre>
+1135   const bool truncated = (flags &amp; REMOTE_LOG_FLAG_TRUNCATED) != 0;
+1136   const char *display_name = client-&gt;display_name[0] ? client-&gt;display_name : &quot;(unnamed)&quot;;
+1137   const char *client_id = client-&gt;client_id;
+1138 
+1139   if (truncated) {
+1140     log_msg(remote_level, __FILE__, __LINE__, __func__, &quot;[REMOTE CLIENT %u \&quot;%s\&quot;] %s [message truncated]&quot;, client_id,
+1141             display_name, message);
+1142   } else {
+1143     log_msg(remote_level, __FILE__, __LINE__, __func__, &quot;[REMOTE CLIENT %u \&quot;%s\&quot;] %s&quot;, client_id, display_name,
+1144             message);
+1145   }
+1146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>client_info::client_id</b>,
@@ -2122,29 +2126,29 @@
 <p class="Pp"></p>
 <p class="Pp">No validation of reasonable dimension ranges</p>
 </div>
-<p class="Pp">Definition at line <b>1790</b> of file
+<p class="Pp">Definition at line <b>1794</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1790                                                                              {
-1791   VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), &quot;SIZE&quot;);
-1792 
-1793   const size_packet_t *size_pkt = (const size_packet_t *)data;
-1794 
-1795   // Extract and validate new dimensions
-1796   uint16_t width = NET_TO_HOST_U16(size_pkt-&gt;width);
-1797   uint16_t height = NET_TO_HOST_U16(size_pkt-&gt;height);
+<pre>1794                                                                              {
+1795   VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), &quot;SIZE&quot;);
+1796 
+1797   const size_packet_t *size_pkt = (const size_packet_t *)data;
 1798 
-1799   VALIDATE_NONZERO(client, width, &quot;width&quot;, &quot;SIZE&quot;);
-1800   VALIDATE_NONZERO(client, height, &quot;height&quot;, &quot;SIZE&quot;);
-1801   VALIDATE_RANGE(client, width, 1, 4096, &quot;width&quot;, &quot;SIZE&quot;);
-1802   VALIDATE_RANGE(client, height, 1, 4096, &quot;height&quot;, &quot;SIZE&quot;);
-1803 
-1804   mutex_lock(&amp;client-&gt;client_state_mutex);
-1805   client-&gt;width = width;
-1806   client-&gt;height = height;
-1807   mutex_unlock(&amp;client-&gt;client_state_mutex);
-1808 
-1809   log_info(&quot;Client %u updated terminal size: %ux%u&quot;, client-&gt;client_id, width, height);
-1810 }</pre>
+1799   // Extract and validate new dimensions
+1800   uint16_t width = NET_TO_HOST_U16(size_pkt-&gt;width);
+1801   uint16_t height = NET_TO_HOST_U16(size_pkt-&gt;height);
+1802 
+1803   VALIDATE_NONZERO(client, width, &quot;width&quot;, &quot;SIZE&quot;);
+1804   VALIDATE_NONZERO(client, height, &quot;height&quot;, &quot;SIZE&quot;);
+1805   VALIDATE_RANGE(client, width, 1, 4096, &quot;width&quot;, &quot;SIZE&quot;);
+1806   VALIDATE_RANGE(client, height, 1, 4096, &quot;height&quot;, &quot;SIZE&quot;);
+1807 
+1808   mutex_lock(&amp;client-&gt;client_state_mutex);
+1809   client-&gt;width = width;
+1810   client-&gt;height = height;
+1811   mutex_unlock(&amp;client-&gt;client_state_mutex);
+1812 
+1813   log_info(&quot;Client %u updated terminal size: %ux%u&quot;, client-&gt;client_id, width, height);
+1814 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::client_id</b>,
@@ -2426,49 +2430,49 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>broadcast_server_state_to_all_clients()</b> For
   multi-client updates</div>
-<p class="Pp">Definition at line <b>1864</b> of file
+<p class="Pp">Definition at line <b>1868</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>1864                                                        {
-1865   if (!client) {
-1866     return -1;
-1867   }
-1868 
-1869   // Count active clients - LOCK OPTIMIZATION: Use atomic reads, no rwlock needed
-1870   int active_count = 0;
-1871   for (int i = 0; i &lt; MAX_CLIENTS; i++) {
-1872     if (atomic_load_bool(&amp;g_client_manager.clients[i].active)) {
-1873       active_count++;
-1874     }
-1875   }
-1876 
-1877   // Prepare server state packet
-1878   server_state_packet_t state;
-1879   state.connected_client_count = active_count;
-1880   state.active_client_count = active_count; // For now, all connected are active
-1881   memset(state.reserved, 0, sizeof(state.reserved));
-1882 
-1883   // Convert to network byte order
-1884   server_state_packet_t net_state;
-1885   net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
-1886   net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
-1887   memset(net_state.reserved, 0, sizeof(net_state.reserved));
-1888 
-1889   // Send server state via ACIP transport
-1890   // Protect socket writes with send_mutex to prevent race with send_thread.
-1891   mutex_lock(&amp;client-&gt;send_mutex);
-1892   asciichat_error_t result = acip_send_server_state(client-&gt;transport, &amp;net_state);
-1893   mutex_unlock(&amp;client-&gt;send_mutex);
-1894 
-1895   if (result != ASCIICHAT_OK) {
-1896     SET_ERRNO(ERROR_NETWORK, &quot;Failed to send server state to client %u: %s&quot;, client-&gt;client_id,
-1897               asciichat_error_string(result));
-1898     return -1;
-1899   }
-1900 
-1901   log_debug(&quot;Sent server state to client %u: %u connected, %u active&quot;, client-&gt;client_id, state.connected_client_count,
-1902             state.active_client_count);
-1903   return 0;
-1904 }</pre>
+<pre>1868                                                        {
+1869   if (!client) {
+1870     return -1;
+1871   }
+1872 
+1873   // Count active clients - LOCK OPTIMIZATION: Use atomic reads, no rwlock needed
+1874   int active_count = 0;
+1875   for (int i = 0; i &lt; MAX_CLIENTS; i++) {
+1876     if (atomic_load_bool(&amp;g_client_manager.clients[i].active)) {
+1877       active_count++;
+1878     }
+1879   }
+1880 
+1881   // Prepare server state packet
+1882   server_state_packet_t state;
+1883   state.connected_client_count = active_count;
+1884   state.active_client_count = active_count; // For now, all connected are active
+1885   memset(state.reserved, 0, sizeof(state.reserved));
+1886 
+1887   // Convert to network byte order
+1888   server_state_packet_t net_state;
+1889   net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+1890   net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+1891   memset(net_state.reserved, 0, sizeof(net_state.reserved));
+1892 
+1893   // Send server state via ACIP transport
+1894   // Protect socket writes with send_mutex to prevent race with send_thread.
+1895   mutex_lock(&amp;client-&gt;send_mutex);
+1896   asciichat_error_t result = acip_send_server_state(client-&gt;transport, &amp;net_state);
+1897   mutex_unlock(&amp;client-&gt;send_mutex);
+1898 
+1899   if (result != ASCIICHAT_OK) {
+1900     SET_ERRNO(ERROR_NETWORK, &quot;Failed to send server state to client %u: %s&quot;, client-&gt;client_id,
+1901               asciichat_error_string(result));
+1902     return -1;
+1903   }
+1904 
+1905   log_debug(&quot;Sent server state to client %u: %u connected, %u active&quot;, client-&gt;client_id, state.connected_client_count,
+1906             state.active_client_count);
+1907   return 0;
+1908 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_server_state()</b>,
@@ -2489,7 +2493,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

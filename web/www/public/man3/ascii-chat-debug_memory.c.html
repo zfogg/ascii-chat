@@ -54,6 +54,29 @@
   <br/>
   void <b>debug_memory_thread_cleanup</b> (void)
   <br/>
+  void * <b>debug_malloc</b> (size_t size, const char *file, int line)
+  <br/>
+  void * <b>debug_calloc</b> (size_t count, size_t size, const char *file, int
+    line)
+  <br/>
+  void * <b>debug_realloc</b> (void *ptr, size_t size, const char *file, int
+    line)
+  <br/>
+  void <b>debug_free</b> (void *ptr, const char *file, int line)
+  <br/>
+  void <b>debug_track_aligned</b> (void *ptr, size_t size, const char *file, int
+    line)
+  <br/>
+  void <b>debug_sync_symbolize_allocations</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>g_in_debug_memory</b> = <b>false</b>
+  <br/>
   <br/>
 </p>
 </section>
@@ -71,12 +94,49 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="void_*_debug_calloc_(size_t_count,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_calloc_(size_t_count,_size_t_size,_const_char_*_file,_int_line)">void
+  * debug_calloc (size_t count, size_t size, const char * file, int
+  line)</a></h2>
+<p class="Pp">Definition at line <b>1457</b> of file <b>debug/memory.c</b>.</p>
+<pre>1457                                                                           {
+1458   (void)file;
+1459   (void)line;
+1460   return calloc(count, size);
+1461 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_free_(void_*_ptr,_const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_free_(void_*_ptr,_const_char_*_file,_int_line)">void
+  debug_free (void * ptr, const char * file, int line)</a></h2>
+<p class="Pp">Definition at line <b>1469</b> of file <b>debug/memory.c</b>.</p>
+<pre>1469                                                        {
+1470   (void)file;
+1471   (void)line;
+1472   free(ptr);
+1473 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*_debug_malloc_(size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_malloc_(size_t_size,_const_char_*_file,_int_line)">void
+  * debug_malloc (size_t size, const char * file, int line)</a></h2>
+<p class="Pp">Definition at line <b>1451</b> of file <b>debug/memory.c</b>.</p>
+<pre>1451                                                             {
+1452   (void)file;
+1453   (void)line;
+1454   return malloc(size);
+1455 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="void_debug_memory_report_(void_)"><a class="permalink" href="#void_debug_memory_report_(void_)">void
   debug_memory_report (void )</a></h2>
-<p class="Pp">Definition at line <b>1518</b> of file <b>debug/memory.c</b>.</p>
-<pre>1518                                {
-1519   // No-op in release builds
-1520 }</pre>
+<p class="Pp">Definition at line <b>1431</b> of file <b>debug/memory.c</b>.</p>
+<pre>1431                                {
+1432   // No-op in release builds
+1433 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
@@ -84,11 +144,11 @@
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_set_quiet_mode_("><a class="permalink" href="#void_debug_memory_set_quiet_mode_(">void
   debug_memory_set_quiet_mode (<b>bool</b> quiet)</a></h2>
-<p class="Pp">Definition at line <b>1513</b> of file <b>debug/memory.c</b>.</p>
-<pre>1513                                              {
-1514   (void)quiet;
-1515   // No-op in release builds
-1516 }</pre>
+<p class="Pp">Definition at line <b>1426</b> of file <b>debug/memory.c</b>.</p>
+<pre>1426                                              {
+1427   (void)quiet;
+1428   // No-op in release builds
+1429 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>, and <b>options_init()</b>.</p>
@@ -96,10 +156,10 @@
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_thread_cleanup_(void_)"><a class="permalink" href="#void_debug_memory_thread_cleanup_(void_)">void
   debug_memory_thread_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>1534</b> of file <b>debug/memory.c</b>.</p>
-<pre>1534                                        {
-1535   // No-op in release builds
-1536 }</pre>
+<p class="Pp">Definition at line <b>1447</b> of file <b>debug/memory.c</b>.</p>
+<pre>1447                                        {
+1448   // No-op in release builds
+1449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
@@ -107,32 +167,75 @@
 <section class="Ss">
 <h2 class="Ss" id="int_debug_memory_thread_init_(void_)"><a class="permalink" href="#int_debug_memory_thread_init_(void_)">int
   debug_memory_thread_init (void )</a></h2>
-<p class="Pp">Definition at line <b>1522</b> of file <b>debug/memory.c</b>.</p>
-<pre>1522                                    {
-1523   return 0;
-1524 }</pre>
+<p class="Pp">Definition at line <b>1435</b> of file <b>debug/memory.c</b>.</p>
+<pre>1435                                    {
+1436   return 0;
+1437 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_debug_memory_thread_start_(void_)"><a class="permalink" href="#int_debug_memory_thread_start_(void_)">int
   debug_memory_thread_start (void )</a></h2>
-<p class="Pp">Definition at line <b>1526</b> of file <b>debug/memory.c</b>.</p>
-<pre>1526                                     {
-1527   return 0;
-1528 }</pre>
+<p class="Pp">Definition at line <b>1439</b> of file <b>debug/memory.c</b>.</p>
+<pre>1439                                     {
+1440   return 0;
+1441 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_trigger_report_(void_)"><a class="permalink" href="#void_debug_memory_trigger_report_(void_)">void
   debug_memory_trigger_report (void )</a></h2>
-<p class="Pp">Definition at line <b>1530</b> of file <b>debug/memory.c</b>.</p>
-<pre>1530                                        {
-1531   // No-op in release builds
-1532 }</pre>
+<p class="Pp">Definition at line <b>1443</b> of file <b>debug/memory.c</b>.</p>
+<pre>1443                                        {
+1444   // No-op in release builds
+1445 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*_debug_realloc_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_realloc_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)">void
+  * debug_realloc (void * ptr, size_t size, const char * file, int
+  line)</a></h2>
+<p class="Pp">Definition at line <b>1463</b> of file <b>debug/memory.c</b>.</p>
+<pre>1463                                                                         {
+1464   (void)file;
+1465   (void)line;
+1466   return realloc(ptr, size);
+1467 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_symbolize_allocations_(void_)"><a class="permalink" href="#void_debug_sync_symbolize_allocations_(void_)">void
+  debug_sync_symbolize_allocations (void )</a></h2>
+<p class="Pp">Definition at line <b>1484</b> of file <b>debug/memory.c</b>.</p>
+<pre>1484 {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_track_aligned_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_track_aligned_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)">void
+  debug_track_aligned (void * ptr, size_t size, const char * file, int
+  line)</a></h2>
+<p class="Pp">Definition at line <b>1475</b> of file <b>debug/memory.c</b>.</p>
+<pre>1475                                                                              {
+1476   (void)ptr;
+1477   (void)size;
+1478   (void)file;
+1479   (void)line;
+1480 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_in_debug_memory = <b>false</b></h2>
+<p class="Pp">Definition at line <b>1482</b> of file <b>debug/memory.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -142,7 +245,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

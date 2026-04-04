@@ -41,7 +41,10 @@
 <br/>
 <p class="Pp">struct <b>platform_stat_t</b>
   <br/>
-  File type information from stat(). struct <b>config_file_result_t</b>
+  File type information from stat(). struct <b>platform_dir_entry_t</b>
+  <br/>
+  Directory entry information for <b>platform_dir_foreach()</b>. struct
+    <b>config_file_result_t</b>
   <br/>
   Result of a config file search. struct <b>config_file_list_t</b>
   <br/>
@@ -104,6 +107,16 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>bool</b>(* <b>platform_dir_foreach_cb</b>) (const
+    <b>platform_dir_entry_t</b> *entry, void *user_data)
+  <br/>
+  Callback for <b>platform_dir_foreach()</b>.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>platform_stat</b> (const char *path,
@@ -127,9 +140,12 @@
   Create a temporary directory with a given prefix. <b>asciichat_error_t</b>
     <b>platform_rmdir_recursive</b> (const char *path)
   <br/>
-  Recursively delete a directory and all its contents. int
-    <b>platform_create_temp_file</b> (char *path_out, size_t path_size, const
-    char *prefix, int *fd)
+  Recursively delete a directory and all its contents. <b>asciichat_error_t</b>
+    <b>platform_dir_foreach</b> (const char *path,
+    <b>platform_dir_foreach_cb</b> callback, void *user_data)
+  <br/>
+  Iterate over entries in a directory. int <b>platform_create_temp_file</b>
+    (char *path_out, size_t path_size, const char *prefix, int *fd)
   <br/>
   Create a temporary file with a given prefix. int
     <b>platform_delete_temp_file</b> (const char *path)
@@ -258,7 +274,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

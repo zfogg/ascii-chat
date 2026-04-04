@@ -389,7 +389,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>1004</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_debug_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_debug_every(_interval_us,__fmt,__">#define
@@ -409,10 +409,9 @@
     <b>image_print_color_simd()</b>, <b>opus_codec_decode()</b>,
     <b>opus_codec_encode()</b>, <b>send_packet_secure()</b>,
     <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>,
-    <b>tcp_server_run()</b>, <b>term_renderer_create()</b>,
-    <b>terminal_fd_reader_next()</b>, <b>terminal_fd_writer_write()</b>,
-    <b>terminal_screen_render()</b>, <b>threaded_send_packet()</b>, and
-    <b>websocket_server_run()</b>.</p>
+    <b>tcp_server_run()</b>, <b>terminal_fd_reader_next()</b>,
+    <b>terminal_fd_writer_write()</b>, <b>terminal_screen_render()</b>,
+    <b>threaded_send_packet()</b>, and <b>websocket_server_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_debug_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_debug_nth(_n,__fmt,__">#define
@@ -689,33 +688,33 @@
 <h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
   log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
   char * func, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>2133</b> of file <b>log/log.c</b>.</p>
-<pre>2133                                                                                                             {
-2134   if (!message) {
-2135     return;
-2136   }
-2137 
-2138   int fd = terminal_choose_log_fd(level);
-2139   if (fd &lt; 0) {
-2140     return;
-2141   }
-2142 
-2143   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
-2144   int json_fd = atomic_load_int(&amp;g_log.json_file);
-2145   bool use_json = (json_fd &gt;= 0);
-2146 
-2147   if (use_json) {
-2148     // Use async-safe JSON formatter (safe for signal handlers)
-2149     log_json_async_safe(fd, level, file, line, func, message);
-2150   } else {
-2151     // Text output to console using platform_write_all to handle partial writes
-2152     size_t msg_len = strlen(message);
-2153     platform_write_all(fd, (const uint8_t *)message, msg_len);
-2154     if (msg_len == 0 || message[msg_len - 1] != '\n') {
-2155       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
-2156     }
-2157   }
-2158 }</pre>
+<p class="Pp">Definition at line <b>2130</b> of file <b>log/log.c</b>.</p>
+<pre>2130                                                                                                             {
+2131   if (!message) {
+2132     return;
+2133   }
+2134 
+2135   int fd = terminal_choose_log_fd(level);
+2136   if (fd &lt; 0) {
+2137     return;
+2138   }
+2139 
+2140   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
+2141   int json_fd = atomic_load_int(&amp;g_log.json_file);
+2142   bool use_json = (json_fd &gt;= 0);
+2143 
+2144   if (use_json) {
+2145     // Use async-safe JSON formatter (safe for signal handlers)
+2146     log_json_async_safe(fd, level, file, line, func, message);
+2147   } else {
+2148     // Text output to console using platform_write_all to handle partial writes
+2149     size_t msg_len = strlen(message);
+2150     platform_write_all(fd, (const uint8_t *)message, msg_len);
+2151     if (msg_len == 0 || message[msg_len - 1] != '\n') {
+2152       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
+2153     }
+2154   }
+2155 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, <b>log_json_async_safe()</b>,
@@ -729,7 +728,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

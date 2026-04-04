@@ -442,12 +442,15 @@
     const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
     *text)
   <br/>
-  Build a colored string for terminal output. void
-    <b>truncate_utf8_with_ellipsis</b> (const char *input, char *output, size_t
-    output_size, int max_width)
+  Build a colored string for terminal output. void <b>truncate_with_ellipsis</b>
+    (const char *input, char *output, size_t output_size, int max_width)
   <br/>
-  Truncate UTF-8 string to fit within max display width, adding ellipsis if
-    truncated. <b>bool</b> <b>url_is_valid</b> (const char *url)
+  Truncate a string to a maximum display width, with ellipsis. void
+    <b>strip_ansi_codes</b> (const char *input, char *output, size_t
+    output_size)
+  <br/>
+  Strip ANSI escape codes from a string. <b>bool</b> <b>url_is_valid</b> (const
+    char *url)
   <br/>
   Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket/TCP).
     <b>asciichat_error_t</b> <b>url_parse</b> (const char *url,
@@ -1992,54 +1995,54 @@ fprintf(stderr, &quot;%s %s\n&quot;,
 <p class="Pp">Color codes are applied based on <b>log_level_color()</b> from
     logging subsystem.</p>
 </div>
-<p class="Pp">Definition at line <b>271</b> of file <b>util/string.c</b>.</p>
-<pre>271                                                                 {
-272 #define COLORED_BUFFERS 4
-273 #define COLORED_BUFFER_SIZE 256
-274   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
-275   static int buffer_idx = 0;
-276 
-277   if (!text) {
-278     return &quot;&quot;;
-279   }
-280 
-281   // Check if we should use colors
-282   // Use global flag that persists even after options cleanup
-283   bool use_colors = false;
-284 
-285   // Priority 1: If --color was explicitly passed, force colors
-286   if (g_color_flag_passed &amp;&amp; g_color_flag_value) {
-287     use_colors = true;
-288   }
-289   // Priority 2: If --color NOT explicitly passed, use terminal detection
-290   else if (!g_color_flag_passed) {
-291     use_colors = terminal_should_color_output(STDOUT_FILENO);
-292   }
-293   // Priority 3: If --color=false was explicitly passed, disable colors
-294   // (use_colors stays false)
-295 
-296   if (!use_colors) {
-297     // No colors, just return the text directly
-298     return text;
-299   }
-300 
-301   // Use rotating buffer to handle multiple calls in same fprintf
-302   char *current_buf = buffers[buffer_idx];
-303   buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
-304 
-305   const char *color_code = log_level_color(color);
-306   const char *reset_code = log_level_color(LOG_COLOR_RESET);
+<p class="Pp">Definition at line <b>274</b> of file <b>util/string.c</b>.</p>
+<pre>274                                                                 {
+275 #define COLORED_BUFFERS 4
+276 #define COLORED_BUFFER_SIZE 256
+277   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
+278   static int buffer_idx = 0;
+279 
+280   if (!text) {
+281     return &quot;&quot;;
+282   }
+283 
+284   // Check if we should use colors
+285   // Use global flag that persists even after options cleanup
+286   bool use_colors = false;
+287 
+288   // Priority 1: If --color was explicitly passed, force colors
+289   if (g_color_flag_passed &amp;&amp; g_color_flag_value) {
+290     use_colors = true;
+291   }
+292   // Priority 2: If --color NOT explicitly passed, use terminal detection
+293   else if (!g_color_flag_passed) {
+294     use_colors = terminal_should_color_output(STDOUT_FILENO);
+295   }
+296   // Priority 3: If --color=false was explicitly passed, disable colors
+297   // (use_colors stays false)
+298 
+299   if (!use_colors) {
+300     // No colors, just return the text directly
+301     return text;
+302   }
+303 
+304   // Use rotating buffer to handle multiple calls in same fprintf
+305   char *current_buf = buffers[buffer_idx];
+306   buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
 307 
-308   // Ensure we never pass NULL to snprintf (handle uninitialized color system)
-309   if (!color_code)
-310     color_code = &quot;&quot;;
-311   if (!reset_code)
-312     reset_code = &quot;&quot;;
-313 
-314   // Format into rotating static buffer: color_code + text + reset_code
-315   safe_snprintf(current_buf, COLORED_BUFFER_SIZE, &quot;%s%s%s&quot;, color_code, text, reset_code);
-316   return current_buf;
-317 }</pre>
+308   const char *color_code = log_level_color(color);
+309   const char *reset_code = log_level_color(LOG_COLOR_RESET);
+310 
+311   // Ensure we never pass NULL to snprintf (handle uninitialized color system)
+312   if (!color_code)
+313     color_code = &quot;&quot;;
+314   if (!reset_code)
+315     reset_code = &quot;&quot;;
+316 
+317   // Format into rotating static buffer: color_code + text + reset_code
+318   safe_snprintf(current_buf, COLORED_BUFFER_SIZE, &quot;%s%s%s&quot;, color_code, text, reset_code);
+319   return current_buf;
+320 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COLORED_BUFFER_SIZE</b>, <b>COLORED_BUFFERS</b>,
@@ -2054,7 +2057,8 @@ fprintf(stderr, &quot;%s %s\n&quot;,
     <b>options_config_calculate_max_col_width()</b>,
     <b>options_config_print_options_sections_with_width()</b>,
     <b>options_config_print_usage()</b>, <b>options_print_help_for_mode()</b>,
-    <b>platform_is_binary_in_path()</b>, and <b>print_project_links()</b>.</p>
+    <b>platform_is_binary_in_path()</b>, <b>print_project_links()</b>, and
+    <b>ui_mdns_select()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> compact_ipv6 (const char * ipv6, char *
@@ -2467,7 +2471,8 @@ int height = display_height(&quot;\033[1;36m50-char line\033[0m&quot;, 40);
     <b>utf8_display_width()</b>.</p>
 <p class="Pp">Referenced by <b>display_center_horizontal()</b>,
     <b>frame_buffer_render_centered()</b>, <b>layout_print_two_column_row()</b>,
-    <b>terminal_fd_reader_next()</b>, and <b>terminal_screen_render()</b>.</p>
+    <b>terminal_fd_reader_next()</b>, <b>terminal_screen_render()</b>, and
+    <b>truncate_with_ellipsis()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_escape_ascii_(const_char_*_str,_const_char_*_escape_char,_char_*_out_buffer,_size_t_out_buffer_size)"><a class="permalink" href="#void_escape_ascii_(const_char_*_str,_const_char_*_escape_char,_char_*_out_buffer,_size_t_out_buffer_size)">void
@@ -2497,48 +2502,48 @@ int height = display_height(&quot;\033[1;36m50-char line\033[0m&quot;, 40);
 <p class="Pp">Does not validate input parameters for NULL (caller's
     responsibility).</p>
 </div>
-<p class="Pp">Definition at line <b>17</b> of file <b>util/string.c</b>.</p>
-<pre>17                                                                                                       {
-18   if (escape_char == NULL || str == NULL || !out_buffer || out_buffer_size == 0) {
-19     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid string or escape character or output buffer&quot;);
-20     return;
-21   }
-22 
-23   // Count how many characters need escaping
-24   size_t escape_count = 0;
-25   for (size_t i = 0; i &lt; strlen(str); i++) {
-26     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
-27       if (str[i] == escape_char[j]) {
-28         escape_count++;
-29         break;
-30       }
-31     }
-32   }
-33 
-34   size_t total_len = strlen(str) + escape_count;
-35   if (out_buffer_size &lt; total_len) {
-36     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer is too small&quot;);
-37     return;
-38   }
-39 
-40   size_t out_pos = 0;
-41   for (size_t i = 0; i &lt; strlen(str); i++) {
-42     bool needs_escape = false;
-43     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
-44       if (str[i] == escape_char[j]) {
-45         needs_escape = true;
-46         break;
-47       }
-48     }
-49 
-50     if (needs_escape) {
-51       out_buffer[out_pos++] = '\\';
-52     }
-53     out_buffer[out_pos++] = str[i];
-54   }
-55 
-56   out_buffer[out_pos] = '\0';
-57 }</pre>
+<p class="Pp">Definition at line <b>20</b> of file <b>util/string.c</b>.</p>
+<pre>20                                                                                                       {
+21   if (escape_char == NULL || str == NULL || !out_buffer || out_buffer_size == 0) {
+22     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid string or escape character or output buffer&quot;);
+23     return;
+24   }
+25 
+26   // Count how many characters need escaping
+27   size_t escape_count = 0;
+28   for (size_t i = 0; i &lt; strlen(str); i++) {
+29     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
+30       if (str[i] == escape_char[j]) {
+31         escape_count++;
+32         break;
+33       }
+34     }
+35   }
+36 
+37   size_t total_len = strlen(str) + escape_count;
+38   if (out_buffer_size &lt; total_len) {
+39     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer is too small&quot;);
+40     return;
+41   }
+42 
+43   size_t out_pos = 0;
+44   for (size_t i = 0; i &lt; strlen(str); i++) {
+45     bool needs_escape = false;
+46     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
+47       if (str[i] == escape_char[j]) {
+48         needs_escape = true;
+49         break;
+50       }
+51     }
+52 
+53     if (needs_escape) {
+54       out_buffer[out_pos++] = '\\';
+55     }
+56     out_buffer[out_pos++] = str[i];
+57   }
+58 
+59   out_buffer[out_pos] = '\0';
+60 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -2587,32 +2592,32 @@ int height = display_height(&quot;\033[1;36m50-char line\033[0m&quot;, 40);
       sizeof(escaped))) { // escaped contains the path, properly escaped if
       needed }</li>
 </ul>
-<p class="Pp">Definition at line <b>241</b> of file <b>util/string.c</b>.</p>
-<pre>241                                                                                        {
-242   if (!path || !out_buffer || out_buffer_size == 0) {
-243     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid path or output buffer&quot;);
-244     return false;
-245   }
-246 
-247   // Check if quoting is needed
-248   if (!string_needs_shell_quoting(path)) {
-249     // No quoting needed, just copy the path
-250     size_t path_len = strlen(path);
-251     if (out_buffer_size &lt;= path_len) {
-252       SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for path&quot;);
-253       return false;
-254     }
-255     SAFE_STRNCPY(out_buffer, path, out_buffer_size);
-256     return true;
-257   }
-258 
-259   // Quoting is needed, use platform-specific escaping
-260 #ifdef _WIN32
-261   return escape_shell_double_quotes(path, out_buffer, out_buffer_size);
-262 #else
-263   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
-264 #endif
-265 }</pre>
+<p class="Pp">Definition at line <b>244</b> of file <b>util/string.c</b>.</p>
+<pre>244                                                                                        {
+245   if (!path || !out_buffer || out_buffer_size == 0) {
+246     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid path or output buffer&quot;);
+247     return false;
+248   }
+249 
+250   // Check if quoting is needed
+251   if (!string_needs_shell_quoting(path)) {
+252     // No quoting needed, just copy the path
+253     size_t path_len = strlen(path);
+254     if (out_buffer_size &lt;= path_len) {
+255       SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for path&quot;);
+256       return false;
+257     }
+258     SAFE_STRNCPY(out_buffer, path, out_buffer_size);
+259     return true;
+260   }
+261 
+262   // Quoting is needed, use platform-specific escaping
+263 #ifdef _WIN32
+264   return escape_shell_double_quotes(path, out_buffer, out_buffer_size);
+265 #else
+266   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
+267 #endif
+268 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_BUFFER_OVERFLOW</b>,
@@ -2660,51 +2665,51 @@ int height = display_height(&quot;\033[1;36m50-char line\033[0m&quot;, 40);
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Buffer overflow protection is enforced - function fails
   safely.</div>
-<p class="Pp">Definition at line <b>171</b> of file <b>util/string.c</b>.</p>
-<pre>171                                                                                            {
-172   if (!str || !out_buffer || out_buffer_size == 0) {
-173     return false;
-174   }
-175 
-176   // Calculate required size: each &quot; becomes \&quot; (2 chars) instead of 1
-177   // Each \ also needs escaping, so \\ becomes \\\\
-178   // Worst case: all chars are quotes/backslashes, so we need strlen(str) * 2 + 2 (for surrounding quotes)
-179   size_t required_size = 2; // Start and end quotes
-180   for (size_t i = 0; str[i] != '\0'; i++) {
-181     if (str[i] == '&quot;' || str[i] == '\\') {
-182       required_size += 2; // \&quot; or '\\'
-183     } else {
-184       required_size += 1;
-185     }
-186   }
-187 
-188   if (out_buffer_size &lt; required_size) {
-189     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
-190     return false;
-191   }
-192 
-193   size_t out_pos = 0;
-194   out_buffer[out_pos++] = '&quot;'; // Opening quote
+<p class="Pp">Definition at line <b>174</b> of file <b>util/string.c</b>.</p>
+<pre>174                                                                                            {
+175   if (!str || !out_buffer || out_buffer_size == 0) {
+176     return false;
+177   }
+178 
+179   // Calculate required size: each &quot; becomes \&quot; (2 chars) instead of 1
+180   // Each \ also needs escaping, so \\ becomes \\\\
+181   // Worst case: all chars are quotes/backslashes, so we need strlen(str) * 2 + 2 (for surrounding quotes)
+182   size_t required_size = 2; // Start and end quotes
+183   for (size_t i = 0; str[i] != '\0'; i++) {
+184     if (str[i] == '&quot;' || str[i] == '\\') {
+185       required_size += 2; // \&quot; or '\\'
+186     } else {
+187       required_size += 1;
+188     }
+189   }
+190 
+191   if (out_buffer_size &lt; required_size) {
+192     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
+193     return false;
+194   }
 195 
-196   for (size_t i = 0; str[i] != '\0'; i++) {
-197     if (str[i] == '&quot;') {
-198       // Escape double quote: &quot; becomes \&quot;
-199       out_buffer[out_pos++] = '\\';
-200       out_buffer[out_pos++] = '&quot;';
-201     } else if (str[i] == '\\') {
-202       // Escape backslash: \ becomes '\\'
-203       out_buffer[out_pos++] = '\\';
-204       out_buffer[out_pos++] = '\\';
-205     } else {
-206       out_buffer[out_pos++] = str[i];
-207     }
-208   }
-209 
-210   out_buffer[out_pos++] = '&quot;'; // Closing quote
-211   out_buffer[out_pos] = '\0';
+196   size_t out_pos = 0;
+197   out_buffer[out_pos++] = '&quot;'; // Opening quote
+198 
+199   for (size_t i = 0; str[i] != '\0'; i++) {
+200     if (str[i] == '&quot;') {
+201       // Escape double quote: &quot; becomes \&quot;
+202       out_buffer[out_pos++] = '\\';
+203       out_buffer[out_pos++] = '&quot;';
+204     } else if (str[i] == '\\') {
+205       // Escape backslash: \ becomes '\\'
+206       out_buffer[out_pos++] = '\\';
+207       out_buffer[out_pos++] = '\\';
+208     } else {
+209       out_buffer[out_pos++] = str[i];
+210     }
+211   }
 212 
-213   return true;
-214 }</pre>
+213   out_buffer[out_pos++] = '&quot;'; // Closing quote
+214   out_buffer[out_pos] = '\0';
+215 
+216   return true;
+217 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_BUFFER_OVERFLOW</b>, and <b>SET_ERRNO</b>.</p>
@@ -2762,48 +2767,48 @@ int height = display_height(&quot;\033[1;36m50-char line\033[0m&quot;, 40);
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Buffer overflow protection is enforced - function fails
   safely.</div>
-<p class="Pp">Definition at line <b>129</b> of file <b>util/string.c</b>.</p>
-<pre>129                                                                                            {
-130   if (!str || !out_buffer || out_buffer_size == 0) {
-131     return false;
-132   }
-133 
-134   // Calculate required size: each ' becomes '\'' (4 chars) instead of 1
-135   // Worst case: all chars are quotes, so we need strlen(str) * 4 + 2 (for surrounding quotes)
-136   size_t required_size = 2; // Start and end quotes
-137   for (size_t i = 0; str[i] != '\0'; i++) {
-138     if (str[i] == '\'') {
-139       required_size += 4; // '\''
-140     } else {
-141       required_size += 1;
-142     }
-143   }
-144 
-145   if (out_buffer_size &lt; required_size) {
-146     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
-147     return false;
-148   }
-149 
-150   size_t out_pos = 0;
-151   out_buffer[out_pos++] = '\''; // Opening quote
+<p class="Pp">Definition at line <b>132</b> of file <b>util/string.c</b>.</p>
+<pre>132                                                                                            {
+133   if (!str || !out_buffer || out_buffer_size == 0) {
+134     return false;
+135   }
+136 
+137   // Calculate required size: each ' becomes '\'' (4 chars) instead of 1
+138   // Worst case: all chars are quotes, so we need strlen(str) * 4 + 2 (for surrounding quotes)
+139   size_t required_size = 2; // Start and end quotes
+140   for (size_t i = 0; str[i] != '\0'; i++) {
+141     if (str[i] == '\'') {
+142       required_size += 4; // '\''
+143     } else {
+144       required_size += 1;
+145     }
+146   }
+147 
+148   if (out_buffer_size &lt; required_size) {
+149     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
+150     return false;
+151   }
 152 
-153   for (size_t i = 0; str[i] != '\0'; i++) {
-154     if (str[i] == '\'') {
-155       // Replace ' with '\'' (close quote, escaped quote, open quote)
-156       out_buffer[out_pos++] = '\'';
-157       out_buffer[out_pos++] = '\\';
-158       out_buffer[out_pos++] = '\'';
+153   size_t out_pos = 0;
+154   out_buffer[out_pos++] = '\''; // Opening quote
+155 
+156   for (size_t i = 0; str[i] != '\0'; i++) {
+157     if (str[i] == '\'') {
+158       // Replace ' with '\'' (close quote, escaped quote, open quote)
 159       out_buffer[out_pos++] = '\'';
-160     } else {
-161       out_buffer[out_pos++] = str[i];
-162     }
-163   }
-164 
-165   out_buffer[out_pos++] = '\''; // Closing quote
-166   out_buffer[out_pos] = '\0';
+160       out_buffer[out_pos++] = '\\';
+161       out_buffer[out_pos++] = '\'';
+162       out_buffer[out_pos++] = '\'';
+163     } else {
+164       out_buffer[out_pos++] = str[i];
+165     }
+166   }
 167 
-168   return true;
-169 }</pre>
+168   out_buffer[out_pos++] = '\''; // Closing quote
+169   out_buffer[out_pos] = '\0';
+170 
+171   return true;
+172 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_BUFFER_OVERFLOW</b>, and <b>SET_ERRNO</b>.</p>
@@ -3516,7 +3521,7 @@ free(config_dir);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_get_config_dir()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>config_load_and_apply()</b>,
+<p class="Pp">Referenced by <b>config_load_and_apply()</b>,
     <b>discovery_keys_get_cache_path()</b>, <b>get_known_hosts_path()</b>,
     <b>options_init()</b>, and <b>path_validate_user_path()</b>.</p>
 </section>
@@ -3621,101 +3626,101 @@ free(data_dir);
 free(db_dir);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>613</b> of file <b>path.c</b>.</p>
-<pre>613                                        {
-614 #ifdef _WIN32
-615   // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
-616   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
-617   if (program_data &amp;&amp; program_data[0] != '\0') {
-618     size_t len = strlen(program_data) + strlen(&quot;\\ascii-chat\\&quot;) + 1;
-619     char *system_dir = SAFE_MALLOC(len, char *);
-620     if (system_dir) {
-621       safe_snprintf(system_dir, len, &quot;%s\\ascii-chat\\&quot;, program_data);
-622 
-623       // Try to create directory recursively with public permissions (755 equivalent)
-624       asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-625       if (mkdir_result == ASCIICHAT_OK) {
-626         // Directory exists or was created - check if writable
-627         if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-628           return system_dir; // System-wide location is writable
-629         }
-630       }
-631       SAFE_FREE(system_dir);
-632     }
-633   }
-634 
-635   // Fall back to user data directory
-636   char *data_dir = get_data_dir();
-637   if (data_dir) {
-638     // Try to create the directory recursively
-639     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
-640     if (mkdir_result == ASCIICHAT_OK) {
-641       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
-642         return data_dir;
-643       }
-644     }
-645     SAFE_FREE(data_dir);
-646   }
-647 
-648   return NULL;
-649 #else
-650   // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
-651   // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
-652   const char *prefix = ASCIICHAT_INSTALL_PREFIX;
-653   size_t system_len = strlen(prefix) + strlen(&quot;/var/ascii-chat/&quot;) + 1;
-654   char *system_dir = SAFE_MALLOC(system_len, char *);
-655   if (system_dir) {
-656     safe_snprintf(system_dir, system_len, &quot;%s/var/ascii-chat/&quot;, prefix);
-657 
-658     // Try to create directory recursively with public permissions (755) for system-wide use
-659     // platform_mkdir_recursive creates parent directories as needed
-660     asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-661     if (mkdir_result == ASCIICHAT_OK) {
-662       // Directory exists or was created - check if writable
-663       if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-664         return system_dir; // System-wide location is writable
-665       }
-666     }
-667     SAFE_FREE(system_dir);
-668   }
-669 
-670 #ifdef __APPLE__
-671   // On macOS, /usr/local is typically user-writable (set up by Homebrew)
-672   // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
-673   if (strcmp(prefix, &quot;/usr/local&quot;) != 0) {
-674     const char *usr_local_path = &quot;/usr/local/var/ascii-chat/&quot;;
-675     size_t usr_local_len = strlen(usr_local_path) + 1;
-676     char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
-677     if (usr_local_dir) {
-678       safe_snprintf(usr_local_dir, usr_local_len, &quot;%s&quot;, usr_local_path);
-679 
-680       asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
-681       if (mkdir_result == ASCIICHAT_OK) {
-682         if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
-683           return usr_local_dir; // /usr/local is writable
-684         }
-685       }
-686       SAFE_FREE(usr_local_dir);
-687     }
-688   }
-689 #endif
-690 
-691   // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
-692   char *data_dir = get_data_dir();
-693   if (data_dir) {
-694     // Try to create the directory recursively
-695     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
-696     if (mkdir_result == ASCIICHAT_OK) {
-697       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
-698         return data_dir;
-699       }
-700     }
-701     SAFE_FREE(data_dir);
-702   }
-703 
-704   return NULL;
-705 #endif
-706 }</pre>
+<p class="Pp">Definition at line <b>622</b> of file <b>path.c</b>.</p>
+<pre>622                                        {
+623 #ifdef _WIN32
+624   // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
+625   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
+626   if (program_data &amp;&amp; program_data[0] != '\0') {
+627     size_t len = strlen(program_data) + strlen(&quot;\\ascii-chat\\&quot;) + 1;
+628     char *system_dir = SAFE_MALLOC(len, char *);
+629     if (system_dir) {
+630       safe_snprintf(system_dir, len, &quot;%s\\ascii-chat\\&quot;, program_data);
+631 
+632       // Try to create directory recursively with public permissions (755 equivalent)
+633       asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+634       if (mkdir_result == ASCIICHAT_OK) {
+635         // Directory exists or was created - check if writable
+636         if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+637           return system_dir; // System-wide location is writable
+638         }
+639       }
+640       SAFE_FREE(system_dir);
+641     }
+642   }
+643 
+644   // Fall back to user data directory
+645   char *data_dir = get_data_dir();
+646   if (data_dir) {
+647     // Try to create the directory recursively
+648     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+649     if (mkdir_result == ASCIICHAT_OK) {
+650       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+651         return data_dir;
+652       }
+653     }
+654     SAFE_FREE(data_dir);
+655   }
+656 
+657   return NULL;
+658 #else
+659   // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
+660   // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
+661   const char *prefix = ASCIICHAT_INSTALL_PREFIX;
+662   size_t system_len = strlen(prefix) + strlen(&quot;/var/ascii-chat/&quot;) + 1;
+663   char *system_dir = SAFE_MALLOC(system_len, char *);
+664   if (system_dir) {
+665     safe_snprintf(system_dir, system_len, &quot;%s/var/ascii-chat/&quot;, prefix);
+666 
+667     // Try to create directory recursively with public permissions (755) for system-wide use
+668     // platform_mkdir_recursive creates parent directories as needed
+669     asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+670     if (mkdir_result == ASCIICHAT_OK) {
+671       // Directory exists or was created - check if writable
+672       if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+673         return system_dir; // System-wide location is writable
+674       }
+675     }
+676     SAFE_FREE(system_dir);
+677   }
+678 
+679 #ifdef __APPLE__
+680   // On macOS, /usr/local is typically user-writable (set up by Homebrew)
+681   // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
+682   if (strcmp(prefix, &quot;/usr/local&quot;) != 0) {
+683     const char *usr_local_path = &quot;/usr/local/var/ascii-chat/&quot;;
+684     size_t usr_local_len = strlen(usr_local_path) + 1;
+685     char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
+686     if (usr_local_dir) {
+687       safe_snprintf(usr_local_dir, usr_local_len, &quot;%s&quot;, usr_local_path);
+688 
+689       asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
+690       if (mkdir_result == ASCIICHAT_OK) {
+691         if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
+692           return usr_local_dir; // /usr/local is writable
+693         }
+694       }
+695       SAFE_FREE(usr_local_dir);
+696     }
+697   }
+698 #endif
+699 
+700   // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
+701   char *data_dir = get_data_dir();
+702   if (data_dir) {
+703     // Try to create the directory recursively
+704     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+705     if (mkdir_result == ASCIICHAT_OK) {
+706       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+707         return data_dir;
+708       }
+709     }
+710     SAFE_FREE(data_dir);
+711   }
+712 
+713   return NULL;
+714 #endif
+715 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_INSTALL_PREFIX</b>, <b>ASCIICHAT_OK</b>,
@@ -3971,23 +3976,32 @@ free(log_dir);
 592 
 593   return log_dir;
 594 #else
-595   // Debug builds: Use repository root for logs
-596   char *repo_root = find_project_root();
-597   if (repo_root) {
-598     return repo_root;
-599   }
-600 
-601   // Fallback to current working directory if repo root not found
-602   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-603   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-604     return NULL;
-605   }
-606 
-607   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-608   safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
-609   return result;
-610 #endif
-611 }</pre>
+595   // Debug builds: Use repository root for logs.
+596   // find_project_root() returns a raw malloc() allocation (to avoid debug_malloc
+597   // recursion), but callers free with SAFE_FREE. Re-allocate with SAFE_MALLOC
+598   // so the allocator matches.
+599   char *repo_root = find_project_root();
+600   if (repo_root) {
+601     size_t len = strlen(repo_root) + 1;
+602     char *result = SAFE_MALLOC(len, char *);
+603     if (result) {
+604       memcpy(result, repo_root, len);
+605     }
+606     free(repo_root);
+607     return result;
+608   }
+609 
+610   // Fallback to current working directory if repo root not found
+611   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+612   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+613     return NULL;
+614   }
+615 
+616   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
+617   safe_snprintf(result, strlen(cwd_buf) + 1, &quot;%s&quot;, cwd_buf);
+618   return result;
+619 #endif
+620 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>DIR_PERM_PRIVATE</b>,
@@ -5203,8 +5217,8 @@ if (ipv4_to_ipv6_mapped(&quot;192.168.1.1&quot;, ipv6, sizeof(ipv6)) == ASCIICHA
 <p class="Pp"></p>
 <p class="Pp">References <b>is_valid_ipv4()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>get_ip_type_string()</b>,
-    <b>is_internet_ipv4()</b>, <b>parse_server_bind_address()</b>,
-    <b>server_main()</b>, and <b>tcp_client_connect()</b>.</p>
+    <b>is_internet_ipv4()</b>, <b>parse_server_bind_address()</b>, and
+    <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_is_localhost_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_localhost_ipv6_(const_char_*_ip)">int
@@ -5272,8 +5286,8 @@ if (ipv4_to_ipv6_mapped(&quot;192.168.1.1&quot;, ipv6, sizeof(ipv6)) == ASCIICHA
 <p class="Pp">References <b>is_valid_ipv6()</b>, and
     <b>parse_ipv6_address()</b>.</p>
 <p class="Pp">Referenced by <b>get_ip_type_string()</b>,
-    <b>is_internet_ipv6()</b>, <b>parse_server_bind_address()</b>,
-    <b>server_main()</b>, and <b>tcp_client_connect()</b>.</p>
+    <b>is_internet_ipv6()</b>, <b>parse_server_bind_address()</b>, and
+    <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_is_valid_ip_(const_char_*_ip)"><a class="permalink" href="#int_is_valid_ip_(const_char_*_ip)">int
@@ -6093,24 +6107,24 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <div class="Bd-indent"><i>path</i> Path string to test (may be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if the path is absolute, false otherwise</div>
-<p class="Pp">Definition at line <b>728</b> of file <b>path.c</b>.</p>
-<pre>728                                         {
-729   if (!path || !*path) {
-730     return false;
-731   }
-732 
-733 #ifdef _WIN32
-734   if ((path[0] == '\\' &amp;&amp; path[1] == '\\')) {
-735     return true; // UNC path
-736   }
-737   if (isalpha((unsigned char)path[0]) &amp;&amp; path[1] == PATH_DRIVE_SEPARATOR &amp;&amp; path[2] == PATH_DELIM) {
-738     return true;
-739   }
-740   return false;
-741 #else
-742   return path[0] == PATH_DELIM;
-743 #endif
-744 }</pre>
+<p class="Pp">Definition at line <b>737</b> of file <b>path.c</b>.</p>
+<pre>737                                         {
+738   if (!path || !*path) {
+739     return false;
+740   }
+741 
+742 #ifdef _WIN32
+743   if ((path[0] == '\\' &amp;&amp; path[1] == '\\')) {
+744     return true; // UNC path
+745   }
+746   if (isalpha((unsigned char)path[0]) &amp;&amp; path[1] == PATH_DRIVE_SEPARATOR &amp;&amp; path[2] == PATH_DELIM) {
+747     return true;
+748   }
+749   return false;
+750 #else
+751   return path[0] == PATH_DELIM;
+752 #endif
+753 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_DELIM</b>, and <b>PATH_DRIVE_SEPARATOR</b>.</p>
@@ -6132,24 +6146,24 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if path is inside any allowed base, false
   otherwise</div>
-<p class="Pp">Definition at line <b>780</b> of file <b>path.c</b>.</p>
-<pre>780                                                                                             {
-781   if (!path || !bases || base_count == 0) {
-782     return false;
-783   }
-784 
-785   for (size_t i = 0; i &lt; base_count; ++i) {
-786     const char *base = bases[i];
-787     if (!base) {
-788       continue;
-789     }
-790     if (path_is_within_base(path, base)) {
-791       return true;
-792     }
-793   }
-794 
-795   return false;
-796 }</pre>
+<p class="Pp">Definition at line <b>789</b> of file <b>path.c</b>.</p>
+<pre>789                                                                                             {
+790   if (!path || !bases || base_count == 0) {
+791     return false;
+792   }
+793 
+794   for (size_t i = 0; i &lt; base_count; ++i) {
+795     const char *base = bases[i];
+796     if (!base) {
+797       continue;
+798     }
+799     if (path_is_within_base(path, base)) {
+800       return true;
+801     }
+802   }
+803 
+804   return false;
+805 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>path_is_within_base()</b>.</p>
@@ -6171,40 +6185,40 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if path is inside base (or exactly equal), false
   otherwise</div>
-<p class="Pp">Definition at line <b>746</b> of file <b>path.c</b>.</p>
-<pre>746                                                              {
-747   if (!path || !base) {
-748     return false;
-749   }
-750 
-751   if (!path_is_absolute(path) || !path_is_absolute(base)) {
-752     return false;
-753   }
-754 
-755   char normalized_path[PLATFORM_MAX_PATH_LENGTH];
-756   char normalized_base[PLATFORM_MAX_PATH_LENGTH];
-757 
-758   if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
-759     return false;
-760   }
-761   if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
-762     return false;
-763   }
-764 
-765   size_t base_len = strlen(normalized_base);
-766   if (base_len == 0) {
-767     return false;
-768   }
-769 
-770   if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
+<p class="Pp">Definition at line <b>755</b> of file <b>path.c</b>.</p>
+<pre>755                                                              {
+756   if (!path || !base) {
+757     return false;
+758   }
+759 
+760   if (!path_is_absolute(path) || !path_is_absolute(base)) {
+761     return false;
+762   }
+763 
+764   char normalized_path[PLATFORM_MAX_PATH_LENGTH];
+765   char normalized_base[PLATFORM_MAX_PATH_LENGTH];
+766 
+767   if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
+768     return false;
+769   }
+770   if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
 771     return false;
 772   }
-773   char next = normalized_path[base_len];
-774   if (next == '\0') {
-775     return true;
-776   }
-777   return next == PATH_DELIM;
-778 }</pre>
+773 
+774   size_t base_len = strlen(normalized_base);
+775   if (base_len == 0) {
+776     return false;
+777   }
+778 
+779   if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
+780     return false;
+781   }
+782   char next = normalized_path[base_len];
+783   if (next == '\0') {
+784     return true;
+785   }
+786   return next == PATH_DELIM;
+787 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_DELIM</b>, <b>path_is_absolute()</b>,
@@ -6224,28 +6238,28 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <div class="Bd-indent"><i>value</i> String to analyze</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if the string looks like a filesystem path</div>
-<p class="Pp">Definition at line <b>798</b> of file <b>path.c</b>.</p>
-<pre>798                                              {
-799   if (!value || *value == '\0') {
-800     return false;
-801   }
-802 
-803   if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
-804     return true;
-805   }
-806 
-807   if (strchr(value, PATH_DELIM)) {
-808     return true;
-809   }
-810 
-811 #ifdef _WIN32
-812   if (isalpha((unsigned char)value[0]) &amp;&amp; value[1] == ':' &amp;&amp; value[2] == PATH_DELIM) {
+<p class="Pp">Definition at line <b>807</b> of file <b>path.c</b>.</p>
+<pre>807                                              {
+808   if (!value || *value == '\0') {
+809     return false;
+810   }
+811 
+812   if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
 813     return true;
 814   }
-815 #endif
-816 
-817   return false;
-818 }</pre>
+815 
+816   if (strchr(value, PATH_DELIM)) {
+817     return true;
+818   }
+819 
+820 #ifdef _WIN32
+821   if (isalpha((unsigned char)value[0]) &amp;&amp; value[1] == ':' &amp;&amp; value[2] == PATH_DELIM) {
+822     return true;
+823   }
+824 #endif
+825 
+826   return false;
+827 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PATH_COMPONENT_DOT</b>, <b>PATH_DELIM</b>, and
@@ -6272,26 +6286,26 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure (invalid arguments or
   buffer too small)</div>
-<p class="Pp">Definition at line <b>708</b> of file <b>path.c</b>.</p>
-<pre>708                                                                       {
-709   if (!path || !out || out_len == 0) {
-710     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null path or out or out_len is 0&quot;);
-711     return false;
-712   }
-713 
-714   const char *normalized = normalize_path(path);
-715   if (!normalized) {
-716     return false;
-717   }
-718 
-719   size_t len = strlen(normalized);
-720   if (len + 1 &gt; out_len) {
-721     return false;
-722   }
-723 
-724   memcpy(out, normalized, len + 1);
-725   return true;
-726 }</pre>
+<p class="Pp">Definition at line <b>717</b> of file <b>path.c</b>.</p>
+<pre>717                                                                       {
+718   if (!path || !out || out_len == 0) {
+719     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null path or out or out_len is 0&quot;);
+720     return false;
+721   }
+722 
+723   const char *normalized = normalize_path(path);
+724   if (!normalized) {
+725     return false;
+726   }
+727 
+728   size_t len = strlen(normalized);
+729   if (len + 1 &gt; out_len) {
+730     return false;
+731   }
+732 
+733   memcpy(out, normalized, len + 1);
+734   return true;
+735 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -6332,261 +6346,261 @@ if (parse_ip_with_port(&quot;[::1]:8080&quot;, ip, sizeof(ip), &amp;port) == 0) 
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure (and
   normalized_out is NULL)</div>
-<p class="Pp">Definition at line <b>1006</b> of file <b>path.c</b>.</p>
-<pre>1006                                                                                                       {
-1007   if (!normalized_out) {
-1008     return SET_ERRNO(map_role_to_error(role), &quot;path_validate_user_path requires output pointer&quot;);
-1009   }
-1010   *normalized_out = NULL;
-1011 
-1012   if (!input || *input == '\0') {
-1013     return SET_ERRNO(map_role_to_error(role), &quot;Path is empty for role %d&quot;, role);
-1014   }
-1015 
-1016   // SECURITY: For log files, if input is a simple filename (no separators or ..), constrain it to a safe directory
-1017   if (role == PATH_ROLE_LOG_FILE) {
-1018     // Check if input contains path separators or parent directory references
-1019     bool is_simple_filename = true;
-1020     for (const char *p = input; *p; p++) {
-1021       if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
-1022         is_simple_filename = false;
-1023         break;
-1024       }
-1025     }
-1026     // Also reject &quot;..&quot; components (even without separators like &quot;..something&quot;)
-1027     if (strstr(input, &quot;..&quot;) != NULL) {
-1028       is_simple_filename = false;
-1029     }
-1030 
-1031     // If it's a simple filename, resolve it to a safe base directory
-1032     if (is_simple_filename) {
-1033       // Always prefer current working directory for simple log filenames
-1034       // This ensures logs go to where the user is running the command from
-1035       char safe_base[PLATFORM_MAX_PATH_LENGTH];
-1036 
-1037       if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
-1038         // If cwd fails, try config dir as fallback
-1039         char *config_dir = get_config_dir();
-1040         if (config_dir) {
-1041           SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
-1042           SAFE_FREE(config_dir);
-1043         } else {
-1044           return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to determine safe directory for log file&quot;);
-1045         }
-1046       }
-1047 
-1048       // Build the full path: safe_base + separator + input
-1049       size_t base_len = strlen(safe_base);
-1050       size_t input_len = strlen(input);
-1051       bool needs_sep = base_len &gt; 0 &amp;&amp; safe_base[base_len - 1] != PATH_DELIM;
-1052       size_t total_len = base_len + (needs_sep ? 1 : 0) + input_len + 1;
-1053 
-1054       if (total_len &gt; PLATFORM_MAX_PATH_LENGTH) {
-1055         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Log file path too long: %s/%s&quot;, safe_base, input);
-1056       }
-1057 
-1058       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
-1059       safe_snprintf(resolved_buf, sizeof(resolved_buf), &quot;%s%s%s&quot;, safe_base, needs_sep ? PATH_SEPARATOR_STR : &quot;&quot;,
-1060                     input);
-1061 
-1062       // Normalize the resolved path
-1063       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
-1064       if (!path_normalize_copy(resolved_buf, normalized_buf, sizeof(normalized_buf))) {
-1065         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to normalize log file path: %s&quot;, resolved_buf);
-1066       }
-1067 
-1068       // Allocate and return the result
-1069       char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
-1070       if (!result) {
-1071         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
-1072       }
-1073       safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
-1074       *normalized_out = result;
-1075       return ASCIICHAT_OK;
-1076     }
-1077     // If not a simple filename (contains separators), continue with normal validation below
-1078   }
-1079 
-1080   // For non-log-files or log files with path separators, validate as usual
-1081   if (role != PATH_ROLE_LOG_FILE &amp;&amp; !path_looks_like_path(input)) {
-1082     return SET_ERRNO(map_role_to_error(role), &quot;Value does not look like a filesystem path: %s&quot;, input);
-1083   }
-1084 
-1085   char *expanded = expand_path(input);
-1086   if (!expanded) {
-1087     return SET_ERRNO(map_role_to_error(role), &quot;Failed to expand path: %s&quot;, input);
-1088   }
-1089 
-1090   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
-1091   const char *candidate_path = expanded;
-1092 
-1093   if (!path_is_absolute(candidate_path)) {
-1094     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-1095     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-1096       SAFE_FREE(expanded);
-1097       return SET_ERRNO(map_role_to_error(role), &quot;Failed to determine current working directory&quot;);
-1098     }
-1099 
-1100     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
-1101     if (total_len &gt;= sizeof(candidate_buf)) {
-1102       SAFE_FREE(expanded);
-1103       return SET_ERRNO(map_role_to_error(role), &quot;Resolved path is too long: %s/%s&quot;, cwd_buf, candidate_path);
-1104     }
-1105     if (strlen(candidate_path) &gt; 0 &amp;&amp; candidate_path[0] == PATH_DELIM) {
-1106       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%s&quot;, cwd_buf, candidate_path);
-1107     } else {
-1108       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%c%s&quot;, cwd_buf, PATH_DELIM, candidate_path);
-1109     }
-1110     candidate_path = candidate_buf;
-1111   }
-1112 
-1113   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
-1114   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
-1115     SAFE_FREE(expanded);
-1116     return SET_ERRNO(map_role_to_error(role), &quot;Failed to normalize path: %s&quot;, candidate_path);
-1117   }
-1118 
-1119   if (!path_is_absolute(normalized_buf)) {
-1120     SAFE_FREE(expanded);
-1121     return SET_ERRNO(map_role_to_error(role), &quot;Normalized path is not absolute: %s&quot;, normalized_buf);
-1122   }
-1123 
-1124   const char *bases[MAX_PATH_BASES] = {0};
-1125   size_t base_count = 0;
-1126 
-1127   // Always add current working directory as an allowed base
-1128   // This is critical for log files and other paths relative to where the user runs the command
-1129   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
-1130   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
-1131     append_base_if_valid(cwd_base, bases, &amp;base_count);
-1132   }
-1133 
-1134   char temp_base[PLATFORM_MAX_PATH_LENGTH];
-1135   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
-1136     append_base_if_valid(temp_base, bases, &amp;base_count);
-1137   }
-1138 
-1139   char *config_dir = get_config_dir();
-1140   if (config_dir) {
-1141     append_base_if_valid(config_dir, bases, &amp;base_count);
-1142   }
-1143 
-1144   const char *home_env = platform_get_home_dir();
-1145   if (home_env) {
-1146     append_base_if_valid(home_env, bases, &amp;base_count);
-1147   }
-1148 
-1149   char ascii_chat_home[PLATFORM_MAX_PATH_LENGTH];
-1150   if (home_env) {
-1151     build_ascii_chat_path(home_env, &quot;.ascii-chat&quot;, ascii_chat_home, sizeof(ascii_chat_home));
-1152     append_base_if_valid(ascii_chat_home, bases, &amp;base_count);
-1153   }
-1154 
-1155 #ifndef _WIN32
-1156   char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
-1157   build_ascii_chat_path(&quot;/tmp&quot;, &quot;.ascii-chat&quot;, ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
-1158   append_base_if_valid(ascii_chat_home_tmp, bases, &amp;base_count);
-1159 #endif
-1160 
-1161   char ssh_home[PLATFORM_MAX_PATH_LENGTH];
-1162   if (home_env) {
-1163     build_ascii_chat_path(home_env, &quot;.ssh&quot;, ssh_home, sizeof(ssh_home));
-1164     append_base_if_valid(ssh_home, bases, &amp;base_count);
-1165   }
-1166 
-1167 #ifdef _WIN32
-1168   char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
-1169   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
-1170   if (program_data) {
-1171     build_ascii_chat_path(program_data, &quot;ascii-chat&quot;, program_data_logs, sizeof(program_data_logs));
-1172     append_base_if_valid(program_data_logs, bases, &amp;base_count);
-1173   }
-1174 #else
-1175   // System-wide config directories (for server deployments)
-1176   append_base_if_valid(&quot;/etc/ascii-chat&quot;, bases, &amp;base_count);
-1177   append_base_if_valid(&quot;/usr/local/etc/ascii-chat&quot;, bases, &amp;base_count);
-1178   append_base_if_valid(&quot;/var/log&quot;, bases, &amp;base_count);
-1179   append_base_if_valid(&quot;/var/tmp&quot;, bases, &amp;base_count);
-1180   append_base_if_valid(&quot;/tmp&quot;, bases, &amp;base_count);
-1181 #ifdef __APPLE__
-1182   // On macOS, /tmp is a symlink to /private/tmp
-1183   append_base_if_valid(&quot;/private/tmp&quot;, bases, &amp;base_count);
-1184   // On macOS, all user home directories are under /Users
-1185   append_base_if_valid(&quot;/Users&quot;, bases, &amp;base_count);
-1186 #endif
-1187 #endif
-1188 
-1189   // Security check: Reject paths that point to sensitive system files
-1190   // This applies to all path roles, not just logs
-1191   if (is_sensitive_system_path(normalized_buf)) {
-1192     SAFE_FREE(expanded);
-1193     if (config_dir) {
-1194       SAFE_FREE(config_dir);
-1195     }
-1196     return SET_ERRNO(map_role_to_error(role), &quot;Cannot write to protected system path: %s&quot;, normalized_buf);
-1197   }
-1198 
-1199   // For log files, apply special validation rules
-1200   if (role == PATH_ROLE_LOG_FILE) {
-1201     // Check if path is a regular file (not a directory, not non-existent)
-1202     // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
-1203     bool is_regular_file = platform_is_regular_file(normalized_buf);
-1204 
-1205     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
-1206     if (is_regular_file &amp;&amp; !is_existing_ascii_chat_log(normalized_buf) &amp;&amp; !is_file_empty(normalized_buf)) {
-1207       SAFE_FREE(expanded);
-1208       if (config_dir) {
-1209         SAFE_FREE(config_dir);
-1210       }
-1211       return SET_ERRNO(ERROR_LOGGING_INIT,
-1212                        &quot;Cannot overwrite existing non-ascii-chat file: %s\n&quot;
-1213                        &quot;For safety, ascii-chat will only overwrite its own log files or empty files&quot;,
-1214                        normalized_buf);
-1215     }
-1216 
-1217     // If file doesn't exist (or is a directory), check that path is in safe locations
-1218     if (!is_regular_file) {
-1219       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-1220       if (!allowed) {
-1221         SAFE_FREE(expanded);
-1222         if (config_dir) {
-1223           SAFE_FREE(config_dir);
-1224         }
-1225         return SET_ERRNO(ERROR_LOGGING_INIT,
-1226                          &quot;Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or &quot;
-1227                          &quot;relative/absolute paths in safe locations)&quot;,
-1228                          normalized_buf);
-1229       }
-1230     }
-1231   } else {
-1232     // For non-log-file paths, apply standard whitelist validation
-1233     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-1234     if (!allowed) {
-1235       SAFE_FREE(expanded);
-1236       if (config_dir) {
-1237         SAFE_FREE(config_dir);
+<p class="Pp">Definition at line <b>1015</b> of file <b>path.c</b>.</p>
+<pre>1015                                                                                                       {
+1016   if (!normalized_out) {
+1017     return SET_ERRNO(map_role_to_error(role), &quot;path_validate_user_path requires output pointer&quot;);
+1018   }
+1019   *normalized_out = NULL;
+1020 
+1021   if (!input || *input == '\0') {
+1022     return SET_ERRNO(map_role_to_error(role), &quot;Path is empty for role %d&quot;, role);
+1023   }
+1024 
+1025   // SECURITY: For log files, if input is a simple filename (no separators or ..), constrain it to a safe directory
+1026   if (role == PATH_ROLE_LOG_FILE) {
+1027     // Check if input contains path separators or parent directory references
+1028     bool is_simple_filename = true;
+1029     for (const char *p = input; *p; p++) {
+1030       if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
+1031         is_simple_filename = false;
+1032         break;
+1033       }
+1034     }
+1035     // Also reject &quot;..&quot; components (even without separators like &quot;..something&quot;)
+1036     if (strstr(input, &quot;..&quot;) != NULL) {
+1037       is_simple_filename = false;
+1038     }
+1039 
+1040     // If it's a simple filename, resolve it to a safe base directory
+1041     if (is_simple_filename) {
+1042       // Always prefer current working directory for simple log filenames
+1043       // This ensures logs go to where the user is running the command from
+1044       char safe_base[PLATFORM_MAX_PATH_LENGTH];
+1045 
+1046       if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+1047         // If cwd fails, try config dir as fallback
+1048         char *config_dir = get_config_dir();
+1049         if (config_dir) {
+1050           SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
+1051           SAFE_FREE(config_dir);
+1052         } else {
+1053           return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to determine safe directory for log file&quot;);
+1054         }
+1055       }
+1056 
+1057       // Build the full path: safe_base + separator + input
+1058       size_t base_len = strlen(safe_base);
+1059       size_t input_len = strlen(input);
+1060       bool needs_sep = base_len &gt; 0 &amp;&amp; safe_base[base_len - 1] != PATH_DELIM;
+1061       size_t total_len = base_len + (needs_sep ? 1 : 0) + input_len + 1;
+1062 
+1063       if (total_len &gt; PLATFORM_MAX_PATH_LENGTH) {
+1064         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Log file path too long: %s/%s&quot;, safe_base, input);
+1065       }
+1066 
+1067       char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
+1068       safe_snprintf(resolved_buf, sizeof(resolved_buf), &quot;%s%s%s&quot;, safe_base, needs_sep ? PATH_SEPARATOR_STR : &quot;&quot;,
+1069                     input);
+1070 
+1071       // Normalize the resolved path
+1072       char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+1073       if (!path_normalize_copy(resolved_buf, normalized_buf, sizeof(normalized_buf))) {
+1074         return SET_ERRNO(ERROR_LOGGING_INIT, &quot;Failed to normalize log file path: %s&quot;, resolved_buf);
+1075       }
+1076 
+1077       // Allocate and return the result
+1078       char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+1079       if (!result) {
+1080         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
+1081       }
+1082       safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
+1083       *normalized_out = result;
+1084       return ASCIICHAT_OK;
+1085     }
+1086     // If not a simple filename (contains separators), continue with normal validation below
+1087   }
+1088 
+1089   // For non-log-files or log files with path separators, validate as usual
+1090   if (role != PATH_ROLE_LOG_FILE &amp;&amp; !path_looks_like_path(input)) {
+1091     return SET_ERRNO(map_role_to_error(role), &quot;Value does not look like a filesystem path: %s&quot;, input);
+1092   }
+1093 
+1094   char *expanded = expand_path(input);
+1095   if (!expanded) {
+1096     return SET_ERRNO(map_role_to_error(role), &quot;Failed to expand path: %s&quot;, input);
+1097   }
+1098 
+1099   char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+1100   const char *candidate_path = expanded;
+1101 
+1102   if (!path_is_absolute(candidate_path)) {
+1103     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+1104     if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+1105       SAFE_FREE(expanded);
+1106       return SET_ERRNO(map_role_to_error(role), &quot;Failed to determine current working directory&quot;);
+1107     }
+1108 
+1109     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
+1110     if (total_len &gt;= sizeof(candidate_buf)) {
+1111       SAFE_FREE(expanded);
+1112       return SET_ERRNO(map_role_to_error(role), &quot;Resolved path is too long: %s/%s&quot;, cwd_buf, candidate_path);
+1113     }
+1114     if (strlen(candidate_path) &gt; 0 &amp;&amp; candidate_path[0] == PATH_DELIM) {
+1115       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%s&quot;, cwd_buf, candidate_path);
+1116     } else {
+1117       safe_snprintf(candidate_buf, sizeof(candidate_buf), &quot;%s%c%s&quot;, cwd_buf, PATH_DELIM, candidate_path);
+1118     }
+1119     candidate_path = candidate_buf;
+1120   }
+1121 
+1122   char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+1123   if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
+1124     SAFE_FREE(expanded);
+1125     return SET_ERRNO(map_role_to_error(role), &quot;Failed to normalize path: %s&quot;, candidate_path);
+1126   }
+1127 
+1128   if (!path_is_absolute(normalized_buf)) {
+1129     SAFE_FREE(expanded);
+1130     return SET_ERRNO(map_role_to_error(role), &quot;Normalized path is not absolute: %s&quot;, normalized_buf);
+1131   }
+1132 
+1133   const char *bases[MAX_PATH_BASES] = {0};
+1134   size_t base_count = 0;
+1135 
+1136   // Always add current working directory as an allowed base
+1137   // This is critical for log files and other paths relative to where the user runs the command
+1138   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
+1139   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
+1140     append_base_if_valid(cwd_base, bases, &amp;base_count);
+1141   }
+1142 
+1143   char temp_base[PLATFORM_MAX_PATH_LENGTH];
+1144   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
+1145     append_base_if_valid(temp_base, bases, &amp;base_count);
+1146   }
+1147 
+1148   char *config_dir = get_config_dir();
+1149   if (config_dir) {
+1150     append_base_if_valid(config_dir, bases, &amp;base_count);
+1151   }
+1152 
+1153   const char *home_env = platform_get_home_dir();
+1154   if (home_env) {
+1155     append_base_if_valid(home_env, bases, &amp;base_count);
+1156   }
+1157 
+1158   char ascii_chat_home[PLATFORM_MAX_PATH_LENGTH];
+1159   if (home_env) {
+1160     build_ascii_chat_path(home_env, &quot;.ascii-chat&quot;, ascii_chat_home, sizeof(ascii_chat_home));
+1161     append_base_if_valid(ascii_chat_home, bases, &amp;base_count);
+1162   }
+1163 
+1164 #ifndef _WIN32
+1165   char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
+1166   build_ascii_chat_path(&quot;/tmp&quot;, &quot;.ascii-chat&quot;, ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
+1167   append_base_if_valid(ascii_chat_home_tmp, bases, &amp;base_count);
+1168 #endif
+1169 
+1170   char ssh_home[PLATFORM_MAX_PATH_LENGTH];
+1171   if (home_env) {
+1172     build_ascii_chat_path(home_env, &quot;.ssh&quot;, ssh_home, sizeof(ssh_home));
+1173     append_base_if_valid(ssh_home, bases, &amp;base_count);
+1174   }
+1175 
+1176 #ifdef _WIN32
+1177   char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
+1178   const char *program_data = platform_getenv(&quot;PROGRAMDATA&quot;);
+1179   if (program_data) {
+1180     build_ascii_chat_path(program_data, &quot;ascii-chat&quot;, program_data_logs, sizeof(program_data_logs));
+1181     append_base_if_valid(program_data_logs, bases, &amp;base_count);
+1182   }
+1183 #else
+1184   // System-wide config directories (for server deployments)
+1185   append_base_if_valid(&quot;/etc/ascii-chat&quot;, bases, &amp;base_count);
+1186   append_base_if_valid(&quot;/usr/local/etc/ascii-chat&quot;, bases, &amp;base_count);
+1187   append_base_if_valid(&quot;/var/log&quot;, bases, &amp;base_count);
+1188   append_base_if_valid(&quot;/var/tmp&quot;, bases, &amp;base_count);
+1189   append_base_if_valid(&quot;/tmp&quot;, bases, &amp;base_count);
+1190 #ifdef __APPLE__
+1191   // On macOS, /tmp is a symlink to /private/tmp
+1192   append_base_if_valid(&quot;/private/tmp&quot;, bases, &amp;base_count);
+1193   // On macOS, all user home directories are under /Users
+1194   append_base_if_valid(&quot;/Users&quot;, bases, &amp;base_count);
+1195 #endif
+1196 #endif
+1197 
+1198   // Security check: Reject paths that point to sensitive system files
+1199   // This applies to all path roles, not just logs
+1200   if (is_sensitive_system_path(normalized_buf)) {
+1201     SAFE_FREE(expanded);
+1202     if (config_dir) {
+1203       SAFE_FREE(config_dir);
+1204     }
+1205     return SET_ERRNO(map_role_to_error(role), &quot;Cannot write to protected system path: %s&quot;, normalized_buf);
+1206   }
+1207 
+1208   // For log files, apply special validation rules
+1209   if (role == PATH_ROLE_LOG_FILE) {
+1210     // Check if path is a regular file (not a directory, not non-existent)
+1211     // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
+1212     bool is_regular_file = platform_is_regular_file(normalized_buf);
+1213 
+1214     // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
+1215     if (is_regular_file &amp;&amp; !is_existing_ascii_chat_log(normalized_buf) &amp;&amp; !is_file_empty(normalized_buf)) {
+1216       SAFE_FREE(expanded);
+1217       if (config_dir) {
+1218         SAFE_FREE(config_dir);
+1219       }
+1220       return SET_ERRNO(ERROR_LOGGING_INIT,
+1221                        &quot;Cannot overwrite existing non-ascii-chat file: %s\n&quot;
+1222                        &quot;For safety, ascii-chat will only overwrite its own log files or empty files&quot;,
+1223                        normalized_buf);
+1224     }
+1225 
+1226     // If file doesn't exist (or is a directory), check that path is in safe locations
+1227     if (!is_regular_file) {
+1228       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+1229       if (!allowed) {
+1230         SAFE_FREE(expanded);
+1231         if (config_dir) {
+1232           SAFE_FREE(config_dir);
+1233         }
+1234         return SET_ERRNO(ERROR_LOGGING_INIT,
+1235                          &quot;Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or &quot;
+1236                          &quot;relative/absolute paths in safe locations)&quot;,
+1237                          normalized_buf);
 1238       }
-1239       return SET_ERRNO(map_role_to_error(role), &quot;Path %s is outside allowed directories&quot;, normalized_buf);
-1240     }
-1241   }
-1242 
-1243   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
-1244   if (!result) {
-1245     SAFE_FREE(expanded);
-1246     if (config_dir) {
-1247       SAFE_FREE(config_dir);
-1248     }
-1249     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
+1239     }
+1240   } else {
+1241     // For non-log-file paths, apply standard whitelist validation
+1242     bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+1243     if (!allowed) {
+1244       SAFE_FREE(expanded);
+1245       if (config_dir) {
+1246         SAFE_FREE(config_dir);
+1247       }
+1248       return SET_ERRNO(map_role_to_error(role), &quot;Path %s is outside allowed directories&quot;, normalized_buf);
+1249     }
 1250   }
-1251   safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
-1252   *normalized_out = result;
-1253 
-1254   SAFE_FREE(expanded);
-1255   if (config_dir) {
-1256     SAFE_FREE(config_dir);
-1257   }
-1258   return ASCIICHAT_OK;
-1259 }</pre>
+1251 
+1252   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+1253   if (!result) {
+1254     SAFE_FREE(expanded);
+1255     if (config_dir) {
+1256       SAFE_FREE(config_dir);
+1257     }
+1258     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate normalized path&quot;);
+1259   }
+1260   safe_snprintf(result, strlen(normalized_buf) + 1, &quot;%s&quot;, normalized_buf);
+1261   *normalized_out = result;
+1262 
+1263   SAFE_FREE(expanded);
+1264   if (config_dir) {
+1265     SAFE_FREE(config_dir);
+1266   }
+1267   return ASCIICHAT_OK;
+1268 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_LOGGING_INIT</b>,
@@ -6899,101 +6913,196 @@ if (safe_parse_size_message(&quot;SIZE:1920,1080&quot;, &amp;width, &amp;height)
     <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_truncate_utf8_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)"><a class="permalink" href="#void_truncate_utf8_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)">void
-  truncate_utf8_with_ellipsis (const char * input, char * output, size_t
-  output_size, int max_width)</a></h2>
+<h2 class="Ss" id="void_strip_ansi_codes_(const_char_*_input,_char_*_output,_size_t_output_size)"><a class="permalink" href="#void_strip_ansi_codes_(const_char_*_input,_char_*_output,_size_t_output_size)">void
+  strip_ansi_codes (const char * input, char * output, size_t
+  output_size)</a></h2>
 <p class="Pp">#include
   &lt;<b>include/ascii-chat/util/string.h</b>&gt;<b></b></p>
-<p class="Pp">Truncate UTF-8 string to fit within max display width, adding
-    ellipsis if truncated. Truncates a UTF-8 string to fit within a maximum
-    display width (accounting for multi-byte characters), and appends
-    &quot;...&quot; if truncation occurred.</p>
+<p class="Pp">Strip ANSI escape codes from a string. Removes all ANSI escape
+    sequences from the input string, suitable for displaying colored/styled text
+    in environments that don't support ANSI codes (e.g., browser console, plain
+    text output).</p>
 <p class="Pp"></p>
-<p class="Pp">BEHAVIOR:</p>
+<p class="Pp">Handles patterns like:</p>
 <ul class="Bl-bullet">
-  <li>If string fits within max_width: Returns truncated string without
-    ellipsis</li>
-  <li>If string exceeds max_width: Returns truncated string with &quot;...&quot;
-      appended</li>
-  <li>Properly handles UTF-8 multi-byte characters (won't cut in the
-    middle)</li>
+  <li>\033[...m (color and style codes)</li>
+  <li>\033[0m (reset code)</li>
+  <li>\033[38;5;Nm (256-color codes)</li>
+  <li>\033[38;2;R;G;Bm (truecolor codes)</li>
+  <li>\033[2J, \033[H, etc. (cursor and screen control)</li>
 </ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>input</i> Input string with ANSI codes (must not be
+  NULL)
+<br/>
+<i>output</i> Output buffer for cleaned string (must not be NULL)
+<br/>
+<i>output_size</i> Size of output buffer (must be &gt; 0)</div>
 <p class="Pp">EXAMPLE:</p>
 <p class="Pp"></p>
-<pre>char buf[256];
-truncate_utf8_with_ellipsis(&quot;Hello, World!&quot;, buf, sizeof(buf), 10);
-// buf now contains &quot;Hello, ...&quot; (10 columns max, including ellipsis)
+<pre>char input[] = &quot;\\033[31mError\\033[0m&quot;;  // Red &quot;Error&quot; text
+char output[256];
+strip_ansi_codes(input, output, sizeof(output));
+// output now contains &quot;Error&quot; without ANSI codes
 </pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Output buffer must be large enough for input (worst case:
+  same size).
+<p class="Pp"></p>
+<p class="Pp">Function truncates output if buffer is too small.</p>
+<p class="Pp"></p>
+<p class="Pp">Safe for use with formatted log messages.</p>
+</div>
+<p class="Pp">Definition at line <b>407</b> of file <b>util/string.c</b>.</p>
+<pre>407                                                                            {
+408   if (!input || !output || output_size == 0) {
+409     return;
+410   }
+411 
+412   size_t out_idx = 0;
+413   size_t in_idx = 0;
+414 
+415   while (input[in_idx] != '\0' &amp;&amp; out_idx &lt; output_size - 1) {
+416     // Check for ANSI escape sequence: ESC[
+417     // Standard ANSI codes use escape character (0x1B or \033) followed by [
+418     if (input[in_idx] == '\033' &amp;&amp; input[in_idx + 1] == '[') {
+419       in_idx += 2; // Skip \033[
+420 
+421       // Skip until we find the terminating letter (m is most common, also H, J, K, etc.)
+422       // This handles patterns like: 38;5;74m, 0m, 38;2;255;0;0m, 2J, H, etc.
+423       while (input[in_idx] != '\0') {
+424         if ((input[in_idx] &gt;= 'A' &amp;&amp; input[in_idx] &lt;= 'Z') ||
+425             (input[in_idx] &gt;= 'a' &amp;&amp; input[in_idx] &lt;= 'z')) {
+426           in_idx++; // Skip the terminating letter
+427           break;
+428         }
+429         in_idx++;
+430       }
+431     } else {
+432       // Regular character (including [ in normal text), copy to output
+433       output[out_idx++] = input[in_idx++];
+434     }
+435   }
+436 
+437   output[out_idx] = '\0';
+438 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_truncate_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)"><a class="permalink" href="#void_truncate_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)">void
+  truncate_with_ellipsis (const char * input, char * output, size_t output_size,
+  int max_width)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/util/string.h</b>&gt;<b></b></p>
+<p class="Pp">Truncate a string to a maximum display width, with ellipsis.
+    Handles ANSI escape sequences (never cuts inside one), multi-byte UTF-8, and
+    wide characters (CJK = 2 columns). If truncation is needed, appends a color
+    reset (\033[0m) followed by &quot;&#x2026;&quot; (Unicode ellipsis, 1
+    column).</p>
+<p class="Pp"></p>
+<p class="Pp">Safe for strings with or without ANSI codes. For plain text the
+    reset is harmless (terminals ignore redundant resets).</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>input</i> Input string (may be UTF-8)
+<div class="Bd-indent"><i>input</i> Input string (may contain ANSI escape
+  sequences and UTF-8)
 <br/>
 <i>output</i> Output buffer for truncated string
 <br/>
-<i>output_size</i> Size of output buffer
+<i>output_size</i> Size of output buffer (must be &gt;= 10 for reset + ellipsis
+  + NUL)
 <br/>
-<i>max_width</i> Maximum display width in columns (must account for
-  &quot;...&quot; if truncating)</div>
-<p class="Pp">Definition at line <b>319</b> of file <b>util/string.c</b>.</p>
-<pre>319                                                                                                      {
-320   if (!input || !output || output_size &lt; 2) {
-321     if (output &amp;&amp; output_size &gt; 0)
-322       output[0] = '\0';
-323     return;
-324   }
-325 
-326   // Copy input to output first
-327   int input_len = strlen(input);
-328   if (input_len &gt;= (int)output_size) {
-329     input_len = output_size - 1;
-330   }
-331   memcpy(output, input, input_len);
-332   output[input_len] = '\0';
-333 
-334   // Get display width of current string
-335   int current_width = utf8_display_width(output);
-336 
-337   // If it fits, we're done
-338   if (current_width &lt;= max_width) {
-339     return;
-340   }
-341 
-342   // Need to truncate - reserve space for &quot;...&quot; (3 chars, 3 width)
-343   int available_width = max_width - 3;
-344   if (available_width &lt;= 0) {
-345     // No room for ellipsis, just show &quot;...&quot;
-346     output[0] = '.';
-347     output[1] = '.';
-348     output[2] = '.';
-349     output[3] = '\0';
-350     return;
-351   }
-352 
-353   // Truncate byte by byte until we fit in available_width
-354   for (int i = input_len - 1; i &gt; 0; i--) {
-355     output[i] = '\0';
-356     current_width = utf8_display_width(output);
-357     if (current_width &lt;= available_width) {
-358       // Found the right length - add ellipsis
-359       size_t current_len = strlen(output);
-360       size_t remaining = output_size - current_len;
-361       int snprintf_result = SAFE_SNPRINTF(output + current_len, remaining, &quot;%s&quot;, &quot;...&quot;);
-362       if (snprintf_result &lt; 0) {
-363         log_error(&quot;Failed to append ellipsis: snprintf returned %d&quot;, snprintf_result);
-364       }
-365       return;
-366     }
-367   }
-368 
-369   // Fallback: just &quot;...&quot;
-370   output[0] = '.';
-371   output[1] = '.';
-372   output[2] = '.';
-373   output[3] = '\0';
-374 }</pre>
+<i>max_width</i> Maximum display width in columns</div>
+<p class="Pp">Definition at line <b>322</b> of file <b>util/string.c</b>.</p>
+<pre>322                                                                                                 {
+323   if (!input || !output || output_size &lt; 4) {
+324     if (output &amp;&amp; output_size &gt; 0) {
+325       output[0] = '\0';
+326     }
+327     return;
+328   }
+329 
+330   int content_width = display_width(input);
+331 
+332   // Content fits &#x2014; copy as-is
+333   if (content_width &lt;= max_width) {
+334     size_t len = strlen(input);
+335     if (len &gt;= output_size) {
+336       len = output_size - 1;
+337     }
+338     memcpy(output, input, len);
+339     output[len] = '\0';
+340     return;
+341   }
+342 
+343   // Need to truncate. Walk forward copying bytes while counting visible
+344   // columns. ANSI escape sequences are copied whole (zero display width).
+345   // UTF-8 multi-byte characters are decoded to get their display width
+346   // (e.g., CJK = 2 columns, emoji = 2 columns) and copied as whole
+347   // codepoints so we never split a multi-byte sequence.
+348   const char *src = input;
+349   const char *src_end = input + strlen(input);
+350   char *dst = output;
+351   char *dst_end = output + output_size - 10; // Reserve for reset + ellipsis + NUL
+352   int cols = 0;
+353   int target = max_width - 1; // Reserve 1 column for &quot;&#x2026;&quot;
+354 
+355   if (target &lt; 0) {
+356     target = 0;
+357   }
+358 
+359   while (src &lt; src_end &amp;&amp; dst &lt; dst_end) {
+360     if (*src == '\x1b') {
+361       // Copy the entire escape sequence (zero display width)
+362       const char *esc_end = ansi_skip_escape(src, src_end);
+363       size_t esc_len = (size_t)(esc_end - src);
+364       if (dst + esc_len &lt; dst_end) {
+365         memcpy(dst, src, esc_len);
+366         dst += esc_len;
+367       }
+368       src = esc_end;
+369     } else {
+370       // Decode one UTF-8 codepoint to get its byte length and display width
+371       utf8proc_int32_t codepoint;
+372       utf8proc_ssize_t cp_len = utf8proc_iterate((const utf8proc_uint8_t *)src, src_end - src, &amp;codepoint);
+373       if (cp_len &lt;= 0) {
+374         // Invalid UTF-8 &#x2014; copy single byte, count as 1 column
+375         cp_len = 1;
+376         codepoint = (unsigned char)*src;
+377       }
+378 
+379       int char_width = utf8proc_charwidth(codepoint);
+380       if (char_width &lt; 0) {
+381         char_width = 0; // Control characters
+382       }
+383 
+384       if (cols + char_width &gt; target) {
+385         break;
+386       }
+387 
+388       // Copy the full codepoint bytes
+389       if (dst + cp_len &lt; dst_end) {
+390         memcpy(dst, src, (size_t)cp_len);
+391         dst += cp_len;
+392       }
+393       src += cp_len;
+394       cols += char_width;
+395     }
+396   }
+397 
+398   // Reset colors and append ellipsis (U+2026, 3 bytes)
+399   size_t remaining = output_size - (size_t)(dst - output);
+400   int n = snprintf(dst, remaining, &quot;\033[0m&#x2026;&quot;);
+401   if (n &gt; 0) {
+402     dst += n;
+403   }
+404   *dst = '\0';
+405 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_error</b>, <b>SAFE_SNPRINTF</b>, and
-    <b>utf8_display_width()</b>.</p>
+<p class="Pp">References <b>ansi_skip_escape()</b>, and
+  <b>display_width()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> url_is_tcp (const char * url)</h2>
@@ -7932,8 +8041,7 @@ int width = utf8_display_width(&quot;&#x1F600;&quot;);         // Returns 2 (emo
 <p class="Pp">Referenced by <b>display_height()</b>, <b>display_width()</b>,
     <b>layout_print_two_column_row()</b>,
     <b>options_config_calculate_max_col_width()</b>, <b>prompt_password()</b>,
-    <b>truncate_utf8_with_ellipsis()</b>, and
-  <b>validate_palette_chars()</b>.</p>
+    and <b>validate_palette_chars()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_utf8_display_width_n_(const_char_*_str,_size_t_max_bytes)"><a class="permalink" href="#int_utf8_display_width_n_(const_char_*_str,_size_t_max_bytes)">int
@@ -8572,7 +8680,7 @@ fclose(fp);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

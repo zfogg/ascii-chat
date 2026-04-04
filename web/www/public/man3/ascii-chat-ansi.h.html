@@ -50,6 +50,14 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ANSI_RESET</b> '&#x00A0;33[0m'
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
 <p class="Pp">enum <b>ansi_color_mode_t</b> { <b>ANSI_MODE_FOREGROUND</b> = 0,
@@ -64,7 +72,10 @@
 <p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
     input_len)
   <br/>
-  Strip all ANSI escape sequences from a string. <b>bool</b>
+  Strip all ANSI escape sequences from a string. const char *
+    <b>ansi_skip_escape</b> (const char *ptr, const char *end)
+  <br/>
+  Find the end of an ANSI CSI escape sequence. <b>bool</b>
     <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
   <br/>
   Check if a position in text is already colored. char *
@@ -133,13 +144,22 @@
 <p class="Pp">Definition in file <b>ansi.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ANSI_RESET___'"><a class="permalink" href="#_define_ANSI_RESET___'">#define
+  ANSI_RESET '&#x00A0;33[0m'</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>ansi.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -204,7 +204,7 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>websocket_server::context</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_server_destroy_("><a class="permalink" href="#void_websocket_server_destroy_(">void
@@ -255,7 +255,7 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
     <b>websocket_server::context</b>, <b>websocket_server::handler_pool</b>,
     <b>log_debug</b>, <b>NAMED_UNREGISTER</b>, <b>websocket_server::running</b>,
     and <b>thread_pool_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> websocket_server_init
@@ -317,11 +317,11 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 854       config-&gt;tls_key_path[0] != '\0') {
 855 #ifdef LWS_WITH_TLS
 856     // Validate certificate and key files are readable
-857     if (access(config-&gt;tls_cert_path, R_OK) != 0) {
+857     if (platform_access(config-&gt;tls_cert_path, R_OK) != 0) {
 858       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS certificate file not readable: %s (errno=%d)&quot;, config-&gt;tls_cert_path,
 859                        errno);
 860     }
-861     if (access(config-&gt;tls_key_path, R_OK) != 0) {
+861     if (platform_access(config-&gt;tls_key_path, R_OK) != 0) {
 862       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS key file not readable: %s (errno=%d)&quot;, config-&gt;tls_key_path, errno);
 863     }
 864 
@@ -406,14 +406,15 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
     <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
     <b>lws_log_init_server()</b>, <b>NAMED_REGISTER</b>,
     <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_WEBSOCKET</b>,
-    <b>websocket_server::port</b>, <b>websocket_server_config_t::port</b>,
-    <b>R_OK</b>, <b>websocket_server::running</b>, <b>SET_ERRNO</b>,
+    <b>platform_access()</b>, <b>websocket_server::port</b>,
+    <b>websocket_server_config_t::port</b>, <b>R_OK</b>,
+    <b>websocket_server::running</b>, <b>SET_ERRNO</b>,
     <b>thread_pool_create_with_workers()</b>,
     <b>websocket_server_config_t::tls_cert_path</b>,
     <b>websocket_server_config_t::tls_key_path</b>,
     <b>websocket_server::user_data</b>, and
     <b>websocket_server_config_t::user_data</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> websocket_server_run
@@ -480,7 +481,7 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

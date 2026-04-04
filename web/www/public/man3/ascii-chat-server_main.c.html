@@ -38,15 +38,6 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>KEYBOARD_QUEUE_SIZE</b> 256
-  <br/>
-  Thread-safe keyboard queue (lock-free SPSC ring buffer).
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">int <b>server_main</b> (void)
@@ -173,16 +164,6 @@
 <p class="Pp">Definition in file <b>server/main.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_KEYBOARD_QUEUE_SIZE___256"><a class="permalink" href="#_define_KEYBOARD_QUEUE_SIZE___256">#define
-  KEYBOARD_QUEUE_SIZE 256</a></h2>
-<p class="Pp">Thread-safe keyboard queue (lock-free SPSC ring buffer).</p>
-<p class="Pp">Definition at line <b>288</b> of file <b>server/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
@@ -211,1176 +192,131 @@ ascii-chat server --port 8080
 # Options parsed in main.c, then server_main() called
 </pre>
 </div>
-<p class="Pp">Definition at line <b>1784</b> of file <b>server/main.c</b>.</p>
-<pre>1784                       {
-1785   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
-1786   // This function focuses on server-specific initialization
-1787 
-1788   // Register atomic for debug tracking
-1789   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
-1790 
-1791   // Register shutdown check callback for library code
-1792   shutdown_register_callback(check_shutdown);
-1793 
-1794   // Initialize status screen log buffer if:
-1795   // 1. Terminal is interactive AND status_screen is enabled, OR
-1796   // 2. User explicitly set --status-screen on command line AND option is enabled (force it regardless of terminal)
-1797   // In non-interactive mode without explicit flag, logs go directly to stdout/stderr
-1798   if ((GET_OPTION(status_screen) &amp;&amp; terminal_is_interactive()) ||
-1799       (GET_OPTION(status_screen_explicitly_set) &amp;&amp; GET_OPTION(status_screen))) {
-1800     ui_status_log_init();
-1801 
-1802     // Initialize interactive grep for status screen
-1803     log_search_init();
-1804   }
-1805 
-1806   // Initialize crypto after logging is ready
-1807   log_debug(&quot;Initializing crypto...&quot;);
-1808   if (init_server_crypto() != 0) {
-1809     // Print detailed error context if available
-1810     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
-1811     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
-1812   }
-1813   log_debug(&quot;Crypto initialized successfully&quot;);
-1814 
-1815   // Handle keepawake: check for mutual exclusivity and apply mode default
-1816   // Server default: keepawake DISABLED (use --keepawake to enable)
-1817   if (GET_OPTION(enable_keepawake) &amp;&amp; GET_OPTION(disable_keepawake)) {
-1818     FATAL(ERROR_INVALID_PARAM, &quot;--keepawake and --no-keepawake are mutually exclusive&quot;);
-1819   }
-1820   if (GET_OPTION(enable_keepawake)) {
-1821     (void)platform_enable_keepawake();
-1822   }
-1823 
-1824   log_info(&quot;ascii-chat server starting...&quot;);
-1825 
-1826   // log_info(&quot;SERVER: Options initialized, using log file: %s&quot;, log_filename);
-1827   int port = GET_OPTION(port);
-1828   if (port &lt; 1 || port &gt; 65535) {
-1829     log_error(&quot;Invalid port configuration: %d&quot;, port);
-1830     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
-1831   }
-1832 
-1833   ascii_simd_init();
-1834   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
-1835 
-1836   // Simple signal handling (temporarily disable complex threading signal handling)
-1837   log_debug(&quot;Setting up simple signal handlers...&quot;);
-1838 
-1839   // Handle Ctrl+C for cleanup
-1840   platform_signal(SIGINT, server_handle_sigint);
-1841   // Handle termination signal (SIGTERM is defined with limited support on Windows)
-1842   platform_signal(SIGTERM, server_handle_sigterm);
-1843 #ifndef _WIN32
-1844   // SIGPIPE not supported on Windows
-1845   platform_signal(SIGPIPE, SIG_IGN);
-1846   // Note: SIGUSR1 is registered in src/main.c for all modes
-1847 #endif
-1848 
-1849 #ifndef NDEBUG
-1850   // Lock debug thread is now started in src/main.c (all modes)
-1851   // Initialize statistics system
-1852   if (stats_init() != 0) {
-1853     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
-1854   }
-1855 #endif
-1856 
-1857   // Create background worker thread pool for server operations
-1858   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
-1859   if (!g_server_worker_pool) {
-1860     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
-1861     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
-1862   }
-1863 
-1864   // Spawn statistics logging thread in worker pool
-1865   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
-1866     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
-1867   } else {
-1868     log_debug(&quot;Statistics logger thread started&quot;);
-1869   }
-1870 
-1871   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
-1872   log_debug(&quot;Config check: GET_OPTION(address)='%s', GET_OPTION(address6)='%s'&quot;, GET_OPTION(address),
-1873             GET_OPTION(address6));
-1874 
-1875   bool ipv4_has_value = (strlen(GET_OPTION(address)) &gt; 0);
-1876   bool ipv6_has_value = (strlen(GET_OPTION(address6)) &gt; 0);
-1877   // Check if address is localhost (any loopback address, not just exact default)
-1878   bool ipv4_is_default = is_localhost_ipv4(GET_OPTION(address));
-1879   bool ipv6_is_default = is_localhost_ipv6(GET_OPTION(address6));
-1880 
-1881   log_debug(&quot;Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d&quot;,
-1882             ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
-1883 
-1884   // Determine bind configuration
-1885   bool bind_ipv4 = false;
-1886   bool bind_ipv6 = false;
-1887   const char *ipv4_address = NULL;
-1888   const char *ipv6_address = NULL;
-1889 
-1890   if (ipv4_has_value &amp;&amp; ipv6_has_value &amp;&amp; ipv4_is_default &amp;&amp; ipv6_is_default) {
-1891     // Both are defaults: dual-stack with default localhost addresses
-1892     bind_ipv4 = true;
-1893     bind_ipv6 = true;
-1894     ipv4_address = &quot;127.0.0.1&quot;;
-1895     ipv6_address = &quot;::1&quot;;
-1896     log_info(&quot;Default dual-stack: binding to 127.0.0.1 (IPv4) and ::1 (IPv6)&quot;);
-1897   } else if (ipv4_has_value &amp;&amp; !ipv4_is_default &amp;&amp; (!ipv6_has_value || ipv6_is_default)) {
-1898     // IPv4 explicitly set, IPv6 is default or empty: bind only IPv4
-1899     bind_ipv4 = true;
-1900     bind_ipv6 = false;
-1901     ipv4_address = GET_OPTION(address);
-1902     log_info(&quot;Binding only to IPv4 address: %s&quot;, ipv4_address);
-1903   } else if (ipv6_has_value &amp;&amp; !ipv6_is_default &amp;&amp; (ipv4_is_default || !ipv4_has_value)) {
-1904     // IPv6 explicitly set, IPv4 is default or empty: bind only IPv6
-1905     bind_ipv4 = false;
-1906     bind_ipv6 = true;
-1907     ipv6_address = GET_OPTION(address6);
-1908     log_info(&quot;Binding only to IPv6 address: %s&quot;, ipv6_address);
-1909   } else {
-1910     // Both explicitly set or one explicit + one default: dual-stack
-1911     bind_ipv4 = true;
-1912     bind_ipv6 = true;
-1913     ipv4_address = ipv4_has_value ? GET_OPTION(address) : &quot;127.0.0.1&quot;;
-1914     ipv6_address = ipv6_has_value ? GET_OPTION(address6) : &quot;::1&quot;;
-1915     log_info(&quot;Dual-stack binding: IPv4=%s, IPv6=%s&quot;, ipv4_address, ipv6_address);
-1916   }
-1917 
-1918   // Create server context - encapsulates all server state for passing to client handlers
-1919   // This reduces global state and improves modularity by using tcp_server.user_data
-1920   // Create H.265 server decoder context for multi-client codec support
-1921   h265_server_context_t *h265_server_ctx = h265_server_context_create();
-1922   if (!h265_server_ctx) {
-1923     log_error(&quot;Failed to create H.265 server context&quot;);
-1924     FATAL(ERROR_MEDIA_INIT, &quot;Cannot initialize H.265 codec support&quot;);
-1925   }
-1926 
-1927   server_context_t server_ctx = {
-1928       .tcp_server = &amp;g_tcp_server,
-1929       .rate_limiter = g_rate_limiter,
-1930       .client_manager = &amp;g_client_manager,
-1931       .client_manager_rwlock = &amp;g_client_manager_rwlock,
-1932       .server_should_exit = &amp;g_should_exit,
-1933       .audio_mixer = g_audio_mixer,
-1934       .stats = &amp;g_stats,
-1935       .stats_mutex = &amp;g_stats_mutex,
-1936       .encryption_enabled = g_server_encryption_enabled,
-1937       .server_private_key = &amp;g_server_private_key,
-1938       .client_whitelist = g_client_whitelist,
-1939       .num_whitelisted_clients = g_num_whitelisted_clients,
-1940       .session_host = NULL,           // Will be created after TCP server init
-1941       .h265_server = h265_server_ctx, // H.265 codec support
-1942   };
-1943 
-1944   // Configure TCP server
-1945   tcp_server_config_t tcp_config = {
-1946       .port = port,
-1947       .ipv4_address = ipv4_address,
-1948       .ipv6_address = ipv6_address,
-1949       .bind_ipv4 = bind_ipv4,
-1950       .bind_ipv6 = bind_ipv6,
-1951       .accept_timeout_sec = ACCEPT_TIMEOUT,
-1952       .client_handler = ascii_chat_client_handler,
-1953       .user_data = &amp;server_ctx, // Pass server context to client handlers
-1954       .status_update_fn = NULL, // Status screen runs in its own thread
-1955       .status_update_data = NULL,
-1956   };
-1957 
-1958   // Initialize TCP server (creates and binds sockets)
-1959   memset(&amp;g_tcp_server, 0, sizeof(g_tcp_server));
-1960   asciichat_error_t tcp_init_result = tcp_server_init(&amp;g_tcp_server, &amp;tcp_config);
-1961   if (tcp_init_result != ASCIICHAT_OK) {
-1962     // Signal shutdown to allow threads to exit before we call FATAL
-1963     atomic_store_bool(&amp;g_should_exit, true);
-1964     log_debug(&quot;TCP server init failed, signaling shutdown to threads&quot;);
-1965 
-1966     // Clean up worker thread pool if it was created
-1967     if (g_server_worker_pool) {
-1968       log_debug(&quot;Early cleanup: destroying server worker pool&quot;);
-1969       thread_pool_destroy(g_server_worker_pool);
-1970       g_server_worker_pool = NULL;
-1971     }
-1972 
-1973     FATAL(ERROR_NETWORK, &quot;Failed to initialize TCP server&quot;);
-1974   }
-1975 
-1976   // Initialize WebSocket server (for browser clients)
-1977   websocket_server_config_t ws_config = {
-1978       .port = GET_OPTION(websocket_port),
-1979       .client_handler = websocket_client_handler,
-1980       .user_data = &amp;server_ctx,
-1981       .tls_cert_path = GET_OPTION(websocket_tls_cert),
-1982       .tls_key_path = GET_OPTION(websocket_tls_key),
-1983   };
-1984 
-1985   // Log WSS configuration if provided
-1986   if (ws_config.tls_cert_path &amp;&amp; ws_config.tls_key_path) {
-1987     log_info(&quot;WebSocket server configured for WSS with cert=%s key=%s&quot;,
-1988              ws_config.tls_cert_path, ws_config.tls_key_path);
-1989   }
-1990 
-1991   memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
-1992   asciichat_error_t ws_init_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
-1993   if (ws_init_result != ASCIICHAT_OK) {
-1994     log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
-1995   } else {
-1996     log_info(&quot;WebSocket server initialized on port %d&quot;, GET_OPTION(websocket_port));
-1997   }
-1998 
-1999   // DEBUG: Print lock state immediately after WebSocket init
-2000   log_info(&quot;&#x2605;&#x2605;&#x2605; LOCK STATE AFTER WEBSOCKET INIT &#x2605;&#x2605;&#x2605;&quot;);
-2001   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
-2002 
-2003   // =========================================================================
-2004   // UPnP Port Mapping (Quick Win for Direct TCP)
-2005   // =========================================================================
-2006   // Track UPnP success for ACDS session type decision
-2007   // If UPnP fails, we need to create a WebRTC session to enable client connectivity
-2008   bool upnp_succeeded = false;
-2009 
-2010   // Try to open port via UPnP so direct TCP works for ~70% of home users.
-2011   // If this fails, clients fall back to WebRTC automatically - not fatal.
-2012   //
-2013   // Strategy:
-2014   //   1. UPnP (works on ~90% of home routers)
-2015   //   2. NAT-PMP fallback (Apple routers)
-2016   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-2017   if (GET_OPTION(enable_upnp)) {
-2018     asciichat_error_t upnp_result = nat_upnp_open(port, &quot;ascii-chat Server&quot;, &amp;g_upnp_ctx);
-2019 
-2020     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
-2021       char public_addr[22];
-2022       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-2023         char msg[256];
-2024         safe_snprintf(msg, sizeof(msg), &quot;&#x1F310; Public endpoint: %s (direct TCP)&quot;, public_addr);
-2025         log_console(LOG_INFO, msg);
-2026         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
-2027         upnp_succeeded = true;
-2028       }
-2029     } else {
-2030       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
-2031       log_console(LOG_INFO, &quot;&#x1F4E1; Clients behind strict NATs will use WebRTC fallback&quot;);
-2032     }
-2033   } else {
-2034     log_debug(&quot;UPnP: Disabled (use --upnp to enable automatic port mapping)&quot;);
-2035   }
-2036 
-2037   // Initialize synchronization primitives
-2038   if (rwlock_init(&amp;g_client_manager_rwlock, &quot;clients&quot;) != 0) {
-2039     FATAL(ERROR_THREAD, &quot;Failed to initialize client manager rwlock&quot;);
-2040   }
-2041 
-2042   // Register global sync primitives for debugging
-2043   NAMED_REGISTER_RWLOCK(&amp;g_client_manager_rwlock, &quot;client_manager_rwlock&quot;, NULL);
-2044 
-2045   // Lock debug system already initialized earlier in main()
-2046 
-2047   // Check if SIGINT/SIGTERM was received during initialization
-2048   // If so, skip the accept loop entirely and go to cleanup
-2049   if (atomic_load_bool(&amp;g_should_exit)) {
-2050     log_info(&quot;Shutdown signal received during initialization, skipping server startup&quot;);
-2051     goto cleanup;
-2052   }
-2053 
-2054   // Lock debug thread already started earlier in main()
-2055 
-2056   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
-2057   // We only need to initialize the mutex
-2058   mutex_init(&amp;g_client_manager.mutex, &quot;client_manager&quot;);
-2059 
-2060   // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
-2061   g_client_manager.clients_by_id = NULL;
-2062 
-2063   // Initialize connection rate limiter (prevents DoS attacks)
-2064   if (!atomic_load_bool(&amp;g_should_exit)) {
-2065     log_debug(&quot;Initializing connection rate limiter...&quot;);
-2066     g_rate_limiter = rate_limiter_create_memory();
-2067     if (!g_rate_limiter) {
-2068       LOG_ERRNO_IF_SET(&quot;Failed to initialize rate limiter&quot;);
-2069       if (!atomic_load_bool(&amp;g_should_exit)) {
-2070         FATAL(ERROR_MEMORY, &quot;Failed to create connection rate limiter&quot;);
-2071       }
-2072     } else {
-2073       log_info(&quot;Connection rate limiter initialized (50 connections/min per IP)&quot;);
-2074     }
-2075   }
-2076 
-2077   // Initialize audio mixer (always enabled on server)
-2078   if (!atomic_load_bool(&amp;g_should_exit)) {
-2079     log_debug(&quot;Initializing audio mixer for per-client audio rendering...&quot;);
-2080     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
-2081     if (!g_audio_mixer) {
-2082       LOG_ERRNO_IF_SET(&quot;Failed to initialize audio mixer&quot;);
-2083       if (!atomic_load_bool(&amp;g_should_exit)) {
-2084         FATAL(ERROR_AUDIO, &quot;Failed to initialize audio mixer&quot;);
-2085       }
-2086     } else {
-2087       if (!atomic_load_bool(&amp;g_should_exit)) {
-2088         log_debug(&quot;Audio mixer initialized successfully for per-client audio rendering&quot;);
-2089       }
-2090     }
-2091   }
-2092 
-2093   // Initialize H.265 codec server context (always enabled on server)
-2094   if (!atomic_load_bool(&amp;g_should_exit)) {
-2095     log_debug(&quot;Initializing H.265 codec server context...&quot;);
-2096     g_h265_server = h265_server_context_create();
-2097     if (!g_h265_server) {
-2098       LOG_ERRNO_IF_SET(&quot;Failed to initialize H.265 codec context&quot;);
-2099       if (!atomic_load_bool(&amp;g_should_exit)) {
-2100         FATAL(ERROR_MEDIA_INIT, &quot;Failed to initialize H.265 codec context&quot;);
-2101       }
-2102     } else {
-2103       if (!atomic_load_bool(&amp;g_should_exit)) {
-2104         log_debug(&quot;H.265 codec server context initialized successfully&quot;);
-2105       }
-2106     }
-2107   }
-2108 
-2109   // Initialize mDNS context for LAN service discovery (optional)
-2110   // mDNS allows clients on the LAN to discover this server without knowing its IP
-2111   // Can be disabled with --no-mdns-advertise
-2112   // Note: Actual advertisement is deferred until after ACDS session creation (if --acds is enabled)
-2113   if (!atomic_load_bool(&amp;g_should_exit) &amp;&amp; !GET_OPTION(no_mdns_advertise)) {
-2114     log_debug(&quot;Initializing mDNS for LAN service discovery...&quot;);
-2115     g_mdns_ctx = asciichat_mdns_init();
-2116     if (!g_mdns_ctx) {
-2117       LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
-2118       log_warn(&quot;mDNS disabled - LAN service discovery will not be available&quot;);
-2119       g_mdns_ctx = NULL;
-2120     } else {
-2121       log_debug(&quot;mDNS context initialized, advertisement deferred until session string is ready&quot;);
-2122     }
-2123   } else if (GET_OPTION(no_mdns_advertise)) {
-2124     log_info(&quot;mDNS service advertisement disabled via --no-mdns-advertise&quot;);
-2125   }
-2126 
-2127   // ========================================================================
-2128   // Session Host Creation (for discovery mode support)
-2129   // ========================================================================
-2130   // Create session_host to track clients in a transport-agnostic way.
-2131   // This enables future discovery mode where participants can become hosts.
-2132   if (!atomic_load_bool(&amp;g_should_exit)) {
-2133     session_host_config_t host_config = {
-2134         .port = port,
-2135         .ipv4_address = ipv4_address,
-2136         .ipv6_address = ipv6_address,
-2137         .max_clients = GET_OPTION(max_clients),
-2138         .encryption_enabled = g_server_encryption_enabled,
-2139         .key_path = GET_OPTION(encrypt_key),
-2140         .password = GET_OPTION(password),
-2141         .callbacks = {0}, // No callbacks for now
-2142         .user_data = NULL,
-2143     };
+<p class="Pp">Definition at line <b>2142</b> of file <b>server/main.c</b>.</p>
+<pre>2142                       {
+2143   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
 2144 
-2145     server_ctx.session_host = session_host_create(&amp;host_config);
-2146     if (!server_ctx.session_host) {
-2147       // Non-fatal: session_host is optional, server can work without it
-2148       log_warn(&quot;Failed to create session_host (discovery mode support disabled)&quot;);
-2149     } else {
-2150       log_debug(&quot;Session host created for discovery mode support&quot;);
-2151     }
-2152   }
-2153 
-2154   // ========================================================================
-2155   // MAIN CONNECTION LOOP - Delegated to tcp_server
-2156   // ========================================================================
-2157   //
-2158   // The tcp_server module handles:
-2159   // 1. Dual-stack IPv4/IPv6 accept loop with select() timeout
-2160   // 2. Spawning client_handler threads for each connection
-2161   // 3. Responsive shutdown when g_tcp_server.running is set to false
-2162   //
-2163   // Client lifecycle is managed by ascii_chat_client_handler() which:
-2164   // - Performs rate limiting
-2165   // - Calls add_client() to initialize structures and spawn workers
-2166   // - Blocks until client disconnects
-2167   // - Calls remove_client() to cleanup and stop worker threads
-2168 
-2169   // ACDS Session Creation: Register this server with discovery service
-2170   // This also determines the session string for mDNS (if --acds is enabled)
-2171   char session_string[64] = {0};
-2172   bool session_is_mdns_only = false;
-2173 
-2174   // ACDS Registration (conditional on --discovery flag)
-2175   if (GET_OPTION(discovery)) {
-2176     // Security Requirement Check (Issue #239):
-2177     // Server IP must be protected by password, identity verification, or explicit opt-in
-2178 
-2179     // Auto-detection: Check if password or identity verification is configured
-2180     const char *password = GET_OPTION(password);
-2181     bool has_password = password &amp;&amp; strlen(password) &gt; 0;
-2182     const char *encrypt_key = GET_OPTION(encrypt_key);
-2183     bool has_identity = encrypt_key &amp;&amp; strlen(encrypt_key) &gt; 0;
-2184     bool explicit_expose = GET_OPTION(discovery_expose_ip) != 0;
-2185 
-2186     // Validate security configuration BEFORE attempting ACDS connection
-2187     bool acds_expose_ip_flag = false;
-2188 
-2189     if (has_password || has_identity) {
-2190       // Auto-enable privacy: IP revealed only after verification
-2191       acds_expose_ip_flag = false;
-2192       log_plain(&quot;&#x1F512; ACDS privacy enabled: IP disclosed only after %s verification&quot;,
-2193                 has_password ? &quot;password&quot; : &quot;identity&quot;);
-2194     } else if (explicit_expose) {
-2195       // Explicit opt-in to public IP disclosure
-2196       // Only prompt if running interactively (can prompt user)
-2197       // When non-interactive (automated/scripted), treat explicit flag as confirmation
-2198       bool is_interactive = terminal_can_prompt_user();
-2199 
-2200       if (is_interactive) {
-2201         log_warn(&quot;WARNING: You are about to allow PUBLIC IP disclosure!\n&quot;
-2202                  &quot;Anyone with the session string will be able to see your IP address.\n&quot;
-2203                  &quot;This is NOT RECOMMENDED unless you understand the privacy implications.&quot;);
-2204 
-2205         if (!platform_prompt_yes_no(&quot;Do you want to proceed with public IP disclosure&quot;, false)) {
-2206           log_info(&quot;IP disclosure not confirmed. Server will run WITHOUT discovery service.&quot;);
-2207           goto skip_acds_session;
-2208         }
-2209       }
-2210 
-2211       // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
-2212       acds_expose_ip_flag = true;
-2213       log_info(&quot;Public IP disclosure CONFIRMED.\n&quot;
-2214                &quot;Your IP address will be visible to anyone with the session string&quot;);
-2215     } else {
-2216       // Security violation: No password, no identity, no explicit opt-in
-2217       log_error(&quot;Cannot create ACDS session: No security configured!\n&quot;
-2218                 &quot;You must either:\n&quot;
-2219                 &quot;1. Set a password: --password \&quot;your-secret\&quot;\n&quot;
-2220                 &quot;2. Use identity key: --key ~/.ssh/id_ed25519\n&quot;
-2221                 &quot;3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n&quot;
-2222                 &quot;\n&quot;
-2223                 &quot;Server will run WITHOUT discovery service.&quot;);
-2224       goto skip_acds_session;
-2225     }
-2226 
-2227     // Security is configured, proceed with ACDS connection
-2228     const char *acds_server = GET_OPTION(discovery_server);
-2229     uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
-2230 
-2231     log_info(&quot;Attempting to create session on ACDS server at %s:%d...&quot;, acds_server, acds_port);
-2232 
-2233     acds_client_config_t acds_config;
-2234     acds_client_config_init_defaults(&amp;acds_config);
-2235     SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
-2236     acds_config.server_port = acds_port;
-2237     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
-2238 
-2239     // Allocate ACDS client on heap for server lifecycle
-2240     g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
-2241     if (!g_acds_client) {
-2242       log_error(&quot;Failed to allocate ACDS client&quot;);
-2243       goto skip_acds_session;
-2244     }
+2145   // Register atomic for debug tracking
+2146   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
+2147 
+2148   // Register shutdown check callback for library code
+2149   shutdown_register_callback(check_shutdown);
+2150 
+2151   // Initialize crypto after logging is ready
+2152   log_debug(&quot;Initializing crypto...&quot;);
+2153   if (init_server_crypto() != 0) {
+2154     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
+2155     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+2156   }
+2157   log_debug(&quot;Crypto initialized successfully&quot;);
+2158 
+2159   log_info(&quot;ascii-chat server starting...&quot;);
+2160 
+2161   int port = GET_OPTION(port);
+2162   if (port &lt; 1 || port &gt; 65535) {
+2163     log_error(&quot;Invalid port configuration: %d&quot;, port);
+2164     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
+2165   }
+2166 
+2167   ascii_simd_init();
+2168   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+2169 
+2170 #ifndef NDEBUG
+2171   if (stats_init() != 0) {
+2172     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
+2173   }
+2174 #endif
+2175 
+2176   // Create background worker thread pool for server operations
+2177   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
+2178   if (!g_server_worker_pool) {
+2179     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
+2180     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
+2181   }
+2182 
+2183   // Spawn statistics logging thread in worker pool
+2184   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
+2185     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
+2186   } else {
+2187     log_debug(&quot;Statistics logger thread started&quot;);
+2188   }
+2189 
+2190   // Create H.265 server decoder context for multi-client codec support
+2191   h265_server_context_t *h265_server_ctx = h265_server_context_create();
+2192   if (!h265_server_ctx) {
+2193     log_error(&quot;Failed to create H.265 server context&quot;);
+2194     FATAL(ERROR_MEDIA_INIT, &quot;Cannot initialize H.265 codec support&quot;);
+2195   }
+2196 
+2197   // Initialize static server context (populated further in server_init_fn)
+2198   g_server_ctx = (server_context_t){
+2199       .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
+2200       .rate_limiter = g_rate_limiter,
+2201       .client_manager = &amp;g_client_manager,
+2202       .client_manager_rwlock = &amp;g_client_manager_rwlock,
+2203       .server_should_exit = &amp;g_should_exit,
+2204       .audio_mixer = g_audio_mixer,
+2205       .stats = &amp;g_stats,
+2206       .stats_mutex = &amp;g_stats_mutex,
+2207       .encryption_enabled = g_server_encryption_enabled,
+2208       .server_private_key = &amp;g_server_private_key,
+2209       .client_whitelist = g_client_whitelist,
+2210       .num_whitelisted_clients = g_num_whitelisted_clients,
+2211       .session_host = NULL,
+2212       .h265_server = h265_server_ctx,
+2213   };
+2214 
+2215   session_server_like_config_t config = {
+2216       .init_fn = server_init_fn,
+2217       .init_user_data = NULL,
+2218       .interrupt_fn = server_handle_sigint,
+2219       .cleanup_fn = server_cleanup_fn,
+2220       .cleanup_user_data = NULL,
+2221       .status_fn = server_status_fn,
+2222       .status_user_data = NULL,
+2223       .tcp_handler = ascii_chat_client_handler,
+2224       .tcp_user_data = &amp;g_server_ctx,
+2225       .websocket =
+2226           {
+2227               .enabled = true,
+2228               .handler = websocket_client_handler,
+2229               .user_data = &amp;g_server_ctx,
+2230           },
+2231       .mdns =
+2232           {
+2233               .enabled = !GET_OPTION(no_mdns_advertise),
+2234               .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
+2235               .service_type = &quot;_ascii-chat._tcp&quot;,
+2236           },
+2237       .upnp =
+2238           {
+2239               .enabled = GET_OPTION(enable_upnp),
+2240               .description = &quot;ascii-chat Server&quot;,
+2241           },
+2242       .raise_fd_limit = false,
+2243       .fd_limit_target = 0,
+2244   };
 2245 
-2246     asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &amp;acds_config);
-2247     if (acds_connect_result != ASCIICHAT_OK) {
-2248       log_error(&quot;Failed to connect to ACDS server at %s:%d: %s&quot;, acds_server, acds_port,
-2249                 asciichat_error_string(acds_connect_result));
-2250       goto skip_acds_session;
-2251     }
-2252     if (acds_connect_result == ASCIICHAT_OK) {
-2253       // Prepare session creation parameters
-2254       acds_session_create_params_t create_params;
-2255       memset(&amp;create_params, 0, sizeof(create_params));
-2256 
-2257       // Use server's Ed25519 identity public key if available
-2258       if (g_server_encryption_enabled &amp;&amp; has_identity) {
-2259         memcpy(create_params.identity_pubkey, g_server_private_key.public_key, 32);
-2260         log_debug(&quot;Using server identity key for ACDS session&quot;);
-2261       } else {
-2262         // No identity key available - use zero key
-2263         // ACDS will accept this if identity verification is not required
-2264         memset(create_params.identity_pubkey, 0, 32);
-2265         log_debug(&quot;No server identity key - using zero key for ACDS session&quot;);
-2266       }
-2267 
-2268       create_params.capabilities = 0x03; // Video + Audio
-2269       create_params.max_participants = GET_OPTION(max_clients);
-2270       log_debug(&quot;ACDS: max_clients option value = %d&quot;, GET_OPTION(max_clients));
-2271 
-2272       // Set password if configured
-2273       create_params.has_password = has_password;
-2274       if (has_password) {
-2275         // TODO: Hash password with Argon2id
-2276         SAFE_STRNCPY(create_params.password, password, sizeof(create_params.password));
-2277       }
-2278 
-2279       // Set IP disclosure policy (determined above)
-2280       create_params.acds_expose_ip = acds_expose_ip_flag;
-2281       log_info(&quot;DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)&quot;,
-2282                create_params.acds_expose_ip, explicit_expose, has_password, has_identity);
-2283 
-2284       // Set session type (Direct TCP or WebRTC)
-2285       // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
-2286       // Exception: If bind address is 0.0.0.0, server is on public IP - use Direct TCP
-2287       const char *bind_addr = GET_OPTION(address);
-2288       bool bind_all_interfaces = (strcmp(bind_addr, &quot;0.0.0.0&quot;) == 0);
-2289 
-2290       // Determine session type: prefer WebRTC by default (unless explicitly disabled)
-2291       // Priority: explicit --webrtc flag &gt; connection type detection &gt; UPnP &gt; default
-2292       if (GET_OPTION(webrtc)) {
-2293         // Explicit WebRTC request
-2294         create_params.session_type = SESSION_TYPE_WEBRTC;
-2295         log_info(&quot;ACDS session type: WebRTC (explicitly requested via --webrtc)&quot;);
-2296       } else if (bind_all_interfaces) {
-2297         // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
-2298         create_params.session_type = SESSION_TYPE_WEBRTC;
-2299         log_info(&quot;ACDS session type: WebRTC (default for 0.0.0.0 binding, provides NAT-agnostic connections)&quot;);
-2300       } else if (upnp_succeeded) {
-2301         // UPnP port mapping worked - can use direct TCP
-2302         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-2303         log_info(&quot;ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)&quot;);
-2304       } else {
-2305         // UPnP failed and not on public IP - use WebRTC for NAT traversal
-2306         create_params.session_type = SESSION_TYPE_WEBRTC;
-2307         log_info(&quot;ACDS session type: WebRTC (UPnP failed, server behind NAT)&quot;);
-2308       }
-2309 
-2310       // Server connection information (where clients should connect)
-2311       // If bind address is 0.0.0.0, leave server_address empty for ACDS to auto-detect public IP
-2312       if (bind_all_interfaces) {
-2313         create_params.server_address[0] = '\0'; // Empty - ACDS will use connection source IP
-2314         log_debug(&quot;Bind address is 0.0.0.0, ACDS will auto-detect public IP from connection&quot;);
-2315       } else {
-2316         SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
-2317       }
-2318       create_params.server_port = port;
-2319 
-2320       // DEBUG: Log what we're sending to ACDS
-2321       log_info(&quot;DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u&quot;,
-2322                create_params.acds_expose_ip, create_params.server_address, create_params.server_port,
-2323                create_params.session_type);
-2324 
-2325       // Create session
-2326       acds_session_create_result_t create_result;
-2327       asciichat_error_t create_err = acds_session_create(g_acds_client, &amp;create_params, &amp;create_result);
-2328 
-2329       if (create_err == ASCIICHAT_OK) {
-2330         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-2331         SAFE_STRNCPY(g_session_string, create_result.session_string, sizeof(g_session_string));
-2332         session_is_mdns_only = false; // Session is now registered with ACDS (globally discoverable)
-2333         log_info(&quot;Session created: %s&quot;, session_string);
-2334 
-2335         // Server must join its own session so ACDS can route signaling messages
-2336         log_debug(&quot;Server joining session as first participant for WebRTC signaling...&quot;);
-2337         acds_session_join_params_t join_params = {0};
-2338         join_params.session_string = session_string;
-2339 
-2340         // Use same identity key as session creation
-2341         memcpy(join_params.identity_pubkey, create_params.identity_pubkey, 32);
-2342 
-2343         // Include password if session is password-protected
-2344         if (has_password) {
-2345           join_params.has_password = true;
-2346           SAFE_STRNCPY(join_params.password, password, sizeof(join_params.password));
-2347         }
-2348 
-2349         acds_session_join_result_t join_result = {0};
-2350         asciichat_error_t join_err = acds_session_join(g_acds_client, &amp;join_params, &amp;join_result);
-2351         if (join_err != ASCIICHAT_OK || !join_result.success) {
-2352           log_error(&quot;Failed to join own session: %s (error: %s)&quot;, asciichat_error_string(join_err),
-2353                     join_result.error_message[0] ? join_result.error_message : &quot;unknown&quot;);
-2354           // Continue anyway - this is not fatal for Direct TCP sessions
-2355         } else {
-2356           log_debug(&quot;Server joined session successfully (participant_id: %02x%02x...)&quot;, join_result.participant_id[0],
-2357                     join_result.participant_id[1]);
-2358           // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
-2359           memcpy(g_server_participant_id, join_result.participant_id, 16);
-2360           log_debug(&quot;Stored server participant_id for signaling: %02x%02x...&quot;, g_server_participant_id[0],
-2361                     g_server_participant_id[1]);
-2362           memcpy(create_result.session_id, join_result.session_id, 16);
-2363         }
-2364 
-2365         // Keep ACDS connection alive for WebRTC signaling relay
-2366         log_debug(&quot;Server staying connected to ACDS for signaling relay&quot;);
-2367 
-2368         // Create ACDS transport wrapper for sending signaling packets
-2369         g_acds_transport = acip_tcp_transport_create(&quot;transport_acds_server&quot;, g_acds_client-&gt;socket, NULL);
-2370         if (!g_acds_transport) {
-2371           log_error(&quot;Failed to create ACDS transport wrapper&quot;);
-2372         } else {
-2373           log_debug(&quot;ACDS transport wrapper created for signaling&quot;);
-2374 
-2375           // Start ACDS ping thread to keep connection alive (for ALL session types)
-2376           int ping_thread_result = asciichat_thread_create(&amp;g_acds_ping_thread, &quot;acds_ping&quot;, acds_ping_thread, NULL);
-2377           if (ping_thread_result != 0) {
-2378             log_error(&quot;Failed to create ACDS ping thread: %d&quot;, ping_thread_result);
-2379           } else {
-2380             log_debug(&quot;ACDS ping thread started to keep connection alive&quot;);
-2381             g_acds_ping_thread_started = true;
-2382           }
-2383         }
-2384 
-2385         // Initialize WebRTC peer_manager if session type is WebRTC
-2386         if (create_params.session_type == SESSION_TYPE_WEBRTC) {
-2387           log_debug(&quot;Initializing WebRTC library and peer manager for session (role=CREATOR)...&quot;);
-2388 
-2389           // Initialize WebRTC library (libdatachannel)
-2390           asciichat_error_t webrtc_init_result = webrtc_init();
-2391           if (webrtc_init_result != ASCIICHAT_OK) {
-2392             log_error(&quot;Failed to initialize WebRTC library: %s&quot;, asciichat_error_string(webrtc_init_result));
-2393             g_webrtc_peer_manager = NULL;
-2394           } else {
-2395             log_debug(&quot;WebRTC library initialized successfully&quot;);
-2396 
-2397             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
-2398             static stun_server_t stun_servers[4] = {0};
-2399             static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
-2400             static int stun_count = 0; // Store actual count separately
-2401 
-2402             if (lifecycle_init(&amp;g_stun_lc, &quot;stun&quot;)) {
-2403               log_debug(&quot;Parsing STUN servers from options: '%s'&quot;, GET_OPTION(stun_servers));
-2404               int count =
-2405                   stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
-2406               if (count &gt; 0) {
-2407                 stun_count = count;
-2408                 log_debug(&quot;Parsed %d STUN servers&quot;, count);
-2409                 for (int i = 0; i &lt; count; i++) {
-2410                   log_debug(&quot;  STUN[%d]: '%s' (len=%d)&quot;, i, stun_servers[i].host, stun_servers[i].host_len);
-2411                 }
-2412               } else {
-2413                 log_warn(&quot;Failed to parse STUN servers, using defaults&quot;);
-2414                 stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-2415                                                 stun_servers, 4);
-2416                 log_debug(&quot;Using default STUN servers, count=%d&quot;, stun_count);
-2417                 for (int i = 0; i &lt; stun_count; i++) {
-2418                   log_debug(&quot;  STUN[%d]: '%s' (len=%d)&quot;, i, stun_servers[i].host, stun_servers[i].host_len);
-2419                 }
-2420               }
-2421             }
-2422 
-2423             // Configure peer_manager
-2424             webrtc_peer_manager_config_t pm_config = {
-2425                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-2426                 .stun_servers = stun_servers,
-2427                 .stun_count = stun_count,
-2428                 .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
-2429                 .turn_count = 0,
-2430                 .on_transport_ready = on_webrtc_transport_ready,
-2431                 .user_data = &amp;server_ctx,
-2432                 .crypto_ctx = NULL // WebRTC handles crypto internally
-2433             };
-2434 
-2435             // Configure signaling callbacks for relaying SDP/ICE via ACDS
-2436             webrtc_signaling_callbacks_t signaling_callbacks = {
-2437                 .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
-2438 
-2439             // Create peer_manager
-2440             asciichat_error_t pm_result =
-2441                 webrtc_peer_manager_create(&amp;pm_config, &amp;signaling_callbacks, &amp;g_webrtc_peer_manager);
-2442             if (pm_result != ASCIICHAT_OK) {
-2443               log_error(&quot;Failed to create WebRTC peer_manager: %s&quot;, asciichat_error_string(pm_result));
-2444               g_webrtc_peer_manager = NULL;
-2445             } else {
-2446               log_debug(&quot;WebRTC peer_manager initialized successfully&quot;);
-2447 
-2448               // Start ACDS receive thread for WebRTC signaling relay
-2449               int thread_result =
-2450                   asciichat_thread_create(&amp;g_acds_receive_thread, &quot;acds_recv&quot;, acds_receive_thread, NULL);
-2451               if (thread_result != 0) {
-2452                 log_error(&quot;Failed to create ACDS receive thread: %d&quot;, thread_result);
-2453                 // Cleanup peer_manager since signaling won't work
-2454                 webrtc_peer_manager_destroy(g_webrtc_peer_manager);
-2455                 g_webrtc_peer_manager = NULL;
-2456               } else {
-2457                 log_debug(&quot;ACDS receive thread started for WebRTC signaling relay&quot;);
-2458                 g_acds_receive_thread_started = true;
-2459               }
-2460             }
-2461           } // Close else block from webrtc_init() success
-2462         } else {
-2463           log_debug(&quot;Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization&quot;);
-2464         }
-2465 
-2466         // Advertise mDNS with ACDS session string
-2467         // This ensures both mDNS and ACDS discovery return the same session string
-2468         advertise_mdns_with_session(session_string, (uint16_t)port);
-2469       } else {
-2470         log_warn(&quot;Failed to create session on ACDS server (server will run without discovery)&quot;);
-2471         // Clean up failed ACDS client
-2472         if (g_acds_client) {
-2473           acds_client_disconnect(g_acds_client);
-2474           SAFE_FREE(g_acds_client);
-2475           g_acds_client = NULL;
-2476         }
-2477       }
-2478     } else {
-2479       log_warn(&quot;Could not connect to ACDS server at %s:%d (server will run without discovery)&quot;, acds_server, acds_port);
-2480     }
-2481   } else {
-2482     log_info(&quot;ACDS registration disabled (use --acds to enable)&quot;);
-2483   }
-2484 
-2485 skip_acds_session:
-2486   // Fallback: If no session string was set by ACDS (either disabled or failed),
-2487   // generate a random session string for mDNS discovery only
-2488   if (session_string[0] == '\0' &amp;&amp; g_mdns_ctx) {
-2489     log_debug(&quot;No ACDS session string available, generating random session for mDNS&quot;);
-2490 
-2491     // Use the proper session string generation from discovery module
-2492     // This generates adjective-noun-noun format using the full wordlists
-2493     if (acds_string_generate(session_string, sizeof(session_string)) != ASCIICHAT_OK) {
-2494       log_error(&quot;Failed to generate session string for mDNS&quot;);
-2495       return 1;
-2496     }
-2497 
-2498     log_debug(&quot;Generated random session string for mDNS: '%s'&quot;, session_string);
-2499 
-2500     // Mark that this session is mDNS-only (not globally discoverable via ACDS)
-2501     session_is_mdns_only = true;
-2502 
-2503     // Advertise mDNS with random session string
-2504     advertise_mdns_with_session(session_string, (uint16_t)port);
-2505   }
-2506 
-2507   // ====================================================================
-2508   // Display session string prominently as the FINAL startup message
-2509   // This ensures users see the connection info clearly without logs
-2510   // wiping it away
-2511   // ====================================================================
-2512   if (session_string[0] != '\0') {
-2513     if (session_is_mdns_only) {
-2514       log_plain(&quot;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;\n&#x1F4CB; Session String: %s (LAN only via &quot;
-2515                 &quot;mDNS)\n&#x1F517; Share with others on your LAN to join:\n   ascii-chat &quot;
-2516                 &quot;%s\n&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&quot;,
-2517                 session_string, session_string);
-2518     } else {
-2519       log_plain(&quot;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;\n&#x1F4CB; Session String: %s\n&#x1F517; Share this &quot;
-2520                 &quot;globally to join:\n   ascii-chat %s\n&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&#x2501;&quot;,
-2521                 session_string, session_string);
-2522     }
-2523   }
-2524 
-2525   // Copy session info to globals for status screen display
-2526   SAFE_STRNCPY(g_session_string, session_string, sizeof(g_session_string));
-2527   g_session_is_mdns_only = session_is_mdns_only;
-2528 
-2529   log_debug(&quot;Server entering accept loop (port %d)...&quot;, port);
-2530 
-2531   // Initialize status screen
-2532   g_server_start_time = time(NULL);
-2533   g_last_status_update = platform_get_monotonic_time_us();
-2534 
-2535   // Clear status screen log buffer to discard initialization logs
-2536   // This ensures only NEW logs (generated after status screen starts) are displayed
-2537   if (GET_OPTION(status_screen)) {
-2538     ui_status_log_clear();
-2539   }
-2540 
-2541   // Start status screen thread if enabled
-2542   // Runs independently at target FPS (default 60 Hz), decoupled from network accept loop
-2543   if (GET_OPTION(status_screen)) {
-2544     if (asciichat_thread_create(&amp;g_status_screen_thread, &quot;status_screen&quot;, status_screen_thread, NULL) != 0) {
-2545       log_error(&quot;Failed to create status screen thread&quot;);
-2546       goto cleanup;
-2547     }
-2548     log_debug(&quot;Status screen thread started&quot;);
-2549   }
-2550 
-2551   // Start WebSocket server thread if initialized
-2552   if (g_websocket_server.context != NULL) {
-2553     if (asciichat_thread_create(&amp;g_websocket_server_thread, &quot;ws_server&quot;, websocket_server_thread_wrapper,
-2554                                 &amp;g_websocket_server) != 0) {
-2555       log_error(&quot;Failed to create WebSocket server thread&quot;);
-2556     } else {
-2557       g_websocket_server_thread_started = true;
-2558       log_info(&quot;WebSocket server thread started&quot;);
-2559     }
-2560   }
-2561 
-2562   // Run TCP server (blocks until shutdown signal received)
-2563   // tcp_server_run() handles:
-2564   // - select() on IPv4/IPv6 sockets with timeout
-2565   // - accept() new connections
-2566   // - Spawn ascii_chat_client_handler() thread for each connection
-2567   // - Responsive shutdown when atomic_store_bool(&amp;g_tcp_server.running, false)
-2568   asciichat_error_t run_result = tcp_server_run(&amp;g_tcp_server);
-2569   if (run_result != ASCIICHAT_OK) {
-2570     log_error(&quot;TCP server exited with error&quot;);
-2571   }
-2572 
-2573   log_debug(&quot;Server accept loop exited&quot;);
-2574 
-2575 cleanup:
-2576   // Signal status screen thread to exit
-2577   atomic_store_bool(&amp;g_should_exit, true);
-2578 
-2579   // Wait for status screen thread to finish if it was started
-2580   if (GET_OPTION(status_screen)) {
-2581     log_debug(&quot;Waiting for status screen thread to exit...&quot;);
-2582     int join_result = asciichat_thread_join_timeout(&amp;g_status_screen_thread, NULL, NS_PER_SEC_INT); // 1 second
-2583     if (join_result != 0) {
-2584       log_warn(&quot;Status screen thread did not exit cleanly (timeout)&quot;);
-2585     } else {
-2586       log_debug(&quot;Status screen thread exited&quot;);
-2587     }
-2588   }
-2589 
-2590   // Cleanup
-2591   log_debug(&quot;Server shutting down...&quot;);
-2592   memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
-2593 
-2594   // Wake up any threads that might be blocked on condition variables
-2595   // (like packet queues) to ensure responsive shutdown
-2596   // This must happen BEFORE client cleanup to wake up any blocked threads
-2597   static_cond_broadcast(&amp;g_shutdown_cond);
-2598   // NOTE: Do NOT call cond_destroy() on statically-initialized condition variables
-2599   // g_shutdown_cond uses STATIC_COND_INIT which doesn't allocate resources that need cleanup
-2600   // Calling cond_destroy() on a static cond is undefined behavior on some platforms
-2601 
-2602   // Close all client sockets immediately to unblock receive threads.
-2603   // The signal handler only closed the listening socket, but client receive threads
-2604   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
-2605   log_debug(&quot;Closing all client sockets to unblock receive threads...&quot;);
-2606 
-2607   // Use write lock since we're modifying client-&gt;socket
-2608   rwlock_wrlock(&amp;g_client_manager_rwlock);
-2609   for (int i = 0; i &lt; MAX_CLIENTS; i++) {
-2610     client_info_t *client = &amp;g_client_manager.clients[i];
-2611     if (client-&gt;client_id[0] != '\0' &amp;&amp; client-&gt;socket != INVALID_SOCKET_VALUE) {
-2612       socket_close(client-&gt;socket);
-2613       client-&gt;socket = INVALID_SOCKET_VALUE;
-2614     }
-2615   }
-2616   rwlock_wrunlock(&amp;g_client_manager_rwlock);
-2617 
-2618   log_debug(&quot;Signaling all clients to stop (sockets closed, g_should_exit set)...&quot;);
-2619 
-2620   // Stop and destroy server worker thread pool (stats logger, etc.)
-2621   if (g_server_worker_pool) {
-2622     thread_pool_destroy(g_server_worker_pool);
-2623     g_server_worker_pool = NULL;
-2624     log_debug(&quot;Server worker thread pool stopped&quot;);
-2625   }
-2626 
-2627   // Destroy rate limiter
-2628   if (g_rate_limiter) {
-2629     rate_limiter_destroy(g_rate_limiter);
-2630     g_rate_limiter = NULL;
-2631   }
-2632 
-2633   // Shutdown WebSocket server BEFORE removing clients.
-2634   // The LWS event thread runs callbacks that access transport data (impl_data).
-2635   // If we destroy transports via remove_client while LWS is still running,
-2636   // callbacks access freed memory (heap-use-after-free).
-2637   // lws_context_destroy fires LWS_CALLBACK_CLOSED for all connections, which
-2638   // closes transports and NULLs the per-session conn_data-&gt;transport pointer.
-2639   // After this, remove_client can safely destroy the transport objects.
-2640   bool websocket_exited_cleanly = true;  // Default to clean unless timeout detected
-2641   if (g_websocket_server.context != NULL) {
-2642     log_debug(&quot;Shutting down WebSocket server before client cleanup&quot;);
-2643     atomic_store_u64(&amp;g_websocket_server.running, false);
-2644     // Wake the LWS event loop immediately instead of waiting for the 50ms
-2645     // lws_service timeout. This is safe because the event loop thread can't
-2646     // destroy the context until after it exits its loop (which requires
-2647     // seeing running=false, which we just set).
-2648     websocket_server_cancel_service(&amp;g_websocket_server);
-2649 
-2650     // Join with 500ms timeout. If the WebSocket thread is deadlocked in lws_service(),
-2651     // it won't exit and we skip the graceful handler thread cleanup to avoid prolonged
-2652     // shutdown hangs. Forceful cleanup will happen in websocket_server_destroy().
-2653     if (g_websocket_server_thread_started) {
-2654       int join_result =
-2655           asciichat_thread_join_timeout(&amp;g_websocket_server_thread, NULL, 500 * NS_PER_MS_INT); // 500ms in ns
-2656       if (join_result != 0) {
-2657         log_warn(&quot;WebSocket thread did not exit within 500ms, skipping graceful handler cleanup&quot;);
-2658         websocket_exited_cleanly = false;
-2659       }
-2660       g_websocket_server_thread_started = false;
-2661     }
-2662 
-2663     if (websocket_exited_cleanly) {
-2664       log_debug(&quot;WebSocket thread confirmed exited, waiting for handler threads to complete...&quot;);
-2665     }
-2666   }
-2667 
-2668   // Wait for all client handler threads to exit BEFORE destroying WebSocket context
-2669   // Handler threads may still be working with WebSocket connections, so we must
-2670   // ensure they complete before destroying the context (which would abort their operations).
-2671   // Skip this if WebSocket thread didn't exit cleanly (deadlock detected).
-2672   if (websocket_exited_cleanly) {
-2673     int retry_count = 0;
-2674     while (retry_count &lt; 50) { // Max 500ms wait
-2675       rwlock_rdlock(&amp;g_client_manager_rwlock);
-2676       bool all_cleaned = true;
-2677       for (int i = 0; i &lt; MAX_CLIENTS; i++) {
-2678         if (g_client_manager.clients[i].client_id[0] != '\0') {
-2679           all_cleaned = false;
-2680           break;
-2681         }
-2682       }
-2683       rwlock_rdunlock(&amp;g_client_manager_rwlock);
-2684 
-2685       if (all_cleaned)
-2686         break;
-2687       platform_sleep_us(10 * US_PER_MS_INT); // 10ms
-2688       retry_count++;
-2689     }
-2690     log_debug(&quot;Client handler threads cleaned up, destroying WebSocket server&quot;);
-2691   } else {
-2692     log_warn(&quot;Skipping graceful handler thread cleanup due to WebSocket deadlock&quot;);
-2693   }
-2694 
-2695   // &#x2605; CRITICAL: Cleanup debug sync BEFORE destroying websocket_server
-2696   // The debug_sync thread runs concurrently and accesses the named registry.
-2697   // If websocket_server_destroy() frees thread pool memory first, the debug thread
-2698   // will get a use-after-free error trying to check condition variables.
-2699   // Moving this before websocket destroy prevents the race condition.
-2700 #ifndef NDEBUG
-2701   debug_sync_destroy();
-2702 #endif
-2703 
-2704   // Now destroy WebSocket server after all handler threads have completed
-2705   // This ensures no handler threads are still accessing the context.
-2706   // (It's safe to call even if context was already destroyed forcefully above)
-2707   websocket_server_destroy(&amp;g_websocket_server);
-2708   log_debug(&quot;WebSocket server destroyed&quot;);
-2709 
-2710   // Cleanup status screen log capture (must be AFTER all client threads exit to avoid use-after-free)
-2711   // Client threads may still be appending logs during the wait loop above, so we destroy the buffer only
-2712   // after we've confirmed they've all exited.
-2713   ui_status_log_destroy();
-2714 
-2715   // Clean up all connected clients
-2716   log_debug(&quot;Cleaning up connected clients...&quot;);
-2717   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
-2718   char clients_to_remove[MAX_CLIENTS][MAX_CLIENT_ID_LEN];
-2719   int client_count = 0;
-2720 
-2721   rwlock_rdlock(&amp;g_client_manager_rwlock);
-2722   for (int i = 0; i &lt; MAX_CLIENTS; i++) {
-2723     client_info_t *client = &amp;g_client_manager.clients[i];
-2724 
-2725     // Only attempt to clean up clients that were actually connected
-2726     // (client_id is empty string for uninitialized clients)
-2727     // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-2728     if (client-&gt;client_id[0] == '\0') {
-2729       continue; // Skip uninitialized clients
-2730     }
-2731 
-2732     // Use snapshot pattern to avoid holding both locks simultaneously
-2733     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-2734     SAFE_STRNCPY(clients_to_remove[client_count], client-&gt;client_id, MAX_CLIENT_ID_LEN - 1);
-2735 
-2736     // Clean up ANY client that was allocated, whether active or not
-2737     // (disconnected clients may not be active but still have resources)
-2738     client_count++;
-2739   }
-2740   rwlock_rdunlock(&amp;g_client_manager_rwlock);
-2741 
-2742   // Remove all clients without holding any locks
-2743   for (int i = 0; i &lt; client_count; i++) {
-2744     if (remove_client(&amp;server_ctx, clients_to_remove[i]) != 0) {
-2745       log_error(&quot;Failed to remove client %s during shutdown&quot;, clients_to_remove[i]);
-2746     }
-2747   }
-2748 
-2749   // Clean up hash table
-2750   // Cannot use HASH_ITER when deleting - HASH_DELETE modifies the table and can set
-2751   // the pointer to NULL, causing HASH_ITER to dereference a null pointer.
-2752   // Instead, repeatedly delete the first item until the table is empty.
-2753   while (g_client_manager.clients_by_id) {
-2754     client_info_t *current_client = g_client_manager.clients_by_id;
-2755     HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
-2756     // Note: We don't free current_client here because it's part of the clients[] array
-2757   }
-2758 
-2759   // Clean up audio mixer
-2760   if (g_audio_mixer) {
-2761     // Set to NULL first before destroying.
-2762     // Client handler threads may still be running and checking g_audio_mixer.
-2763     // Setting it to NULL first prevents use-after-free race condition.
-2764     // volatile ensures this write is visible to other threads immediately
-2765     mixer_t *mixer_to_destroy = g_audio_mixer;
-2766     g_audio_mixer = NULL;
-2767     mixer_destroy(mixer_to_destroy);
-2768   }
-2769 
-2770   // Clean up H.265 codec server context
-2771   if (g_h265_server) {
-2772     // Set to NULL first before destroying, similar to g_audio_mixer
-2773     // Client handler threads may still be running and checking g_h265_server.
-2774     h265_server_context_t *h265_to_destroy = g_h265_server;
-2775     g_h265_server = NULL;
-2776     h265_server_context_destroy(h265_to_destroy);
-2777     log_debug(&quot;H.265 codec server context shut down&quot;);
-2778   }
-2779 
-2780   // Clean up mDNS context
-2781   if (g_mdns_ctx) {
-2782     asciichat_mdns_destroy(g_mdns_ctx);
-2783     g_mdns_ctx = NULL;
-2784     log_debug(&quot;mDNS context shut down&quot;);
-2785   }
-2786 
-2787   // Clean up synchronization primitives
-2788   rwlock_destroy(&amp;g_client_manager_rwlock);
-2789   mutex_destroy(&amp;g_client_manager.mutex);
-2790 
-2791 #ifndef NDEBUG
-2792   // Clean up statistics system
-2793   stats_cleanup();
-2794 
-2795   // Note: debug_sync_destroy() is now called earlier (before websocket_server_destroy)
-2796   // to avoid use-after-free race condition with the debug monitoring thread
-2797 #endif
-2798 
-2799   // Destroy session host (before TCP server shutdown)
-2800   if (server_ctx.session_host) {
-2801     log_debug(&quot;Destroying session host&quot;);
-2802     session_host_destroy(server_ctx.session_host);
-2803     server_ctx.session_host = NULL;
-2804   }
-2805 
-2806   // Destroy H.265 server codec context
-2807   if (server_ctx.h265_server) {
-2808     log_debug(&quot;Destroying H.265 server context&quot;);
-2809     h265_server_context_destroy(server_ctx.h265_server);
-2810     server_ctx.h265_server = NULL;
-2811   }
-2812 
-2813   // Shutdown TCP server (closes listen sockets and cleans up)
-2814   tcp_server_destroy(&amp;g_tcp_server);
-2815 
-2816   // WebSocket server already shut down before client cleanup (above).
-2817 
-2818   // Join ACDS threads (if started)
-2819   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
-2820   if (g_acds_ping_thread_started) {
-2821     log_debug(&quot;Joining ACDS ping thread&quot;);
-2822     asciichat_thread_join(&amp;g_acds_ping_thread, NULL);
-2823     g_acds_ping_thread_started = false;
-2824     log_debug(&quot;ACDS ping thread joined&quot;);
-2825   }
-2826 
-2827   if (g_acds_receive_thread_started) {
-2828     log_debug(&quot;Joining ACDS receive thread&quot;);
-2829     asciichat_thread_join(&amp;g_acds_receive_thread, NULL);
-2830     g_acds_receive_thread_started = false;
-2831     log_debug(&quot;ACDS receive thread joined&quot;);
-2832   }
-2833 
-2834   // Clean up WebRTC peer manager (if initialized for ACDS signaling relay)
-2835   if (g_webrtc_peer_manager) {
-2836     log_debug(&quot;Destroying WebRTC peer manager&quot;);
-2837     webrtc_peer_manager_destroy(g_webrtc_peer_manager);
-2838     g_webrtc_peer_manager = NULL;
-2839   }
-2840 
-2841   // Clean up ACDS transport wrapper (if created)
-2842   if (g_acds_transport) {
-2843     log_debug(&quot;Destroying ACDS transport wrapper&quot;);
-2844     acip_transport_destroy(g_acds_transport);
-2845     g_acds_transport = NULL;
-2846   }
-2847 
-2848   // Disconnect from ACDS server (if connected for WebRTC signaling relay)
-2849   if (g_acds_client) {
-2850     log_debug(&quot;Disconnecting from ACDS server&quot;);
-2851     acds_client_disconnect(g_acds_client);
-2852     SAFE_FREE(g_acds_client);
-2853     g_acds_client = NULL;
-2854   }
-2855   // Disable keepawake mode (re-allow OS to sleep)
-2856   platform_disable_keepawake();
-2857 
-2858   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
-2859   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
-2860   socket_cleanup();
-2861 
-2862   log_info(&quot;Server shutdown complete&quot;);
-2863 
-2864   asciichat_error_stats_print();
-2865 
-2866   // Use exit() to allow atexit() handlers to run
-2867   // Cleanup functions are idempotent (check if initialized first)
-2868   return 0;
-2869 }</pre>
+2246   asciichat_error_t result = session_server_like_run(&amp;config);
+2247   return (result == ASCIICHAT_OK) ? 0 : 1;
+2248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ACCEPT_TIMEOUT</b>,
-    <b>acds_client_config_init_defaults()</b>, <b>acds_client_connect()</b>,
-    <b>acds_client_disconnect()</b>,
-    <b>acds_session_create_params_t::acds_expose_ip</b>,
-    <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acds_string_generate()</b>, <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ascii_simd_init()</b>,
-    <b>asciichat_error_stats_print()</b>, <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_create()</b>, <b>asciichat_thread_join()</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
-    <b>ATOMIC_REGISTER_AUTO</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>AUDIO_SAMPLE_RATE</b>,
-    <b>acds_session_create_params_t::capabilities</b>,
-    <b>client_info::client_id</b>, <b>debug_sync_destroy()</b>,
-    <b>ERROR_AUDIO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>,
-    <b>acds_session_join_result_t::error_message</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_THREAD</b>, <b>FATAL</b>, <b>g_audio_mixer</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
-    <b>g_client_whitelist</b>, <b>g_h265_server</b>,
+<p class="Pp">References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+    <b>FATAL</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+    <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
     <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
     <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
-    <b>g_should_exit</b>, <b>g_shutdown_cond</b>, <b>g_stats</b>,
-    <b>g_stats_mutex</b>, <b>GET_OPTION</b>,
-    <b>server_context_t::h265_server</b>, <b>h265_server_context_create()</b>,
-    <b>h265_server_context_destroy()</b>,
-    <b>acds_session_create_params_t::has_password</b>,
-    <b>acds_session_join_params_t::has_password</b>,
-    <b>acds_session_create_params_t::identity_pubkey</b>,
-    <b>acds_session_join_params_t::identity_pubkey</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>is_localhost_ipv4()</b>,
-    <b>is_localhost_ipv6()</b>, <b>LIFECYCLE_INIT</b>, <b>lifecycle_init()</b>,
-    <b>log_console</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>LOG_INFO</b>, <b>log_info</b>, <b>log_plain</b>,
-    <b>log_search_init()</b>, <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>,
-    <b>MAX_CLIENTS</b>, <b>acds_session_create_params_t::max_participants</b>,
-    <b>mixer_create()</b>, <b>mixer_destroy()</b>, <b>MS_PER_SEC_INT</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_RWLOCK</b>,
-    <b>nat_upnp_get_address()</b>, <b>nat_upnp_open()</b>, <b>NS_PER_MS_INT</b>,
-    <b>NS_PER_SEC_INT</b>, <b>OPT_ENDPOINT_STUN_SERVERS_DEFAULT</b>,
-    <b>acds_session_join_result_t::participant_id</b>,
-    <b>acds_session_create_params_t::password</b>,
-    <b>acds_session_join_params_t::password</b>,
-    <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
-    <b>platform_get_monotonic_time_us()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>platform_signal()</b>, <b>platform_sleep_us()</b>,
-    <b>precalc_rgb_palettes()</b>, <b>rate_limiter_create_memory()</b>,
-    <b>rate_limiter_destroy()</b>, <b>remove_client()</b>,
-    <b>rwlock_destroy()</b>, <b>rwlock_init()</b>, <b>rwlock_rdlock</b>,
-    <b>rwlock_rdunlock</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
-    <b>SAFE_STRNCPY</b>, <b>acds_client_config_t::server_address</b>,
-    <b>acds_session_create_params_t::server_address</b>,
-    <b>acds_client_config_t::server_port</b>,
-    <b>acds_session_create_params_t::server_port</b>,
-    <b>server_context_t::session_host</b>, <b>session_host_create()</b>,
-    <b>session_host_destroy()</b>,
-    <b>acds_session_create_result_t::session_id</b>,
-    <b>acds_session_join_result_t::session_id</b>,
-    <b>acds_session_create_result_t::session_string</b>,
-    <b>acds_session_join_params_t::session_string</b>,
-    <b>acds_session_create_params_t::session_type</b>,
-    <b>SESSION_TYPE_DIRECT_TCP</b>, <b>SESSION_TYPE_WEBRTC</b>,
-    <b>shutdown_register_callback()</b>, <b>client_info::socket</b>,
-    <b>socket_cleanup()</b>, <b>socket_close()</b>, <b>stats_cleanup()</b>,
-    <b>stats_init()</b>, <b>stats_logger_thread()</b>, <b>stun_server_t</b>,
-    <b>stun_servers_parse()</b>, <b>acds_session_join_result_t::success</b>,
-    <b>tcp_server_destroy()</b>, <b>tcp_server_init()</b>,
-    <b>tcp_server_run()</b>, <b>terminal_can_prompt_user()</b>,
-    <b>terminal_is_interactive()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_destroy()</b>, <b>thread_pool_spawn()</b>,
-    <b>acds_client_config_t::timeout_ms</b>,
-    <b>websocket_server_config_t::tls_cert_path</b>,
-    <b>websocket_server_config_t::tls_key_path</b>,
-    <b>ui_status_log_clear()</b>, <b>ui_status_log_destroy()</b>,
-    <b>ui_status_log_init()</b>, <b>US_PER_MS_INT</b>, <b>webrtc_init()</b>,
-    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
-    <b>WEBRTC_ROLE_CREATOR</b>, <b>websocket_server_cancel_service()</b>,
-    <b>websocket_server_destroy()</b>, <b>websocket_server_init()</b>,
-    <b>weight_blue</b>, <b>weight_green</b>, and <b>weight_red</b>.</p>
+    <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
+    <b>GET_OPTION</b>, <b>h265_server_context_create()</b>, <b>log_debug</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>precalc_rgb_palettes()</b>, <b>session_server_like_run()</b>,
+    <b>shutdown_register_callback()</b>, <b>stats_init()</b>,
+    <b>stats_logger_thread()</b>, <b>thread_pool_create()</b>,
+    <b>thread_pool_spawn()</b>, <b>weight_blue</b>, <b>weight_green</b>, and
+    <b>weight_red</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1400,7 +336,7 @@ ascii-chat server --port 8080
     concurrently by multiple render.c audio threads without external
     synchronization. During shutdown, set to NULL before destroying to prevent
     use-after-free.</p>
-<p class="Pp">Definition at line <b>174</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>175</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_audio_render_thread()</b>, <b>remove_client()</b>, and
     <b>server_main()</b>.</p>
@@ -1420,8 +356,8 @@ ascii-chat server --port 8080
 <p class="Pp"></p>
 <p class="Pp">Accessed from crypto.c for client authentication</p>
 </div>
-<p class="Pp">Definition at line <b>524</b> of file <b>server/main.c</b>.</p>
-<pre>524 {0};</pre>
+<p class="Pp">Definition at line <b>408</b> of file <b>server/main.c</b>.</p>
+<pre>408 {0};</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
@@ -1437,9 +373,8 @@ ascii-chat server --port 8080
     used concurrently by multiple client handlers. Decoders are per-client.
     During shutdown, set to NULL before destroying to prevent
   use-after-free.</p>
-<p class="Pp">Definition at line <b>186</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Definition at line <b>187</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_g_num_server_identity_keys_=_0"><a class="permalink" href="#size_t_g_num_server_identity_keys_=_0">size_t
@@ -1449,7 +384,7 @@ ascii-chat server --port 8080
 <p class="Pp"></p>
 <p class="Pp">Tracks how many identity keys were successfully loaded from --key
     flags. Zero means server is running in simple mode (no identity key).</p>
-<p class="Pp">Definition at line <b>511</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>395</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -1458,7 +393,7 @@ ascii-chat server --port 8080
 <p class="Pp">Number of whitelisted clients. Tracks the current number of
     entries in g_client_whitelist that are valid and active. Used to iterate the
     whitelist and check authorization.</p>
-<p class="Pp">Definition at line <b>534</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>418</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
     <b>server_main()</b>.</p>
 </section>
@@ -1486,7 +421,7 @@ ascii-chat server --port 8080
 <p class="Pp"></p>
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent">main.h for extern declaration</div>
-<p class="Pp">Definition at line <b>216</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>217</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>process_decrypted_packet()</b>, and
     <b>server_main()</b>.</p>
 </section>
@@ -1502,7 +437,7 @@ ascii-chat server --port 8080
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Accessed from crypto.c for server-side crypto
   operations</div>
-<p class="Pp">Definition at line <b>475</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>359</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
     <b>server_main()</b>.</p>
 </section>
@@ -1520,8 +455,8 @@ ascii-chat server --port 8080
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">g_server_private_key points to g_server_identity_keys[0]
   for compatibility</div>
-<p class="Pp">Definition at line <b>501</b> of file <b>server/main.c</b>.</p>
-<pre>501 {0};</pre>
+<p class="Pp">Definition at line <b>385</b> of file <b>server/main.c</b>.</p>
+<pre>385 {0};</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
@@ -1542,8 +477,8 @@ ascii-chat server --port 8080
 <p class="Pp"></p>
 <p class="Pp">Accessed from crypto.c for server-side crypto operations</p>
 </div>
-<p class="Pp">Definition at line <b>488</b> of file <b>server/main.c</b>.</p>
-<pre>488 {0};</pre>
+<p class="Pp">Definition at line <b>372</b> of file <b>server/main.c</b>.</p>
+<pre>372 {0};</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
@@ -1556,8 +491,7 @@ ascii-chat server --port 8080
     Used to wake up threads that might be blocked on condition variables (like
     packet queues) during shutdown. This ensures responsive shutdown even when
     threads are waiting on blocking operations.</p>
-<p class="Pp">Definition at line <b>195</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
+<p class="Pp">Definition at line <b>196</b> of file <b>server/main.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1567,7 +501,7 @@ ascii-chat server --port 8080
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

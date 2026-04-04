@@ -49,7 +49,7 @@
   <br/>
   Set an environment variable. int <b>platform_unsetenv</b> (const char *name)
   <br/>
-  pid_t <b>platform_get_pid</b> (void)
+  Remove an environment variable. pid_t <b>platform_get_pid</b> (void)
   <br/>
   Get the current process ID. ssize_t <b>platform_write</b> (int fd, const void
     *buf, size_t count)
@@ -75,28 +75,13 @@
 <p class="Pp">Definition in file <b>wasm/system.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_unsetenv_(const_char_*_name)"><a class="permalink" href="#int_platform_unsetenv_(const_char_*_name)">int
-  platform_unsetenv (const char * name)</a></h2>
-<p class="Pp">Definition at line <b>56</b> of file <b>wasm/system.c</b>.</p>
-<pre>56                                         {
-57   (void)name;
-58   return -1; // Not supported in WASM
-59 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

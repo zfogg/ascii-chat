@@ -616,7 +616,7 @@
     <b>protocol_connection_lost()</b>, <b>protocol_stop_connection()</b>,
     <b>remove_client()</b>, <b>send_server_state_to_client()</b>,
     <b>server_connection_is_active()</b>, <b>server_connection_is_lost()</b>,
-    <b>server_main()</b>, <b>session_display_has_first_frame()</b>,
+    <b>session_display_has_first_frame()</b>,
     <b>session_display_write_ascii()</b>, <b>session_pipeline_run_main()</b>,
     <b>should_exit()</b>, <b>simple_frame_swap_update()</b>,
     <b>splash_is_running()</b>, <b>splash_wait_for_animation()</b>,
@@ -1048,7 +1048,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>acds_server_init()</b>,
+<p class="Pp">Referenced by <b>acds_server_init()</b>,
     <b>acds_server_shutdown()</b>,
     <b>acip_websocket_client_transport_create()</b>, <b>add_client()</b>,
     <b>add_webrtc_client()</b>, <b>app_client_create()</b>,
@@ -1075,23 +1075,22 @@
     <b>remove_client()</b>, <b>server_connection_close()</b>,
     <b>server_connection_establish()</b>, <b>server_connection_init()</b>,
     <b>server_connection_lost()</b>, <b>server_connection_set_transport()</b>,
-    <b>server_connection_shutdown()</b>, <b>server_main()</b>,
-    <b>session_client_like_run()</b>, <b>session_display_create()</b>,
-    <b>session_display_reset_first_frame()</b>,
+    <b>server_connection_shutdown()</b>, <b>session_client_like_run()</b>,
+    <b>session_display_create()</b>, <b>session_display_reset_first_frame()</b>,
     <b>session_pipeline_create()</b>, <b>session_pipeline_destroy()</b>,
-    <b>session_pipeline_run_main()</b>, <b>signal_exit()</b>,
-    <b>simple_frame_swap_create()</b>, <b>simple_frame_swap_update()</b>,
-    <b>splash_intro_start()</b>, <b>splash_wait_for_animation()</b>,
-    <b>stop_client_render_threads()</b>, <b>stop_client_threads()</b>,
-    <b>tcp_client_close()</b>, <b>tcp_client_connect()</b>,
-    <b>tcp_client_create()</b>, <b>tcp_client_shutdown()</b>,
-    <b>tcp_client_signal_lost()</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_init()</b>, <b>video_frame_buffer_create()</b>,
-    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>,
-    <b>websocket_client_close()</b>, <b>websocket_client_connect()</b>,
-    <b>websocket_client_create()</b>, <b>websocket_client_shutdown()</b>,
-    <b>websocket_client_signal_lost()</b>, <b>websocket_server_destroy()</b>,
-    and <b>websocket_server_init()</b>.</p>
+    <b>session_pipeline_run_main()</b>, <b>session_server_like_run()</b>,
+    <b>signal_exit()</b>, <b>simple_frame_swap_create()</b>,
+    <b>simple_frame_swap_update()</b>, <b>splash_intro_start()</b>,
+    <b>splash_wait_for_animation()</b>, <b>stop_client_render_threads()</b>,
+    <b>stop_client_threads()</b>, <b>tcp_client_close()</b>,
+    <b>tcp_client_connect()</b>, <b>tcp_client_create()</b>,
+    <b>tcp_client_shutdown()</b>, <b>tcp_client_signal_lost()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_init()</b>,
+    <b>video_frame_buffer_create()</b>, <b>video_frame_commit()</b>,
+    <b>video_frame_get_latest()</b>, <b>websocket_client_close()</b>,
+    <b>websocket_client_connect()</b>, <b>websocket_client_create()</b>,
+    <b>websocket_client_shutdown()</b>, <b>websocket_client_signal_lost()</b>,
+    <b>websocket_server_destroy()</b>, and <b>websocket_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_atomic_store_bool_impl_("><a class="permalink" href="#void_atomic_store_bool_impl_(">void
@@ -1174,12 +1173,12 @@
     <b>log_unlock_terminal()</b>, <b>node_pool_create()</b>,
     <b>packet_queue_create_with_pools()</b>, <b>packet_queue_stop()</b>,
     <b>ringbuffer_clear()</b>, <b>ringbuffer_read()</b>,
-    <b>ringbuffer_write()</b>, <b>server_main()</b>,
-    <b>session_display_write_audio()</b>, <b>session_log_buffer_append()</b>,
-    <b>session_log_buffer_clear()</b>, <b>session_log_buffer_create()</b>,
-    <b>session_pipeline_create()</b>, <b>simple_frame_swap_create()</b>,
-    <b>simple_frame_swap_update()</b>, <b>splash_intro_done()</b>,
-    <b>symbol_cache_init()</b>, <b>video_frame_buffer_create()</b>, and
+    <b>ringbuffer_write()</b>, <b>session_display_write_audio()</b>,
+    <b>session_log_buffer_append()</b>, <b>session_log_buffer_clear()</b>,
+    <b>session_log_buffer_create()</b>, <b>session_pipeline_create()</b>,
+    <b>simple_frame_swap_create()</b>, <b>simple_frame_swap_update()</b>,
+    <b>splash_intro_done()</b>, <b>symbol_cache_init()</b>,
+    <b>video_frame_buffer_create()</b>, and
     <b>websocket_callback_timing_reset()</b>.</p>
 </section>
 <section class="Ss">
@@ -1214,7 +1213,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

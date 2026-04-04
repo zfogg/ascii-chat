@@ -83,64 +83,64 @@
 <h2 class="Ss" id="char_*_image_print_color_utf8_(const_"><a class="permalink" href="#char_*_image_print_color_utf8_(const_">char
   * image_print_color_utf8 (const <b>image_t</b> * p, const char *
   palette)</a></h2>
-<p class="Pp">Definition at line <b>300</b> of file <b>foreground.c</b>.</p>
-<pre>300                                                                     {
-301   if (!p || !palette || !p-&gt;pixels) {
-302     return NULL;
-303   }
-304 
-305   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-306   if (!utf8_cache) {
-307     return NULL;
-308   }
-309 
-310   const int h = p-&gt;h;
-311   const int w = p-&gt;w;
-312   const size_t h_sz = (size_t)h;
-313   const size_t w_sz = (size_t)w;
-314 
-315   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
-316     return NULL;
-317   }
-318 
-319   const size_t bytes_per_pixel = 30; // fg sequence (~19) + char (up to 4) + margin
-320   const size_t total_pixels = h_sz * w_sz;
-321   const size_t lines_size = total_pixels * bytes_per_pixel + h_sz + 16;
-322 
-323   char *lines;
-324   lines = SAFE_MALLOC(lines_size, char *);
-325 
-326   char *ptr = lines;
-327   const rgb_pixel_t *pix = p-&gt;pixels;
-328 
-329   for (int y = 0; y &lt; h; y++) {
-330     const int row_offset = y * w;
-331 
-332     for (int x = 0; x &lt; w; x++) {
-333       const rgb_pixel_t pixel = pix[row_offset + x];
+<p class="Pp">Definition at line <b>312</b> of file <b>foreground.c</b>.</p>
+<pre>312                                                                     {
+313   if (!p || !palette || !p-&gt;pixels) {
+314     return NULL;
+315   }
+316 
+317   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+318   if (!utf8_cache) {
+319     return NULL;
+320   }
+321 
+322   const int h = p-&gt;h;
+323   const int w = p-&gt;w;
+324   const size_t h_sz = (size_t)h;
+325   const size_t w_sz = (size_t)w;
+326 
+327   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
+328     return NULL;
+329   }
+330 
+331   const size_t bytes_per_pixel = 30; // fg sequence (~19) + char (up to 4) + margin
+332   const size_t total_pixels = h_sz * w_sz;
+333   const size_t lines_size = total_pixels * bytes_per_pixel + h_sz + 16;
 334 
-335       ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[38;2;%d;%d;%dm&quot;, pixel.r, pixel.g, pixel.b);
-336 
-337       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-338       uint8_t safe_luminance = clamp_rgb(luminance);
-339       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
-340       for (int i = 0; i &lt; char_info-&gt;byte_len; i++) {
-341         *ptr++ = char_info-&gt;utf8_bytes[i];
-342       }
-343     }
-344 
-345     *ptr++ = '\033';
-346     *ptr++ = '[';
-347     *ptr++ = '0';
-348     *ptr++ = 'm';
-349     if (y &lt; h - 1) {
-350       *ptr++ = '\n';
-351     }
-352   }
-353 
-354   *ptr = '\0';
-355   return lines;
-356 }</pre>
+335   char *lines;
+336   lines = SAFE_MALLOC(lines_size, char *);
+337 
+338   char *ptr = lines;
+339   const rgb_pixel_t *pix = p-&gt;pixels;
+340 
+341   for (int y = 0; y &lt; h; y++) {
+342     const int row_offset = y * w;
+343 
+344     for (int x = 0; x &lt; w; x++) {
+345       const rgb_pixel_t pixel = pix[row_offset + x];
+346 
+347       ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[38;2;%d;%d;%dm&quot;, pixel.r, pixel.g, pixel.b);
+348 
+349       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+350       uint8_t safe_luminance = clamp_rgb(luminance);
+351       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
+352       for (int i = 0; i &lt; char_info-&gt;byte_len; i++) {
+353         *ptr++ = char_info-&gt;utf8_bytes[i];
+354       }
+355     }
+356 
+357     *ptr++ = '\033';
+358     *ptr++ = '[';
+359     *ptr++ = '0';
+360     *ptr++ = 'm';
+361     if (y &lt; h - 1) {
+362       *ptr++ = '\n';
+363     }
+364   }
+365 
+366   *ptr = '\0';
+367   return lines;
+368 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>rgb_pixel_t::b</b>, <b>utf8_char_t::byte_len</b>,
@@ -159,7 +159,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -924,8 +924,8 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp">Definition at line <b>85</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_batch()</b>,
-    <b>audio_client_init()</b>, <b>audio_start_duplex()</b>,
-    <b>client_send_thread_func()</b>, and <b>server_main()</b>.</p>
+    <b>audio_client_init()</b>, <b>audio_start_duplex()</b>, and
+    <b>client_send_thread_func()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MIXER_FRAME_SIZE___256"><a class="permalink" href="#_define_MIXER_FRAME_SIZE___256">#define
@@ -1073,23 +1073,23 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp">samples_ptr should point to total_samples * sizeof(uint32_t)
   bytes</p>
 </div>
-<p class="Pp">Definition at line <b>1978</b> of file
+<p class="Pp">Definition at line <b>2014</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1978                                                                                                                    {
-1979   if (!samples_ptr || !out_samples || total_samples == 0) {
-1980     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for audio dequantization&quot;);
-1981   }
-1982 
-1983   for (uint32_t i = 0; i &lt; total_samples; i++) {
-1984     uint32_t network_sample;
-1985     // Use memcpy to safely handle potential misalignment from packet header
-1986     memcpy(&amp;network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
-1987     int32_t scaled = (int32_t)NET_TO_HOST_U32(network_sample);
-1988     out_samples[i] = (float)scaled / 2147483647.0f;
-1989   }
-1990 
-1991   return ASCIICHAT_OK;
-1992 }</pre>
+<pre>2014                                                                                                                    {
+2015   if (!samples_ptr || !out_samples || total_samples == 0) {
+2016     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for audio dequantization&quot;);
+2017   }
+2018 
+2019   for (uint32_t i = 0; i &lt; total_samples; i++) {
+2020     uint32_t network_sample;
+2021     // Use memcpy to safely handle potential misalignment from packet header
+2022     memcpy(&amp;network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
+2023     int32_t scaled = (int32_t)NET_TO_HOST_U32(network_sample);
+2024     out_samples[i] = (float)scaled / 2147483647.0f;
+2025   }
+2026 
+2027   return ASCIICHAT_OK;
+2028 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -1114,64 +1114,64 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp"></p>
 <p class="Pp">PortAudio is terminated after last context is destroyed.</p>
 </div>
-<p class="Pp">Definition at line <b>1288</b> of file
+<p class="Pp">Definition at line <b>1324</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1288                                          {
-1289   if (!ctx) {
-1290     return;
-1291   }
-1292 
-1293   // Always release PortAudio refcount if it was incremented
-1294   // audio_init() calls Pa_Initialize() very early, and if it fails partway through,
-1295   // ctx-&gt;initialized will be false. But we MUST still call audio_release_portaudio()
-1296   // to properly decrement the refcount and allow Pa_Terminate() to be called.
-1297   if (ctx-&gt;initialized) {
-1298 
-1299     // Stop duplex stream if running (this also stops the worker thread)
-1300     if (ctx-&gt;running) {
-1301       audio_stop_duplex(ctx);
-1302     }
-1303 
-1304     // Ensure worker thread is stopped even if streams weren't running
-1305     if (ctx-&gt;worker_running) {
-1306       log_debug(&quot;Stopping worker thread during audio_destroy&quot;);
-1307       atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
-1308       cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
-1309       asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
-1310       ctx-&gt;worker_running = false;
-1311     }
-1312 
-1313     mutex_lock(&amp;ctx-&gt;state_mutex);
-1314 
-1315     // Destroy all ring buffers (old + new)
-1316     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1317     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1318     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1319     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1320     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
-1321     audio_ring_buffer_destroy(ctx-&gt;render_buffer); // May be NULL, that's OK
-1322 
-1323     // Free pre-allocated worker buffers
-1324     SAFE_FREE(ctx-&gt;worker_capture_batch);
-1325     SAFE_FREE(ctx-&gt;worker_render_batch);
-1326     SAFE_FREE(ctx-&gt;worker_playback_batch);
-1327 
-1328     // Destroy worker synchronization primitives
-1329     cond_destroy(&amp;ctx-&gt;worker_cond);
-1330     mutex_destroy(&amp;ctx-&gt;worker_mutex);
-1331 
-1332     ctx-&gt;initialized = false;
-1333 
-1334     mutex_unlock(&amp;ctx-&gt;state_mutex);
-1335     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1336 
-1337     log_debug(&quot;Audio system cleanup complete (all resources released)&quot;);
-1338   } else {
-1339   }
-1340 }</pre>
+<pre>1324                                          {
+1325   if (!ctx) {
+1326     return;
+1327   }
+1328 
+1329   // Always release PortAudio refcount if it was incremented
+1330   // audio_init() calls Pa_Initialize() very early, and if it fails partway through,
+1331   // ctx-&gt;initialized will be false. But we MUST still call audio_release_portaudio()
+1332   // to properly decrement the refcount and allow Pa_Terminate() to be called.
+1333   if (ctx-&gt;initialized) {
+1334 
+1335     // Stop duplex stream if running (this also stops the worker thread)
+1336     if (ctx-&gt;running) {
+1337       audio_stop_duplex(ctx);
+1338     }
+1339 
+1340     // Ensure worker thread is stopped even if streams weren't running
+1341     if (ctx-&gt;worker_running) {
+1342       log_debug(&quot;Stopping worker thread during audio_destroy&quot;);
+1343       atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
+1344       cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
+1345       asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
+1346       ctx-&gt;worker_running = false;
+1347     }
+1348 
+1349     mutex_lock(&amp;ctx-&gt;state_mutex);
+1350 
+1351     // Destroy all ring buffers (old + new)
+1352     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1353     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1354     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1355     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1356     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1357     audio_ring_buffer_destroy(ctx-&gt;render_buffer); // May be NULL, that's OK
+1358 
+1359     // Free pre-allocated worker buffers
+1360     SAFE_FREE(ctx-&gt;worker_capture_batch);
+1361     SAFE_FREE(ctx-&gt;worker_render_batch);
+1362     SAFE_FREE(ctx-&gt;worker_playback_batch);
+1363 
+1364     // Destroy worker synchronization primitives
+1365     cond_destroy(&amp;ctx-&gt;worker_cond);
+1366     mutex_destroy(&amp;ctx-&gt;worker_mutex);
+1367 
+1368     ctx-&gt;initialized = false;
+1369 
+1370     mutex_unlock(&amp;ctx-&gt;state_mutex);
+1371     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1372 
+1373     log_debug(&quot;Audio system cleanup complete (all resources released)&quot;);
+1374   } else {
+1375   }
+1376 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>asciichat_thread_join</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_destroy()</b>,
     <b>audio_stop_duplex()</b>, <b>audio_context_t::capture_buffer</b>,
     <b>cond_destroy()</b>, <b>cond_signal()</b>,
@@ -1204,26 +1204,26 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp">Clears the playback buffers when seeking occurs. This prevents
     5-10 seconds of old audio from playing after a seek operation. Called by
     keyboard handler when user presses seek arrow keys.</p>
-<p class="Pp">Definition at line <b>1348</b> of file
+<p class="Pp">Definition at line <b>1384</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1348                                                         {
-1349   if (!ctx || !ctx-&gt;initialized) {
-1350     return;
-1351   }
-1352 
-1353   if (ctx-&gt;playback_buffer) {
-1354     audio_ring_buffer_clear(ctx-&gt;playback_buffer);
-1355   }
-1356   if (ctx-&gt;processed_playback_rb) {
-1357     audio_ring_buffer_clear(ctx-&gt;processed_playback_rb);
-1358   }
-1359   if (ctx-&gt;render_buffer) {
-1360     audio_ring_buffer_clear(ctx-&gt;render_buffer);
-1361   }
-1362   if (ctx-&gt;raw_render_rb) {
-1363     audio_ring_buffer_clear(ctx-&gt;raw_render_rb);
-1364   }
-1365 }</pre>
+<pre>1384                                                         {
+1385   if (!ctx || !ctx-&gt;initialized) {
+1386     return;
+1387   }
+1388 
+1389   if (ctx-&gt;playback_buffer) {
+1390     audio_ring_buffer_clear(ctx-&gt;playback_buffer);
+1391   }
+1392   if (ctx-&gt;processed_playback_rb) {
+1393     audio_ring_buffer_clear(ctx-&gt;processed_playback_rb);
+1394   }
+1395   if (ctx-&gt;render_buffer) {
+1396     audio_ring_buffer_clear(ctx-&gt;render_buffer);
+1397   }
+1398   if (ctx-&gt;raw_render_rb) {
+1399     audio_ring_buffer_clear(ctx-&gt;raw_render_rb);
+1400   }
+1401 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_clear()</b>,
@@ -1246,11 +1246,11 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp">Frees the device array allocated by
     <b>audio_list_input_devices()</b> or <b>audio_list_output_devices()</b>.
     Safe to call with NULL.</p>
-<p class="Pp">Definition at line <b>1974</b> of file
+<p class="Pp">Definition at line <b>2010</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1974                                                           {
-1975   SAFE_FREE(devices);
-1976 }</pre>
+<pre>2010                                                           {
+2011   SAFE_FREE(devices);
+2012 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>.</p>
@@ -1281,158 +1281,158 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>audio_destroy()</b> to clean up resources
   when done.</div>
-<p class="Pp">Definition at line <b>1137</b> of file
+<p class="Pp">Definition at line <b>1173</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1137                                                    {
-1138   log_debug(&quot;audio_init: starting, ctx=%p&quot;, (void *)ctx);
-1139   if (!ctx) {
-1140     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx is NULL&quot;);
-1141   }
-1142 
-1143   SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
-1144 
-1145   if (mutex_init(&amp;ctx-&gt;state_mutex, &quot;audio_context&quot;) != 0) {
-1146     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize audio context mutex&quot;);
-1147   }
-1148 
-1149   // NOTE: PortAudio initialization deferred to audio_start_duplex() where streams are actually opened
-1150   // This avoids Pa_Initialize() overhead for contexts that might not start duplex
-1151   // and prevents premature ALSA device allocation and memory leaks
-1152 
-1153   // Create capture buffer WITHOUT jitter buffering (PortAudio writes directly from microphone)
-1154   ctx-&gt;capture_buffer = audio_ring_buffer_create_for_capture();
-1155   if (!ctx-&gt;capture_buffer) {
-1156     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1157     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create capture buffer&quot;);
-1158   }
-1159 
-1160   ctx-&gt;playback_buffer = audio_ring_buffer_create();
-1161   if (!ctx-&gt;playback_buffer) {
-1162     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1163     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1164     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create playback buffer&quot;);
-1165   }
-1166 
-1167   // Create new ring buffers for worker thread architecture
-1168   ctx-&gt;raw_capture_rb = audio_ring_buffer_create_for_capture();
-1169   if (!ctx-&gt;raw_capture_rb) {
-1170     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1171     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1172     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1173     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create raw capture buffer&quot;);
-1174   }
-1175 
-1176   ctx-&gt;raw_render_rb = audio_ring_buffer_create_for_capture();
-1177   if (!ctx-&gt;raw_render_rb) {
-1178     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1179     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1180     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1181     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1182     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create raw render buffer&quot;);
+<pre>1173                                                    {
+1174   log_debug(&quot;audio_init: starting, ctx=%p&quot;, (void *)ctx);
+1175   if (!ctx) {
+1176     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx is NULL&quot;);
+1177   }
+1178 
+1179   SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
+1180 
+1181   if (mutex_init(&amp;ctx-&gt;state_mutex, &quot;audio_context&quot;) != 0) {
+1182     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize audio context mutex&quot;);
 1183   }
 1184 
-1185   ctx-&gt;processed_playback_rb = audio_ring_buffer_create();
-1186   if (!ctx-&gt;processed_playback_rb) {
-1187     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1188     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1189     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1190     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1191     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1192     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create processed playback buffer&quot;);
-1193   }
-1194 
-1195   // Initialize worker thread infrastructure
-1196   if (mutex_init(&amp;ctx-&gt;worker_mutex, &quot;audio_worker_mutex&quot;) != 0) {
-1197     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
-1198     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1199     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1200     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1201     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1202     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1203     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize worker mutex&quot;);
-1204   }
-1205 
-1206   if (cond_init(&amp;ctx-&gt;worker_cond, &quot;audio_worker_cond&quot;) != 0) {
-1207     mutex_destroy(&amp;ctx-&gt;worker_mutex);
-1208     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
-1209     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1210     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1211     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1212     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1213     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1214     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize worker condition variable&quot;);
-1215   }
-1216 
-1217   // Allocate pre-allocated worker buffers (avoid malloc in worker loop)
-1218   ctx-&gt;worker_capture_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
-1219   if (!ctx-&gt;worker_capture_batch) {
-1220     cond_destroy(&amp;ctx-&gt;worker_cond);
-1221     mutex_destroy(&amp;ctx-&gt;worker_mutex);
-1222     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1185   // NOTE: PortAudio initialization deferred to audio_start_duplex() where streams are actually opened
+1186   // This avoids Pa_Initialize() overhead for contexts that might not start duplex
+1187   // and prevents premature ALSA device allocation and memory leaks
+1188 
+1189   // Create capture buffer WITHOUT jitter buffering (PortAudio writes directly from microphone)
+1190   ctx-&gt;capture_buffer = audio_ring_buffer_create_for_capture();
+1191   if (!ctx-&gt;capture_buffer) {
+1192     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1193     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create capture buffer&quot;);
+1194   }
+1195 
+1196   ctx-&gt;playback_buffer = audio_ring_buffer_create();
+1197   if (!ctx-&gt;playback_buffer) {
+1198     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1199     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1200     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create playback buffer&quot;);
+1201   }
+1202 
+1203   // Create new ring buffers for worker thread architecture
+1204   ctx-&gt;raw_capture_rb = audio_ring_buffer_create_for_capture();
+1205   if (!ctx-&gt;raw_capture_rb) {
+1206     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1207     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1208     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1209     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create raw capture buffer&quot;);
+1210   }
+1211 
+1212   ctx-&gt;raw_render_rb = audio_ring_buffer_create_for_capture();
+1213   if (!ctx-&gt;raw_render_rb) {
+1214     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1215     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1216     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1217     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1218     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create raw render buffer&quot;);
+1219   }
+1220 
+1221   ctx-&gt;processed_playback_rb = audio_ring_buffer_create();
+1222   if (!ctx-&gt;processed_playback_rb) {
 1223     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
 1224     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
 1225     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
 1226     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
 1227     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1228     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker capture batch buffer&quot;);
+1228     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create processed playback buffer&quot;);
 1229   }
 1230 
-1231   ctx-&gt;worker_render_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
-1232   if (!ctx-&gt;worker_render_batch) {
-1233     SAFE_FREE(ctx-&gt;worker_capture_batch);
-1234     cond_destroy(&amp;ctx-&gt;worker_cond);
-1235     mutex_destroy(&amp;ctx-&gt;worker_mutex);
-1236     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
-1237     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1238     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1239     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1240     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1241     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1242     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker render batch buffer&quot;);
-1243   }
-1244 
-1245   ctx-&gt;worker_playback_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
-1246   if (!ctx-&gt;worker_playback_batch) {
-1247     SAFE_FREE(ctx-&gt;worker_render_batch);
-1248     SAFE_FREE(ctx-&gt;worker_capture_batch);
-1249     cond_destroy(&amp;ctx-&gt;worker_cond);
-1250     mutex_destroy(&amp;ctx-&gt;worker_mutex);
-1251     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
-1252     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
-1253     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
-1254     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
-1255     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
-1256     mutex_destroy(&amp;ctx-&gt;state_mutex);
-1257     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker playback batch buffer&quot;);
-1258   }
-1259 
-1260   // Initialize worker thread state (thread will be started in audio_start_duplex)
-1261   ctx-&gt;worker_running = false;
-1262   atomic_store_bool(&amp;ctx-&gt;worker_should_stop, false);
-1263 
-1264   ctx-&gt;initialized = true;
-1265   atomic_store_bool(&amp;ctx-&gt;shutting_down, false);
+1231   // Initialize worker thread infrastructure
+1232   if (mutex_init(&amp;ctx-&gt;worker_mutex, &quot;audio_worker_mutex&quot;) != 0) {
+1233     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1234     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1235     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1236     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1237     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1238     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1239     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize worker mutex&quot;);
+1240   }
+1241 
+1242   if (cond_init(&amp;ctx-&gt;worker_cond, &quot;audio_worker_cond&quot;) != 0) {
+1243     mutex_destroy(&amp;ctx-&gt;worker_mutex);
+1244     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1245     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1246     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1247     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1248     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1249     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1250     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize worker condition variable&quot;);
+1251   }
+1252 
+1253   // Allocate pre-allocated worker buffers (avoid malloc in worker loop)
+1254   ctx-&gt;worker_capture_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+1255   if (!ctx-&gt;worker_capture_batch) {
+1256     cond_destroy(&amp;ctx-&gt;worker_cond);
+1257     mutex_destroy(&amp;ctx-&gt;worker_mutex);
+1258     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1259     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1260     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1261     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1262     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1263     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1264     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker capture batch buffer&quot;);
+1265   }
 1266 
-1267   /* Register audio context with named registry */
-1268   NAMED_REGISTER(ctx, &quot;audio_context&quot;, &quot;audio_context_t&quot;, &quot;0x%tx&quot;, NULL);
-1269 
-1270   /* Register audio context's sync primitives with hierarchical naming */
-1271   NAMED_REGISTER_MUTEX(&amp;ctx-&gt;state_mutex, &quot;state_mutex&quot;, (uintptr_t)(const void *)(ctx));
-1272   NAMED_REGISTER_MUTEX(&amp;ctx-&gt;worker_mutex, &quot;worker_mutex&quot;, (uintptr_t)(const void *)(ctx));
-1273   NAMED_REGISTER_COND(&amp;ctx-&gt;worker_cond, &quot;worker_cond&quot;, (uintptr_t)(const void *)(ctx));
-1274   NAMED_REGISTER_ATOMIC(&amp;ctx-&gt;worker_should_stop, &quot;worker_should_stop&quot;, (uintptr_t)(const void *)(ctx));
-1275   NAMED_REGISTER_ATOMIC(&amp;ctx-&gt;shutting_down, &quot;shutting_down&quot;, (uintptr_t)(const void *)(ctx));
-1276 
-1277   /* Register ring buffers as child structures with audio context as parent */
-1278   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;capture_buffer, &quot;capture_buffer&quot;, (uintptr_t)(const void *)(ctx));
-1279   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;playback_buffer, &quot;playback_buffer&quot;, (uintptr_t)(const void *)(ctx));
-1280   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;raw_capture_rb, &quot;raw_capture_rb&quot;, (uintptr_t)(const void *)(ctx));
-1281   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;raw_render_rb, &quot;raw_render_rb&quot;, (uintptr_t)(const void *)(ctx));
-1282   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;processed_playback_rb, &quot;processed_playback_rb&quot;, (uintptr_t)(const void *)(ctx));
-1283 
-1284   log_info(&quot;Audio system initialized successfully (worker thread architecture enabled)&quot;);
-1285   return ASCIICHAT_OK;
-1286 }</pre>
+1267   ctx-&gt;worker_render_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+1268   if (!ctx-&gt;worker_render_batch) {
+1269     SAFE_FREE(ctx-&gt;worker_capture_batch);
+1270     cond_destroy(&amp;ctx-&gt;worker_cond);
+1271     mutex_destroy(&amp;ctx-&gt;worker_mutex);
+1272     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1273     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1274     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1275     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1276     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1277     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1278     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker render batch buffer&quot;);
+1279   }
+1280 
+1281   ctx-&gt;worker_playback_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+1282   if (!ctx-&gt;worker_playback_batch) {
+1283     SAFE_FREE(ctx-&gt;worker_render_batch);
+1284     SAFE_FREE(ctx-&gt;worker_capture_batch);
+1285     cond_destroy(&amp;ctx-&gt;worker_cond);
+1286     mutex_destroy(&amp;ctx-&gt;worker_mutex);
+1287     audio_ring_buffer_destroy(ctx-&gt;processed_playback_rb);
+1288     audio_ring_buffer_destroy(ctx-&gt;raw_render_rb);
+1289     audio_ring_buffer_destroy(ctx-&gt;raw_capture_rb);
+1290     audio_ring_buffer_destroy(ctx-&gt;playback_buffer);
+1291     audio_ring_buffer_destroy(ctx-&gt;capture_buffer);
+1292     mutex_destroy(&amp;ctx-&gt;state_mutex);
+1293     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker playback batch buffer&quot;);
+1294   }
+1295 
+1296   // Initialize worker thread state (thread will be started in audio_start_duplex)
+1297   ctx-&gt;worker_running = false;
+1298   atomic_store_bool(&amp;ctx-&gt;worker_should_stop, false);
+1299 
+1300   ctx-&gt;initialized = true;
+1301   atomic_store_bool(&amp;ctx-&gt;shutting_down, false);
+1302 
+1303   /* Register audio context with named registry */
+1304   NAMED_REGISTER(ctx, &quot;audio_context&quot;, &quot;audio_context_t&quot;, &quot;0x%tx&quot;, NULL);
+1305 
+1306   /* Register audio context's sync primitives with hierarchical naming */
+1307   NAMED_REGISTER_MUTEX(&amp;ctx-&gt;state_mutex, &quot;state_mutex&quot;, (uintptr_t)(const void *)(ctx));
+1308   NAMED_REGISTER_MUTEX(&amp;ctx-&gt;worker_mutex, &quot;worker_mutex&quot;, (uintptr_t)(const void *)(ctx));
+1309   NAMED_REGISTER_COND(&amp;ctx-&gt;worker_cond, &quot;worker_cond&quot;, (uintptr_t)(const void *)(ctx));
+1310   NAMED_REGISTER_ATOMIC(&amp;ctx-&gt;worker_should_stop, &quot;worker_should_stop&quot;, (uintptr_t)(const void *)(ctx));
+1311   NAMED_REGISTER_ATOMIC(&amp;ctx-&gt;shutting_down, &quot;shutting_down&quot;, (uintptr_t)(const void *)(ctx));
+1312 
+1313   /* Register ring buffers as child structures with audio context as parent */
+1314   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;capture_buffer, &quot;capture_buffer&quot;, (uintptr_t)(const void *)(ctx));
+1315   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;playback_buffer, &quot;playback_buffer&quot;, (uintptr_t)(const void *)(ctx));
+1316   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;raw_capture_rb, &quot;raw_capture_rb&quot;, (uintptr_t)(const void *)(ctx));
+1317   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;raw_render_rb, &quot;raw_render_rb&quot;, (uintptr_t)(const void *)(ctx));
+1318   NAMED_REGISTER_AUDIO_RINGBUF(ctx-&gt;processed_playback_rb, &quot;processed_playback_rb&quot;, (uintptr_t)(const void *)(ctx));
+1319 
+1320   log_info(&quot;Audio system initialized successfully (worker thread architecture enabled)&quot;);
+1321   return ASCIICHAT_OK;
+1322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
@@ -1482,30 +1482,30 @@ opus_codec_destroy(decoder);</pre>
     return;
 }
 </pre>
-<p class="Pp">Definition at line <b>2074</b> of file
+<p class="Pp">Definition at line <b>2110</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2074                                                           {
-2075   // List of commonly supported audio sample rates
-2076   static const uint32_t supported_rates[] = {
-2077       8000,   // Telephone quality
-2078       16000,  // Wideband telephony
-2079       24000,  // High quality speech
-2080       32000,  // Good for video
-2081       44100,  // CD quality (less common in VoIP)
-2082       48000,  // Standard professional
-2083       96000,  // High-end professional
-2084       192000, // Ultra-high-end mastering
-2085   };
-2086 
-2087   const size_t rate_count = sizeof(supported_rates) / sizeof(supported_rates[0]);
-2088   for (size_t i = 0; i &lt; rate_count; i++) {
-2089     if (sample_rate == supported_rates[i]) {
-2090       return true;
-2091     }
-2092   }
-2093 
-2094   return false;
-2095 }</pre>
+<pre>2110                                                           {
+2111   // List of commonly supported audio sample rates
+2112   static const uint32_t supported_rates[] = {
+2113       8000,   // Telephone quality
+2114       16000,  // Wideband telephony
+2115       24000,  // High quality speech
+2116       32000,  // Good for video
+2117       44100,  // CD quality (less common in VoIP)
+2118       48000,  // Standard professional
+2119       96000,  // High-end professional
+2120       192000, // Ultra-high-end mastering
+2121   };
+2122 
+2123   const size_t rate_count = sizeof(supported_rates) / sizeof(supported_rates[0]);
+2124   for (size_t i = 0; i &lt; rate_count; i++) {
+2125     if (sample_rate == supported_rates[i]) {
+2126       return true;
+2127     }
+2128   }
+2129 
+2130   return false;
+2131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>audio_validate_batch_params()</b>.</p>
@@ -1536,11 +1536,11 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>audio_free_device_list()</b> to free the
   returned array.</div>
-<p class="Pp">Definition at line <b>1966</b> of file
+<p class="Pp">Definition at line <b>2002</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1966                                                                                                        {
-1967   return audio_list_devices_internal(out_devices, out_count, true);
-1968 }</pre>
+<pre>2002                                                                                                        {
+2003   return audio_list_devices_internal(out_devices, out_count, true);
+2004 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1570,11 +1570,11 @@ opus_codec_destroy(decoder);</pre>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>audio_free_device_list()</b> to free the
   returned array.</div>
-<p class="Pp">Definition at line <b>1970</b> of file
+<p class="Pp">Definition at line <b>2006</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1970                                                                                                         {
-1971   return audio_list_devices_internal(out_devices, out_count, false);
-1972 }</pre>
+<pre>2006                                                                                                         {
+2007   return audio_list_devices_internal(out_devices, out_count, false);
+2008 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1624,32 +1624,32 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <br/>
           batch.batch_count, batch.sample_rate, batch.channels);
 </pre>
-<p class="Pp">Definition at line <b>2008</b> of file
+<p class="Pp">Definition at line <b>2044</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2008                                                                                                         {
-2009   if (!data) {
-2010     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
-2011   }
-2012 
-2013   if (!out_batch) {
-2014     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info output pointer is NULL&quot;);
-2015   }
-2016 
-2017   if (len &lt; sizeof(audio_batch_packet_t)) {
-2018     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header too small (len=%zu, expected=%zu)&quot;, len,
-2019                      sizeof(audio_batch_packet_t));
-2020   }
-2021 
-2022   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-2023 
-2024   // Unpack network byte order values to host byte order
-2025   out_batch-&gt;batch_count = ntohl(batch_header-&gt;batch_count);
-2026   out_batch-&gt;total_samples = ntohl(batch_header-&gt;total_samples);
-2027   out_batch-&gt;sample_rate = ntohl(batch_header-&gt;sample_rate);
-2028   out_batch-&gt;channels = ntohl(batch_header-&gt;channels);
-2029 
-2030   return ASCIICHAT_OK;
-2031 }</pre>
+<pre>2044                                                                                                         {
+2045   if (!data) {
+2046     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
+2047   }
+2048 
+2049   if (!out_batch) {
+2050     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info output pointer is NULL&quot;);
+2051   }
+2052 
+2053   if (len &lt; sizeof(audio_batch_packet_t)) {
+2054     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header too small (len=%zu, expected=%zu)&quot;, len,
+2055                      sizeof(audio_batch_packet_t));
+2056   }
+2057 
+2058   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+2059 
+2060   // Unpack network byte order values to host byte order
+2061   out_batch-&gt;batch_count = ntohl(batch_header-&gt;batch_count);
+2062   out_batch-&gt;total_samples = ntohl(batch_header-&gt;total_samples);
+2063   out_batch-&gt;sample_rate = ntohl(batch_header-&gt;sample_rate);
+2064   out_batch-&gt;channels = ntohl(batch_header-&gt;channels);
+2065 
+2066   return ASCIICHAT_OK;
+2067 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1691,18 +1691,18 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Buffer must be large enough to hold num_samples float
   values.</div>
-<p class="Pp">Definition at line <b>1858</b> of file
+<p class="Pp">Definition at line <b>1894</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1858                                                                                            {
-1859   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples &lt;= 0) {
-1860     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%d&quot;, ctx, buffer,
-1861                      num_samples);
-1862   }
-1863 
-1864   // audio_ring_buffer_read now returns number of samples read, not error code
-1865   int samples_read = audio_ring_buffer_read(ctx-&gt;capture_buffer, buffer, num_samples);
-1866   return (samples_read &gt;= 0) ? ASCIICHAT_OK : ERROR_AUDIO;
-1867 }</pre>
+<pre>1894                                                                                            {
+1895   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples &lt;= 0) {
+1896     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%d&quot;, ctx, buffer,
+1897                      num_samples);
+1898   }
+1899 
+1900   // audio_ring_buffer_read now returns number of samples read, not error code
+1901   int samples_read = audio_ring_buffer_read(ctx-&gt;capture_buffer, buffer, num_samples);
+1902   return (samples_read &gt;= 0) ? ASCIICHAT_OK : ERROR_AUDIO;
+1903 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_ring_buffer_read()</b>,
@@ -1731,24 +1731,24 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp">Value may change immediately after return due to concurrent
     writes.</p>
 </div>
-<p class="Pp">Definition at line <b>1111</b> of file
+<p class="Pp">Definition at line <b>1147</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1111                                                                  {
-1112   if (!rb)
-1113     return 0;
-1114 
-1115   // LOCK-FREE: Load indices with proper memory ordering
-1116   // Use acquire for write_index to see writer's updates
-1117   // Use relaxed for read_index (our own index)
-1118   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
-1119   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
-1120 
-1121   if (write_idx &gt;= read_idx) {
-1122     return write_idx - read_idx;
-1123   }
-1124 
-1125   return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
-1126 }</pre>
+<pre>1147                                                                  {
+1148   if (!rb)
+1149     return 0;
+1150 
+1151   // LOCK-FREE: Load indices with proper memory ordering
+1152   // Use acquire for write_index to see writer's updates
+1153   // Use relaxed for read_index (our own index)
+1154   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
+1155   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
+1156 
+1157   if (write_idx &gt;= read_idx) {
+1158     return write_idx - read_idx;
+1159   }
+1160 
+1161   return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+1162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>,
@@ -1777,16 +1777,16 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp">Value may change immediately after return due to concurrent
   reads.</p>
 </div>
-<p class="Pp">Definition at line <b>1128</b> of file
+<p class="Pp">Definition at line <b>1164</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1128                                                                   {
-1129   if (!rb) {
-1130     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb is NULL&quot;);
-1131     return 0;
-1132   }
-1133 
-1134   return AUDIO_RING_BUFFER_SIZE - audio_ring_buffer_available_read(rb) - 1;
-1135 }</pre>
+<pre>1164                                                                   {
+1165   if (!rb) {
+1166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb is NULL&quot;);
+1167     return 0;
+1168   }
+1169 
+1170   return AUDIO_RING_BUFFER_SIZE - audio_ring_buffer_available_read(rb) - 1;
+1171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_available_read()</b>,
@@ -1803,21 +1803,21 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <div class="Bd-indent"><i>rb</i> Audio ring buffer (must not be NULL)</div>
 <p class="Pp">Resets the ring buffer to empty state, clearing all samples. Used
     during shutdown to prevent stale audio from playing.</p>
-<p class="Pp">Definition at line <b>847</b> of file
+<p class="Pp">Definition at line <b>883</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>847                                                       {
-848   if (!rb)
-849     return;
-850 
-851   mutex_lock(&amp;rb-&gt;mutex);
-852   // Reset buffer to empty state (no audio to play = silence at shutdown)
-853   atomic_store_u64(&amp;rb-&gt;write_index, 0);
-854   atomic_store_u64(&amp;rb-&gt;read_index, 0);
-855   rb-&gt;last_sample = 0.0f;
-856   // Clear the actual data to zeros to prevent any stale audio
-857   SAFE_MEMSET(rb-&gt;data, sizeof(rb-&gt;data), 0, sizeof(rb-&gt;data));
-858   mutex_unlock(&amp;rb-&gt;mutex);
-859 }</pre>
+<pre>883                                                       {
+884   if (!rb)
+885     return;
+886 
+887   mutex_lock(&amp;rb-&gt;mutex);
+888   // Reset buffer to empty state (no audio to play = silence at shutdown)
+889   atomic_store_u64(&amp;rb-&gt;write_index, 0);
+890   atomic_store_u64(&amp;rb-&gt;read_index, 0);
+891   rb-&gt;last_sample = 0.0f;
+892   // Clear the actual data to zeros to prevent any stale audio
+893   SAFE_MEMSET(rb-&gt;data, sizeof(rb-&gt;data), 0, sizeof(rb-&gt;data));
+894   mutex_unlock(&amp;rb-&gt;mutex);
+895 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>,
@@ -1856,11 +1856,11 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>audio_ring_buffer_destroy()</b> to free
   resources.</div>
-<p class="Pp">Definition at line <b>794</b> of file
+<p class="Pp">Definition at line <b>830</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>794                                                     {
-795   return audio_ring_buffer_create_internal(true); // Default: enable jitter buffering for playback
-796 }</pre>
+<pre>830                                                     {
+831   return audio_ring_buffer_create_internal(true); // Default: enable jitter buffering for playback
+832 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>audio_init()</b>, and
@@ -1890,11 +1890,11 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>audio_ring_buffer_destroy()</b> to free
   resources.</div>
-<p class="Pp">Definition at line <b>798</b> of file
+<p class="Pp">Definition at line <b>834</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>798                                                                 {
-799   return audio_ring_buffer_create_internal(false); // Disable jitter buffering for capture
-800 }</pre>
+<pre>834                                                                 {
+835   return audio_ring_buffer_create_internal(false); // Disable jitter buffering for capture
+836 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
@@ -1914,18 +1914,18 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">All samples in the buffer are discarded.</div>
-<p class="Pp">Definition at line <b>802</b> of file
+<p class="Pp">Definition at line <b>838</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>802                                                         {
-803   if (!rb)
-804     return;
-805 
-806   NAMED_UNREGISTER(rb);
-807   audio_ring_buffer_unregister_atomics(rb);
-808 
-809   mutex_destroy(&amp;rb-&gt;mutex);
-810   buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
-811 }</pre>
+<pre>838                                                         {
+839   if (!rb)
+840     return;
+841 
+842   NAMED_UNREGISTER(rb);
+843   audio_ring_buffer_unregister_atomics(rb);
+844 
+845   mutex_destroy(&amp;rb-&gt;mutex);
+846   buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+847 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_unregister_atomics()</b>,
@@ -1957,44 +1957,44 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of samples actually peeked (may be less than
   requested)</div>
-<p class="Pp">Definition at line <b>1074</b> of file
+<p class="Pp">Definition at line <b>1110</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1074                                                                                     {
-1075   if (!rb || !data || samples &lt;= 0) {
-1076     return 0;
-1077   }
-1078 
-1079   // LOCK-FREE: Load indices with proper memory ordering
-1080   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
-1081   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
-1082 
-1083   // Calculate available samples
-1084   size_t available;
-1085   if (write_idx &gt;= read_idx) {
-1086     available = write_idx - read_idx;
-1087   } else {
-1088     available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
-1089   }
-1090 
-1091   size_t to_peek = (samples &gt; available) ? available : samples;
-1092 
-1093   if (to_peek == 0) {
-1094     return 0;
-1095   }
-1096 
-1097   // Copy samples in chunks (handle wraparound)
-1098   size_t first_chunk = (read_idx + to_peek &lt;= AUDIO_RING_BUFFER_SIZE) ? to_peek : (AUDIO_RING_BUFFER_SIZE - read_idx);
-1099 
-1100   SAFE_MEMCPY(data, first_chunk * sizeof(float), rb-&gt;data + read_idx, first_chunk * sizeof(float));
-1101 
-1102   if (first_chunk &lt; to_peek) {
-1103     // Wraparound: copy second chunk from beginning of buffer
-1104     size_t second_chunk = to_peek - first_chunk;
-1105     SAFE_MEMCPY(data + first_chunk, second_chunk * sizeof(float), rb-&gt;data, second_chunk * sizeof(float));
-1106   }
-1107 
-1108   return to_peek;
-1109 }</pre>
+<pre>1110                                                                                     {
+1111   if (!rb || !data || samples &lt;= 0) {
+1112     return 0;
+1113   }
+1114 
+1115   // LOCK-FREE: Load indices with proper memory ordering
+1116   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
+1117   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
+1118 
+1119   // Calculate available samples
+1120   size_t available;
+1121   if (write_idx &gt;= read_idx) {
+1122     available = write_idx - read_idx;
+1123   } else {
+1124     available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+1125   }
+1126 
+1127   size_t to_peek = (samples &gt; available) ? available : samples;
+1128 
+1129   if (to_peek == 0) {
+1130     return 0;
+1131   }
+1132 
+1133   // Copy samples in chunks (handle wraparound)
+1134   size_t first_chunk = (read_idx + to_peek &lt;= AUDIO_RING_BUFFER_SIZE) ? to_peek : (AUDIO_RING_BUFFER_SIZE - read_idx);
+1135 
+1136   SAFE_MEMCPY(data, first_chunk * sizeof(float), rb-&gt;data + read_idx, first_chunk * sizeof(float));
+1137 
+1138   if (first_chunk &lt; to_peek) {
+1139     // Wraparound: copy second chunk from beginning of buffer
+1140     size_t second_chunk = to_peek - first_chunk;
+1141     SAFE_MEMCPY(data + first_chunk, second_chunk * sizeof(float), rb-&gt;data, second_chunk * sizeof(float));
+1142   }
+1143 
+1144   return to_peek;
+1145 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>,
@@ -2034,126 +2034,126 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Data buffer must be large enough to hold samples float
   values.</div>
-<p class="Pp">Definition at line <b>944</b> of file
+<p class="Pp">Definition at line <b>980</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>944                                                                                     {
-945   if (!rb || !data || samples &lt;= 0) {
-946     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb=%p, data=%p, samples=%d&quot;, rb, data, samples);
-947     return 0; // Return 0 samples read on error
-948   }
-949 
-950   // LOCK-FREE: Load indices with proper memory ordering
-951   // - Load writer's write_index with acquire (see writer's data updates)
-952   // - Load our own read_index with relaxed (no sync needed with ourselves)
-953   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
-954   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
-955 
-956   // Calculate available samples
-957   size_t available;
-958   if (write_idx &gt;= read_idx) {
-959     available = write_idx - read_idx;
-960   } else {
-961     available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
-962   }
-963 
-964   // LOCK-FREE: Load jitter buffer state with acquire ordering
-965   bool jitter_filled = atomic_load_u64(&amp;rb-&gt;jitter_buffer_filled);
-966   int crossfade_remaining = atomic_load_u64(&amp;rb-&gt;crossfade_samples_remaining);
-967   bool fade_in = atomic_load_u64(&amp;rb-&gt;crossfade_fade_in);
-968 
-969   // Jitter buffer: don't read until initial fill threshold is reached
-970   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
-971   if (!jitter_filled &amp;&amp; rb-&gt;jitter_buffer_enabled) {
-972     // Check if we've accumulated enough samples to start playback
-973     if (available &gt;= AUDIO_JITTER_BUFFER_THRESHOLD) {
-974       atomic_store_u64(&amp;rb-&gt;jitter_buffer_filled, true);
-975       atomic_store_u64(&amp;rb-&gt;crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES);
-976       atomic_store_u64(&amp;rb-&gt;crossfade_fade_in, true);
-977       log_info(&quot;Jitter buffer filled (%zu samples), starting playback with fade-in&quot;, available);
-978       // Reload state for processing below
-979       jitter_filled = true;
-980       crossfade_remaining = AUDIO_CROSSFADE_SAMPLES;
-981       fade_in = true;
-982     } else {
-983       // Log buffer fill progress every second
-984       log_debug_every(NS_PER_MS_INT, &quot;Jitter buffer filling: %zu/%d samples (%.1f%%)&quot;, available,
-985                       AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
-986       return 0; // Return 0 samples - caller will pad with silence
-987     }
-988   }
-989 
-990   // Periodic buffer health logging (every 5 seconds when healthy)
-991   unsigned int underruns = atomic_load_u64(&amp;rb-&gt;underrun_count);
-992   log_dev_every(5 * NS_PER_MS_INT, &quot;Buffer health: %zu/%d samples (%.1f%%), underruns=%u&quot;, available,
-993                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
-994 
-995   // Low buffer handling: DON'T pause playback - continue reading what's available
-996   // and fill the rest with silence. Pausing causes a feedback loop where:
-997   // 1. Underrun -&gt; pause reading -&gt; buffer overflows from incoming samples
-998   // 2. Threshold reached -&gt; resume reading -&gt; drains too fast -&gt; underrun again
-999   //
-1000   // Instead: always consume samples to prevent overflow, use silence for missing data
-1001   if (rb-&gt;jitter_buffer_enabled &amp;&amp; available &lt; AUDIO_JITTER_LOW_WATER_MARK) {
-1002     unsigned int underrun_count = atomic_fetch_add_u64(&amp;rb-&gt;underrun_count, 1) + 1;
-1003     log_warn_every(LOG_RATE_FAST,
-1004                    &quot;Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence&quot;,
-1005                    underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
-1006     // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
-1007   }
-1008 
-1009   size_t to_read = (samples &gt; available) ? available : samples;
-1010 
-1011   // Optimize: copy in chunks instead of one sample at a time
-1012   size_t remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
-1013 
-1014   if (to_read &lt;= remaining) {
-1015     // Can copy in one chunk
-1016     SAFE_MEMCPY(data, to_read * sizeof(float), &amp;rb-&gt;data[read_idx], to_read * sizeof(float));
-1017   } else {
-1018     // Need to wrap around - copy in two chunks
-1019     SAFE_MEMCPY(data, remaining * sizeof(float), &amp;rb-&gt;data[read_idx], remaining * sizeof(float));
-1020     SAFE_MEMCPY(&amp;data[remaining], (to_read - remaining) * sizeof(float), &amp;rb-&gt;data[0],
-1021                 (to_read - remaining) * sizeof(float));
-1022   }
-1023 
-1024   // LOCK-FREE: Store new read_index with release ordering
-1025   // This ensures all data reads above complete before the index update
-1026   unsigned int new_read_idx = (read_idx + (unsigned int)to_read) % AUDIO_RING_BUFFER_SIZE;
-1027   atomic_store_u64(&amp;rb-&gt;read_index, new_read_idx);
-1028 
-1029   // Apply fade-in if recovering from underrun
-1030   if (fade_in &amp;&amp; crossfade_remaining &gt; 0) {
-1031     int fade_start = AUDIO_CROSSFADE_SAMPLES - crossfade_remaining;
-1032     size_t fade_samples = (to_read &lt; (size_t)crossfade_remaining) ? to_read : (size_t)crossfade_remaining;
-1033 
-1034     for (size_t i = 0; i &lt; fade_samples; i++) {
-1035       float fade_factor = (float)(fade_start + (int)i + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
-1036       data[i] *= fade_factor;
-1037     }
-1038 
-1039     int new_crossfade_remaining = crossfade_remaining - (int)fade_samples;
-1040     atomic_store_u64(&amp;rb-&gt;crossfade_samples_remaining, new_crossfade_remaining);
-1041     if (new_crossfade_remaining &lt;= 0) {
-1042       atomic_store_u64(&amp;rb-&gt;crossfade_fade_in, false);
-1043       log_debug(&quot;Audio fade-in complete&quot;);
-1044     }
-1045   }
+<pre>980                                                                                     {
+981   if (!rb || !data || samples &lt;= 0) {
+982     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb=%p, data=%p, samples=%d&quot;, rb, data, samples);
+983     return 0; // Return 0 samples read on error
+984   }
+985 
+986   // LOCK-FREE: Load indices with proper memory ordering
+987   // - Load writer's write_index with acquire (see writer's data updates)
+988   // - Load our own read_index with relaxed (no sync needed with ourselves)
+989   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
+990   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
+991 
+992   // Calculate available samples
+993   size_t available;
+994   if (write_idx &gt;= read_idx) {
+995     available = write_idx - read_idx;
+996   } else {
+997     available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+998   }
+999 
+1000   // LOCK-FREE: Load jitter buffer state with acquire ordering
+1001   bool jitter_filled = atomic_load_u64(&amp;rb-&gt;jitter_buffer_filled);
+1002   int crossfade_remaining = atomic_load_u64(&amp;rb-&gt;crossfade_samples_remaining);
+1003   bool fade_in = atomic_load_u64(&amp;rb-&gt;crossfade_fade_in);
+1004 
+1005   // Jitter buffer: don't read until initial fill threshold is reached
+1006   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
+1007   if (!jitter_filled &amp;&amp; rb-&gt;jitter_buffer_enabled) {
+1008     // Check if we've accumulated enough samples to start playback
+1009     if (available &gt;= AUDIO_JITTER_BUFFER_THRESHOLD) {
+1010       atomic_store_u64(&amp;rb-&gt;jitter_buffer_filled, true);
+1011       atomic_store_u64(&amp;rb-&gt;crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES);
+1012       atomic_store_u64(&amp;rb-&gt;crossfade_fade_in, true);
+1013       log_info(&quot;Jitter buffer filled (%zu samples), starting playback with fade-in&quot;, available);
+1014       // Reload state for processing below
+1015       jitter_filled = true;
+1016       crossfade_remaining = AUDIO_CROSSFADE_SAMPLES;
+1017       fade_in = true;
+1018     } else {
+1019       // Log buffer fill progress every second
+1020       log_debug_every(NS_PER_MS_INT, &quot;Jitter buffer filling: %zu/%d samples (%.1f%%)&quot;, available,
+1021                       AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
+1022       return 0; // Return 0 samples - caller will pad with silence
+1023     }
+1024   }
+1025 
+1026   // Periodic buffer health logging (every 5 seconds when healthy)
+1027   unsigned int underruns = atomic_load_u64(&amp;rb-&gt;underrun_count);
+1028   log_dev_every(5 * NS_PER_MS_INT, &quot;Buffer health: %zu/%d samples (%.1f%%), underruns=%u&quot;, available,
+1029                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
+1030 
+1031   // Low buffer handling: DON'T pause playback - continue reading what's available
+1032   // and fill the rest with silence. Pausing causes a feedback loop where:
+1033   // 1. Underrun -&gt; pause reading -&gt; buffer overflows from incoming samples
+1034   // 2. Threshold reached -&gt; resume reading -&gt; drains too fast -&gt; underrun again
+1035   //
+1036   // Instead: always consume samples to prevent overflow, use silence for missing data
+1037   if (rb-&gt;jitter_buffer_enabled &amp;&amp; available &lt; AUDIO_JITTER_LOW_WATER_MARK) {
+1038     unsigned int underrun_count = atomic_fetch_add_u64(&amp;rb-&gt;underrun_count, 1) + 1;
+1039     log_warn_every(LOG_RATE_FAST,
+1040                    &quot;Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence&quot;,
+1041                    underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
+1042     // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
+1043   }
+1044 
+1045   size_t to_read = (samples &gt; available) ? available : samples;
 1046 
-1047   // Save last sample for potential fade-out
-1048   // Note: only update if we actually read some data
-1049   // This is NOT atomic - only the reader thread writes this
-1050   if (to_read &gt; 0) {
-1051     rb-&gt;last_sample = data[to_read - 1];
-1052   }
-1053 
-1054   // Return ACTUAL number of samples read, not padded count
-1055   // The caller (mixer) expects truthful return values to detect underruns
-1056   // and handle silence padding externally. Internal padding creates double-padding bugs.
-1057   //
-1058   // This function was incorrectly returning `samples` even when
-1059   // it only read `to_read` samples. This broke the mixer's underrun detection.
-1060   return to_read;
-1061 }</pre>
+1047   // Optimize: copy in chunks instead of one sample at a time
+1048   size_t remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
+1049 
+1050   if (to_read &lt;= remaining) {
+1051     // Can copy in one chunk
+1052     SAFE_MEMCPY(data, to_read * sizeof(float), &amp;rb-&gt;data[read_idx], to_read * sizeof(float));
+1053   } else {
+1054     // Need to wrap around - copy in two chunks
+1055     SAFE_MEMCPY(data, remaining * sizeof(float), &amp;rb-&gt;data[read_idx], remaining * sizeof(float));
+1056     SAFE_MEMCPY(&amp;data[remaining], (to_read - remaining) * sizeof(float), &amp;rb-&gt;data[0],
+1057                 (to_read - remaining) * sizeof(float));
+1058   }
+1059 
+1060   // LOCK-FREE: Store new read_index with release ordering
+1061   // This ensures all data reads above complete before the index update
+1062   unsigned int new_read_idx = (read_idx + (unsigned int)to_read) % AUDIO_RING_BUFFER_SIZE;
+1063   atomic_store_u64(&amp;rb-&gt;read_index, new_read_idx);
+1064 
+1065   // Apply fade-in if recovering from underrun
+1066   if (fade_in &amp;&amp; crossfade_remaining &gt; 0) {
+1067     int fade_start = AUDIO_CROSSFADE_SAMPLES - crossfade_remaining;
+1068     size_t fade_samples = (to_read &lt; (size_t)crossfade_remaining) ? to_read : (size_t)crossfade_remaining;
+1069 
+1070     for (size_t i = 0; i &lt; fade_samples; i++) {
+1071       float fade_factor = (float)(fade_start + (int)i + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
+1072       data[i] *= fade_factor;
+1073     }
+1074 
+1075     int new_crossfade_remaining = crossfade_remaining - (int)fade_samples;
+1076     atomic_store_u64(&amp;rb-&gt;crossfade_samples_remaining, new_crossfade_remaining);
+1077     if (new_crossfade_remaining &lt;= 0) {
+1078       atomic_store_u64(&amp;rb-&gt;crossfade_fade_in, false);
+1079       log_debug(&quot;Audio fade-in complete&quot;);
+1080     }
+1081   }
+1082 
+1083   // Save last sample for potential fade-out
+1084   // Note: only update if we actually read some data
+1085   // This is NOT atomic - only the reader thread writes this
+1086   if (to_read &gt; 0) {
+1087     rb-&gt;last_sample = data[to_read - 1];
+1088   }
+1089 
+1090   // Return ACTUAL number of samples read, not padded count
+1091   // The caller (mixer) expects truthful return values to detect underruns
+1092   // and handle silence padding externally. Internal padding creates double-padding bugs.
+1093   //
+1094   // This function was incorrectly returning `samples` even when
+1095   // it only read `to_read` samples. This broke the mixer's underrun detection.
+1096   return to_read;
+1097 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
@@ -2192,28 +2192,28 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp">Registers all atomic fields within the audio ring buffer with the
     named registry for debug tracking and --sync-state output. Should be called
     after creation.</p>
-<p class="Pp">Definition at line <b>813</b> of file
+<p class="Pp">Definition at line <b>849</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>813                                                                                            {
-814   if (!rb || !context_name || !context_name[0]) {
-815     return;
-816   }
-817 
-818   // Register the ring buffer itself with a unique name
-819   NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name, NULL);
-820 
-821   // Ring buffer indices (lock-free producer-consumer)
-822   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;write_index, &quot;write_index_producer_position&quot;, (uintptr_t)(const void *)(rb));
-823   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;read_index, &quot;read_index_consumer_position&quot;, (uintptr_t)(const void *)(rb));
-824 
-825   // Jitter buffer state management
-826   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;jitter_buffer_filled, &quot;jitter_buffer_has_filled_threshold_flag&quot;, (uintptr_t)(const void *)(rb));
-827   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;crossfade_samples_remaining, &quot;crossfade_samples_remaining_count&quot;, (uintptr_t)(const void *)(rb));
-828   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;crossfade_fade_in, &quot;crossfade_fade_in_direction_flag&quot;, (uintptr_t)(const void *)(rb));
-829 
-830   // Audio quality monitoring
-831   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;underrun_count, &quot;audio_underrun_event_counter&quot;, (uintptr_t)(const void *)(rb));
-832 }</pre>
+<pre>849                                                                                            {
+850   if (!rb || !context_name || !context_name[0]) {
+851     return;
+852   }
+853 
+854   // Register the ring buffer itself with a unique name
+855   NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name, NULL);
+856 
+857   // Ring buffer indices (lock-free producer-consumer)
+858   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;write_index, &quot;write_index_producer_position&quot;, (uintptr_t)(const void *)(rb));
+859   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;read_index, &quot;read_index_consumer_position&quot;, (uintptr_t)(const void *)(rb));
+860 
+861   // Jitter buffer state management
+862   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;jitter_buffer_filled, &quot;jitter_buffer_has_filled_threshold_flag&quot;, (uintptr_t)(const void *)(rb));
+863   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;crossfade_samples_remaining, &quot;crossfade_samples_remaining_count&quot;, (uintptr_t)(const void *)(rb));
+864   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;crossfade_fade_in, &quot;crossfade_fade_in_direction_flag&quot;, (uintptr_t)(const void *)(rb));
+865 
+866   // Audio quality monitoring
+867   NAMED_REGISTER_ATOMIC(&amp;rb-&gt;underrun_count, &quot;audio_underrun_event_counter&quot;, (uintptr_t)(const void *)(rb));
+868 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer::crossfade_fade_in</b>,
@@ -2235,20 +2235,20 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <div class="Bd-indent"><i>rb</i> Audio ring buffer (must not be NULL)</div>
 <p class="Pp">Unregisters all atomic fields registered by
     <b>audio_ring_buffer_register_atomics()</b>.</p>
-<p class="Pp">Definition at line <b>834</b> of file
+<p class="Pp">Definition at line <b>870</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>834                                                                    {
-835   if (!rb) {
-836     return;
-837   }
-838 
-839   NAMED_UNREGISTER(&amp;rb-&gt;write_index);
-840   NAMED_UNREGISTER(&amp;rb-&gt;read_index);
-841   NAMED_UNREGISTER(&amp;rb-&gt;jitter_buffer_filled);
-842   NAMED_UNREGISTER(&amp;rb-&gt;crossfade_samples_remaining);
-843   NAMED_UNREGISTER(&amp;rb-&gt;crossfade_fade_in);
-844   NAMED_UNREGISTER(&amp;rb-&gt;underrun_count);
-845 }</pre>
+<pre>870                                                                    {
+871   if (!rb) {
+872     return;
+873   }
+874 
+875   NAMED_UNREGISTER(&amp;rb-&gt;write_index);
+876   NAMED_UNREGISTER(&amp;rb-&gt;read_index);
+877   NAMED_UNREGISTER(&amp;rb-&gt;jitter_buffer_filled);
+878   NAMED_UNREGISTER(&amp;rb-&gt;crossfade_samples_remaining);
+879   NAMED_UNREGISTER(&amp;rb-&gt;crossfade_fade_in);
+880   NAMED_UNREGISTER(&amp;rb-&gt;underrun_count);
+881 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer::crossfade_fade_in</b>,
@@ -2286,90 +2286,90 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 </div>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Data must contain at least samples float values.</div>
-<p class="Pp">Definition at line <b>861</b> of file
+<p class="Pp">Definition at line <b>897</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>861                                                                                                    {
-862   if (!rb || !data || samples &lt;= 0)
-863     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb=%p, data=%p, samples=%d&quot;, rb, data, samples);
-864 
-865   // Validate samples doesn't exceed our buffer size
-866   if (samples &gt; AUDIO_RING_BUFFER_SIZE) {
-867     return SET_ERRNO(ERROR_BUFFER, &quot;Attempted to write %d samples, but buffer size is only %d&quot;, samples,
-868                      AUDIO_RING_BUFFER_SIZE);
-869   }
-870 
-871   // LOCK-FREE: Load indices with proper memory ordering
-872   // - Load our own write_index with relaxed (no sync needed with ourselves)
-873   // - Load reader's read_index with acquire (see reader's updates to free space)
-874   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
-875   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
-876 
-877   // Calculate current buffer level (how many samples are buffered)
-878   int buffer_level;
-879   if (write_idx &gt;= read_idx) {
-880     buffer_level = (int)(write_idx - read_idx);
-881   } else {
-882     buffer_level = AUDIO_RING_BUFFER_SIZE - (int)(read_idx - write_idx);
-883   }
-884   // Reserve 1 slot to distinguish between full and empty states
-885   // (when buffer is full, write_idx will be just before read_idx, not equal to it)
-886   int available = AUDIO_RING_BUFFER_SIZE - 1 - buffer_level;
-887 
-888   // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
-889   // Writer must not modify read_index (race condition with reader).
-890   // Instead, we drop incoming samples to keep buffer bounded.
-891   // This sacrifices newest data to prevent unbounded latency growth.
-892   if (buffer_level &gt; AUDIO_JITTER_HIGH_WATER_MARK) {
-893     // Buffer is already too full - drop incoming samples to maintain target level
-894     int target_writes = AUDIO_JITTER_TARGET_LEVEL - buffer_level;
-895     if (target_writes &lt; 0) {
-896       target_writes = 0; // Buffer is way over - drop everything
-897     }
-898 
-899     if (samples &gt; target_writes) {
-900       int dropped = samples - target_writes;
-901       log_warn_every(LOG_RATE_FAST,
-902                      &quot;Audio buffer high water mark exceeded (%d &gt; %d): dropping %d INCOMING samples &quot;
-903                      &quot;(keeping newest %d to maintain target %d)&quot;,
-904                      buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped, target_writes, AUDIO_JITTER_TARGET_LEVEL);
-905       samples = target_writes; // Only write what fits within target level
-906     }
-907   }
-908 
-909   // Now write the new samples - should always have enough space after above
-910   int samples_to_write = samples;
-911   if (samples &gt; available) {
-912     // This should rarely happen after the high water mark logic above
-913     int samples_dropped = samples - available;
-914     samples_to_write = available;
-915     log_warn_every(LOG_RATE_FAST, &quot;Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)&quot;,
-916                    samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
-917   }
-918 
-919   // Write only the samples that fit (preserves existing data integrity)
-920   if (samples_to_write &gt; 0) {
-921     int remaining = AUDIO_RING_BUFFER_SIZE - (int)write_idx;
-922 
-923     if (samples_to_write &lt;= remaining) {
-924       // Can copy in one chunk
-925       SAFE_MEMCPY(&amp;rb-&gt;data[write_idx], samples_to_write * sizeof(float), data, samples_to_write * sizeof(float));
-926     } else {
-927       // Need to wrap around - copy in two chunks
-928       SAFE_MEMCPY(&amp;rb-&gt;data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
-929       SAFE_MEMCPY(&amp;rb-&gt;data[0], (samples_to_write - remaining) * sizeof(float), &amp;data[remaining],
-930                   (samples_to_write - remaining) * sizeof(float));
-931     }
-932 
-933     // LOCK-FREE: Store new write_index with release ordering
-934     // This ensures all data writes above are visible before the index update
-935     unsigned int new_write_idx = (write_idx + (unsigned int)samples_to_write) % AUDIO_RING_BUFFER_SIZE;
-936     atomic_store_u64(&amp;rb-&gt;write_index, new_write_idx);
-937   }
-938 
-939   // Note: jitter buffer fill check is now done in read function for better control
-940 
-941   return ASCIICHAT_OK; // Success
-942 }</pre>
+<pre>897                                                                                                    {
+898   if (!rb || !data || samples &lt;= 0)
+899     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: rb=%p, data=%p, samples=%d&quot;, rb, data, samples);
+900 
+901   // Validate samples doesn't exceed our buffer size
+902   if (samples &gt; AUDIO_RING_BUFFER_SIZE) {
+903     return SET_ERRNO(ERROR_BUFFER, &quot;Attempted to write %d samples, but buffer size is only %d&quot;, samples,
+904                      AUDIO_RING_BUFFER_SIZE);
+905   }
+906 
+907   // LOCK-FREE: Load indices with proper memory ordering
+908   // - Load our own write_index with relaxed (no sync needed with ourselves)
+909   // - Load reader's read_index with acquire (see reader's updates to free space)
+910   unsigned int write_idx = atomic_load_u64(&amp;rb-&gt;write_index);
+911   unsigned int read_idx = atomic_load_u64(&amp;rb-&gt;read_index);
+912 
+913   // Calculate current buffer level (how many samples are buffered)
+914   int buffer_level;
+915   if (write_idx &gt;= read_idx) {
+916     buffer_level = (int)(write_idx - read_idx);
+917   } else {
+918     buffer_level = AUDIO_RING_BUFFER_SIZE - (int)(read_idx - write_idx);
+919   }
+920   // Reserve 1 slot to distinguish between full and empty states
+921   // (when buffer is full, write_idx will be just before read_idx, not equal to it)
+922   int available = AUDIO_RING_BUFFER_SIZE - 1 - buffer_level;
+923 
+924   // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
+925   // Writer must not modify read_index (race condition with reader).
+926   // Instead, we drop incoming samples to keep buffer bounded.
+927   // This sacrifices newest data to prevent unbounded latency growth.
+928   if (buffer_level &gt; AUDIO_JITTER_HIGH_WATER_MARK) {
+929     // Buffer is already too full - drop incoming samples to maintain target level
+930     int target_writes = AUDIO_JITTER_TARGET_LEVEL - buffer_level;
+931     if (target_writes &lt; 0) {
+932       target_writes = 0; // Buffer is way over - drop everything
+933     }
+934 
+935     if (samples &gt; target_writes) {
+936       int dropped = samples - target_writes;
+937       log_warn_every(LOG_RATE_FAST,
+938                      &quot;Audio buffer high water mark exceeded (%d &gt; %d): dropping %d INCOMING samples &quot;
+939                      &quot;(keeping newest %d to maintain target %d)&quot;,
+940                      buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped, target_writes, AUDIO_JITTER_TARGET_LEVEL);
+941       samples = target_writes; // Only write what fits within target level
+942     }
+943   }
+944 
+945   // Now write the new samples - should always have enough space after above
+946   int samples_to_write = samples;
+947   if (samples &gt; available) {
+948     // This should rarely happen after the high water mark logic above
+949     int samples_dropped = samples - available;
+950     samples_to_write = available;
+951     log_warn_every(LOG_RATE_FAST, &quot;Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)&quot;,
+952                    samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
+953   }
+954 
+955   // Write only the samples that fit (preserves existing data integrity)
+956   if (samples_to_write &gt; 0) {
+957     int remaining = AUDIO_RING_BUFFER_SIZE - (int)write_idx;
+958 
+959     if (samples_to_write &lt;= remaining) {
+960       // Can copy in one chunk
+961       SAFE_MEMCPY(&amp;rb-&gt;data[write_idx], samples_to_write * sizeof(float), data, samples_to_write * sizeof(float));
+962     } else {
+963       // Need to wrap around - copy in two chunks
+964       SAFE_MEMCPY(&amp;rb-&gt;data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
+965       SAFE_MEMCPY(&amp;rb-&gt;data[0], (samples_to_write - remaining) * sizeof(float), &amp;data[remaining],
+966                   (samples_to_write - remaining) * sizeof(float));
+967     }
+968 
+969     // LOCK-FREE: Store new write_index with release ordering
+970     // This ensures all data writes above are visible before the index update
+971     unsigned int new_write_idx = (write_idx + (unsigned int)samples_to_write) % AUDIO_RING_BUFFER_SIZE;
+972     atomic_store_u64(&amp;rb-&gt;write_index, new_write_idx);
+973   }
+974 
+975   // Note: jitter buffer fill check is now done in read function for better control
+976 
+977   return ASCIICHAT_OK; // Success
+978 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>,
@@ -2404,13 +2404,13 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <p class="Pp"></p>
 <p class="Pp">Pass NULL to disable pipeline integration.</p>
 </div>
-<p class="Pp">Definition at line <b>1342</b> of file
+<p class="Pp">Definition at line <b>1378</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1342                                                               {
-1343   if (!ctx)
-1344     return;
-1345   ctx-&gt;audio_pipeline = pipeline;
-1346 }</pre>
+<pre>1378                                                               {
+1379   if (!ctx)
+1380     return;
+1381   ctx-&gt;audio_pipeline = pipeline;
+1382 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_context_t::audio_pipeline</b>.</p>
@@ -2450,16 +2450,16 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
     callback threads. For other backends, this function has limited effect when
     called from the main thread.</p>
 </div>
-<p class="Pp">Definition at line <b>1994</b> of file
+<p class="Pp">Definition at line <b>2030</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1994                                                     {
-1995   // Delegate to platform abstraction layer
-1996   asciichat_error_t result = asciichat_thread_set_realtime_priority();
-1997   if (result == ASCIICHAT_OK) {
-1998     log_debug(&quot;&#x2713; Audio thread real-time priority set successfully&quot;);
-1999   }
-2000   return result;
-2001 }</pre>
+<pre>2030                                                     {
+2031   // Delegate to platform abstraction layer
+2032   asciichat_error_t result = asciichat_thread_set_realtime_priority();
+2033   if (result == ASCIICHAT_OK) {
+2034     log_debug(&quot;&#x2713; Audio thread real-time priority set successfully&quot;);
+2035   }
+2036   return result;
+2037 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -2509,26 +2509,26 @@ if (enable_mic) {
     audio_ctx-&gt;playback_only = true;   // Disable microphone to prevent interference
 }
 </pre>
-<p class="Pp">Definition at line <b>2097</b> of file
+<p class="Pp">Definition at line <b>2133</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2097                                                                                  {
-2098   switch (source) {
-2099   case AUDIO_SOURCE_AUTO:
-2100     return !has_media_audio;
-2101 
-2102   case AUDIO_SOURCE_MIC:
-2103     return true;
-2104 
-2105   case AUDIO_SOURCE_MEDIA:
-2106     return false;
-2107 
-2108   case AUDIO_SOURCE_BOTH:
-2109     return true;
-2110 
-2111   default:
-2112     return !has_media_audio;
-2113   }
-2114 }</pre>
+<pre>2133                                                                                  {
+2134   switch (source) {
+2135   case AUDIO_SOURCE_AUTO:
+2136     return !has_media_audio;
+2137 
+2138   case AUDIO_SOURCE_MIC:
+2139     return true;
+2140 
+2141   case AUDIO_SOURCE_MEDIA:
+2142     return false;
+2143 
+2144   case AUDIO_SOURCE_BOTH:
+2145     return true;
+2146 
+2147   default:
+2148     return !has_media_audio;
+2149   }
+2150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>AUDIO_SOURCE_AUTO</b>, <b>AUDIO_SOURCE_BOTH</b>,
@@ -2574,400 +2574,400 @@ if (enable_mic) {
 </div>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Both input and output devices must be available.</div>
-<p class="Pp">Definition at line <b>1367</b> of file
+<p class="Pp">Definition at line <b>1403</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1367                                                            {
-1368   if (!ctx || !ctx-&gt;initialized) {
-1369     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Audio context not initialized&quot;);
-1370   }
-1371 
-1372   // Initialize PortAudio here, when we actually need to open streams
-1373   // This defers Pa_Initialize() until necessary, avoiding premature ALSA allocation
-1374   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
-1375   if (pa_result != ASCIICHAT_OK) {
-1376     return pa_result;
-1377   }
-1378 
-1379   // Check if already running (without holding lock during blocking operations)
-1380   // Do this check first before acquiring any locks
-1381   if (ctx-&gt;duplex_stream || ctx-&gt;input_stream || ctx-&gt;output_stream) {
-1382     return ASCIICHAT_OK;
-1383   }
-1384 
-1385   // Setup input parameters (skip if playback-only mode)
-1386   PaStreamParameters inputParams = {0};
-1387   const PaDeviceInfo *inputInfo = NULL;
-1388   bool has_input = false;
-1389 
-1390   if (!ctx-&gt;playback_only) {
-1391     if (GET_OPTION(microphone_index) &gt;= 0) {
-1392       inputParams.device = GET_OPTION(microphone_index);
-1393     } else {
-1394       inputParams.device = Pa_GetDefaultInputDevice();
-1395     }
-1396 
-1397     if (inputParams.device == paNoDevice) {
-1398       return SET_ERRNO(ERROR_AUDIO, &quot;No input device available&quot;);
-1399     }
-1400 
-1401     inputInfo = Pa_GetDeviceInfo(inputParams.device);
-1402     if (!inputInfo) {
-1403       mutex_unlock(&amp;ctx-&gt;state_mutex);
-1404       return SET_ERRNO(ERROR_AUDIO, &quot;Input device info not found&quot;);
-1405     }
-1406 
-1407     has_input = true;
-1408     inputParams.channelCount = AUDIO_CHANNELS;
-1409     inputParams.sampleFormat = paFloat32;
-1410     inputParams.suggestedLatency = inputInfo-&gt;defaultLowInputLatency;
-1411     inputParams.hostApiSpecificStreamInfo = NULL;
-1412   }
-1413 
-1414   // Setup output parameters
-1415   PaStreamParameters outputParams;
-1416   const PaDeviceInfo *outputInfo = NULL;
-1417   bool has_output = false;
-1418 
-1419   if (GET_OPTION(speakers_index) &gt;= 0) {
-1420     outputParams.device = GET_OPTION(speakers_index);
-1421   } else {
-1422     outputParams.device = Pa_GetDefaultOutputDevice();
-1423   }
-1424 
-1425   if (outputParams.device != paNoDevice) {
-1426     outputInfo = Pa_GetDeviceInfo(outputParams.device);
-1427     if (outputInfo) {
-1428       has_output = true;
-1429       outputParams.channelCount = AUDIO_CHANNELS;
-1430       outputParams.sampleFormat = paFloat32;
-1431       outputParams.suggestedLatency = outputInfo-&gt;defaultLowOutputLatency;
-1432       outputParams.hostApiSpecificStreamInfo = NULL;
-1433     } else {
-1434       log_warn(&quot;Output device info not found for device %d&quot;, outputParams.device);
+<pre>1403                                                            {
+1404   if (!ctx || !ctx-&gt;initialized) {
+1405     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Audio context not initialized&quot;);
+1406   }
+1407 
+1408   // Initialize PortAudio here, when we actually need to open streams
+1409   // This defers Pa_Initialize() until necessary, avoiding premature ALSA allocation
+1410   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+1411   if (pa_result != ASCIICHAT_OK) {
+1412     return pa_result;
+1413   }
+1414 
+1415   // Check if already running (without holding lock during blocking operations)
+1416   // Do this check first before acquiring any locks
+1417   if (ctx-&gt;duplex_stream || ctx-&gt;input_stream || ctx-&gt;output_stream) {
+1418     return ASCIICHAT_OK;
+1419   }
+1420 
+1421   // Setup input parameters (skip if playback-only mode)
+1422   PaStreamParameters inputParams = {0};
+1423   const PaDeviceInfo *inputInfo = NULL;
+1424   bool has_input = false;
+1425 
+1426   if (!ctx-&gt;playback_only) {
+1427     if (GET_OPTION(microphone_index) &gt;= 0) {
+1428       inputParams.device = GET_OPTION(microphone_index);
+1429     } else {
+1430       inputParams.device = Pa_GetDefaultInputDevice();
+1431     }
+1432 
+1433     if (inputParams.device == paNoDevice) {
+1434       return SET_ERRNO(ERROR_AUDIO, &quot;No input device available&quot;);
 1435     }
-1436   }
-1437 
-1438   // Store device rates for diagnostics (only access if device info was retrieved)
-1439   ctx-&gt;input_device_rate = (has_input &amp;&amp; inputInfo) ? inputInfo-&gt;defaultSampleRate : 0;
-1440   ctx-&gt;output_device_rate = (has_output &amp;&amp; outputInfo) ? outputInfo-&gt;defaultSampleRate : 0;
-1441 
-1442   log_debug(&quot;Opening audio:&quot;);
-1443   if (has_input) {
-1444     log_info(&quot;  Input:  %s (%.0f Hz)&quot;, inputInfo-&gt;name, inputInfo-&gt;defaultSampleRate);
-1445   } else if (ctx-&gt;playback_only) {
-1446     log_debug(&quot;  Input:  (playback-only mode - no microphone)&quot;);
-1447   } else {
-1448     log_debug(&quot;  Input:  (none)&quot;);
-1449   }
-1450   if (has_output) {
-1451     log_info(&quot;  Output: %s (%.0f Hz)&quot;, outputInfo-&gt;name, outputInfo-&gt;defaultSampleRate);
-1452   } else {
-1453     log_debug(&quot;  Output: None (input-only mode - will send audio to server)&quot;);
-1454   }
-1455 
-1456   // Check if sample rates differ - ALSA full-duplex doesn't handle this well
-1457   // If no input or no output, always use separate streams
-1458   bool rates_differ = has_input &amp;&amp; has_output &amp;&amp; (inputInfo-&gt;defaultSampleRate != outputInfo-&gt;defaultSampleRate);
-1459   bool try_separate = rates_differ || !has_input || !has_output;
-1460   PaError err = paNoError;
-1461 
-1462   if (!try_separate) {
-1463     // Try full-duplex first (preferred - perfect AEC3 timing)
-1464     LOG_IO(&quot;portaudio&quot;, {
-1465       err = Pa_OpenStream(&amp;ctx-&gt;duplex_stream, &amp;inputParams, &amp;outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
-1466                           paClipOff, duplex_callback, ctx);
-1467     });
-1468 
-1469     if (err == paNoError) {
-1470       LOG_IO(&quot;portaudio&quot;, {
-1471         err = Pa_StartStream(ctx-&gt;duplex_stream);
-1472       });
-1473       if (err != paNoError) {
-1474         LOG_IO(&quot;portaudio&quot;, {
-1475           Pa_CloseStream(ctx-&gt;duplex_stream);
-1476         });
-1477         ctx-&gt;duplex_stream = NULL;
-1478         log_warn(&quot;Full-duplex stream failed to start: %s&quot;, Pa_GetErrorText(err));
-1479         try_separate = true;
-1480       }
-1481     } else {
-1482       log_warn(&quot;Full-duplex stream failed to open: %s&quot;, Pa_GetErrorText(err));
-1483       try_separate = true;
-1484     }
+1436 
+1437     inputInfo = Pa_GetDeviceInfo(inputParams.device);
+1438     if (!inputInfo) {
+1439       mutex_unlock(&amp;ctx-&gt;state_mutex);
+1440       return SET_ERRNO(ERROR_AUDIO, &quot;Input device info not found&quot;);
+1441     }
+1442 
+1443     has_input = true;
+1444     inputParams.channelCount = AUDIO_CHANNELS;
+1445     inputParams.sampleFormat = paFloat32;
+1446     inputParams.suggestedLatency = inputInfo-&gt;defaultLowInputLatency;
+1447     inputParams.hostApiSpecificStreamInfo = NULL;
+1448   }
+1449 
+1450   // Setup output parameters
+1451   PaStreamParameters outputParams;
+1452   const PaDeviceInfo *outputInfo = NULL;
+1453   bool has_output = false;
+1454 
+1455   if (GET_OPTION(speakers_index) &gt;= 0) {
+1456     outputParams.device = GET_OPTION(speakers_index);
+1457   } else {
+1458     outputParams.device = Pa_GetDefaultOutputDevice();
+1459   }
+1460 
+1461   if (outputParams.device != paNoDevice) {
+1462     outputInfo = Pa_GetDeviceInfo(outputParams.device);
+1463     if (outputInfo) {
+1464       has_output = true;
+1465       outputParams.channelCount = AUDIO_CHANNELS;
+1466       outputParams.sampleFormat = paFloat32;
+1467       outputParams.suggestedLatency = outputInfo-&gt;defaultLowOutputLatency;
+1468       outputParams.hostApiSpecificStreamInfo = NULL;
+1469     } else {
+1470       log_warn(&quot;Output device info not found for device %d&quot;, outputParams.device);
+1471     }
+1472   }
+1473 
+1474   // Store device rates for diagnostics (only access if device info was retrieved)
+1475   ctx-&gt;input_device_rate = (has_input &amp;&amp; inputInfo) ? inputInfo-&gt;defaultSampleRate : 0;
+1476   ctx-&gt;output_device_rate = (has_output &amp;&amp; outputInfo) ? outputInfo-&gt;defaultSampleRate : 0;
+1477 
+1478   log_debug(&quot;Opening audio:&quot;);
+1479   if (has_input) {
+1480     log_info(&quot;  Input:  %s (%.0f Hz)&quot;, inputInfo-&gt;name, inputInfo-&gt;defaultSampleRate);
+1481   } else if (ctx-&gt;playback_only) {
+1482     log_debug(&quot;  Input:  (playback-only mode - no microphone)&quot;);
+1483   } else {
+1484     log_debug(&quot;  Input:  (none)&quot;);
 1485   }
-1486 
-1487   if (try_separate) {
-1488     // Fall back to separate streams (needed when sample rates differ or input-only/playback-only mode)
-1489     if (has_output &amp;&amp; has_input) {
-1490       log_info(&quot;Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)&quot;,
-1491                inputInfo-&gt;defaultSampleRate, outputInfo-&gt;defaultSampleRate);
-1492       log_info(&quot;  Will resample: buffer at %.0f Hz &#x2192; output at %.0f Hz&quot;, (double)AUDIO_SAMPLE_RATE,
-1493                outputInfo-&gt;defaultSampleRate);
-1494     } else if (has_output) {
-1495       log_debug(&quot;Using output-only mode (playback-only for mirror/media)&quot;);
-1496     } else if (has_input) {
-1497       log_info(&quot;Using input-only mode (no output device available)&quot;);
-1498     }
-1499 
-1500     // Store the internal sample rate (buffer rate)
-1501     ctx-&gt;sample_rate = AUDIO_SAMPLE_RATE;
-1502 
-1503     // Create render buffer for AEC3 reference synchronization
-1504     ctx-&gt;render_buffer = audio_ring_buffer_create_for_capture();
-1505     if (!ctx-&gt;render_buffer) {
-1506       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create render buffer&quot;);
-1507     }
-1508 
-1509     // Open output stream only if output device exists
-1510     bool output_ok = false;
-1511     double actual_output_rate = 0;
-1512     if (has_output) {
-1513       // Try to use AUDIO_SAMPLE_RATE (48kHz) first for best quality and duplex compatibility
-1514       // Fall back to native rate if 48kHz not supported
-1515       double preferred_rate = AUDIO_SAMPLE_RATE;
-1516       double native_rate = outputInfo-&gt;defaultSampleRate;
-1517 
-1518       log_debug(&quot;Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)&quot;, preferred_rate, native_rate);
-1519 
-1520       // Always use output_callback for output streams (both output-only and duplex modes)
-1521       // PortAudio will invoke the callback whenever it needs audio data
-1522       // The callback reads from media_source (mirror mode) or playback buffers (network mode)
-1523       PaStreamCallback *callback = output_callback;
-1524 
-1525       // Try preferred rate first
-1526       LOG_IO(&quot;portaudio&quot;, {
-1527         err = Pa_OpenStream(&amp;ctx-&gt;output_stream, NULL, &amp;outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-1528                             callback, ctx);
-1529       });
-1530 
-1531       if (err == paNoError) {
-1532         actual_output_rate = preferred_rate;
-1533         output_ok = true;
-1534         log_info(&quot;&#x2713; Output opened at preferred rate: %.0f Hz (matches input - optimal!)&quot;, preferred_rate);
-1535       } else {
-1536         log_warn(&quot;Failed to open output at %.0f Hz: %s, trying native rate %.0f Hz&quot;, preferred_rate,
-1537                  Pa_GetErrorText(err), native_rate);
+1486   if (has_output) {
+1487     log_info(&quot;  Output: %s (%.0f Hz)&quot;, outputInfo-&gt;name, outputInfo-&gt;defaultSampleRate);
+1488   } else {
+1489     log_debug(&quot;  Output: None (input-only mode - will send audio to server)&quot;);
+1490   }
+1491 
+1492   // Check if sample rates differ - ALSA full-duplex doesn't handle this well
+1493   // If no input or no output, always use separate streams
+1494   bool rates_differ = has_input &amp;&amp; has_output &amp;&amp; (inputInfo-&gt;defaultSampleRate != outputInfo-&gt;defaultSampleRate);
+1495   bool try_separate = rates_differ || !has_input || !has_output;
+1496   PaError err = paNoError;
+1497 
+1498   if (!try_separate) {
+1499     // Try full-duplex first (preferred - perfect AEC3 timing)
+1500     LOG_IO(&quot;portaudio&quot;, {
+1501       err = Pa_OpenStream(&amp;ctx-&gt;duplex_stream, &amp;inputParams, &amp;outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
+1502                           paClipOff, duplex_callback, ctx);
+1503     });
+1504 
+1505     if (err == paNoError) {
+1506       LOG_IO(&quot;portaudio&quot;, {
+1507         err = Pa_StartStream(ctx-&gt;duplex_stream);
+1508       });
+1509       if (err != paNoError) {
+1510         LOG_IO(&quot;portaudio&quot;, {
+1511           Pa_CloseStream(ctx-&gt;duplex_stream);
+1512         });
+1513         ctx-&gt;duplex_stream = NULL;
+1514         log_warn(&quot;Full-duplex stream failed to start: %s&quot;, Pa_GetErrorText(err));
+1515         try_separate = true;
+1516       }
+1517     } else {
+1518       log_warn(&quot;Full-duplex stream failed to open: %s&quot;, Pa_GetErrorText(err));
+1519       try_separate = true;
+1520     }
+1521   }
+1522 
+1523   if (try_separate) {
+1524     // Fall back to separate streams (needed when sample rates differ or input-only/playback-only mode)
+1525     if (has_output &amp;&amp; has_input) {
+1526       log_info(&quot;Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)&quot;,
+1527                inputInfo-&gt;defaultSampleRate, outputInfo-&gt;defaultSampleRate);
+1528       log_info(&quot;  Will resample: buffer at %.0f Hz &#x2192; output at %.0f Hz&quot;, (double)AUDIO_SAMPLE_RATE,
+1529                outputInfo-&gt;defaultSampleRate);
+1530     } else if (has_output) {
+1531       log_debug(&quot;Using output-only mode (playback-only for mirror/media)&quot;);
+1532     } else if (has_input) {
+1533       log_info(&quot;Using input-only mode (no output device available)&quot;);
+1534     }
+1535 
+1536     // Store the internal sample rate (buffer rate)
+1537     ctx-&gt;sample_rate = AUDIO_SAMPLE_RATE;
 1538 
-1539         // If first Pa_OpenStream call left a partial stream, clean it up before retrying
-1540         if (ctx-&gt;output_stream) {
-1541           log_debug(&quot;Closing partially-opened output stream from failed preferred rate&quot;);
-1542           LOG_IO(&quot;portaudio&quot;, {
-1543             Pa_CloseStream(ctx-&gt;output_stream);
-1544           });
-1545           ctx-&gt;output_stream = NULL;
-1546         }
-1547 
-1548         // Fall back to native rate (still using blocking mode for output-only)
-1549         LOG_IO(&quot;portaudio&quot;, {
-1550           err = Pa_OpenStream(&amp;ctx-&gt;output_stream, NULL, &amp;outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-1551                               callback, ctx);
-1552         });
+1539     // Create render buffer for AEC3 reference synchronization
+1540     ctx-&gt;render_buffer = audio_ring_buffer_create_for_capture();
+1541     if (!ctx-&gt;render_buffer) {
+1542       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create render buffer&quot;);
+1543     }
+1544 
+1545     // Open output stream only if output device exists
+1546     bool output_ok = false;
+1547     double actual_output_rate = 0;
+1548     if (has_output) {
+1549       // Try to use AUDIO_SAMPLE_RATE (48kHz) first for best quality and duplex compatibility
+1550       // Fall back to native rate if 48kHz not supported
+1551       double preferred_rate = AUDIO_SAMPLE_RATE;
+1552       double native_rate = outputInfo-&gt;defaultSampleRate;
 1553 
-1554         if (err == paNoError) {
-1555           actual_output_rate = native_rate;
-1556           output_ok = true;
-1557           log_info(&quot;&#x2713; Output opened at native rate: %.0f Hz (will need resampling)&quot;, native_rate);
-1558         } else {
-1559           log_warn(&quot;Failed to open output stream at native rate: %s&quot;, Pa_GetErrorText(err));
-1560           // Clean up if fallback also failed
-1561           if (ctx-&gt;output_stream) {
-1562             log_debug(&quot;Closing partially-opened output stream from failed native rate&quot;);
-1563             LOG_IO(&quot;portaudio&quot;, {
-1564               Pa_CloseStream(ctx-&gt;output_stream);
-1565             });
-1566             ctx-&gt;output_stream = NULL;
-1567           }
-1568         }
-1569       }
-1570 
-1571       // Store actual output rate for resampling
-1572       if (output_ok) {
-1573         ctx-&gt;output_device_rate = actual_output_rate;
-1574         if (actual_output_rate != AUDIO_SAMPLE_RATE) {
-1575           log_warn(&quot;&#x26A0;&#xFE0F;  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used&quot;,
-1576                    actual_output_rate, (double)AUDIO_SAMPLE_RATE);
-1577         }
-1578       }
-1579     }
-1580 
-1581     // Open input stream only if we have input (skip for playback-only mode)
-1582     bool input_ok = !has_input; // If no input, mark as OK (skip)
-1583     if (has_input) {
-1584       // Use pipeline sample rate (AUDIO_SAMPLE_RATE)
-1585       // In input-only mode, we don't need to match output device rate
-1586       double input_stream_rate = AUDIO_SAMPLE_RATE;
-1587       LOG_IO(&quot;portaudio&quot;, {
-1588         err = Pa_OpenStream(&amp;ctx-&gt;input_stream, &amp;inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-1589                             input_callback, ctx);
-1590       });
-1591       input_ok = (err == paNoError);
-1592 
-1593       // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
-1594       if (!input_ok) {
-1595         log_debug(&quot;Input failed - trying device 0 as fallback&quot;);
-1596 
-1597         // Clean up partial stream from first attempt before retrying
-1598         if (ctx-&gt;input_stream) {
-1599           log_debug(&quot;Closing partially-opened input stream from failed primary device&quot;);
-1600           LOG_IO(&quot;portaudio&quot;, {
-1601             Pa_CloseStream(ctx-&gt;input_stream);
-1602           });
-1603           ctx-&gt;input_stream = NULL;
+1554       log_debug(&quot;Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)&quot;, preferred_rate, native_rate);
+1555 
+1556       // Always use output_callback for output streams (both output-only and duplex modes)
+1557       // PortAudio will invoke the callback whenever it needs audio data
+1558       // The callback reads from media_source (mirror mode) or playback buffers (network mode)
+1559       PaStreamCallback *callback = output_callback;
+1560 
+1561       // Try preferred rate first
+1562       LOG_IO(&quot;portaudio&quot;, {
+1563         err = Pa_OpenStream(&amp;ctx-&gt;output_stream, NULL, &amp;outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+1564                             callback, ctx);
+1565       });
+1566 
+1567       if (err == paNoError) {
+1568         actual_output_rate = preferred_rate;
+1569         output_ok = true;
+1570         log_info(&quot;&#x2713; Output opened at preferred rate: %.0f Hz (matches input - optimal!)&quot;, preferred_rate);
+1571       } else {
+1572         log_warn(&quot;Failed to open output at %.0f Hz: %s, trying native rate %.0f Hz&quot;, preferred_rate,
+1573                  Pa_GetErrorText(err), native_rate);
+1574 
+1575         // If first Pa_OpenStream call left a partial stream, clean it up before retrying
+1576         if (ctx-&gt;output_stream) {
+1577           log_debug(&quot;Closing partially-opened output stream from failed preferred rate&quot;);
+1578           LOG_IO(&quot;portaudio&quot;, {
+1579             Pa_CloseStream(ctx-&gt;output_stream);
+1580           });
+1581           ctx-&gt;output_stream = NULL;
+1582         }
+1583 
+1584         // Fall back to native rate (still using blocking mode for output-only)
+1585         LOG_IO(&quot;portaudio&quot;, {
+1586           err = Pa_OpenStream(&amp;ctx-&gt;output_stream, NULL, &amp;outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+1587                               callback, ctx);
+1588         });
+1589 
+1590         if (err == paNoError) {
+1591           actual_output_rate = native_rate;
+1592           output_ok = true;
+1593           log_info(&quot;&#x2713; Output opened at native rate: %.0f Hz (will need resampling)&quot;, native_rate);
+1594         } else {
+1595           log_warn(&quot;Failed to open output stream at native rate: %s&quot;, Pa_GetErrorText(err));
+1596           // Clean up if fallback also failed
+1597           if (ctx-&gt;output_stream) {
+1598             log_debug(&quot;Closing partially-opened output stream from failed native rate&quot;);
+1599             LOG_IO(&quot;portaudio&quot;, {
+1600               Pa_CloseStream(ctx-&gt;output_stream);
+1601             });
+1602             ctx-&gt;output_stream = NULL;
+1603           }
 1604         }
-1605 
-1606         PaStreamParameters fallback_input_params = inputParams;
-1607         fallback_input_params.device = 0;
-1608         const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
-1609         if (device_0_info &amp;&amp; device_0_info-&gt;maxInputChannels &gt; 0) {
-1610           LOG_IO(&quot;portaudio&quot;, {
-1611             err = Pa_OpenStream(&amp;ctx-&gt;input_stream, &amp;fallback_input_params, NULL, input_stream_rate,
-1612                                 AUDIO_FRAMES_PER_BUFFER, paClipOff, input_callback, ctx);
-1613           });
-1614           if (err == paNoError) {
-1615             log_info(&quot;Input stream opened on device 0 (fallback from default)&quot;);
-1616             input_ok = true;
-1617           } else {
-1618             log_warn(&quot;Fallback also failed on device 0: %s&quot;, Pa_GetErrorText(err));
-1619             // Clean up if fallback also failed
-1620             if (ctx-&gt;input_stream) {
-1621               log_debug(&quot;Closing partially-opened input stream from failed fallback device&quot;);
-1622               LOG_IO(&quot;portaudio&quot;, {
-1623                 Pa_CloseStream(ctx-&gt;input_stream);
-1624               });
-1625               ctx-&gt;input_stream = NULL;
-1626             }
-1627           }
-1628         }
-1629       }
-1630 
-1631       if (!input_ok) {
-1632         log_warn(&quot;Failed to open input stream: %s&quot;, Pa_GetErrorText(err));
-1633       }
-1634     }
-1635 
-1636     // Check if we got at least one stream working
-1637     if (!input_ok &amp;&amp; !output_ok) {
-1638       // Neither stream works - fail completely
-1639       audio_ring_buffer_destroy(ctx-&gt;render_buffer);
-1640       ctx-&gt;render_buffer = NULL;
-1641       return SET_ERRNO(ERROR_AUDIO, &quot;Failed to open both input and output streams&quot;);
-1642     }
-1643 
-1644     // If output failed but input works, we can still send audio to server
-1645     if (!output_ok &amp;&amp; input_ok) {
-1646       log_info(&quot;Output stream unavailable - continuing with input-only (can send audio to server)&quot;);
-1647       ctx-&gt;output_stream = NULL;
-1648     }
-1649     // If input failed but output works, we can still receive audio from server
-1650     if (!input_ok &amp;&amp; output_ok) {
-1651       log_info(&quot;Input stream unavailable - continuing with output-only (can receive audio from server)&quot;);
-1652       ctx-&gt;input_stream = NULL;
-1653     }
-1654 
-1655     // Start output stream if it's open
-1656     if (ctx-&gt;output_stream) {
-1657       LOG_IO(&quot;portaudio&quot;, {
-1658         err = Pa_StartStream(ctx-&gt;output_stream);
-1659       });
-1660       if (err != paNoError) {
-1661         if (ctx-&gt;input_stream) {
-1662           LOG_IO(&quot;portaudio&quot;, {
-1663             Pa_CloseStream(ctx-&gt;input_stream);
-1664           });
-1665         }
-1666         LOG_IO(&quot;portaudio&quot;, {
-1667           Pa_CloseStream(ctx-&gt;output_stream);
-1668         });
-1669         ctx-&gt;input_stream = NULL;
-1670         ctx-&gt;output_stream = NULL;
-1671         audio_ring_buffer_destroy(ctx-&gt;render_buffer);
-1672         ctx-&gt;render_buffer = NULL;
-1673         return SET_ERRNO(ERROR_AUDIO, &quot;Failed to start output stream: %s&quot;, Pa_GetErrorText(err));
-1674       }
-1675     }
-1676 
-1677     // Start input stream if it's open
-1678     if (ctx-&gt;input_stream) {
-1679       LOG_IO(&quot;portaudio&quot;, {
-1680         err = Pa_StartStream(ctx-&gt;input_stream);
-1681       });
-1682       if (err != paNoError) {
-1683         if (ctx-&gt;output_stream) {
-1684           LOG_IO(&quot;portaudio&quot;, {
-1685             Pa_StopStream(ctx-&gt;output_stream);
-1686           });
-1687         }
-1688         if (ctx-&gt;input_stream) {
-1689           LOG_IO(&quot;portaudio&quot;, {
-1690             Pa_CloseStream(ctx-&gt;input_stream);
-1691           });
-1692         }
-1693         if (ctx-&gt;output_stream) {
-1694           LOG_IO(&quot;portaudio&quot;, {
-1695             Pa_CloseStream(ctx-&gt;output_stream);
-1696           });
-1697         }
-1698         ctx-&gt;input_stream = NULL;
-1699         ctx-&gt;output_stream = NULL;
-1700         audio_ring_buffer_destroy(ctx-&gt;render_buffer);
-1701         ctx-&gt;render_buffer = NULL;
-1702         return SET_ERRNO(ERROR_AUDIO, &quot;Failed to start input stream: %s&quot;, Pa_GetErrorText(err));
-1703       }
-1704     }
-1705 
-1706     ctx-&gt;separate_streams = true;
-1707     log_debug(&quot;Separate streams started successfully&quot;);
-1708   } else {
-1709     ctx-&gt;separate_streams = false;
-1710     log_info(&quot;Full-duplex stream started (single callback, perfect AEC3 timing)&quot;);
-1711   }
+1605       }
+1606 
+1607       // Store actual output rate for resampling
+1608       if (output_ok) {
+1609         ctx-&gt;output_device_rate = actual_output_rate;
+1610         if (actual_output_rate != AUDIO_SAMPLE_RATE) {
+1611           log_warn(&quot;&#x26A0;&#xFE0F;  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used&quot;,
+1612                    actual_output_rate, (double)AUDIO_SAMPLE_RATE);
+1613         }
+1614       }
+1615     }
+1616 
+1617     // Open input stream only if we have input (skip for playback-only mode)
+1618     bool input_ok = !has_input; // If no input, mark as OK (skip)
+1619     if (has_input) {
+1620       // Use pipeline sample rate (AUDIO_SAMPLE_RATE)
+1621       // In input-only mode, we don't need to match output device rate
+1622       double input_stream_rate = AUDIO_SAMPLE_RATE;
+1623       LOG_IO(&quot;portaudio&quot;, {
+1624         err = Pa_OpenStream(&amp;ctx-&gt;input_stream, &amp;inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+1625                             input_callback, ctx);
+1626       });
+1627       input_ok = (err == paNoError);
+1628 
+1629       // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
+1630       if (!input_ok) {
+1631         log_debug(&quot;Input failed - trying device 0 as fallback&quot;);
+1632 
+1633         // Clean up partial stream from first attempt before retrying
+1634         if (ctx-&gt;input_stream) {
+1635           log_debug(&quot;Closing partially-opened input stream from failed primary device&quot;);
+1636           LOG_IO(&quot;portaudio&quot;, {
+1637             Pa_CloseStream(ctx-&gt;input_stream);
+1638           });
+1639           ctx-&gt;input_stream = NULL;
+1640         }
+1641 
+1642         PaStreamParameters fallback_input_params = inputParams;
+1643         fallback_input_params.device = 0;
+1644         const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
+1645         if (device_0_info &amp;&amp; device_0_info-&gt;maxInputChannels &gt; 0) {
+1646           LOG_IO(&quot;portaudio&quot;, {
+1647             err = Pa_OpenStream(&amp;ctx-&gt;input_stream, &amp;fallback_input_params, NULL, input_stream_rate,
+1648                                 AUDIO_FRAMES_PER_BUFFER, paClipOff, input_callback, ctx);
+1649           });
+1650           if (err == paNoError) {
+1651             log_info(&quot;Input stream opened on device 0 (fallback from default)&quot;);
+1652             input_ok = true;
+1653           } else {
+1654             log_warn(&quot;Fallback also failed on device 0: %s&quot;, Pa_GetErrorText(err));
+1655             // Clean up if fallback also failed
+1656             if (ctx-&gt;input_stream) {
+1657               log_debug(&quot;Closing partially-opened input stream from failed fallback device&quot;);
+1658               LOG_IO(&quot;portaudio&quot;, {
+1659                 Pa_CloseStream(ctx-&gt;input_stream);
+1660               });
+1661               ctx-&gt;input_stream = NULL;
+1662             }
+1663           }
+1664         }
+1665       }
+1666 
+1667       if (!input_ok) {
+1668         log_warn(&quot;Failed to open input stream: %s&quot;, Pa_GetErrorText(err));
+1669       }
+1670     }
+1671 
+1672     // Check if we got at least one stream working
+1673     if (!input_ok &amp;&amp; !output_ok) {
+1674       // Neither stream works - fail completely
+1675       audio_ring_buffer_destroy(ctx-&gt;render_buffer);
+1676       ctx-&gt;render_buffer = NULL;
+1677       return SET_ERRNO(ERROR_AUDIO, &quot;Failed to open both input and output streams&quot;);
+1678     }
+1679 
+1680     // If output failed but input works, we can still send audio to server
+1681     if (!output_ok &amp;&amp; input_ok) {
+1682       log_info(&quot;Output stream unavailable - continuing with input-only (can send audio to server)&quot;);
+1683       ctx-&gt;output_stream = NULL;
+1684     }
+1685     // If input failed but output works, we can still receive audio from server
+1686     if (!input_ok &amp;&amp; output_ok) {
+1687       log_info(&quot;Input stream unavailable - continuing with output-only (can receive audio from server)&quot;);
+1688       ctx-&gt;input_stream = NULL;
+1689     }
+1690 
+1691     // Start output stream if it's open
+1692     if (ctx-&gt;output_stream) {
+1693       LOG_IO(&quot;portaudio&quot;, {
+1694         err = Pa_StartStream(ctx-&gt;output_stream);
+1695       });
+1696       if (err != paNoError) {
+1697         if (ctx-&gt;input_stream) {
+1698           LOG_IO(&quot;portaudio&quot;, {
+1699             Pa_CloseStream(ctx-&gt;input_stream);
+1700           });
+1701         }
+1702         LOG_IO(&quot;portaudio&quot;, {
+1703           Pa_CloseStream(ctx-&gt;output_stream);
+1704         });
+1705         ctx-&gt;input_stream = NULL;
+1706         ctx-&gt;output_stream = NULL;
+1707         audio_ring_buffer_destroy(ctx-&gt;render_buffer);
+1708         ctx-&gt;render_buffer = NULL;
+1709         return SET_ERRNO(ERROR_AUDIO, &quot;Failed to start output stream: %s&quot;, Pa_GetErrorText(err));
+1710       }
+1711     }
 1712 
-1713   audio_set_realtime_priority();
-1714 
-1715   // Start worker thread for heavy audio processing
-1716   if (!ctx-&gt;worker_running) {
-1717     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, false);
-1718     if (asciichat_thread_create(&amp;ctx-&gt;worker_thread, &quot;audio_worker&quot;, audio_worker_thread, ctx) != 0) {
-1719       // Failed to create worker thread - stop streams and cleanup
-1720       if (ctx-&gt;duplex_stream) {
-1721         LOG_IO(&quot;portaudio&quot;, {
-1722           Pa_StopStream(ctx-&gt;duplex_stream);
-1723           Pa_CloseStream(ctx-&gt;duplex_stream);
-1724         });
-1725         ctx-&gt;duplex_stream = NULL;
-1726       }
-1727       if (ctx-&gt;input_stream) {
-1728         LOG_IO(&quot;portaudio&quot;, {
-1729           Pa_StopStream(ctx-&gt;input_stream);
-1730           Pa_CloseStream(ctx-&gt;input_stream);
-1731         });
-1732         ctx-&gt;input_stream = NULL;
-1733       }
-1734       if (ctx-&gt;output_stream) {
-1735         LOG_IO(&quot;portaudio&quot;, {
-1736           Pa_StopStream(ctx-&gt;output_stream);
-1737           Pa_CloseStream(ctx-&gt;output_stream);
-1738         });
-1739         ctx-&gt;output_stream = NULL;
-1740       }
-1741       audio_ring_buffer_destroy(ctx-&gt;render_buffer);
-1742       ctx-&gt;render_buffer = NULL;
-1743       return SET_ERRNO(ERROR_THREAD, &quot;Failed to create worker thread&quot;);
-1744     }
-1745     ctx-&gt;worker_running = true;
-1746     log_debug(&quot;Worker thread started successfully&quot;);
+1713     // Start input stream if it's open
+1714     if (ctx-&gt;input_stream) {
+1715       LOG_IO(&quot;portaudio&quot;, {
+1716         err = Pa_StartStream(ctx-&gt;input_stream);
+1717       });
+1718       if (err != paNoError) {
+1719         if (ctx-&gt;output_stream) {
+1720           LOG_IO(&quot;portaudio&quot;, {
+1721             Pa_StopStream(ctx-&gt;output_stream);
+1722           });
+1723         }
+1724         if (ctx-&gt;input_stream) {
+1725           LOG_IO(&quot;portaudio&quot;, {
+1726             Pa_CloseStream(ctx-&gt;input_stream);
+1727           });
+1728         }
+1729         if (ctx-&gt;output_stream) {
+1730           LOG_IO(&quot;portaudio&quot;, {
+1731             Pa_CloseStream(ctx-&gt;output_stream);
+1732           });
+1733         }
+1734         ctx-&gt;input_stream = NULL;
+1735         ctx-&gt;output_stream = NULL;
+1736         audio_ring_buffer_destroy(ctx-&gt;render_buffer);
+1737         ctx-&gt;render_buffer = NULL;
+1738         return SET_ERRNO(ERROR_AUDIO, &quot;Failed to start input stream: %s&quot;, Pa_GetErrorText(err));
+1739       }
+1740     }
+1741 
+1742     ctx-&gt;separate_streams = true;
+1743     log_debug(&quot;Separate streams started successfully&quot;);
+1744   } else {
+1745     ctx-&gt;separate_streams = false;
+1746     log_info(&quot;Full-duplex stream started (single callback, perfect AEC3 timing)&quot;);
 1747   }
 1748 
-1749   // Lock to update final state flags atomically
-1750   mutex_lock(&amp;ctx-&gt;state_mutex);
-1751   ctx-&gt;running = true;
-1752   ctx-&gt;sample_rate = AUDIO_SAMPLE_RATE;
-1753   mutex_unlock(&amp;ctx-&gt;state_mutex);
-1754   return ASCIICHAT_OK;
-1755 }</pre>
+1749   audio_set_realtime_priority();
+1750 
+1751   // Start worker thread for heavy audio processing
+1752   if (!ctx-&gt;worker_running) {
+1753     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, false);
+1754     if (asciichat_thread_create(&amp;ctx-&gt;worker_thread, &quot;audio_worker&quot;, audio_worker_thread, ctx) != 0) {
+1755       // Failed to create worker thread - stop streams and cleanup
+1756       if (ctx-&gt;duplex_stream) {
+1757         LOG_IO(&quot;portaudio&quot;, {
+1758           Pa_StopStream(ctx-&gt;duplex_stream);
+1759           Pa_CloseStream(ctx-&gt;duplex_stream);
+1760         });
+1761         ctx-&gt;duplex_stream = NULL;
+1762       }
+1763       if (ctx-&gt;input_stream) {
+1764         LOG_IO(&quot;portaudio&quot;, {
+1765           Pa_StopStream(ctx-&gt;input_stream);
+1766           Pa_CloseStream(ctx-&gt;input_stream);
+1767         });
+1768         ctx-&gt;input_stream = NULL;
+1769       }
+1770       if (ctx-&gt;output_stream) {
+1771         LOG_IO(&quot;portaudio&quot;, {
+1772           Pa_StopStream(ctx-&gt;output_stream);
+1773           Pa_CloseStream(ctx-&gt;output_stream);
+1774         });
+1775         ctx-&gt;output_stream = NULL;
+1776       }
+1777       audio_ring_buffer_destroy(ctx-&gt;render_buffer);
+1778       ctx-&gt;render_buffer = NULL;
+1779       return SET_ERRNO(ERROR_THREAD, &quot;Failed to create worker thread&quot;);
+1780     }
+1781     ctx-&gt;worker_running = true;
+1782     log_debug(&quot;Worker thread started successfully&quot;);
+1783   }
+1784 
+1785   // Lock to update final state flags atomically
+1786   mutex_lock(&amp;ctx-&gt;state_mutex);
+1787   ctx-&gt;running = true;
+1788   ctx-&gt;sample_rate = AUDIO_SAMPLE_RATE;
+1789   mutex_unlock(&amp;ctx-&gt;state_mutex);
+1790   return ASCIICHAT_OK;
+1791 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>atomic_store_bool()</b>, <b>AUDIO_CHANNELS</b>,
     <b>AUDIO_FRAMES_PER_BUFFER</b>,
     <b>audio_ring_buffer_create_for_capture()</b>,
@@ -3008,111 +3008,111 @@ if (enable_mic) {
 <p class="Pp"></p>
 <p class="Pp">Buffers are not cleared by this function.</p>
 </div>
-<p class="Pp">Definition at line <b>1757</b> of file
+<p class="Pp">Definition at line <b>1793</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1757                                                           {
-1758   if (!ctx || !ctx-&gt;initialized) {
-1759     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Audio context not initialized&quot;);
-1760   }
-1761 
-1762   atomic_store_bool(&amp;ctx-&gt;shutting_down, true);
-1763 
-1764   // Stop worker thread before stopping streams
-1765   if (ctx-&gt;worker_running) {
-1766     log_debug(&quot;Stopping worker thread&quot;);
-1767     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
-1768     cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
-1769     asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
-1770     ctx-&gt;worker_running = false;
-1771     log_debug(&quot;Worker thread stopped successfully&quot;);
-1772   }
-1773 
-1774   if (ctx-&gt;playback_buffer) {
-1775     audio_ring_buffer_clear(ctx-&gt;playback_buffer);
-1776   }
-1777 
-1778   mutex_lock(&amp;ctx-&gt;state_mutex);
-1779 
-1780   if (ctx-&gt;duplex_stream) {
-1781     log_debug(&quot;Stopping duplex stream&quot;);
-1782     PaError err;
-1783     LOG_IO(&quot;portaudio&quot;, {
-1784       err = Pa_StopStream(ctx-&gt;duplex_stream);
-1785     });
-1786     if (err != paNoError) {
-1787       log_warn(&quot;Pa_StopStream failed: %s&quot;, Pa_GetErrorText(err));
-1788     }
-1789     log_debug(&quot;Closing duplex stream&quot;);
-1790     LOG_IO(&quot;portaudio&quot;, {
-1791       err = Pa_CloseStream(ctx-&gt;duplex_stream);
-1792     });
-1793     if (err != paNoError) {
-1794       log_warn(&quot;Pa_CloseStream failed: %s&quot;, Pa_GetErrorText(err));
-1795     } else {
-1796       log_debug(&quot;Duplex stream closed successfully&quot;);
-1797     }
-1798     ctx-&gt;duplex_stream = NULL;
-1799   }
-1800 
-1801   // Stop separate streams if used
-1802   if (ctx-&gt;input_stream) {
-1803     log_debug(&quot;Stopping input stream&quot;);
-1804     PaError err;
-1805     LOG_IO(&quot;portaudio&quot;, {
-1806       err = Pa_StopStream(ctx-&gt;input_stream);
-1807     });
-1808     if (err != paNoError) {
-1809       log_warn(&quot;Pa_StopStream input failed: %s&quot;, Pa_GetErrorText(err));
-1810     }
-1811     log_debug(&quot;Closing input stream&quot;);
-1812     LOG_IO(&quot;portaudio&quot;, {
-1813       err = Pa_CloseStream(ctx-&gt;input_stream);
-1814     });
-1815     if (err != paNoError) {
-1816       log_warn(&quot;Pa_CloseStream input failed: %s&quot;, Pa_GetErrorText(err));
-1817     } else {
-1818       log_debug(&quot;Input stream closed successfully&quot;);
-1819     }
-1820     ctx-&gt;input_stream = NULL;
-1821   }
-1822 
-1823   if (ctx-&gt;output_stream) {
-1824     log_debug(&quot;Stopping output stream&quot;);
-1825     PaError err;
+<pre>1793                                                           {
+1794   if (!ctx || !ctx-&gt;initialized) {
+1795     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Audio context not initialized&quot;);
+1796   }
+1797 
+1798   atomic_store_bool(&amp;ctx-&gt;shutting_down, true);
+1799 
+1800   // Stop worker thread before stopping streams
+1801   if (ctx-&gt;worker_running) {
+1802     log_debug(&quot;Stopping worker thread&quot;);
+1803     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
+1804     cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
+1805     asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
+1806     ctx-&gt;worker_running = false;
+1807     log_debug(&quot;Worker thread stopped successfully&quot;);
+1808   }
+1809 
+1810   if (ctx-&gt;playback_buffer) {
+1811     audio_ring_buffer_clear(ctx-&gt;playback_buffer);
+1812   }
+1813 
+1814   mutex_lock(&amp;ctx-&gt;state_mutex);
+1815 
+1816   if (ctx-&gt;duplex_stream) {
+1817     log_debug(&quot;Stopping duplex stream&quot;);
+1818     PaError err;
+1819     LOG_IO(&quot;portaudio&quot;, {
+1820       err = Pa_StopStream(ctx-&gt;duplex_stream);
+1821     });
+1822     if (err != paNoError) {
+1823       log_warn(&quot;Pa_StopStream failed: %s&quot;, Pa_GetErrorText(err));
+1824     }
+1825     log_debug(&quot;Closing duplex stream&quot;);
 1826     LOG_IO(&quot;portaudio&quot;, {
-1827       err = Pa_StopStream(ctx-&gt;output_stream);
+1827       err = Pa_CloseStream(ctx-&gt;duplex_stream);
 1828     });
 1829     if (err != paNoError) {
-1830       log_warn(&quot;Pa_StopStream output failed: %s&quot;, Pa_GetErrorText(err));
-1831     }
-1832     log_debug(&quot;Closing output stream&quot;);
-1833     LOG_IO(&quot;portaudio&quot;, {
-1834       err = Pa_CloseStream(ctx-&gt;output_stream);
-1835     });
-1836     if (err != paNoError) {
-1837       log_warn(&quot;Pa_CloseStream output failed: %s&quot;, Pa_GetErrorText(err));
-1838     } else {
-1839       log_debug(&quot;Output stream closed successfully&quot;);
-1840     }
-1841     ctx-&gt;output_stream = NULL;
-1842   }
-1843 
-1844   // Cleanup render buffer
-1845   if (ctx-&gt;render_buffer) {
-1846     audio_ring_buffer_destroy(ctx-&gt;render_buffer);
-1847     ctx-&gt;render_buffer = NULL;
-1848   }
-1849 
-1850   ctx-&gt;running = false;
-1851   ctx-&gt;separate_streams = false;
-1852   mutex_unlock(&amp;ctx-&gt;state_mutex);
-1853 
-1854   log_debug(&quot;Audio stopped&quot;);
-1855   return ASCIICHAT_OK;
-1856 }</pre>
+1830       log_warn(&quot;Pa_CloseStream failed: %s&quot;, Pa_GetErrorText(err));
+1831     } else {
+1832       log_debug(&quot;Duplex stream closed successfully&quot;);
+1833     }
+1834     ctx-&gt;duplex_stream = NULL;
+1835   }
+1836 
+1837   // Stop separate streams if used
+1838   if (ctx-&gt;input_stream) {
+1839     log_debug(&quot;Stopping input stream&quot;);
+1840     PaError err;
+1841     LOG_IO(&quot;portaudio&quot;, {
+1842       err = Pa_StopStream(ctx-&gt;input_stream);
+1843     });
+1844     if (err != paNoError) {
+1845       log_warn(&quot;Pa_StopStream input failed: %s&quot;, Pa_GetErrorText(err));
+1846     }
+1847     log_debug(&quot;Closing input stream&quot;);
+1848     LOG_IO(&quot;portaudio&quot;, {
+1849       err = Pa_CloseStream(ctx-&gt;input_stream);
+1850     });
+1851     if (err != paNoError) {
+1852       log_warn(&quot;Pa_CloseStream input failed: %s&quot;, Pa_GetErrorText(err));
+1853     } else {
+1854       log_debug(&quot;Input stream closed successfully&quot;);
+1855     }
+1856     ctx-&gt;input_stream = NULL;
+1857   }
+1858 
+1859   if (ctx-&gt;output_stream) {
+1860     log_debug(&quot;Stopping output stream&quot;);
+1861     PaError err;
+1862     LOG_IO(&quot;portaudio&quot;, {
+1863       err = Pa_StopStream(ctx-&gt;output_stream);
+1864     });
+1865     if (err != paNoError) {
+1866       log_warn(&quot;Pa_StopStream output failed: %s&quot;, Pa_GetErrorText(err));
+1867     }
+1868     log_debug(&quot;Closing output stream&quot;);
+1869     LOG_IO(&quot;portaudio&quot;, {
+1870       err = Pa_CloseStream(ctx-&gt;output_stream);
+1871     });
+1872     if (err != paNoError) {
+1873       log_warn(&quot;Pa_CloseStream output failed: %s&quot;, Pa_GetErrorText(err));
+1874     } else {
+1875       log_debug(&quot;Output stream closed successfully&quot;);
+1876     }
+1877     ctx-&gt;output_stream = NULL;
+1878   }
+1879 
+1880   // Cleanup render buffer
+1881   if (ctx-&gt;render_buffer) {
+1882     audio_ring_buffer_destroy(ctx-&gt;render_buffer);
+1883     ctx-&gt;render_buffer = NULL;
+1884   }
+1885 
+1886   ctx-&gt;running = false;
+1887   ctx-&gt;separate_streams = false;
+1888   mutex_unlock(&amp;ctx-&gt;state_mutex);
+1889 
+1890   log_debug(&quot;Audio stopped&quot;);
+1891   return ASCIICHAT_OK;
+1892 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_clear()</b>,
     <b>audio_ring_buffer_destroy()</b>, <b>cond_signal()</b>,
     <b>audio_context_t::duplex_stream</b>, <b>ERROR_INVALID_STATE</b>,
@@ -3198,48 +3198,48 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
     return;
 }
 </pre>
-<p class="Pp">Definition at line <b>2033</b> of file
+<p class="Pp">Definition at line <b>2069</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2033                                                                                {
-2034   if (!batch) {
-2035     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
-2036   }
-2037 
-2038   // Validate batch_count
-2039   if (batch-&gt;batch_count == 0) {
-2040     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count cannot be zero&quot;);
-2041   }
-2042 
-2043   // Check for reasonable max (256 frames per batch is very generous)
-2044   if (batch-&gt;batch_count &gt; 256) {
-2045     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count too large (batch_count=%u, max=256)&quot;, batch-&gt;batch_count);
-2046   }
-2047 
-2048   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
-2049   if (batch-&gt;channels == 0 || batch-&gt;channels &gt; 8) {
-2050     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid channel count (channels=%u, valid=1-8)&quot;, batch-&gt;channels);
-2051   }
-2052 
-2053   // Validate sample rate
-2054   if (!audio_is_supported_sample_rate(batch-&gt;sample_rate)) {
-2055     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported sample rate (sample_rate=%u)&quot;, batch-&gt;sample_rate);
-2056   }
-2057 
-2058   // Check for reasonable sample counts
-2059   if (batch-&gt;total_samples == 0) {
-2060     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch has zero samples&quot;);
-2061   }
-2062 
-2063   // Each batch typically has samples_per_frame worth of samples
-2064   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
-2065   // With max 256 frames, that's up to ~245k samples per batch
-2066   if (batch-&gt;total_samples &gt; 1000000) {
-2067     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch sample count suspiciously large (total_samples=%u)&quot;,
-2068                      batch-&gt;total_samples);
-2069   }
-2070 
-2071   return ASCIICHAT_OK;
-2072 }</pre>
+<pre>2069                                                                                {
+2070   if (!batch) {
+2071     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
+2072   }
+2073 
+2074   // Validate batch_count
+2075   if (batch-&gt;batch_count == 0) {
+2076     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count cannot be zero&quot;);
+2077   }
+2078 
+2079   // Check for reasonable max (256 frames per batch is very generous)
+2080   if (batch-&gt;batch_count &gt; 256) {
+2081     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count too large (batch_count=%u, max=256)&quot;, batch-&gt;batch_count);
+2082   }
+2083 
+2084   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
+2085   if (batch-&gt;channels == 0 || batch-&gt;channels &gt; 8) {
+2086     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid channel count (channels=%u, valid=1-8)&quot;, batch-&gt;channels);
+2087   }
+2088 
+2089   // Validate sample rate
+2090   if (!audio_is_supported_sample_rate(batch-&gt;sample_rate)) {
+2091     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported sample rate (sample_rate=%u)&quot;, batch-&gt;sample_rate);
+2092   }
+2093 
+2094   // Check for reasonable sample counts
+2095   if (batch-&gt;total_samples == 0) {
+2096     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch has zero samples&quot;);
+2097   }
+2098 
+2099   // Each batch typically has samples_per_frame worth of samples
+2100   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
+2101   // With max 256 frames, that's up to ~245k samples per batch
+2102   if (batch-&gt;total_samples &gt; 1000000) {
+2103     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch sample count suspiciously large (total_samples=%u)&quot;,
+2104                      batch-&gt;total_samples);
+2105   }
+2106 
+2107   return ASCIICHAT_OK;
+2108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -3278,23 +3278,23 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Buffer must contain at least num_samples float
   values.</div>
-<p class="Pp">Definition at line <b>1869</b> of file
+<p class="Pp">Definition at line <b>1905</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>1869                                                                                                   {
-1870   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples &lt;= 0) {
-1871     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%d&quot;, ctx, buffer,
-1872                      num_samples);
-1873   }
-1874 
-1875   // Don't accept new audio data during shutdown - this prevents garbage/beeps
-1876   if (atomic_load_bool(&amp;ctx-&gt;shutting_down)) {
-1877     return ASCIICHAT_OK; // Silently discard
-1878   }
-1879 
-1880   asciichat_error_t result = audio_ring_buffer_write(ctx-&gt;playback_buffer, buffer, num_samples);
-1881 
-1882   return result;
-1883 }</pre>
+<pre>1905                                                                                                   {
+1906   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples &lt;= 0) {
+1907     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%d&quot;, ctx, buffer,
+1908                      num_samples);
+1909   }
+1910 
+1911   // Don't accept new audio data during shutdown - this prevents garbage/beeps
+1912   if (atomic_load_bool(&amp;ctx-&gt;shutting_down)) {
+1913     return ASCIICHAT_OK; // Silently discard
+1914   }
+1915 
+1916   asciichat_error_t result = audio_ring_buffer_write(ctx-&gt;playback_buffer, buffer, num_samples);
+1917 
+1918   return result;
+1919 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
@@ -4438,7 +4438,6 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
     <b>SET_ERRNO</b>, <b>mixer_t::source_active</b>,
     <b>mixer_t::source_buffers</b>, <b>mixer_t::source_id_to_index</b>,
     <b>mixer_t::source_ids</b>, and <b>mixer_t::source_lock</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_mixer_destroy_("><a class="permalink" href="#void_mixer_destroy_(">void
@@ -4487,7 +4486,6 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
     <b>NAMED_UNREGISTER</b>, <b>rwlock_destroy()</b>, <b>SAFE_FREE</b>,
     <b>mixer_t::source_active</b>, <b>mixer_t::source_buffers</b>,
     <b>mixer_t::source_ids</b>, and <b>mixer_t::source_lock</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_mixer_process_("><a class="permalink" href="#int_mixer_process_(">int
@@ -5726,32 +5724,32 @@ resample_linear(input, in_samples, output, out_samples, 48000, 44100);
 <i>src_rate</i> Source sample rate (e.g., 48000)
 <br/>
 <i>dst_rate</i> Destination sample rate (e.g., 44100)</div>
-<p class="Pp">Definition at line <b>542</b> of file
+<p class="Pp">Definition at line <b>578</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>543                                       {
-544   if (src_samples == 0 || dst_samples == 0) {
-545     SAFE_MEMSET(dst, dst_samples * sizeof(float), 0, dst_samples * sizeof(float));
-546     return;
-547   }
-548 
-549   double ratio = src_rate / dst_rate;
-550 
-551   for (size_t i = 0; i &lt; dst_samples; i++) {
-552     double src_pos = (double)i * ratio;
-553     size_t idx0 = (size_t)src_pos;
-554     size_t idx1 = idx0 + 1;
-555     double frac = src_pos - (double)idx0;
-556 
-557     // Clamp indices to valid range
-558     if (idx0 &gt;= src_samples)
-559       idx0 = src_samples - 1;
-560     if (idx1 &gt;= src_samples)
-561       idx1 = src_samples - 1;
-562 
-563     // Linear interpolation
-564     dst[i] = (float)((1.0 - frac) * src[idx0] + frac * src[idx1]);
-565   }
-566 }</pre>
+<pre>579                                       {
+580   if (src_samples == 0 || dst_samples == 0) {
+581     SAFE_MEMSET(dst, dst_samples * sizeof(float), 0, dst_samples * sizeof(float));
+582     return;
+583   }
+584 
+585   double ratio = src_rate / dst_rate;
+586 
+587   for (size_t i = 0; i &lt; dst_samples; i++) {
+588     double src_pos = (double)i * ratio;
+589     size_t idx0 = (size_t)src_pos;
+590     size_t idx1 = idx0 + 1;
+591     double frac = src_pos - (double)idx0;
+592 
+593     // Clamp indices to valid range
+594     if (idx0 &gt;= src_samples)
+595       idx0 = src_samples - 1;
+596     if (idx1 &gt;= src_samples)
+597       idx1 = src_samples - 1;
+598 
+599     // Linear interpolation
+600     dst[i] = (float)((1.0 - frac) * src[idx0] + frac * src[idx1]);
+601   }
+602 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_MEMSET</b>.</p>
@@ -6291,7 +6289,7 @@ resample_linear(input, in_samples, output, out_samples, 48000, 44100);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -101,8 +101,6 @@
 <p class="Pp">IPv4 bind address (empty = all interfaces).</p>
 <p class="Pp">Definition at line <b>73</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-  <b>acds_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_acds_config_t::address6_256_"><a class="permalink" href="#char_acds_config_t::address6_256_">char
@@ -110,8 +108,6 @@
 <p class="Pp">IPv6 bind address (empty = all interfaces).</p>
 <p class="Pp">Definition at line <b>74</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-  <b>acds_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_acds_config_t::database_path_512_"><a class="permalink" href="#char_acds_config_t::database_path_512_">char
@@ -119,8 +115,7 @@
 <p class="Pp">SQLite database path.</p>
 <p class="Pp">Definition at line <b>75</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-  <b>acds_server_init()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_acds_config_t::key_path_512_"><a class="permalink" href="#char_acds_config_t::key_path_512_">char
@@ -128,7 +123,6 @@
 <p class="Pp">Ed25519 identity key file path.</p>
 <p class="Pp">Definition at line <b>76</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_acds_config_t::log_file_512_"><a class="permalink" href="#char_acds_config_t::log_file_512_">char
@@ -136,14 +130,12 @@
 <p class="Pp">Log file path (empty = stderr).</p>
 <p class="Pp">Definition at line <b>77</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>log_level_t</b> acds_config_t::log_level</h2>
 <p class="Pp">Logging verbosity level.</p>
 <p class="Pp">Definition at line <b>78</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_acds_config_t::port"><a class="permalink" href="#int_acds_config_t::port">int
@@ -151,8 +143,6 @@
 <p class="Pp">TCP listen port (default 27225).</p>
 <p class="Pp">Definition at line <b>72</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>acds_server_init()</b>, and
-    <b>acds_server_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> acds_config_t::require_client_identity</h2>
@@ -160,8 +150,7 @@
   sessions.</p>
 <p class="Pp">Definition at line <b>80</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-    <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> acds_config_t::require_client_verify</h2>
@@ -177,7 +166,6 @@
   sessions.</p>
 <p class="Pp">Definition at line <b>79</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> acds_config_t::require_server_verify</h2>
@@ -192,23 +180,20 @@
 <p class="Pp">Number of configured STUN servers (0-4).</p>
 <p class="Pp">Definition at line <b>85</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-    <b>database_session_create()</b>.</p>
+<p class="Pp">Referenced by <b>database_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>stun_server_t</b> acds_config_t::stun_servers[4]</h2>
 <p class="Pp">STUN server configurations.</p>
 <p class="Pp">Definition at line <b>86</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_config_t::turn_count</h2>
 <p class="Pp">Number of configured TURN servers (0-4).</p>
 <p class="Pp">Definition at line <b>87</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-    <b>database_session_create()</b>.</p>
+<p class="Pp">Referenced by <b>database_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_acds_config_t::turn_secret_256_"><a class="permalink" href="#char_acds_config_t::turn_secret_256_">char
@@ -216,15 +201,13 @@
 <p class="Pp">Shared secret for TURN credential generation (HMAC-SHA1).</p>
 <p class="Pp">Definition at line <b>89</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-    <b>database_session_join()</b>.</p>
+<p class="Pp">Referenced by <b>database_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>turn_server_t</b> acds_config_t::turn_servers[4]</h2>
 <p class="Pp">TURN server configurations.</p>
 <p class="Pp">Definition at line <b>88</b> of file
     <b>discovery-service/main.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -235,7 +218,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

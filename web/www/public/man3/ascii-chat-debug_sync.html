@@ -384,8 +384,7 @@ debug_sync_destroy();         // Destroy system</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>debug_sync_cleanup_thread()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_sync_final_cleanup_(void_)"><a class="permalink" href="#void_debug_sync_final_cleanup_(void_)">void
@@ -892,7 +891,7 @@ debug_sync_destroy();</pre>
 669 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>asciichat_thread_create</b>,
     <b>atomic_store_bool()</b>, <b>cond_init()</b>, and <b>mutex_init()</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
@@ -960,7 +959,7 @@ signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printi
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

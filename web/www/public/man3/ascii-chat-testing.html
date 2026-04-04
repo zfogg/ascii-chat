@@ -209,7 +209,7 @@
 32 #else
 33   // Check if we're in Docker (/.dockerenv file exists)
 34   bool in_docker = (access(&quot;/.dockerenv&quot;, F_OK) == 0);
-35   const char *build_dir = getenv(&quot;BUILD_DIR&quot;);
+35   const char *build_dir = SAFE_GETENV(&quot;BUILD_DIR&quot;);
 36 
 37   // Try BUILD_DIR first if set
 38   if (build_dir) {
@@ -248,7 +248,8 @@
 71 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>initialized</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>initialized</b>, <b>SAFE_GETENV</b>, and
+    <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_test_logging_disable_("><a class="permalink" href="#int_test_logging_disable_(">int
@@ -271,7 +272,7 @@
 37   }
 38 
 39   // Open /dev/null for writing
-40   dev_null_fd = platform_open(&quot;/dev/null&quot;, PLATFORM_O_WRONLY);
+40   dev_null_fd = platform_open(&quot;test-logging&quot;, &quot;/dev/null&quot;, PLATFORM_O_WRONLY);
 41   if (dev_null_fd == -1) {
 42     return -1;
 43   }
@@ -388,7 +389,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

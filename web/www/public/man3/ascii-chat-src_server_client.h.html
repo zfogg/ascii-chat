@@ -1305,7 +1305,7 @@
 <p class="Pp">References <b>acip_server_receive_and_dispatch()</b>,
     <b>client_info::active</b>, <b>APP_CALLBACK_VOID</b>,
     <b>asciichat_errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_self()</b>, <b>atomic_load_bool()</b>,
+    <b>asciichat_thread_self</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread_running</b>,
     <b>buffer_pool_free()</b>, <b>client_info::client_id</b>,
     <b>asciichat_error_context_t::code</b>, <b>cond_signal()</b>,
@@ -1888,8 +1888,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport_destroy()</b>,
     <b>client_info::active</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_equal()</b>, <b>asciichat_thread_is_initialized()</b>,
-    <b>asciichat_thread_join()</b>, <b>asciichat_thread_self()</b>,
+    <b>asciichat_thread_equal</b>, <b>asciichat_thread_is_initialized()</b>,
+    <b>asciichat_thread_join</b>, <b>asciichat_thread_self</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
     <b>client_info::audio_queue</b>, <b>client_info::audio_render_thread</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
@@ -1918,8 +1918,8 @@
     <b>server_context_t::tcp_server</b>,
     <b>tcp_server_stop_client_threads()</b>, <b>client_info::transport</b>,
     <b>US_PER_MS_INT</b>, and <b>client_info::video_render_thread</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>client_receive_thread()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
+    <b>client_receive_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_start_webrtc_client_threads_("><a class="permalink" href="#int_start_webrtc_client_threads_(">int
@@ -1990,7 +1990,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>,
-    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join()</b>,
+    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join</b>,
     <b>atomic_store_bool()</b>, <b>client_info::client_id</b>,
     <b>client_info::dispatch_thread</b>,
     <b>client_info::dispatch_thread_running</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -2056,7 +2056,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

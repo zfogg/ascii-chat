@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>glyph_cache_entry_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">glyph_cache_entry_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">glyph_cache_entry_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">glyph_cache_entry_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>codepoint</b>
+  <br/>
+  <b>uint8_t</b> * <b>bitmap_buf</b>
+  <br/>
+  int <b>width</b>
+  <br/>
+  int <b>rows</b>
+  <br/>
+  int <b>pitch</b>
+  <br/>
+  int <b>bitmap_left</b>
+  <br/>
+  int <b>bitmap_top</b>
+  <br/>
+  UT_hash_handle <b>hh</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cached glyph bitmap with metadata. Stores pre-rendered FreeType
+    bitmap to avoid rasterization on every frame.</p>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* glyph_cache_entry_t::bitmap_buf</h2>
+<p class="Pp">Definition at line <b>37</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_cache_entry_t::bitmap_left"><a class="permalink" href="#int_glyph_cache_entry_t::bitmap_left">int
+  glyph_cache_entry_t::bitmap_left</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<p class="Pp">Referenced by <b>term_renderer_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_cache_entry_t::bitmap_top"><a class="permalink" href="#int_glyph_cache_entry_t::bitmap_top">int
+  glyph_cache_entry_t::bitmap_top</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<p class="Pp">Referenced by <b>term_renderer_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> glyph_cache_entry_t::codepoint</h2>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UT_hash_handle_glyph_cache_entry_t::hh"><a class="permalink" href="#UT_hash_handle_glyph_cache_entry_t::hh">UT_hash_handle
+  glyph_cache_entry_t::hh</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_cache_entry_t::pitch"><a class="permalink" href="#int_glyph_cache_entry_t::pitch">int
+  glyph_cache_entry_t::pitch</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_cache_entry_t::rows"><a class="permalink" href="#int_glyph_cache_entry_t::rows">int
+  glyph_cache_entry_t::rows</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file
+    <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_cache_entry_t::width"><a class="permalink" href="#int_glyph_cache_entry_t::width">int
+  glyph_cache_entry_t::width</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -124,20 +124,20 @@
 <p class="Pp"></p>
 <p class="Pp">Set up global signal handlers Called once at startup before mode
     dispatch</p>
-<p class="Pp">Definition at line <b>341</b> of file <b>main.c</b>.</p>
-<pre>341                                  {
-342   platform_set_console_ctrl_handler(console_ctrl_handler);
-343 
-344 #ifndef _WIN32
-345   platform_signal_handler_t handlers[] = {
-346       {SIGINT, handle_sigterm},
-347       {SIGTERM, handle_sigterm},
-348       {SIGPIPE, SIG_IGN},
-349   };
-350   platform_register_signal_handlers(handlers, 3);
-351   log_debug(&quot;Signal handlers registered&quot;);
-352 #endif
-353 }</pre>
+<p class="Pp">Definition at line <b>346</b> of file <b>main.c</b>.</p>
+<pre>346                                  {
+347   platform_set_console_ctrl_handler(console_ctrl_handler);
+348 
+349 #ifndef _WIN32
+350   platform_signal_handler_t handlers[] = {
+351       {SIGINT, handle_sigterm},
+352       {SIGTERM, handle_sigterm},
+353       {SIGPIPE, SIG_IGN},
+354   };
+355   platform_register_signal_handlers(handlers, 3);
+356   log_debug(&quot;Signal handlers registered&quot;);
+357 #endif
+358 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>,
@@ -217,7 +217,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

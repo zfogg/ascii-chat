@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread.h - &#x1F9F5; Cross-platform thread interface for
+    ascii-chat</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>asciichat_thread_wrapper_t</b>
+  <br/>
+  Internal thread wrapper for automatic cleanup.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_THREAD_LOCAL</b> __thread
+  <br/>
+  Platform-specific thread-local storage declaration.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef pthread_t <b>asciichat_thread_t</b>
+  <br/>
+  Thread handle type (POSIX: pthread_t). typedef pthread_t <b>thread_id_t</b>
+  <br/>
+  Thread ID type (POSIX: pthread_t). typedef pthread_key_t <b>tls_key_t</b>
+  <br/>
+  Thread-local storage key type (POSIX: pthread_key_t).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void * <b>asciichat_thread_wrapper_impl</b> (void *arg)
+  <br/>
+  Internal thread wrapper function that executes user code with cleanup. int
+    <b>asciichat_thread_create</b> (<b>asciichat_thread_t</b> *thread, const
+    char *name, void *(*func)(void *), void *arg)
+  <br/>
+  Create a new named thread. int <b>asciichat_thread_join</b>
+    (<b>asciichat_thread_t</b> *thread, void **retval)
+  <br/>
+  Wait for a thread to complete (blocking). int
+    <b>asciichat_thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
+    void **retval, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Wait for a thread to complete with timeout. void <b>asciichat_thread_exit</b>
+    (void *retval)
+  <br/>
+  Exit the current thread. <b>thread_id_t</b> <b>asciichat_thread_self</b>
+    (void)
+  <br/>
+  Get the current thread's ID. int <b>asciichat_thread_equal</b>
+    (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)
+  <br/>
+  Compare two thread IDs for equality. <b>uint64_t</b>
+    <b>asciichat_thread_current_id</b> (void)
+  <br/>
+  Get the current thread's unique numeric ID. <b>bool</b>
+    <b>asciichat_thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
+  <br/>
+  Check if a thread handle has been initialized. void
+    <b>asciichat_thread_init</b> (<b>asciichat_thread_t</b> *thread)
+  <br/>
+  Initialize a thread handle to an uninitialized state. <b>asciichat_error_t</b>
+    <b>asciichat_thread_set_realtime_priority</b> (void)
+  <br/>
+  Set the current thread to real-time priority. <b>asciichat_error_t</b>
+    <b>thread_create_or_fail</b> (<b>asciichat_thread_t</b> *thread, void
+    *(*func)(void *), void *arg, const char *thread_name, const char *client_id)
+  <br/>
+  Create a thread with standardized error handling and logging. uintptr_t
+    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+  <br/>
+  Convert a thread handle to a uintptr_t registry key. int
+    <b>ascii_tls_key_create</b> (<b>tls_key_t</b> *key, void(*destructor)(void
+    *))
+  <br/>
+  Create a thread-local storage key. int <b>ascii_tls_key_delete</b>
+    (<b>tls_key_t</b> key)
+  <br/>
+  Delete a thread-local storage key. void * <b>ascii_tls_get</b>
+    (<b>tls_key_t</b> key)
+  <br/>
+  Get thread-local value for a key. int <b>ascii_tls_set</b> (<b>tls_key_t</b>
+    key, void *value)
+  <br/>
+  Set thread-local value for a key.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9F5; Cross-platform thread interface for ascii-chat</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file
+  <b>include/ascii-chat/platform/thread.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

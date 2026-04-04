@@ -148,8 +148,7 @@
 71   }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LIFECYCLE_INIT_MUTEX(_m)"><a class="permalink" href="#_define_LIFECYCLE_INIT_MUTEX(_m)">#define
@@ -422,7 +421,7 @@
     <b>client_crypto_init()</b>, <b>colorscheme_init()</b>,
     <b>init_default_luminance_palette()</b>, <b>log_init()</b>,
     <b>log_search_init()</b>, <b>named_init()</b>, <b>options_state_init()</b>,
-    <b>server_main()</b>, <b>stats_init()</b>, <b>symbol_cache_init()</b>, and
+    <b>stats_init()</b>, <b>symbol_cache_init()</b>, and
     <b>timer_system_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -482,8 +481,9 @@
 <p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
     <b>asciichat_instr_runtime_get()</b>,
     <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_client_init()</b>,
-    <b>log_search_init()</b>, <b>named_init()</b>, and
-    <b>splash_set_update_notification()</b>.</p>
+    <b>log_search_init()</b>, <b>named_init()</b>,
+    <b>splash_set_update_notification()</b>, <b>update_banner_has_update()</b>,
+    and <b>update_banner_set_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_init_once (<b>lifecycle_t</b> * lc)</h2>
@@ -558,7 +558,9 @@
     <b>log_dev</b>, and <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
     <b>asciichat_instr_runtime_get()</b>, <b>audio_client_init()</b>,
-    <b>log_search_init()</b>, and <b>splash_set_update_notification()</b>.</p>
+    <b>log_search_init()</b>, <b>splash_set_update_notification()</b>,
+    <b>update_banner_has_update()</b>, and
+  <b>update_banner_set_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_is_dead (const <b>lifecycle_t</b> *
@@ -800,7 +802,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

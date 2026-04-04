@@ -43,15 +43,51 @@
   <br/>
   void * <b>init_user_data</b>
   <br/>
-  <b>session_server_like_run_fn</b> <b>run_fn</b>
-  <br/>
-  void * <b>run_user_data</b>
-  <br/>
   <b>session_server_like_interrupt_fn</b> <b>interrupt_fn</b>
+  <br/>
+  <b>session_server_like_cleanup_fn</b> <b>cleanup_fn</b>
+  <br/>
+  void * <b>cleanup_user_data</b>
   <br/>
   <b>session_server_like_status_fn</b> <b>status_fn</b>
   <br/>
   void * <b>status_user_data</b>
+  <br/>
+  <b>tcp_client_handler_fn</b> <b>tcp_handler</b>
+  <br/>
+  void * <b>tcp_user_data</b>
+  <br/>
+  struct {
+  <br/>
+   <b>bool</b> <b>enabled</b>
+  <br/>
+   <b>websocket_client_handler_fn</b> <b>handler</b>
+  <br/>
+   void * <b>user_data</b>
+  <br/>
+  } <b>websocket</b>
+  <br/>
+  struct {
+  <br/>
+   <b>bool</b> <b>enabled</b>
+  <br/>
+   const char * <b>service_name</b>
+  <br/>
+   const char * <b>service_type</b>
+  <br/>
+  } <b>mdns</b>
+  <br/>
+  struct {
+  <br/>
+   <b>bool</b> <b>enabled</b>
+  <br/>
+   const char * <b>description</b>
+  <br/>
+  } <b>upnp</b>
+  <br/>
+  <b>bool</b> <b>raise_fd_limit</b>
+  <br/>
+  int <b>fd_limit_target</b>
   <br/>
   <br/>
 </p>
@@ -60,73 +96,148 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Configuration for <b>session_server_like_run()</b></p>
+<p class="Pp">Configuration for <b>session_server_like_run()</b>.</p>
 <p class="Pp"></p>
-<p class="Pp">All logging, terminal, and signal settings are read automatically
-    from <b>GET_OPTION()</b> inside the function. Callers only provide the
-    callbacks and user data below.</p>
-<p class="Pp">Definition at line <b>132</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Network settings (port, address, WebSocket port, TLS paths) are
+    read from <b>GET_OPTION()</b> automatically. Callers provide callbacks,
+    handler functions, and feature toggles.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>server_like.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss"><b>session_server_like_cleanup_fn</b>
+  session_server_like_config::cleanup_fn</h2>
+<p class="Pp">Mode-specific teardown (optional, NULL to skip).</p>
+<p class="Pp">Definition at line <b>144</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_server_like_config::cleanup_user_data"><a class="permalink" href="#void*_session_server_like_config::cleanup_user_data">void*
+  session_server_like_config::cleanup_user_data</a></h2>
+<p class="Pp">Definition at line <b>145</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_server_like_config::description"><a class="permalink" href="#const_char*_session_server_like_config::description">const
+  char* session_server_like_config::description</a></h2>
+<p class="Pp">Description for port mapping (e.g., &quot;ascii-chat
+    Server&quot;).</p>
+<p class="Pp">Definition at line <b>200</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_server_like_config::enabled</h2>
+<p class="Pp">Enable WebSocket server alongside TCP.</p>
+<p class="Pp"></p>
+<p class="Pp">Enable mDNS service advertisement.</p>
+<p class="Pp"></p>
+<p class="Pp">Enable UPnP port mapping.</p>
+<p class="Pp">Definition at line <b>167</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_session_server_like_config::fd_limit_target"><a class="permalink" href="#int_session_server_like_config::fd_limit_target">int
+  session_server_like_config::fd_limit_target</a></h2>
+<p class="Pp">Target file descriptor limit (e.g., 65536). Ignored if
+    raise_fd_limit is false.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>websocket_client_handler_fn</b>
+  session_server_like_config::handler</h2>
+<p class="Pp">Per-connection handler callback (required if enabled).</p>
+<p class="Pp">Definition at line <b>170</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>session_server_like_init_fn</b>
   session_server_like_config::init_fn</h2>
-<p class="Pp">Mode-specific initialization callback. (required, never NULL)</p>
-<p class="Pp">Definition at line <b>141</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Mode-specific initialization (required, never NULL).</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>server_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_server_like_config::init_user_data"><a class="permalink" href="#void*_session_server_like_config::init_user_data">void*
   session_server_like_config::init_user_data</a></h2>
-<p class="Pp">User data passed to init_fn</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>server_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_server_like_interrupt_fn</b>
   session_server_like_config::interrupt_fn</h2>
-<p class="Pp">Async-signal-safe interrupt callback. (required, never NULL)</p>
-<p class="Pp"></p>
-<p class="Pp">Installed via <b>set_interrupt_callback()</b> wrapper so
-    SIGINT/SIGTERM reaches it without each mode registering its own signal
-    handler.</p>
-<p class="Pp">Definition at line <b>162</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Async-signal-safe interrupt handler (required, never NULL).</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>server_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>session_server_like_run_fn</b>
-  session_server_like_config::run_fn</h2>
-<p class="Pp">Mode-specific blocking main loop callback. (required, never
-  NULL)</p>
-<p class="Pp">Definition at line <b>150</b> of file <b>server_like.h</b>.</p>
+<h2 class="Ss">struct { ... } session_server_like_config::mdns</h2>
 <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::run_user_data"><a class="permalink" href="#void*_session_server_like_config::run_user_data">void*
-  session_server_like_config::run_user_data</a></h2>
-<p class="Pp">User data passed to run_fn</p>
-<p class="Pp">Definition at line <b>153</b> of file <b>server_like.h</b>.</p>
+<h2 class="Ss"><b>bool</b> session_server_like_config::raise_fd_limit</h2>
+<p class="Pp">Raise file descriptor limit on startup.</p>
+<p class="Pp">Definition at line <b>208</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_server_like_config::service_name"><a class="permalink" href="#const_char*_session_server_like_config::service_name">const
+  char* session_server_like_config::service_name</a></h2>
+<p class="Pp">Service name (e.g., &quot;ascii-chat-Server&quot;). NULL for
+    deferred advertisement.</p>
+<p class="Pp">Definition at line <b>185</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_server_like_config::service_type"><a class="permalink" href="#const_char*_session_server_like_config::service_type">const
+  char* session_server_like_config::service_type</a></h2>
+<p class="Pp">Service type (e.g., &quot;_ascii-chat._tcp&quot;).</p>
+<p class="Pp">Definition at line <b>188</b> of file <b>server_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_server_like_status_fn</b>
   session_server_like_config::status_fn</h2>
-<p class="Pp">Status data callback. (optional, NULL = no status screen even if
-    --status-screen is set)</p>
-<p class="Pp"></p>
-<p class="Pp">Decoupled from <b>tcp_server_t</b> so both server (has
-    <b>tcp_server_t</b>) and discovery-service (embeds <b>tcp_server_t</b>
-    inside <b>acds_server_t</b>) can provide status without type
-  constraints.</p>
-<p class="Pp">Definition at line <b>176</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Status screen data provider (optional, NULL = no status
+  screen).</p>
+<p class="Pp">Definition at line <b>148</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_server_like_config::status_user_data"><a class="permalink" href="#void*_session_server_like_config::status_user_data">void*
   session_server_like_config::status_user_data</a></h2>
-<p class="Pp">User data passed to status_fn</p>
-<p class="Pp">Definition at line <b>179</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>server_like.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>tcp_client_handler_fn</b>
+  session_server_like_config::tcp_handler</h2>
+<p class="Pp">Per-connection handler callback (required).</p>
+<p class="Pp">Definition at line <b>156</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_server_like_config::tcp_user_data"><a class="permalink" href="#void*_session_server_like_config::tcp_user_data">void*
+  session_server_like_config::tcp_user_data</a></h2>
+<p class="Pp">User data passed to each tcp_handler invocation.</p>
+<p class="Pp">Definition at line <b>159</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct { ... } session_server_like_config::upnp</h2>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_server_like_config::user_data"><a class="permalink" href="#void*_session_server_like_config::user_data">void*
+  session_server_like_config::user_data</a></h2>
+<p class="Pp">User data passed to each WebSocket handler invocation.</p>
+<p class="Pp">Definition at line <b>173</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct { ... } session_server_like_config::websocket</h2>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -137,7 +248,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

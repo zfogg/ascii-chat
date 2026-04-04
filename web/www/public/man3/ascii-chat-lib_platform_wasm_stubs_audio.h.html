@@ -80,110 +80,110 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_is_supported_sample_rate (<b>uint32_t</b>
   sample_rate)</h2>
-<p class="Pp">Definition at line <b>2074</b> of file
+<p class="Pp">Definition at line <b>2110</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2074                                                           {
-2075   // List of commonly supported audio sample rates
-2076   static const uint32_t supported_rates[] = {
-2077       8000,   // Telephone quality
-2078       16000,  // Wideband telephony
-2079       24000,  // High quality speech
-2080       32000,  // Good for video
-2081       44100,  // CD quality (less common in VoIP)
-2082       48000,  // Standard professional
-2083       96000,  // High-end professional
-2084       192000, // Ultra-high-end mastering
-2085   };
-2086 
-2087   const size_t rate_count = sizeof(supported_rates) / sizeof(supported_rates[0]);
-2088   for (size_t i = 0; i &lt; rate_count; i++) {
-2089     if (sample_rate == supported_rates[i]) {
-2090       return true;
-2091     }
-2092   }
-2093 
-2094   return false;
-2095 }</pre>
+<pre>2110                                                           {
+2111   // List of commonly supported audio sample rates
+2112   static const uint32_t supported_rates[] = {
+2113       8000,   // Telephone quality
+2114       16000,  // Wideband telephony
+2115       24000,  // High quality speech
+2116       32000,  // Good for video
+2117       44100,  // CD quality (less common in VoIP)
+2118       48000,  // Standard professional
+2119       96000,  // High-end professional
+2120       192000, // Ultra-high-end mastering
+2121   };
+2122 
+2123   const size_t rate_count = sizeof(supported_rates) / sizeof(supported_rates[0]);
+2124   for (size_t i = 0; i &lt; rate_count; i++) {
+2125     if (sample_rate == supported_rates[i]) {
+2126       return true;
+2127     }
+2128   }
+2129 
+2130   return false;
+2131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> audio_parse_batch_header (const void *
   data, size_t len, <b>audio_batch_info_t</b> * out_batch)</h2>
-<p class="Pp">Definition at line <b>2008</b> of file
+<p class="Pp">Definition at line <b>2044</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2008                                                                                                         {
-2009   if (!data) {
-2010     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
-2011   }
-2012 
-2013   if (!out_batch) {
-2014     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info output pointer is NULL&quot;);
-2015   }
-2016 
-2017   if (len &lt; sizeof(audio_batch_packet_t)) {
-2018     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header too small (len=%zu, expected=%zu)&quot;, len,
-2019                      sizeof(audio_batch_packet_t));
-2020   }
-2021 
-2022   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-2023 
-2024   // Unpack network byte order values to host byte order
-2025   out_batch-&gt;batch_count = ntohl(batch_header-&gt;batch_count);
-2026   out_batch-&gt;total_samples = ntohl(batch_header-&gt;total_samples);
-2027   out_batch-&gt;sample_rate = ntohl(batch_header-&gt;sample_rate);
-2028   out_batch-&gt;channels = ntohl(batch_header-&gt;channels);
-2029 
-2030   return ASCIICHAT_OK;
-2031 }</pre>
+<pre>2044                                                                                                         {
+2045   if (!data) {
+2046     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
+2047   }
+2048 
+2049   if (!out_batch) {
+2050     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info output pointer is NULL&quot;);
+2051   }
+2052 
+2053   if (len &lt; sizeof(audio_batch_packet_t)) {
+2054     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header too small (len=%zu, expected=%zu)&quot;, len,
+2055                      sizeof(audio_batch_packet_t));
+2056   }
+2057 
+2058   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+2059 
+2060   // Unpack network byte order values to host byte order
+2061   out_batch-&gt;batch_count = ntohl(batch_header-&gt;batch_count);
+2062   out_batch-&gt;total_samples = ntohl(batch_header-&gt;total_samples);
+2063   out_batch-&gt;sample_rate = ntohl(batch_header-&gt;sample_rate);
+2064   out_batch-&gt;channels = ntohl(batch_header-&gt;channels);
+2065 
+2066   return ASCIICHAT_OK;
+2067 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> audio_validate_batch_params (const
   <b>audio_batch_info_t</b> * batch)</h2>
-<p class="Pp">Definition at line <b>2033</b> of file
+<p class="Pp">Definition at line <b>2069</b> of file
   <b>lib/audio/audio.c</b>.</p>
-<pre>2033                                                                                {
-2034   if (!batch) {
-2035     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
-2036   }
-2037 
-2038   // Validate batch_count
-2039   if (batch-&gt;batch_count == 0) {
-2040     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count cannot be zero&quot;);
-2041   }
-2042 
-2043   // Check for reasonable max (256 frames per batch is very generous)
-2044   if (batch-&gt;batch_count &gt; 256) {
-2045     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count too large (batch_count=%u, max=256)&quot;, batch-&gt;batch_count);
-2046   }
-2047 
-2048   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
-2049   if (batch-&gt;channels == 0 || batch-&gt;channels &gt; 8) {
-2050     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid channel count (channels=%u, valid=1-8)&quot;, batch-&gt;channels);
-2051   }
-2052 
-2053   // Validate sample rate
-2054   if (!audio_is_supported_sample_rate(batch-&gt;sample_rate)) {
-2055     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported sample rate (sample_rate=%u)&quot;, batch-&gt;sample_rate);
-2056   }
-2057 
-2058   // Check for reasonable sample counts
-2059   if (batch-&gt;total_samples == 0) {
-2060     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch has zero samples&quot;);
-2061   }
-2062 
-2063   // Each batch typically has samples_per_frame worth of samples
-2064   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
-2065   // With max 256 frames, that's up to ~245k samples per batch
-2066   if (batch-&gt;total_samples &gt; 1000000) {
-2067     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch sample count suspiciously large (total_samples=%u)&quot;,
-2068                      batch-&gt;total_samples);
-2069   }
-2070 
-2071   return ASCIICHAT_OK;
-2072 }</pre>
+<pre>2069                                                                                {
+2070   if (!batch) {
+2071     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
+2072   }
+2073 
+2074   // Validate batch_count
+2075   if (batch-&gt;batch_count == 0) {
+2076     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count cannot be zero&quot;);
+2077   }
+2078 
+2079   // Check for reasonable max (256 frames per batch is very generous)
+2080   if (batch-&gt;batch_count &gt; 256) {
+2081     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count too large (batch_count=%u, max=256)&quot;, batch-&gt;batch_count);
+2082   }
+2083 
+2084   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
+2085   if (batch-&gt;channels == 0 || batch-&gt;channels &gt; 8) {
+2086     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid channel count (channels=%u, valid=1-8)&quot;, batch-&gt;channels);
+2087   }
+2088 
+2089   // Validate sample rate
+2090   if (!audio_is_supported_sample_rate(batch-&gt;sample_rate)) {
+2091     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported sample rate (sample_rate=%u)&quot;, batch-&gt;sample_rate);
+2092   }
+2093 
+2094   // Check for reasonable sample counts
+2095   if (batch-&gt;total_samples == 0) {
+2096     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch has zero samples&quot;);
+2097   }
+2098 
+2099   // Each batch typically has samples_per_frame worth of samples
+2100   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
+2101   // With max 256 frames, that's up to ~245k samples per batch
+2102   if (batch-&gt;total_samples &gt; 1000000) {
+2103     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch sample count suspiciously large (total_samples=%u)&quot;,
+2104                      batch-&gt;total_samples);
+2105   }
+2106 
+2107   return ASCIICHAT_OK;
+2108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -195,7 +195,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

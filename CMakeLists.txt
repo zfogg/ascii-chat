@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 
+# Suppress FetchContent_Populate deprecation warning (CMP0169)
+cmake_policy(SET CMP0169 OLD)
+
 # =============================================================================
 # Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
 # =============================================================================

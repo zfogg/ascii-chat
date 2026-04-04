@@ -99,12 +99,12 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_BGASCII_LUMA_THRESHOLD___128"><a class="permalink" href="#_define_BGASCII_LUMA_THRESHOLD___128">#define
   BGASCII_LUMA_THRESHOLD 128</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>sgr.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>sgr.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_CUBE_GRAY_THRESHOLD___10"><a class="permalink" href="#_define_CUBE_GRAY_THRESHOLD___10">#define
   CUBE_GRAY_THRESHOLD 10</a></h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>sgr.c</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>sgr.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -113,13 +113,13 @@
 <section class="Ss">
 <h2 class="Ss" id="char_*_append_sgr_reset_(char_*_dst)"><a class="permalink" href="#char_*_append_sgr_reset_(char_*_dst)">char
   * append_sgr_reset (char * dst) [inline]</a></h2>
-<p class="Pp">Definition at line <b>155</b> of file <b>sgr.c</b>.</p>
-<pre>155                                          {
-156   // &quot;\x1b[0m&quot;
-157   static const char RESET[] = &quot;\033[0m&quot;;
-158   memcpy(dst, RESET, sizeof(RESET) - 1);
-159   return dst + (sizeof(RESET) - 1);
-160 }</pre>
+<p class="Pp">Definition at line <b>156</b> of file <b>sgr.c</b>.</p>
+<pre>156                                          {
+157   // &quot;\x1b[0m&quot;
+158   static const char RESET[] = &quot;\033[0m&quot;;
+159   memcpy(dst, RESET, sizeof(RESET) - 1);
+160   return dst + (sizeof(RESET) - 1);
+161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -127,66 +127,66 @@
 <h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_">char
   * append_sgr_truecolor_bg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
   <b>uint8_t</b> b) [inline]</a></h2>
-<p class="Pp">Definition at line <b>224</b> of file <b>sgr.c</b>.</p>
-<pre>224                                                                                  {
-225   // Constructor ensures initialization
-226 
-227   // Direct character writes for &quot;\033[48;2;&quot;
-228   *dst++ = '\033';
-229   *dst++ = '[';
-230   *dst++ = '4';
-231   *dst++ = '8';
-232   *dst++ = ';';
-233   *dst++ = '2';
-234   *dst++ = ';';
-235 
-236   // Optimized digit copying
-237   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
-238   if (rd-&gt;len == 1) {
-239     *dst++ = rd-&gt;s[0];
-240   } else if (rd-&gt;len == 2) {
-241     dst[0] = rd-&gt;s[0];
-242     dst[1] = rd-&gt;s[1];
-243     dst += 2;
-244   } else {
-245     dst[0] = rd-&gt;s[0];
-246     dst[1] = rd-&gt;s[1];
-247     dst[2] = rd-&gt;s[2];
-248     dst += 3;
-249   }
-250   *dst++ = ';';
-251 
-252   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
-253   if (gd-&gt;len == 1) {
-254     *dst++ = gd-&gt;s[0];
-255   } else if (gd-&gt;len == 2) {
-256     dst[0] = gd-&gt;s[0];
-257     dst[1] = gd-&gt;s[1];
-258     dst += 2;
-259   } else {
-260     dst[0] = gd-&gt;s[0];
-261     dst[1] = gd-&gt;s[1];
-262     dst[2] = gd-&gt;s[2];
-263     dst += 3;
-264   }
-265   *dst++ = ';';
-266 
-267   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
-268   if (bd-&gt;len == 1) {
-269     *dst++ = bd-&gt;s[0];
-270   } else if (bd-&gt;len == 2) {
-271     dst[0] = bd-&gt;s[0];
-272     dst[1] = bd-&gt;s[1];
-273     dst += 2;
-274   } else {
-275     dst[0] = bd-&gt;s[0];
-276     dst[1] = bd-&gt;s[1];
-277     dst[2] = bd-&gt;s[2];
-278     dst += 3;
-279   }
-280   *dst++ = 'm';
-281   return dst;
-282 }</pre>
+<p class="Pp">Definition at line <b>225</b> of file <b>sgr.c</b>.</p>
+<pre>225                                                                                  {
+226   // Constructor ensures initialization
+227 
+228   // Direct character writes for &quot;\033[48;2;&quot;
+229   *dst++ = '\033';
+230   *dst++ = '[';
+231   *dst++ = '4';
+232   *dst++ = '8';
+233   *dst++ = ';';
+234   *dst++ = '2';
+235   *dst++ = ';';
+236 
+237   // Optimized digit copying
+238   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
+239   if (rd-&gt;len == 1) {
+240     *dst++ = rd-&gt;s[0];
+241   } else if (rd-&gt;len == 2) {
+242     dst[0] = rd-&gt;s[0];
+243     dst[1] = rd-&gt;s[1];
+244     dst += 2;
+245   } else {
+246     dst[0] = rd-&gt;s[0];
+247     dst[1] = rd-&gt;s[1];
+248     dst[2] = rd-&gt;s[2];
+249     dst += 3;
+250   }
+251   *dst++ = ';';
+252 
+253   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
+254   if (gd-&gt;len == 1) {
+255     *dst++ = gd-&gt;s[0];
+256   } else if (gd-&gt;len == 2) {
+257     dst[0] = gd-&gt;s[0];
+258     dst[1] = gd-&gt;s[1];
+259     dst += 2;
+260   } else {
+261     dst[0] = gd-&gt;s[0];
+262     dst[1] = gd-&gt;s[1];
+263     dst[2] = gd-&gt;s[2];
+264     dst += 3;
+265   }
+266   *dst++ = ';';
+267 
+268   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
+269   if (bd-&gt;len == 1) {
+270     *dst++ = bd-&gt;s[0];
+271   } else if (bd-&gt;len == 2) {
+272     dst[0] = bd-&gt;s[0];
+273     dst[1] = bd-&gt;s[1];
+274     dst += 2;
+275   } else {
+276     dst[0] = bd-&gt;s[0];
+277     dst[1] = bd-&gt;s[1];
+278     dst[2] = bd-&gt;s[2];
+279     dst += 3;
+280   }
+281   *dst++ = 'm';
+282   return dst;
+283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
@@ -196,66 +196,66 @@
 <h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_">char
   * append_sgr_truecolor_fg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
   <b>uint8_t</b> b) [inline]</a></h2>
-<p class="Pp">Definition at line <b>163</b> of file <b>sgr.c</b>.</p>
-<pre>163                                                                                  {
-164   // Constructor ensures initialization
-165 
-166   // Direct character writes (compiler will optimize to word operations)
-167   *dst++ = '\033';
-168   *dst++ = '[';
-169   *dst++ = '3';
-170   *dst++ = '8';
-171   *dst++ = ';';
-172   *dst++ = '2';
-173   *dst++ = ';';
-174 
-175   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
-176   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
-177   if (rd-&gt;len == 1) {
-178     *dst++ = rd-&gt;s[0];
-179   } else if (rd-&gt;len == 2) {
-180     dst[0] = rd-&gt;s[0];
-181     dst[1] = rd-&gt;s[1];
-182     dst += 2;
-183   } else {
-184     dst[0] = rd-&gt;s[0];
-185     dst[1] = rd-&gt;s[1];
-186     dst[2] = rd-&gt;s[2];
-187     dst += 3;
-188   }
-189   *dst++ = ';';
-190 
-191   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
-192   if (gd-&gt;len == 1) {
-193     *dst++ = gd-&gt;s[0];
-194   } else if (gd-&gt;len == 2) {
-195     dst[0] = gd-&gt;s[0];
-196     dst[1] = gd-&gt;s[1];
-197     dst += 2;
-198   } else {
-199     dst[0] = gd-&gt;s[0];
-200     dst[1] = gd-&gt;s[1];
-201     dst[2] = gd-&gt;s[2];
-202     dst += 3;
-203   }
-204   *dst++ = ';';
-205 
-206   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
-207   if (bd-&gt;len == 1) {
-208     *dst++ = bd-&gt;s[0];
-209   } else if (bd-&gt;len == 2) {
-210     dst[0] = bd-&gt;s[0];
-211     dst[1] = bd-&gt;s[1];
-212     dst += 2;
-213   } else {
-214     dst[0] = bd-&gt;s[0];
-215     dst[1] = bd-&gt;s[1];
-216     dst[2] = bd-&gt;s[2];
-217     dst += 3;
-218   }
-219   *dst++ = 'm';
-220   return dst;
-221 }</pre>
+<p class="Pp">Definition at line <b>164</b> of file <b>sgr.c</b>.</p>
+<pre>164                                                                                  {
+165   // Constructor ensures initialization
+166 
+167   // Direct character writes (compiler will optimize to word operations)
+168   *dst++ = '\033';
+169   *dst++ = '[';
+170   *dst++ = '3';
+171   *dst++ = '8';
+172   *dst++ = ';';
+173   *dst++ = '2';
+174   *dst++ = ';';
+175 
+176   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
+177   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
+178   if (rd-&gt;len == 1) {
+179     *dst++ = rd-&gt;s[0];
+180   } else if (rd-&gt;len == 2) {
+181     dst[0] = rd-&gt;s[0];
+182     dst[1] = rd-&gt;s[1];
+183     dst += 2;
+184   } else {
+185     dst[0] = rd-&gt;s[0];
+186     dst[1] = rd-&gt;s[1];
+187     dst[2] = rd-&gt;s[2];
+188     dst += 3;
+189   }
+190   *dst++ = ';';
+191 
+192   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
+193   if (gd-&gt;len == 1) {
+194     *dst++ = gd-&gt;s[0];
+195   } else if (gd-&gt;len == 2) {
+196     dst[0] = gd-&gt;s[0];
+197     dst[1] = gd-&gt;s[1];
+198     dst += 2;
+199   } else {
+200     dst[0] = gd-&gt;s[0];
+201     dst[1] = gd-&gt;s[1];
+202     dst[2] = gd-&gt;s[2];
+203     dst += 3;
+204   }
+205   *dst++ = ';';
+206 
+207   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
+208   if (bd-&gt;len == 1) {
+209     *dst++ = bd-&gt;s[0];
+210   } else if (bd-&gt;len == 2) {
+211     dst[0] = bd-&gt;s[0];
+212     dst[1] = bd-&gt;s[1];
+213     dst += 2;
+214   } else {
+215     dst[0] = bd-&gt;s[0];
+216     dst[1] = bd-&gt;s[1];
+217     dst[2] = bd-&gt;s[2];
+218     dst += 3;
+219   }
+220   *dst++ = 'm';
+221   return dst;
+222 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
@@ -266,120 +266,120 @@
   * append_sgr_truecolor_fg_bg (char * dst, <b>uint8_t</b> fr, <b>uint8_t</b>
   fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg, <b>uint8_t</b>
   bb) [inline]</a></h2>
-<p class="Pp">Definition at line <b>285</b> of file <b>sgr.c</b>.</p>
-<pre>286                                                     {
-287   // Constructor ensures initialization
-288 
-289   // Write &quot;\033[38;2;&quot; directly (7 chars)
-290   *dst++ = '\033';
-291   *dst++ = '[';
-292   *dst++ = '3';
-293   *dst++ = '8';
-294   *dst++ = ';';
-295   *dst++ = '2';
-296   *dst++ = ';';
-297 
-298   // Foreground RGB digits
-299   const dec3_t *d = &amp;g_dec3_cache.dec3_table[fr];
-300   if (d-&gt;len == 1) {
-301     *dst++ = d-&gt;s[0];
-302   } else if (d-&gt;len == 2) {
-303     dst[0] = d-&gt;s[0];
-304     dst[1] = d-&gt;s[1];
-305     dst += 2;
-306   } else {
-307     dst[0] = d-&gt;s[0];
-308     dst[1] = d-&gt;s[1];
-309     dst[2] = d-&gt;s[2];
-310     dst += 3;
-311   }
-312   *dst++ = ';';
-313 
-314   d = &amp;g_dec3_cache.dec3_table[fg];
-315   if (d-&gt;len == 1) {
-316     *dst++ = d-&gt;s[0];
-317   } else if (d-&gt;len == 2) {
-318     dst[0] = d-&gt;s[0];
-319     dst[1] = d-&gt;s[1];
-320     dst += 2;
-321   } else {
-322     dst[0] = d-&gt;s[0];
-323     dst[1] = d-&gt;s[1];
-324     dst[2] = d-&gt;s[2];
-325     dst += 3;
-326   }
-327   *dst++ = ';';
-328 
-329   d = &amp;g_dec3_cache.dec3_table[fb];
-330   if (d-&gt;len == 1) {
-331     *dst++ = d-&gt;s[0];
-332   } else if (d-&gt;len == 2) {
-333     dst[0] = d-&gt;s[0];
-334     dst[1] = d-&gt;s[1];
-335     dst += 2;
-336   } else {
-337     dst[0] = d-&gt;s[0];
-338     dst[1] = d-&gt;s[1];
-339     dst[2] = d-&gt;s[2];
-340     dst += 3;
-341   }
-342 
-343   // Write &quot;;48;2;&quot; directly (6 chars)
-344   *dst++ = ';';
-345   *dst++ = '4';
-346   *dst++ = '8';
-347   *dst++ = ';';
-348   *dst++ = '2';
-349   *dst++ = ';';
-350 
-351   // Background RGB digits
-352   d = &amp;g_dec3_cache.dec3_table[br];
-353   if (d-&gt;len == 1) {
-354     *dst++ = d-&gt;s[0];
-355   } else if (d-&gt;len == 2) {
-356     dst[0] = d-&gt;s[0];
-357     dst[1] = d-&gt;s[1];
-358     dst += 2;
-359   } else {
-360     dst[0] = d-&gt;s[0];
-361     dst[1] = d-&gt;s[1];
-362     dst[2] = d-&gt;s[2];
-363     dst += 3;
-364   }
-365   *dst++ = ';';
-366 
-367   d = &amp;g_dec3_cache.dec3_table[bg];
-368   if (d-&gt;len == 1) {
-369     *dst++ = d-&gt;s[0];
-370   } else if (d-&gt;len == 2) {
-371     dst[0] = d-&gt;s[0];
-372     dst[1] = d-&gt;s[1];
-373     dst += 2;
-374   } else {
-375     dst[0] = d-&gt;s[0];
-376     dst[1] = d-&gt;s[1];
-377     dst[2] = d-&gt;s[2];
-378     dst += 3;
-379   }
-380   *dst++ = ';';
-381 
-382   d = &amp;g_dec3_cache.dec3_table[bb];
-383   if (d-&gt;len == 1) {
-384     *dst++ = d-&gt;s[0];
-385   } else if (d-&gt;len == 2) {
-386     dst[0] = d-&gt;s[0];
-387     dst[1] = d-&gt;s[1];
-388     dst += 2;
-389   } else {
-390     dst[0] = d-&gt;s[0];
-391     dst[1] = d-&gt;s[1];
-392     dst[2] = d-&gt;s[2];
-393     dst += 3;
-394   }
-395 
-396   *dst++ = 'm';
-397   return dst;
-398 }</pre>
+<p class="Pp">Definition at line <b>286</b> of file <b>sgr.c</b>.</p>
+<pre>287                                                     {
+288   // Constructor ensures initialization
+289 
+290   // Write &quot;\033[38;2;&quot; directly (7 chars)
+291   *dst++ = '\033';
+292   *dst++ = '[';
+293   *dst++ = '3';
+294   *dst++ = '8';
+295   *dst++ = ';';
+296   *dst++ = '2';
+297   *dst++ = ';';
+298 
+299   // Foreground RGB digits
+300   const dec3_t *d = &amp;g_dec3_cache.dec3_table[fr];
+301   if (d-&gt;len == 1) {
+302     *dst++ = d-&gt;s[0];
+303   } else if (d-&gt;len == 2) {
+304     dst[0] = d-&gt;s[0];
+305     dst[1] = d-&gt;s[1];
+306     dst += 2;
+307   } else {
+308     dst[0] = d-&gt;s[0];
+309     dst[1] = d-&gt;s[1];
+310     dst[2] = d-&gt;s[2];
+311     dst += 3;
+312   }
+313   *dst++ = ';';
+314 
+315   d = &amp;g_dec3_cache.dec3_table[fg];
+316   if (d-&gt;len == 1) {
+317     *dst++ = d-&gt;s[0];
+318   } else if (d-&gt;len == 2) {
+319     dst[0] = d-&gt;s[0];
+320     dst[1] = d-&gt;s[1];
+321     dst += 2;
+322   } else {
+323     dst[0] = d-&gt;s[0];
+324     dst[1] = d-&gt;s[1];
+325     dst[2] = d-&gt;s[2];
+326     dst += 3;
+327   }
+328   *dst++ = ';';
+329 
+330   d = &amp;g_dec3_cache.dec3_table[fb];
+331   if (d-&gt;len == 1) {
+332     *dst++ = d-&gt;s[0];
+333   } else if (d-&gt;len == 2) {
+334     dst[0] = d-&gt;s[0];
+335     dst[1] = d-&gt;s[1];
+336     dst += 2;
+337   } else {
+338     dst[0] = d-&gt;s[0];
+339     dst[1] = d-&gt;s[1];
+340     dst[2] = d-&gt;s[2];
+341     dst += 3;
+342   }
+343 
+344   // Write &quot;;48;2;&quot; directly (6 chars)
+345   *dst++ = ';';
+346   *dst++ = '4';
+347   *dst++ = '8';
+348   *dst++ = ';';
+349   *dst++ = '2';
+350   *dst++ = ';';
+351 
+352   // Background RGB digits
+353   d = &amp;g_dec3_cache.dec3_table[br];
+354   if (d-&gt;len == 1) {
+355     *dst++ = d-&gt;s[0];
+356   } else if (d-&gt;len == 2) {
+357     dst[0] = d-&gt;s[0];
+358     dst[1] = d-&gt;s[1];
+359     dst += 2;
+360   } else {
+361     dst[0] = d-&gt;s[0];
+362     dst[1] = d-&gt;s[1];
+363     dst[2] = d-&gt;s[2];
+364     dst += 3;
+365   }
+366   *dst++ = ';';
+367 
+368   d = &amp;g_dec3_cache.dec3_table[bg];
+369   if (d-&gt;len == 1) {
+370     *dst++ = d-&gt;s[0];
+371   } else if (d-&gt;len == 2) {
+372     dst[0] = d-&gt;s[0];
+373     dst[1] = d-&gt;s[1];
+374     dst += 2;
+375   } else {
+376     dst[0] = d-&gt;s[0];
+377     dst[1] = d-&gt;s[1];
+378     dst[2] = d-&gt;s[2];
+379     dst += 3;
+380   }
+381   *dst++ = ';';
+382 
+383   d = &amp;g_dec3_cache.dec3_table[bb];
+384   if (d-&gt;len == 1) {
+385     *dst++ = d-&gt;s[0];
+386   } else if (d-&gt;len == 2) {
+387     dst[0] = d-&gt;s[0];
+388     dst[1] = d-&gt;s[1];
+389     dst += 2;
+390   } else {
+391     dst[0] = d-&gt;s[0];
+392     dst[1] = d-&gt;s[1];
+393     dst[2] = d-&gt;s[2];
+394     dst += 3;
+395   }
+396 
+397   *dst++ = 'm';
+398   return dst;
+399 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
@@ -393,7 +393,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -725,9 +725,8 @@ if (result != OK) {
     <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
     <b>app_client_create()</b>, <b>app_client_destroy()</b>,
     <b>ascii_convert()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
-    <b>ascii_renderer_shutdown()</b>, <b>asciichat_clear_errno()</b>,
-    <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>,
+    <b>asciichat_clear_errno()</b>, <b>asciichat_errno_destroy()</b>,
+    <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_instr_runtime_destroy()</b>,
     <b>asciichat_instr_runtime_get()</b>, <b>asciichat_mdns_destroy()</b>,
     <b>asciichat_mdns_init()</b>, <b>asciichat_pcre2_cleanup_all()</b>,
@@ -836,11 +835,10 @@ if (result != OK) {
     <b>remove_known_host()</b>, <b>render_file_create()</b>,
     <b>render_file_destroy()</b>, <b>render_file_write_frame()</b>,
     <b>ringbuffer_destroy()</b>, <b>sdp_session_destroy()</b>,
-    <b>send_packet_secure()</b>, <b>server_main()</b>,
-    <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
-    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
-    <b>session_client_like_run()</b>, <b>session_consensus_create()</b>,
-    <b>session_consensus_destroy()</b>,
+    <b>send_packet_secure()</b>, <b>session_audio_create()</b>,
+    <b>session_audio_destroy()</b>, <b>session_capture_create()</b>,
+    <b>session_capture_destroy()</b>, <b>session_client_like_run()</b>,
+    <b>session_consensus_create()</b>, <b>session_consensus_destroy()</b>,
     <b>session_display_convert_to_ascii()</b>, <b>session_display_destroy()</b>,
     <b>session_display_encode_frame()</b>, <b>session_display_write_ascii()</b>,
     <b>session_entry_destroy()</b>, <b>session_host_create()</b>,
@@ -861,13 +859,14 @@ if (result != OK) {
     <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
     <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
     <b>timer_start()</b>, <b>timer_stop()</b>, <b>timer_system_destroy()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_check_save_cache()</b>, <b>url_parse()</b>,
-    <b>url_parts_destroy()</b>, <b>utf8_palette_create()</b>,
-    <b>utf8_palette_destroy()</b>, <b>validate_ssh_key_file()</b>,
-    <b>video_frame_buffer_create()</b>, <b>video_frame_buffer_destroy()</b>,
-    <b>wav_writer_close()</b>, <b>wav_writer_open()</b>,
-    <b>webrtc_close_datachannel()</b>, <b>webrtc_close_peer_connection()</b>,
+    <b>update_banner_show_prompt()</b>, <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, <b>update_check_save_cache()</b>,
+    <b>url_parse()</b>, <b>url_parts_destroy()</b>,
+    <b>utf8_palette_create()</b>, <b>utf8_palette_destroy()</b>,
+    <b>validate_ssh_key_file()</b>, <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>wav_writer_close()</b>,
+    <b>wav_writer_open()</b>, <b>webrtc_close_datachannel()</b>,
+    <b>webrtc_close_peer_connection()</b>,
     <b>webrtc_create_peer_connection()</b>,
     <b>webrtc_peer_connection_destroy()</b>,
     <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
@@ -893,10 +892,11 @@ if (result != OK) {
     <b>options_config_print_usage_section()</b>,
     <b>options_config_set_defaults()</b>, <b>options_print_help_for_mode()</b>,
     <b>sdp_detect_terminal_capabilities()</b>,
-    <b>terminal_can_prompt_user()</b>, <b>terminal_should_color_output()</b>,
+    <b>terminal_can_prompt_user()</b>, <b>terminal_screen_render()</b>,
+    <b>terminal_should_color_output()</b>,
     <b>terminal_should_force_stderr()</b>,
-    <b>terminal_should_use_control_sequences()</b>, and
-    <b>wav_dump_enabled()</b>.</p>
+    <b>terminal_should_use_control_sequences()</b>,
+    <b>test_get_binary_path()</b>, and <b>wav_dump_enabled()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SAFE_MALLOC(_size,__cast)"><a class="permalink" href="#_define_SAFE_MALLOC(_size,__cast)">#define
@@ -934,8 +934,7 @@ if (result != OK) {
     <b>acip_websocket_server_transport_create()</b>, <b>add_known_host()</b>,
     <b>ansi_strip_escapes()</b>, <b>app_client_create()</b>,
     <b>ascii_create_grid()</b>, <b>ascii_pad_frame_height()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>ascii_renderer_init()</b>,
-    <b>ascii_renderer_resize()</b>, <b>asciichat_mdns_init()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>asciichat_mdns_init()</b>,
     <b>asciichat_pcre2_extract_group()</b>,
     <b>asciichat_pcre2_extract_named_group()</b>,
     <b>asciichat_pcre2_singleton_compile()</b>, <b>asciichat_set_errno()</b>,
@@ -1013,7 +1012,7 @@ if (result != OK) {
     <b>rgb_to_256color_halfblocks_scalar()</b>,
     <b>rgb_to_halfblocks_scalar()</b>,
     <b>rgb_to_truecolor_halfblocks_scalar()</b>, <b>sdp_generate_answer()</b>,
-    <b>sdp_generate_offer()</b>, <b>sdp_parse()</b>, <b>server_main()</b>,
+    <b>sdp_generate_offer()</b>, <b>sdp_parse()</b>,
     <b>session_capture_create()</b>, <b>session_client_like_run()</b>,
     <b>session_display_write_ascii()</b>,
     <b>session_network_capture_create()</b>, <b>simple_frame_swap_create()</b>,
@@ -1024,10 +1023,10 @@ if (result != OK) {
     <b>terminal_fd_reader_next()</b>, <b>terminal_screen_render()</b>,
     <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
     <b>thread_pool_queue_work()</b>, <b>thread_pool_spawn()</b>,
-    <b>timer_start()</b>, <b>utf8_palette_create()</b>,
-    <b>video_frame_buffer_create()</b>, <b>wav_writer_open()</b>,
-    <b>webrtc_create_datachannel()</b>, <b>webrtc_create_peer_connection()</b>,
-    <b>webrtc_peer_manager_create()</b>,
+    <b>timer_start()</b>, <b>update_banner_show_prompt()</b>,
+    <b>utf8_palette_create()</b>, <b>video_frame_buffer_create()</b>,
+    <b>wav_writer_open()</b>, <b>webrtc_create_datachannel()</b>,
+    <b>webrtc_create_peer_connection()</b>, <b>webrtc_peer_manager_create()</b>,
     <b>webrtc_peer_manager_handle_sdp()</b>, and
     <b>websocket_client_create()</b>.</p>
 </section>
@@ -1212,18 +1211,17 @@ if (result != OK) {
     <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
     <b>crypto_get_status()</b>, <b>detect_default_ssh_key()</b>,
     <b>expand_ipv6()</b>, <b>format_available_modes()</b>,
-    <b>format_ip_with_port()</b>, <b>image_print_color_background()</b>,
-    <b>image_print_color_utf8()</b>, <b>ipv4_to_ipv6_mapped()</b>,
-    <b>keyboard_help_render()</b>, <b>options_init()</b>,
-    <b>parse_client_address()</b>, <b>parse_mirror_media()</b>,
-    <b>parse_server_bind_address()</b>, <b>parse_volume()</b>,
-    <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
+    <b>format_ip_with_port()</b>, <b>image_print_color()</b>,
+    <b>image_print_color_background()</b>, <b>image_print_color_utf8()</b>,
+    <b>ipv4_to_ipv6_mapped()</b>, <b>keyboard_help_render()</b>,
+    <b>options_init()</b>, <b>parse_client_address()</b>,
+    <b>parse_mirror_media()</b>, <b>parse_server_bind_address()</b>,
+    <b>parse_volume()</b>, <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
     <b>server_connection_establish()</b>, <b>server_crypto_handshake()</b>,
     <b>strip_equals_prefix()</b>, <b>symbol_cache_resolve_batch()</b>,
     <b>tcp_client_connect()</b>, <b>tcp_server_add_client()</b>,
     <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>,
-    <b>threaded_send_client_join_packet()</b>,
-    <b>truncate_utf8_with_ellipsis()</b>, <b>validate_opt_color_mode()</b>,
+    <b>threaded_send_client_join_packet()</b>, <b>validate_opt_color_mode()</b>,
     <b>validate_opt_device_index()</b>,
     <b>validate_opt_float_non_negative()</b>, <b>validate_opt_ip_address()</b>,
     <b>validate_opt_log_level()</b>, <b>validate_opt_palette()</b>,
@@ -1331,11 +1329,10 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>414</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
-    <b>acds_identity_save()</b>, <b>acds_main()</b>,
-    <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acip_websocket_client_transport_create()</b>, <b>add_client()</b>,
-    <b>add_webrtc_client()</b>, <b>asciichat_instr_log_line()</b>,
-    <b>asciichat_set_errno()</b>,
+    <b>acds_identity_save()</b>, <b>acds_session_create()</b>,
+    <b>acds_session_join()</b>, <b>acip_websocket_client_transport_create()</b>,
+    <b>add_client()</b>, <b>add_webrtc_client()</b>,
+    <b>asciichat_instr_log_line()</b>, <b>asciichat_set_errno()</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
     <b>build_github_gpg_url()</b>, <b>build_gitlab_gpg_url()</b>,
     <b>client_audio_render_thread()</b>, <b>client_crypto_init()</b>,
@@ -1374,9 +1371,9 @@ if (result != OK) {
     <b>parse_log_file()</b>, <b>parse_palette_chars()</b>,
     <b>parse_palette_chars_option()</b>, <b>parse_ssh_private_key()</b>,
     <b>path_validate_user_path()</b>, <b>remove_client()</b>,
-    <b>sdp_generate_answer()</b>, <b>sdp_parse()</b>,
-    <b>send_error_packet_message()</b>, <b>server_connection_establish()</b>,
-    <b>server_connection_set_ip()</b>, <b>server_main()</b>,
+    <b>render_file_create()</b>, <b>sdp_generate_answer()</b>,
+    <b>sdp_parse()</b>, <b>send_error_packet_message()</b>,
+    <b>server_connection_establish()</b>, <b>server_connection_set_ip()</b>,
     <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_create()</b>,
     <b>session_host_find_client()</b>, <b>session_log_buffer_append()</b>,
@@ -1388,7 +1385,8 @@ if (result != OK) {
     <b>threaded_send_terminal_size_with_auto_detect()</b>, <b>time_pretty()</b>,
     <b>timer_start()</b>, <b>ui_status_gather()</b>,
     <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>utf8_palette_create()</b>, and <b>yt_dlp_extract_stream_url()</b>.</p>
+    <b>utf8_palette_create()</b>, <b>websocket_client_connect()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)"><a class="permalink" href="#_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)">#define
@@ -2153,7 +2151,7 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

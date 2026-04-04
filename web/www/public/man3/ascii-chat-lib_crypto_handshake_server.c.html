@@ -417,9 +417,8 @@
     <b>crypto_handshake_context_t::require_client_auth</b>, <b>SAFE_FREE</b>,
     <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
     <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_websocket_client_handler()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
+    <b>session_server_like_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_complete
@@ -679,9 +678,8 @@
     <b>crypto_handshake_context_t::require_client_auth</b>, <b>SET_ERRNO</b>,
     <b>crypto_context_t::signature_size</b>,
     <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_websocket_client_handler()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
+    <b>session_server_like_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_send_parameters
@@ -782,8 +780,7 @@
     <b>private_key_t::type</b>,
     <b>crypto_parameters_packet_t::verification_enabled</b>, and
     <b>XSALSA20_NONCE_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
-    <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_start
@@ -930,9 +927,8 @@
     <b>crypto_context_t::signature_size</b>,
     <b>crypto_handshake_context_t::state</b>, and
   <b>private_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_websocket_client_handler()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
+    <b>session_server_like_handshake()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -942,7 +938,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

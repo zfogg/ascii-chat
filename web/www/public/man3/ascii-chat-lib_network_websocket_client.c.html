@@ -152,45 +152,45 @@
 184   log_info(&quot;Connecting WebSocket client to %s&quot;, url);
 185 
 186   // Store URL for reference
-187   strncpy(client-&gt;url, url, sizeof(client-&gt;url) - 1);
-188   client-&gt;url[sizeof(client-&gt;url) - 1] = '\0';
-189 
-190   // Create transport using ACIP layer
-191   acip_transport_t *transport = acip_websocket_client_transport_create(&quot;client&quot;, url, crypto_ctx);
-192   if (!transport) {
-193     log_error(&quot;Failed to create WebSocket transport&quot;);
-194     atomic_store_bool(&amp;client-&gt;connection_lost, true);
-195     return NULL;
-196   }
-197 
-198   // Derive client ID from URL hash using FNV-1a (proper implementation with 64-bit arithmetic)
-199   // This provides a stable, unique ID per connection URL without undefined behavior
-200   client-&gt;my_client_id = fnv1a_hash_string(url);
-201 
-202   // Update registration name now that we have a client ID
-203   {
-204     char client_name[64];
-205     SAFE_SNPRINTF(client_name, sizeof(client_name), &quot;websocket_client_%u&quot;, client-&gt;my_client_id);
-206     named_update_name((uintptr_t)client, client_name);
-207   }
-208 
-209   // Mark encryption as enabled if crypto context provided
-210   client-&gt;encryption_enabled = (crypto_ctx != NULL);
-211 
-212   // Store transport and mark as active
-213   client-&gt;transport = transport;
-214   atomic_store_bool(&amp;client-&gt;connection_active, true);
-215   atomic_store_bool(&amp;client-&gt;connection_lost, false);
-216 
-217   log_info(&quot;WebSocket client connected to %s (ID: %u)&quot;, url, client-&gt;my_client_id);
-218 
-219   return transport;
-220 }</pre>
+187   SAFE_STRNCPY(client-&gt;url, url, sizeof(client-&gt;url));
+188 
+189   // Create transport using ACIP layer
+190   acip_transport_t *transport = acip_websocket_client_transport_create(&quot;client&quot;, url, crypto_ctx);
+191   if (!transport) {
+192     log_error(&quot;Failed to create WebSocket transport&quot;);
+193     atomic_store_bool(&amp;client-&gt;connection_lost, true);
+194     return NULL;
+195   }
+196 
+197   // Derive client ID from URL hash using FNV-1a (proper implementation with 64-bit arithmetic)
+198   // This provides a stable, unique ID per connection URL without undefined behavior
+199   client-&gt;my_client_id = fnv1a_hash_string(url);
+200 
+201   // Update registration name now that we have a client ID
+202   {
+203     char client_name[64];
+204     SAFE_SNPRINTF(client_name, sizeof(client_name), &quot;websocket_client_%u&quot;, client-&gt;my_client_id);
+205     named_update_name((uintptr_t)client, client_name);
+206   }
+207 
+208   // Mark encryption as enabled if crypto context provided
+209   client-&gt;encryption_enabled = (crypto_ctx != NULL);
+210 
+211   // Store transport and mark as active
+212   client-&gt;transport = transport;
+213   atomic_store_bool(&amp;client-&gt;connection_active, true);
+214   atomic_store_bool(&amp;client-&gt;connection_lost, false);
+215 
+216   log_info(&quot;WebSocket client connected to %s (ID: %u)&quot;, url, client-&gt;my_client_id);
+217 
+218   return transport;
+219 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_websocket_client_transport_create()</b>,
     <b>atomic_store_bool()</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>named_update_name()</b>, and <b>SAFE_SNPRINTF</b>.</p>
+    <b>named_update_name()</b>, <b>SAFE_SNPRINTF</b>, and
+  <b>SAFE_STRNCPY</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
     <b>connection_attempt_websocket()</b>.</p>
 </section>
@@ -304,11 +304,11 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Equivalent to <b>tcp_client_get_id()</b> for API
   compatibility</div>
-<p class="Pp">Definition at line <b>292</b> of file
+<p class="Pp">Definition at line <b>291</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>292                                                                    {
-293   return client ? client-&gt;my_client_id : 0;
-294 }</pre>
+<pre>291                                                                    {
+292   return client ? client-&gt;my_client_id : 0;
+293 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -321,14 +321,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent"><b>acip_transport_t</b> pointer or NULL if not
   connected</div>
-<p class="Pp">Definition at line <b>225</b> of file
+<p class="Pp">Definition at line <b>224</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>225                                                                                    {
-226   if (!client) {
-227     return NULL;
-228   }
-229   return client-&gt;transport;
-230 }</pre>
+<pre>224                                                                                    {
+225   if (!client) {
+226     return NULL;
+227   }
+228   return client-&gt;transport;
+229 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -360,13 +360,13 @@
 <div class="Bd-indent"><i>client</i> WebSocket client instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if encryption is enabled, false otherwise</div>
-<p class="Pp">Definition at line <b>299</b> of file
+<p class="Pp">Definition at line <b>298</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>299                                                                      {
-300   if (!client)
-301     return false;
-302   return client-&gt;encryption_enabled;
-303 }</pre>
+<pre>298                                                                      {
+299   if (!client)
+300     return false;
+301   return client-&gt;encryption_enabled;
+302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -398,36 +398,36 @@
 <p class="Pp">Send a packet through WebSocket connection (thread-safe). Acquires
     send_mutex, transmits packet via transport, releases mutex. Checks
     connection state before sending.</p>
-<p class="Pp">Definition at line <b>238</b> of file
+<p class="Pp">Definition at line <b>237</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>238                                                                                                                {
-239   if (!client) {
-240     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL client&quot;);
-241   }
-242 
-243   if (!atomic_load_bool(&amp;client-&gt;connection_active)) {
-244     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active&quot;);
-245   }
-246 
-247   if (!client-&gt;transport) {
-248     return SET_ERRNO(ERROR_NETWORK, &quot;No active transport&quot;);
-249   }
-250 
-251   // Acquire send mutex for thread-safe transmission
-252   mutex_lock(&amp;client-&gt;send_mutex);
-253 
-254   // Send packet through transport with client ID
-255   asciichat_error_t result = packet_send_via_transport(client-&gt;transport, type, data, len, client-&gt;my_client_id);
-256 
-257   mutex_unlock(&amp;client-&gt;send_mutex);
-258 
-259   if (result != ASCIICHAT_OK) {
-260     log_debug(&quot;Failed to send packet type %d: %s&quot;, type, asciichat_error_string(result));
-261     return -1;
-262   }
-263 
-264   return 0;
-265 }</pre>
+<pre>237                                                                                                                {
+238   if (!client) {
+239     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL client&quot;);
+240   }
+241 
+242   if (!atomic_load_bool(&amp;client-&gt;connection_active)) {
+243     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active&quot;);
+244   }
+245 
+246   if (!client-&gt;transport) {
+247     return SET_ERRNO(ERROR_NETWORK, &quot;No active transport&quot;);
+248   }
+249 
+250   // Acquire send mutex for thread-safe transmission
+251   mutex_lock(&amp;client-&gt;send_mutex);
+252 
+253   // Send packet through transport with client ID
+254   asciichat_error_t result = packet_send_via_transport(client-&gt;transport, type, data, len, client-&gt;my_client_id);
+255 
+256   mutex_unlock(&amp;client-&gt;send_mutex);
+257 
+258   if (result != ASCIICHAT_OK) {
+259     log_debug(&quot;Failed to send packet type %d: %s&quot;, type, asciichat_error_string(result));
+260     return -1;
+261   }
+262 
+263   return 0;
+264 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
@@ -442,13 +442,13 @@
   websocket_client_send_ping (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Send ping frame (keepalive heartbeat). Routes through
     <b>websocket_client_send_packet()</b> with PACKET_TYPE_PING.</p>
-<p class="Pp">Definition at line <b>272</b> of file
+<p class="Pp">Definition at line <b>271</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>272                                                            {
-273   if (!client)
-274     return -1;
-275   return websocket_client_send_packet(client, PACKET_TYPE_PING, NULL, 0);
-276 }</pre>
+<pre>271                                                            {
+272   if (!client)
+273     return -1;
+274   return websocket_client_send_packet(client, PACKET_TYPE_PING, NULL, 0);
+275 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PACKET_TYPE_PING</b>, and
@@ -459,13 +459,13 @@
   websocket_client_send_pong (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Send pong frame (keepalive response). Routes through
     <b>websocket_client_send_packet()</b> with PACKET_TYPE_PONG.</p>
-<p class="Pp">Definition at line <b>283</b> of file
+<p class="Pp">Definition at line <b>282</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
-<pre>283                                                            {
-284   if (!client)
-285     return -1;
-286   return websocket_client_send_packet(client, PACKET_TYPE_PONG, NULL, 0);
-287 }</pre>
+<pre>282                                                            {
+283   if (!client)
+284     return -1;
+285   return websocket_client_send_packet(client, PACKET_TYPE_PONG, NULL, 0);
+286 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PACKET_TYPE_PONG</b>, and
@@ -524,7 +524,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -342,6 +342,12 @@
     "sourcePath": null
   },
   {
+    "name": "apple.c",
+    "title": "apple.c",
+    "file": "ascii-chat-apple.c.html",
+    "sourcePath": "lib/log/apple.c"
+  },
+  {
     "name": "asan.c",
     "title": "asan.c",
     "file": "ascii-chat-asan.c.html",
@@ -447,18 +453,6 @@
     "name": "ascii_query::json::JsonValue",
     "title": "ascii_query::json::JsonValue",
     "file": "ascii-chat-ascii_query_json_JsonValue.html",
-    "sourcePath": null
-  },
-  {
-    "name": "ascii_renderer.c",
-    "title": "ascii_renderer.c",
-    "file": "ascii-chat-ascii_renderer.c.html",
-    "sourcePath": "src/web/renderer/ascii_renderer.c"
-  },
-  {
-    "name": "ascii_renderer_t",
-    "title": "ascii_renderer_t",
-    "file": "ascii-chat-ascii_renderer_t.html",
     "sourcePath": null
   },
   {
@@ -906,6 +900,12 @@
     "sourcePath": "include/ascii-chat/media/codecs.h"
   },
   {
+    "name": "collect_ctx_t",
+    "title": "collect_ctx_t",
+    "file": "ascii-chat-collect_ctx_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "color_filter.c",
     "title": "color_filter.c",
     "file": "ascii-chat-color_filter.c.html",
@@ -1234,12 +1234,6 @@
     "title": "consensus_topology",
     "file": "ascii-chat-consensus_topology.html",
     "sourcePath": null
-  },
-  {
-    "name": "console.c",
-    "title": "console.c",
-    "file": "ascii-chat-console.c.html",
-    "sourcePath": "lib/platform/wasm/console.c"
   },
   {
     "name": "coordinator.c",
@@ -1998,6 +1992,12 @@
     "sourcePath": "lib/tests/globals.c"
   },
   {
+    "name": "glyph_cache_entry_t",
+    "title": "glyph_cache_entry_t",
+    "file": "ascii-chat-glyph_cache_entry_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "gpg.h",
     "title": "gpg.h",
     "file": "ascii-chat-gpg.h.html",
@@ -2382,6 +2382,12 @@
     "sourcePath": "src/web/common/init.h"
   },
   {
+    "name": "thread.h",
+    "title": "thread.h",
+    "file": "ascii-chat-include_ascii-chat_platform_thread.h.html",
+    "sourcePath": "lib/platform/wasm/stubs/thread.h"
+  },
+  {
     "name": "session_log_buffer.h",
     "title": "session_log_buffer.h",
     "file": "ascii-chat-include_ascii-chat_session_session_log_buffer.h.html",
@@ -2392,6 +2398,12 @@
     "title": "display.h",
     "file": "ascii-chat-include_ascii-chat_util_display.h.html",
     "sourcePath": "src/common/session/display.h"
+  },
+  {
+    "name": "thread.h",
+    "title": "thread.h",
+    "file": "ascii-chat-include_ascii-chat_util_thread.h.html",
+    "sourcePath": "lib/platform/wasm/stubs/thread.h"
   },
   {
     "name": "instrument_cov.c",
@@ -2692,6 +2704,12 @@
     "title": "session_log_buffer.h",
     "file": "ascii-chat-lib_platform_wasm_stubs_session_log_buffer.h.html",
     "sourcePath": "lib/platform/wasm/stubs/session_log_buffer.h"
+  },
+  {
+    "name": "thread.h",
+    "title": "thread.h",
+    "file": "ascii-chat-lib_platform_wasm_stubs_thread.h.html",
+    "sourcePath": "lib/platform/wasm/stubs/thread.h"
   },
   {
     "name": "display.c",
@@ -3723,7 +3741,7 @@
     "name": "parser.c",
     "title": "parser.c",
     "file": "ascii-chat-parser.c.html",
-    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/parser.c"
+    "sourcePath": "lib/options/manpage/parser.c"
   },
   {
     "name": "parser.h",
@@ -3900,6 +3918,12 @@
     "sourcePath": null
   },
   {
+    "name": "platform_dir_entry_t",
+    "title": "platform_dir_entry_t",
+    "file": "ascii-chat-platform_dir_entry_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "font.h",
     "title": "font.h",
     "file": "ascii-chat-platform_font.h.html",
@@ -3988,12 +4012,6 @@
     "title": "terminal.c",
     "file": "ascii-chat-platform_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
-  },
-  {
-    "name": "thread.h",
-    "title": "thread.h",
-    "file": "ascii-chat-platform_thread.h.html",
-    "sourcePath": "include/ascii-chat/util/thread.h"
   },
   {
     "name": "backtrace.c",
@@ -5181,7 +5199,7 @@
     "name": "state.c",
     "title": "state.c",
     "file": "ascii-chat-state.c.html",
-    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/state.c"
+    "sourcePath": "lib/network/consensus/state.c"
   },
   {
     "name": "state.h",
@@ -5718,6 +5736,18 @@
     "sourcePath": "include/compat/unistd.h"
   },
   {
+    "name": "update_banner.c",
+    "title": "update_banner.c",
+    "file": "ascii-chat-update_banner.c.html",
+    "sourcePath": "lib/ui/update_banner.c"
+  },
+  {
+    "name": "update_banner.h",
+    "title": "update_banner.h",
+    "file": "ascii-chat-update_banner.h.html",
+    "sourcePath": "include/ascii-chat/ui/update_banner.h"
+  },
+  {
     "name": "update_check_result_t",
     "title": "update_check_result_t",
     "file": "ascii-chat-update_check_result_t.html",
@@ -5793,7 +5823,7 @@
     "name": "utf8.h",
     "title": "utf8.h",
     "file": "ascii-chat-utf8.h.html",
-    "sourcePath": "src/web/.deps-cache/web/_deps/libvterm-src/src/utf8.h"
+    "sourcePath": "include/ascii-chat/util/utf8.h"
   },
   {
     "name": "utf8_capabilities_t",
@@ -5902,12 +5932,6 @@
     "title": "string.h",
     "file": "ascii-chat-util_string.h.html",
     "sourcePath": "include/ascii-chat/util/string.h"
-  },
-  {
-    "name": "thread.h",
-    "title": "thread.h",
-    "file": "ascii-chat-util_thread.h.html",
-    "sourcePath": "include/ascii-chat/util/thread.h"
   },
   {
     "name": "time.c",
@@ -6072,16 +6096,16 @@
     "sourcePath": "lib/video/webcam/webcam.c"
   },
   {
+    "name": "wasm.c",
+    "title": "wasm.c",
+    "file": "ascii-chat-wasm.c.html",
+    "sourcePath": "lib/log/wasm.c"
+  },
+  {
     "name": "wasm_console.h",
     "title": "wasm_console.h",
     "file": "ascii-chat-wasm_console.h.html",
     "sourcePath": "include/ascii-chat/platform/wasm_console.h"
-  },
-  {
-    "name": "wasm_log.h",
-    "title": "wasm_log.h",
-    "file": "ascii-chat-wasm_log.h.html",
-    "sourcePath": "src/web/common/wasm_log.h"
   },
   {
     "name": "filesystem.c",

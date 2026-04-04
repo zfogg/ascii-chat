@@ -177,8 +177,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>, <b>SAFE_GETENV</b>, and
     <b>terminal_is_interactive()</b>.</p>
-<p class="Pp">Referenced by <b>prompt_unknown_host()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>prompt_unknown_host()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_choose_log_fd_("><a class="permalink" href="#int_terminal_choose_log_fd_(">int
@@ -391,8 +390,8 @@
     <b>mirror_convert_frame()</b>, <b>protocol_start_connection()</b>,
     <b>server_connection_establish()</b>,
     <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
-    <b>session_render_loop()</b>, <b>session_settings_init()</b>, and
-    <b>splash_intro_start()</b>.</p>
+    <b>session_render_loop()</b>, <b>session_settings_init()</b>,
+    <b>splash_intro_start()</b>, and <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
@@ -436,7 +435,8 @@
     <b>server_connection_establish()</b>,
     <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
     <b>session_display_render_fps_overlay()</b>, <b>session_render_loop()</b>,
-    <b>session_settings_init()</b>, and <b>splash_intro_start()</b>.</p>
+    <b>session_settings_init()</b>, <b>splash_intro_start()</b>, and
+    <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
@@ -483,8 +483,8 @@
 <p class="Pp">References <b>terminal_is_stdin_tty()</b>, and
     <b>terminal_is_stdout_tty()</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>, <b>options_init()</b>,
-    <b>server_main()</b>, <b>session_display_write_ascii()</b>,
-    <b>session_render_loop()</b>, <b>terminal_can_prompt_user()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_render_loop()</b>,
+    <b>session_server_like_run()</b>, <b>terminal_can_prompt_user()</b>,
     <b>terminal_choose_log_fd()</b>,
     <b>threaded_send_terminal_size_with_auto_detect()</b>,
     <b>ui_status_display()</b>, and <b>ui_status_display_interactive()</b>.</p>
@@ -819,7 +819,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -190,739 +190,746 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, or the first error code from
   initialization or from run_fn. Cleanup always runs regardless of return
   value.</div>
-<p class="Pp">Definition at line <b>95</b> of file <b>client_like.c</b>.</p>
-<pre>95                                                                                       {
-96   log_info(&quot;session_client_like_run: ENTRY&quot;);
-97   if (!config || !config-&gt;run_fn) {
-98     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or run_fn is NULL&quot;);
-99   }
-100   log_info(&quot;session_client_like_run: config validated&quot;);
-101 
-102   // Store config globally for adapter callbacks
-103   g_current_config = config;
-104 
-105   // Store the render should_exit adapter globally so mode-specific run_fn can access it
-106   g_render_should_exit = display_should_exit_adapter;
-107 
-108   asciichat_error_t result = ASCIICHAT_OK;
-109 
-110   // Keep track of what's been initialized for cleanup
-111   session_capture_ctx_t *capture = NULL;
-112   session_display_ctx_t *display = NULL;
-113   audio_context_t *audio_ctx = NULL;
-114   media_source_t *probe_source = NULL;
-115   bool audio_available = false;
-116 
-117   // ============================================================================
-118   // SETUP: Terminal and Logging
-119   // ============================================================================
-120 
-121   log_debug(&quot;session_client_like_run(): Setting up terminal and logging&quot;);
-122 
-123   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
-124   bool should_force_stderr = terminal_should_force_stderr();
-125   log_debug(&quot;terminal_should_force_stderr()=%d&quot;, should_force_stderr);
-126 
-127   if (should_force_stderr) {
-128     // Redirect logs to stderr to prevent corruption of stdout (for pipes)
-129     // But keep terminal output enabled so we can see initialization errors
-130     log_set_force_stderr(true);
-131   }
-132 
-133   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
-134   // (implemented via should_force_stderr check above)
-135   const char *render_file_early = GET_OPTION(render_file);
-136   log_info(&quot;[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)&quot;,
-137            render_file_early ? render_file_early : &quot;(null)&quot;, (void *)render_file_early);
-138   if (render_file_early &amp;&amp; render_file_early[0] != '\0' &amp;&amp;
-139       (strcmp(render_file_early, &quot;-&quot;) == 0 || strcmp(render_file_early, &quot;pipe:&quot;) == 0)) {
-140     log_info(&quot;--render-file=- will output binary video to stdout, logging sent to stderr&quot;);
-141   }
-142 
-143   // ============================================================================
-144   // SETUP: Keepawake System
-145   // ============================================================================
-146 
-147   log_debug(&quot;session_client_like_run(): Validating keepawake options&quot;);
-148 
-149   // Validate mutual exclusivity
-150   bool enable_ka = GET_OPTION(enable_keepawake);
-151   bool disable_ka = GET_OPTION(disable_keepawake);
-152   log_debug(&quot;enable_keepawake=%d, disable_keepawake=%d&quot;, enable_ka, disable_ka);
-153 
-154   if (enable_ka &amp;&amp; disable_ka) {
-155     result = SET_ERRNO(ERROR_INVALID_PARAM, &quot;--keepawake and --no-keepawake are mutually exclusive&quot;);
-156     goto cleanup;
-157   }
-158 
-159   log_debug(&quot;session_client_like_run(): Enabling keepawake if needed&quot;);
-160 
-161   // Enable keepawake unless explicitly disabled
-162   if (!disable_ka) {
-163     (void)platform_enable_keepawake();
-164   }
-165 
-166   log_debug(&quot;session_client_like_run(): Keepawake setup complete&quot;);
-167 
-168   // ============================================================================
-169   // SETUP: Display Context (before splash for unified TTY initialization)
-170   // ============================================================================
-171 
-172   // Create display context early to share TTY initialization between splash and rendering
-173   // This prevents double TTY init which was corrupting the terminal state
-174   session_display_config_t display_config = {0};
-175   display_config.snapshot_mode = GET_OPTION(snapshot_mode);
-176   display_config.palette_type = GET_OPTION(palette_type);
-177   display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
-178   display_config.color_mode = TERM_COLOR_AUTO;
-179   display_config.should_exit_callback = display_should_exit_adapter;
-180   display_config.callback_data = NULL;
-181 
-182   log_debug(&quot;[SETUP_DISPLAY_EARLY] Creating display context (before splash)&quot;);
-183   display = session_display_create(&amp;display_config);
-184   if (!display) {
-185     log_debug(&quot;[SETUP_DISPLAY_EARLY] session_display_create() returned NULL&quot;);
-186     log_fatal(&quot;Failed to initialize display context&quot;);
-187     result = ERROR_DISPLAY;
-188     goto cleanup;
-189   }
-190   log_debug(&quot;[SETUP_DISPLAY_EARLY] Display context created, will use for splash&quot;);
-191 
-192   // Register global display context for signal handlers (Ctrl+C help screen closure)
-193   // This makes the context available to signal handlers for the entire app lifetime
-194   session_display_set_global_context(display);
-195 
-196   // ============================================================================
-197   // SETUP: Splash Screen (using unified display context)
-198   // ============================================================================
-199 
-200   log_debug(&quot;session_client_like_run(): Starting splash with display context&quot;);
-201 
-202   // Use the display context we just created for splash animation
-203   splash_intro_start(display);
-204   log_debug(&quot;session_client_like_run(): splash_intro_start() returned&quot;);
-205 
-206   // Detect if we're using media vs webcam (needed for splash timing)
-207   const char *media_url = GET_OPTION(media_url);
-208   const char *media_file = GET_OPTION(media_file);
-209   bool has_media = (media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0);
-210 
-211   // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
-212   if (!has_media &amp;&amp; !GET_OPTION(snapshot_mode)) {
-213     APP_CALLBACK_VOID(platform_pump_events);
-214     APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
-215   }
-216   log_debug(&quot;session_client_like_run(): After splash sleep&quot;);
-217 
-218   // Restore stderr now that splash animation and post-splash logging are done
-219   // This allows logs to appear on screen again after this point
-220   splash_restore_stderr();
-221 
-222   // ============================================================================
-223   // SETUP: Terminal Logging in Snapshot Mode
-224   // ============================================================================
-225 
-226   // ============================================================================
-227   // SETUP: Terminal Logging in Snapshot Mode
-228   // ============================================================================
-229 
-230   log_debug(&quot;session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)&quot;, GET_OPTION(snapshot_mode), config-&gt;discovery != NULL);
-231   // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
-232   // Discovery participants should show logs, only hosts should have logs disabled for rendering
-233   bool should_disable_logging = !GET_OPTION(snapshot_mode) &amp;&amp; (config-&gt;discovery == NULL);
-234   if (should_disable_logging) {
-235     log_debug(&quot;session_client_like_run(): Calling log_set_terminal_output(false)...&quot;);
-236     log_set_terminal_output(false);
-237     log_debug(&quot;session_client_like_run(): RETURNED from log_set_terminal_output(false)&quot;);
-238   } else {
-239     log_debug(&quot;session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)&quot;, GET_OPTION(snapshot_mode), config-&gt;discovery != NULL);
-240   }
-241   log_debug(&quot;session_client_like_run(): Terminal logging setup complete, starting media source setup&quot;);
-242 
-243   // ============================================================================
-244   // SETUP: Media Source Selection and FPS Probing
-245   // ============================================================================
-246 
-247   log_debug(&quot;session_client_like_run(): Initializing capture config&quot;);
-248   session_capture_config_t capture_config = {0};
-249   capture_config.resize_for_network = false;
-250   capture_config.should_exit_callback = capture_should_exit_adapter;
-251   capture_config.callback_data = NULL;
-252 
-253   // Determine FPS explicitly set by user
-254   log_debug(&quot;session_client_like_run(): Getting FPS option&quot;);
-255   int user_fps = GET_OPTION(fps);
-256   bool fps_explicitly_set = user_fps &gt; 0;
-257   log_debug(&quot;session_client_like_run(): FPS=%d (explicitly_set=%d)&quot;, user_fps, fps_explicitly_set);
-258 
-259   // Select media source based on options (priority order)
-260   log_debug(&quot;session_client_like_run(): Getting media_url option&quot;);
-261   const char *media_url_val = GET_OPTION(media_url);
-262   log_debug(&quot;session_client_like_run(): Getting media_file option&quot;);
-263   const char *media_file_val = GET_OPTION(media_file);
-264   log_debug(&quot;session_client_like_run(): media_url=%s, media_file=%s&quot;, media_url_val ? media_url_val : &quot;(null)&quot;,
-265             media_file_val ? media_file_val : &quot;(null)&quot;);
+<p class="Pp">Definition at line <b>96</b> of file <b>client_like.c</b>.</p>
+<pre>96                                                                                       {
+97   log_info(&quot;session_client_like_run: ENTRY&quot;);
+98   if (!config || !config-&gt;run_fn) {
+99     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or run_fn is NULL&quot;);
+100   }
+101   log_info(&quot;session_client_like_run: config validated&quot;);
+102 
+103   // Store config globally for adapter callbacks
+104   g_current_config = config;
+105 
+106   // Store the render should_exit adapter globally so mode-specific run_fn can access it
+107   g_render_should_exit = display_should_exit_adapter;
+108 
+109   asciichat_error_t result = ASCIICHAT_OK;
+110 
+111   // Keep track of what's been initialized for cleanup
+112   session_capture_ctx_t *capture = NULL;
+113   session_display_ctx_t *display = NULL;
+114   audio_context_t *audio_ctx = NULL;
+115   media_source_t *probe_source = NULL;
+116   bool audio_available = false;
+117 
+118   // ============================================================================
+119   // SETUP: Terminal and Logging
+120   // ============================================================================
+121 
+122   log_debug(&quot;session_client_like_run(): Setting up terminal and logging&quot;);
+123 
+124   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
+125   bool should_force_stderr = terminal_should_force_stderr();
+126   log_debug(&quot;terminal_should_force_stderr()=%d&quot;, should_force_stderr);
+127 
+128   if (should_force_stderr) {
+129     // Redirect logs to stderr to prevent corruption of stdout (for pipes)
+130     // But keep terminal output enabled so we can see initialization errors
+131     log_set_force_stderr(true);
+132   }
+133 
+134   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
+135   // (implemented via should_force_stderr check above)
+136   const char *render_file_early = GET_OPTION(render_file);
+137   log_info(&quot;[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)&quot;,
+138            render_file_early ? render_file_early : &quot;(null)&quot;, (void *)render_file_early);
+139   if (render_file_early &amp;&amp; render_file_early[0] != '\0' &amp;&amp;
+140       (strcmp(render_file_early, &quot;-&quot;) == 0 || strcmp(render_file_early, &quot;pipe:&quot;) == 0)) {
+141     log_info(&quot;--render-file=- will output binary video to stdout, logging sent to stderr&quot;);
+142   }
+143 
+144   // ============================================================================
+145   // SETUP: Keepawake System
+146   // ============================================================================
+147 
+148   log_debug(&quot;session_client_like_run(): Validating keepawake options&quot;);
+149 
+150   // Validate mutual exclusivity
+151   bool enable_ka = GET_OPTION(enable_keepawake);
+152   bool disable_ka = GET_OPTION(disable_keepawake);
+153   log_debug(&quot;enable_keepawake=%d, disable_keepawake=%d&quot;, enable_ka, disable_ka);
+154 
+155   if (enable_ka &amp;&amp; disable_ka) {
+156     result = SET_ERRNO(ERROR_INVALID_PARAM, &quot;--keepawake and --no-keepawake are mutually exclusive&quot;);
+157     goto cleanup;
+158   }
+159 
+160   log_debug(&quot;session_client_like_run(): Enabling keepawake if needed&quot;);
+161 
+162   // Enable keepawake unless explicitly disabled
+163   if (!disable_ka) {
+164     (void)platform_enable_keepawake();
+165   }
+166 
+167   log_debug(&quot;session_client_like_run(): Keepawake setup complete&quot;);
+168 
+169   // ============================================================================
+170   // SETUP: Display Context (before splash for unified TTY initialization)
+171   // ============================================================================
+172 
+173   // Create display context early to share TTY initialization between splash and rendering
+174   // This prevents double TTY init which was corrupting the terminal state
+175   session_display_config_t display_config = {0};
+176   display_config.snapshot_mode = GET_OPTION(snapshot_mode);
+177   display_config.palette_type = GET_OPTION(palette_type);
+178   display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+179   display_config.color_mode = TERM_COLOR_AUTO;
+180   display_config.should_exit_callback = display_should_exit_adapter;
+181   display_config.callback_data = NULL;
+182 
+183   log_debug(&quot;[SETUP_DISPLAY_EARLY] Creating display context (before splash)&quot;);
+184   display = session_display_create(&amp;display_config);
+185   if (!display) {
+186     log_debug(&quot;[SETUP_DISPLAY_EARLY] session_display_create() returned NULL&quot;);
+187     log_fatal(&quot;Failed to initialize display context&quot;);
+188     result = ERROR_DISPLAY;
+189     goto cleanup;
+190   }
+191   log_debug(&quot;[SETUP_DISPLAY_EARLY] Display context created, will use for splash&quot;);
+192 
+193   // Register global display context for signal handlers (Ctrl+C help screen closure)
+194   // This makes the context available to signal handlers for the entire app lifetime
+195   session_display_set_global_context(display);
+196 
+197   // ============================================================================
+198   // SETUP: Splash Screen (using unified display context)
+199   // ============================================================================
+200 
+201   log_debug(&quot;session_client_like_run(): Starting splash with display context&quot;);
+202 
+203   // Use the display context we just created for splash animation
+204   splash_intro_start(display);
+205   log_debug(&quot;session_client_like_run(): splash_intro_start() returned&quot;);
+206 
+207   // Detect if we're using media vs webcam (needed for splash timing)
+208   const char *media_url = GET_OPTION(media_url);
+209   const char *media_file = GET_OPTION(media_file);
+210   bool has_media = (media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0);
+211 
+212   // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
+213   if (!has_media &amp;&amp; !GET_OPTION(snapshot_mode)) {
+214     APP_CALLBACK_VOID(platform_pump_events);
+215     APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
+216   }
+217   log_debug(&quot;session_client_like_run(): After splash sleep&quot;);
+218 
+219   // Restore stderr now that splash animation and post-splash logging are done
+220   // This allows logs to appear on screen again after this point
+221   splash_restore_stderr();
+222 
+223   // Wait for background update check to finish and show prompt if update available
+224   update_banner_wait_for_check();
+225   if (update_banner_has_update() &amp;&amp; !GET_OPTION(snapshot_mode)) {
+226     bool wants_update = update_banner_show_prompt(display);
+227     if (wants_update) {
+228       update_banner_print_instructions();
+229       return ASCIICHAT_OK;
+230     }
+231     terminal_clear_screen();
+232   }
+233 
+234   // ============================================================================
+235   // SETUP: Terminal Logging in Snapshot Mode
+236   // ============================================================================
+237 
+238   log_debug(&quot;session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)&quot;, GET_OPTION(snapshot_mode), config-&gt;discovery != NULL);
+239   // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
+240   // Discovery participants should show logs, only hosts should have logs disabled for rendering
+241   bool should_disable_logging = !GET_OPTION(snapshot_mode) &amp;&amp; (config-&gt;discovery == NULL);
+242   if (should_disable_logging) {
+243     log_debug(&quot;session_client_like_run(): Calling log_set_terminal_output(false)...&quot;);
+244     log_set_terminal_output(false);
+245     log_debug(&quot;session_client_like_run(): RETURNED from log_set_terminal_output(false)&quot;);
+246   } else {
+247     log_debug(&quot;session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)&quot;, GET_OPTION(snapshot_mode), config-&gt;discovery != NULL);
+248   }
+249   log_debug(&quot;session_client_like_run(): Terminal logging setup complete, starting media source setup&quot;);
+250 
+251   // ============================================================================
+252   // SETUP: Media Source Selection and FPS Probing
+253   // ============================================================================
+254 
+255   log_debug(&quot;session_client_like_run(): Initializing capture config&quot;);
+256   session_capture_config_t capture_config = {0};
+257   capture_config.resize_for_network = false;
+258   capture_config.should_exit_callback = capture_should_exit_adapter;
+259   capture_config.callback_data = NULL;
+260 
+261   // Determine FPS explicitly set by user
+262   log_debug(&quot;session_client_like_run(): Getting FPS option&quot;);
+263   int user_fps = GET_OPTION(fps);
+264   bool fps_explicitly_set = user_fps &gt; 0;
+265   log_debug(&quot;session_client_like_run(): FPS=%d (explicitly_set=%d)&quot;, user_fps, fps_explicitly_set);
 266 
-267   if (media_url_val &amp;&amp; strlen(media_url_val) &gt; 0) {
-268     // Network URL takes priority
-269     log_info(&quot;Using network URL: %s (webcam disabled)&quot;, media_url_val);
-270     capture_config.type = MEDIA_SOURCE_FILE;
-271     capture_config.path = media_url_val;
-272     capture_config.loop = false; // Network URLs cannot be looped
-273 
-274     if (fps_explicitly_set) {
-275       capture_config.target_fps = (uint32_t)user_fps;
-276       log_info(&quot;Using user-specified FPS: %u&quot;, capture_config.target_fps);
-277     } else {
-278       // Always probe FPS for HTTP URLs, even in snapshot mode
-279       // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
-280       log_debug(&quot;Probing FPS for HTTP URL&quot;);
-281       probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
-282       if (probe_source) {
-283         double url_fps = media_source_get_video_fps(probe_source);
-284         log_info(&quot;Detected HTTP stream video FPS: %.1f&quot;, url_fps);
-285         if (url_fps &gt; 0.0) {
-286           capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-287         } else {
-288           log_warn(&quot;FPS detection failed for HTTP stream, using default 60 FPS&quot;);
-289           capture_config.target_fps = 60;
-290         }
-291       } else {
-292         log_warn(&quot;Failed to create probe source for HTTP stream, using default 60 FPS&quot;);
-293         capture_config.target_fps = 60;
-294       }
-295     }
-296   } else if (media_file_val &amp;&amp; strlen(media_file_val) &gt; 0) {
-297     // Local file or stdin
-298     log_info(&quot;DEBUG: media_file_val='%s', strcmp result=%d&quot;, media_file_val, strcmp(media_file_val, &quot;-&quot;));
-299     if (strcmp(media_file_val, &quot;-&quot;) == 0) {
-300       log_info(&quot;Using stdin for media streaming (webcam disabled)&quot;);
-301       capture_config.type = MEDIA_SOURCE_STDIN;
-302       capture_config.path = NULL;
-303       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
-304       capture_config.loop = false;
-305     } else {
-306       log_info(&quot;Using media file: %s (webcam disabled)&quot;, media_file_val);
-307       capture_config.type = MEDIA_SOURCE_FILE;
-308       capture_config.path = media_file_val;
-309       capture_config.loop = GET_OPTION(media_loop);
-310 
-311       if (fps_explicitly_set) {
-312         capture_config.target_fps = (uint32_t)user_fps;
-313         log_info(&quot;Using user-specified FPS: %u&quot;, capture_config.target_fps);
-314       } else {
-315         // Always probe FPS for local files, even in snapshot mode
-316         // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
-317         log_debug(&quot;Probing FPS for local file&quot;);
-318         probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
-319         if (probe_source) {
-320           double file_fps = media_source_get_video_fps(probe_source);
-321           log_info(&quot;Detected file video FPS: %.1f&quot;, file_fps);
-322           if (file_fps &gt; 0.0) {
-323             capture_config.target_fps = (uint32_t)(file_fps + 0.5);
-324           } else {
-325             log_warn(&quot;FPS detection failed, using default 60 FPS&quot;);
-326             capture_config.target_fps = 60;
-327           }
-328         } else {
-329           log_warn(&quot;Failed to create probe source for FPS detection, using default 60 FPS&quot;);
-330           capture_config.target_fps = 60;
-331         }
-332       }
-333     }
-334   } else if (GET_OPTION(test_pattern)) {
-335     // Test pattern
-336     log_debug(&quot;session_client_like_run(): Using test pattern&quot;);
-337     log_info(&quot;Using test pattern&quot;);
-338     capture_config.type = MEDIA_SOURCE_TEST;
-339     capture_config.path = NULL;
-340     capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
-341     capture_config.loop = false;
-342   } else {
-343     // Default: Try webcam if stdout is a TTY, otherwise use test pattern
-344     // (webcam + piped output often fails, test pattern is reliable fallback)
-345     bool stdout_is_tty = terminal_is_stdout_tty();
-346     if (stdout_is_tty) {
-347       // Normal terminal mode: use webcam
-348       log_debug(&quot;session_client_like_run(): Stdout is TTY, using local webcam&quot;);
-349       log_info(&quot;Using local webcam&quot;);
-350       capture_config.type = MEDIA_SOURCE_WEBCAM;
-351       capture_config.path = NULL;
-352       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
-353       capture_config.loop = false;
-354     } else {
-355       // Piped output mode: use test pattern (webcam + pipes often fails)
-356       log_debug(&quot;session_client_like_run(): Stdout is piped, defaulting to test pattern for reliability&quot;);
-357       log_info(&quot;Stdout is piped - using test pattern instead of webcam&quot;);
-358       capture_config.type = MEDIA_SOURCE_TEST;
+267   // Select media source based on options (priority order)
+268   log_debug(&quot;session_client_like_run(): Getting media_url option&quot;);
+269   const char *media_url_val = GET_OPTION(media_url);
+270   log_debug(&quot;session_client_like_run(): Getting media_file option&quot;);
+271   const char *media_file_val = GET_OPTION(media_file);
+272   log_debug(&quot;session_client_like_run(): media_url=%s, media_file=%s&quot;, media_url_val ? media_url_val : &quot;(null)&quot;,
+273             media_file_val ? media_file_val : &quot;(null)&quot;);
+274 
+275   if (media_url_val &amp;&amp; strlen(media_url_val) &gt; 0) {
+276     // Network URL takes priority
+277     log_info(&quot;Using network URL: %s (webcam disabled)&quot;, media_url_val);
+278     capture_config.type = MEDIA_SOURCE_FILE;
+279     capture_config.path = media_url_val;
+280     capture_config.loop = false; // Network URLs cannot be looped
+281 
+282     if (fps_explicitly_set) {
+283       capture_config.target_fps = (uint32_t)user_fps;
+284       log_info(&quot;Using user-specified FPS: %u&quot;, capture_config.target_fps);
+285     } else {
+286       // Always probe FPS for HTTP URLs, even in snapshot mode
+287       // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
+288       log_debug(&quot;Probing FPS for HTTP URL&quot;);
+289       probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
+290       if (probe_source) {
+291         double url_fps = media_source_get_video_fps(probe_source);
+292         log_info(&quot;Detected HTTP stream video FPS: %.1f&quot;, url_fps);
+293         if (url_fps &gt; 0.0) {
+294           capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+295         } else {
+296           log_warn(&quot;FPS detection failed for HTTP stream, using default 60 FPS&quot;);
+297           capture_config.target_fps = 60;
+298         }
+299       } else {
+300         log_warn(&quot;Failed to create probe source for HTTP stream, using default 60 FPS&quot;);
+301         capture_config.target_fps = 60;
+302       }
+303     }
+304   } else if (media_file_val &amp;&amp; strlen(media_file_val) &gt; 0) {
+305     // Local file or stdin
+306     log_info(&quot;DEBUG: media_file_val='%s', strcmp result=%d&quot;, media_file_val, strcmp(media_file_val, &quot;-&quot;));
+307     if (strcmp(media_file_val, &quot;-&quot;) == 0) {
+308       log_info(&quot;Using stdin for media streaming (webcam disabled)&quot;);
+309       capture_config.type = MEDIA_SOURCE_STDIN;
+310       capture_config.path = NULL;
+311       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
+312       capture_config.loop = false;
+313     } else {
+314       log_info(&quot;Using media file: %s (webcam disabled)&quot;, media_file_val);
+315       capture_config.type = MEDIA_SOURCE_FILE;
+316       capture_config.path = media_file_val;
+317       capture_config.loop = GET_OPTION(media_loop);
+318 
+319       if (fps_explicitly_set) {
+320         capture_config.target_fps = (uint32_t)user_fps;
+321         log_info(&quot;Using user-specified FPS: %u&quot;, capture_config.target_fps);
+322       } else {
+323         // Always probe FPS for local files, even in snapshot mode
+324         // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
+325         log_debug(&quot;Probing FPS for local file&quot;);
+326         probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
+327         if (probe_source) {
+328           double file_fps = media_source_get_video_fps(probe_source);
+329           log_info(&quot;Detected file video FPS: %.1f&quot;, file_fps);
+330           if (file_fps &gt; 0.0) {
+331             capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+332           } else {
+333             log_warn(&quot;FPS detection failed, using default 60 FPS&quot;);
+334             capture_config.target_fps = 60;
+335           }
+336         } else {
+337           log_warn(&quot;Failed to create probe source for FPS detection, using default 60 FPS&quot;);
+338           capture_config.target_fps = 60;
+339         }
+340       }
+341     }
+342   } else if (GET_OPTION(test_pattern)) {
+343     // Test pattern
+344     log_debug(&quot;session_client_like_run(): Using test pattern&quot;);
+345     log_info(&quot;Using test pattern&quot;);
+346     capture_config.type = MEDIA_SOURCE_TEST;
+347     capture_config.path = NULL;
+348     capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
+349     capture_config.loop = false;
+350   } else {
+351     // Default: Try webcam if stdout is a TTY, otherwise use test pattern
+352     // (webcam + piped output often fails, test pattern is reliable fallback)
+353     bool stdout_is_tty = terminal_is_stdout_tty();
+354     if (stdout_is_tty) {
+355       // Normal terminal mode: use webcam
+356       log_debug(&quot;session_client_like_run(): Stdout is TTY, using local webcam&quot;);
+357       log_info(&quot;Using local webcam&quot;);
+358       capture_config.type = MEDIA_SOURCE_WEBCAM;
 359       capture_config.path = NULL;
 360       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
 361       capture_config.loop = false;
-362     }
-363   }
-364 
-365   // Apply initial seek if specified
-366   log_debug(&quot;session_client_like_run(): Getting media_seek_timestamp option&quot;);
-367   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
-368   log_debug(&quot;session_client_like_run(): Media seek timestamp set&quot;);
-369 
-370   // Clean up probe source (don't reuse for actual capture)
-371   if (probe_source) {
-372     log_debug(&quot;session_client_like_run(): Destroying probe source&quot;);
-373     media_source_destroy(probe_source);
-374     probe_source = NULL;
-375     log_debug(&quot;session_client_like_run(): Probe source destroyed&quot;);
-376   } else {
-377     log_debug(&quot;session_client_like_run(): No probe source to destroy&quot;);
-378   }
-379 
-380   // Pass probed FPS to display context for correct render-file duration
-381   if (capture_config.target_fps &gt; 0) {
-382     session_display_set_render_fps(display, capture_config.target_fps);
-383     log_debug(&quot;session_client_like_run(): Set display render FPS to %u for correct video encoding duration&quot;,
-384               capture_config.target_fps);
-385   }
-386 
-387   // ============================================================================
-388   // SETUP: Network Transports (TCP/WebSocket)
-389   // ============================================================================
-390 
-391   log_debug(&quot;session_client_like_run(): Setting up network transports&quot;);
-392 
-393   bool networked_mode = session_client_like_is_networked(config-&gt;kind);
+362     } else {
+363       // Piped output mode: use test pattern (webcam + pipes often fails)
+364       log_debug(&quot;session_client_like_run(): Stdout is piped, defaulting to test pattern for reliability&quot;);
+365       log_info(&quot;Stdout is piped - using test pattern instead of webcam&quot;);
+366       capture_config.type = MEDIA_SOURCE_TEST;
+367       capture_config.path = NULL;
+368       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
+369       capture_config.loop = false;
+370     }
+371   }
+372 
+373   // Apply initial seek if specified
+374   log_debug(&quot;session_client_like_run(): Getting media_seek_timestamp option&quot;);
+375   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+376   log_debug(&quot;session_client_like_run(): Media seek timestamp set&quot;);
+377 
+378   // Clean up probe source (don't reuse for actual capture)
+379   if (probe_source) {
+380     log_debug(&quot;session_client_like_run(): Destroying probe source&quot;);
+381     media_source_destroy(probe_source);
+382     probe_source = NULL;
+383     log_debug(&quot;session_client_like_run(): Probe source destroyed&quot;);
+384   } else {
+385     log_debug(&quot;session_client_like_run(): No probe source to destroy&quot;);
+386   }
+387 
+388   // Pass probed FPS to display context for correct render-file duration
+389   if (capture_config.target_fps &gt; 0) {
+390     session_display_set_render_fps(display, capture_config.target_fps);
+391     log_debug(&quot;session_client_like_run(): Set display render FPS to %u for correct video encoding duration&quot;,
+392               capture_config.target_fps);
+393   }
 394 
-395   switch (config-&gt;kind) {
-396     case SESSION_CLIENT_LIKE_KIND_MIRROR:
-397       log_debug(&quot;Mirror mode detected - will use local capture with media source&quot;);
-398       break;
-399     case SESSION_CLIENT_LIKE_KIND_CLIENT:
-400       log_debug(&quot;Client/Network mode detected - will use network capture without local media source&quot;);
-401       break;
-402     case SESSION_CLIENT_LIKE_KIND_DISCOVERY:
-403       log_debug(&quot;Discovery mode detected - discovery session will manage networking&quot;);
-404       break;
-405   }
-406 
-407   // ============================================================================
-408   // SETUP: Capture Context
-409   // ============================================================================
-410 
-411   // Check for stdin render mode: read ASCII frames from stdin, render to video
-412   // Only enable stdin render mode if:
-413   // 1. render-file is &quot;-&quot; (output to stdout)
-414   // 2. stdin is not a TTY
-415   // 3. --height is explicitly specified (user must opt-in to stdin render mode)
-416   // 4. NO media source is being used (not reading from file/URL/test-pattern)
-417   // This prevents accidental activation when piping to other processes or using mirror mode
-418   const char *render_file_opt = GET_OPTION(render_file);
-419   int frame_height = GET_OPTION(height);
-420   bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
-421   bool has_media_source = (media_url_val &amp;&amp; strlen(media_url_val) &gt; 0) ||
-422                           (media_file_val &amp;&amp; strlen(media_file_val) &gt; 0) ||
-423                           GET_OPTION(test_pattern);
-424 
-425   // Enable audio capture if render-file is active and media source exists
-426   if (render_file_opt &amp;&amp; strlen(render_file_opt) &gt; 0 &amp;&amp; has_media_source) {
-427     capture_config.enable_audio = true;
-428     log_debug(&quot;Audio capture enabled for render-file encoding&quot;);
-429   }
-430 
-431   bool stdin_render_mode = (render_file_opt &amp;&amp; strcmp(render_file_opt, &quot;-&quot;) == 0 &amp;&amp;
-432                             !terminal_is_stdin_tty() &amp;&amp; height_explicitly_set &amp;&amp;
-433                             !has_media_source &amp;&amp; config-&gt;kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
-434 
-435   if (stdin_render_mode) {
-436     // Stdin render mode: read ASCII frames from stdin, output video to stdout
-437     log_info(&quot;Stdin render mode enabled: reading ASCII frames from stdin, output to stdout&quot;);
+395   // ============================================================================
+396   // SETUP: Network Transports (TCP/WebSocket)
+397   // ============================================================================
+398 
+399   log_debug(&quot;session_client_like_run(): Setting up network transports&quot;);
+400 
+401   bool networked_mode = session_client_like_is_networked(config-&gt;kind);
+402 
+403   switch (config-&gt;kind) {
+404     case SESSION_CLIENT_LIKE_KIND_MIRROR:
+405       log_debug(&quot;Mirror mode detected - will use local capture with media source&quot;);
+406       break;
+407     case SESSION_CLIENT_LIKE_KIND_CLIENT:
+408       log_debug(&quot;Client/Network mode detected - will use network capture without local media source&quot;);
+409       break;
+410     case SESSION_CLIENT_LIKE_KIND_DISCOVERY:
+411       log_debug(&quot;Discovery mode detected - discovery session will manage networking&quot;);
+412       break;
+413   }
+414 
+415   // ============================================================================
+416   // SETUP: Capture Context
+417   // ============================================================================
+418 
+419   // Check for stdin render mode: read ASCII frames from stdin, render to video
+420   // Only enable stdin render mode if:
+421   // 1. render-file is &quot;-&quot; (output to stdout)
+422   // 2. stdin is not a TTY
+423   // 3. --height is explicitly specified (user must opt-in to stdin render mode)
+424   // 4. NO media source is being used (not reading from file/URL/test-pattern)
+425   // This prevents accidental activation when piping to other processes or using mirror mode
+426   const char *render_file_opt = GET_OPTION(render_file);
+427   int frame_height = GET_OPTION(height);
+428   bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
+429   bool has_media_source = (media_url_val &amp;&amp; strlen(media_url_val) &gt; 0) ||
+430                           (media_file_val &amp;&amp; strlen(media_file_val) &gt; 0) ||
+431                           GET_OPTION(test_pattern);
+432 
+433   // Enable audio capture if render-file is active and media source exists
+434   if (render_file_opt &amp;&amp; strlen(render_file_opt) &gt; 0 &amp;&amp; has_media_source) {
+435     capture_config.enable_audio = true;
+436     log_debug(&quot;Audio capture enabled for render-file encoding&quot;);
+437   }
 438 
-439     // Get frame dimensions (--height must be explicitly set to reach here)
-440     int frame_width = GET_OPTION(width);
-441 
-442     // Validate stdin render mode constraints (--height is already validated above since height_explicitly_set is true)
-443     bool width_was_explicitly_set = (frame_width != OPT_WIDTH_DEFAULT);
-444 
-445     if (width_was_explicitly_set) {
-446       result = SET_ERRNO(ERROR_USAGE, &quot;Stdin render mode does not accept --width (auto-detected from frames).\n&quot;
-447                                       &quot;Only specify: --height &lt;rows&gt;&quot;);
-448       goto cleanup;
-449     }
-450 
-451     asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &amp;g_stdin_reader);
-452     if (stdin_err != ASCIICHAT_OK) {
-453       log_fatal(&quot;Failed to initialize stdin frame reader: %s&quot;, asciichat_error_string(stdin_err));
-454       result = ERROR_MEDIA_INIT;
-455       goto cleanup;
-456     }
-457 
-458     // For stdin render mode, create a minimal capture context for compatibility
-459     int fps = GET_OPTION(fps);
-460     capture = session_network_capture_create((uint32_t)(fps &gt; 0 ? fps : 60));
-461     if (!capture) {
-462       log_fatal(&quot;Failed to initialize capture context for stdin rendering&quot;);
-463       terminal_fd_reader_destroy(g_stdin_reader);
-464       g_stdin_reader = NULL;
-465       result = ERROR_MEDIA_INIT;
-466       goto cleanup;
-467     }
-468 
-469     log_info(&quot;stdin render mode: reading %d-line frames from stdin, auto-detecting width&quot;, frame_height);
-470   }
-471 
-472   // Choose capture type based on mode determined earlier:
-473   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
-474   // - Network modes (client/discovery): receive frames from network, no local capture
-475   if (!stdin_render_mode &amp;&amp; networked_mode) {
-476     // Network mode: create minimal capture context without media source
-477     log_debug(&quot;Network mode detected - using network capture (no local media source)&quot;);
-478     int fps = GET_OPTION(fps);
-479     uint64_t net_cap_start = time_get_ns();
-480     capture = session_network_capture_create((uint32_t)(fps &gt; 0 ? fps : 60));
-481     double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
-482     log_info(&quot;&#x2605; INIT_CHECKPOINT: Network capture created in %.1f ms&quot;, net_cap_ms);
-483     if (!capture) {
-484       log_fatal(&quot;Failed to initialize network capture context&quot;);
-485       result = ERROR_MEDIA_INIT;
-486       goto cleanup;
-487     }
-488     if (fps &gt; 0) {
-489       log_debug(&quot;Network capture FPS set to %d from options&quot;, fps);
-490     }
-491   }
-492 
-493   // ============================================================================
-494   // SETUP: Audio Context
-495   // ============================================================================
-496 
-497   // Skip audio for immediate snapshots
-498   bool should_init_audio = true;
-499   if (GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0) {
-500     should_init_audio = false;
-501     log_debug(&quot;Skipping audio initialization for immediate snapshot&quot;);
-502   }
-503 
-504   // Probe for audio
-505   if (should_init_audio &amp;&amp; capture_config.type == MEDIA_SOURCE_FILE &amp;&amp; capture_config.path) {
-506     media_source_t *audio_probe_source = session_capture_get_media_source(capture);
-507     if (audio_probe_source &amp;&amp; media_source_has_audio(audio_probe_source)) {
-508       audio_available = true;
-509 
-510       // Allocate and initialize audio context
-511       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
-512       if (audio_ctx) {
-513         *audio_ctx = (audio_context_t){0};
-514         if (audio_init(audio_ctx) == ASCIICHAT_OK) {
-515           // Link audio to media source
-516           media_source_t *media_source = session_capture_get_media_source(capture);
-517           audio_ctx-&gt;media_source = media_source;
-518 
-519           if (media_source) {
-520             media_source_set_audio_context(media_source, audio_ctx);
-521           }
-522 
-523           // Determine if microphone should be enabled
-524           bool should_enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), audio_available);
-525           audio_ctx-&gt;playback_only = !should_enable_mic;
+439   bool stdin_render_mode = (render_file_opt &amp;&amp; strcmp(render_file_opt, &quot;-&quot;) == 0 &amp;&amp;
+440                             !terminal_is_stdin_tty() &amp;&amp; height_explicitly_set &amp;&amp;
+441                             !has_media_source &amp;&amp; config-&gt;kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
+442 
+443   if (stdin_render_mode) {
+444     // Stdin render mode: read ASCII frames from stdin, output video to stdout
+445     log_info(&quot;Stdin render mode enabled: reading ASCII frames from stdin, output to stdout&quot;);
+446 
+447     // Get frame dimensions (--height must be explicitly set to reach here)
+448     int frame_width = GET_OPTION(width);
+449 
+450     // Validate stdin render mode constraints (--height is already validated above since height_explicitly_set is true)
+451     bool width_was_explicitly_set = (frame_width != OPT_WIDTH_DEFAULT);
+452 
+453     if (width_was_explicitly_set) {
+454       result = SET_ERRNO(ERROR_USAGE, &quot;Stdin render mode does not accept --width (auto-detected from frames).\n&quot;
+455                                       &quot;Only specify: --height &lt;rows&gt;&quot;);
+456       goto cleanup;
+457     }
+458 
+459     asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &amp;g_stdin_reader);
+460     if (stdin_err != ASCIICHAT_OK) {
+461       log_fatal(&quot;Failed to initialize stdin frame reader: %s&quot;, asciichat_error_string(stdin_err));
+462       result = ERROR_MEDIA_INIT;
+463       goto cleanup;
+464     }
+465 
+466     // For stdin render mode, create a minimal capture context for compatibility
+467     int fps = GET_OPTION(fps);
+468     capture = session_network_capture_create((uint32_t)(fps &gt; 0 ? fps : 60));
+469     if (!capture) {
+470       log_fatal(&quot;Failed to initialize capture context for stdin rendering&quot;);
+471       terminal_fd_reader_destroy(g_stdin_reader);
+472       g_stdin_reader = NULL;
+473       result = ERROR_MEDIA_INIT;
+474       goto cleanup;
+475     }
+476 
+477     log_info(&quot;stdin render mode: reading %d-line frames from stdin, auto-detecting width&quot;, frame_height);
+478   }
+479 
+480   // Choose capture type based on mode determined earlier:
+481   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
+482   // - Network modes (client/discovery): receive frames from network, no local capture
+483   if (!stdin_render_mode &amp;&amp; networked_mode) {
+484     // Network mode: create minimal capture context without media source
+485     log_debug(&quot;Network mode detected - using network capture (no local media source)&quot;);
+486     int fps = GET_OPTION(fps);
+487     uint64_t net_cap_start = time_get_ns();
+488     capture = session_network_capture_create((uint32_t)(fps &gt; 0 ? fps : 60));
+489     double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
+490     log_info(&quot;&#x2605; INIT_CHECKPOINT: Network capture created in %.1f ms&quot;, net_cap_ms);
+491     if (!capture) {
+492       log_fatal(&quot;Failed to initialize network capture context&quot;);
+493       result = ERROR_MEDIA_INIT;
+494       goto cleanup;
+495     }
+496     if (fps &gt; 0) {
+497       log_debug(&quot;Network capture FPS set to %d from options&quot;, fps);
+498     }
+499   }
+500 
+501   // ============================================================================
+502   // SETUP: Audio Context
+503   // ============================================================================
+504 
+505   // Skip audio for immediate snapshots
+506   bool should_init_audio = true;
+507   if (GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0) {
+508     should_init_audio = false;
+509     log_debug(&quot;Skipping audio initialization for immediate snapshot&quot;);
+510   }
+511 
+512   // Probe for audio
+513   if (should_init_audio &amp;&amp; capture_config.type == MEDIA_SOURCE_FILE &amp;&amp; capture_config.path) {
+514     media_source_t *audio_probe_source = session_capture_get_media_source(capture);
+515     if (audio_probe_source &amp;&amp; media_source_has_audio(audio_probe_source)) {
+516       audio_available = true;
+517 
+518       // Allocate and initialize audio context
+519       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
+520       if (audio_ctx) {
+521         *audio_ctx = (audio_context_t){0};
+522         if (audio_init(audio_ctx) == ASCIICHAT_OK) {
+523           // Link audio to media source
+524           media_source_t *media_source = session_capture_get_media_source(capture);
+525           audio_ctx-&gt;media_source = media_source;
 526 
-527           // Disable jitter buffering for file playback
-528           if (audio_ctx-&gt;playback_buffer) {
-529             audio_ctx-&gt;playback_buffer-&gt;jitter_buffer_enabled = false;
-530             atomic_store_bool(&amp;audio_ctx-&gt;playback_buffer-&gt;jitter_buffer_filled, true);
-531           }
-532 
-533           // Store in capture for keyboard handler access
-534           session_capture_set_audio_context(capture, audio_ctx);
-535 
-536           log_debug(&quot;Audio context initialized&quot;);
-537         } else {
-538           log_warn(&quot;Failed to initialize audio context&quot;);
-539           audio_destroy(audio_ctx);
-540           SAFE_FREE(audio_ctx);
-541           audio_ctx = NULL;
-542           audio_available = false;
-543         }
-544       }
-545     }
-546   }
-547 
-548   // Pass stdin_reader to display if in stdin render mode
-549   if (stdin_render_mode &amp;&amp; g_stdin_reader) {
-550     session_display_set_stdin_reader(display, g_stdin_reader);
-551     log_debug(&quot;stdin_reader passed to display context&quot;);
-552   }
-553 
-554   // ============================================================================
-555   // SETUP: End Splash Screen
-556   // ============================================================================
-557   log_debug(&quot;[SETUP_SPLASH] About to end splash screen&quot;);
-558 
-559   // The splash screen will display during initialization and exit when done.
-560   // The initialization process (media probing, display setup, etc.) naturally
-561   // takes time, keeping the splash visible. The splash is kept alive during
-562   // connection attempts (TCP and WebSocket) to prevent a blank screen during
-563   // network operations. splash_intro_done() is called only after a successful
-564   // connection is established.
-565 
-566   log_debug(&quot;[SETUP_SPLASH] Splash will remain visible during connection attempts&quot;);
-567 
-568   // Exit early if shutdown was requested (e.g., user pressed Ctrl-C)
-569   if (APP_CALLBACK_BOOL(should_exit)) {
-570     log_debug(&quot;[SETUP] Shutdown requested, exiting early&quot;);
-571     log_debug(&quot;[SETUP_SPLASH] Ending splash due to early shutdown request&quot;);
-572     splash_intro_done();
-573     splash_wait_for_animation();
-574     result = ASCIICHAT_OK;
-575     goto cleanup;
-576   }
-577 
-578   // Wait for splash animation to finish before proceeding to render loop
-579   // (splash_anim thread uses the display, must not be disrupted before cleanup)
-580   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
-581   // For discovery mode, keep the splash running - it stays visible while waiting for peers
-582   if (config-&gt;discovery == NULL) {
-583     splash_intro_done();
-584     if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
-585       splash_wait_for_animation();
-586     }
-587   } else {
-588     log_debug(&quot;[SETUP_SPLASH] Discovery mode: keeping splash visible while waiting for peers&quot;);
-589   }
-590 
-591   // ============================================================================
-592   // SETUP: Create Mirror Capture (after splash screen finishes)
-593   // ============================================================================
-594 
-595   log_info(&quot;[MIRROR_CHECK] stdin_render_mode=%d, capture=%p&quot;, stdin_render_mode, (void *)capture);
-596   if (!stdin_render_mode &amp;&amp; !capture) {
-597     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
-598     log_info(&quot;Mirror mode detected - creating mirror capture after splash screen&quot;);
-599     uint64_t mirror_cap_start = time_get_ns();
-600     capture = session_mirror_capture_create(&amp;capture_config);
-601     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
-602     log_info(&quot;&#x2605; INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)&quot;, mirror_cap_ms);
-603     if (!capture) {
-604       log_fatal(&quot;Failed to initialize mirror capture source&quot;);
-605       result = ERROR_MEDIA_INIT;
-606       goto cleanup;
-607     }
-608 
-609     // Set audio source for render-file encoding (after capture is created)
-610     media_source_t *render_audio_source = session_capture_get_media_source(capture);
-611     const char *render_file_path = GET_OPTION(render_file);
-612     log_info(&quot;[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu&quot;,
-613              render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
-614              render_file_path ? strlen(render_file_path) : 0);
-615     if (render_audio_source &amp;&amp; render_file_path &amp;&amp; strlen(render_file_path) &gt; 0) {
-616       session_display_set_render_audio_source(display, render_audio_source);
-617       log_info(&quot;Audio source set for render-file output&quot;);
-618     } else {
-619       log_warn(&quot;[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu&quot;,
-620                render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
-621                render_file_path ? strlen(render_file_path) : 0);
-622     }
-623   }
-624 
-625   // ============================================================================
-626   // SETUP: Start Audio Playback
-627   // ============================================================================
-628 
-629   log_debug(&quot;[SETUP_AUDIO] About to check audio context for duplex&quot;);
-630   if (audio_ctx &amp;&amp; audio_available) {
-631     log_debug(&quot;[SETUP_AUDIO] Starting audio duplex&quot;);
-632     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
-633       log_info(&quot;Audio playback started&quot;);
-634     } else {
-635       log_warn(&quot;Failed to start audio duplex&quot;);
-636       audio_destroy(audio_ctx);
-637       SAFE_FREE(audio_ctx);
-638       audio_ctx = NULL;
-639       audio_available = false;
-640     }
-641   }
-642 
-643   log_info(&quot;[MARKER] Audio setup complete at line 614&quot;);
-644   log_info(&quot;[SETUP_COMPLETE] All setup complete, about to start connection loop&quot;);
-645 
-646   // ============================================================================
-647   // RUN: Mode-Specific Main Loop with Reconnection
-648   // ============================================================================
-649 
-650   // Connection/attempt loop - wraps run_fn with reconnection logic
-651   int attempt = 0;
-652   int max_attempts = config-&gt;max_reconnect_attempts;
+527           if (media_source) {
+528             media_source_set_audio_context(media_source, audio_ctx);
+529           }
+530 
+531           // Determine if microphone should be enabled
+532           bool should_enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), audio_available);
+533           audio_ctx-&gt;playback_only = !should_enable_mic;
+534 
+535           // Disable jitter buffering for file playback
+536           if (audio_ctx-&gt;playback_buffer) {
+537             audio_ctx-&gt;playback_buffer-&gt;jitter_buffer_enabled = false;
+538             atomic_store_bool(&amp;audio_ctx-&gt;playback_buffer-&gt;jitter_buffer_filled, true);
+539           }
+540 
+541           // Store in capture for keyboard handler access
+542           session_capture_set_audio_context(capture, audio_ctx);
+543 
+544           log_debug(&quot;Audio context initialized&quot;);
+545         } else {
+546           log_warn(&quot;Failed to initialize audio context&quot;);
+547           audio_destroy(audio_ctx);
+548           SAFE_FREE(audio_ctx);
+549           audio_ctx = NULL;
+550           audio_available = false;
+551         }
+552       }
+553     }
+554   }
+555 
+556   // Pass stdin_reader to display if in stdin render mode
+557   if (stdin_render_mode &amp;&amp; g_stdin_reader) {
+558     session_display_set_stdin_reader(display, g_stdin_reader);
+559     log_debug(&quot;stdin_reader passed to display context&quot;);
+560   }
+561 
+562   // ============================================================================
+563   // SETUP: End Splash Screen
+564   // ============================================================================
+565   log_debug(&quot;[SETUP_SPLASH] About to end splash screen&quot;);
+566 
+567   // The splash screen will display during initialization and exit when done.
+568   // The initialization process (media probing, display setup, etc.) naturally
+569   // takes time, keeping the splash visible. The splash is kept alive during
+570   // connection attempts (TCP and WebSocket) to prevent a blank screen during
+571   // network operations. splash_intro_done() is called only after a successful
+572   // connection is established.
+573 
+574   log_debug(&quot;[SETUP_SPLASH] Splash will remain visible during connection attempts&quot;);
+575 
+576   // Exit early if shutdown was requested (e.g., user pressed Ctrl-C)
+577   if (APP_CALLBACK_BOOL(should_exit)) {
+578     log_debug(&quot;[SETUP] Shutdown requested, exiting early&quot;);
+579     log_debug(&quot;[SETUP_SPLASH] Ending splash due to early shutdown request&quot;);
+580     splash_intro_done();
+581     splash_wait_for_animation();
+582     result = ASCIICHAT_OK;
+583     goto cleanup;
+584   }
+585 
+586   // Wait for splash animation to finish before proceeding to render loop
+587   // (splash_anim thread uses the display, must not be disrupted before cleanup)
+588   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
+589   // For discovery mode, keep the splash running - it stays visible while waiting for peers
+590   if (config-&gt;discovery == NULL) {
+591     splash_intro_done();
+592     if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
+593       splash_wait_for_animation();
+594     }
+595   } else {
+596     log_debug(&quot;[SETUP_SPLASH] Discovery mode: keeping splash visible while waiting for peers&quot;);
+597   }
+598 
+599   // ============================================================================
+600   // SETUP: Create Mirror Capture (after splash screen finishes)
+601   // ============================================================================
+602 
+603   log_info(&quot;[MIRROR_CHECK] stdin_render_mode=%d, capture=%p&quot;, stdin_render_mode, (void *)capture);
+604   if (!stdin_render_mode &amp;&amp; !capture) {
+605     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
+606     log_info(&quot;Mirror mode detected - creating mirror capture after splash screen&quot;);
+607     uint64_t mirror_cap_start = time_get_ns();
+608     capture = session_mirror_capture_create(&amp;capture_config);
+609     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
+610     log_info(&quot;&#x2605; INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)&quot;, mirror_cap_ms);
+611     if (!capture) {
+612       log_fatal(&quot;Failed to initialize mirror capture source&quot;);
+613       result = ERROR_MEDIA_INIT;
+614       goto cleanup;
+615     }
+616 
+617     // Set audio source for render-file encoding (after capture is created)
+618     media_source_t *render_audio_source = session_capture_get_media_source(capture);
+619     const char *render_file_path = GET_OPTION(render_file);
+620     log_info(&quot;[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu&quot;,
+621              render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
+622              render_file_path ? strlen(render_file_path) : 0);
+623     if (render_audio_source &amp;&amp; render_file_path &amp;&amp; strlen(render_file_path) &gt; 0) {
+624       session_display_set_render_audio_source(display, render_audio_source);
+625       log_info(&quot;Audio source set for render-file output&quot;);
+626     } else {
+627       log_warn(&quot;[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu&quot;,
+628                render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
+629                render_file_path ? strlen(render_file_path) : 0);
+630     }
+631   }
+632 
+633   // ============================================================================
+634   // SETUP: Start Audio Playback
+635   // ============================================================================
+636 
+637   log_debug(&quot;[SETUP_AUDIO] About to check audio context for duplex&quot;);
+638   if (audio_ctx &amp;&amp; audio_available) {
+639     log_debug(&quot;[SETUP_AUDIO] Starting audio duplex&quot;);
+640     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+641       log_info(&quot;Audio playback started&quot;);
+642     } else {
+643       log_warn(&quot;Failed to start audio duplex&quot;);
+644       audio_destroy(audio_ctx);
+645       SAFE_FREE(audio_ctx);
+646       audio_ctx = NULL;
+647       audio_available = false;
+648     }
+649   }
+650 
+651   log_info(&quot;[MARKER] Audio setup complete at line 614&quot;);
+652   log_info(&quot;[SETUP_COMPLETE] All setup complete, about to start connection loop&quot;);
 653 
-654   log_info(&quot;[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d&quot;, max_attempts);
-655 
-656   while (true) {
-657     attempt++;
-658 
-659     result = config-&gt;run_fn(capture, display, config-&gt;run_user_data);
-660 
-661     // Exit immediately if run_fn succeeded
-662     if (result == ASCIICHAT_OK) {
-663       // Connection succeeded - splash screen cleanup now happens when first frame renders
-664       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
-665 
-666       break;
-667     }
+654   // ============================================================================
+655   // RUN: Mode-Specific Main Loop with Reconnection
+656   // ============================================================================
+657 
+658   // Connection/attempt loop - wraps run_fn with reconnection logic
+659   int attempt = 0;
+660   int max_attempts = config-&gt;max_reconnect_attempts;
+661 
+662   log_info(&quot;[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d&quot;, max_attempts);
+663 
+664   while (true) {
+665     attempt++;
+666 
+667     result = config-&gt;run_fn(capture, display, config-&gt;run_user_data);
 668 
-669     // Check if we should attempt reconnection
-670     bool should_retry = false;
-671 
-672     if (max_attempts != 0) { // max_attempts == 0 means no retries
-673       // Check custom reconnect logic if provided
-674       if (config-&gt;should_reconnect_callback) {
-675         should_retry = config-&gt;should_reconnect_callback(result, attempt, config-&gt;reconnect_user_data);
-676       } else {
-677         should_retry = true; // Default: always retry
-678       }
+669     // Exit immediately if run_fn succeeded
+670     if (result == ASCIICHAT_OK) {
+671       // Connection succeeded - splash screen cleanup now happens when first frame renders
+672       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
+673 
+674       break;
+675     }
+676 
+677     // Check if we should attempt reconnection
+678     bool should_retry = false;
 679 
-680       // Check retry limits if still planning to retry
-681       if (should_retry &amp;&amp; max_attempts &gt; 0 &amp;&amp; attempt &gt;= max_attempts) {
-682         log_debug(&quot;Reached maximum reconnection attempts (%d), giving up&quot;, max_attempts);
-683         should_retry = false;
-684       }
-685     }
-686 
-687     // If not retrying or shutdown requested, exit loop
-688     if (!should_retry || APP_CALLBACK_BOOL(should_exit)) {
-689       break;
-690     }
-691 
-692     // Reconnection will happen - show splash screen during reconnection attempt
-693     // Reset first_frame flag so splash cleanup runs on next successful connection
-694     session_display_reset_first_frame(display);
-695 
-696     // splash_intro_start() handles all the logic:
-697     // - If splash should display: shows splash and disables console logging
-698     // - If splash shouldn't display: restores stderr and returns without changing logging state
-699     splash_intro_start(display);
-700 
-701     // Log reconnection message
-702     if (max_attempts == -1) {
-703       log_info(&quot;Connection failed, retrying...&quot;);
-704     } else if (max_attempts &gt; 0) {
-705       log_info(&quot;Connection failed, retrying (attempt %d/%d)...&quot;, attempt + 1, max_attempts);
-706     }
-707 
-708     // Apply reconnection delay if configured
-709     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
-710     if (config-&gt;reconnect_delay_ms &gt; 0) {
-711       unsigned int remaining_ms = config-&gt;reconnect_delay_ms;
-712       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
-713 
-714       while (remaining_ms &gt; 0 &amp;&amp; !APP_CALLBACK_BOOL(should_exit)) {
-715         unsigned int sleep_ms = (remaining_ms &lt; check_interval_ms) ? remaining_ms : check_interval_ms;
-716         APP_CALLBACK_VOID(platform_pump_events);
-717         APP_CALLBACK_VOID_UINT(platform_sleep_ms, sleep_ms);
-718         remaining_ms -= sleep_ms;
-719       }
-720     }
+680     if (max_attempts != 0) { // max_attempts == 0 means no retries
+681       // Check custom reconnect logic if provided
+682       if (config-&gt;should_reconnect_callback) {
+683         should_retry = config-&gt;should_reconnect_callback(result, attempt, config-&gt;reconnect_user_data);
+684       } else {
+685         should_retry = true; // Default: always retry
+686       }
+687 
+688       // Check retry limits if still planning to retry
+689       if (should_retry &amp;&amp; max_attempts &gt; 0 &amp;&amp; attempt &gt;= max_attempts) {
+690         log_debug(&quot;Reached maximum reconnection attempts (%d), giving up&quot;, max_attempts);
+691         should_retry = false;
+692       }
+693     }
+694 
+695     // If not retrying or shutdown requested, exit loop
+696     if (!should_retry || APP_CALLBACK_BOOL(should_exit)) {
+697       break;
+698     }
+699 
+700     // Reconnection will happen - show splash screen during reconnection attempt
+701     // Reset first_frame flag so splash cleanup runs on next successful connection
+702     session_display_reset_first_frame(display);
+703 
+704     // splash_intro_start() handles all the logic:
+705     // - If splash should display: shows splash and disables console logging
+706     // - If splash shouldn't display: restores stderr and returns without changing logging state
+707     splash_intro_start(display);
+708 
+709     // Log reconnection message
+710     if (max_attempts == -1) {
+711       log_info(&quot;Connection failed, retrying...&quot;);
+712     } else if (max_attempts &gt; 0) {
+713       log_info(&quot;Connection failed, retrying (attempt %d/%d)...&quot;, attempt + 1, max_attempts);
+714     }
+715 
+716     // Apply reconnection delay if configured
+717     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
+718     if (config-&gt;reconnect_delay_ms &gt; 0) {
+719       unsigned int remaining_ms = config-&gt;reconnect_delay_ms;
+720       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
 721 
-722     // Continue loop to retry
-723   }
-724 
-725   // ============================================================================
-726   // CLEANUP (always runs, even on error)
-727   // ============================================================================
-728 
-729 cleanup:
-730   // Re-enable terminal output for shutdown logs
-731   log_set_terminal_output(true);
+722       while (remaining_ms &gt; 0 &amp;&amp; !APP_CALLBACK_BOOL(should_exit)) {
+723         unsigned int sleep_ms = (remaining_ms &lt; check_interval_ms) ? remaining_ms : check_interval_ms;
+724         APP_CALLBACK_VOID(platform_pump_events);
+725         APP_CALLBACK_VOID_UINT(platform_sleep_ms, sleep_ms);
+726         remaining_ms -= sleep_ms;
+727       }
+728     }
+729 
+730     // Continue loop to retry
+731   }
 732 
-733   g_current_config = NULL;
-734   g_render_should_exit = NULL;
-735 
-736   // CRITICAL: Terminate PortAudio device resources FIRST
-737   log_debug(&quot;Terminating PortAudio device resources&quot;);
-738   audio_terminate_portaudio_final();
-739 
-740   // Stop audio thread before destroying audio context to prevent use-after-free
-741   // The audio worker thread may still be logging when we destroy the buffer
-742   APP_CALLBACK_VOID(audio_stop_thread);
+733   // ============================================================================
+734   // CLEANUP (always runs, even on error)
+735   // ============================================================================
+736 
+737 cleanup:
+738   // Re-enable terminal output for shutdown logs
+739   log_set_terminal_output(true);
+740 
+741   g_current_config = NULL;
+742   g_render_should_exit = NULL;
 743 
-744   // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
-745   if (audio_ctx) {
-746     audio_stop_duplex(audio_ctx);
-747     audio_destroy(audio_ctx);
-748     SAFE_FREE(audio_ctx);
-749     audio_ctx = NULL;
-750   }
+744   // CRITICAL: Terminate PortAudio device resources FIRST
+745   log_debug(&quot;Terminating PortAudio device resources&quot;);
+746   audio_terminate_portaudio_final();
+747 
+748   // Stop audio thread before destroying audio context to prevent use-after-free
+749   // The audio worker thread may still be logging when we destroy the buffer
+750   APP_CALLBACK_VOID(audio_stop_thread);
 751 
-752   // Destroy display (check global context to see if discovery mode already destroyed it)
-753   // Discovery participant mode may destroy the display early and clear the global context
-754   session_display_ctx_t *current_global = session_display_get_global_context();
-755   if (display &amp;&amp; display == current_global) {
-756     // Display is still valid (not destroyed by discovery mode)
-757     session_display_destroy(display);
-758     display = NULL;
-759   } else if (display &amp;&amp; display != current_global) {
-760     // Display was already destroyed (by discovery participant mode)
-761     // Just NULL it out, don't call destroy again
-762     log_debug(&quot;[CLEANUP] Display was already destroyed by discovery mode, skipping destroy&quot;);
-763     display = NULL;
-764   }
-765 
-766   // Destroy capture
-767   if (capture) {
-768     session_capture_destroy(capture);
-769     capture = NULL;
-770   }
-771 
-772   // Destroy stdin reader if active (stdin render mode)
-773   if (g_stdin_reader) {
-774     terminal_fd_reader_destroy(g_stdin_reader);
-775     g_stdin_reader = NULL;
-776   }
-777 
-778   // Clean up probe source if still allocated (shouldn't happen, but be safe)
-779   if (probe_source) {
-780     media_source_destroy(probe_source);
-781     probe_source = NULL;
-782   }
-783 
-784   // Stop splash animation and enforce minimum display time (even on error path)
-785   // But skip completely if shutting down - don't interact with splash at all during shutdown
-786   // The animation thread will exit on its own when it detects shutdown_is_requested()
-787   // For discovery mode, keep the splash running - it stays visible while waiting for peers
-788   if (config-&gt;discovery != NULL) {
-789     log_debug(&quot;[CLEANUP] Discovery mode: keeping splash alive for peer waiting UI&quot;);
-790   } else if (!APP_CALLBACK_BOOL(should_exit)) {
-791     log_debug(&quot;[CLEANUP] About to call splash_intro_done()&quot;);
-792     splash_intro_done();
-793     log_debug(&quot;[CLEANUP] splash_intro_done() returned&quot;);
-794 
-795     // Wait for animation thread to exit before cleanup
-796     log_debug(&quot;[CLEANUP] About to call splash_wait_for_animation()&quot;);
-797     splash_wait_for_animation();
-798     log_debug(&quot;[CLEANUP] splash_wait_for_animation() returned&quot;);
-799   } else {
-800     log_debug(&quot;[CLEANUP] Skipping all splash operations (shutdown in progress)&quot;);
-801     // During shutdown, don't interact with splash - let animation thread exit naturally
-802     // and don't wait for it (prevents blocking on signals)
-803   }
-804 
-805   // Stop debug sync thread before destroying log buffer to prevent use-after-free
-806   log_debug(&quot;[CLEANUP] About to call debug_sync_cleanup_thread()&quot;);
-807   debug_sync_cleanup_thread();
-808   log_debug(&quot;[CLEANUP] debug_sync_cleanup_thread() returned&quot;);
-809 
-810   // Disable keepawake (re-allow OS to sleep)
-811   log_debug(&quot;[CLEANUP] Disabling keepawake&quot;);
-812   platform_disable_keepawake();
-813   log_debug(&quot;[CLEANUP] keepawake disabled&quot;);
-814 
-815   // Write newline to separate final frame from prompt (if configured)
-816   log_debug(&quot;About to check print_newline_on_tty_exit&quot;);
-817   if (config-&gt;print_newline_on_tty_exit &amp;&amp; terminal_is_stdout_tty()) {
-818     log_debug(&quot;Writing newline&quot;);
-819     const char newline = '\n';
-820     (void)platform_write_all(STDOUT_FILENO, &amp;newline, 1);
-821   }
+752   // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
+753   if (audio_ctx) {
+754     audio_stop_duplex(audio_ctx);
+755     audio_destroy(audio_ctx);
+756     SAFE_FREE(audio_ctx);
+757     audio_ctx = NULL;
+758   }
+759 
+760   // Destroy display (check global context to see if discovery mode already destroyed it)
+761   // Discovery participant mode may destroy the display early and clear the global context
+762   session_display_ctx_t *current_global = session_display_get_global_context();
+763   if (display &amp;&amp; display == current_global) {
+764     // Display is still valid (not destroyed by discovery mode)
+765     session_display_destroy(display);
+766     display = NULL;
+767   } else if (display &amp;&amp; display != current_global) {
+768     // Display was already destroyed (by discovery participant mode)
+769     // Just NULL it out, don't call destroy again
+770     log_debug(&quot;[CLEANUP] Display was already destroyed by discovery mode, skipping destroy&quot;);
+771     display = NULL;
+772   }
+773 
+774   // Destroy capture
+775   if (capture) {
+776     session_capture_destroy(capture);
+777     capture = NULL;
+778   }
+779 
+780   // Destroy stdin reader if active (stdin render mode)
+781   if (g_stdin_reader) {
+782     terminal_fd_reader_destroy(g_stdin_reader);
+783     g_stdin_reader = NULL;
+784   }
+785 
+786   // Clean up probe source if still allocated (shouldn't happen, but be safe)
+787   if (probe_source) {
+788     media_source_destroy(probe_source);
+789     probe_source = NULL;
+790   }
+791 
+792   // Stop splash animation and enforce minimum display time (even on error path)
+793   // But skip completely if shutting down - don't interact with splash at all during shutdown
+794   // The animation thread will exit on its own when it detects shutdown_is_requested()
+795   // For discovery mode, keep the splash running - it stays visible while waiting for peers
+796   if (config-&gt;discovery != NULL) {
+797     log_debug(&quot;[CLEANUP] Discovery mode: keeping splash alive for peer waiting UI&quot;);
+798   } else if (!APP_CALLBACK_BOOL(should_exit)) {
+799     log_debug(&quot;[CLEANUP] About to call splash_intro_done()&quot;);
+800     splash_intro_done();
+801     log_debug(&quot;[CLEANUP] splash_intro_done() returned&quot;);
+802 
+803     // Wait for animation thread to exit before cleanup
+804     log_debug(&quot;[CLEANUP] About to call splash_wait_for_animation()&quot;);
+805     splash_wait_for_animation();
+806     log_debug(&quot;[CLEANUP] splash_wait_for_animation() returned&quot;);
+807   } else {
+808     log_debug(&quot;[CLEANUP] Skipping all splash operations (shutdown in progress)&quot;);
+809     // During shutdown, don't interact with splash - let animation thread exit naturally
+810     // and don't wait for it (prevents blocking on signals)
+811   }
+812 
+813   // Stop debug sync thread before destroying log buffer to prevent use-after-free
+814   log_debug(&quot;[CLEANUP] About to call debug_sync_cleanup_thread()&quot;);
+815   debug_sync_cleanup_thread();
+816   log_debug(&quot;[CLEANUP] debug_sync_cleanup_thread() returned&quot;);
+817 
+818   // Disable keepawake (re-allow OS to sleep)
+819   log_debug(&quot;[CLEANUP] Disabling keepawake&quot;);
+820   platform_disable_keepawake();
+821   log_debug(&quot;[CLEANUP] keepawake disabled&quot;);
 822 
-823   log_set_terminal_output(false);
-824 
-825   return result;
-826 }</pre>
+823   // Write newline to separate final frame from prompt (if configured)
+824   log_debug(&quot;About to check print_newline_on_tty_exit&quot;);
+825   if (config-&gt;print_newline_on_tty_exit &amp;&amp; terminal_is_stdout_tty()) {
+826     log_debug(&quot;Writing newline&quot;);
+827     const char newline = '\n';
+828     (void)platform_write_all(STDOUT_FILENO, &amp;newline, 1);
+829   }
+830 
+831   log_set_terminal_output(false);
+832 
+833   return result;
+834 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APP_CALLBACK_BOOL</b>, <b>APP_CALLBACK_VOID</b>,
@@ -986,10 +993,14 @@
     <b>splash_intro_start()</b>, <b>splash_restore_stderr()</b>,
     <b>splash_wait_for_animation()</b>,
     <b>session_capture_config_t::target_fps</b>, <b>TERM_COLOR_AUTO</b>,
-    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_reader_destroy()</b>,
-    <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
-    <b>terminal_should_force_stderr()</b>, <b>time_elapsed_ns()</b>,
-    <b>time_get_ns()</b>, and <b>session_capture_config_t::type</b>.</p>
+    <b>terminal_clear_screen()</b>, <b>terminal_fd_reader_create()</b>,
+    <b>terminal_fd_reader_destroy()</b>, <b>terminal_is_stdin_tty()</b>,
+    <b>terminal_is_stdout_tty()</b>, <b>terminal_should_force_stderr()</b>,
+    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>,
+    <b>session_capture_config_t::type</b>, <b>update_banner_has_update()</b>,
+    <b>update_banner_print_instructions()</b>,
+    <b>update_banner_show_prompt()</b>, and
+    <b>update_banner_wait_for_check()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>discovery_main()</b>, and
     <b>mirror_main()</b>.</p>
 </section>
@@ -1000,10 +1011,10 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>(*)(void *)
   session_client_like_get_render_should_exit(void) (void )</h2>
-<p class="Pp">Definition at line <b>49</b> of file <b>client_like.c</b>.</p>
-<pre>49                                                                  {
-50   return g_render_should_exit;
-51 }</pre>
+<p class="Pp">Definition at line <b>50</b> of file <b>client_like.c</b>.</p>
+<pre>50                                                                  {
+51   return g_render_should_exit;
+52 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1015,7 +1026,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

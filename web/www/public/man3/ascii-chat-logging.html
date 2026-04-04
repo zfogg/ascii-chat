@@ -42,7 +42,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
 <br/>
-<p class="Pp">file <b>colorize.c</b>
+<p class="Pp">file <b>apple.c</b>
+  <br/>
+  Apple unified logging (os_log) integration. file <b>colorize.c</b>
   <br/>
   Log message colorization for terminal output. file <b>format.c</b>
   <br/>
@@ -58,7 +60,9 @@
   Format named objects in log messages (replaces hex addresses with type/name
     descriptions). file <b>raylib.c</b>
   <br/>
-  Raylib logging integration. file <b>colorize.h</b>
+  Raylib logging integration. file <b>wasm.c</b>
+  <br/>
+  WASM logging support for routing to browser console. file <b>colorize.h</b>
   <br/>
   Log message colorization for terminal output. file <b>json.h</b>
   <br/>
@@ -520,9 +524,9 @@
 <p class="Pp">In debug builds, includes file/line/function.</p>
 </div>
 <p class="Pp">Definition at line <b>532</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_connect()</b>,
-    <b>acds_client_disconnect()</b>, <b>acds_client_handler()</b>,
-    <b>acds_identity_generate()</b>, <b>acds_main()</b>,
+<p class="Pp">Referenced by <b>__attribute__()</b>,
+    <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
+    <b>acds_client_handler()</b>, <b>acds_identity_generate()</b>,
     <b>acds_server_shutdown()</b>, <b>acds_session_create()</b>,
     <b>acds_session_join()</b>, <b>acds_session_lookup()</b>,
     <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
@@ -537,16 +541,16 @@
     <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
     <b>app_client_create()</b>, <b>app_client_destroy()</b>,
     <b>apply_palette_config()</b>, <b>ascii_read_destroy()</b>,
-    <b>ascii_renderer_render_frame()</b>, <b>ascii_write_destroy()</b>,
-    <b>asciichat_crc32_hw()</b>, <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_query()</b>,
-    <b>asciichat_mdns_update()</b>, <b>asciichat_pcre2_singleton_get_code()</b>,
-    <b>audio_cleanup()</b>, <b>audio_client_init()</b>, <b>audio_destroy()</b>,
-    <b>audio_init()</b>, <b>audio_process_received_samples()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_sender_cleanup()</b>,
-    <b>audio_set_realtime_priority()</b>, <b>audio_start_duplex()</b>,
-    <b>audio_start_thread()</b>, <b>audio_stop_duplex()</b>,
-    <b>audio_stop_thread()</b>, <b>audio_terminate_portaudio_final()</b>,
+    <b>ascii_write_destroy()</b>, <b>asciichat_crc32_hw()</b>,
+    <b>asciichat_mdns_advertise()</b>, <b>asciichat_mdns_destroy()</b>,
+    <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_update()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_cleanup()</b>,
+    <b>audio_client_init()</b>, <b>audio_destroy()</b>, <b>audio_init()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_sender_cleanup()</b>, <b>audio_set_realtime_priority()</b>,
+    <b>audio_start_duplex()</b>, <b>audio_start_thread()</b>,
+    <b>audio_stop_duplex()</b>, <b>audio_stop_thread()</b>,
+    <b>audio_terminate_portaudio_final()</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
     <b>buffer_pool_log_stats()</b>, <b>capture_init()</b>,
     <b>capture_start_thread()</b>, <b>check_gpg_key_expiry()</b>,
@@ -679,7 +683,8 @@
     <b>session_handle_keyboard_input()</b>,
     <b>session_network_capture_create()</b>,
     <b>session_participant_connect()</b>, <b>session_pipeline_run_main()</b>,
-    <b>session_render_loop()</b>, <b>setup_signal_handlers()</b>,
+    <b>session_render_loop()</b>, <b>session_server_like_handshake()</b>,
+    <b>session_server_like_run()</b>, <b>setup_signal_handlers()</b>,
     <b>signaling_broadcast()</b>, <b>signaling_relay_ice()</b>,
     <b>signaling_relay_network_quality()</b>, <b>signaling_relay_sdp()</b>,
     <b>splash_set_update_notification()</b>, <b>sqlite_backend_create()</b>,
@@ -692,13 +697,12 @@
     <b>tcp_server_add_client()</b>, <b>tcp_server_destroy()</b>,
     <b>tcp_server_remove_client()</b>, <b>tcp_server_run()</b>,
     <b>tcp_server_spawn_thread()</b>, <b>tcp_server_stop_client_threads()</b>,
-    <b>term_renderer_create()</b>, <b>term_renderer_feed()</b>,
-    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>terminal_fd_writer_create()</b>, <b>thread_create_or_fail()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
-    <b>thread_pool_destroy()</b>, <b>thread_pool_interrupt_all()</b>,
-    <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
-    <b>threaded_send_packet()</b>,
+    <b>term_renderer_create()</b>, <b>terminal_fd_reader_create()</b>,
+    <b>terminal_fd_reader_next()</b>, <b>terminal_fd_writer_create()</b>,
+    <b>thread_create_or_fail()</b>, <b>thread_pool_create()</b>,
+    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
+    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>,
+    <b>thread_pool_stop_all()</b>, <b>threaded_send_packet()</b>,
     <b>threaded_send_terminal_size_with_auto_detect()</b>,
     <b>time_format_now()</b>, <b>timer_system_destroy()</b>,
     <b>turn_generate_credentials()</b>, <b>update_check_startup()</b>,
@@ -810,8 +814,8 @@
 <div class="Bd-indent">ERROR messages can be stripped via
   LOG_COMPILE_LEVEL=LOG_FATAL.</div>
 <p class="Pp">Definition at line <b>583</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_identity_fingerprint()</b>, <b>acds_main()</b>,
+<p class="Pp">Referenced by <b>__attribute__()</b>,
+    <b>acds_client_handler()</b>, <b>acds_identity_fingerprint()</b>,
     <b>acds_session_create()</b>, <b>acds_websocket_client_handler()</b>,
     <b>acip_client_receive_and_dispatch()</b>,
     <b>acip_handle_server_packet()</b>, <b>acip_send_ascii_frame()</b>,
@@ -823,7 +827,6 @@
     <b>action_create_manpage()</b>, <b>add_client()</b>,
     <b>add_webrtc_client()</b>, <b>app_client_create()</b>,
     <b>ascii_convert()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
     <b>ascii_write_init()</b>, <b>asciichat_pcre2_extract_group()</b>,
     <b>asciichat_pcre2_extract_named_group()</b>,
     <b>asciichat_pcre2_singleton_compile()</b>, <b>asciichat_set_errno()</b>,
@@ -914,12 +917,11 @@
     <b>thread_pool_create_with_workers()</b>,
     <b>threaded_send_image_frame_h265()</b>,
     <b>time_format_is_valid_strftime()</b>, <b>time_format_now()</b>,
-    <b>truncate_utf8_with_ellipsis()</b>, <b>update_check_load_cache()</b>,
-    <b>update_check_perform()</b>, <b>validate_fps_opt()</b>,
-    <b>validate_options_and_report()</b>, <b>validate_port_opt()</b>,
-    <b>validate_positive_int_opt()</b>, <b>validate_ssh_key_file()</b>,
-    <b>validate_webcam_index()</b>, <b>video_frame_buffer_create()</b>,
-    <b>webrtc_datachannel_send()</b>,
+    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
+    <b>validate_fps_opt()</b>, <b>validate_options_and_report()</b>,
+    <b>validate_port_opt()</b>, <b>validate_positive_int_opt()</b>,
+    <b>validate_ssh_key_file()</b>, <b>validate_webcam_index()</b>,
+    <b>video_frame_buffer_create()</b>, <b>webrtc_datachannel_send()</b>,
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_set_session_context()</b>, <b>websocket_client_connect()</b>,
     <b>websocket_client_create()</b>, <b>websocket_server_init()</b>,
@@ -1075,9 +1077,8 @@
 <div class="Bd-indent"><i>...</i> Format string and arguments
   (printf-style)</div>
 <p class="Pp">Definition at line <b>647</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>,
-    <b>asciichat_print_error_context()</b>, <b>asciichat_shared_init()</b>,
-    <b>log_labeled()</b>, and <b>main()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>,
+    <b>asciichat_shared_init()</b>, <b>log_labeled()</b>, and <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_HEADER_BUFFER_SIZE___512"><a class="permalink" href="#_define_LOG_HEADER_BUFFER_SIZE___512">#define
@@ -1103,10 +1104,10 @@
 <div class="Bd-indent">INFO messages can be stripped via
   LOG_COMPILE_LEVEL=LOG_WARN.</div>
 <p class="Pp">Definition at line <b>549</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_connect()</b>,
-    <b>acds_client_handler()</b>, <b>acds_identity_load()</b>,
-    <b>acds_identity_save()</b>, <b>acds_main()</b>, <b>acds_server_init()</b>,
-    <b>acds_server_run()</b>, <b>acds_server_shutdown()</b>,
+<p class="Pp">Referenced by <b>__attribute__()</b>,
+    <b>acds_client_connect()</b>, <b>acds_client_handler()</b>,
+    <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
+    <b>acds_server_init()</b>, <b>acds_server_shutdown()</b>,
     <b>acds_session_create()</b>, <b>acds_session_join()</b>,
     <b>acds_session_lookup()</b>, <b>acds_websocket_client_handler()</b>,
     <b>acip_client_receive_and_dispatch()</b>, <b>acip_handle_acds_packet()</b>,
@@ -1119,13 +1120,11 @@
     <b>acip_websocket_server_transport_create()</b>,
     <b>action_create_config()</b>, <b>action_create_manpage()</b>,
     <b>add_client()</b>, <b>add_webrtc_client()</b>, <b>ascii_read_init()</b>,
-    <b>ascii_renderer_init()</b>, <b>ascii_renderer_resize()</b>,
-    <b>ascii_renderer_shutdown()</b>, <b>asciichat_mdns_query()</b>,
-    <b>asciichat_mdns_unadvertise()</b>, <b>audio_analysis_destroy()</b>,
-    <b>audio_analysis_init()</b>, <b>audio_init()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_sender_init()</b>,
-    <b>audio_start_duplex()</b>, <b>check_known_host()</b>,
-    <b>client_audio_pipeline_create()</b>,
+    <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_unadvertise()</b>,
+    <b>audio_analysis_destroy()</b>, <b>audio_analysis_init()</b>,
+    <b>audio_init()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_sender_init()</b>, <b>audio_start_duplex()</b>,
+    <b>check_known_host()</b>, <b>client_audio_pipeline_create()</b>,
     <b>client_audio_pipeline_process_duplex()</b>,
     <b>client_audio_pipeline_reset()</b>, <b>client_crypto_handshake()</b>,
     <b>client_dispatch_thread()</b>, <b>client_init_with_args()</b>,
@@ -1159,11 +1158,12 @@
     <b>discovery_session_stop()</b>, <b>dns_test_connectivity()</b>,
     <b>ffmpeg_encoder_create()</b>, <b>ffmpeg_encoder_destroy()</b>,
     <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>,
-    <b>ffmpeg_encoder_write_frame()</b>, <b>grep_init()</b>,
-    <b>h265_client_context_create()</b>, <b>h265_client_init_media_source()</b>,
-    <b>h265_decoder_create()</b>, <b>h265_encode()</b>,
-    <b>h265_encoder_create()</b>, <b>h265_server_context_create()</b>,
-    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
+    <b>ffmpeg_encoder_write_frame()</b>, <b>get_font_default_ptr()</b>,
+    <b>grep_init()</b>, <b>h265_client_context_create()</b>,
+    <b>h265_client_init_media_source()</b>, <b>h265_decoder_create()</b>,
+    <b>h265_encode()</b>, <b>h265_encoder_create()</b>,
+    <b>h265_server_context_create()</b>, <b>handle_audio_batch_packet()</b>,
+    <b>handle_audio_opus_batch_packet()</b>,
     <b>handle_client_capabilities_packet()</b>,
     <b>handle_client_join_packet()</b>, <b>handle_client_leave_packet()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
@@ -1173,10 +1173,10 @@
     <b>log_disable_mmap()</b>, <b>log_enable_mmap_sized()</b>,
     <b>log_mmap_init()</b>, <b>log_server_stats()</b>, <b>main()</b>,
     <b>media_source_read_audio()</b>, <b>media_source_seek()</b>,
-    <b>mirror_main()</b>, <b>mixer_add_source()</b>,
-    <b>mixer_remove_source()</b>, <b>nat_detect_quality()</b>,
-    <b>nat_upnp_open()</b>, <b>negotiate_determine_result()</b>,
-    <b>negotiate_elect_future_host()</b>,
+    <b>mirror_init_with_args()</b>, <b>mirror_main()</b>,
+    <b>mixer_add_source()</b>, <b>mixer_remove_source()</b>,
+    <b>nat_detect_quality()</b>, <b>nat_upnp_open()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_elect_future_host()</b>,
     <b>negotiate_receive_peer_quality()</b>, <b>negotiate_start_detection()</b>,
     <b>options_collect_identity_keys()</b>, <b>options_init()</b>,
     <b>packet_decrypt_envelope()</b>, <b>packet_send_via_transport()</b>,
@@ -1204,9 +1204,11 @@
     <b>session_participant_stop_video_capture()</b>,
     <b>session_pipeline_create()</b>, <b>session_pipeline_destroy()</b>,
     <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>,
-    <b>signaling_broadcast()</b>, <b>stats_logger_thread()</b>,
-    <b>tcp_client_signal_lost()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>thread_pool_create_with_workers()</b>,
+    <b>session_server_like_handshake()</b>,
+    <b>session_server_like_mdns_advertise()</b>,
+    <b>session_server_like_run()</b>, <b>signaling_broadcast()</b>,
+    <b>stats_logger_thread()</b>, <b>tcp_client_signal_lost()</b>,
+    <b>terminal_fd_reader_next()</b>, <b>thread_pool_create_with_workers()</b>,
     <b>threaded_send_image_frame_h265()</b>, <b>ui_mdns_log_append()</b>,
     <b>update_check_perform()</b>, <b>video_frame_buffer_create()</b>,
     <b>webcam_init()</b>, <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
@@ -1390,8 +1392,7 @@
     <b>config_create_default()</b>,
     <b>options_config_generate_manpage_merged()</b>, <b>options_init()</b>,
     <b>prompt_password()</b>, <b>prompt_unknown_host()</b>,
-    <b>prompt_unknown_host_no_identity()</b>, <b>server_main()</b>, and
-    <b>ui_mdns_select()</b>.</p>
+    <b>prompt_unknown_host_no_identity()</b>, and <b>ui_mdns_select()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_log_plain_stderr(_"><a class="permalink" href="#_define_log_plain_stderr(_">#define
@@ -1478,19 +1479,17 @@
 <div class="Bd-indent">WARN messages can be stripped via
   LOG_COMPILE_LEVEL=LOG_ERROR.</div>
 <p class="Pp">Definition at line <b>566</b> of file <b>log/log.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>acds_main()</b>,
-    <b>acds_server_init()</b>, <b>acds_server_shutdown()</b>,
-    <b>acds_session_join()</b>, <b>acds_validate_timestamp()</b>,
-    <b>acds_verify_session_create()</b>, <b>acds_verify_session_join()</b>,
-    <b>acds_websocket_client_handler()</b>,
+<p class="Pp">Referenced by <b>__attribute__()</b>,
+    <b>acds_client_handler()</b>, <b>acds_server_init()</b>,
+    <b>acds_server_shutdown()</b>, <b>acds_session_join()</b>,
+    <b>acds_validate_timestamp()</b>, <b>acds_verify_session_create()</b>,
+    <b>acds_verify_session_join()</b>, <b>acds_websocket_client_handler()</b>,
     <b>acip_server_receive_and_dispatch()</b>,
     <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
     <b>actions_execute_deferred()</b>, <b>add_client()</b>,
     <b>add_webrtc_client()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>ascii_renderer_init()</b>, <b>ascii_renderer_render_frame()</b>,
-    <b>ascii_renderer_resize()</b>, <b>ascii_write()</b>,
-    <b>ascii_write_destroy()</b>, <b>ascii_write_init()</b>,
-    <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
+    <b>ascii_write_init()</b>, <b>asciichat_pcre2_singleton_get_code()</b>,
     <b>audio_process_received_samples()</b>, <b>audio_start_duplex()</b>,
     <b>audio_start_thread()</b>, <b>audio_stop_duplex()</b>,
     <b>audio_stop_thread()</b>, <b>backtrace_print()</b>,
@@ -1555,24 +1554,28 @@
     <b>remove_client()</b>, <b>render_file_create()</b>,
     <b>render_file_write_frame()</b>, <b>select_compatible_palette()</b>,
     <b>server_connection_establish()</b>,
-    <b>server_connection_set_transport()</b>, <b>server_main()</b>,
-    <b>session_capture_create()</b>, <b>session_client_like_run()</b>,
-    <b>session_display_create()</b>, <b>session_display_encode_frame()</b>,
+    <b>server_connection_set_transport()</b>, <b>session_capture_create()</b>,
+    <b>session_client_like_run()</b>, <b>session_display_create()</b>,
+    <b>session_display_encode_frame()</b>,
     <b>session_display_set_snapshot_actual_duration()</b>,
     <b>session_host_broadcast_frame()</b>,
     <b>session_host_set_client_transport()</b>,
     <b>session_pipeline_destroy()</b>, <b>session_render_loop()</b>,
+    <b>session_server_like_handshake()</b>,
+    <b>session_server_like_mdns_advertise()</b>,
+    <b>session_server_like_run()</b>,
     <b>session_settings_apply_to_options()</b>, <b>signaling_broadcast()</b>,
     <b>socket_configure_buffers()</b>, <b>socket_optimize_for_streaming()</b>,
     <b>splash_intro_start()</b>, <b>splash_wait_for_animation()</b>,
     <b>ssh_agent_has_key()</b>, <b>stop_client_render_threads()</b>,
     <b>stun_servers_parse()</b>, <b>tcp_client_connect()</b>,
     <b>tcp_server_init()</b>, <b>tcp_server_reject_client()</b>,
-    <b>tcp_server_run()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_stop_all()</b>,
+    <b>tcp_server_run()</b>, <b>term_renderer_create()</b>,
+    <b>terminal_fd_reader_next()</b>, <b>thread_pool_interrupt_all()</b>,
+    <b>thread_pool_stop_all()</b>,
     <b>threaded_send_terminal_size_with_auto_detect()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_dimensions_to_terminal_size()</b>,
+    <b>update_banner_wait_for_check()</b>, <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, <b>update_dimensions_to_terminal_size()</b>,
     <b>validate_gpg_key_format()</b>, <b>video_frame_buffer_create()</b>,
     <b>webcam_cleanup_context()</b>, <b>webrtc_get_gathering_state()</b>,
     <b>webrtc_get_state()</b>, <b>webrtc_get_user_data()</b>,
@@ -1860,55 +1863,58 @@
 999   /* Extract type (before slash) */
 1000   size_t type_len = slash - name_str;
 1001   char type_buf[256];
-1002   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
-1003   type_buf[type_len] = '\0';
-1004 
-1005   /* Extract name (between slash and paren, or end of string) */
-1006   const char *name_start = slash + 1;
-1007   size_t name_len;
-1008   if (paren &amp;&amp; paren &gt; slash) {
-1009     /* Skip spaces before paren */
-1010     const char *name_end = paren - 1;
-1011     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
-1012       name_end--;
-1013     }
-1014     name_len = name_end - name_start + 1;
-1015   } else {
-1016     name_len = strlen(name_start);
-1017   }
-1018 
-1019   char name_buf[256];
-1020   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
-1021   name_buf[name_len] = '\0';
-1022 
-1023   /* Apply colors */
-1024   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
-1025   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
-1026 
-1027   /* Format: type(yellow)/name(blue) and add address part if present */
-1028   if (paren) {
-1029     /* Extract address (0x...) from parentheses */
-1030     const char *addr_start = paren + 1;
-1031     const char *addr_end = strchr(addr_start, ')');
-1032     if (addr_end) {
-1033       size_t addr_len = addr_end - addr_start;
-1034       char addr_buf[128];
-1035       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
-1036       addr_buf[addr_len] = '\0';
-1037 
-1038       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
-1039       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
-1040     } else {
-1041       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
-1042     }
-1043   } else {
-1044     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
-1045   }
-1046 
-1047   return current_buf;
-1048 #undef COLORIZE_BUFFERS
-1049 #undef COLORIZE_BUFFER_SIZE
-1050 }</pre>
+1002   size_t copy_len = type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1;
+1003   memcpy(type_buf, name_str, copy_len);
+1004   type_buf[copy_len] = '\0';
+1005 
+1006   /* Extract name (between slash and paren, or end of string) */
+1007   const char *name_start = slash + 1;
+1008   size_t name_len;
+1009   if (paren &amp;&amp; paren &gt; slash) {
+1010     /* Skip spaces before paren */
+1011     const char *name_end = paren - 1;
+1012     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
+1013       name_end--;
+1014     }
+1015     name_len = name_end - name_start + 1;
+1016   } else {
+1017     name_len = strlen(name_start);
+1018   }
+1019 
+1020   char name_buf[256];
+1021   size_t name_copy_len = name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1;
+1022   memcpy(name_buf, name_start, name_copy_len);
+1023   name_buf[name_copy_len] = '\0';
+1024 
+1025   /* Apply colors */
+1026   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
+1027   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+1028 
+1029   /* Format: type(yellow)/name(blue) and add address part if present */
+1030   if (paren) {
+1031     /* Extract address (0x...) from parentheses */
+1032     const char *addr_start = paren + 1;
+1033     const char *addr_end = strchr(addr_start, ')');
+1034     if (addr_end) {
+1035       size_t addr_len = addr_end - addr_start;
+1036       char addr_buf[128];
+1037       size_t addr_copy_len = addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1;
+1038       memcpy(addr_buf, addr_start, addr_copy_len);
+1039       addr_buf[addr_copy_len] = '\0';
+1040 
+1041       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
+1042       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
+1043     } else {
+1044       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
+1045     }
+1046   } else {
+1047     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
+1048   }
+1049 
+1050   return current_buf;
+1051 #undef COLORIZE_BUFFERS
+1052 #undef COLORIZE_BUFFER_SIZE
+1053 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, <b>COLORIZE_BUFFER_SIZE</b>,
@@ -2386,10 +2392,10 @@
     system. This is used by platform code (e.g., backtrace formatting) to format
     log entries using the same template as the rest of the logging system.
     Returns void* (opaque) to avoid circular dependency with format.h.</p>
-<p class="Pp">Definition at line <b>2169</b> of file <b>log/log.c</b>.</p>
-<pre>2169                              {
-2170   return (void *)g_log.format;
-2171 }</pre>
+<p class="Pp">Definition at line <b>2166</b> of file <b>log/log.c</b>.</p>
+<pre>2166                              {
+2167   return (void *)g_log.format;
+2168 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>backtrace_print()</b>.</p>
@@ -2733,9 +2739,8 @@
 798 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_self()</b>,
-    <b>atomic_cas_bool()</b>, <b>atomic_load_bool()</b>, and
-    <b>atomic_store_u64()</b>.</p>
+<p class="Pp">References <b>asciichat_thread_self</b>, <b>atomic_cas_bool()</b>,
+    <b>atomic_load_bool()</b>, and <b>atomic_store_u64()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
     <b>client_main()</b>, <b>prompt_password()</b>,
     <b>prompt_unknown_host()</b>, and <b>ui_mdns_select()</b>.</p>
@@ -3563,7 +3568,7 @@
 1302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>, <b>asciichat_thread_self()</b>,
+<p class="Pp">References <b>args</b>, <b>asciichat_thread_self</b>,
     <b>atomic_load_int()</b>, <b>atomic_load_u64()</b>,
     <b>colorize_log_message()</b>, <b>get_current_time_formatted()</b>,
     <b>lifecycle_is_initialized()</b>, <b>LOG_INFO</b>, <b>log_json_write()</b>,
@@ -3759,198 +3764,195 @@
 1936   if (level_len &gt;= sizeof(level_str) || level_len == 0) {
 1937     return 0; // Level string too long or empty
 1938   }
-1939   /* Use strncpy directly for substring extraction (not null-terminated source) */
-1940   strncpy(level_str, level_start, level_len);
-1941   level_str[level_len] = '\0';
-1942 
-1943   // Determine log level for color selection
-1944   log_level_t level = LOG_INFO; // Default
-1945   if (strstr(level_str, &quot;DEV&quot;) || strstr(level_str, &quot;DEBUG&quot;)) {
-1946     level = LOG_DEBUG;
-1947   } else if (strstr(level_str, &quot;INFO&quot;)) {
-1948     level = LOG_INFO;
-1949   } else if (strstr(level_str, &quot;WARN&quot;)) {
-1950     level = LOG_WARN;
-1951   } else if (strstr(level_str, &quot;ERROR&quot;)) {
-1952     level = LOG_ERROR;
-1953   } else if (strstr(level_str, &quot;FATAL&quot;)) {
-1954     level = LOG_FATAL;
-1955   }
-1956 
-1957   p++; // Skip ]
-1958 
-1959   // Skip whitespace after level
-1960   while (*p &amp;&amp; *p == ' ') {
-1961     p++;
-1962   }
-1963 
-1964   // Extract thread ID [tid:THREAD_ID] - optional field
-1965   uint64_t tid = 0;
-1966   if (*p == '[' &amp;&amp; strncmp(p, &quot;[tid:&quot;, 5) == 0) {
-1967     p += 5;
-1968     char *tid_end = NULL;
-1969     tid = strtoull(p, &amp;tid_end, 10);
-1970     if (!tid_end || *tid_end != ']') {
-1971       // tid parsing failed, but continue anyway (might still recover)
-1972       // Try to find the closing bracket
-1973       while (*p &amp;&amp; *p != ']') {
-1974         p++;
-1975       }
-1976       if (*p == ']') {
-1977         p++;
-1978       }
-1979     } else {
-1980       p = tid_end + 1; // Skip past the ]
-1981     }
-1982     // Skip whitespace after tid
-1983     while (*p &amp;&amp; *p == ' ') {
-1984       p++;
-1985     }
-1986   }
-1987   // tid is optional - continue parsing if not present
-1988 
-1989   // Extract file path (everything up to :LINE)
-1990   const char *file_start = p;
-1991   while (*p &amp;&amp; *p != ':') {
-1992     p++;
-1993   }
-1994   if (*p != ':') {
-1995     return 0; // Malformed
-1996   }
-1997   size_t file_len = p - file_start;
-1998   char file_path[256];
-1999   if (file_len &gt;= sizeof(file_path)) {
-2000     return 0;
-2001   }
-2002   /* Use strncpy directly for substring extraction (not null-terminated source) */
-2003   strncpy(file_path, file_start, file_len);
-2004   file_path[file_len] = '\0';
-2005   p++; // Skip :
-2006 
-2007   // Extract line number (digits only)
-2008   int line_num = 0;
-2009   const char *line_start = p;
-2010   while (*p &amp;&amp; isdigit((unsigned char)*p)) {
-2011     p++;
-2012   }
-2013   if (p == line_start) {
-2014     return 0; // No line number
-2015   }
-2016   line_num = (int)strtol(line_start, NULL, 10);
-2017 
-2018   // Skip whitespace and find &quot;in&quot; keyword (be very lenient)
-2019   while (*p &amp;&amp; (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
-2020     p++;
-2021   }
-2022 
-2023   // Try to find &quot;in &quot; - if not found, might still be valid, just harder to parse
-2024   if (strncmp(p, &quot;in &quot;, 3) == 0) {
-2025     p += 3; // Skip &quot;in &quot;
-2026   } else if (*p == 'i' &amp;&amp; *(p + 1) == 'n' &amp;&amp; (*(p + 2) == ' ' || *(p + 2) == '\t')) {
-2027     // Allow tab after &quot;in&quot;
-2028     p += 2; // Skip &quot;in&quot;
-2029     while (*p &amp;&amp; (*p == ' ' || *p == '\t')) {
-2030       p++;
-2031     }
-2032   } else {
-2033     // Missing &quot;in&quot; keyword - this is a format error
-2034     return 0;
-2035   }
-2036 
-2037   // Extract function name (everything up to &quot;()&quot;)
-2038   const char *func_start = p;
-2039   while (*p &amp;&amp; *p != '(') {
-2040     p++;
-2041   }
-2042   if (*p != '(' || func_start == p) {
-2043     return 0; // Missing function name or parentheses
-2044   }
-2045   size_t func_len = p - func_start;
-2046 
-2047   // Trim trailing whitespace from function name
-2048   while (func_len &gt; 0 &amp;&amp; (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
-2049     func_len--;
-2050   }
-2051 
-2052   char func_name[256];
-2053   if (func_len &gt;= sizeof(func_name)) {
-2054     func_len = sizeof(func_name) - 1;
-2055   }
-2056   if (func_len &gt; 0) {
-2057     /* Use strncpy directly for substring extraction (not null-terminated source) */
-2058     strncpy(func_name, func_start, func_len);
-2059   }
-2060   func_name[func_len] = '\0';
-2061 
-2062   // Skip &quot;(&quot; and &quot;)&quot; - be lenient about what's between them
-2063   if (*p == '(') {
-2064     p++;
-2065     while (*p &amp;&amp; *p != ')') {
+1939   memcpy(level_str, level_start, level_len);
+1940   level_str[level_len] = '\0';
+1941 
+1942   // Determine log level for color selection
+1943   log_level_t level = LOG_INFO; // Default
+1944   if (strstr(level_str, &quot;DEV&quot;) || strstr(level_str, &quot;DEBUG&quot;)) {
+1945     level = LOG_DEBUG;
+1946   } else if (strstr(level_str, &quot;INFO&quot;)) {
+1947     level = LOG_INFO;
+1948   } else if (strstr(level_str, &quot;WARN&quot;)) {
+1949     level = LOG_WARN;
+1950   } else if (strstr(level_str, &quot;ERROR&quot;)) {
+1951     level = LOG_ERROR;
+1952   } else if (strstr(level_str, &quot;FATAL&quot;)) {
+1953     level = LOG_FATAL;
+1954   }
+1955 
+1956   p++; // Skip ]
+1957 
+1958   // Skip whitespace after level
+1959   while (*p &amp;&amp; *p == ' ') {
+1960     p++;
+1961   }
+1962 
+1963   // Extract thread ID [tid:THREAD_ID] - optional field
+1964   uint64_t tid = 0;
+1965   if (*p == '[' &amp;&amp; strncmp(p, &quot;[tid:&quot;, 5) == 0) {
+1966     p += 5;
+1967     char *tid_end = NULL;
+1968     tid = strtoull(p, &amp;tid_end, 10);
+1969     if (!tid_end || *tid_end != ']') {
+1970       // tid parsing failed, but continue anyway (might still recover)
+1971       // Try to find the closing bracket
+1972       while (*p &amp;&amp; *p != ']') {
+1973         p++;
+1974       }
+1975       if (*p == ']') {
+1976         p++;
+1977       }
+1978     } else {
+1979       p = tid_end + 1; // Skip past the ]
+1980     }
+1981     // Skip whitespace after tid
+1982     while (*p &amp;&amp; *p == ' ') {
+1983       p++;
+1984     }
+1985   }
+1986   // tid is optional - continue parsing if not present
+1987 
+1988   // Extract file path (everything up to :LINE)
+1989   const char *file_start = p;
+1990   while (*p &amp;&amp; *p != ':') {
+1991     p++;
+1992   }
+1993   if (*p != ':') {
+1994     return 0; // Malformed
+1995   }
+1996   size_t file_len = p - file_start;
+1997   char file_path[256];
+1998   if (file_len &gt;= sizeof(file_path)) {
+1999     return 0;
+2000   }
+2001   memcpy(file_path, file_start, file_len);
+2002   file_path[file_len] = '\0';
+2003   p++; // Skip :
+2004 
+2005   // Extract line number (digits only)
+2006   int line_num = 0;
+2007   const char *line_start = p;
+2008   while (*p &amp;&amp; isdigit((unsigned char)*p)) {
+2009     p++;
+2010   }
+2011   if (p == line_start) {
+2012     return 0; // No line number
+2013   }
+2014   line_num = (int)strtol(line_start, NULL, 10);
+2015 
+2016   // Skip whitespace and find &quot;in&quot; keyword (be very lenient)
+2017   while (*p &amp;&amp; (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+2018     p++;
+2019   }
+2020 
+2021   // Try to find &quot;in &quot; - if not found, might still be valid, just harder to parse
+2022   if (strncmp(p, &quot;in &quot;, 3) == 0) {
+2023     p += 3; // Skip &quot;in &quot;
+2024   } else if (*p == 'i' &amp;&amp; *(p + 1) == 'n' &amp;&amp; (*(p + 2) == ' ' || *(p + 2) == '\t')) {
+2025     // Allow tab after &quot;in&quot;
+2026     p += 2; // Skip &quot;in&quot;
+2027     while (*p &amp;&amp; (*p == ' ' || *p == '\t')) {
+2028       p++;
+2029     }
+2030   } else {
+2031     // Missing &quot;in&quot; keyword - this is a format error
+2032     return 0;
+2033   }
+2034 
+2035   // Extract function name (everything up to &quot;()&quot;)
+2036   const char *func_start = p;
+2037   while (*p &amp;&amp; *p != '(') {
+2038     p++;
+2039   }
+2040   if (*p != '(' || func_start == p) {
+2041     return 0; // Missing function name or parentheses
+2042   }
+2043   size_t func_len = p - func_start;
+2044 
+2045   // Trim trailing whitespace from function name
+2046   while (func_len &gt; 0 &amp;&amp; (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
+2047     func_len--;
+2048   }
+2049 
+2050   char func_name[256];
+2051   if (func_len &gt;= sizeof(func_name)) {
+2052     func_len = sizeof(func_name) - 1;
+2053   }
+2054   if (func_len &gt; 0) {
+2055     memcpy(func_name, func_start, func_len);
+2056   }
+2057   func_name[func_len] = '\0';
+2058 
+2059   // Skip &quot;(&quot; and &quot;)&quot; - be lenient about what's between them
+2060   if (*p == '(') {
+2061     p++;
+2062     while (*p &amp;&amp; *p != ')') {
+2063       p++;
+2064     }
+2065     if (*p == ')') {
 2066       p++;
 2067     }
-2068     if (*p == ')') {
-2069       p++;
-2070     }
-2071   }
-2072 
-2073   // Skip whitespace and optional colon(s) and other separators
-2074   while (*p &amp;&amp; (*p == ' ' || *p == ':' || *p == '\t')) {
-2075     p++;
-2076   }
+2068   }
+2069 
+2070   // Skip whitespace and optional colon(s) and other separators
+2071   while (*p &amp;&amp; (*p == ' ' || *p == ':' || *p == '\t')) {
+2072     p++;
+2073   }
+2074 
+2075   // Remaining is the message
+2076   const char *message = p;
 2077 
-2078   // Remaining is the message
-2079   const char *message = p;
-2080 
-2081   // Format is valid, get colors from logging system
-2082   const char **colors = log_get_color_array();
-2083   if (!colors) {
-2084     // No colors available, return plain text
-2085     static bool warned_once = false;
-2086     if (!warned_once) {
-2087       log_debug(&quot;WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text&quot;);
-2088       warned_once = true;
-2089     }
-2090     size_t len = strlen(plain_line);
-2091     if (len &gt;= buf_size) {
-2092       return 0;
-2093     }
-2094     SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
-2095     colored_buf[buf_size - 1] = '\0';
-2096     return len;
-2097   }
-2098 
-2099   // Build colored output
-2100   const char *level_color = colors[level];
-2101   const char *reset = colors[LOG_COLOR_RESET];
-2102   const char *file_color = colors[1]; // DEBUG/Cyan
-2103   const char *line_color = colors[6]; // GREY (matching tid)
-2104   const char *func_color = colors[0]; // DEV/Orange
-2105   const char *tid_color = colors[6];  // GREY
-2106 
-2107   int len = safe_snprintf(work_buffer, sizeof(work_buffer),
-2108                           &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp,
-2109                           reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
-2110                           file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
-2111 
-2112   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer)) {
-2113     return 0;
-2114   }
-2115 
-2116   // Colorize the message part
-2117   const char *colorized_msg = colorize_log_message(message);
-2118   len = safe_snprintf(work_buffer, sizeof(work_buffer),
-2119                       &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp, reset,
-2120                       level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
-2121                       reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
-2122 
-2123   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer) || len &gt;= (int)buf_size) {
-2124     return 0;
-2125   }
-2126 
-2127   SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
-2128   colored_buf[buf_size - 1] = '\0';
-2129   return (size_t)len;
-2130 }</pre>
+2078   // Format is valid, get colors from logging system
+2079   const char **colors = log_get_color_array();
+2080   if (!colors) {
+2081     // No colors available, return plain text
+2082     static bool warned_once = false;
+2083     if (!warned_once) {
+2084       log_debug(&quot;WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text&quot;);
+2085       warned_once = true;
+2086     }
+2087     size_t len = strlen(plain_line);
+2088     if (len &gt;= buf_size) {
+2089       return 0;
+2090     }
+2091     SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
+2092     colored_buf[buf_size - 1] = '\0';
+2093     return len;
+2094   }
+2095 
+2096   // Build colored output
+2097   const char *level_color = colors[level];
+2098   const char *reset = colors[LOG_COLOR_RESET];
+2099   const char *file_color = colors[1]; // DEBUG/Cyan
+2100   const char *line_color = colors[6]; // GREY (matching tid)
+2101   const char *func_color = colors[0]; // DEV/Orange
+2102   const char *tid_color = colors[6];  // GREY
+2103 
+2104   int len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2105                           &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp,
+2106                           reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
+2107                           file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
+2108 
+2109   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer)) {
+2110     return 0;
+2111   }
+2112 
+2113   // Colorize the message part
+2114   const char *colorized_msg = colorize_log_message(message);
+2115   len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2116                       &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp, reset,
+2117                       level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
+2118                       reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
+2119 
+2120   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer) || len &gt;= (int)buf_size) {
+2121     return 0;
+2122   }
+2123 
+2124   SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
+2125   colored_buf[buf_size - 1] = '\0';
+2126   return (size_t)len;
+2127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colorize_log_message()</b>, <b>file_path</b>,
@@ -4833,7 +4835,7 @@ int len = log_template_apply(fmt, output, sizeof(output),
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

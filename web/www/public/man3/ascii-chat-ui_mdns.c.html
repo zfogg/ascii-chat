@@ -37,26 +37,6 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ANSI_CLEAR</b> '&#x00A0;33[2J&#x00A0;33[H'
-  <br/>
-  ANSI escape codes for TUI. #define <b>ANSI_BOLD</b> '&#x00A0;33[1m'
-  <br/>
-  #define <b>ANSI_RESET</b> '&#x00A0;33[0m'
-  <br/>
-  #define <b>ANSI_CYAN</b> '&#x00A0;33[36m'
-  <br/>
-  #define <b>ANSI_GREEN</b> '&#x00A0;33[32m'
-  <br/>
-  #define <b>ANSI_YELLOW</b> '&#x00A0;33[33m'
-  <br/>
-  #define <b>ANSI_CLEAR_LINE</b> '&#x00A0;33[K'
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>ui_mdns_log_init</b> (void)
@@ -100,52 +80,6 @@
 <p class="Pp">Definition in file <b>ui/mdns.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_BOLD___'"><a class="permalink" href="#_define_ANSI_BOLD___'">#define
-  ANSI_BOLD '&#x00A0;33[1m'</a></h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_CLEAR___'"><a class="permalink" href="#_define_ANSI_CLEAR___'">#define
-  ANSI_CLEAR '&#x00A0;33[2J&#x00A0;33[H'</a></h2>
-<p class="Pp">ANSI escape codes for TUI.</p>
-<p class="Pp">Definition at line <b>128</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_CLEAR_LINE___'"><a class="permalink" href="#_define_ANSI_CLEAR_LINE___'">#define
-  ANSI_CLEAR_LINE '&#x00A0;33[K'</a></h2>
-<p class="Pp">Definition at line <b>134</b> of file <b>ui/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_CYAN___'"><a class="permalink" href="#_define_ANSI_CYAN___'">#define
-  ANSI_CYAN '&#x00A0;33[36m'</a></h2>
-<p class="Pp">Definition at line <b>131</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_GREEN___'"><a class="permalink" href="#_define_ANSI_GREEN___'">#define
-  ANSI_GREEN '&#x00A0;33[32m'</a></h2>
-<p class="Pp">Definition at line <b>132</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_RESET___'"><a class="permalink" href="#_define_ANSI_RESET___'">#define
-  ANSI_RESET '&#x00A0;33[0m'</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ANSI_YELLOW___'"><a class="permalink" href="#_define_ANSI_YELLOW___'">#define
-  ANSI_YELLOW '&#x00A0;33[33m'</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>ui/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_select()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
@@ -153,10 +87,10 @@
   ui_mdns_free_results (<b>ui_mdns_server_t</b> * servers)</a></h2>
 <p class="Pp">Free results from mDNS discovery. Free results from TUI discovery
     query.</p>
-<p class="Pp">Definition at line <b>76</b> of file <b>ui/mdns.c</b>.</p>
-<pre>76                                                      {
-77   discovery_mdns_destroy(servers);
-78 }</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>ui/mdns.c</b>.</p>
+<pre>77                                                      {
+78   discovery_mdns_destroy(servers);
+79 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_mdns_destroy()</b>.</p>
@@ -167,25 +101,25 @@
   server)</a></h2>
 <p class="Pp">Get best address for a server. Get best address representation for
     a discovered server.</p>
-<p class="Pp">Definition at line <b>235</b> of file <b>ui/mdns.c</b>.</p>
-<pre>235                                                                      {
-236   if (!server) {
-237     return &quot;&quot;;
-238   }
-239 
-240   // Prefer IPv4 &gt; name &gt; IPv6
-241   if (server-&gt;ipv4[0] != '\0') {
-242     return server-&gt;ipv4;
-243   }
-244   if (server-&gt;name[0] != '\0') {
-245     return server-&gt;name;
-246   }
-247   if (server-&gt;ipv6[0] != '\0') {
-248     return server-&gt;ipv6;
-249   }
-250 
-251   return server-&gt;address; // Fallback to address field
-252 }</pre>
+<p class="Pp">Definition at line <b>236</b> of file <b>ui/mdns.c</b>.</p>
+<pre>236                                                                      {
+237   if (!server) {
+238     return &quot;&quot;;
+239   }
+240 
+241   // Prefer IPv4 &gt; name &gt; IPv6
+242   if (server-&gt;ipv4[0] != '\0') {
+243     return server-&gt;ipv4;
+244   }
+245   if (server-&gt;name[0] != '\0') {
+246     return server-&gt;name;
+247   }
+248   if (server-&gt;ipv6[0] != '\0') {
+249     return server-&gt;ipv6;
+250   }
+251 
+252   return server-&gt;address; // Fallback to address field
+253 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ui_mdns_server_t::address</b>,
@@ -202,12 +136,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>message</i> Log message to append</div>
-<p class="Pp">Definition at line <b>45</b> of file <b>ui/mdns.c</b>.</p>
-<pre>45                                              {
-46   if (message) {
-47     log_info(&quot;%s&quot;, message);
-48   }
-49 }</pre>
+<p class="Pp">Definition at line <b>46</b> of file <b>ui/mdns.c</b>.</p>
+<pre>46                                              {
+47   if (message) {
+48     log_info(&quot;%s&quot;, message);
+49   }
+50 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_info</b>.</p>
@@ -217,10 +151,10 @@
   ui_mdns_log_clear (void )</a></h2>
 <p class="Pp">Clear mDNS discovery log buffer. Delegates to terminal_screen log
     clear. Useful when starting fresh mDNS discovery screen.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>ui/mdns.c</b>.</p>
-<pre>41                              {
-42   terminal_screen_log_clear();
-43 }</pre>
+<p class="Pp">Definition at line <b>42</b> of file <b>ui/mdns.c</b>.</p>
+<pre>42                              {
+43   terminal_screen_log_clear();
+44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_screen_log_clear()</b>.</p>
@@ -230,11 +164,11 @@
   ui_mdns_log_destroy (void )</a></h2>
 <p class="Pp">Destroy mDNS discovery log buffer. Delegates to terminal_screen
     log cleanup.</p>
-<p class="Pp">Definition at line <b>36</b> of file <b>ui/mdns.c</b>.</p>
-<pre>36                                {
-37   log_clear_session_log_buffer();
-38   terminal_screen_log_destroy();
-39 }</pre>
+<p class="Pp">Definition at line <b>37</b> of file <b>ui/mdns.c</b>.</p>
+<pre>37                                {
+38   log_clear_session_log_buffer();
+39   terminal_screen_log_destroy();
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_clear_session_log_buffer()</b>, and
@@ -246,13 +180,13 @@
 <p class="Pp">Initialize log buffer for mDNS discovery UI. Delegates to
     terminal_screen log initialization. Call once at startup before rendering
     mDNS discovery screen.</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>ui/mdns.c</b>.</p>
-<pre>29                             {
-30   session_log_buffer_t *buf = terminal_screen_log_init();
-31   if (buf) {
-32     log_set_session_log_buffer(buf);
-33   }
-34 }</pre>
+<p class="Pp">Definition at line <b>30</b> of file <b>ui/mdns.c</b>.</p>
+<pre>30                             {
+31   session_log_buffer_t *buf = terminal_screen_log_init();
+32   if (buf) {
+33     log_set_session_log_buffer(buf);
+34   }
+35 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_set_session_log_buffer()</b>, and
@@ -264,48 +198,48 @@
   count)</a></h2>
 <p class="Pp">Interactive server selection. Display discovered servers to user
     and prompt for selection.</p>
-<p class="Pp">Definition at line <b>83</b> of file <b>ui/mdns.c</b>.</p>
-<pre>83                                                                          {
-84   if (!servers || count &lt;= 0) {
-85     return -1;
-86   }
-87 
-88   // Display available servers
-89   printf(&quot;\nAvailable ascii-chat servers on LAN:\n&quot;);
-90   for (int i = 0; i &lt; count; i++) {
-91     const ui_mdns_server_t *srv = &amp;servers[i];
-92     const char *addr = ui_mdns_get_best_address(srv);
-93     printf(&quot;  %d. %s (%s:%u)\n&quot;, i + 1, srv-&gt;name, addr, srv-&gt;port);
-94   }
-95 
-96   // Prompt for selection
-97   printf(&quot;\nSelect server (1-%d) or press Enter to cancel: &quot;, count);
-98   fflush(stdout);
-99 
-100   // Read user input
-101   char input[32];
-102   if (fgets(input, sizeof(input), stdin) == NULL) {
-103     printf(&quot;\n&quot;);
-104     return -1; // EOF or error
-105   }
-106 
-107   // Check for empty input (Enter pressed)
-108   if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
-109     return -1; // User cancelled
-110   }
-111 
-112   // Parse input as number
-113   char *endptr;
-114   long selection = strtol(input, &amp;endptr, 10);
-115 
-116   // Validate input
-117   if (selection &lt; 1 || selection &gt; count) {
-118     printf(&quot;&#x26A0;&#xFE0F;  Invalid selection. Please enter a number between 1 and %d\n&quot;, count);
-119     return ui_mdns_prompt_selection(servers, count); // Re-prompt
-120   }
-121 
-122   return (int)(selection - 1); // Convert to 0-based index
-123 }</pre>
+<p class="Pp">Definition at line <b>84</b> of file <b>ui/mdns.c</b>.</p>
+<pre>84                                                                          {
+85   if (!servers || count &lt;= 0) {
+86     return -1;
+87   }
+88 
+89   // Display available servers
+90   printf(&quot;\nAvailable ascii-chat servers on LAN:\n&quot;);
+91   for (int i = 0; i &lt; count; i++) {
+92     const ui_mdns_server_t *srv = &amp;servers[i];
+93     const char *addr = ui_mdns_get_best_address(srv);
+94     printf(&quot;  %d. %s (%s:%u)\n&quot;, i + 1, srv-&gt;name, addr, srv-&gt;port);
+95   }
+96 
+97   // Prompt for selection
+98   printf(&quot;\nSelect server (1-%d) or press Enter to cancel: &quot;, count);
+99   fflush(stdout);
+100 
+101   // Read user input
+102   char input[32];
+103   if (fgets(input, sizeof(input), stdin) == NULL) {
+104     printf(&quot;\n&quot;);
+105     return -1; // EOF or error
+106   }
+107 
+108   // Check for empty input (Enter pressed)
+109   if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
+110     return -1; // User cancelled
+111   }
+112 
+113   // Parse input as number
+114   char *endptr;
+115   long selection = strtol(input, &amp;endptr, 10);
+116 
+117   // Validate input
+118   if (selection &lt; 1 || selection &gt; count) {
+119     printf(&quot;&#x26A0;&#xFE0F;  Invalid selection. Please enter a number between 1 and %d\n&quot;, count);
+120     return ui_mdns_prompt_selection(servers, count); // Re-prompt
+121   }
+122 
+123   return (int)(selection - 1); // Convert to 0-based index
+124 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ui_mdns_server_t::name</b>,
@@ -321,23 +255,23 @@
 <p class="Pp"></p>
 <p class="Pp">Calls <b>discovery_mdns_query()</b> from <b>discovery.c</b> with
     TUI-friendly configuration.</p>
-<p class="Pp">Definition at line <b>56</b> of file <b>ui/mdns.c</b>.</p>
-<pre>56                                                                                 {
-57   if (!out_count) {
-58     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
-59     return NULL;
-60   }
-61 
-62   *out_count = 0;
-63 
-64   // Apply defaults if needed
-65   int timeout_ms = (config &amp;&amp; config-&gt;timeout_ms &gt; 0) ? config-&gt;timeout_ms : 2000;
-66   int max_servers = (config &amp;&amp; config-&gt;max_servers &gt; 0) ? config-&gt;max_servers : 20;
-67   bool quiet = (config &amp;&amp; config-&gt;quiet);
-68 
-69   // Call the core mDNS discovery function from discovery.c
-70   return discovery_mdns_query(timeout_ms, max_servers, quiet, out_count);
-71 }</pre>
+<p class="Pp">Definition at line <b>57</b> of file <b>ui/mdns.c</b>.</p>
+<pre>57                                                                                 {
+58   if (!out_count) {
+59     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
+60     return NULL;
+61   }
+62 
+63   *out_count = 0;
+64 
+65   // Apply defaults if needed
+66   int timeout_ms = (config &amp;&amp; config-&gt;timeout_ms &gt; 0) ? config-&gt;timeout_ms : 2000;
+67   int max_servers = (config &amp;&amp; config-&gt;max_servers &gt; 0) ? config-&gt;max_servers : 20;
+68   bool quiet = (config &amp;&amp; config-&gt;quiet);
+69 
+70   // Call the core mDNS discovery function from discovery.c
+71   return discovery_mdns_query(timeout_ms, max_servers, quiet, out_count);
+72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_mdns_query()</b>,
@@ -362,94 +296,103 @@
 <i>count</i> Number of servers</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0-based index of selected server, or -1 to cancel</div>
-<p class="Pp">Definition at line <b>149</b> of file <b>ui/mdns.c</b>.</p>
-<pre>149                                                                {
-150   if (!servers || count &lt;= 0) {
-151     // No servers found - return special code
-152     // Message will be printed at exit in client main
-153     return -1;
-154   }
-155 
-156   // Lock terminal to prevent concurrent logging from overwriting TUI
-157   bool prev_lock_state = log_lock_terminal();
-158 
-159   // Clear terminal
-160   log_plain(&quot;%s&quot;, ANSI_CLEAR);
-161 
-162   // Display header
-163   log_plain(&quot;\n&quot;);
-164   log_plain(&quot;%s&#x256D;&#x2500; &#x1F50D; ascii-chat Server Discovery %s&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;%s\n&quot;, ANSI_BOLD, ANSI_RESET, ANSI_BOLD);
-165   log_plain(&quot;&#x2502;%s\n&quot;, ANSI_RESET);
-166   log_plain(&quot;%s&#x2502;%s Found %d server%s on your local network:%s\n&quot;, ANSI_BOLD, ANSI_GREEN, count, count == 1 ? &quot;&quot; : &quot;s&quot;,
-167             ANSI_RESET);
-168   log_plain(&quot;%s&#x2502;%s\n&quot;, ANSI_BOLD, ANSI_RESET);
-169 
-170   // Display server list with formatting
-171   for (int i = 0; i &lt; count; i++) {
-172     const ui_mdns_server_t *srv = &amp;servers[i];
-173     const char *addr = ui_mdns_get_best_address(srv);
-174 
-175     log_plain(&quot;%s&#x2502;%s  &quot;, ANSI_BOLD, ANSI_RESET);
-176     log_plain(&quot;%s[%d]%s %-30s %s%s:%u%s&quot;, ANSI_CYAN, i + 1, ANSI_RESET, srv-&gt;name, ANSI_YELLOW, addr, srv-&gt;port,
-177               ANSI_RESET);
-178     log_plain(&quot;\n&quot;);
-179   }
+<p class="Pp">Definition at line <b>141</b> of file <b>ui/mdns.c</b>.</p>
+<pre>141                                                                {
+142   if (!servers || count &lt;= 0) {
+143     // No servers found - return special code
+144     // Message will be printed at exit in client main
+145     return -1;
+146   }
+147 
+148   // Lock terminal to prevent concurrent logging from overwriting TUI
+149   bool prev_lock_state = log_lock_terminal();
+150 
+151   // Clear terminal
+152   log_plain(&quot;\033[2J\033[H&quot;);
+153 
+154   // Display header
+155   log_plain(&quot;\n&quot;);
+156   log_plain(&quot;\033[1m&#x256D;&#x2500; &#x1F50D; ascii-chat Server Discovery &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;\033[0m\n&quot;);
+157   log_plain(&quot;\033[1m&#x2502;\033[0m\n&quot;);
+158   char found_buf[64];
+159   snprintf(found_buf, sizeof(found_buf), &quot;Found %d server%s on your local network:&quot;, count, count == 1 ? &quot;&quot; : &quot;s&quot;);
+160   log_plain(&quot;\033[1m&#x2502;\033[0m %s\n&quot;, colored_string(LOG_COLOR_INFO, found_buf));
+161   log_plain(&quot;\033[1m&#x2502;\033[0m\n&quot;);
+162 
+163   // Display server list with formatting
+164   for (int i = 0; i &lt; count; i++) {
+165     const ui_mdns_server_t *srv = &amp;servers[i];
+166     const char *addr = ui_mdns_get_best_address(srv);
+167 
+168     char idx_buf[8];
+169     snprintf(idx_buf, sizeof(idx_buf), &quot;[%d]&quot;, i + 1);
+170     char addr_buf[128];
+171     snprintf(addr_buf, sizeof(addr_buf), &quot;%s:%u&quot;, addr, srv-&gt;port);
+172 
+173     log_plain(&quot;\033[1m&#x2502;\033[0m  %s %-30s %s\n&quot;,
+174               colored_string(LOG_COLOR_DEBUG, idx_buf), srv-&gt;name,
+175               colored_string(LOG_COLOR_WARN, addr_buf));
+176   }
+177 
+178   log_plain(&quot;\033[1m&#x2502;\033[0m\n&quot;);
+179   log_plain(&quot;\033[1m&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;\033[0m\n&quot;);
 180 
-181   log_plain(&quot;%s&#x2502;%s\n&quot;, ANSI_BOLD, ANSI_RESET);
-182   log_plain(&quot;%s&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;%s\n&quot;, ANSI_BOLD, ANSI_RESET);
-183 
-184   // Prompt for selection
-185   log_plain(&quot;\n&quot;);
-186   log_plain(&quot;Enter server number (1-%d) or press Enter to cancel: &quot;, count);
-187   fflush(stdout);
+181   // Prompt for selection
+182   log_plain(&quot;\n&quot;);
+183   log_plain(&quot;Enter server number (1-%d) or press Enter to cancel: &quot;, count);
+184   fflush(stdout);
+185 
+186   // Unlock before waiting for input (user might take time)
+187   log_unlock_terminal(prev_lock_state);
 188 
-189   // Unlock before waiting for input (user might take time)
-190   log_unlock_terminal(prev_lock_state);
-191 
-192   // Read user input
-193   char input[32];
-194   if (fgets(input, sizeof(input), stdin) == NULL) {
-195     return -1;
-196   }
-197 
-198   // Check for empty input (Enter pressed)
-199   if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
-200     return -1;
-201   }
-202 
-203   // Parse input as number
-204   char *endptr;
-205   long selection = strtol(input, &amp;endptr, 10);
-206 
-207   // Validate input
-208   if (selection &lt; 1 || selection &gt; count) {
-209     printf(&quot;%sError:%s Please enter a number between 1 and %d\n\n&quot;, ANSI_YELLOW, ANSI_RESET, count);
-210     return ui_mdns_select(servers, count); // Re-prompt
-211   }
-212 
-213   // Lock terminal again for final output
-214   prev_lock_state = log_lock_terminal();
-215 
-216   // Clear screen and show connection status
-217   log_plain(&quot;%s&quot;, ANSI_CLEAR);
-218   log_plain(&quot;\n&quot;);
-219   log_plain(&quot;%s&#x1F517; Connecting to %s...%s\n&quot;, ANSI_GREEN, servers[selection - 1].name, ANSI_RESET);
-220   log_plain(&quot;\n&quot;);
-221   fflush(stdout);
-222 
-223   // Brief delay so user can see the selection before logs overwrite it
-224   platform_sleep_ms(200);
-225 
-226   // Unlock terminal now that TUI is complete
-227   log_unlock_terminal(prev_lock_state);
-228 
-229   return (int)(selection - 1); // Convert to 0-based index
-230 }</pre>
+189   // Read user input
+190   char input[32];
+191   if (fgets(input, sizeof(input), stdin) == NULL) {
+192     return -1;
+193   }
+194 
+195   // Check for empty input (Enter pressed)
+196   if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
+197     return -1;
+198   }
+199 
+200   // Parse input as number
+201   char *endptr;
+202   long selection = strtol(input, &amp;endptr, 10);
+203 
+204   // Validate input
+205   if (selection &lt; 1 || selection &gt; count) {
+206     char err_buf[64];
+207     snprintf(err_buf, sizeof(err_buf), &quot;Please enter a number between 1 and %d&quot;, count);
+208     printf(&quot;%s\n\n&quot;, colored_string(LOG_COLOR_WARN, err_buf));
+209     return ui_mdns_select(servers, count); // Re-prompt
+210   }
+211 
+212   // Lock terminal again for final output
+213   prev_lock_state = log_lock_terminal();
+214 
+215   // Clear screen and show connection status
+216   log_plain(&quot;\033[2J\033[H&quot;);
+217   log_plain(&quot;\n&quot;);
+218   char connect_buf[128];
+219   snprintf(connect_buf, sizeof(connect_buf), &quot;&#x1F517; Connecting to %s...&quot;, servers[selection - 1].name);
+220   log_plain(&quot;%s\n&quot;, colored_string(LOG_COLOR_INFO, connect_buf));
+221   log_plain(&quot;\n&quot;);
+222   fflush(stdout);
+223 
+224   // Brief delay so user can see the selection before logs overwrite it
+225   platform_sleep_ms(200);
+226 
+227   // Unlock terminal now that TUI is complete
+228   log_unlock_terminal(prev_lock_state);
+229 
+230   return (int)(selection - 1); // Convert to 0-based index
+231 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ANSI_BOLD</b>, <b>ANSI_CLEAR</b>, <b>ANSI_CYAN</b>,
-    <b>ANSI_GREEN</b>, <b>ANSI_RESET</b>, <b>ANSI_YELLOW</b>,
-    <b>log_lock_terminal()</b>, <b>log_plain</b>, <b>log_unlock_terminal()</b>,
+<p class="Pp">References <b>colored_string()</b>, <b>LOG_COLOR_DEBUG</b>,
+    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>, <b>log_lock_terminal()</b>,
+    <b>log_plain</b>, <b>log_unlock_terminal()</b>,
     <b>ui_mdns_server_t::name</b>, <b>platform_sleep_ms()</b>,
     <b>ui_mdns_server_t::port</b>, <b>ui_mdns_get_best_address()</b>, and
     <b>ui_mdns_select()</b>.</p>
@@ -463,7 +406,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

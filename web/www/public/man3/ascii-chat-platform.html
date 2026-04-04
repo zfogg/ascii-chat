@@ -84,9 +84,7 @@
   Cross-platform unified color detection and terminal capabilities. file
     <b>thread.c</b>
   <br/>
-  &#x1F9F5; Thread utilities and helpers file <b>console.c</b>
-  <br/>
-  Browser console logging for WASM via Emscripten. file <b>init.c</b>
+  &#x1F9F5; Thread utilities and helpers file <b>init.c</b>
   <br/>
   Platform initialization for WASM/Emscripten. file <b>string.c</b>
   <br/>
@@ -131,7 +129,7 @@
   System utilities for WASM/Emscripten - includes generic implementations. file
     <b>terminal.c</b>
   <br/>
-  Terminal abstraction for WASM/Emscripten via EM_JS bridge to xterm.js. file
+  Terminal abstraction for WASM/Emscripten via EM_JS bridge web. file
     <b>threading.c</b>
   <br/>
   Threading abstraction for WASM/Emscripten using pthreads. file <b>time.c</b>
@@ -219,7 +217,10 @@
   Condition variable type (POSIX: pthread_cond_t with debug tracking). struct
     <b>platform_stat_t</b>
   <br/>
-  File type information from stat(). struct <b>config_file_result_t</b>
+  File type information from stat(). struct <b>platform_dir_entry_t</b>
+  <br/>
+  Directory entry information for <b>platform_dir_foreach()</b>. struct
+    <b>config_file_result_t</b>
   <br/>
   Result of a config file search. struct <b>config_file_list_t</b>
   <br/>
@@ -423,7 +424,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef struct <b>platform_mmap</b> <b>platform_mmap_t</b>
+<p class="Pp">typedef <b>bool</b>(* <b>platform_dir_foreach_cb</b>) (const
+    <b>platform_dir_entry_t</b> *entry, void *user_data)
+  <br/>
+  Callback for <b>platform_dir_foreach()</b>. typedef struct
+    <b>platform_mmap</b> <b>platform_mmap_t</b>
   <br/>
   Memory-mapped file handle. typedef int <b>pipe_t</b>
   <br/>
@@ -571,9 +576,12 @@
   Create a temporary directory with a given prefix. <b>asciichat_error_t</b>
     <b>platform_rmdir_recursive</b> (const char *path)
   <br/>
-  Recursively delete a directory and all its contents. int
-    <b>platform_create_temp_file</b> (char *path_out, size_t path_size, const
-    char *prefix, int *fd)
+  Recursively delete a directory and all its contents. <b>asciichat_error_t</b>
+    <b>platform_dir_foreach</b> (const char *path,
+    <b>platform_dir_foreach_cb</b> callback, void *user_data)
+  <br/>
+  Iterate over entries in a directory. int <b>platform_create_temp_file</b>
+    (char *path_out, size_t path_size, const char *prefix, int *fd)
   <br/>
   Create a temporary file with a given prefix. int
     <b>platform_delete_temp_file</b> (const char *path)
@@ -1055,7 +1063,13 @@
   Get an environment variable value. int <b>platform_setenv</b> (const char
     *name, const char *value)
   <br/>
-  Set an environment variable. <b>platform_stderr_redirect_handle_t</b>
+  Set an environment variable. int <b>platform_unsetenv</b> (const char *name)
+  <br/>
+  Remove an environment variable. void <b>platform_raise_fd_limit</b> (unsigned
+    int limit)
+  <br/>
+  Raise the file descriptor limit for the current process.
+    <b>platform_stderr_redirect_handle_t</b>
     <b>platform_stderr_redirect_to_null</b> (void)
   <br/>
   Redirect stderr to /dev/null temporarily. void <b>platform_stderr_restore</b>
@@ -2639,7 +2653,7 @@ if (ready &gt; 0) {
     <b>server_connection_init()</b>, <b>server_connection_is_active()</b>,
     <b>server_connection_set_transport()</b>,
     <b>server_connection_shutdown()</b>, <b>server_crypto_handshake()</b>,
-    <b>server_main()</b>, <b>session_host_add_memory_participant()</b>,
+    <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>, <b>session_host_create()</b>,
     <b>session_host_destroy()</b>, <b>session_host_remove_client()</b>,
     <b>session_host_send_frame()</b>, <b>session_host_start()</b>,
@@ -2770,9 +2784,12 @@ if (ready &gt; 0) {
     <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
     <b>threaded_send_client_join_packet()</b>,
     <b>threaded_send_image_frame()</b>, <b>threaded_send_image_frame_h265()</b>,
-    <b>threaded_send_packet()</b>, <b>update_server_stats()</b>,
-    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>,
-    <b>webrtc_cleanup_transport()</b>, <b>webrtc_get_transport()</b>,
+    <b>threaded_send_packet()</b>, <b>update_banner_has_update()</b>,
+    <b>update_banner_print_instructions()</b>,
+    <b>update_banner_set_result()</b>, <b>update_banner_show_prompt()</b>,
+    <b>update_server_stats()</b>, <b>video_frame_commit()</b>,
+    <b>video_frame_get_latest()</b>, <b>webrtc_cleanup_transport()</b>,
+    <b>webrtc_get_transport()</b>,
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_destroy()</b>,
     <b>webrtc_peer_manager_handle_ice()</b>,
@@ -2890,9 +2907,12 @@ if (ready &gt; 0) {
     <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
     <b>threaded_send_client_join_packet()</b>,
     <b>threaded_send_image_frame()</b>, <b>threaded_send_image_frame_h265()</b>,
-    <b>threaded_send_packet()</b>, <b>update_server_stats()</b>,
-    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>,
-    <b>webrtc_cleanup_transport()</b>, <b>webrtc_get_transport()</b>,
+    <b>threaded_send_packet()</b>, <b>update_banner_has_update()</b>,
+    <b>update_banner_print_instructions()</b>,
+    <b>update_banner_set_result()</b>, <b>update_banner_show_prompt()</b>,
+    <b>update_server_stats()</b>, <b>video_frame_commit()</b>,
+    <b>video_frame_get_latest()</b>, <b>webrtc_cleanup_transport()</b>,
+    <b>webrtc_get_transport()</b>,
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_destroy()</b>,
     <b>webrtc_peer_manager_handle_ice()</b>,
@@ -2999,7 +3019,7 @@ if (ready &gt; 0) {
     &lt;<b>include/ascii-chat/platform/filesystem.h</b>&gt;<b></b></p>
 <p class="Pp">Access modes for <b>platform_access()</b>. Check if file/directory
     exists</p>
-<p class="Pp">Definition at line <b>1003</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Definition at line <b>1030</b> of file <b>filesystem.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PLATFORM_ACCESS_READ___4"><a class="permalink" href="#_define_PLATFORM_ACCESS_READ___4">#define
@@ -3007,7 +3027,7 @@ if (ready &gt; 0) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/filesystem.h</b>&gt;<b></b></p>
 <p class="Pp">Check if file/directory is readable.</p>
-<p class="Pp">Definition at line <b>1005</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Definition at line <b>1032</b> of file <b>filesystem.h</b>.</p>
 <p class="Pp">Referenced by <b>parse_mirror_media()</b>.</p>
 </section>
 <section class="Ss">
@@ -3016,7 +3036,7 @@ if (ready &gt; 0) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/filesystem.h</b>&gt;<b></b></p>
 <p class="Pp">Check if file/directory is writable.</p>
-<p class="Pp">Definition at line <b>1004</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Definition at line <b>1031</b> of file <b>filesystem.h</b>.</p>
 <p class="Pp">Referenced by <b>get_discovery_database_dir()</b>, and
     <b>get_log_dir()</b>.</p>
 </section>
@@ -3231,7 +3251,8 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 <p class="Pp">Initialization is zero/null, per language spec.</p>
 </div>
-<p class="Pp">Definition at line <b>83</b> of file <b>platform/thread.h</b>.</p>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PLATFORM_WINDOWS___0"><a class="permalink" href="#_define_PLATFORM_WINDOWS___0">#define
@@ -3304,13 +3325,12 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>named_get_packet_type()</b>, <b>named_get_packet_type_format_spec()</b>,
     <b>named_get_type()</b>, <b>named_register()</b>,
     <b>named_registry_for_each()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>server_main()</b>, <b>stats_logger_thread()</b>,
-    <b>symbol_cache_get_stats()</b>, <b>symbol_cache_lookup()</b>,
-    <b>symbol_cache_print_stats()</b>, <b>tcp_server_foreach_client()</b>,
-    <b>tcp_server_get_client()</b>, <b>tcp_server_get_client_count()</b>,
-    <b>tcp_server_get_thread_count()</b>, <b>tcp_server_spawn_thread()</b>,
-    <b>tcp_server_stop_client_threads()</b>, and
-  <b>update_server_stats()</b>.</p>
+    <b>stats_logger_thread()</b>, <b>symbol_cache_get_stats()</b>,
+    <b>symbol_cache_lookup()</b>, <b>symbol_cache_print_stats()</b>,
+    <b>tcp_server_foreach_client()</b>, <b>tcp_server_get_client()</b>,
+    <b>tcp_server_get_client_count()</b>, <b>tcp_server_get_thread_count()</b>,
+    <b>tcp_server_spawn_thread()</b>, <b>tcp_server_stop_client_threads()</b>,
+    and <b>update_server_stats()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_rwlock_rdunlock(_lock)"><a class="permalink" href="#_define_rwlock_rdunlock(_lock)">#define
@@ -3343,13 +3363,12 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>named_get_packet_type()</b>, <b>named_get_packet_type_format_spec()</b>,
     <b>named_get_type()</b>, <b>named_register()</b>,
     <b>named_registry_for_each()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>server_main()</b>, <b>stats_logger_thread()</b>,
-    <b>symbol_cache_get_stats()</b>, <b>symbol_cache_lookup()</b>,
-    <b>symbol_cache_print_stats()</b>, <b>tcp_server_foreach_client()</b>,
-    <b>tcp_server_get_client()</b>, <b>tcp_server_get_client_count()</b>,
-    <b>tcp_server_get_thread_count()</b>, <b>tcp_server_spawn_thread()</b>,
-    <b>tcp_server_stop_client_threads()</b>, and
-  <b>update_server_stats()</b>.</p>
+    <b>stats_logger_thread()</b>, <b>symbol_cache_get_stats()</b>,
+    <b>symbol_cache_lookup()</b>, <b>symbol_cache_print_stats()</b>,
+    <b>tcp_server_foreach_client()</b>, <b>tcp_server_get_client()</b>,
+    <b>tcp_server_get_client_count()</b>, <b>tcp_server_get_thread_count()</b>,
+    <b>tcp_server_spawn_thread()</b>, <b>tcp_server_stop_client_threads()</b>,
+    and <b>update_server_stats()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_rwlock_wrlock(_lock)"><a class="permalink" href="#_define_rwlock_wrlock(_lock)">#define
@@ -3381,11 +3400,11 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>named_register_fmt()</b>, <b>named_register_packet_type()</b>,
     <b>named_unregister()</b>, <b>platform_cleanup_binary_path_cache()</b>,
     <b>platform_is_binary_in_path()</b>, <b>remove_client()</b>,
-    <b>server_main()</b>, <b>simd_caches_destroy_all()</b>,
-    <b>symbol_cache_destroy()</b>, <b>symbol_cache_insert()</b>,
-    <b>tcp_server_add_client()</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_remove_client()</b>, <b>timer_start()</b>,
-    <b>timer_stop()</b>, and <b>timer_system_destroy()</b>.</p>
+    <b>simd_caches_destroy_all()</b>, <b>symbol_cache_destroy()</b>,
+    <b>symbol_cache_insert()</b>, <b>tcp_server_add_client()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>,
+    <b>timer_start()</b>, <b>timer_stop()</b>, and
+    <b>timer_system_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_rwlock_wrunlock(_lock)"><a class="permalink" href="#_define_rwlock_wrunlock(_lock)">#define
@@ -3416,11 +3435,11 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>named_register_fmt()</b>, <b>named_register_packet_type()</b>,
     <b>named_unregister()</b>, <b>platform_cleanup_binary_path_cache()</b>,
     <b>platform_is_binary_in_path()</b>, <b>remove_client()</b>,
-    <b>server_main()</b>, <b>simd_caches_destroy_all()</b>,
-    <b>symbol_cache_destroy()</b>, <b>symbol_cache_insert()</b>,
-    <b>tcp_server_add_client()</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_remove_client()</b>, <b>timer_start()</b>,
-    <b>timer_stop()</b>, and <b>timer_system_destroy()</b>.</p>
+    <b>simd_caches_destroy_all()</b>, <b>symbol_cache_destroy()</b>,
+    <b>symbol_cache_insert()</b>, <b>tcp_server_add_client()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>,
+    <b>timer_start()</b>, <b>timer_stop()</b>, and
+    <b>timer_system_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SAFE_IGNORE_PRINTF_RESULT(_expr)"><a class="permalink" href="#_define_SAFE_IGNORE_PRINTF_RESULT(_expr)">#define
@@ -3434,7 +3453,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 <p class="Pp">This macro satisfies clang-tidy cert-err33-c by explicitly
     handling the return value of printf family functions.</p>
-<p class="Pp">Definition at line <b>510</b> of file <b>system.h</b>.</p>
+<p class="Pp">Definition at line <b>525</b> of file <b>system.h</b>.</p>
 <p class="Pp">Referenced by <b>format_bytes_pretty()</b>.</p>
 </section>
 <section class="Ss">
@@ -3666,7 +3685,8 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Thread handle type (POSIX: pthread_t).</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>platform/thread.h</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_int_"><a class="permalink" href="#typedef_int_">typedef
@@ -3696,6 +3716,21 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     callback</p>
 </div>
 <p class="Pp">Definition at line <b>38</b> of file <b>signal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
+  <b>bool</b>(* platform_dir_foreach_cb) (const <b>platform_dir_entry_t</b>
+  *entry, void *user_data)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/filesystem.h</b>&gt;<b></b></p>
+<p class="Pp">Callback for <b>platform_dir_foreach()</b>.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>entry</i> Directory entry information
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true to continue iteration, false to stop</div>
+<p class="Pp">Definition at line <b>420</b> of file <b>filesystem.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
@@ -3742,7 +3777,8 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Thread ID type (POSIX: pthread_t).</p>
-<p class="Pp">Definition at line <b>44</b> of file <b>platform/thread.h</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file
+    <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_pthread_key_t_"><a class="permalink" href="#typedef_pthread_key_t_">typedef
@@ -3750,7 +3786,8 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Thread-local storage key type (POSIX: pthread_key_t).</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>platform/thread.h</b>.</p>
+<p class="Pp">Definition at line <b>46</b> of file
+    <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -3877,19 +3914,6 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 46 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_main()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>audio_start_duplex()</b>, <b>create_client_render_threads()</b>,
-    <b>debug_sync_start_thread()</b>, <b>discover_session_parallel()</b>,
-    <b>ffmpeg_decoder_start_prefetch()</b>, <b>parallel_connect()</b>,
-    <b>server_main()</b>, <b>session_host_start()</b>,
-    <b>session_host_start_render()</b>,
-    <b>session_participant_start_audio_capture()</b>,
-    <b>session_participant_start_video_capture()</b>,
-    <b>session_pipeline_create()</b>, <b>splash_intro_start()</b>,
-    <b>tcp_server_run()</b>, <b>tcp_server_spawn_thread()</b>,
-    <b>thread_create_or_fail()</b>, <b>thread_pool_create_with_workers()</b>,
-    and <b>thread_pool_spawn()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> asciichat_thread_current_id (void )</h2>
@@ -3931,8 +3955,6 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 62 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>mutex_stack_cleanup_current_thread()</b>, and
-    <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_thread_exit_(void_*_retval)"><a class="permalink" href="#void_asciichat_thread_exit_(void_*_retval)">void
@@ -4002,15 +4024,6 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 50 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
-    <b>discover_session_parallel()</b>, <b>ffmpeg_decoder_destroy()</b>,
-    <b>parallel_connect()</b>, <b>remove_client()</b>, <b>server_main()</b>,
-    <b>session_host_start()</b>, <b>session_host_stop()</b>,
-    <b>session_host_stop_render()</b>,
-    <b>session_participant_stop_audio_capture()</b>,
-    <b>session_participant_stop_video_capture()</b>,
-    <b>session_pipeline_create()</b>, <b>splash_wait_for_animation()</b>,
-    <b>stop_client_render_threads()</b>, and <b>stop_client_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_join_timeout_("><a class="permalink" href="#int_asciichat_thread_join_timeout_(">int
@@ -4039,11 +4052,12 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 16 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>audio_start_thread()</b>,
+<p class="Pp">Referenced by <b>audio_start_thread()</b>,
     <b>debug_sync_cleanup_thread()</b>, <b>discovery_session_destroy()</b>,
-    <b>ffmpeg_decoder_stop_prefetch()</b>, <b>server_main()</b>,
-    <b>session_pipeline_destroy()</b>, <b>splash_wait_for_animation()</b>, and
-    <b>thread_pool_stop_all()</b>.</p>
+    <b>ffmpeg_decoder_stop_prefetch()</b>, <b>session_pipeline_destroy()</b>,
+    <b>session_server_like_run()</b>, <b>splash_wait_for_animation()</b>,
+    <b>thread_pool_stop_all()</b>, and
+  <b>update_banner_wait_for_check()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_id_t</b> asciichat_thread_self (void )</h2>
@@ -4060,10 +4074,6 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>backtrace_print()</b>,
-    <b>client_receive_thread()</b>, <b>log_lock_terminal()</b>,
-    <b>log_plain_msg()</b>, <b>main()</b>,
-    <b>mutex_stack_cleanup_current_thread()</b>, and <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> asciichat_thread_set_realtime_priority
@@ -4626,12 +4636,12 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 <p class="Pp">Safe to call with list-&gt;count == 0</p>
 </div>
-<p class="Pp">Definition at line <b>54</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>54                                                         {
-55   (void)list;
-56   // No-op
-57 }</pre>
+<pre>55                                                         {
+56   (void)list;
+57   // No-op
+58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>check_known_host()</b>, and
@@ -5130,11 +5140,11 @@ for (int i = 0; i &lt; count; i++) {
     <b>media_source_destroy()</b>, <b>options_state_destroy()</b>,
     <b>options_state_init()</b>, <b>parallel_connect()</b>,
     <b>remove_client()</b>, <b>server_connection_cleanup()</b>,
-    <b>server_main()</b>, <b>session_host_destroy()</b>,
-    <b>session_log_buffer_destroy()</b>, <b>tcp_client_destroy()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
-    <b>video_frame_buffer_destroy()</b>, <b>webrtc_peer_manager_destroy()</b>,
-    and <b>websocket_client_destroy()</b>.</p>
+    <b>session_host_destroy()</b>, <b>session_log_buffer_destroy()</b>,
+    <b>tcp_client_destroy()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_destroy()</b>, <b>video_frame_buffer_destroy()</b>,
+    <b>webrtc_peer_manager_destroy()</b>, and
+  <b>websocket_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_mutex_format_state_(const_"><a class="permalink" href="#int_mutex_format_state_(const_">int
@@ -5236,10 +5246,10 @@ for (int i = 0; i &lt; count; i++) {
     <b>lifecycle_init()</b>, <b>media_source_create()</b>,
     <b>memory_backend_create()</b>, <b>options_state_init()</b>,
     <b>parallel_connect()</b>, <b>server_connection_init()</b>,
-    <b>server_main()</b>, <b>session_host_create()</b>,
-    <b>session_log_buffer_create()</b>, <b>splash_set_update_notification()</b>,
-    <b>tcp_client_create()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>,
+    <b>session_host_create()</b>, <b>session_log_buffer_create()</b>,
+    <b>splash_set_update_notification()</b>, <b>tcp_client_create()</b>,
+    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>update_banner_has_update()</b>, <b>update_banner_set_result()</b>,
     <b>video_frame_buffer_create()</b>, <b>webrtc_peer_manager_create()</b>, and
     <b>websocket_client_create()</b>.</p>
 </section>
@@ -5498,17 +5508,18 @@ for (int i = 0; i &lt; count; i++) {
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>97</b> of file
+<p class="Pp">Definition at line <b>98</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>97                                                     {
-98   (void)pathname;
-99   (void)mode;
-100   return -1; // Not accessible in WASM
-101 }</pre>
+<pre>98                                                     {
+99   (void)pathname;
+100   (void)mode;
+101   return -1; // Not accessible in WASM
+102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>get_discovery_database_dir()</b>,
-    <b>get_log_dir()</b>, and <b>parse_mirror_media()</b>.</p>
+    <b>get_log_dir()</b>, <b>parse_mirror_media()</b>, and
+    <b>websocket_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_asprintf_(char_**_strp,_const_char_*_format,__"><a class="permalink" href="#int_platform_asprintf_(char_**_strp,_const_char_*_format,__">int
@@ -5730,11 +5741,11 @@ for (int i = 0; i &lt; count; i++) {
 <div class="Bd-indent"><i>fd</i> File descriptor to close</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>93</b> of file
+<p class="Pp">Definition at line <b>94</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>93                            {
-94   return close(fd);
-95 }</pre>
+<pre>94                            {
+95   return close(fd);
+96 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>,
@@ -5805,6 +5816,23 @@ for (int i = 0; i &lt; count; i++) {
     <b>client_cleanup()</b>, and <b>mirror_cleanup()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_dir_foreach (const char * path,
+  <b>platform_dir_foreach_cb</b> callback, void * user_data)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/filesystem.h</b>&gt;<b></b></p>
+<p class="Pp">Iterate over entries in a directory.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>path</i> Directory path
+<br/>
+<i>callback</i> Function called for each entry (excluding &quot;.&quot; and
+  &quot;..&quot;)
+<br/>
+<i>user_data</i> Opaque pointer passed to callback</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code if directory cannot
+  be opened</div>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="void_platform_disable_keepawake_(void_)"><a class="permalink" href="#void_platform_disable_keepawake_(void_)">void
   platform_disable_keepawake (void )</a></h2>
 <p class="Pp">#include
@@ -5839,8 +5867,8 @@ for (int i = 0; i &lt; count; i++) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, and <b>NAMED_UNREGISTER_FD</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>,
-    <b>session_client_like_run()</b>, and <b>session_server_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_enable_keepawake (void )</h2>
@@ -5943,8 +5971,8 @@ for (int i = 0; i &lt; count; i++) {
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_PLATFORM_INIT</b>,
     <b>log_debug</b>, <b>log_dev</b>, <b>NAMED_REGISTER_FD</b>, and
     <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>,
-    <b>session_client_like_run()</b>, and <b>session_server_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_escape_shell_path (const char *
@@ -6073,7 +6101,9 @@ if (exit_code == 0) {
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">FILE pointer, or NULL on error</div>
 <p class="Pp">Referenced by <b>check_known_host()</b>,
-    <b>check_known_host_no_identity()</b>, and <b>remove_known_host()</b>.</p>
+    <b>check_known_host_no_identity()</b>, <b>remove_known_host()</b>,
+    <b>terminal_fd_reader_create()</b>, and
+  <b>terminal_fd_writer_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_find_config_file (const char *
@@ -6166,17 +6196,17 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>44</b> of file
+<p class="Pp">Definition at line <b>45</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>44                                                                                                 {
-45   (void)filename;
-46   if (list_out) {
-47     list_out-&gt;files = NULL;
-48     list_out-&gt;count = 0;
-49     list_out-&gt;capacity = 0;
-50   }
-51   return ASCIICHAT_OK; // No config files in WASM
-52 }</pre>
+<pre>45                                                                                                 {
+46   (void)filename;
+47   if (list_out) {
+48     list_out-&gt;files = NULL;
+49     list_out-&gt;count = 0;
+50     list_out-&gt;capacity = 0;
+51   }
+52   return ASCIICHAT_OK; // No config files in WASM
+53 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -6202,21 +6232,21 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
   &quot;rb&quot;)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">FILE pointer, or NULL on error</div>
-<p class="Pp">Definition at line <b>20</b> of file
+<p class="Pp">Definition at line <b>21</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>20                                                                                {
-21   if (!name) {
-22     return NULL;
-23   }
-24   FILE *stream = fopen(filename, mode); // Use standard fopen
-25   if (stream) {
-26     int fd = fileno(stream);
-27     if (fd &gt;= 0) {
-28       NAMED_REGISTER_FD(fd, name);
-29     }
-30   }
-31   return stream;
-32 }</pre>
+<pre>21                                                                                {
+22   if (!name) {
+23     return NULL;
+24   }
+25   FILE *stream = fopen(filename, mode); // Use standard fopen
+26   if (stream) {
+27     int fd = fileno(stream);
+28     if (fd &gt;= 0) {
+29       NAMED_REGISTER_FD(fd, name);
+30     }
+31   }
+32   return stream;
+33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>NAMED_REGISTER_FD</b>.</p>
@@ -6392,11 +6422,11 @@ if (data_dir) {
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>103                                   {
-104   return NULL; // No data directory in WASM
-105 }</pre>
+<pre>104                                   {
+105   return NULL; // No data directory in WASM
+106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>get_data_dir()</b>.</p>
@@ -6602,7 +6632,7 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>backtrace_print()</b>, <b>client_main()</b>,
-    <b>discovery_session_process()</b>, <b>main()</b>, <b>server_main()</b>,
+    <b>discovery_session_process()</b>, <b>main()</b>,
     <b>terminal_screen_render()</b>, <b>ui_status_update()</b>, and
     <b>webrtc_is_gathering_timed_out()</b>.</p>
 </section>
@@ -6704,8 +6734,9 @@ if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_strlcpy()</b>.</p>
-<p class="Pp">Referenced by <b>get_log_dir()</b>, and
-    <b>path_validate_user_path()</b>.</p>
+<p class="Pp">Referenced by <b>audio_analysis_init()</b>,
+    <b>audio_client_init()</b>, <b>client_audio_pipeline_create()</b>,
+    <b>get_log_dir()</b>, and <b>path_validate_user_path()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_platform_get_username_(void_)"><a class="permalink" href="#const_char_*_platform_get_username_(void_)">const
@@ -7270,13 +7301,13 @@ if (platform_mkdir_recursive(&quot;~/.ascii-chat/config&quot;, 0700) == ASCIICHA
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>38</b> of file
+<p class="Pp">Definition at line <b>39</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>38                                                                        {
-39   (void)path;
-40   (void)mode;
-41   return ERROR_PLATFORM_INIT; // Not implemented for WASM
-42 }</pre>
+<pre>39                                                                        {
+40   (void)path;
+41   (void)mode;
+42   return ERROR_PLATFORM_INIT; // Not implemented for WASM
+43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_PLATFORM_INIT</b>.</p>
@@ -7469,33 +7500,33 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <i>...</i> Variable arguments (mode for PLATFORM_O_CREAT)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">File descriptor, or -1 on error</div>
-<p class="Pp">Definition at line <b>67</b> of file
+<p class="Pp">Definition at line <b>68</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>67                                                                           {
-68   if (!name) {
-69     return -1;
-70   }
-71 
-72   // Handle optional mode parameter for O_CREAT
-73   int fd = -1;
-74   int mode = 0;
-75   if (flags &amp; 0x0200) { // O_CREAT flag value
-76     va_list args;
-77     va_start(args, flags);
-78     mode = va_arg(args, int);
-79     va_end(args);
-80     fd = open(pathname, flags, mode);
-81   } else {
-82     fd = open(pathname, flags);
-83   }
-84 
-85   if (fd &gt;= 0) {
-86     NAMED_REGISTER_FD(fd, name);
-87     log_dev(&quot;Opened file descriptor %d for %s at path %s&quot;, fd, name, pathname);
-88   }
-89 
-90   return fd;
-91 }</pre>
+<pre>68                                                                           {
+69   if (!name) {
+70     return -1;
+71   }
+72 
+73   // Handle optional mode parameter for O_CREAT
+74   int fd = -1;
+75   int mode = 0;
+76   if (flags &amp; 0x0200) { // O_CREAT flag value
+77     va_list args;
+78     va_start(args, flags);
+79     mode = va_arg(args, int);
+80     va_end(args);
+81     fd = open(pathname, flags, mode);
+82   } else {
+83     fd = open(pathname, flags);
+84   }
+85 
+86   if (fd &gt;= 0) {
+87     NAMED_REGISTER_FD(fd, name);
+88     log_dev(&quot;Opened file descriptor %d for %s at path %s&quot;, fd, name, pathname);
+89   }
+90 
+91   return fd;
+92 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>log_dev</b>, and
@@ -8002,8 +8033,19 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
     <b>client_crypto_handshake()</b>, <b>config_create_default()</b>,
     <b>discovery_keys_verify_change()</b>,
     <b>options_config_generate_manpage_merged()</b>,
-    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>, and
-    <b>server_main()</b>.</p>
+    <b>prompt_unknown_host()</b>, and
+  <b>prompt_unknown_host_no_identity()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_raise_fd_limit_(unsigned_int_limit)"><a class="permalink" href="#void_platform_raise_fd_limit_(unsigned_int_limit)">void
+  platform_raise_fd_limit (unsigned int limit)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b></p>
+<p class="Pp">Raise the file descriptor limit for the current process.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limit</i> Desired soft limit (0 = use platform default
+  maximum)</div>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="ssize_t_platform_read_(int_fd,_void_*_buf,_size_t_count)"><a class="permalink" href="#ssize_t_platform_read_(int_fd,_void_*_buf,_size_t_count)">ssize_t
@@ -8019,11 +8061,11 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 <i>count</i> Number of bytes to read</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes read, or -1 on error</div>
-<p class="Pp">Definition at line <b>63</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>63                                                        {
-64   return read(fd, buf, count);
-65 }</pre>
+<pre>64                                                        {
+65   return read(fd, buf, count);
+66 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -8189,7 +8231,8 @@ platform_register_signal_handlers(handlers, 2);
 54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>__attribute__()</b>.</p>
+<p class="Pp">Referenced by <b>__attribute__()</b>, and
+    <b>env_pop_prompt_response()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>signal_handler_t</b> platform_signal (int sig,
@@ -8212,8 +8255,8 @@ platform_register_signal_handlers(handlers, 2);
 123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>,
-    <b>server_main()</b>, and <b>session_server_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>, and
+    <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_platform_signal_name_(int_signal)"><a class="permalink" href="#const_char_*_platform_signal_name_(int_signal)">const
@@ -8336,8 +8379,7 @@ platform_register_signal_handlers(handlers, 2);
     <b>discovery_session_process()</b>, <b>platform_write_all()</b>,
     <b>protocol_start_connection()</b>, <b>protocol_stop_connection()</b>,
     <b>remove_client()</b>, <b>server_connection_establish()</b>,
-    <b>server_main()</b>, <b>stats_logger_thread()</b>, and
-    <b>time_sleep_ns()</b>.</p>
+    <b>stats_logger_thread()</b>, and <b>time_sleep_ns()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_socket_connect_timeout_("><a class="permalink" href="#int_platform_socket_connect_timeout_(">int
@@ -8764,8 +8806,8 @@ platform_stderr_restore(handle);        // stderr restored
 <i>saveptr</i> Pointer to save tokenization state</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to next token, or NULL when no more tokens</div>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>parse_public_keys()</b>, and
-    <b>sdp_parse()</b>.</p>
+<p class="Pp">Referenced by <b>parse_public_keys()</b>, and
+  <b>sdp_parse()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_temp_file_open (const char *
@@ -8805,11 +8847,11 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp">Create a temporary file (tmpfile replacement).</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">FILE pointer, or NULL on error</div>
-<p class="Pp">Definition at line <b>34</b> of file
+<p class="Pp">Definition at line <b>35</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>34                              {
-35   return tmpfile();
-36 }</pre>
+<pre>35                              {
+36   return tmpfile();
+37 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>manpage_parser_parse_memory()</b>.</p>
@@ -8860,6 +8902,25 @@ platform_stderr_restore(handle);        // stderr restored
 <div class="Bd-indent">0 on success, -1 on error</div>
 <p class="Pp">Referenced by <b>gpg_verify_detached_ed25519()</b>, and
     <b>parse_gpg_keys_from_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_unsetenv_(const_char_*_name)"><a class="permalink" href="#int_platform_unsetenv_(const_char_*_name)">int
+  platform_unsetenv (const char * name)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b></p>
+<p class="Pp">Remove an environment variable.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Variable name to unset</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on failure</div>
+<p class="Pp">Definition at line <b>56</b> of file <b>wasm/system.c</b>.</p>
+<pre>56                                         {
+57   (void)name;
+58   return -1; // Not supported in WASM
+59 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>env_pop_prompt_response()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_validate_key_file_permissions
@@ -9101,8 +9162,7 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp">Referenced by <b>lifecycle_reset()</b>,
     <b>lifecycle_shutdown()</b>, <b>mixer_create()</b>, <b>mixer_destroy()</b>,
     <b>named_destroy()</b>, <b>platform_cleanup_binary_path_cache()</b>,
-    <b>server_main()</b>, <b>symbol_cache_destroy()</b>, and
-    <b>tcp_server_destroy()</b>.</p>
+    <b>symbol_cache_destroy()</b>, and <b>tcp_server_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_rwlock_destroy_impl_("><a class="permalink" href="#int_rwlock_destroy_impl_(">int
@@ -9214,7 +9274,7 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp"></p>
 <p class="Pp">References <b>rwlock</b>.</p>
 <p class="Pp">Referenced by <b>lifecycle_init()</b>, <b>mixer_create()</b>,
-    <b>named_init()</b>, <b>server_main()</b>, <b>symbol_cache_init()</b>, and
+    <b>named_init()</b>, <b>symbol_cache_init()</b>, and
     <b>tcp_server_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -9578,17 +9638,19 @@ platform_stderr_restore(handle);        // stderr restored
     <b>platform_vsnprintf()</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_connect()</b>,
     <b>acds_identity_default_path()</b>, <b>acds_identity_fingerprint()</b>,
-    <b>acds_main()</b>, <b>acds_string_generate()</b>, <b>add_client()</b>,
+    <b>acds_string_generate()</b>, <b>add_client()</b>,
     <b>asciichat_instr_log_line()</b>, <b>asciichat_instr_log_pc()</b>,
+    <b>audio_analysis_init()</b>, <b>audio_client_init()</b>,
     <b>backtrace_format()</b>, <b>backtrace_print()</b>,
     <b>build_github_gpg_url()</b>, <b>build_github_ssh_url()</b>,
     <b>build_gitlab_gpg_url()</b>, <b>build_gitlab_ssh_url()</b>,
     <b>capture_init()</b>, <b>check_gpg_key_expiry()</b>,
     <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
-    <b>colored_string()</b>, <b>colorize_log_message()</b>,
-    <b>colorize_named_string()</b>, <b>colorscheme_compile_scheme()</b>,
-    <b>colorscheme_export_scheme()</b>, <b>config_load_and_apply()</b>,
-    <b>create_client_render_threads()</b>, <b>crypto_get_rekey_status()</b>,
+    <b>client_audio_pipeline_create()</b>, <b>colored_string()</b>,
+    <b>colorize_log_message()</b>, <b>colorize_named_string()</b>,
+    <b>colorscheme_compile_scheme()</b>, <b>colorscheme_export_scheme()</b>,
+    <b>config_load_and_apply()</b>, <b>create_client_render_threads()</b>,
+    <b>crypto_get_rekey_status()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_start()</b>,
@@ -9630,8 +9692,8 @@ platform_stderr_restore(handle);        // stderr restored
     <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>,
     <b>pubkey_to_hex()</b>, <b>query_init()</b>, <b>remove_known_host()</b>,
     <b>rgb_to_truecolor_ansi()</b>, <b>sdp_generate_answer()</b>,
-    <b>sdp_generate_offer()</b>, <b>server_main()</b>,
-    <b>session_capture_create()</b>, <b>session_network_capture_create()</b>,
+    <b>sdp_generate_offer()</b>, <b>session_capture_create()</b>,
+    <b>session_network_capture_create()</b>, <b>session_server_like_run()</b>,
     <b>stats_logger_thread()</b>, <b>test_get_binary_path()</b>,
     <b>time_pretty()</b>, <b>turn_generate_credentials()</b>, and
     <b>yt_dlp_extract_stream_url()</b>.</p>
@@ -9745,7 +9807,6 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp">Cleanup socket subsystem. Cleans up the socket subsystem. On
     Windows, this cleans up Winsock. Should be called during program
   shutdown.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_socket_close_("><a class="permalink" href="#int_socket_close_(">int
@@ -9767,9 +9828,9 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp">Referenced by <b>acds_client_disconnect()</b>,
     <b>acds_client_handler()</b>, <b>disconnect_client_for_bad_data()</b>,
     <b>https_get()</b>, <b>parallel_connect()</b>, <b>remove_client()</b>,
-    <b>server_main()</b>, <b>session_host_destroy()</b>,
-    <b>session_host_remove_client()</b>, <b>session_host_start()</b>,
-    <b>session_host_stop()</b>, <b>session_participant_destroy()</b>,
+    <b>session_host_destroy()</b>, <b>session_host_remove_client()</b>,
+    <b>session_host_start()</b>, <b>session_host_stop()</b>,
+    <b>session_participant_destroy()</b>,
     <b>session_participant_disconnect()</b>, <b>tcp_server_destroy()</b>,
     <b>tcp_server_reject_client()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
@@ -11593,20 +11654,21 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Screen clearing does not affect scrollback buffer.</p>
 </div>
-<p class="Pp">Definition at line <b>200</b> of file
+<p class="Pp">Definition at line <b>199</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>200                                               {
-201   // Send ANSI clear screen escape sequence
-202   write(STDOUT_FILENO, &quot;\033[2J&quot;, 4);
-203   return ASCIICHAT_OK;
-204 }</pre>
+<pre>199                                               {
+200   // Send ANSI clear screen escape sequence
+201   write(STDOUT_FILENO, &quot;\033[2J&quot;, 4);
+202   return ASCIICHAT_OK;
+203 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
-<p class="Pp">Referenced by <b>session_display_clear()</b>,
-    <b>session_display_write_ascii()</b>,
+<p class="Pp">Referenced by <b>session_client_like_run()</b>,
+    <b>session_display_clear()</b>, <b>session_display_write_ascii()</b>,
     <b>session_handle_keyboard_input()</b>, <b>session_render_loop()</b>,
-    <b>splash_intro_start()</b>, and <b>splash_wait_for_animation()</b>.</p>
+    <b>splash_intro_start()</b>, <b>splash_wait_for_animation()</b>, and
+    <b>update_banner_print_instructions()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> terminal_clear_scrollback (int fd)</h2>
@@ -11686,14 +11748,14 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Useful for starting new frame rendering at top-left.</p>
 </div>
-<p class="Pp">Definition at line <b>206</b> of file
+<p class="Pp">Definition at line <b>205</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>206                                                {
-207   (void)fd;
-208   // Send ANSI cursor home escape sequence
-209   write(STDOUT_FILENO, &quot;\033[H&quot;, 3);
-210   return ASCIICHAT_OK;
-211 }</pre>
+<pre>205                                                {
+206   (void)fd;
+207   // Send ANSI cursor home escape sequence
+208   write(STDOUT_FILENO, &quot;\033[H&quot;, 3);
+209   return ASCIICHAT_OK;
+210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11764,12 +11826,12 @@ while (total_sent &lt; len) {
 <p class="Pp">Useful for ensuring output is visible before blocking
   operations.</p>
 </div>
-<p class="Pp">Definition at line <b>143</b> of file
+<p class="Pp">Definition at line <b>142</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>143                                          {
-144   (void)fd;
-145   return ASCIICHAT_OK; // No-op - xterm.js handles flushing
-146 }</pre>
+<pre>142                                          {
+143   (void)fd;
+144   return ASCIICHAT_OK;
+145 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11777,7 +11839,8 @@ while (total_sent &lt; len) {
     <b>config_create_default()</b>, <b>keyboard_help_render()</b>,
     <b>session_display_render_fps_overlay()</b>, <b>session_display_reset()</b>,
     <b>session_display_write_ascii()</b>, <b>session_display_write_raw()</b>,
-    and <b>splash_wait_for_animation()</b>.</p>
+    <b>splash_wait_for_animation()</b>, and
+  <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> terminal_get_cursor_position (int * row,
@@ -11885,31 +11948,31 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">This function is a no-op if stdout is not a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>213</b> of file
+<p class="Pp">Definition at line <b>212</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>213                                                             {
-214   if (offset == 0) {
-215     return ASCIICHAT_OK;
-216   }
-217 
-218   if (offset &gt; 0) {
-219     // Move right: \x1b[&lt;n&gt;C
-220     char buf[32];
-221     int len = snprintf(buf, sizeof(buf), &quot;\033[%dC&quot;, offset);
-222     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
-223       write(STDOUT_FILENO, buf, len);
-224     }
-225   } else {
-226     // Move left: \x1b[&lt;n&gt;D
-227     char buf[32];
-228     int len = snprintf(buf, sizeof(buf), &quot;\033[%dD&quot;, -offset);
-229     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
-230       write(STDOUT_FILENO, buf, len);
-231     }
-232   }
-233 
-234   return ASCIICHAT_OK;
-235 }</pre>
+<pre>212                                                             {
+213   if (offset == 0) {
+214     return ASCIICHAT_OK;
+215   }
+216 
+217   if (offset &gt; 0) {
+218     // Move right: \x1b[&lt;n&gt;C
+219     char buf[32];
+220     int len = snprintf(buf, sizeof(buf), &quot;\033[%dC&quot;, offset);
+221     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+222       write(STDOUT_FILENO, buf, len);
+223     }
+224   } else {
+225     // Move left: \x1b[&lt;n&gt;D
+226     char buf[32];
+227     int len = snprintf(buf, sizeof(buf), &quot;\033[%dD&quot;, -offset);
+228     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+229       write(STDOUT_FILENO, buf, len);
+230     }
+231   }
+232 
+233   return ASCIICHAT_OK;
+234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -12047,17 +12110,17 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Disabling echo is useful for password prompts.</p>
 </div>
-<p class="Pp">Definition at line <b>185</b> of file
+<p class="Pp">Definition at line <b>184</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>185                                                   {
-186   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
-187   if (!enabled) {
-188     write(STDOUT_FILENO, &quot;\033[?25l&quot;, 6);  // Hide cursor
-189   } else {
-190     write(STDOUT_FILENO, &quot;\033[?25h&quot;, 6);  // Show cursor
-191   }
-192   return ASCIICHAT_OK;
-193 }</pre>
+<pre>184                                                   {
+185   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
+186   if (!enabled) {
+187     write(STDOUT_FILENO, &quot;\033[?25l&quot;, 6); // Hide cursor
+188   } else {
+189     write(STDOUT_FILENO, &quot;\033[?25h&quot;, 6); // Show cursor
+190   }
+191   return ASCIICHAT_OK;
+192 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>enabled</b>.</p>
@@ -12192,11 +12255,11 @@ while (total_sent &lt; len) {
 <p class="Pp">Use <b>detect_terminal_capabilities()</b> for comprehensive
     capability detection.</p>
 </div>
-<p class="Pp">Definition at line <b>97</b> of file
+<p class="Pp">Definition at line <b>96</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>97                                   {
-98   return true; // xterm.js supports UTF-8
-99 }</pre>
+<pre>96                                   {
+97   return true;
+98 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>, and
@@ -12254,7 +12317,7 @@ while (total_sent &lt; len) {
 28 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_PLATFORM_INIT</b>, <b>log_debug</b>,
     and <b>SET_ERRNO</b>.</p>
 </section>
@@ -12267,7 +12330,7 @@ while (total_sent &lt; len) {
   [extern]</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/windows_errno.h</b>&gt;<b></b></p>
-<p class="Pp">Referenced by <b>acds_identity_load()</b>, <b>acds_main()</b>,
+<p class="Pp">Referenced by <b>acds_identity_load()</b>,
     <b>acip_tcp_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>, <b>add_client()</b>,
     <b>asciichat_pcre2_extract_group_ulong()</b>, <b>connect_with_timeout()</b>,
@@ -12347,7 +12410,7 @@ while (total_sent &lt; len) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

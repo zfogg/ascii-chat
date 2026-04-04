@@ -40,9 +40,9 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>tcp_server_t</b> <b>tcp_server</b>
+<p class="Pp"><b>tcp_server_t</b> * <b>tcp_server</b>
   <br/>
-  TCP server abstraction. <b>uint8_t</b> <b>identity_public</b> [32]
+  TCP server (owned by server_like). <b>uint8_t</b> <b>identity_public</b> [32]
   <br/>
   Ed25519 public key. <b>uint8_t</b> <b>identity_secret</b> [64]
   <br/>
@@ -93,8 +93,8 @@
 <p class="Pp">Runtime configuration.</p>
 <p class="Pp">Definition at line <b>140</b> of file
     <b>src/discovery-service/server.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>acds_server_run()</b>,
-    and <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>, and
+    <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="sqlite3*_acds_server_t::db"><a class="permalink" href="#sqlite3*_acds_server_t::db">sqlite3*
@@ -154,14 +154,13 @@
     <b>acds_server_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>tcp_server_t</b> acds_server_t::tcp_server</h2>
-<p class="Pp">TCP server abstraction.</p>
+<h2 class="Ss"><b>tcp_server_t</b>* acds_server_t::tcp_server</h2>
+<p class="Pp">TCP server (owned by server_like).</p>
 <p class="Pp">Definition at line <b>116</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_server_init()</b>, <b>acds_server_run()</b>,
-    <b>acds_server_shutdown()</b>, and
-  <b>acds_websocket_client_handler()</b>.</p>
+    <b>acds_server_init()</b>, <b>acds_server_shutdown()</b>, and
+    <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_t</b>* acds_server_t::worker_pool</h2>
@@ -180,7 +179,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

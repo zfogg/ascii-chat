@@ -347,29 +347,29 @@ $ ascii-chat mirror --file movie.mp4
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>377</b> of file <b>mirror/main.c</b>.</p>
-<pre>377                       {
-378   log_info(&quot;[MIRROR] main ENTRY&quot;);
-379 
-380   // Configure mode-specific session settings
-381   session_client_like_config_t config = {
-382       .run_fn = mirror_run,
-383       .run_user_data = NULL,
-384       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
-385       .keyboard_handler = mirror_keyboard_handler,
-386       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-387   };
-388 
-389   // Run shared initialization/teardown with mode-specific loop
-390   asciichat_error_t result = session_client_like_run(&amp;config);
-391   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-392 
-393   if (result != ASCIICHAT_OK) {
-394     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-395   }
-396 
-397   return (int)result;
-398 }</pre>
+<p class="Pp">Definition at line <b>379</b> of file <b>mirror/main.c</b>.</p>
+<pre>379                       {
+380   log_info(&quot;[MIRROR] main ENTRY&quot;);
+381 
+382   // Configure mode-specific session settings
+383   session_client_like_config_t config = {
+384       .run_fn = mirror_run,
+385       .run_user_data = NULL,
+386       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+387       .keyboard_handler = mirror_keyboard_handler,
+388       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+389   };
+390 
+391   // Run shared initialization/teardown with mode-specific loop
+392   asciichat_error_t result = session_client_like_run(&amp;config);
+393   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
+394 
+395   if (result != ASCIICHAT_OK) {
+396     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
+397   }
+398 
+399   return (int)result;
+400 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>,
@@ -384,7 +384,7 @@ $ ascii-chat mirror --file movie.mp4
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

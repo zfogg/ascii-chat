@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread.h - WASM stub for thread.h - avoids including pthread.h
+    which has Emscripten-incompatible attributes.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>asciichat_thread_create</b>(thread_ptr, attr,
+    start_routine, arg)
+  <br/>
+  #define <b>asciichat_thread_join</b>(thread, timeout_ms)
+  <br/>
+  #define <b>asciichat_thread_detach</b>(thread)
+  <br/>
+  #define <b>asciichat_thread_self</b>()
+  <br/>
+  #define <b>asciichat_thread_equal</b>(t1, t2)
+  <br/>
+  #define <b>asciichat_thread_exit</b>(status)
+  <br/>
+  #define <b>asciichat_thread_initialized</b>(thread)
+  <br/>
+  #define <b>thread_id_self</b>()
+  <br/>
+  #define <b>thread_id_equal</b>(id1, id2)
+  <br/>
+  #define <b>tls_key_create</b>(key_ptr)
+  <br/>
+  #define <b>tls_key_delete</b>(key)
+  <br/>
+  #define <b>tls_getspecific</b>(key)
+  <br/>
+  #define <b>tls_setspecific</b>(key, value)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void * <b>asciichat_thread_t</b>
+  <br/>
+  typedef void * <b>thread_id_t</b>
+  <br/>
+  typedef void * <b>tls_key_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WASM stub for thread.h - avoids including pthread.h which has
+    Emscripten-incompatible attributes.</p>
+<p class="Pp">In WASM, we don't support actual threads. This provides type
+    definitions that allow the code to compile without including the system
+    pthread.h, which has attributes like 'regparm' that Emscripten doesn't
+    support.</p>
+<p class="Pp">Definition in file <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)"><a class="permalink" href="#_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)">#define
+  asciichat_thread_create( thread_ptr, attr, start_routine, arg)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>,
+    <b>audio_start_duplex()</b>, <b>create_client_render_threads()</b>,
+    <b>debug_sync_start_thread()</b>, <b>discover_session_parallel()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, <b>parallel_connect()</b>,
+    <b>session_host_start()</b>, <b>session_host_start_render()</b>,
+    <b>session_participant_start_audio_capture()</b>,
+    <b>session_participant_start_video_capture()</b>,
+    <b>session_pipeline_create()</b>, <b>session_server_like_run()</b>,
+    <b>splash_intro_start()</b>, <b>tcp_server_run()</b>,
+    <b>tcp_server_spawn_thread()</b>, <b>thread_create_or_fail()</b>,
+    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>, and
+    <b>update_banner_start_check()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_detach(_thread)"><a class="permalink" href="#_define_asciichat_thread_detach(_thread)">#define
+  asciichat_thread_detach( thread)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>23</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_equal(_t1,__t2)"><a class="permalink" href="#_define_asciichat_thread_equal(_t1,__t2)">#define
+  asciichat_thread_equal( t1, t2)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(t1 == t2)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_cleanup_current_thread()</b>, and
+    <b>remove_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_exit(_status)"><a class="permalink" href="#_define_asciichat_thread_exit(_status)">#define
+  asciichat_thread_exit( status)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void)0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_initialized(_thread)"><a class="permalink" href="#_define_asciichat_thread_initialized(_thread)">#define
+  asciichat_thread_initialized( thread)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>false</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>27</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_join(_thread,__timeout_ms)"><a class="permalink" href="#_define_asciichat_thread_join(_thread,__timeout_ms)">#define
+  asciichat_thread_join( thread, timeout_ms)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
+    <b>discover_session_parallel()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>parallel_connect()</b>, <b>remove_client()</b>,
+    <b>session_host_start()</b>, <b>session_host_stop()</b>,
+    <b>session_host_stop_render()</b>,
+    <b>session_participant_stop_audio_capture()</b>,
+    <b>session_participant_stop_video_capture()</b>,
+    <b>session_pipeline_create()</b>, <b>splash_wait_for_animation()</b>,
+    <b>stop_client_render_threads()</b>, <b>stop_client_threads()</b>, and
+    <b>update_banner_wait_for_check()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_asciichat_thread_self(_void)"><a class="permalink" href="#_define_asciichat_thread_self(_void)">#define
+  asciichat_thread_self( void)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((asciichat_thread_t)NULL)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_print()</b>,
+    <b>client_receive_thread()</b>, <b>log_lock_terminal()</b>,
+    <b>log_plain_msg()</b>, <b>main()</b>,
+    <b>mutex_stack_cleanup_current_thread()</b>, and <b>remove_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_thread_id_equal(_id1,__id2)"><a class="permalink" href="#_define_thread_id_equal(_id1,__id2)">#define
+  thread_id_equal( id1, id2)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(id1 == id2)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_thread_id_self()"><a class="permalink" href="#_define_thread_id_self()">#define
+  thread_id_self()</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((thread_id_t)NULL)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>29</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_tls_getspecific(_key)"><a class="permalink" href="#_define_tls_getspecific(_key)">#define
+  tls_getspecific( key)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void*)NULL)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>34</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_tls_key_create(_key_ptr)"><a class="permalink" href="#_define_tls_key_create(_key_ptr)">#define
+  tls_key_create( key_ptr)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>32</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_tls_key_delete(_key)"><a class="permalink" href="#_define_tls_key_delete(_key)">#define
+  tls_key_delete( key)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void)0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_tls_setspecific(_key,__value)"><a class="permalink" href="#_define_tls_setspecific(_key,__value)">#define
+  tls_setspecific( key, value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef void* <b>asciichat_thread_t</b></h2>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void* <b>thread_id_t</b></h2>
+<p class="Pp">Definition at line <b>17</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void* <b>tls_key_t</b></h2>
+<p class="Pp">Definition at line <b>18</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

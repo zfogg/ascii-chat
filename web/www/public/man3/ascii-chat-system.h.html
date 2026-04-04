@@ -120,7 +120,13 @@
   Get an environment variable value. int <b>platform_setenv</b> (const char
     *name, const char *value)
   <br/>
-  Set an environment variable. <b>platform_stderr_redirect_handle_t</b>
+  Set an environment variable. int <b>platform_unsetenv</b> (const char *name)
+  <br/>
+  Remove an environment variable. void <b>platform_raise_fd_limit</b> (unsigned
+    int limit)
+  <br/>
+  Raise the file descriptor limit for the current process.
+    <b>platform_stderr_redirect_handle_t</b>
     <b>platform_stderr_redirect_to_null</b> (void)
   <br/>
   Redirect stderr to /dev/null temporarily. void <b>platform_stderr_restore</b>
@@ -207,7 +213,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

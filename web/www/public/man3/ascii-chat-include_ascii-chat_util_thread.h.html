@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread.h - &#x1F9F5; Thread lifecycle management helpers</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>THREAD_IS_CREATED</b>(created_flag)
+  <br/>
+  #define <b>THREAD_CREATE_SAFE</b>(thread_var, func, arg)
+  <br/>
+  #define <b>THREAD_CREATE_OR_RETURN_VOID</b>(thread_var, func, arg, error_msg)
+  <br/>
+  #define <b>THREAD_JOIN_SAFE</b>(thread_var, exit_code)
+  <br/>
+  #define <b>THREAD_JOIN</b>(thread_var)
+  <br/>
+  #define <b>THREAD_CLEAR_HANDLE</b>(thread_var)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9F5; Thread lifecycle management helpers</p>
+<p class="Pp">Provides macros and utilities for managing thread creation,
+    initialization, and cleanup patterns. Reduces code duplication in modules
+    that manage dedicated worker threads.</p>
+<p class="Pp"></p>
+<p class="Pp">Common Pattern: Many modules in ascii-chat create dedicated
+    threads with a similar lifecycle:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Initialize a static thread handle</dd>
+  <dt>2.</dt>
+  <dd>Create the thread on demand</dd>
+  <dt>3.</dt>
+  <dd>Track creation status with a boolean flag</dd>
+  <dt>4.</dt>
+  <dd>Join the thread during cleanup</dd>
+  <dt>5.</dt>
+  <dd>Clear the handle to prevent accidental reuse</dd>
+</dl>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>// In module header
+typedef struct {
+<br/>
+    asciichat_thread_t thread_handle;
+<br/>
+    bool created;
+} my_worker_t;
+// In module implementation
+static my_worker_t g_worker = {0};
+void start_worker(void) {
+<br/>
+    if (THREAD_IS_CREATED(g_worker.created)) {
+<br/>
+        return;  // Already created
+<br/>
+    }
+<br/>
+    if (THREAD_CREATE_SAFE(g_worker.thread_handle, worker_func, NULL) != 0) {
+<br/>
+        log_error(&quot;Failed to create worker thread&quot;);
+<br/>
+        return;
+<br/>
+    }
+<br/>
+    g_worker.created = true;
+}
+void stop_worker(void) {
+<br/>
+    if (THREAD_IS_CREATED(g_worker.created)) {
+<br/>
+        THREAD_JOIN_SAFE(g_worker.thread_handle);
+<br/>
+        THREAD_CLEAR_HANDLE(g_worker.thread_handle);
+<br/>
+        g_worker.created = false;
+<br/>
+    }
+}
+</pre>
+<p class="Pp">Definition in file <b>include/ascii-chat/util/thread.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_CLEAR_HANDLE(_thread_var)"><a class="permalink" href="#_define_THREAD_CLEAR_HANDLE(_thread_var)">#define
+  THREAD_CLEAR_HANDLE( thread_var)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>memset(&amp;(thread_var), 0, sizeof(thread_var))</pre>
+<pre></pre>
+<p class="Pp">Initialize a thread handle to an invalid/uninitialized state. Call
+    this before creating the thread to ensure clean state.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread_var</i> Thread handle
+  (<b>asciichat_thread_t</b>)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>static asciichat_thread_t g_worker = THREAD_INVALID;
+</pre>
+<p class="Pp">Definition at line <b>145</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__error_msg)"><a class="permalink" href="#_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__error_msg)">#define
+  THREAD_CREATE_OR_RETURN_VOID( thread_var, func, arg, error_msg)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (asciichat_thread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
+<br/>
+    log_error(&quot;%s&quot;, (error_msg));                                                                                    \
+<br/>
+    return;                                                                                                          \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp">Create a thread with automatic error handling and logging (void
+    return version).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread_var</i> Thread handle
+  (<b>asciichat_thread_t</b>)
+<br/>
+<i>func</i> Thread function pointer
+<br/>
+<i>arg</i> Thread argument
+<br/>
+<i>error_msg</i> Message to log on failure</div>
+<p class="Pp">On failure, logs an error and the macro exits the enclosing
+    function with return. Useful for mandatory thread creation where failure is
+    fatal.</p>
+<p class="Pp"></p>
+<p class="Pp">Note: Use THREAD_CREATE_OR_RETURN from common.h for int-returning
+    functions. This version is for void-returning functions with custom error
+    messages.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>THREAD_CREATE_OR_RETURN_VOID(g_worker_thread, worker_func, NULL, &quot;Failed to create worker&quot;);
+</pre>
+<p class="Pp">Definition at line <b>97</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+<pre>97 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
+98   do {                                                                                                                 \
+99     if (asciichat_thread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
+100       log_error(&quot;%s&quot;, (error_msg));                                                                                    \
+101       return;                                                                                                          \
+102     }                                                                                                                  \
+103   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)"><a class="permalink" href="#_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)">#define
+  THREAD_CREATE_SAFE( thread_var, func, arg)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>asciichat_thread_create(&amp;(thread_var), (func), (arg))</pre>
+<pre></pre>
+<p class="Pp">Safely create a thread with error handling and logging. Does NOT
+    set the created flag - caller must do that.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread_var</i> Thread handle
+  (<b>asciichat_thread_t</b>)
+<br/>
+<i>func</i> Thread function pointer (void *(*)(void *))
+<br/>
+<i>arg</i> Thread argument (void *)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Return value from asciichat_thread_create (0 on
+  success)</div>
+<p class="Pp">This is a direct call to asciichat_thread_create with no error
+    handling. Caller should check return value and log if needed.</p>
+<p class="Pp">Definition at line <b>76</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_IS_CREATED(_created_flag)"><a class="permalink" href="#_define_THREAD_IS_CREATED(_created_flag)">#define
+  THREAD_IS_CREATED( created_flag)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((created_flag) == true)</pre>
+<pre></pre>
+<p class="Pp">Check if a thread has been created.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>created_flag</i> Boolean flag indicating thread
+  creation status</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if thread has been created, false otherwise</div>
+<p class="Pp">Definition at line <b>62</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_sender_cleanup()</b>,
+    <b>audio_stop_thread()</b>, <b>capture_start_thread()</b>, and
+    <b>capture_stop_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_JOIN(_thread_var)"><a class="permalink" href="#_define_THREAD_JOIN(_thread_var)">#define
+  THREAD_JOIN( thread_var)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>asciichat_thread_join(&amp;(thread_var), NULL)</pre>
+<pre></pre>
+<p class="Pp">Join a thread without capturing its exit code. Simpler version
+    when exit code is not needed.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread_var</i> Thread handle
+  (<b>asciichat_thread_t</b>)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>THREAD_JOIN(g_worker_thread);
+</pre>
+<p class="Pp">Definition at line <b>132</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_THREAD_JOIN_SAFE(_thread_var,__exit_code)"><a class="permalink" href="#_define_THREAD_JOIN_SAFE(_thread_var,__exit_code)">#define
+  THREAD_JOIN_SAFE( thread_var, exit_code)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>asciichat_thread_join(&amp;(thread_var), (exit_code))</pre>
+<pre></pre>
+<p class="Pp">Join a thread and wait for it to complete. Returns the thread's
+    exit code in the output parameter.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread_var</i> Thread handle
+  (<b>asciichat_thread_t</b>)
+<br/>
+<i>exit_code</i> Pointer to store thread exit code (void **), or NULL to
+  ignore</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>void *exit_code = NULL;
+THREAD_JOIN_SAFE(g_worker_thread, &amp;exit_code);
+log_debug(&quot;Worker thread exited with code %p&quot;, exit_code);
+</pre>
+<p class="Pp">Definition at line <b>119</b> of file
+    <b>include/ascii-chat/util/thread.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

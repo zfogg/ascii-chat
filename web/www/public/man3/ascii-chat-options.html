@@ -1318,34 +1318,35 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 1245   })</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>add_client()</b>,
-    <b>add_webrtc_client()</b>, <b>ascii_convert()</b>, <b>audio_cleanup()</b>,
-    <b>audio_client_init()</b>, <b>audio_process_received_samples()</b>,
-    <b>audio_start_duplex()</b>, <b>audio_start_thread()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, <b>capture_init()</b>,
-    <b>client_audio_render_thread()</b>, <b>client_crypto_handshake()</b>,
-    <b>client_crypto_init()</b>, <b>client_main()</b>,
-    <b>client_send_thread_func()</b>, <b>connection_attempt_tcp()</b>,
-    <b>connection_attempt_websocket()</b>, <b>crypto_client_is_ready()</b>,
-    <b>crypto_server_is_ready()</b>, <b>discovery_main()</b>,
-    <b>discovery_session_become_host()</b>, <b>discovery_session_process()</b>,
-    <b>display_init()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_encoder_create()</b>, <b>ffmpeg_encoder_destroy()</b>,
-    <b>ffmpeg_encoder_write_frame()</b>, <b>get_color_filter()</b>,
-    <b>get_color_mode()</b>, <b>get_flip_x()</b>, <b>get_flip_y()</b>,
-    <b>get_height()</b>, <b>get_matrix_rain()</b>, <b>get_palette()</b>,
-    <b>get_palette_chars()</b>, <b>get_render_mode()</b>,
-    <b>get_target_fps()</b>, <b>get_width()</b>,
+<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
+    <b>ascii_convert()</b>, <b>audio_cleanup()</b>, <b>audio_client_init()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_start_duplex()</b>,
+    <b>audio_start_thread()</b>, <b>broadcast_server_state_to_all_clients()</b>,
+    <b>capture_init()</b>, <b>client_audio_render_thread()</b>,
+    <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
+    <b>client_main()</b>, <b>client_send_thread_func()</b>,
+    <b>connection_attempt_tcp()</b>, <b>connection_attempt_websocket()</b>,
+    <b>crypto_client_is_ready()</b>, <b>crypto_server_is_ready()</b>,
+    <b>discovery_main()</b>, <b>discovery_session_become_host()</b>,
+    <b>discovery_session_process()</b>, <b>display_init()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_encoder_create()</b>,
+    <b>ffmpeg_encoder_destroy()</b>, <b>ffmpeg_encoder_write_frame()</b>,
+    <b>get_color_filter()</b>, <b>get_color_mode()</b>, <b>get_flip_x()</b>,
+    <b>get_flip_y()</b>, <b>get_font_default_ptr()</b>,
+    <b>get_font_default_size()</b>, <b>get_height()</b>,
+    <b>get_matrix_rain()</b>, <b>get_palette()</b>, <b>get_palette_chars()</b>,
+    <b>get_render_mode()</b>, <b>get_target_fps()</b>, <b>get_width()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
     <b>main()</b>, <b>media_source_create()</b>, <b>mirror_convert_frame()</b>,
-    <b>protocol_start_connection()</b>, <b>protocol_stop_connection()</b>,
-    <b>render_file_create()</b>, <b>render_file_write_frame()</b>,
-    <b>send_packet_secure()</b>, <b>server_connection_cleanup()</b>,
-    <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
-    <b>server_crypto_handshake()</b>, <b>server_crypto_init()</b>,
-    <b>server_main()</b>, <b>session_capture_create()</b>,
-    <b>session_client_like_run()</b>, <b>session_display_convert_to_ascii()</b>,
-    <b>session_display_create()</b>, <b>session_display_write_ascii()</b>,
+    <b>mirror_init_with_args()</b>, <b>protocol_start_connection()</b>,
+    <b>protocol_stop_connection()</b>, <b>render_file_create()</b>,
+    <b>render_file_write_frame()</b>, <b>send_packet_secure()</b>,
+    <b>server_connection_cleanup()</b>, <b>server_connection_close()</b>,
+    <b>server_connection_establish()</b>, <b>server_crypto_handshake()</b>,
+    <b>server_crypto_init()</b>, <b>server_main()</b>,
+    <b>session_capture_create()</b>, <b>session_client_like_run()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
+    <b>session_display_write_ascii()</b>,
     <b>session_handle_keyboard_input()</b>, <b>session_pipeline_run_main()</b>,
     <b>session_render_loop()</b>, <b>session_server_like_run()</b>,
     <b>session_settings_init()</b>, <b>splash_should_display()</b>,
@@ -1696,7 +1697,6 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Default STUN servers (comma-separated list).</p>
 <p class="Pp">Definition at line <b>617</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_OPT_ENDPOINT_TURN_PRIMARY___'turn:turn"><a class="permalink" href="#_define_OPT_ENDPOINT_TURN_PRIMARY___'turn:turn">#define
@@ -2660,7 +2660,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     arrays that store option values.</p>
 <p class="Pp">Definition at line <b>295</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>config_create_default()</b>,
+<p class="Pp">Referenced by <b>config_create_default()</b>,
     <b>options_collect_identity_keys()</b>, <b>options_init()</b>,
     <b>parse_client_address()</b>, <b>parse_mirror_media()</b>,
     <b>parse_server_bind_address()</b>, and
@@ -3140,11 +3140,11 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if an action flag was passed</div>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
     <b>lib/options/options.c</b>.</p>
-<pre>140                            {
-141   return g_action_flag;
-142 }</pre>
+<pre>136                            {
+137   return g_action_flag;
+138 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -4581,10 +4581,10 @@ opts = options_get();  // Returns static defaults again
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_load()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>client_crypto_init()</b>,
-    <b>client_main()</b>, <b>discovery_session_create()</b>,
-    <b>discovery_session_process()</b>, <b>log_set_terminal_output()</b>,
-    <b>main()</b>, <b>nat_detect_quality()</b>, <b>options_set_bool()</b>,
+<p class="Pp">Referenced by <b>client_crypto_init()</b>, <b>client_main()</b>,
+    <b>discovery_session_create()</b>, <b>discovery_session_process()</b>,
+    <b>log_set_terminal_output()</b>, <b>main()</b>,
+    <b>nat_detect_quality()</b>, <b>options_set_bool()</b>,
     <b>options_set_double()</b>, <b>options_set_int()</b>,
     <b>options_set_string()</b>, <b>server_crypto_handshake()</b>,
     <b>session_settings_from_options()</b>, <b>terminal_screen_render()</b>, and
@@ -4905,1361 +4905,1361 @@ if (help) {
 <p class="Pp"></p>
 <p class="Pp">After return, options accessible via <b>GET_OPTION()</b> macro</p>
 </div>
-<p class="Pp">Definition at line <b>856</b> of file
+<p class="Pp">Definition at line <b>852</b> of file
     <b>lib/options/options.c</b>.</p>
-<pre>856                                                       {
-857   log_debug(&quot;options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s&quot;, argc, argv[0], argc &gt; 1 ? argv[1] : &quot;N/A&quot;);
-858   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
-859   // This allows ALL logs (including from shared_init) to be filtered
-860   // Validate arguments (safety check for tests)
-861   if (argc &lt; 0 || argc &gt; 128) {
-862     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid argc: %d&quot;, argc);
-863   }
-864   if (argv == NULL) {
-865     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;argv is NULL&quot;);
-866   }
-867   // Validate all argv elements are non-NULL up to argc
-868   for (int i = 0; i &lt; argc; i++) {
-869     if (argv[i] == NULL) {
-870       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;argv[%d] is NULL (argc=%d)&quot;, i, argc);
-871     }
-872   }
-873   // Initialize RCU options system (must be done before any threads start)
-874   // This must happen FIRST, before any other initialization
-875   asciichat_error_t rcu_init_result = options_state_init();
-876   if (rcu_init_result != ASCIICHAT_OK) {
-877     return rcu_init_result;
-878   }
+<pre>852                                                       {
+853   log_debug(&quot;options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s&quot;, argc, argv[0], argc &gt; 1 ? argv[1] : &quot;N/A&quot;);
+854   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
+855   // This allows ALL logs (including from shared_init) to be filtered
+856   // Validate arguments (safety check for tests)
+857   if (argc &lt; 0 || argc &gt; 128) {
+858     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid argc: %d&quot;, argc);
+859   }
+860   if (argv == NULL) {
+861     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;argv is NULL&quot;);
+862   }
+863   // Validate all argv elements are non-NULL up to argc
+864   for (int i = 0; i &lt; argc; i++) {
+865     if (argv[i] == NULL) {
+866       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;argv[%d] is NULL (argc=%d)&quot;, i, argc);
+867     }
+868   }
+869   // Initialize RCU options system (must be done before any threads start)
+870   // This must happen FIRST, before any other initialization
+871   asciichat_error_t rcu_init_result = options_state_init();
+872   if (rcu_init_result != ASCIICHAT_OK) {
+873     return rcu_init_result;
+874   }
+875 
+876   // ========================================================================
+877   // STAGE 1: Mode Detection and Binary-Level Option Handling
+878   // ========================================================================
 879 
-880   // ========================================================================
-881   // STAGE 1: Mode Detection and Binary-Level Option Handling
-882   // ========================================================================
-883 
-884   // Check for binary-level actions FIRST (before mode detection)
-885   // These actions may take arguments, so we need to check them before mode detection
-886   bool show_version = false;
-887   bool create_config = false;
-888   bool create_manpage = false;
-889   bool has_action = false; // Track if any action flag is present
-890   const char *config_create_path = NULL;
-891   const char *manpage_create_path = NULL;
-892 
-893   // ========================================================================
-894   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
-895   // ========================================================================
-896   // Quick scan for action flags (they may have arguments)
-897   // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
-898   // Also scan for --quiet / -q so we can suppress logging from the start
-899   // Also scan for --color early so it affects help output colors
-900   bool user_quiet = false;
-901   int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
-902   bool color_setting_found = false;
-903   bool check_update_flag_seen = false;
-904   bool no_check_update_flag_seen = false;
-905 
-906   // FIRST: Scan entire argv for --help (special case - works before OR after mode)
-907   for (int i = 1; i &lt; argc; i++) {
-908     if (strcmp(argv[i], &quot;--help&quot;) == 0 || strcmp(argv[i], &quot;-h&quot;) == 0) {
-909       // Scan backwards to find if a mode was specified before --help
-910       asciichat_mode_t help_mode = MODE_DISCOVERY; // Default to discovery mode (binary-level help)
-911       for (int j = i - 1; j &gt;= 1; j--) {
-912         if (argv[j][0] != '-') {
-913           if (strcmp(argv[j], &quot;server&quot;) == 0) {
-914             help_mode = MODE_SERVER;
-915           } else if (strcmp(argv[j], &quot;client&quot;) == 0) {
-916             help_mode = MODE_CLIENT;
-917           } else if (strcmp(argv[j], &quot;mirror&quot;) == 0) {
-918             help_mode = MODE_MIRROR;
-919           } else if (strcmp(argv[j], &quot;discovery-service&quot;) == 0) {
-920             help_mode = MODE_DISCOVERY_SERVICE;
-921           } else if (strcmp(argv[j], &quot;discovery&quot;) == 0) {
-922             help_mode = MODE_DISCOVERY;
-923           }
-924           break; // Found first non-flag argument
-925         }
-926       }
-927 
-928       // Show help for the detected mode (or binary-level if no mode)
-929       usage(stdout, help_mode);
-930       fflush(NULL);
-931       _Exit(0);
-932     }
-933   }
-934 
-935   // THEN: Scan for other binary-level actions (stops at mode name)
-936   for (int i = 1; i &lt; argc; i++) {
-937     // Stop scanning at mode name - binary-level options must come before the mode
-938     if (argv[i][0] != '-') {
-939       bool is_mode =
-940           (strcmp(argv[i], &quot;server&quot;) == 0 || strcmp(argv[i], &quot;client&quot;) == 0 || strcmp(argv[i], &quot;mirror&quot;) == 0 ||
-941            strcmp(argv[i], &quot;discovery&quot;) == 0 || strcmp(argv[i], &quot;discovery-service&quot;) == 0);
-942       if (is_mode) {
-943         break; // Stop processing at mode name
-944       }
-945     }
-946     if (argv[i][0] == '-') {
-947       // Handle --quiet, -q, --quiet=value formats
-948       bool temp_quiet = false;
-949       if (parse_binary_bool_arg(argv[i], &amp;temp_quiet, &quot;quiet&quot;, 'q')) {
-950         if (temp_quiet) {
-951           user_quiet = true;
-952         }
-953       }
-954       // Validate --log-level and --log-file require arguments
-955       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
-956         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
-957           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
-958           return ERROR_USAGE;
-959         }
-960         i++; // Skip the argument in this loop
-961       }
-962       if (strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0) {
-963         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
-964           log_error(&quot;%s requires a file path&quot;, argv[i]);
-965           return ERROR_USAGE;
-966         }
-967         i++; // Skip the argument in this loop
-968       }
-969       // --help is handled in the first scan loop above (works before OR after mode)
-970       // Parse --color early so it affects help output colors
-971       if (strcmp(argv[i], &quot;--color&quot;) == 0) {
-972         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-973           // Check if next arg is a mode name (not a color value)
-974           const char *next_arg = argv[i + 1];
-975           bool is_mode =
-976               (strcmp(next_arg, &quot;server&quot;) == 0 || strcmp(next_arg, &quot;client&quot;) == 0 || strcmp(next_arg, &quot;mirror&quot;) == 0 ||
-977                strcmp(next_arg, &quot;discovery&quot;) == 0 || strcmp(next_arg, &quot;discovery-service&quot;) == 0);
-978 
-979           if (is_mode) {
-980             // Next arg is a mode, not a color value - default to true
-981             parsed_color_setting = COLOR_SETTING_TRUE;
-982             color_setting_found = true;
-983           } else {
-984             // Try to parse as color value
-985             char *error_msg = NULL;
-986             if (parse_color_setting(next_arg, &amp;parsed_color_setting, &amp;error_msg)) {
-987               color_setting_found = true;
-988               i++; // Skip the setting argument
-989             } else {
-990               if (error_msg) {
-991                 log_error(&quot;Error parsing --color: %s&quot;, error_msg);
-992                 free(error_msg);
-993               }
-994             }
-995           }
-996         } else {
-997           // --color without argument defaults to true (enable colors)
-998           parsed_color_setting = COLOR_SETTING_TRUE;
-999           color_setting_found = true;
-1000         }
-1001       }
-1002       // Check for --color=value format
-1003       if (strncmp(argv[i], &quot;--color=&quot;, 8) == 0) {
-1004         const char *value = argv[i] + 8;
-1005         char *error_msg = NULL;
-1006         if (parse_color_setting(value, &amp;parsed_color_setting, &amp;error_msg)) {
-1007           color_setting_found = true;
-1008         } else {
-1009           if (error_msg) {
-1010             log_error(&quot;Error parsing --color: %s&quot;, error_msg);
-1011             free(error_msg);
-1012           }
-1013         }
-1014       }
-1015       if (strcmp(argv[i], &quot;--version&quot;) == 0 || strcmp(argv[i], &quot;-v&quot;) == 0) {
-1016         show_version = true;
-1017         has_action = true;
-1018         break;
-1019       }
-1020       if (strcmp(argv[i], &quot;--check-update&quot;) == 0) {
-1021         check_update_flag_seen = true;
-1022         if (no_check_update_flag_seen) {
-1023           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
-1024           return ERROR_USAGE;
-1025         }
-1026         has_action = true;
-1027         action_check_update_immediate();
-1028         // action_check_update_immediate() calls _Exit(), so we don't reach here
-1029         break;
-1030       }
-1031       if (strcmp(argv[i], &quot;--no-check-update&quot;) == 0) {
-1032         no_check_update_flag_seen = true;
-1033         if (check_update_flag_seen) {
-1034           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
-1035           return ERROR_USAGE;
-1036         }
-1037         // Flag will be parsed normally later
-1038       }
-1039       if (strcmp(argv[i], &quot;--config-create&quot;) == 0) {
-1040         create_config = true;
-1041         has_action = true;
-1042         // Check for optional [FILE] argument
-1043         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1044           config_create_path = argv[i + 1];
-1045           i++; // Consume the file path argument
-1046         }
-1047         break;
-1048       }
-1049       if (strcmp(argv[i], &quot;--man-page-create&quot;) == 0) {
-1050         create_manpage = true;
-1051         has_action = true;
-1052         // Check for optional [FILE] argument
-1053         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1054           manpage_create_path = argv[i + 1];
-1055           i++; // Consume the file path argument
-1056         }
-1057         break;
-1058       }
-1059       if (strcmp(argv[i], &quot;--completions&quot;) == 0) {
-1060         has_action = true;
-1061         // Handle --completions: generate shell completion scripts
-1062         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1063           const char *shell_name = argv[i + 1];
-1064           i++; // Consume shell name
-1065 
-1066           // Check for optional output file
-1067           const char *output_file = NULL;
-1068           if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1069             output_file = argv[i + 1];
-1070             i++; // Consume output file
-1071           }
-1072 
-1073           action_completions(shell_name, output_file);
-1074           // action_completions() calls _Exit(), so we don't reach here
-1075         } else {
-1076           log_error(&quot;--completions requires shell name (bash, fish, zsh, powershell)&quot;);
-1077           return ERROR_USAGE;
-1078         }
-1079         break; // Unreachable, but for clarity
-1080       }
-1081       if (strcmp(argv[i], &quot;--list-webcams&quot;) == 0) {
-1082         has_action = true;
-1083         action_list_webcams();
-1084         // action_list_webcams() calls _Exit(), so we don't reach here
-1085         break;
-1086       }
-1087       if (strcmp(argv[i], &quot;--list-microphones&quot;) == 0) {
-1088         has_action = true;
-1089         action_list_microphones();
-1090         // action_list_microphones() calls _Exit(), so we don't reach here
-1091         break;
-1092       }
-1093       if (strcmp(argv[i], &quot;--list-speakers&quot;) == 0) {
-1094         has_action = true;
-1095         action_list_speakers();
-1096         // action_list_speakers() calls _Exit(), so we don't reach here
-1097         break;
-1098       }
-1099       // Check for --show-capabilities (binary-level action)
-1100       if (strcmp(argv[i], &quot;--show-capabilities&quot;) == 0) {
-1101         has_action = true;
-1102         action_show_capabilities_immediate();
-1103         // action_show_capabilities_immediate() calls _Exit(), so we don't reach here
-1104         break;
-1105       }
-1106     }
-1107   }
-1108   // Store action flag globally for use during cleanup
-1109   set_action_flag(has_action);
-1110   // ========================================================================
-1111   // STAGE 1B: DO MODE DETECTION EARLY (needed for log_init)
-1112   // ========================================================================
-1113   asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
-1114   char detected_session_string[SESSION_STRING_BUFFER_SIZE] = {0};
-1115   int mode_index = -1;
-1116 
-1117   asciichat_error_t mode_detect_result =
-1118       options_detect_mode(argc, argv, &amp;detected_mode, detected_session_string, &amp;mode_index);
-1119   if (mode_detect_result != ASCIICHAT_OK) {
-1120     return mode_detect_result;
-1121   }
-1122 
-1123   // VALIDATE: Binary-level options must appear BEFORE the mode
-1124   // Check if any binary-level options appear after the mode position
-1125   if (mode_index &gt; 0) {
-1126     for (int i = mode_index + 1; i &lt; argc; i++) {
-1127       if (argv[i][0] == '-') {
-1128         bool takes_arg = false;
-1129         bool takes_optional_arg = false;
-1130 
-1131         if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
-1132           return SET_ERRNO(ERROR_USAGE, &quot;Binary-level option '%s' must appear before the mode '%s', not after it&quot;,
-1133                            argv[i], argv[mode_index]);
-1134         }
-1135       }
-1136     }
-1137   }
-1138   // ========================================================================
-1139   // STAGE 1C: Initialize logging EARLY (before any log_dev calls)
-1140   // ========================================================================
-1141   // Create local options struct and initialize with defaults
-1142   options_t opts = options_t_new(); // Initialize with all defaults
-1143   opts.detected_mode = detected_mode;
-1144   char *log_filename = options_get_log_filepath(detected_mode, opts);
-1145   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, &quot;%s&quot;, log_filename);
-1146   // Note: log_init() is called earlier in asciichat_shared_init() and will be
-1147   // reconfigured with the actual log level and file in main.c after options are fully parsed
-1148   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
-1149   // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
-1150   //
-1151   // NOTE: Timer system and shared subsystems are initialized by src/main.c
-1152   // via asciichat_shared_init() BEFORE options_init() is called.
-1153   // This allows options_init() to use properly configured logging.
-1154 
-1155   // If an action flag is detected OR user passed --quiet, silence logs for clean output
-1156   if (user_quiet || has_action) {
-1157     log_set_terminal_output(false); // Suppress console logging for clean action output
-1158   }
-1159   // Apply parsed color setting from STAGE 1A
-1160   if (color_setting_found) {
-1161     opts.color = parsed_color_setting;
-1162   } else {
-1163     opts.color = OPT_COLOR_DEFAULT; // Apply default
-1164   }
-1165 
-1166   // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
-1167   if (show_version || create_config || create_manpage) {
-1168     if (show_version) {
-1169       opts.version = true;
-1170       options_state_set(&amp;opts);
-1171       return ASCIICHAT_OK;
-1172     } else if (create_config) {
-1173       // Build the schema first so config_create_default can generate options from it
-1174       const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-1175       if (unified_config) {
-1176         asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
-1177         if (schema_build_result != ASCIICHAT_OK) {
-1178           // Schema build failed, but continue anyway
-1179           (void)schema_build_result;
-1180         }
-1181         options_config_destroy(unified_config);
-1182       }
-1183 
+880   // Check for binary-level actions FIRST (before mode detection)
+881   // These actions may take arguments, so we need to check them before mode detection
+882   bool show_version = false;
+883   bool create_config = false;
+884   bool create_manpage = false;
+885   bool has_action = false; // Track if any action flag is present
+886   const char *config_create_path = NULL;
+887   const char *manpage_create_path = NULL;
+888 
+889   // ========================================================================
+890   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
+891   // ========================================================================
+892   // Quick scan for action flags (they may have arguments)
+893   // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
+894   // Also scan for --quiet / -q so we can suppress logging from the start
+895   // Also scan for --color early so it affects help output colors
+896   bool user_quiet = false;
+897   int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
+898   bool color_setting_found = false;
+899   bool check_update_flag_seen = false;
+900   bool no_check_update_flag_seen = false;
+901 
+902   // FIRST: Scan entire argv for --help (special case - works before OR after mode)
+903   for (int i = 1; i &lt; argc; i++) {
+904     if (strcmp(argv[i], &quot;--help&quot;) == 0 || strcmp(argv[i], &quot;-h&quot;) == 0) {
+905       // Scan backwards to find if a mode was specified before --help
+906       asciichat_mode_t help_mode = MODE_DISCOVERY; // Default to discovery mode (binary-level help)
+907       for (int j = i - 1; j &gt;= 1; j--) {
+908         if (argv[j][0] != '-') {
+909           if (strcmp(argv[j], &quot;server&quot;) == 0) {
+910             help_mode = MODE_SERVER;
+911           } else if (strcmp(argv[j], &quot;client&quot;) == 0) {
+912             help_mode = MODE_CLIENT;
+913           } else if (strcmp(argv[j], &quot;mirror&quot;) == 0) {
+914             help_mode = MODE_MIRROR;
+915           } else if (strcmp(argv[j], &quot;discovery-service&quot;) == 0) {
+916             help_mode = MODE_DISCOVERY_SERVICE;
+917           } else if (strcmp(argv[j], &quot;discovery&quot;) == 0) {
+918             help_mode = MODE_DISCOVERY;
+919           }
+920           break; // Found first non-flag argument
+921         }
+922       }
+923 
+924       // Show help for the detected mode (or binary-level if no mode)
+925       usage(stdout, help_mode);
+926       fflush(NULL);
+927       _Exit(0);
+928     }
+929   }
+930 
+931   // THEN: Scan for other binary-level actions (stops at mode name)
+932   for (int i = 1; i &lt; argc; i++) {
+933     // Stop scanning at mode name - binary-level options must come before the mode
+934     if (argv[i][0] != '-') {
+935       bool is_mode =
+936           (strcmp(argv[i], &quot;server&quot;) == 0 || strcmp(argv[i], &quot;client&quot;) == 0 || strcmp(argv[i], &quot;mirror&quot;) == 0 ||
+937            strcmp(argv[i], &quot;discovery&quot;) == 0 || strcmp(argv[i], &quot;discovery-service&quot;) == 0);
+938       if (is_mode) {
+939         break; // Stop processing at mode name
+940       }
+941     }
+942     if (argv[i][0] == '-') {
+943       // Handle --quiet, -q, --quiet=value formats
+944       bool temp_quiet = false;
+945       if (parse_binary_bool_arg(argv[i], &amp;temp_quiet, &quot;quiet&quot;, 'q')) {
+946         if (temp_quiet) {
+947           user_quiet = true;
+948         }
+949       }
+950       // Validate --log-level and --log-file require arguments
+951       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
+952         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
+953           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
+954           return ERROR_USAGE;
+955         }
+956         i++; // Skip the argument in this loop
+957       }
+958       if (strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0) {
+959         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
+960           log_error(&quot;%s requires a file path&quot;, argv[i]);
+961           return ERROR_USAGE;
+962         }
+963         i++; // Skip the argument in this loop
+964       }
+965       // --help is handled in the first scan loop above (works before OR after mode)
+966       // Parse --color early so it affects help output colors
+967       if (strcmp(argv[i], &quot;--color&quot;) == 0) {
+968         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+969           // Check if next arg is a mode name (not a color value)
+970           const char *next_arg = argv[i + 1];
+971           bool is_mode =
+972               (strcmp(next_arg, &quot;server&quot;) == 0 || strcmp(next_arg, &quot;client&quot;) == 0 || strcmp(next_arg, &quot;mirror&quot;) == 0 ||
+973                strcmp(next_arg, &quot;discovery&quot;) == 0 || strcmp(next_arg, &quot;discovery-service&quot;) == 0);
+974 
+975           if (is_mode) {
+976             // Next arg is a mode, not a color value - default to true
+977             parsed_color_setting = COLOR_SETTING_TRUE;
+978             color_setting_found = true;
+979           } else {
+980             // Try to parse as color value
+981             char *error_msg = NULL;
+982             if (parse_color_setting(next_arg, &amp;parsed_color_setting, &amp;error_msg)) {
+983               color_setting_found = true;
+984               i++; // Skip the setting argument
+985             } else {
+986               if (error_msg) {
+987                 log_error(&quot;Error parsing --color: %s&quot;, error_msg);
+988                 free(error_msg);
+989               }
+990             }
+991           }
+992         } else {
+993           // --color without argument defaults to true (enable colors)
+994           parsed_color_setting = COLOR_SETTING_TRUE;
+995           color_setting_found = true;
+996         }
+997       }
+998       // Check for --color=value format
+999       if (strncmp(argv[i], &quot;--color=&quot;, 8) == 0) {
+1000         const char *value = argv[i] + 8;
+1001         char *error_msg = NULL;
+1002         if (parse_color_setting(value, &amp;parsed_color_setting, &amp;error_msg)) {
+1003           color_setting_found = true;
+1004         } else {
+1005           if (error_msg) {
+1006             log_error(&quot;Error parsing --color: %s&quot;, error_msg);
+1007             free(error_msg);
+1008           }
+1009         }
+1010       }
+1011       if (strcmp(argv[i], &quot;--version&quot;) == 0 || strcmp(argv[i], &quot;-v&quot;) == 0) {
+1012         show_version = true;
+1013         has_action = true;
+1014         break;
+1015       }
+1016       if (strcmp(argv[i], &quot;--check-update&quot;) == 0) {
+1017         check_update_flag_seen = true;
+1018         if (no_check_update_flag_seen) {
+1019           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
+1020           return ERROR_USAGE;
+1021         }
+1022         has_action = true;
+1023         action_check_update_immediate();
+1024         // action_check_update_immediate() calls _Exit(), so we don't reach here
+1025         break;
+1026       }
+1027       if (strcmp(argv[i], &quot;--no-check-update&quot;) == 0) {
+1028         no_check_update_flag_seen = true;
+1029         if (check_update_flag_seen) {
+1030           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
+1031           return ERROR_USAGE;
+1032         }
+1033         // Flag will be parsed normally later
+1034       }
+1035       if (strcmp(argv[i], &quot;--config-create&quot;) == 0) {
+1036         create_config = true;
+1037         has_action = true;
+1038         // Check for optional [FILE] argument
+1039         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1040           config_create_path = argv[i + 1];
+1041           i++; // Consume the file path argument
+1042         }
+1043         break;
+1044       }
+1045       if (strcmp(argv[i], &quot;--man-page-create&quot;) == 0) {
+1046         create_manpage = true;
+1047         has_action = true;
+1048         // Check for optional [FILE] argument
+1049         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1050           manpage_create_path = argv[i + 1];
+1051           i++; // Consume the file path argument
+1052         }
+1053         break;
+1054       }
+1055       if (strcmp(argv[i], &quot;--completions&quot;) == 0) {
+1056         has_action = true;
+1057         // Handle --completions: generate shell completion scripts
+1058         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1059           const char *shell_name = argv[i + 1];
+1060           i++; // Consume shell name
+1061 
+1062           // Check for optional output file
+1063           const char *output_file = NULL;
+1064           if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1065             output_file = argv[i + 1];
+1066             i++; // Consume output file
+1067           }
+1068 
+1069           action_completions(shell_name, output_file);
+1070           // action_completions() calls _Exit(), so we don't reach here
+1071         } else {
+1072           log_error(&quot;--completions requires shell name (bash, fish, zsh, powershell)&quot;);
+1073           return ERROR_USAGE;
+1074         }
+1075         break; // Unreachable, but for clarity
+1076       }
+1077       if (strcmp(argv[i], &quot;--list-webcams&quot;) == 0) {
+1078         has_action = true;
+1079         action_list_webcams();
+1080         // action_list_webcams() calls _Exit(), so we don't reach here
+1081         break;
+1082       }
+1083       if (strcmp(argv[i], &quot;--list-microphones&quot;) == 0) {
+1084         has_action = true;
+1085         action_list_microphones();
+1086         // action_list_microphones() calls _Exit(), so we don't reach here
+1087         break;
+1088       }
+1089       if (strcmp(argv[i], &quot;--list-speakers&quot;) == 0) {
+1090         has_action = true;
+1091         action_list_speakers();
+1092         // action_list_speakers() calls _Exit(), so we don't reach here
+1093         break;
+1094       }
+1095       // Check for --show-capabilities (binary-level action)
+1096       if (strcmp(argv[i], &quot;--show-capabilities&quot;) == 0) {
+1097         has_action = true;
+1098         action_show_capabilities_immediate();
+1099         // action_show_capabilities_immediate() calls _Exit(), so we don't reach here
+1100         break;
+1101       }
+1102     }
+1103   }
+1104   // Store action flag globally for use during cleanup
+1105   set_action_flag(has_action);
+1106   // ========================================================================
+1107   // STAGE 1B: DO MODE DETECTION EARLY (needed for log_init)
+1108   // ========================================================================
+1109   asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
+1110   char detected_session_string[SESSION_STRING_BUFFER_SIZE] = {0};
+1111   int mode_index = -1;
+1112 
+1113   asciichat_error_t mode_detect_result =
+1114       options_detect_mode(argc, argv, &amp;detected_mode, detected_session_string, &amp;mode_index);
+1115   if (mode_detect_result != ASCIICHAT_OK) {
+1116     return mode_detect_result;
+1117   }
+1118 
+1119   // VALIDATE: Binary-level options must appear BEFORE the mode
+1120   // Check if any binary-level options appear after the mode position
+1121   if (mode_index &gt; 0) {
+1122     for (int i = mode_index + 1; i &lt; argc; i++) {
+1123       if (argv[i][0] == '-') {
+1124         bool takes_arg = false;
+1125         bool takes_optional_arg = false;
+1126 
+1127         if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
+1128           return SET_ERRNO(ERROR_USAGE, &quot;Binary-level option '%s' must appear before the mode '%s', not after it&quot;,
+1129                            argv[i], argv[mode_index]);
+1130         }
+1131       }
+1132     }
+1133   }
+1134   // ========================================================================
+1135   // STAGE 1C: Initialize logging EARLY (before any log_dev calls)
+1136   // ========================================================================
+1137   // Create local options struct and initialize with defaults
+1138   options_t opts = options_t_new(); // Initialize with all defaults
+1139   opts.detected_mode = detected_mode;
+1140   char *log_filename = options_get_log_filepath(detected_mode, opts);
+1141   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, &quot;%s&quot;, log_filename);
+1142   // Note: log_init() is called earlier in asciichat_shared_init() and will be
+1143   // reconfigured with the actual log level and file in main.c after options are fully parsed
+1144   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
+1145   // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
+1146   //
+1147   // NOTE: Timer system and shared subsystems are initialized by src/main.c
+1148   // via asciichat_shared_init() BEFORE options_init() is called.
+1149   // This allows options_init() to use properly configured logging.
+1150 
+1151   // If an action flag is detected OR user passed --quiet, silence logs for clean output
+1152   if (user_quiet || has_action) {
+1153     log_set_terminal_output(false); // Suppress console logging for clean action output
+1154   }
+1155   // Apply parsed color setting from STAGE 1A
+1156   if (color_setting_found) {
+1157     opts.color = parsed_color_setting;
+1158   } else {
+1159     opts.color = OPT_COLOR_DEFAULT; // Apply default
+1160   }
+1161 
+1162   // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
+1163   if (show_version || create_config || create_manpage) {
+1164     if (show_version) {
+1165       opts.version = true;
+1166       options_state_set(&amp;opts);
+1167       return ASCIICHAT_OK;
+1168     } else if (create_config) {
+1169       // Build the schema first so config_create_default can generate options from it
+1170       const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+1171       if (unified_config) {
+1172         asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
+1173         if (schema_build_result != ASCIICHAT_OK) {
+1174           // Schema build failed, but continue anyway
+1175           (void)schema_build_result;
+1176         }
+1177         options_config_destroy(unified_config);
+1178       }
+1179 
+1180       // Call action handler which handles all output and prompts properly
+1181       action_create_config(config_create_path);
+1182       // action_create_config() calls _Exit(), so we don't reach here
+1183     } else if (create_manpage) {
 1184       // Call action handler which handles all output and prompts properly
-1185       action_create_config(config_create_path);
-1186       // action_create_config() calls _Exit(), so we don't reach here
-1187     } else if (create_manpage) {
-1188       // Call action handler which handles all output and prompts properly
-1189       action_create_manpage(manpage_create_path);
-1190       // action_create_manpage() calls _Exit(), so we don't reach here
-1191     }
-1192   }
-1193 
-1194   // Mode detection and logging already initialized early in STAGE 1B/1C above
-1195   // (moved earlier to ensure logging is available before any log_dev() calls)
-1196 
-1197   // Check for binary-level options that can appear before or after mode
-1198   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
-1199   // These are documented as binary-level options that can appear anywhere
-1200   for (int i = 1; i &lt; argc; i++) {
-1201     if (argv[i][0] == '-') {
-1202       // Handle -V and --verbose (stackable verbosity)
-1203       if (strcmp(argv[i], &quot;-V&quot;) == 0 || strcmp(argv[i], &quot;--verbose&quot;) == 0) {
-1204         // Check if next argument is a number (optional argument)
-1205         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1206           // Try to parse as integer count
-1207           char *endptr;
-1208           long value = strtol(argv[i + 1], &amp;endptr, 10);
-1209           if (*endptr == '\0' &amp;&amp; value &gt;= 0 &amp;&amp; value &lt;= 100) {
-1210             opts.verbose_level = (unsigned short int)value;
-1211             i++; // Skip next argument
-1212             continue;
-1213           }
-1214         }
-1215         // No valid number, just increment
-1216         opts.verbose_level++;
-1217       }
-1218       // Handle binary-level boolean options using the abstraction function
-1219       // -q/--quiet, --json, --log-format-console all use the same parser
-1220       if (parse_binary_bool_arg(argv[i], &amp;opts.quiet, &quot;quiet&quot;, 'q')) {
-1221         continue;
-1222       }
-1223       if (parse_binary_bool_arg(argv[i], &amp;opts.json, &quot;json&quot;, '\0')) {
-1224         continue;
-1225       }
-1226       if (parse_binary_bool_arg(argv[i], &amp;opts.log_format_console_only, &quot;log-format-console&quot;, '\0')) {
-1227         continue;
-1228       }
-1229       // Handle --log-level LEVEL (set log threshold)
-1230       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
-1231         if (i + 1 &gt;= argc) {
+1185       action_create_manpage(manpage_create_path);
+1186       // action_create_manpage() calls _Exit(), so we don't reach here
+1187     }
+1188   }
+1189 
+1190   // Mode detection and logging already initialized early in STAGE 1B/1C above
+1191   // (moved earlier to ensure logging is available before any log_dev() calls)
+1192 
+1193   // Check for binary-level options that can appear before or after mode
+1194   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
+1195   // These are documented as binary-level options that can appear anywhere
+1196   for (int i = 1; i &lt; argc; i++) {
+1197     if (argv[i][0] == '-') {
+1198       // Handle -V and --verbose (stackable verbosity)
+1199       if (strcmp(argv[i], &quot;-V&quot;) == 0 || strcmp(argv[i], &quot;--verbose&quot;) == 0) {
+1200         // Check if next argument is a number (optional argument)
+1201         if (i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1202           // Try to parse as integer count
+1203           char *endptr;
+1204           long value = strtol(argv[i + 1], &amp;endptr, 10);
+1205           if (*endptr == '\0' &amp;&amp; value &gt;= 0 &amp;&amp; value &lt;= 100) {
+1206             opts.verbose_level = (unsigned short int)value;
+1207             i++; // Skip next argument
+1208             continue;
+1209           }
+1210         }
+1211         // No valid number, just increment
+1212         opts.verbose_level++;
+1213       }
+1214       // Handle binary-level boolean options using the abstraction function
+1215       // -q/--quiet, --json, --log-format-console all use the same parser
+1216       if (parse_binary_bool_arg(argv[i], &amp;opts.quiet, &quot;quiet&quot;, 'q')) {
+1217         continue;
+1218       }
+1219       if (parse_binary_bool_arg(argv[i], &amp;opts.json, &quot;json&quot;, '\0')) {
+1220         continue;
+1221       }
+1222       if (parse_binary_bool_arg(argv[i], &amp;opts.log_format_console_only, &quot;log-format-console&quot;, '\0')) {
+1223         continue;
+1224       }
+1225       // Handle --log-level LEVEL (set log threshold)
+1226       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
+1227         if (i + 1 &gt;= argc) {
+1228           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
+1229           return ERROR_USAGE;
+1230         }
+1231         if (argv[i + 1][0] == '-') {
 1232           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
 1233           return ERROR_USAGE;
 1234         }
-1235         if (argv[i + 1][0] == '-') {
-1236           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
-1237           return ERROR_USAGE;
-1238         }
-1239         char *error_msg = NULL;
-1240         if (parse_log_level(argv[i + 1], &amp;opts.log_level, &amp;error_msg)) {
-1241           i++; // Skip the level argument
-1242         } else {
-1243           if (error_msg) {
-1244             log_error(&quot;%s&quot;, error_msg);
-1245             free(error_msg);
-1246           } else {
-1247             log_error(&quot;invalid log level value: %s&quot;, argv[i + 1]);
-1248           }
-1249           return ERROR_USAGE;
-1250         }
-1251       }
-1252       // Handle -L and --log-file FILE (set log file path)
-1253       if ((strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0)) {
-1254         if (i + 1 &gt;= argc) {
+1235         char *error_msg = NULL;
+1236         if (parse_log_level(argv[i + 1], &amp;opts.log_level, &amp;error_msg)) {
+1237           i++; // Skip the level argument
+1238         } else {
+1239           if (error_msg) {
+1240             log_error(&quot;%s&quot;, error_msg);
+1241             free(error_msg);
+1242           } else {
+1243             log_error(&quot;invalid log level value: %s&quot;, argv[i + 1]);
+1244           }
+1245           return ERROR_USAGE;
+1246         }
+1247       }
+1248       // Handle -L and --log-file FILE (set log file path)
+1249       if ((strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0)) {
+1250         if (i + 1 &gt;= argc) {
+1251           log_error(&quot;%s requires a file path&quot;, argv[i]);
+1252           return ERROR_USAGE;
+1253         }
+1254         if (argv[i + 1][0] == '-') {
 1255           log_error(&quot;%s requires a file path&quot;, argv[i]);
 1256           return ERROR_USAGE;
 1257         }
-1258         if (argv[i + 1][0] == '-') {
-1259           log_error(&quot;%s requires a file path&quot;, argv[i]);
-1260           return ERROR_USAGE;
-1261         }
-1262         SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
-1263         i++; // Skip the file argument
-1264       }
-1265       // NOTE: --color is now parsed in STAGE 1A (early, before help processing)
-1266       // to ensure help output colors are applied correctly
-1267     }
-1268   }
-1269 
-1270   if (show_version) {
-1271     // Show binary-level version from src/main.c
-1272     opts.version = true;
-1273     options_state_set(&amp;opts);
-1274     return ASCIICHAT_OK;
-1275   }
-1276 
-1277   if (create_config) {
-1278     // Handle --config-create: create default config file and exit
-1279     // Use provided path or default to user config location
-1280     char config_path[PLATFORM_MAX_PATH_LENGTH];
-1281     if (config_create_path) {
-1282       SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
-1283     } else {
-1284       // Use default config path: ~/.ascii-chat/config.toml
-1285       char *config_dir = get_config_dir();
-1286       if (!config_dir) {
-1287         log_error(&quot;Error: Failed to determine default config directory&quot;);
-1288         return ERROR_CONFIG;
-1289       }
-1290       safe_snprintf(config_path, sizeof(config_path), &quot;%sconfig.toml&quot;, config_dir);
-1291       SAFE_FREE(config_dir);
-1292     }
-1293 
-1294     // Create config with default options
-1295     asciichat_error_t result = config_create_default(config_path);
-1296     if (result != ASCIICHAT_OK) {
-1297       asciichat_error_context_t err_ctx;
-1298       if (HAS_ERRNO(&amp;err_ctx)) {
-1299         log_error(&quot;Error creating config: %s&quot;, err_ctx.context_message);
-1300       } else {
-1301         log_error(&quot;Error: Failed to create config file at %s&quot;, config_path);
-1302       }
-1303       return result;
-1304     }
+1258         SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
+1259         i++; // Skip the file argument
+1260       }
+1261       // NOTE: --color is now parsed in STAGE 1A (early, before help processing)
+1262       // to ensure help output colors are applied correctly
+1263     }
+1264   }
+1265 
+1266   if (show_version) {
+1267     // Show binary-level version from src/main.c
+1268     opts.version = true;
+1269     options_state_set(&amp;opts);
+1270     return ASCIICHAT_OK;
+1271   }
+1272 
+1273   if (create_config) {
+1274     // Handle --config-create: create default config file and exit
+1275     // Use provided path or default to user config location
+1276     char config_path[PLATFORM_MAX_PATH_LENGTH];
+1277     if (config_create_path) {
+1278       SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
+1279     } else {
+1280       // Use default config path: ~/.ascii-chat/config.toml
+1281       char *config_dir = get_config_dir();
+1282       if (!config_dir) {
+1283         log_error(&quot;Error: Failed to determine default config directory&quot;);
+1284         return ERROR_CONFIG;
+1285       }
+1286       safe_snprintf(config_path, sizeof(config_path), &quot;%sconfig.toml&quot;, config_dir);
+1287       SAFE_FREE(config_dir);
+1288     }
+1289 
+1290     // Create config with default options
+1291     asciichat_error_t result = config_create_default(config_path);
+1292     if (result != ASCIICHAT_OK) {
+1293       asciichat_error_context_t err_ctx;
+1294       if (HAS_ERRNO(&amp;err_ctx)) {
+1295         log_error(&quot;Error creating config: %s&quot;, err_ctx.context_message);
+1296       } else {
+1297         log_error(&quot;Error: Failed to create config file at %s&quot;, config_path);
+1298       }
+1299       return result;
+1300     }
+1301 
+1302     log_plain(&quot;Created default config file at: %s&quot;, config_path);
+1303     return ASCIICHAT_OK; // Return successfully after creating config
+1304   }
 1305 
-1306     log_plain(&quot;Created default config file at: %s&quot;, config_path);
-1307     return ASCIICHAT_OK; // Return successfully after creating config
-1308   }
-1309 
-1310   if (create_manpage) {
-1311     // Handle --create-man-page-template: generate merged man page template
-1312     // The .1.in file is the existing template to read from (not the output)
-1313     const char *existing_template_path = &quot;share/man/man1/ascii-chat.1.in&quot;;
-1314     options_config_t *config = options_preset_unified(NULL, NULL);
-1315     if (!config) {
-1316       log_error(&quot;Error: Failed to get binary options config&quot;);
-1317       return ERROR_MEMORY;
-1318     }
-1319 
-1320     // Generate merged man page from embedded or filesystem resources
-1321     // (existing_template_path and manpage_content_file parameters are no longer supported)
-1322     asciichat_error_t err = options_config_generate_manpage_merged(config, &quot;ascii-chat&quot;, NULL, existing_template_path,
-1323                                                                    &quot;Video chat in your terminal&quot;);
-1324 
-1325     options_config_destroy(config);
-1326 
-1327     if (err != ASCIICHAT_OK) {
-1328       asciichat_error_context_t err_ctx;
-1329       if (HAS_ERRNO(&amp;err_ctx)) {
-1330         log_error(&quot;%s&quot;, err_ctx.context_message);
-1331       } else {
-1332         log_error(&quot;Error: Failed to generate man page&quot;);
-1333       }
-1334       return err;
-1335     }
+1306   if (create_manpage) {
+1307     // Handle --create-man-page-template: generate merged man page template
+1308     // The .1.in file is the existing template to read from (not the output)
+1309     const char *existing_template_path = &quot;share/man/man1/ascii-chat.1.in&quot;;
+1310     options_config_t *config = options_preset_unified(NULL, NULL);
+1311     if (!config) {
+1312       log_error(&quot;Error: Failed to get binary options config&quot;);
+1313       return ERROR_MEMORY;
+1314     }
+1315 
+1316     // Generate merged man page from embedded or filesystem resources
+1317     // (existing_template_path and manpage_content_file parameters are no longer supported)
+1318     asciichat_error_t err = options_config_generate_manpage_merged(config, &quot;ascii-chat&quot;, NULL, existing_template_path,
+1319                                                                    &quot;Video chat in your terminal&quot;);
+1320 
+1321     options_config_destroy(config);
+1322 
+1323     if (err != ASCIICHAT_OK) {
+1324       asciichat_error_context_t err_ctx;
+1325       if (HAS_ERRNO(&amp;err_ctx)) {
+1326         log_error(&quot;%s&quot;, err_ctx.context_message);
+1327       } else {
+1328         log_error(&quot;Error: Failed to generate man page&quot;);
+1329       }
+1330       return err;
+1331     }
+1332 
+1333     log_plain(&quot;Generated man page: %s&quot;, existing_template_path);
+1334     return ASCIICHAT_OK; // Return successfully after generating man page
+1335   }
 1336 
-1337     log_plain(&quot;Generated man page: %s&quot;, existing_template_path);
-1338     return ASCIICHAT_OK; // Return successfully after generating man page
-1339   }
-1340 
-1341   // ========================================================================
-1342   // STAGE 2: Build argv for mode-specific parsing
-1343   // ========================================================================
-1344   // If mode was found, build argv with only arguments after the mode
-1345   // If mode_index == -1, filter out binary-level options from all arguments
-1346   int mode_argc = argc;
-1347   char **mode_argv = (char **)argv;
-1348   char **allocated_mode_argv = NULL; // Track if we need to free mode_argv
+1337   // ========================================================================
+1338   // STAGE 2: Build argv for mode-specific parsing
+1339   // ========================================================================
+1340   // If mode was found, build argv with only arguments after the mode
+1341   // If mode_index == -1, filter out binary-level options from all arguments
+1342   int mode_argc = argc;
+1343   char **mode_argv = (char **)argv;
+1344   char **allocated_mode_argv = NULL; // Track if we need to free mode_argv
+1345 
+1346   if (mode_index == -1) {
+1347     // No explicit mode - filter binary-level options from entire argv
+1348     int max_mode_argc = argc; // Worst case: no binary opts skipped
 1349 
-1350   if (mode_index == -1) {
-1351     // No explicit mode - filter binary-level options from entire argv
-1352     int max_mode_argc = argc; // Worst case: no binary opts skipped
+1350     if (max_mode_argc &gt; 256) {
+1351       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Too many arguments: %d&quot;, max_mode_argc);
+1352     }
 1353 
-1354     if (max_mode_argc &gt; 256) {
-1355       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Too many arguments: %d&quot;, max_mode_argc);
-1356     }
-1357 
-1358     char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
-1359     if (!new_mode_argv) {
-1360       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mode_argv&quot;);
-1361     }
-1362     allocated_mode_argv = new_mode_argv;
-1363 
-1364     new_mode_argv[0] = argv[0]; // Copy program name
-1365 
-1366     // Copy all args except binary-level options
-1367     int new_argv_idx = 1;
-1368     for (int i = 1; i &lt; argc; i++) {
-1369       bool takes_arg = false;
-1370       bool takes_optional_arg = false;
-1371 
-1372       // Check if this is a binary-level option
-1373       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
-1374         // Skip argument if needed
-1375         // NOLINTNEXTLINE(bugprone-branch-clone)
-1376         if (takes_arg &amp;&amp; i + 1 &lt; argc) {
-1377           i++; // Skip required argument
-1378         } else if (takes_optional_arg &amp;&amp; i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
-1379           i++; // Skip optional argument
-1380         }
-1381         continue;
-1382       }
-1383       // Not a binary option, copy to mode_argv
-1384       new_mode_argv[new_argv_idx++] = argv[i];
-1385     }
-1386 
-1387     mode_argc = new_argv_idx;
-1388     new_mode_argv[mode_argc] = NULL;
-1389     mode_argv = new_mode_argv;
-1390   } else if (mode_index != -1) {
-1391     // Mode found at position mode_index
-1392     // Build new argv: [program_name, args_before_mode (no binary opts)..., args_after_mode...]
-1393     // Binary-level options are not passed to mode-specific parsers
+1354     char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
+1355     if (!new_mode_argv) {
+1356       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mode_argv&quot;);
+1357     }
+1358     allocated_mode_argv = new_mode_argv;
+1359 
+1360     new_mode_argv[0] = argv[0]; // Copy program name
+1361 
+1362     // Copy all args except binary-level options
+1363     int new_argv_idx = 1;
+1364     for (int i = 1; i &lt; argc; i++) {
+1365       bool takes_arg = false;
+1366       bool takes_optional_arg = false;
+1367 
+1368       // Check if this is a binary-level option
+1369       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
+1370         // Skip argument if needed
+1371         // NOLINTNEXTLINE(bugprone-branch-clone)
+1372         if (takes_arg &amp;&amp; i + 1 &lt; argc) {
+1373           i++; // Skip required argument
+1374         } else if (takes_optional_arg &amp;&amp; i + 1 &lt; argc &amp;&amp; argv[i + 1][0] != '-') {
+1375           i++; // Skip optional argument
+1376         }
+1377         continue;
+1378       }
+1379       // Not a binary option, copy to mode_argv
+1380       new_mode_argv[new_argv_idx++] = argv[i];
+1381     }
+1382 
+1383     mode_argc = new_argv_idx;
+1384     new_mode_argv[mode_argc] = NULL;
+1385     mode_argv = new_mode_argv;
+1386   } else if (mode_index != -1) {
+1387     // Mode found at position mode_index
+1388     // Build new argv: [program_name, args_before_mode (no binary opts)..., args_after_mode...]
+1389     // Binary-level options are not passed to mode-specific parsers
+1390 
+1391     int args_after_mode = argc - mode_index - 1;
+1392     // We'll calculate final argc after skipping binary options
+1393     int max_mode_argc = 1 + (mode_index - 1) + args_after_mode; // Worst case: no binary opts skipped
 1394 
-1395     int args_after_mode = argc - mode_index - 1;
-1396     // We'll calculate final argc after skipping binary options
-1397     int max_mode_argc = 1 + (mode_index - 1) + args_after_mode; // Worst case: no binary opts skipped
+1395     if (max_mode_argc &gt; 256) {
+1396       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Too many arguments: %d&quot;, max_mode_argc);
+1397     }
 1398 
-1399     if (max_mode_argc &gt; 256) {
-1400       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Too many arguments: %d&quot;, max_mode_argc);
-1401     }
-1402 
-1403     // Allocate max_mode_argc+1 to accommodate NULL terminator
-1404     char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
-1405     if (!new_mode_argv) {
-1406       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mode_argv&quot;);
-1407     }
-1408     allocated_mode_argv = new_mode_argv; // Track allocation for cleanup
-1409 
-1410     // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
-1411     if (mode_index == 0) {
-1412       // Mode is at argv[0], use &quot;ascii-chat&quot; as program name
-1413       new_mode_argv[0] = &quot;ascii-chat&quot;;
-1414     } else {
-1415       new_mode_argv[0] = argv[0];
-1416     }
-1417 
-1418     // Copy args before mode, skipping binary-level options
-1419     int new_argv_idx = 1;
-1420     for (int i = 1; i &lt; mode_index; i++) {
-1421       bool takes_arg = false;
-1422       bool takes_optional_arg = false;
-1423 
-1424       // Check if this is a binary-level option
-1425       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
-1426         // Skip argument if needed
-1427         if ((takes_arg || (takes_optional_arg &amp;&amp; argv[i + 1][0] != '-')) &amp;&amp; i + 1 &lt; mode_index) {
-1428           i++; // Skip argument
-1429         }
-1430         continue;
-1431       }
-1432       // Not a binary option, copy to mode_argv
-1433       new_mode_argv[new_argv_idx++] = argv[i];
-1434     }
-1435     // Copy args after mode, filtering out any binary-level options (they shouldn't appear here)
-1436     int args_after_mode_idx = 0;
-1437     for (int i = mode_index + 1; i &lt; argc; i++) {
-1438       bool takes_arg = false;
-1439       bool takes_optional_arg = false;
-1440 
-1441       // Check if this is a binary-level option (shouldn't appear after mode)
-1442       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
-1443         // Skip binary-level option and its argument if needed
-1444         if ((takes_arg || (takes_optional_arg &amp;&amp; argv[i + 1][0] != '-')) &amp;&amp; i + 1 &lt; argc) {
-1445           i++; // Skip argument
-1446         }
-1447         continue; // Skip this option
-1448       }
-1449       // Not a binary option, copy to mode_argv
-1450       new_mode_argv[new_argv_idx + args_after_mode_idx++] = argv[i];
-1451     }
-1452     // Calculate actual argc (program + filtered args before + filtered args after)
-1453     mode_argc = new_argv_idx + args_after_mode_idx;
-1454     new_mode_argv[mode_argc] = NULL;
-1455 
-1456     mode_argv = new_mode_argv;
-1457   }
-1458 
-1459   // ========================================================================
-1460   // STAGE 3: Set Mode-Specific Defaults
-1461   // ========================================================================
-1462   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
-1463   // options (--quiet, --verbose, --log-level, etc.) from being reset
-1464   opts = options_t_new_preserve_binary(&amp;opts);
-1465   // If a session string was detected during mode detection, restore it after options reset
-1466   // This ensures discovery mode knows which session to join
-1467   if (detected_session_string[0] != '\0') {
-1468     SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
-1469     log_info(&quot;options_init: Detected session string from argv: '%s'&quot;, detected_session_string);
-1470   }
-1471 
-1472   // Encryption options default to disabled/empty
-1473   opts.no_encrypt = 0;
-1474   opts.encrypt_key[0] = '\0';
-1475   opts.password[0] = '\0';
-1476   opts.encrypt_keyfile[0] = '\0';
-1477   opts.server_key[0] = '\0';
-1478   opts.client_keys[0] = '\0';
-1479   opts.palette_custom[0] = '\0';
-1480 
-1481   // Set different default addresses for different modes
-1482   if (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY) {
-1483     // Client/Mirror/Discovery: connects to localhost by default (discovery uses ACDS to find server)
-1484     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;localhost&quot;);
-1485     opts.address6[0] = '\0'; // Client doesn't use address6
-1486   } else if (detected_mode == MODE_SERVER) {
-1487     // Server: binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
-1488     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;127.0.0.1&quot;);
-1489     // address6 is now a positional argument, not an option
+1399     // Allocate max_mode_argc+1 to accommodate NULL terminator
+1400     char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
+1401     if (!new_mode_argv) {
+1402       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mode_argv&quot;);
+1403     }
+1404     allocated_mode_argv = new_mode_argv; // Track allocation for cleanup
+1405 
+1406     // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
+1407     if (mode_index == 0) {
+1408       // Mode is at argv[0], use &quot;ascii-chat&quot; as program name
+1409       new_mode_argv[0] = &quot;ascii-chat&quot;;
+1410     } else {
+1411       new_mode_argv[0] = argv[0];
+1412     }
+1413 
+1414     // Copy args before mode, skipping binary-level options
+1415     int new_argv_idx = 1;
+1416     for (int i = 1; i &lt; mode_index; i++) {
+1417       bool takes_arg = false;
+1418       bool takes_optional_arg = false;
+1419 
+1420       // Check if this is a binary-level option
+1421       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
+1422         // Skip argument if needed
+1423         if ((takes_arg || (takes_optional_arg &amp;&amp; argv[i + 1][0] != '-')) &amp;&amp; i + 1 &lt; mode_index) {
+1424           i++; // Skip argument
+1425         }
+1426         continue;
+1427       }
+1428       // Not a binary option, copy to mode_argv
+1429       new_mode_argv[new_argv_idx++] = argv[i];
+1430     }
+1431     // Copy args after mode, filtering out any binary-level options (they shouldn't appear here)
+1432     int args_after_mode_idx = 0;
+1433     for (int i = mode_index + 1; i &lt; argc; i++) {
+1434       bool takes_arg = false;
+1435       bool takes_optional_arg = false;
+1436 
+1437       // Check if this is a binary-level option (shouldn't appear after mode)
+1438       if (is_binary_level_option_with_args(argv[i], &amp;takes_arg, &amp;takes_optional_arg)) {
+1439         // Skip binary-level option and its argument if needed
+1440         if ((takes_arg || (takes_optional_arg &amp;&amp; argv[i + 1][0] != '-')) &amp;&amp; i + 1 &lt; argc) {
+1441           i++; // Skip argument
+1442         }
+1443         continue; // Skip this option
+1444       }
+1445       // Not a binary option, copy to mode_argv
+1446       new_mode_argv[new_argv_idx + args_after_mode_idx++] = argv[i];
+1447     }
+1448     // Calculate actual argc (program + filtered args before + filtered args after)
+1449     mode_argc = new_argv_idx + args_after_mode_idx;
+1450     new_mode_argv[mode_argc] = NULL;
+1451 
+1452     mode_argv = new_mode_argv;
+1453   }
+1454 
+1455   // ========================================================================
+1456   // STAGE 3: Set Mode-Specific Defaults
+1457   // ========================================================================
+1458   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
+1459   // options (--quiet, --verbose, --log-level, etc.) from being reset
+1460   opts = options_t_new_preserve_binary(&amp;opts);
+1461   // If a session string was detected during mode detection, restore it after options reset
+1462   // This ensures discovery mode knows which session to join
+1463   if (detected_session_string[0] != '\0') {
+1464     SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
+1465     log_info(&quot;options_init: Detected session string from argv: '%s'&quot;, detected_session_string);
+1466   }
+1467 
+1468   // Encryption options default to disabled/empty
+1469   opts.no_encrypt = 0;
+1470   opts.encrypt_key[0] = '\0';
+1471   opts.password[0] = '\0';
+1472   opts.encrypt_keyfile[0] = '\0';
+1473   opts.server_key[0] = '\0';
+1474   opts.client_keys[0] = '\0';
+1475   opts.palette_custom[0] = '\0';
+1476 
+1477   // Set different default addresses for different modes
+1478   if (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY) {
+1479     // Client/Mirror/Discovery: connects to localhost by default (discovery uses ACDS to find server)
+1480     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;localhost&quot;);
+1481     opts.address6[0] = '\0'; // Client doesn't use address6
+1482   } else if (detected_mode == MODE_SERVER) {
+1483     // Server: binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
+1484     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;127.0.0.1&quot;);
+1485     // address6 is now a positional argument, not an option
+1486     opts.address6[0] = '\0';
+1487   } else if (detected_mode == MODE_DISCOVERY_SERVICE) {
+1488     // ACDS: binds to all interfaces by default
+1489     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;0.0.0.0&quot;);
 1490     opts.address6[0] = '\0';
-1491   } else if (detected_mode == MODE_DISCOVERY_SERVICE) {
-1492     // ACDS: binds to all interfaces by default
-1493     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, &quot;0.0.0.0&quot;);
-1494     opts.address6[0] = '\0';
-1495   }
-1496 
-1497   // ========================================================================
-1498   // STAGE 4: Build Dynamic Schema from Unified Options Config
-1499   // ========================================================================
-1500   // Build the config schema dynamically from the unified config
-1501   // This generates TOML keys, CLI flags, categories, and types from builder data
-1502   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-1503   if (unified_config) {
-1504     asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
-1505     if (schema_build_result != ASCIICHAT_OK) {
-1506       // Schema build failed, but continue with static schema as fallback
-1507       (void)schema_build_result;
-1508     } else {
-1509     }
-1510     options_config_destroy(unified_config);
-1511   } else {
-1512   }
-1513 
-1514   // ========================================================================
-1515   // STAGE 5: Load Configuration Files
-1516   // ========================================================================
-1517   // Extract binary-level options BEFORE config loading (config may reset them)
-1518   binary_level_opts_t binary_before_config = extract_binary_level(&amp;opts);
-1519   // Publish options to RCU before config loading so that config logs get proper colors
-1520   // from the parsed --color setting (e.g., --color=true)
-1521   asciichat_error_t config_publish_result = options_state_set(&amp;opts);
-1522   (void)config_publish_result; // Suppress unused variable warning
-1523   // Load config files - now uses detected_mode directly for bitmask validation
-1524   // Save flip_x and flip_y as they should not be reset by config files
-1525   // Also save encryption settings - they should only be controlled via CLI, not config file
-1526   bool saved_flip_x_from_config = opts.flip_x;
-1527   bool saved_flip_y_from_config = opts.flip_y;
-1528   bool saved_encrypt_enabled = opts.encrypt_enabled;
-1529   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &amp;opts);
-1530   (void)config_result; // Continue with defaults and CLI parsing regardless of result
-1531   // Restore binary-level options (don't let config override command-line options)
-1532   restore_binary_level(&amp;opts, &amp;binary_before_config);
+1491   }
+1492 
+1493   // ========================================================================
+1494   // STAGE 4: Build Dynamic Schema from Unified Options Config
+1495   // ========================================================================
+1496   // Build the config schema dynamically from the unified config
+1497   // This generates TOML keys, CLI flags, categories, and types from builder data
+1498   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+1499   if (unified_config) {
+1500     asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
+1501     if (schema_build_result != ASCIICHAT_OK) {
+1502       // Schema build failed, but continue with static schema as fallback
+1503       (void)schema_build_result;
+1504     } else {
+1505     }
+1506     options_config_destroy(unified_config);
+1507   } else {
+1508   }
+1509 
+1510   // ========================================================================
+1511   // STAGE 5: Load Configuration Files
+1512   // ========================================================================
+1513   // Extract binary-level options BEFORE config loading (config may reset them)
+1514   binary_level_opts_t binary_before_config = extract_binary_level(&amp;opts);
+1515   // Publish options to RCU before config loading so that config logs get proper colors
+1516   // from the parsed --color setting (e.g., --color=true)
+1517   asciichat_error_t config_publish_result = options_state_set(&amp;opts);
+1518   (void)config_publish_result; // Suppress unused variable warning
+1519   // Load config files - now uses detected_mode directly for bitmask validation
+1520   // Save flip_x and flip_y as they should not be reset by config files
+1521   // Also save encryption settings - they should only be controlled via CLI, not config file
+1522   bool saved_flip_x_from_config = opts.flip_x;
+1523   bool saved_flip_y_from_config = opts.flip_y;
+1524   bool saved_encrypt_enabled = opts.encrypt_enabled;
+1525   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &amp;opts);
+1526   (void)config_result; // Continue with defaults and CLI parsing regardless of result
+1527   // Restore binary-level options (don't let config override command-line options)
+1528   restore_binary_level(&amp;opts, &amp;binary_before_config);
+1529 
+1530   // Restore flip_x and flip_y - config shouldn't override the defaults
+1531   opts.flip_x = saved_flip_x_from_config;
+1532   opts.flip_y = saved_flip_y_from_config;
 1533 
-1534   // Restore flip_x and flip_y - config shouldn't override the defaults
-1535   opts.flip_x = saved_flip_x_from_config;
-1536   opts.flip_y = saved_flip_y_from_config;
-1537 
-1538   // Restore encrypt_enabled - it should only be set via CLI, not config file
-1539   // The config can set key/password which auto-enables encryption, but the encrypt_enabled
-1540   // flag itself should stay at its default unless the user explicitly passes --encrypt
-1541   opts.encrypt_enabled = saved_encrypt_enabled;
-1542 
-1543   // ========================================================================
-1544   // STAGE 6: Parse Command-Line Arguments (Unified)
-1545   // ========================================================================
-1546   // Extract binary-level options BEFORE applying unified defaults
-1547   // (which might override them from config files)
-1548   binary_level_opts_t binary_before_defaults = extract_binary_level(&amp;opts);
-1549   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
-1550   // Get unified config
-1551   options_config_t *config = options_preset_unified(NULL, NULL);
-1552   if (!config) {
-1553     SAFE_FREE(allocated_mode_argv);
-1554     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to create options configuration&quot;);
-1555   }
-1556   int remaining_argc;
-1557   char **remaining_argv;
-1558 
-1559   // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
-1560   bool saved_flip_x = opts.flip_x;
-1561   bool saved_flip_y = opts.flip_y;
-1562   // Apply defaults from unified config
-1563   asciichat_error_t defaults_result = options_config_set_defaults(config, &amp;opts);
-1564   if (defaults_result != ASCIICHAT_OK) {
-1565     options_config_destroy(config);
-1566     SAFE_FREE(allocated_mode_argv);
-1567     return defaults_result;
-1568   }
-1569   // Restore binary-level options (they should never be overridden by defaults)
-1570   restore_binary_level(&amp;opts, &amp;binary_before_defaults);
-1571 
-1572   // Restore flip_x and flip_y - they should keep the values from options_t_new()
-1573   // unless explicitly set by the user (but defaults shouldn't override them)
-1574   opts.flip_x = saved_flip_x;
-1575   opts.flip_y = saved_flip_y;
-1576 
-1577   // Restore detected_mode before parsing so mode validation works.
-1578   opts.detected_mode = mode_saved_for_parsing;
-1579 
-1580   // Save flip_x and flip_y before parsing - they should not be reset by the parser
-1581   bool saved_flip_x_for_parse = opts.flip_x;
-1582   bool saved_flip_y_for_parse = opts.flip_y;
-1583   // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
-1584   // Parse mode-specific arguments
-1585   option_mode_bitmask_t mode_bitmask = (1 &lt;&lt; mode_saved_for_parsing);
-1586   log_debug(&quot;About to parse options_config with mode_bitmask=%u, mode_argc=%d&quot;, mode_bitmask, mode_argc);
-1587   asciichat_error_t result =
-1588       options_config_parse(config, mode_argc, mode_argv, &amp;opts, mode_bitmask, &amp;remaining_argc, &amp;remaining_argv);
-1589   log_debug(&quot;options_config_parse returned: %d&quot;, result);
-1590   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
-1591   opts.flip_x = saved_flip_x_for_parse;
-1592   opts.flip_y = saved_flip_y_for_parse;
-1593   // json is already restored via the call to options_state_set which calls restore_binary_level
-1594   if (result != ASCIICHAT_OK) {
-1595     options_config_destroy(config);
-1596     SAFE_FREE(allocated_mode_argv);
-1597     // Convert ERROR_CONFIG to ERROR_USAGE for command-line parsing errors
-1598     if (result == ERROR_CONFIG) {
-1599       asciichat_error_context_t err_ctx;
-1600       const char *error_detail = &quot;invalid options&quot;;
-1601       if (HAS_ERRNO(&amp;err_ctx)) {
-1602         error_detail = err_ctx.context_message;
-1603       }
-1604       return SET_ERRNO(ERROR_USAGE, &quot;Failed to parse options: %s&quot;, error_detail);
-1605     }
-1606     return result;
-1607   }
-1608 
-1609   // ========================================================================
-1610   // STAGE 6.5: Publish Parsed Options Early
-1611   // ========================================================================
-1612   // Publish options to RCU as soon as they're parsed
-1613   // This ensures GET_OPTION() works during cleanup even if validation fails
-1614   log_debug(&quot;Publishing parsed options to RCU before validation&quot;);
-1615   asciichat_error_t early_publish = options_state_set(&amp;opts);
-1616   if (early_publish != ASCIICHAT_OK) {
-1617     log_error(&quot;Failed to publish parsed options to RCU state early&quot;);
-1618     options_config_destroy(config);
-1619     SAFE_FREE(allocated_mode_argv);
-1620     return early_publish;
-1621   }
-1622   log_debug(&quot;Successfully published options to RCU&quot;);
-1623 
-1624   // Auto-enable custom palette if palette-chars was set
-1625   if (opts.palette_custom[0] != '\0') {
-1626     // palette-chars was set - always use PALETTE_CUSTOM (overrides any explicit --palette setting)
-1627     opts.palette_type = PALETTE_CUSTOM;
-1628     opts.palette_custom_set = true;
-1629     log_debug(&quot;Set PALETTE_CUSTOM because --palette-chars was provided&quot;);
-1630 
-1631     // Validate palette characters for UTF-8 correctness
-1632     if (!utf8_is_valid(opts.palette_custom)) {
-1633       log_error(&quot;Error: --palette-chars contains invalid UTF-8 sequences&quot;);
-1634       options_config_destroy(config);
-1635       SAFE_FREE(allocated_mode_argv);
-1636       return option_error_invalid();
-1637     }
-1638 
-1639     // Check if palette contains non-ASCII characters
-1640     bool has_non_ascii = !utf8_is_ascii_only(opts.palette_custom);
-1641     if (has_non_ascii) {
-1642       // Non-ASCII characters require UTF-8 support
-1643       // Check if UTF-8 is explicitly disabled or unavailable
-1644       bool utf8_disabled = (opts.force_utf8 == COLOR_SETTING_FALSE);
-1645       bool utf8_auto_unavailable = (opts.force_utf8 == COLOR_SETTING_AUTO &amp;&amp; !terminal_supports_utf8());
-1646 
-1647       if (utf8_disabled) {
-1648         log_error(&quot;Error: --palette-chars contains non-ASCII characters but --utf8=false was specified&quot;);
-1649         log_error(&quot;       Remove --utf8=false or use ASCII-only palette characters&quot;);
-1650         options_config_destroy(config);
-1651         SAFE_FREE(allocated_mode_argv);
-1652         return option_error_invalid();
-1653       }
-1654 
-1655       if (utf8_auto_unavailable) {
-1656         log_error(&quot;Error: --palette-chars contains non-ASCII characters but terminal does not support UTF-8&quot;);
-1657         log_error(&quot;       Use --utf8=true to force UTF-8 mode or use ASCII-only palette characters&quot;);
-1658         options_config_destroy(config);
-1659         SAFE_FREE(allocated_mode_argv);
-1660         return option_error_invalid();
-1661       }
-1662     }
-1663   }
-1664 
-1665   // Auto-enable encryption if key was provided
-1666   if (opts.encrypt_key[0] != '\0') {
-1667     // Validate key file exists (skip for remote/virtual keys)
-1668     if (!is_remote_key_path(opts.encrypt_key)) {
-1669       struct stat st;
-1670       if (stat(opts.encrypt_key, &amp;st) != 0) {
-1671         log_error(&quot;Key file not found: %s&quot;, opts.encrypt_key);
-1672         options_config_destroy(config);
-1673         SAFE_FREE(allocated_mode_argv);
-1674         return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key file not found: %s&quot;, opts.encrypt_key);
-1675       }
-1676       if ((st.st_mode &amp; S_IFMT) != S_IFREG) {
-1677         log_error(&quot;Key path is not a regular file: %s&quot;, opts.encrypt_key);
-1678         options_config_destroy(config);
-1679         SAFE_FREE(allocated_mode_argv);
-1680         return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key path is not a regular file: %s&quot;, opts.encrypt_key);
-1681       }
-1682     }
-1683     opts.encrypt_enabled = 1;
-1684     log_debug(&quot;Auto-enabled encryption because --key was provided&quot;);
-1685   }
-1686 
-1687   // Color filter validation and auto-enable
-1688   if (opts.color_filter != COLOR_FILTER_NONE) {
-1689     // Color filter requires color to be enabled
-1690     if (opts.color == COLOR_SETTING_FALSE) {
-1691       log_error(&quot;Error: --color-filter cannot be used with --color=false&quot;);
-1692       options_config_destroy(config);
-1693       SAFE_FREE(allocated_mode_argv);
-1694       return option_error_invalid();
-1695     }
-1696     // Auto-enable color when color filter is specified
-1697     opts.color = COLOR_SETTING_TRUE;
-1698     log_debug(&quot;Auto-enabled color because --color-filter was provided&quot;);
-1699   }
-1700 
-1701   // Detect if splash or status_screen were explicitly set on command line
-1702   for (int i = 0; i &lt; mode_argc; i++) {
-1703     if (mode_argv[i] &amp;&amp;
-1704         (strcmp(mode_argv[i], &quot;--splash-screen&quot;) == 0 || strncmp(mode_argv[i], &quot;--splash-screen=&quot;, 16) == 0)) {
-1705       // Parse the value if provided (--splash-screen=true/false)
-1706       bool splash_value = true; // Default to true for plain --splash-screen
-1707       if (strncmp(mode_argv[i], &quot;--splash-screen=&quot;, 16) == 0) {
-1708         const char *value = mode_argv[i] + 16;
-1709         if (strcasecmp(value, &quot;false&quot;) == 0 || strcasecmp(value, &quot;no&quot;) == 0 ||
-1710             strcasecmp(value, &quot;0&quot;) == 0 || strcasecmp(value, &quot;off&quot;) == 0) {
-1711           splash_value = false;
-1712         }
-1713       }
-1714       opts.splash_screen = splash_value;
-1715       opts.splash_screen_explicitly_set = true;
-1716     }
-1717     if (mode_argv[i] &amp;&amp;
-1718         (strcmp(mode_argv[i], &quot;--status-screen&quot;) == 0 || strncmp(mode_argv[i], &quot;--status-screen=&quot;, 16) == 0)) {
-1719       // Parse the value if provided (--status-screen=true/false)
-1720       bool status_value = true; // Default to true for plain --status-screen
-1721       if (strncmp(mode_argv[i], &quot;--status-screen=&quot;, 16) == 0) {
-1722         const char *value = mode_argv[i] + 16;
-1723         if (strcasecmp(value, &quot;false&quot;) == 0 || strcasecmp(value, &quot;no&quot;) == 0 ||
-1724             strcasecmp(value, &quot;0&quot;) == 0 || strcasecmp(value, &quot;off&quot;) == 0) {
-1725           status_value = false;
-1726         }
-1727       }
-1728       opts.status_screen = status_value;
-1729       opts.status_screen_explicitly_set = true;
-1730     }
-1731 #ifndef NDEBUG
-1732     if (mode_argv[i] &amp;&amp;
-1733         (strcmp(mode_argv[i], &quot;--sync-state&quot;) == 0 || strncmp(mode_argv[i], &quot;--sync-state=&quot;, 13) == 0)) {
-1734       opts.debug_sync_state_time_explicit = true;
-1735       if (strcmp(mode_argv[i], &quot;--sync-state&quot;) == 0) {
-1736         if (i + 1 &lt; mode_argc) {
-1737           char *endptr;
-1738           double val = strtod(mode_argv[i + 1], &amp;endptr);
-1739           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
-1740             opts.debug_sync_state_time = val;
-1741             i++;
-1742           }
-1743         }
-1744       } else {
-1745         const char *value_str = mode_argv[i] + 13;
-1746         if (value_str[0] != '\0') {
-1747           char *endptr;
-1748           double val = strtod(value_str, &amp;endptr);
-1749           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
-1750             opts.debug_sync_state_time = val;
-1751           }
-1752         }
-1753       }
-1754     }
-1755     if (mode_argv[i] &amp;&amp; (strcmp(mode_argv[i], &quot;--backtrace&quot;) == 0 || strncmp(mode_argv[i], &quot;--backtrace=&quot;, 12) == 0)) {
-1756       opts.debug_backtrace_time_explicit = true;
-1757       if (strcmp(mode_argv[i], &quot;--backtrace&quot;) == 0) {
-1758         if (i + 1 &lt; mode_argc) {
-1759           char *endptr;
-1760           double val = strtod(mode_argv[i + 1], &amp;endptr);
-1761           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
-1762             opts.debug_backtrace_time = val;
-1763             i++;
-1764           }
-1765         }
-1766       } else {
-1767         const char *value_str = mode_argv[i] + 12;
-1768         if (value_str[0] != '\0') {
-1769           char *endptr;
-1770           double val = strtod(value_str, &amp;endptr);
-1771           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
-1772             opts.debug_backtrace_time = val;
-1773           }
-1774         }
-1775       }
-1776     }
-1777     if (mode_argv[i] &amp;&amp;
-1778         (strcmp(mode_argv[i], &quot;--memory-report&quot;) == 0 || strncmp(mode_argv[i], &quot;--memory-report=&quot;, 16) == 0)) {
-1779       opts.debug_memory_report_interval_explicit = true;
-1780       if (strcmp(mode_argv[i], &quot;--memory-report&quot;) == 0) {
-1781         if (i + 1 &lt; mode_argc) {
-1782           char *endptr;
-1783           double val = strtod(mode_argv[i + 1], &amp;endptr);
-1784           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
-1785             opts.debug_memory_report_interval = val;
-1786             i++;
-1787           }
-1788         }
-1789       } else {
-1790         const char *value_str = mode_argv[i] + 16;
-1791         if (value_str[0] != '\0') {
-1792           char *endptr;
-1793           double val = strtod(value_str, &amp;endptr);
-1794           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
-1795             opts.debug_memory_report_interval = val;
-1796           }
-1797         }
-1798       }
-1799     }
-1800 #endif
-1801   }
-1802 
-1803   // Auto-disable splash when grep is used (since it's one-time startup screen)
-1804   // UNLESS it was explicitly set by the user
-1805   // Status screen is now compatible with --grep since we support auto-loading patterns
-1806   bool grep_was_provided = false;
-1807   for (int i = 0; i &lt; mode_argc; i++) {
-1808     if (mode_argv[i] &amp;&amp; (strcmp(mode_argv[i], &quot;--grep&quot;) == 0 || strncmp(mode_argv[i], &quot;--grep=&quot;, 7) == 0)) {
-1809       grep_was_provided = true;
-1810       break;
-1811     }
-1812   }
-1813 
-1814   if (grep_was_provided) {
-1815     if (!opts.splash_screen_explicitly_set) {
-1816       opts.splash_screen = false;
-1817       log_debug(&quot;Auto-disabled splash because --grep was provided&quot;);
-1818     }
-1819   }
-1820 
-1821   // Auto-disable splash and status screens when terminal is non-interactive or CLAUDECODE is set
-1822   // This ensures clean output when running under LLM automation or non-interactive shells
-1823   bool is_terminal_interactive = terminal_is_interactive();
-1824   bool is_claudecode_set = platform_getenv(&quot;CLAUDECODE&quot;) != NULL;
-1825   bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
-1826 
-1827   if (should_auto_disable_screens) {
-1828     if (!opts.splash_screen_explicitly_set) {
-1829       opts.splash_screen = false;
-1830       log_debug(&quot;Auto-disabled splash (non-interactive terminal or CLAUDECODE set)&quot;);
+1534   // Restore encrypt_enabled - it should only be set via CLI, not config file
+1535   // The config can set key/password which auto-enables encryption, but the encrypt_enabled
+1536   // flag itself should stay at its default unless the user explicitly passes --encrypt
+1537   opts.encrypt_enabled = saved_encrypt_enabled;
+1538 
+1539   // ========================================================================
+1540   // STAGE 6: Parse Command-Line Arguments (Unified)
+1541   // ========================================================================
+1542   // Extract binary-level options BEFORE applying unified defaults
+1543   // (which might override them from config files)
+1544   binary_level_opts_t binary_before_defaults = extract_binary_level(&amp;opts);
+1545   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
+1546   // Get unified config
+1547   options_config_t *config = options_preset_unified(NULL, NULL);
+1548   if (!config) {
+1549     SAFE_FREE(allocated_mode_argv);
+1550     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to create options configuration&quot;);
+1551   }
+1552   int remaining_argc;
+1553   char **remaining_argv;
+1554 
+1555   // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
+1556   bool saved_flip_x = opts.flip_x;
+1557   bool saved_flip_y = opts.flip_y;
+1558   // Apply defaults from unified config
+1559   asciichat_error_t defaults_result = options_config_set_defaults(config, &amp;opts);
+1560   if (defaults_result != ASCIICHAT_OK) {
+1561     options_config_destroy(config);
+1562     SAFE_FREE(allocated_mode_argv);
+1563     return defaults_result;
+1564   }
+1565   // Restore binary-level options (they should never be overridden by defaults)
+1566   restore_binary_level(&amp;opts, &amp;binary_before_defaults);
+1567 
+1568   // Restore flip_x and flip_y - they should keep the values from options_t_new()
+1569   // unless explicitly set by the user (but defaults shouldn't override them)
+1570   opts.flip_x = saved_flip_x;
+1571   opts.flip_y = saved_flip_y;
+1572 
+1573   // Restore detected_mode before parsing so mode validation works.
+1574   opts.detected_mode = mode_saved_for_parsing;
+1575 
+1576   // Save flip_x and flip_y before parsing - they should not be reset by the parser
+1577   bool saved_flip_x_for_parse = opts.flip_x;
+1578   bool saved_flip_y_for_parse = opts.flip_y;
+1579   // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
+1580   // Parse mode-specific arguments
+1581   option_mode_bitmask_t mode_bitmask = (1 &lt;&lt; mode_saved_for_parsing);
+1582   log_debug(&quot;About to parse options_config with mode_bitmask=%u, mode_argc=%d&quot;, mode_bitmask, mode_argc);
+1583   asciichat_error_t result =
+1584       options_config_parse(config, mode_argc, mode_argv, &amp;opts, mode_bitmask, &amp;remaining_argc, &amp;remaining_argv);
+1585   log_debug(&quot;options_config_parse returned: %d&quot;, result);
+1586   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
+1587   opts.flip_x = saved_flip_x_for_parse;
+1588   opts.flip_y = saved_flip_y_for_parse;
+1589   // json is already restored via the call to options_state_set which calls restore_binary_level
+1590   if (result != ASCIICHAT_OK) {
+1591     options_config_destroy(config);
+1592     SAFE_FREE(allocated_mode_argv);
+1593     // Convert ERROR_CONFIG to ERROR_USAGE for command-line parsing errors
+1594     if (result == ERROR_CONFIG) {
+1595       asciichat_error_context_t err_ctx;
+1596       const char *error_detail = &quot;invalid options&quot;;
+1597       if (HAS_ERRNO(&amp;err_ctx)) {
+1598         error_detail = err_ctx.context_message;
+1599       }
+1600       return SET_ERRNO(ERROR_USAGE, &quot;Failed to parse options: %s&quot;, error_detail);
+1601     }
+1602     return result;
+1603   }
+1604 
+1605   // ========================================================================
+1606   // STAGE 6.5: Publish Parsed Options Early
+1607   // ========================================================================
+1608   // Publish options to RCU as soon as they're parsed
+1609   // This ensures GET_OPTION() works during cleanup even if validation fails
+1610   log_debug(&quot;Publishing parsed options to RCU before validation&quot;);
+1611   asciichat_error_t early_publish = options_state_set(&amp;opts);
+1612   if (early_publish != ASCIICHAT_OK) {
+1613     log_error(&quot;Failed to publish parsed options to RCU state early&quot;);
+1614     options_config_destroy(config);
+1615     SAFE_FREE(allocated_mode_argv);
+1616     return early_publish;
+1617   }
+1618   log_debug(&quot;Successfully published options to RCU&quot;);
+1619 
+1620   // Auto-enable custom palette if palette-chars was set
+1621   if (opts.palette_custom[0] != '\0') {
+1622     // palette-chars was set - always use PALETTE_CUSTOM (overrides any explicit --palette setting)
+1623     opts.palette_type = PALETTE_CUSTOM;
+1624     opts.palette_custom_set = true;
+1625     log_debug(&quot;Set PALETTE_CUSTOM because --palette-chars was provided&quot;);
+1626 
+1627     // Validate palette characters for UTF-8 correctness
+1628     if (!utf8_is_valid(opts.palette_custom)) {
+1629       log_error(&quot;Error: --palette-chars contains invalid UTF-8 sequences&quot;);
+1630       options_config_destroy(config);
+1631       SAFE_FREE(allocated_mode_argv);
+1632       return option_error_invalid();
+1633     }
+1634 
+1635     // Check if palette contains non-ASCII characters
+1636     bool has_non_ascii = !utf8_is_ascii_only(opts.palette_custom);
+1637     if (has_non_ascii) {
+1638       // Non-ASCII characters require UTF-8 support
+1639       // Check if UTF-8 is explicitly disabled or unavailable
+1640       bool utf8_disabled = (opts.force_utf8 == COLOR_SETTING_FALSE);
+1641       bool utf8_auto_unavailable = (opts.force_utf8 == COLOR_SETTING_AUTO &amp;&amp; !terminal_supports_utf8());
+1642 
+1643       if (utf8_disabled) {
+1644         log_error(&quot;Error: --palette-chars contains non-ASCII characters but --utf8=false was specified&quot;);
+1645         log_error(&quot;       Remove --utf8=false or use ASCII-only palette characters&quot;);
+1646         options_config_destroy(config);
+1647         SAFE_FREE(allocated_mode_argv);
+1648         return option_error_invalid();
+1649       }
+1650 
+1651       if (utf8_auto_unavailable) {
+1652         log_error(&quot;Error: --palette-chars contains non-ASCII characters but terminal does not support UTF-8&quot;);
+1653         log_error(&quot;       Use --utf8=true to force UTF-8 mode or use ASCII-only palette characters&quot;);
+1654         options_config_destroy(config);
+1655         SAFE_FREE(allocated_mode_argv);
+1656         return option_error_invalid();
+1657       }
+1658     }
+1659   }
+1660 
+1661   // Auto-enable encryption if key was provided
+1662   if (opts.encrypt_key[0] != '\0') {
+1663     // Validate key file exists (skip for remote/virtual keys)
+1664     if (!is_remote_key_path(opts.encrypt_key)) {
+1665       struct stat st;
+1666       if (stat(opts.encrypt_key, &amp;st) != 0) {
+1667         log_error(&quot;Key file not found: %s&quot;, opts.encrypt_key);
+1668         options_config_destroy(config);
+1669         SAFE_FREE(allocated_mode_argv);
+1670         return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key file not found: %s&quot;, opts.encrypt_key);
+1671       }
+1672       if ((st.st_mode &amp; S_IFMT) != S_IFREG) {
+1673         log_error(&quot;Key path is not a regular file: %s&quot;, opts.encrypt_key);
+1674         options_config_destroy(config);
+1675         SAFE_FREE(allocated_mode_argv);
+1676         return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key path is not a regular file: %s&quot;, opts.encrypt_key);
+1677       }
+1678     }
+1679     opts.encrypt_enabled = 1;
+1680     log_debug(&quot;Auto-enabled encryption because --key was provided&quot;);
+1681   }
+1682 
+1683   // Color filter validation and auto-enable
+1684   if (opts.color_filter != COLOR_FILTER_NONE) {
+1685     // Color filter requires color to be enabled
+1686     if (opts.color == COLOR_SETTING_FALSE) {
+1687       log_error(&quot;Error: --color-filter cannot be used with --color=false&quot;);
+1688       options_config_destroy(config);
+1689       SAFE_FREE(allocated_mode_argv);
+1690       return option_error_invalid();
+1691     }
+1692     // Auto-enable color when color filter is specified
+1693     opts.color = COLOR_SETTING_TRUE;
+1694     log_debug(&quot;Auto-enabled color because --color-filter was provided&quot;);
+1695   }
+1696 
+1697   // Detect if splash or status_screen were explicitly set on command line
+1698   for (int i = 0; i &lt; mode_argc; i++) {
+1699     if (mode_argv[i] &amp;&amp;
+1700         (strcmp(mode_argv[i], &quot;--splash-screen&quot;) == 0 || strncmp(mode_argv[i], &quot;--splash-screen=&quot;, 16) == 0)) {
+1701       // Parse the value if provided (--splash-screen=true/false)
+1702       bool splash_value = true; // Default to true for plain --splash-screen
+1703       if (strncmp(mode_argv[i], &quot;--splash-screen=&quot;, 16) == 0) {
+1704         const char *value = mode_argv[i] + 16;
+1705         if (strcasecmp(value, &quot;false&quot;) == 0 || strcasecmp(value, &quot;no&quot;) == 0 ||
+1706             strcasecmp(value, &quot;0&quot;) == 0 || strcasecmp(value, &quot;off&quot;) == 0) {
+1707           splash_value = false;
+1708         }
+1709       }
+1710       opts.splash_screen = splash_value;
+1711       opts.splash_screen_explicitly_set = true;
+1712     }
+1713     if (mode_argv[i] &amp;&amp;
+1714         (strcmp(mode_argv[i], &quot;--status-screen&quot;) == 0 || strncmp(mode_argv[i], &quot;--status-screen=&quot;, 16) == 0)) {
+1715       // Parse the value if provided (--status-screen=true/false)
+1716       bool status_value = true; // Default to true for plain --status-screen
+1717       if (strncmp(mode_argv[i], &quot;--status-screen=&quot;, 16) == 0) {
+1718         const char *value = mode_argv[i] + 16;
+1719         if (strcasecmp(value, &quot;false&quot;) == 0 || strcasecmp(value, &quot;no&quot;) == 0 ||
+1720             strcasecmp(value, &quot;0&quot;) == 0 || strcasecmp(value, &quot;off&quot;) == 0) {
+1721           status_value = false;
+1722         }
+1723       }
+1724       opts.status_screen = status_value;
+1725       opts.status_screen_explicitly_set = true;
+1726     }
+1727 #ifndef NDEBUG
+1728     if (mode_argv[i] &amp;&amp;
+1729         (strcmp(mode_argv[i], &quot;--sync-state&quot;) == 0 || strncmp(mode_argv[i], &quot;--sync-state=&quot;, 13) == 0)) {
+1730       opts.debug_sync_state_time_explicit = true;
+1731       if (strcmp(mode_argv[i], &quot;--sync-state&quot;) == 0) {
+1732         if (i + 1 &lt; mode_argc) {
+1733           char *endptr;
+1734           double val = strtod(mode_argv[i + 1], &amp;endptr);
+1735           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
+1736             opts.debug_sync_state_time = val;
+1737             i++;
+1738           }
+1739         }
+1740       } else {
+1741         const char *value_str = mode_argv[i] + 13;
+1742         if (value_str[0] != '\0') {
+1743           char *endptr;
+1744           double val = strtod(value_str, &amp;endptr);
+1745           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
+1746             opts.debug_sync_state_time = val;
+1747           }
+1748         }
+1749       }
+1750     }
+1751     if (mode_argv[i] &amp;&amp; (strcmp(mode_argv[i], &quot;--backtrace&quot;) == 0 || strncmp(mode_argv[i], &quot;--backtrace=&quot;, 12) == 0)) {
+1752       opts.debug_backtrace_time_explicit = true;
+1753       if (strcmp(mode_argv[i], &quot;--backtrace&quot;) == 0) {
+1754         if (i + 1 &lt; mode_argc) {
+1755           char *endptr;
+1756           double val = strtod(mode_argv[i + 1], &amp;endptr);
+1757           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
+1758             opts.debug_backtrace_time = val;
+1759             i++;
+1760           }
+1761         }
+1762       } else {
+1763         const char *value_str = mode_argv[i] + 12;
+1764         if (value_str[0] != '\0') {
+1765           char *endptr;
+1766           double val = strtod(value_str, &amp;endptr);
+1767           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
+1768             opts.debug_backtrace_time = val;
+1769           }
+1770         }
+1771       }
+1772     }
+1773     if (mode_argv[i] &amp;&amp;
+1774         (strcmp(mode_argv[i], &quot;--memory-report&quot;) == 0 || strncmp(mode_argv[i], &quot;--memory-report=&quot;, 16) == 0)) {
+1775       opts.debug_memory_report_interval_explicit = true;
+1776       if (strcmp(mode_argv[i], &quot;--memory-report&quot;) == 0) {
+1777         if (i + 1 &lt; mode_argc) {
+1778           char *endptr;
+1779           double val = strtod(mode_argv[i + 1], &amp;endptr);
+1780           if (endptr != mode_argv[i + 1] &amp;&amp; val &gt; 0.0) {
+1781             opts.debug_memory_report_interval = val;
+1782             i++;
+1783           }
+1784         }
+1785       } else {
+1786         const char *value_str = mode_argv[i] + 16;
+1787         if (value_str[0] != '\0') {
+1788           char *endptr;
+1789           double val = strtod(value_str, &amp;endptr);
+1790           if (endptr != value_str &amp;&amp; val &gt; 0.0) {
+1791             opts.debug_memory_report_interval = val;
+1792           }
+1793         }
+1794       }
+1795     }
+1796 #endif
+1797   }
+1798 
+1799   // Auto-disable splash when grep is used (since it's one-time startup screen)
+1800   // UNLESS it was explicitly set by the user
+1801   // Status screen is now compatible with --grep since we support auto-loading patterns
+1802   bool grep_was_provided = false;
+1803   for (int i = 0; i &lt; mode_argc; i++) {
+1804     if (mode_argv[i] &amp;&amp; (strcmp(mode_argv[i], &quot;--grep&quot;) == 0 || strncmp(mode_argv[i], &quot;--grep=&quot;, 7) == 0)) {
+1805       grep_was_provided = true;
+1806       break;
+1807     }
+1808   }
+1809 
+1810   if (grep_was_provided) {
+1811     if (!opts.splash_screen_explicitly_set) {
+1812       opts.splash_screen = false;
+1813       log_debug(&quot;Auto-disabled splash because --grep was provided&quot;);
+1814     }
+1815   }
+1816 
+1817   // Auto-disable splash and status screens when terminal is non-interactive or CLAUDECODE is set
+1818   // This ensures clean output when running under LLM automation or non-interactive shells
+1819   bool is_terminal_interactive = terminal_is_interactive();
+1820   bool is_claudecode_set = platform_getenv(&quot;CLAUDECODE&quot;) != NULL;
+1821   bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
+1822 
+1823   if (should_auto_disable_screens) {
+1824     if (!opts.splash_screen_explicitly_set) {
+1825       opts.splash_screen = false;
+1826       log_debug(&quot;Auto-disabled splash (non-interactive terminal or CLAUDECODE set)&quot;);
+1827     }
+1828     if (!opts.status_screen_explicitly_set) {
+1829       opts.status_screen = false;
+1830       log_debug(&quot;Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)&quot;);
 1831     }
-1832     if (!opts.status_screen_explicitly_set) {
-1833       opts.status_screen = false;
-1834       log_debug(&quot;Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)&quot;);
-1835     }
-1836   }
-1837 
-1838   // Validate all string options contain valid UTF-8
-1839   // This prevents crashes and corruption from invalid UTF-8 in any option
-1840   // DISABLED IN RELEASE BUILDS: utf8_is_valid() has performance issues with musl
-1841   #ifndef NDEBUG
-1842   const char *string_fields[][2] = {{&quot;address&quot;, opts.address},
-1843                                     {&quot;address6&quot;, opts.address6},
-1844                                     {&quot;encrypt_key&quot;, opts.encrypt_key},
-1845                                     {&quot;encrypt_keyfile&quot;, opts.encrypt_keyfile},
-1846                                     {&quot;server_key&quot;, opts.server_key},
-1847                                     {&quot;client_keys&quot;, opts.client_keys},
-1848                                     {&quot;discovery_server&quot;, opts.discovery_server},
-1849                                     {&quot;discovery_service_key&quot;, opts.discovery_service_key},
-1850                                     {&quot;discovery_database_path&quot;, opts.discovery_database_path},
-1851                                     {&quot;log_file&quot;, opts.log_file},
-1852                                     {&quot;media_file&quot;, opts.media_file},
-1853                                     {&quot;palette_custom&quot;, opts.palette_custom},
-1854                                     {&quot;stun_servers&quot;, opts.stun_servers},
-1855                                     {&quot;turn_servers&quot;, opts.turn_servers},
-1856                                     {&quot;turn_username&quot;, opts.turn_username},
-1857                                     {&quot;turn_credential&quot;, opts.turn_credential},
-1858                                     {&quot;turn_secret&quot;, opts.turn_secret},
-1859                                     {&quot;session_string&quot;, opts.session_string},
-1860                                     {NULL, NULL}};
+1832   }
+1833 
+1834   // Validate all string options contain valid UTF-8
+1835   // This prevents crashes and corruption from invalid UTF-8 in any option
+1836   // DISABLED IN RELEASE BUILDS: utf8_is_valid() has performance issues with musl
+1837   #ifndef NDEBUG
+1838   const char *string_fields[][2] = {{&quot;address&quot;, opts.address},
+1839                                     {&quot;address6&quot;, opts.address6},
+1840                                     {&quot;encrypt_key&quot;, opts.encrypt_key},
+1841                                     {&quot;encrypt_keyfile&quot;, opts.encrypt_keyfile},
+1842                                     {&quot;server_key&quot;, opts.server_key},
+1843                                     {&quot;client_keys&quot;, opts.client_keys},
+1844                                     {&quot;discovery_server&quot;, opts.discovery_server},
+1845                                     {&quot;discovery_service_key&quot;, opts.discovery_service_key},
+1846                                     {&quot;discovery_database_path&quot;, opts.discovery_database_path},
+1847                                     {&quot;log_file&quot;, opts.log_file},
+1848                                     {&quot;media_file&quot;, opts.media_file},
+1849                                     {&quot;palette_custom&quot;, opts.palette_custom},
+1850                                     {&quot;stun_servers&quot;, opts.stun_servers},
+1851                                     {&quot;turn_servers&quot;, opts.turn_servers},
+1852                                     {&quot;turn_username&quot;, opts.turn_username},
+1853                                     {&quot;turn_credential&quot;, opts.turn_credential},
+1854                                     {&quot;turn_secret&quot;, opts.turn_secret},
+1855                                     {&quot;session_string&quot;, opts.session_string},
+1856                                     {NULL, NULL}};
+1857 
+1858   for (int i = 0; string_fields[i][0] != NULL; i++) {
+1859     const char *field_name = string_fields[i][0];
+1860     const char *field_value = string_fields[i][1];
 1861 
-1862   for (int i = 0; string_fields[i][0] != NULL; i++) {
-1863     const char *field_name = string_fields[i][0];
-1864     const char *field_value = string_fields[i][1];
-1865 
-1866     // Skip empty strings
-1867     if (!field_value || field_value[0] == '\0') {
-1868       continue;
-1869     }
-1870 
-1871     // Validate UTF-8
-1872     if (!utf8_is_valid(field_value)) {
-1873       log_error(&quot;Error: Option --%s contains invalid UTF-8 sequences&quot;, field_name);
-1874       log_error(&quot;       Value: %s&quot;, field_value);
-1875       options_config_destroy(config);
-1876       SAFE_FREE(allocated_mode_argv);
-1877       return option_error_invalid();
-1878     }
-1879   }
-1880   #endif
-1881   // Validate options
-1882   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: About to call&quot;);
-1883   result = validate_options_and_report(config, &amp;opts);
-1884   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d&quot;, result);
-1885   if (result != ASCIICHAT_OK) {
-1886     options_config_destroy(config);
-1887     SAFE_FREE(allocated_mode_argv);
-1888     return result;
-1889   }
-1890   // Check for unexpected remaining arguments
-1891   if (remaining_argc &gt; 0) {
-1892     log_error(&quot;Error: Unexpected arguments after options:&quot;);
-1893     for (int i = 0; i &lt; remaining_argc; i++) {
-1894       log_error(&quot;  %s&quot;, remaining_argv[i]);
-1895     }
-1896     options_config_destroy(config);
-1897     SAFE_FREE(allocated_mode_argv);
-1898     return option_error_invalid();
-1899   }
-1900 
-1901   // Mode-specific post-processing
-1902   // Apply mode-specific defaults (port, websocket-port)
-1903   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: About to call&quot;);
-1904   apply_mode_specific_defaults(&amp;opts);
-1905   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: Done&quot;);
-1906   log_dev(&quot;Applied mode-specific defaults: port=%d, websocket_port=%d&quot;, opts.port, opts.websocket_port);
-1907 
-1908   if (detected_mode == MODE_DISCOVERY_SERVICE) {
-1909     // Set default paths if not specified
-1910     log_info(&quot;&#x2605; DISCOVERY_SERVICE: Handling discovery service defaults&quot;);
-1911     if (opts.discovery_database_path[0] == '\0') {
-1912       // Database: Try system-wide location first, fall back to user directories
-1913       // Preference: /usr/local/var/ascii-chat/ &gt; ~/.local/share/ascii-chat/ &gt; ~/.config/ascii-chat/
-1914       log_info(&quot;&#x2605; DISCOVERY_SERVICE: About to call get_discovery_database_dir()&quot;);
-1915       char *db_dir = get_discovery_database_dir();
-1916       log_info(&quot;&#x2605; DISCOVERY_SERVICE: get_discovery_database_dir() returned %p&quot;, (void*)db_dir);
-1917       if (!db_dir) {
-1918         options_config_destroy(config);
-1919         SAFE_FREE(allocated_mode_argv);
-1920         return SET_ERRNO(ERROR_CONFIG, &quot;Failed to get database directory (tried system and user locations)&quot;);
-1921       }
-1922       safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), &quot;%sdiscovery.db&quot;, db_dir);
-1923       SAFE_FREE(db_dir);
-1924     }
-1925   }
+1862     // Skip empty strings
+1863     if (!field_value || field_value[0] == '\0') {
+1864       continue;
+1865     }
+1866 
+1867     // Validate UTF-8
+1868     if (!utf8_is_valid(field_value)) {
+1869       log_error(&quot;Error: Option --%s contains invalid UTF-8 sequences&quot;, field_name);
+1870       log_error(&quot;       Value: %s&quot;, field_value);
+1871       options_config_destroy(config);
+1872       SAFE_FREE(allocated_mode_argv);
+1873       return option_error_invalid();
+1874     }
+1875   }
+1876   #endif
+1877   // Validate options
+1878   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: About to call&quot;);
+1879   result = validate_options_and_report(config, &amp;opts);
+1880   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d&quot;, result);
+1881   if (result != ASCIICHAT_OK) {
+1882     options_config_destroy(config);
+1883     SAFE_FREE(allocated_mode_argv);
+1884     return result;
+1885   }
+1886   // Check for unexpected remaining arguments
+1887   if (remaining_argc &gt; 0) {
+1888     log_error(&quot;Error: Unexpected arguments after options:&quot;);
+1889     for (int i = 0; i &lt; remaining_argc; i++) {
+1890       log_error(&quot;  %s&quot;, remaining_argv[i]);
+1891     }
+1892     options_config_destroy(config);
+1893     SAFE_FREE(allocated_mode_argv);
+1894     return option_error_invalid();
+1895   }
+1896 
+1897   // Mode-specific post-processing
+1898   // Apply mode-specific defaults (port, websocket-port)
+1899   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: About to call&quot;);
+1900   apply_mode_specific_defaults(&amp;opts);
+1901   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: Done&quot;);
+1902   log_dev(&quot;Applied mode-specific defaults: port=%d, websocket_port=%d&quot;, opts.port, opts.websocket_port);
+1903 
+1904   if (detected_mode == MODE_DISCOVERY_SERVICE) {
+1905     // Set default paths if not specified
+1906     log_info(&quot;&#x2605; DISCOVERY_SERVICE: Handling discovery service defaults&quot;);
+1907     if (opts.discovery_database_path[0] == '\0') {
+1908       // Database: Try system-wide location first, fall back to user directories
+1909       // Preference: /usr/local/var/ascii-chat/ &gt; ~/.local/share/ascii-chat/ &gt; ~/.config/ascii-chat/
+1910       log_info(&quot;&#x2605; DISCOVERY_SERVICE: About to call get_discovery_database_dir()&quot;);
+1911       char *db_dir = get_discovery_database_dir();
+1912       log_info(&quot;&#x2605; DISCOVERY_SERVICE: get_discovery_database_dir() returned %p&quot;, (void*)db_dir);
+1913       if (!db_dir) {
+1914         options_config_destroy(config);
+1915         SAFE_FREE(allocated_mode_argv);
+1916         return SET_ERRNO(ERROR_CONFIG, &quot;Failed to get database directory (tried system and user locations)&quot;);
+1917       }
+1918       safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), &quot;%sdiscovery.db&quot;, db_dir);
+1919       SAFE_FREE(db_dir);
+1920     }
+1921   }
+1922 
+1923   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: About to call&quot;);
+1924   options_config_destroy(config);
+1925   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: Done&quot;);
 1926 
-1927   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: About to call&quot;);
-1928   options_config_destroy(config);
-1929   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: Done&quot;);
+1927   // ========================================================================
+1928   // STAGE 7: Post-Processing &amp; Validation
+1929   // ========================================================================
 1930 
-1931   // ========================================================================
-1932   // STAGE 7: Post-Processing &amp; Validation
-1933   // ========================================================================
-1934 
-1935   log_info(&quot;&#x2605; STAGE 7: Starting post-processing&quot;);
-1936 
-1937   // Collect multiple --key flags for multi-key support (server/ACDS only)
-1938   // This enables servers to load both SSH and GPG keys and select the right one
-1939   // during handshake based on what the client expects
-1940   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
-1941     log_info(&quot;&#x2605; STAGE 7.1: About to collect identity keys&quot;);
-1942     int num_keys = options_collect_identity_keys(&amp;opts, argc, argv);
-1943     log_info(&quot;&#x2605; STAGE 7.1: options_collect_identity_keys returned %d&quot;, num_keys);
-1944     if (num_keys &lt; 0) {
-1945       SAFE_FREE(allocated_mode_argv);
-1946       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to collect identity keys&quot;);
-1947     }
-1948     // num_keys == 0 is OK (no --key flags provided)
-1949   }
-1950 
-1951   log_info(&quot;&#x2605; STAGE 7.2: About to update dimensions&quot;);
-1952 
-1953   // After parsing command line options, update dimensions
-1954   // First set any auto dimensions to terminal size, then apply full height logic
-1955 
-1956   // Clear auto flags if dimensions were explicitly parsed from options
-1957   // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
-1958   // values from overwriting user-specified dimensions
-1959   // Note: width=0 and height=0 are special values meaning &quot;auto-detect&quot;, so don't clear auto flags for those
-1960   if (opts.width != OPT_WIDTH_DEFAULT &amp;&amp; opts.width != 0) {
-1961     opts.auto_width = false;
-1962   }
-1963   if (opts.height != OPT_HEIGHT_DEFAULT &amp;&amp; opts.height != 0) {
-1964     opts.auto_height = false;
-1965   }
-1966   update_dimensions_to_terminal_size(&amp;opts);
-1967   js_log_options(&quot;BEFORE_UPDATE_DIMS&quot;);
-1968   js_log_options(&quot;CALLING_UPDATE_DIM&quot;);
-1969   update_dimensions_for_full_height(&amp;opts);
-1970   js_log_options(&quot;AFTER_UPDATE_DIM&quot;);
-1971 
-1972   // SKIP: verbose level adjustment - conflicts with raylib log level system
-1973   // TODO: Properly separate our log levels from raylib's
-1974   // if (opts.verbose_level &gt; 0) {
-1975   //   log_level_t current_level = log_get_level();
-1976   //   int new_level = (int)current_level - (int)opts.verbose_level;
-1977   //   if (new_level &lt; LOG_DEV) {
-1978   //     new_level = LOG_DEV;
-1979   //   }
-1980   //   log_set_level((log_level_t)new_level);
-1981   // }
-1982 
-1983   js_log_options(&quot;L11&quot;);
-1984   js_log_options(&quot;L12&quot;);
-1985   js_log_options(&quot;L13&quot;);
-1986   js_log_options(&quot;L14&quot;);
-1987   js_log_options(&quot;L15&quot;);
-1988   js_log_options(&quot;CHECKPOINT B&quot;);
-1989 
-1990   // SKIP: Check WEBCAM_DISABLED environment variable to enable test pattern mode
-1991   // TODO: Debug why logging here causes hang
-1992   // const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
-1993   // if (webcam_disabled &amp;&amp;
-1994   //     (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
-1995   //      platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
-1996   //   opts.test_pattern = true;
-1997   // }
-1998 
-1999   js_log_options(&quot;CHECKPOINT C&quot;);
-2000 
-2001   // Apply --no-compress interaction with audio encoding
-2002   js_log_options(&quot;Before --no-compress check&quot;);
-2003   if (opts.no_compress) {
-2004     js_log_options(&quot;In no_compress block&quot;);
-2005     opts.encode_audio = false;
-2006     js_log_options(&quot;Set encode_audio to false&quot;);
-2007     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
-2008     js_log_options(&quot;After log_debug in no_compress&quot;);
-2009   }
-2010   js_log_options(&quot;After --no-compress check&quot;);
-2011 
-2012   // Set media_from_stdin flag if media_file is &quot;-&quot;
-2013   js_log_options(&quot;Before media_from_stdin check&quot;);
-2014   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
-2015     js_log_options(&quot;In media_from_stdin block&quot;);
-2016     opts.media_from_stdin = true;
-2017     js_log_options(&quot;Set media_from_stdin to true&quot;);
-2018     log_debug(&quot;Media file set to stdin&quot;);
-2019     js_log_options(&quot;After log_debug in media_from_stdin&quot;);
-2020   }
-2021   js_log_options(&quot;After media_from_stdin check&quot;);
-2022 
-2023   // Validate --seek option
-2024   js_log_options(&quot;Before --seek validation&quot;);
-2025   js_log_options(&quot;Checking media_seek_timestamp&quot;);
-2026   if (opts.media_seek_timestamp &gt; 0.0) {
-2027     js_log_options(&quot;In seek validation block&quot;);
-2028     // Can't seek stdin
-2029     if (opts.media_from_stdin) {
-2030       js_log_options(&quot;Seek error: media_from_stdin&quot;);
-2031       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
-2032       SAFE_FREE(allocated_mode_argv);
-2033       return ERROR_INVALID_PARAM;
-2034     }
-2035 
-2036     // Require --file or --url
-2037     js_log_options(&quot;Checking media_file and media_url for seek&quot;);
-2038     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2039       js_log_options(&quot;Seek error: no media_file or media_url&quot;);
-2040       log_error(&quot;--seek requires --file or --url&quot;);
-2041       SAFE_FREE(allocated_mode_argv);
-2042       return ERROR_INVALID_PARAM;
-2043     }
-2044     js_log_options(&quot;Seek validation passed&quot;);
-2045   }
-2046   js_log_options(&quot;After --seek validation&quot;);
-2047 
-2048   // Validate --pause option
-2049   js_log_options(&quot;Before --pause validation&quot;);
-2050   js_log_options(&quot;Checking pause flag&quot;);
-2051   if (opts.pause) {
-2052     js_log_options(&quot;In pause validation block&quot;);
-2053     // Require --file or --url (not webcam, not test pattern)
-2054     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2055       js_log_options(&quot;Pause error: no media_file or media_url&quot;);
-2056       log_error(&quot;--pause requires --file or --url&quot;);
-2057       SAFE_FREE(allocated_mode_argv);
-2058       return ERROR_INVALID_PARAM;
-2059     }
-2060     js_log_options(&quot;Pause validation passed&quot;);
-2061   }
-2062   js_log_options(&quot;After --pause validation&quot;);
-2063 
-2064   js_log_options(&quot;Before media_url check&quot;);
-2065   js_log_options(&quot;Checking media_url[0]&quot;);
-2066   if (opts.media_url[0] != '\0') {
-2067     js_log_options(&quot;Entering media_url block&quot;);
-2068     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
-2069     js_log_options(&quot;About to call url_is_valid&quot;);
-2070     js_log_options(&quot;Before url_is_valid call&quot;);
-2071     if (!url_is_valid(opts.media_url)) {
-2072       js_log_options(&quot;url_is_valid returned false&quot;);
-2073       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
-2074       SAFE_FREE(allocated_mode_argv);
-2075       return ERROR_INVALID_PARAM;
-2076     }
-2077     js_log_options(&quot;url_is_valid returned true&quot;);
-2078     js_log_options(&quot;url_is_valid returned, before strstr check&quot;);
-2079 
-2080     // Normalize bare URLs by prepending http:// if not present
-2081     js_log_options(&quot;Before strstr check&quot;);
-2082     if (!strstr(opts.media_url, &quot;://&quot;)) {
-2083       js_log_options(&quot;URL needs normalization&quot;);
-2084       char normalized_url[2048];
-2085       js_log_options(&quot;Before snprintf&quot;);
-2086       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
-2087       js_log_options(&quot;After snprintf&quot;);
-2088       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
-2089         js_log_options(&quot;snprintf successful, before SAFE_STRNCPY&quot;);
-2090         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
-2091         js_log_options(&quot;URL normalized&quot;);
-2092       } else {
-2093         js_log_options(&quot;snprintf failed&quot;);
-2094         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
-2095         SAFE_FREE(allocated_mode_argv);
-2096         return ERROR_INVALID_PARAM;
-2097       }
-2098     }
-2099     js_log_options(&quot;After normalization check&quot;);
-2100   }
-2101   js_log_options(&quot;After media_url block&quot;);
+1931   log_info(&quot;&#x2605; STAGE 7: Starting post-processing&quot;);
+1932 
+1933   // Collect multiple --key flags for multi-key support (server/ACDS only)
+1934   // This enables servers to load both SSH and GPG keys and select the right one
+1935   // during handshake based on what the client expects
+1936   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
+1937     log_info(&quot;&#x2605; STAGE 7.1: About to collect identity keys&quot;);
+1938     int num_keys = options_collect_identity_keys(&amp;opts, argc, argv);
+1939     log_info(&quot;&#x2605; STAGE 7.1: options_collect_identity_keys returned %d&quot;, num_keys);
+1940     if (num_keys &lt; 0) {
+1941       SAFE_FREE(allocated_mode_argv);
+1942       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to collect identity keys&quot;);
+1943     }
+1944     // num_keys == 0 is OK (no --key flags provided)
+1945   }
+1946 
+1947   log_info(&quot;&#x2605; STAGE 7.2: About to update dimensions&quot;);
+1948 
+1949   // After parsing command line options, update dimensions
+1950   // First set any auto dimensions to terminal size, then apply full height logic
+1951 
+1952   // Clear auto flags if dimensions were explicitly parsed from options
+1953   // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
+1954   // values from overwriting user-specified dimensions
+1955   // Note: width=0 and height=0 are special values meaning &quot;auto-detect&quot;, so don't clear auto flags for those
+1956   if (opts.width != OPT_WIDTH_DEFAULT &amp;&amp; opts.width != 0) {
+1957     opts.auto_width = false;
+1958   }
+1959   if (opts.height != OPT_HEIGHT_DEFAULT &amp;&amp; opts.height != 0) {
+1960     opts.auto_height = false;
+1961   }
+1962   update_dimensions_to_terminal_size(&amp;opts);
+1963   js_log_options(&quot;BEFORE_UPDATE_DIMS&quot;);
+1964   js_log_options(&quot;CALLING_UPDATE_DIM&quot;);
+1965   update_dimensions_for_full_height(&amp;opts);
+1966   js_log_options(&quot;AFTER_UPDATE_DIM&quot;);
+1967 
+1968   // SKIP: verbose level adjustment - conflicts with raylib log level system
+1969   // TODO: Properly separate our log levels from raylib's
+1970   // if (opts.verbose_level &gt; 0) {
+1971   //   log_level_t current_level = log_get_level();
+1972   //   int new_level = (int)current_level - (int)opts.verbose_level;
+1973   //   if (new_level &lt; LOG_DEV) {
+1974   //     new_level = LOG_DEV;
+1975   //   }
+1976   //   log_set_level((log_level_t)new_level);
+1977   // }
+1978 
+1979   js_log_options(&quot;L11&quot;);
+1980   js_log_options(&quot;L12&quot;);
+1981   js_log_options(&quot;L13&quot;);
+1982   js_log_options(&quot;L14&quot;);
+1983   js_log_options(&quot;L15&quot;);
+1984   js_log_options(&quot;CHECKPOINT B&quot;);
+1985 
+1986   // SKIP: Check WEBCAM_DISABLED environment variable to enable test pattern mode
+1987   // TODO: Debug why logging here causes hang
+1988   // const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
+1989   // if (webcam_disabled &amp;&amp;
+1990   //     (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
+1991   //      platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
+1992   //   opts.test_pattern = true;
+1993   // }
+1994 
+1995   js_log_options(&quot;CHECKPOINT C&quot;);
+1996 
+1997   // Apply --no-compress interaction with audio encoding
+1998   js_log_options(&quot;Before --no-compress check&quot;);
+1999   if (opts.no_compress) {
+2000     js_log_options(&quot;In no_compress block&quot;);
+2001     opts.encode_audio = false;
+2002     js_log_options(&quot;Set encode_audio to false&quot;);
+2003     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
+2004     js_log_options(&quot;After log_debug in no_compress&quot;);
+2005   }
+2006   js_log_options(&quot;After --no-compress check&quot;);
+2007 
+2008   // Set media_from_stdin flag if media_file is &quot;-&quot;
+2009   js_log_options(&quot;Before media_from_stdin check&quot;);
+2010   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
+2011     js_log_options(&quot;In media_from_stdin block&quot;);
+2012     opts.media_from_stdin = true;
+2013     js_log_options(&quot;Set media_from_stdin to true&quot;);
+2014     log_debug(&quot;Media file set to stdin&quot;);
+2015     js_log_options(&quot;After log_debug in media_from_stdin&quot;);
+2016   }
+2017   js_log_options(&quot;After media_from_stdin check&quot;);
+2018 
+2019   // Validate --seek option
+2020   js_log_options(&quot;Before --seek validation&quot;);
+2021   js_log_options(&quot;Checking media_seek_timestamp&quot;);
+2022   if (opts.media_seek_timestamp &gt; 0.0) {
+2023     js_log_options(&quot;In seek validation block&quot;);
+2024     // Can't seek stdin
+2025     if (opts.media_from_stdin) {
+2026       js_log_options(&quot;Seek error: media_from_stdin&quot;);
+2027       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
+2028       SAFE_FREE(allocated_mode_argv);
+2029       return ERROR_INVALID_PARAM;
+2030     }
+2031 
+2032     // Require --file or --url
+2033     js_log_options(&quot;Checking media_file and media_url for seek&quot;);
+2034     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2035       js_log_options(&quot;Seek error: no media_file or media_url&quot;);
+2036       log_error(&quot;--seek requires --file or --url&quot;);
+2037       SAFE_FREE(allocated_mode_argv);
+2038       return ERROR_INVALID_PARAM;
+2039     }
+2040     js_log_options(&quot;Seek validation passed&quot;);
+2041   }
+2042   js_log_options(&quot;After --seek validation&quot;);
+2043 
+2044   // Validate --pause option
+2045   js_log_options(&quot;Before --pause validation&quot;);
+2046   js_log_options(&quot;Checking pause flag&quot;);
+2047   if (opts.pause) {
+2048     js_log_options(&quot;In pause validation block&quot;);
+2049     // Require --file or --url (not webcam, not test pattern)
+2050     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2051       js_log_options(&quot;Pause error: no media_file or media_url&quot;);
+2052       log_error(&quot;--pause requires --file or --url&quot;);
+2053       SAFE_FREE(allocated_mode_argv);
+2054       return ERROR_INVALID_PARAM;
+2055     }
+2056     js_log_options(&quot;Pause validation passed&quot;);
+2057   }
+2058   js_log_options(&quot;After --pause validation&quot;);
+2059 
+2060   js_log_options(&quot;Before media_url check&quot;);
+2061   js_log_options(&quot;Checking media_url[0]&quot;);
+2062   if (opts.media_url[0] != '\0') {
+2063     js_log_options(&quot;Entering media_url block&quot;);
+2064     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+2065     js_log_options(&quot;About to call url_is_valid&quot;);
+2066     js_log_options(&quot;Before url_is_valid call&quot;);
+2067     if (!url_is_valid(opts.media_url)) {
+2068       js_log_options(&quot;url_is_valid returned false&quot;);
+2069       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
+2070       SAFE_FREE(allocated_mode_argv);
+2071       return ERROR_INVALID_PARAM;
+2072     }
+2073     js_log_options(&quot;url_is_valid returned true&quot;);
+2074     js_log_options(&quot;url_is_valid returned, before strstr check&quot;);
+2075 
+2076     // Normalize bare URLs by prepending http:// if not present
+2077     js_log_options(&quot;Before strstr check&quot;);
+2078     if (!strstr(opts.media_url, &quot;://&quot;)) {
+2079       js_log_options(&quot;URL needs normalization&quot;);
+2080       char normalized_url[2048];
+2081       js_log_options(&quot;Before snprintf&quot;);
+2082       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
+2083       js_log_options(&quot;After snprintf&quot;);
+2084       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
+2085         js_log_options(&quot;snprintf successful, before SAFE_STRNCPY&quot;);
+2086         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+2087         js_log_options(&quot;URL normalized&quot;);
+2088       } else {
+2089         js_log_options(&quot;snprintf failed&quot;);
+2090         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
+2091         SAFE_FREE(allocated_mode_argv);
+2092         return ERROR_INVALID_PARAM;
+2093       }
+2094     }
+2095     js_log_options(&quot;After normalization check&quot;);
+2096   }
+2097   js_log_options(&quot;After media_url block&quot;);
+2098 
+2099   // ========================================================================
+2100   // STAGE 8: Publish to RCU
+2101   // ========================================================================
 2102 
-2103   // ========================================================================
-2104   // STAGE 8: Publish to RCU
-2105   // ========================================================================
-2106 
-2107   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
-2108   // (file/URL content is typically not horizontally flipped, unlike webcam)
-2109   js_log_options(&quot;Before flip_x check&quot;);
-2110   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
-2111     js_log_options(&quot;In flip_x adjustment&quot;);
-2112     opts.flip_x = false;
-2113     js_log_options(&quot;flip_x set to false&quot;);
-2114     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
-2115     js_log_options(&quot;After log_debug for flip_x&quot;);
-2116   }
-2117   js_log_options(&quot;After flip_x check&quot;);
-2118 
-2119   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
-2120 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2121   js_log_options(&quot;Before quiet_for_memory_report assignment&quot;);
-2122   bool quiet_for_memory_report = opts.quiet;
-2123   js_log_options(&quot;After quiet_for_memory_report assignment&quot;);
-2124 #endif
-2125 
-2126   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
-2127   // This makes the options visible to all threads via lock-free reads
-2128   js_log_options(&quot;STAGE 8 RCU: Before options_state_set&quot;);
-2129   js_log_options(&quot;Before log_info PERF&quot;);
-2130   js_log_options(&quot;After log_info PERF&quot;);
-2131   js_log_options(&quot;Calling options_state_set...&quot;);
-2132   js_log_options(&quot;Before options_state_set call&quot;);
-2133   asciichat_error_t publish_result = options_state_set(&amp;opts);
-2134   js_log_options(&quot;After options_state_set call&quot;);
-2135   js_log_options(&quot;options_state_set returned&quot;);
-2136   js_log_options(&quot;Before log_info options_state_set done&quot;);
-2137   js_log_options(&quot;After log_info options_state_set done&quot;);
-2138   js_log_options(&quot;Before publish_result check&quot;);
-2139   if (publish_result != ASCIICHAT_OK) {
-2140     js_log_options(&quot;publish_result not OK&quot;);
-2141     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
-2142     SAFE_FREE(allocated_mode_argv);
-2143     return publish_result;
-2144   }
-2145   js_log_options(&quot;publish_result is OK&quot;);
-2146   js_log_options(&quot;options_state_set successful&quot;);
-2147 
-2148   // Now update debug memory quiet mode with the saved quiet value
-2149 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2150   debug_memory_set_quiet_mode(quiet_for_memory_report);
-2151 #endif
-2152 
-2153   // ========================================================================
-2154   // Apply color scheme to logging
-2155   // ========================================================================
-2156   // Now that options are parsed, set and apply the selected color scheme to logging
-2157   js_log_options(&quot;STAGE 8 ColorScheme: Checking color_scheme_name&quot;);
-2158   js_log_options(&quot;Before color_scheme_name[0] check&quot;);
-2159   if (opts.color_scheme_name[0] != '\0') {
-2160     js_log_options(&quot;Color scheme name is set&quot;);
-2161     js_log_options(&quot;Before colorscheme_set_active_scheme&quot;);
-2162     js_log_options(&quot;Before colorscheme_set_active_scheme call&quot;);
-2163     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
-2164     js_log_options(&quot;After colorscheme_set_active_scheme call&quot;);
-2165     js_log_options(&quot;colorscheme_set_active_scheme returned&quot;);
-2166     js_log_options(&quot;Before log_info colorscheme done&quot;);
-2167     js_log_options(&quot;After log_info colorscheme done&quot;);
-2168     js_log_options(&quot;Before scheme_result check&quot;);
-2169     if (scheme_result == ASCIICHAT_OK) {
-2170       js_log_options(&quot;scheme_result is OK&quot;);
-2171       js_log_options(&quot;Before colorscheme_get_active_scheme&quot;);
-2172       const color_scheme_t *scheme = colorscheme_get_active_scheme();
-2173       js_log_options(&quot;After colorscheme_get_active_scheme&quot;);
-2174       js_log_options(&quot;Before scheme null check&quot;);
-2175       if (scheme) {
-2176         js_log_options(&quot;scheme is not null&quot;);
-2177         js_log_options(&quot;Before log_set_color_scheme&quot;);
-2178         log_set_color_scheme(scheme);
-2179         js_log_options(&quot;After log_set_color_scheme&quot;);
-2180         js_log_options(&quot;Color scheme applied&quot;);
-2181         js_log_options(&quot;Before log_debug color scheme&quot;);
-2182         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
-2183         js_log_options(&quot;After log_debug color scheme&quot;);
-2184       } else {
-2185         js_log_options(&quot;scheme is null&quot;);
-2186         js_log_options(&quot;No scheme returned from colorscheme_get_active_scheme&quot;);
-2187       }
-2188     } else {
-2189       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
-2190     }
-2191   }
-2192 
-2193   // ========================================================================
-2194   // STAGE 8: Execute deferred actions (after all options parsed and published)
-2195   // ========================================================================
-2196   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
-2197   // are executed here after all options are fully parsed and published via RCU.
-2198   // This ensures action output reflects the final parsed state (e.g., final dimensions
-2199   // for --show-capabilities).
-2200   // Re-enable terminal output so deferred actions can print their results.
-2201   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
-2202   if (has_action) {
-2203     log_set_terminal_output(true);
-2204   }
-2205   actions_execute_deferred();
-2206   SAFE_FREE(allocated_mode_argv);
-2207   return ASCIICHAT_OK;
-2208 }</pre>
+2103   // Adjust flip_x default: if --file or --url is provided, default flip_x to false
+2104   // (file/URL content is typically not horizontally flipped, unlike webcam)
+2105   js_log_options(&quot;Before flip_x check&quot;);
+2106   if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') &amp;&amp; opts.flip_x) {
+2107     js_log_options(&quot;In flip_x adjustment&quot;);
+2108     opts.flip_x = false;
+2109     js_log_options(&quot;flip_x set to false&quot;);
+2110     log_debug(&quot;flip_x auto-adjusted to false for media file/URL&quot;);
+2111     js_log_options(&quot;After log_debug for flip_x&quot;);
+2112   }
+2113   js_log_options(&quot;After flip_x check&quot;);
+2114 
+2115   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
+2116 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2117   js_log_options(&quot;Before quiet_for_memory_report assignment&quot;);
+2118   bool quiet_for_memory_report = opts.quiet;
+2119   js_log_options(&quot;After quiet_for_memory_report assignment&quot;);
+2120 #endif
+2121 
+2122   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
+2123   // This makes the options visible to all threads via lock-free reads
+2124   js_log_options(&quot;STAGE 8 RCU: Before options_state_set&quot;);
+2125   js_log_options(&quot;Before log_info PERF&quot;);
+2126   js_log_options(&quot;After log_info PERF&quot;);
+2127   js_log_options(&quot;Calling options_state_set...&quot;);
+2128   js_log_options(&quot;Before options_state_set call&quot;);
+2129   asciichat_error_t publish_result = options_state_set(&amp;opts);
+2130   js_log_options(&quot;After options_state_set call&quot;);
+2131   js_log_options(&quot;options_state_set returned&quot;);
+2132   js_log_options(&quot;Before log_info options_state_set done&quot;);
+2133   js_log_options(&quot;After log_info options_state_set done&quot;);
+2134   js_log_options(&quot;Before publish_result check&quot;);
+2135   if (publish_result != ASCIICHAT_OK) {
+2136     js_log_options(&quot;publish_result not OK&quot;);
+2137     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
+2138     SAFE_FREE(allocated_mode_argv);
+2139     return publish_result;
+2140   }
+2141   js_log_options(&quot;publish_result is OK&quot;);
+2142   js_log_options(&quot;options_state_set successful&quot;);
+2143 
+2144   // Now update debug memory quiet mode with the saved quiet value
+2145 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2146   debug_memory_set_quiet_mode(quiet_for_memory_report);
+2147 #endif
+2148 
+2149   // ========================================================================
+2150   // Apply color scheme to logging
+2151   // ========================================================================
+2152   // Now that options are parsed, set and apply the selected color scheme to logging
+2153   js_log_options(&quot;STAGE 8 ColorScheme: Checking color_scheme_name&quot;);
+2154   js_log_options(&quot;Before color_scheme_name[0] check&quot;);
+2155   if (opts.color_scheme_name[0] != '\0') {
+2156     js_log_options(&quot;Color scheme name is set&quot;);
+2157     js_log_options(&quot;Before colorscheme_set_active_scheme&quot;);
+2158     js_log_options(&quot;Before colorscheme_set_active_scheme call&quot;);
+2159     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+2160     js_log_options(&quot;After colorscheme_set_active_scheme call&quot;);
+2161     js_log_options(&quot;colorscheme_set_active_scheme returned&quot;);
+2162     js_log_options(&quot;Before log_info colorscheme done&quot;);
+2163     js_log_options(&quot;After log_info colorscheme done&quot;);
+2164     js_log_options(&quot;Before scheme_result check&quot;);
+2165     if (scheme_result == ASCIICHAT_OK) {
+2166       js_log_options(&quot;scheme_result is OK&quot;);
+2167       js_log_options(&quot;Before colorscheme_get_active_scheme&quot;);
+2168       const color_scheme_t *scheme = colorscheme_get_active_scheme();
+2169       js_log_options(&quot;After colorscheme_get_active_scheme&quot;);
+2170       js_log_options(&quot;Before scheme null check&quot;);
+2171       if (scheme) {
+2172         js_log_options(&quot;scheme is not null&quot;);
+2173         js_log_options(&quot;Before log_set_color_scheme&quot;);
+2174         log_set_color_scheme(scheme);
+2175         js_log_options(&quot;After log_set_color_scheme&quot;);
+2176         js_log_options(&quot;Color scheme applied&quot;);
+2177         js_log_options(&quot;Before log_debug color scheme&quot;);
+2178         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
+2179         js_log_options(&quot;After log_debug color scheme&quot;);
+2180       } else {
+2181         js_log_options(&quot;scheme is null&quot;);
+2182         js_log_options(&quot;No scheme returned from colorscheme_get_active_scheme&quot;);
+2183       }
+2184     } else {
+2185       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
+2186     }
+2187   }
+2188 
+2189   // ========================================================================
+2190   // STAGE 8: Execute deferred actions (after all options parsed and published)
+2191   // ========================================================================
+2192   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
+2193   // are executed here after all options are fully parsed and published via RCU.
+2194   // This ensures action output reflects the final parsed state (e.g., final dimensions
+2195   // for --show-capabilities).
+2196   // Re-enable terminal output so deferred actions can print their results.
+2197   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
+2198   if (has_action) {
+2199     log_set_terminal_output(true);
+2200   }
+2201   actions_execute_deferred();
+2202   SAFE_FREE(allocated_mode_argv);
+2203   return ASCIICHAT_OK;
+2204 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_check_update_immediate()</b>,
@@ -6973,181 +6973,181 @@ options_set_bool(&quot;audio_enabled&quot;, true);
 <p class="Pp">Does not allocate memory (all fields are static arrays or
     primitives)</p>
 </div>
-<p class="Pp">Definition at line <b>528</b> of file
+<p class="Pp">Definition at line <b>524</b> of file
     <b>lib/options/options.c</b>.</p>
-<pre>528                               {
-529   options_t opts;
-530 
-531   // Zero-initialize all fields first
-532   memset(&amp;opts, 0, sizeof(opts));
-533 
-534   // ============================================================================
-535   // GENERAL CATEGORY - General-purpose options
-536   // ============================================================================
-537   opts.help = OPT_HELP_DEFAULT;
-538   opts.version = OPT_VERSION_DEFAULT;
-539   opts.splash_screen = OPT_SPLASH_DEFAULT;
-540   opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
-541   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
-542   opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
-543   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
-544   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
-545   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
-546 
-547   // ============================================================================
-548   // LOGGING CATEGORY - Binary-level logging and output control options
-549   // ============================================================================
-550   // log_file is mode-dependent at startup and intentionally left empty here
-551   opts.quiet = OPT_QUIET_DEFAULT;
-552   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
-553   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
-554   opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
-555   opts.json = OPT_JSON_DEFAULT;
-556   SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
-557   // log_template and log_format are set by get_default_log_template()
-558 
-559   // ============================================================================
-560   // TERMINAL CATEGORY - Terminal display options
-561   // ============================================================================
-562   opts.width = OPT_WIDTH_DEFAULT;
-563   opts.height = OPT_HEIGHT_DEFAULT;
-564   opts.auto_width = OPT_AUTO_WIDTH_DEFAULT;
-565   opts.auto_height = OPT_AUTO_HEIGHT_DEFAULT;
-566   opts.color_mode = OPT_COLOR_MODE_DEFAULT;
-567   opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
-568   opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
-569   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
-570   opts.color = OPT_COLOR_DEFAULT;
-571 
-572   // ============================================================================
-573   // DISPLAY CATEGORY - Display and rendering options
-574   // ============================================================================
-575   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
-576   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-577   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
-578   // palette_custom is already zeroed by memset
-579   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
-580   opts.stretch = OPT_STRETCH_DEFAULT;
-581   opts.fps = OPT_FPS_DEFAULT;
-582   opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
-583   opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
-584   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
-585   opts.flip_x = OPT_FLIP_X_DEFAULT;
-586   opts.flip_y = OPT_FLIP_Y_DEFAULT;
-587 
-588   // ============================================================================
-589   // WEBCAM CATEGORY - Webcam and capture device options
-590   // ============================================================================
-591   opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-592   opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
-593   opts.no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT;
-594 
-595   // ============================================================================
-596   // MEDIA CATEGORY - Media file streaming and playback options
-597   // ============================================================================
-598   // media_file is already zeroed by memset
-599   // media_url is already zeroed by memset
-600   opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
-601   opts.pause = OPT_PAUSE_DEFAULT;
-602   opts.media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT;
-603   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
-604   // yt_dlp_options is already zeroed by memset
-605 
-606   // Render-to-file options (Unix only)
-607 #ifndef _WIN32
-608   // render_file is already zeroed by memset
-609   opts.render_theme = OPT_RENDER_THEME_DEFAULT;
-610   // render_font is already zeroed by memset
-611   opts.render_font_size = OPT_RENDER_FONT_SIZE_DEFAULT;
-612 #endif
-613 
-614   // ============================================================================
-615   // NETWORK CATEGORY - Network connectivity and protocol options
-616   // ============================================================================
-617   SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
-618   SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
-619   opts.port = OPT_PORT_INT_DEFAULT;
-620   opts.websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
-621   opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
-622   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-623   opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-624   opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
-625   // Discovery Service (ACDS) Options
-626   opts.discovery = OPT_ACDS_DEFAULT;
-627   opts.discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
-628   SAFE_STRNCPY(opts.discovery_server, OPT_ENDPOINT_DISCOVERY_SERVICE, sizeof(opts.discovery_server));
-629   opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
-630   opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
-631   opts.require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
-632   opts.require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
-633   // discovery_service_key is already zeroed by memset
-634   opts.discovery_database_path[0] = '\0'; // Explicitly ensure discovery_database_path is empty
-635   // LAN Discovery &amp; WebRTC Options
-636   opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
-637   opts.no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT;
-638   opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
-639   // WebRTC Mode &amp; Strategy Options
-640   opts.webrtc = OPT_WEBRTC_DEFAULT;
-641   opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
-642   opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
-643   opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
-644   opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
-645   opts.webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT;
-646   opts.webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
-647   opts.webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
-648   SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
-649   SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
-650   SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
-651   SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
-652   // turn_secret is already zeroed by memset
-653 
-654   // ============================================================================
-655   // AUDIO CATEGORY - Audio capture, playback and processing options
-656   // ============================================================================
-657   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
-658   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
-659   opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-660   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-661   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
-662   opts.speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
-663   opts.audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
-664   opts.audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
-665   opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
-666 
-667   // ============================================================================
-668   // SECURITY CATEGORY - Encryption and authentication options
-669   // ============================================================================
-670   opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
-671   // encrypt_key is already zeroed by memset
-672   // password is already zeroed by memset
-673   // encrypt_keyfile is already zeroed by memset
-674   opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
-675   opts.no_auth = OPT_NO_AUTH_DEFAULT;
-676   // server_key is already zeroed by memset
-677   // client_keys is already zeroed by memset
-678   // identity_keys array is already zeroed by memset
-679   opts.num_identity_keys = 0;
-680   opts.require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT;
-681   opts.require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT;
-682 
-683   // ============================================================================
-684   // CONFIGURATION CATEGORY - Application configuration options
-685   // ============================================================================
-686   // config_file is already zeroed by memset
-687 
-688   // ============================================================================
-689   // DATABASE CATEGORY - Database and persistent storage options
-690   // ============================================================================
-691   // discovery_database_path is already zeroed by memset (set above in NETWORK)
-692 
-693   // ============================================================================
-694   // Internal/System Fields
-695   // ============================================================================
-696   // session_string is already zeroed by memset
-697   // detected_mode is already zeroed by memset
-698 
-699   return opts;
-700 }</pre>
+<pre>524                               {
+525   options_t opts;
+526 
+527   // Zero-initialize all fields first
+528   memset(&amp;opts, 0, sizeof(opts));
+529 
+530   // ============================================================================
+531   // GENERAL CATEGORY - General-purpose options
+532   // ============================================================================
+533   opts.help = OPT_HELP_DEFAULT;
+534   opts.version = OPT_VERSION_DEFAULT;
+535   opts.splash_screen = OPT_SPLASH_DEFAULT;
+536   opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
+537   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
+538   opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
+539   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
+540   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
+541   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
+542 
+543   // ============================================================================
+544   // LOGGING CATEGORY - Binary-level logging and output control options
+545   // ============================================================================
+546   // log_file is mode-dependent at startup and intentionally left empty here
+547   opts.quiet = OPT_QUIET_DEFAULT;
+548   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
+549   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
+550   opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
+551   opts.json = OPT_JSON_DEFAULT;
+552   SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
+553   // log_template and log_format are set by get_default_log_template()
+554 
+555   // ============================================================================
+556   // TERMINAL CATEGORY - Terminal display options
+557   // ============================================================================
+558   opts.width = OPT_WIDTH_DEFAULT;
+559   opts.height = OPT_HEIGHT_DEFAULT;
+560   opts.auto_width = OPT_AUTO_WIDTH_DEFAULT;
+561   opts.auto_height = OPT_AUTO_HEIGHT_DEFAULT;
+562   opts.color_mode = OPT_COLOR_MODE_DEFAULT;
+563   opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
+564   opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
+565   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
+566   opts.color = OPT_COLOR_DEFAULT;
+567 
+568   // ============================================================================
+569   // DISPLAY CATEGORY - Display and rendering options
+570   // ============================================================================
+571   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
+572   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+573   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
+574   // palette_custom is already zeroed by memset
+575   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
+576   opts.stretch = OPT_STRETCH_DEFAULT;
+577   opts.fps = OPT_FPS_DEFAULT;
+578   opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
+579   opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
+580   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
+581   opts.flip_x = OPT_FLIP_X_DEFAULT;
+582   opts.flip_y = OPT_FLIP_Y_DEFAULT;
+583 
+584   // ============================================================================
+585   // WEBCAM CATEGORY - Webcam and capture device options
+586   // ============================================================================
+587   opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
+588   opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
+589   opts.no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT;
+590 
+591   // ============================================================================
+592   // MEDIA CATEGORY - Media file streaming and playback options
+593   // ============================================================================
+594   // media_file is already zeroed by memset
+595   // media_url is already zeroed by memset
+596   opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
+597   opts.pause = OPT_PAUSE_DEFAULT;
+598   opts.media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT;
+599   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
+600   // yt_dlp_options is already zeroed by memset
+601 
+602   // Render-to-file options (Unix only)
+603 #ifndef _WIN32
+604   // render_file is already zeroed by memset
+605   opts.render_theme = OPT_RENDER_THEME_DEFAULT;
+606   // render_font is already zeroed by memset
+607   opts.render_font_size = OPT_RENDER_FONT_SIZE_DEFAULT;
+608 #endif
+609 
+610   // ============================================================================
+611   // NETWORK CATEGORY - Network connectivity and protocol options
+612   // ============================================================================
+613   SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
+614   SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
+615   opts.port = OPT_PORT_INT_DEFAULT;
+616   opts.websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
+617   opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
+618   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+619   opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+620   opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
+621   // Discovery Service (ACDS) Options
+622   opts.discovery = OPT_ACDS_DEFAULT;
+623   opts.discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
+624   SAFE_STRNCPY(opts.discovery_server, OPT_ENDPOINT_DISCOVERY_SERVICE, sizeof(opts.discovery_server));
+625   opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
+626   opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
+627   opts.require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
+628   opts.require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
+629   // discovery_service_key is already zeroed by memset
+630   opts.discovery_database_path[0] = '\0'; // Explicitly ensure discovery_database_path is empty
+631   // LAN Discovery &amp; WebRTC Options
+632   opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
+633   opts.no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT;
+634   opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
+635   // WebRTC Mode &amp; Strategy Options
+636   opts.webrtc = OPT_WEBRTC_DEFAULT;
+637   opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
+638   opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
+639   opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+640   opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+641   opts.webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT;
+642   opts.webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
+643   opts.webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
+644   SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
+645   SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
+646   SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
+647   SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
+648   // turn_secret is already zeroed by memset
+649 
+650   // ============================================================================
+651   // AUDIO CATEGORY - Audio capture, playback and processing options
+652   // ============================================================================
+653   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
+654   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
+655   opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
+656   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
+657   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
+658   opts.speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
+659   opts.audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
+660   opts.audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
+661   opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+662 
+663   // ============================================================================
+664   // SECURITY CATEGORY - Encryption and authentication options
+665   // ============================================================================
+666   opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
+667   // encrypt_key is already zeroed by memset
+668   // password is already zeroed by memset
+669   // encrypt_keyfile is already zeroed by memset
+670   opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
+671   opts.no_auth = OPT_NO_AUTH_DEFAULT;
+672   // server_key is already zeroed by memset
+673   // client_keys is already zeroed by memset
+674   // identity_keys array is already zeroed by memset
+675   opts.num_identity_keys = 0;
+676   opts.require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT;
+677   opts.require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT;
+678 
+679   // ============================================================================
+680   // CONFIGURATION CATEGORY - Application configuration options
+681   // ============================================================================
+682   // config_file is already zeroed by memset
+683 
+684   // ============================================================================
+685   // DATABASE CATEGORY - Database and persistent storage options
+686   // ============================================================================
+687   // discovery_database_path is already zeroed by memset (set above in NETWORK)
+688 
+689   // ============================================================================
+690   // Internal/System Fields
+691   // ============================================================================
+692   // session_string is already zeroed by memset
+693   // detected_mode is already zeroed by memset
+694 
+695   return opts;
+696 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_state::address</b>,
@@ -8565,7 +8565,7 @@ usage(stdout, MODE_SERVER);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

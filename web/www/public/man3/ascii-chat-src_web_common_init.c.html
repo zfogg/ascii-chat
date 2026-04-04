@@ -75,32 +75,39 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">argc (number of arguments parsed), or -1 on allocation
   failure</div>
-<p class="Pp">Definition at line <b>24</b> of file
+<p class="Pp">Definition at line <b>25</b> of file
   <b>src/web/common/init.c</b>.</p>
-<pre>24                                                                                            {
-25   if (!args_str || !argv || !out_args_copy || max_args &lt; 1) {
-26     return -1;
-27   }
-28 
-29   // Duplicate the input string (strtok modifies the string)
-30   char *args_copy = strdup(args_str);
-31   if (!args_copy) {
-32     return -1;
-33   }
-34 
-35   *out_args_copy = args_copy;
-36 
-37   // Parse space-separated arguments
-38   int argc = 0;
-39   char *token = strtok(args_copy, &quot; &quot;);
-40   while (token != NULL &amp;&amp; argc &lt; (max_args - 1)) {
-41     argv[argc++] = token;
-42     token = strtok(NULL, &quot; &quot;);
-43   }
-44   argv[argc] = NULL;
-45 
-46   return argc;
-47 }</pre>
+<pre>25                                                                                            {
+26   if (!args_str || !argv || !out_args_copy || max_args &lt; 1) {
+27     return -1;
+28   }
+29 
+30   // Duplicate the input string (strtok modifies the string)
+31   char *args_copy = strdup(args_str);
+32   if (!args_copy) {
+33     return -1;
+34   }
+35 
+36   *out_args_copy = args_copy;
+37 
+38   // Parse space-separated arguments
+39   int argc = 0;
+40   char *token = strtok(args_copy, &quot; &quot;);
+41   while (token != NULL &amp;&amp; argc &lt; (max_args - 1)) {
+42     argv[argc++] = token;
+43     token = strtok(NULL, &quot; &quot;);
+44   }
+45   argv[argc] = NULL;
+46 
+47   // Log for debugging
+48   fprintf(stderr, &quot;[wasm_parse_args] Parsed input: %s\n&quot;, args_str);
+49   fprintf(stderr, &quot;[wasm_parse_args] argc=%d\n&quot;, argc);
+50   for (int i = 0; i &lt; argc; i++) {
+51     fprintf(stderr, &quot;[wasm_parse_args] argv[%d]=%s\n&quot;, i, argv[i]);
+52   }
+53 
+54   return argc;
+55 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_init_with_args()</b>, and
@@ -114,7 +121,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

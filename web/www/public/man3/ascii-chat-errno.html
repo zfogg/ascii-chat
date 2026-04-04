@@ -527,11 +527,11 @@ Stack trace (11 frames):
 319    (code))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
-    <b>acds_client_connect()</b>, <b>acds_identity_default_path()</b>,
-    <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
-    <b>acds_identity_save()</b>, <b>acds_server_init()</b>,
-    <b>acds_server_run()</b>, <b>acds_session_create()</b>,
+<p class="Pp">Referenced by <b>__attribute__()</b>,
+    <b>accept_with_timeout()</b>, <b>acds_client_connect()</b>,
+    <b>acds_identity_default_path()</b>, <b>acds_identity_generate()</b>,
+    <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
+    <b>acds_server_init()</b>, <b>acds_session_create()</b>,
     <b>acds_session_join()</b>, <b>acds_session_lookup()</b>,
     <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
     <b>acds_string_generate()</b>, <b>acds_verify_session_create()</b>,
@@ -739,10 +739,11 @@ Stack trace (11 frames):
     <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
     <b>image_print_256color()</b>, <b>image_print_color()</b>,
-    <b>image_resize()</b>, <b>image_resize_interpolation()</b>,
-    <b>image_validate_buffer_size()</b>, <b>image_validate_dimensions()</b>,
-    <b>initialize_client_palette()</b>, <b>ipv4_to_ipv6_mapped()</b>,
-    <b>is_session_string()</b>, <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
+    <b>image_print_color_simd()</b>, <b>image_resize()</b>,
+    <b>image_resize_interpolation()</b>, <b>image_validate_buffer_size()</b>,
+    <b>image_validate_dimensions()</b>, <b>initialize_client_palette()</b>,
+    <b>ipv4_to_ipv6_mapped()</b>, <b>is_session_string()</b>,
+    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_toggle()</b>,
     <b>log_enable_mmap_sized()</b>, <b>log_mmap_init()</b>,
     <b>log_search_gather_and_filter_logs()</b>, <b>log_set_format()</b>,
@@ -883,7 +884,9 @@ Stack trace (11 frames):
     <b>session_participant_start_video()</b>,
     <b>session_participant_start_video_capture()</b>,
     <b>session_pipeline_create()</b>, <b>session_pipeline_run_main()</b>,
-    <b>session_render_loop()</b>, <b>session_server_like_run()</b>,
+    <b>session_render_loop()</b>, <b>session_server_like_handshake()</b>,
+    <b>session_server_like_mdns_advertise()</b>,
+    <b>session_server_like_run()</b>,
     <b>session_settings_apply_to_options()</b>,
     <b>session_settings_deserialize()</b>,
     <b>session_settings_from_options()</b>, <b>session_settings_serialize()</b>,
@@ -1279,8 +1282,7 @@ Stack trace (11 frames):
     <b>lifecycle_is_initialized()</b>, <b>log_plain</b>, <b>mutex_lock</b>,
     <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>, <b>platform_localtime()</b>, and
     <b>asciichat_error_stats_t::total_errors</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>, and
-    <b>stats_logger_thread()</b>.</p>
+<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_error_stats_record_("><a class="permalink" href="#void_asciichat_error_stats_record_(">void
@@ -2074,7 +2076,7 @@ Stack trace (11 frames):
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

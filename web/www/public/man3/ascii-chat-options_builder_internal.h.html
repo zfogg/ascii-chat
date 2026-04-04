@@ -167,20 +167,20 @@
 <h2 class="Ss" id="void_ensure_dependency_capacity_("><a class="permalink" href="#void_ensure_dependency_capacity_(">void
   ensure_dependency_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow dependency array if needed.</p>
-<p class="Pp">Definition at line <b>224</b> of file <b>builder.c</b>.</p>
-<pre>224                                                             {
-225   if (builder-&gt;num_dependencies &gt;= builder-&gt;dependency_capacity) {
-226     size_t new_capacity = builder-&gt;dependency_capacity * 2;
-227     option_dependency_t *new_dependencies =
-228         SAFE_REALLOC(builder-&gt;dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
-229     if (!new_dependencies) {
-230       log_fatal(&quot;Failed to reallocate dependencies array&quot;);
-231       return;
-232     }
-233     builder-&gt;dependencies = new_dependencies;
-234     builder-&gt;dependency_capacity = new_capacity;
-235   }
-236 }</pre>
+<p class="Pp">Definition at line <b>230</b> of file <b>builder.c</b>.</p>
+<pre>230                                                             {
+231   if (builder-&gt;num_dependencies &gt;= builder-&gt;dependency_capacity) {
+232     size_t new_capacity = builder-&gt;dependency_capacity * 2;
+233     option_dependency_t *new_dependencies =
+234         SAFE_REALLOC(builder-&gt;dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
+235     if (!new_dependencies) {
+236       log_fatal(&quot;Failed to reallocate dependencies array&quot;);
+237       return;
+238     }
+239     builder-&gt;dependencies = new_dependencies;
+240     builder-&gt;dependency_capacity = new_capacity;
+241   }
+242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
@@ -195,20 +195,20 @@
 <h2 class="Ss" id="void_ensure_descriptor_capacity_("><a class="permalink" href="#void_ensure_descriptor_capacity_(">void
   ensure_descriptor_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow descriptor array if needed.</p>
-<p class="Pp">Definition at line <b>207</b> of file <b>builder.c</b>.</p>
-<pre>207                                                             {
-208   if (builder-&gt;num_descriptors &gt;= builder-&gt;descriptor_capacity) {
-209     size_t new_capacity = builder-&gt;descriptor_capacity * 2;
-210     option_descriptor_t *new_descriptors =
-211         SAFE_REALLOC(builder-&gt;descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
-212     if (!new_descriptors) {
-213       log_fatal(&quot;Failed to reallocate descriptors array&quot;);
-214       return;
-215     }
-216     builder-&gt;descriptors = new_descriptors;
-217     builder-&gt;descriptor_capacity = new_capacity;
-218   }
-219 }</pre>
+<p class="Pp">Definition at line <b>213</b> of file <b>builder.c</b>.</p>
+<pre>213                                                             {
+214   if (builder-&gt;num_descriptors &gt;= builder-&gt;descriptor_capacity) {
+215     size_t new_capacity = builder-&gt;descriptor_capacity * 2;
+216     option_descriptor_t *new_descriptors =
+217         SAFE_REALLOC(builder-&gt;descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
+218     if (!new_descriptors) {
+219       log_fatal(&quot;Failed to reallocate descriptors array&quot;);
+220       return;
+221     }
+222     builder-&gt;descriptors = new_descriptors;
+223     builder-&gt;descriptor_capacity = new_capacity;
+224   }
+225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptor_capacity</b>,
@@ -233,23 +233,23 @@
 <h2 class="Ss" id="void_ensure_positional_arg_capacity_("><a class="permalink" href="#void_ensure_positional_arg_capacity_(">void
   ensure_positional_arg_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow positional arg array if needed.</p>
-<p class="Pp">Definition at line <b>241</b> of file <b>builder.c</b>.</p>
-<pre>241                                                                 {
-242   if (builder-&gt;num_positional_args &gt;= builder-&gt;positional_arg_capacity) {
-243     size_t new_capacity = builder-&gt;positional_arg_capacity * 2;
-244     if (new_capacity == 0)
-245       new_capacity = INITIAL_POSITIONAL_ARG_CAPACITY;
-246 
-247     positional_arg_descriptor_t *new_positional = SAFE_REALLOC(
-248         builder-&gt;positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
-249     if (!new_positional) {
-250       log_fatal(&quot;Failed to reallocate positional_args array&quot;);
-251       return;
-252     }
-253     builder-&gt;positional_args = new_positional;
-254     builder-&gt;positional_arg_capacity = new_capacity;
-255   }
-256 }</pre>
+<p class="Pp">Definition at line <b>247</b> of file <b>builder.c</b>.</p>
+<pre>247                                                                 {
+248   if (builder-&gt;num_positional_args &gt;= builder-&gt;positional_arg_capacity) {
+249     size_t new_capacity = builder-&gt;positional_arg_capacity * 2;
+250     if (new_capacity == 0)
+251       new_capacity = INITIAL_POSITIONAL_ARG_CAPACITY;
+252 
+253     positional_arg_descriptor_t *new_positional = SAFE_REALLOC(
+254         builder-&gt;positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
+255     if (!new_positional) {
+256       log_fatal(&quot;Failed to reallocate positional_args array&quot;);
+257       return;
+258     }
+259     builder-&gt;positional_args = new_positional;
+260     builder-&gt;positional_arg_capacity = new_capacity;
+261   }
+262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>INITIAL_POSITIONAL_ARG_CAPACITY</b>,
@@ -262,15 +262,15 @@
 <h2 class="Ss">const <b>option_descriptor_t</b> * find_option (const
   <b>options_config_t</b> * config, const char * long_name)</h2>
 <p class="Pp">Find option descriptor by long name.</p>
-<p class="Pp">Definition at line <b>338</b> of file <b>builder.c</b>.</p>
-<pre>338                                                                                               {
-339   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-340     if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
-341       return &amp;config-&gt;descriptors[i];
-342     }
-343   }
-344   return NULL;
-345 }</pre>
+<p class="Pp">Definition at line <b>344</b> of file <b>builder.c</b>.</p>
+<pre>344                                                                                               {
+345   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+346     if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
+347       return &amp;config-&gt;descriptors[i];
+348     }
+349   }
+350   return NULL;
+351 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_t::descriptors</b>,
@@ -291,89 +291,89 @@
 <i>bufsize</i> Size of buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of characters written to buf</div>
-<p class="Pp">Definition at line <b>77</b> of file <b>builder.c</b>.</p>
-<pre>77                                                                                                 {
-78   if (!desc || !buf || bufsize == 0) {
-79     return 0;
-80   }
-81 
-82   // For callback options with enums, look up the enum string by matching the default value
-83   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values &amp;&amp; desc-&gt;default_value) {
-84     int default_int_val = 0;
-85     memcpy(&amp;default_int_val, desc-&gt;default_value, sizeof(int));
-86 
-87     // Try to find matching enum value
-88     if (desc-&gt;metadata.enum_integer_values) {
-89       for (size_t i = 0; desc-&gt;metadata.enum_values[i] != NULL; i++) {
-90         if (desc-&gt;metadata.enum_integer_values[i] == default_int_val) {
-91           return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[i]);
-92         }
-93       }
-94     } else {
-95       // Fallback: assume sequential 0-based indices if integer values not provided
-96       // Count enum values to check bounds
-97       size_t enum_count = 0;
-98       while (desc-&gt;metadata.enum_values[enum_count] != NULL) {
-99         enum_count++;
-100       }
-101       if (default_int_val &gt;= 0 &amp;&amp; (size_t)default_int_val &lt; enum_count) {
-102         return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[default_int_val]);
-103       }
-104     }
-105   }
-106 
-107   // For callback options storing numeric types (int/double/float), format them as numbers
-108   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL) {
-109     // Check if this is a numeric callback by looking for numeric_range metadata
-110     // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
-111     if (desc-&gt;metadata.numeric_range.max != 0 || desc-&gt;metadata.numeric_range.min != 0) {
-112       // This is a numeric callback option - extract and format the value
-113       // Determine if it's int or double based on range (int max is 2147483647)
-114       double default_double = 0.0;
-115       if (desc-&gt;metadata.numeric_range.max &lt;= 2147483647.0 &amp;&amp; desc-&gt;metadata.numeric_range.min &gt;= -2147483648.0) {
-116         // Integer-ranged value (like port 1-65535) - stored as int
-117         int default_int = 0;
-118         memcpy(&amp;default_int, desc-&gt;default_value, sizeof(int));
-119         default_double = (double)default_int;
-120       } else {
-121         // Double-ranged value - stored as double
-122         memcpy(&amp;default_double, desc-&gt;default_value, sizeof(double));
-123       }
-124 
-125       // Format with appropriate precision (remove trailing zeros for integers)
-126       char formatted[32];
-127       safe_snprintf(formatted, sizeof(formatted), &quot;%.1f&quot;, default_double);
-128 
-129       // Remove trailing zeros after decimal point
-130       char *dot = strchr(formatted, '.');
-131       if (dot) {
-132         char *end = formatted + strlen(formatted) - 1;
-133         while (end &gt; dot &amp;&amp; *end == '0') {
-134           end--;
-135         }
-136         if (*end == '.') {
-137           *end = '\0';
-138         } else {
-139           *(end + 1) = '\0';
-140         }
-141       }
-142 
-143       return safe_snprintf(buf, bufsize, &quot;%s&quot;, formatted);
-144     }
-145   }
-146 
-147   // For callback options with string defaults (no enum, no numeric range)
-148   // Treat default_value as a const char* string pointer
-149   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL &amp;&amp;
-150       desc-&gt;metadata.numeric_range.max == 0 &amp;&amp; desc-&gt;metadata.numeric_range.min == 0) {
-151     const char *str_default = (const char *)desc-&gt;default_value;
-152     if (str_default &amp;&amp; str_default[0] != '\0') {
-153       return safe_snprintf(buf, bufsize, &quot;%s&quot;, str_default);
-154     }
-155   }
-156 
-157   return options_format_default_value(desc-&gt;type, desc-&gt;default_value, buf, bufsize);
-158 }</pre>
+<p class="Pp">Definition at line <b>83</b> of file <b>builder.c</b>.</p>
+<pre>83                                                                                                 {
+84   if (!desc || !buf || bufsize == 0) {
+85     return 0;
+86   }
+87 
+88   // For callback options with enums, look up the enum string by matching the default value
+89   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values &amp;&amp; desc-&gt;default_value) {
+90     int default_int_val = 0;
+91     memcpy(&amp;default_int_val, desc-&gt;default_value, sizeof(int));
+92 
+93     // Try to find matching enum value
+94     if (desc-&gt;metadata.enum_integer_values) {
+95       for (size_t i = 0; desc-&gt;metadata.enum_values[i] != NULL; i++) {
+96         if (desc-&gt;metadata.enum_integer_values[i] == default_int_val) {
+97           return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[i]);
+98         }
+99       }
+100     } else {
+101       // Fallback: assume sequential 0-based indices if integer values not provided
+102       // Count enum values to check bounds
+103       size_t enum_count = 0;
+104       while (desc-&gt;metadata.enum_values[enum_count] != NULL) {
+105         enum_count++;
+106       }
+107       if (default_int_val &gt;= 0 &amp;&amp; (size_t)default_int_val &lt; enum_count) {
+108         return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[default_int_val]);
+109       }
+110     }
+111   }
+112 
+113   // For callback options storing numeric types (int/double/float), format them as numbers
+114   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL) {
+115     // Check if this is a numeric callback by looking for numeric_range metadata
+116     // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
+117     if (desc-&gt;metadata.numeric_range.max != 0 || desc-&gt;metadata.numeric_range.min != 0) {
+118       // This is a numeric callback option - extract and format the value
+119       // Determine if it's int or double based on range (int max is 2147483647)
+120       double default_double = 0.0;
+121       if (desc-&gt;metadata.numeric_range.max &lt;= 2147483647.0 &amp;&amp; desc-&gt;metadata.numeric_range.min &gt;= -2147483648.0) {
+122         // Integer-ranged value (like port 1-65535) - stored as int
+123         int default_int = 0;
+124         memcpy(&amp;default_int, desc-&gt;default_value, sizeof(int));
+125         default_double = (double)default_int;
+126       } else {
+127         // Double-ranged value - stored as double
+128         memcpy(&amp;default_double, desc-&gt;default_value, sizeof(double));
+129       }
+130 
+131       // Format with appropriate precision (remove trailing zeros for integers)
+132       char formatted[32];
+133       safe_snprintf(formatted, sizeof(formatted), &quot;%.1f&quot;, default_double);
+134 
+135       // Remove trailing zeros after decimal point
+136       char *dot = strchr(formatted, '.');
+137       if (dot) {
+138         char *end = formatted + strlen(formatted) - 1;
+139         while (end &gt; dot &amp;&amp; *end == '0') {
+140           end--;
+141         }
+142         if (*end == '.') {
+143           *end = '\0';
+144         } else {
+145           *(end + 1) = '\0';
+146         }
+147       }
+148 
+149       return safe_snprintf(buf, bufsize, &quot;%s&quot;, formatted);
+150     }
+151   }
+152 
+153   // For callback options with string defaults (no enum, no numeric range)
+154   // Treat default_value as a const char* string pointer
+155   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL &amp;&amp;
+156       desc-&gt;metadata.numeric_range.max == 0 &amp;&amp; desc-&gt;metadata.numeric_range.min == 0) {
+157     const char *str_default = (const char *)desc-&gt;default_value;
+158     if (str_default &amp;&amp; str_default[0] != '\0') {
+159       return safe_snprintf(buf, bufsize, &quot;%s&quot;, str_default);
+160     }
+161   }
+162 
+163   return options_format_default_value(desc-&gt;type, desc-&gt;default_value, buf, bufsize);
+164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_descriptor_t::default_value</b>,
@@ -398,39 +398,39 @@
 <div class="Bd-indent">Pointer to string literal (&quot;INTEGER&quot;,
   &quot;NUMBER&quot;, &quot;STRING&quot;, &quot;VALUE&quot;,
   &quot;[BOOLEAN]&quot;), custom placeholder, or empty string</div>
-<p class="Pp">Definition at line <b>37</b> of file <b>builder.c</b>.</p>
-<pre>37                                                                              {
-38   if (!desc) {
-39     return &quot;&quot;;
-40   }
-41   // Check for custom placeholder first
-42   if (desc-&gt;arg_placeholder != NULL) {
-43     return desc-&gt;arg_placeholder;
-44   }
-45 
-46   // For callback options, check if it's a boolean based on enum values
-47   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values) {
-48     // Check if enum values contain &quot;true&quot; and &quot;false&quot; (boolean-like)
-49     const char *const *values = desc-&gt;metadata.enum_values;
-50     bool has_true = false, has_false = false;
+<p class="Pp">Definition at line <b>43</b> of file <b>builder.c</b>.</p>
+<pre>43                                                                              {
+44   if (!desc) {
+45     return &quot;&quot;;
+46   }
+47   // Check for custom placeholder first
+48   if (desc-&gt;arg_placeholder != NULL) {
+49     return desc-&gt;arg_placeholder;
+50   }
 51 
-52     for (int i = 0; values[i] != NULL; i++) {
-53       if (strcmp(values[i], &quot;true&quot;) == 0 || strcmp(values[i], &quot;yes&quot;) == 0 || strcmp(values[i], &quot;on&quot;) == 0) {
-54         has_true = true;
-55       }
-56       if (strcmp(values[i], &quot;false&quot;) == 0 || strcmp(values[i], &quot;no&quot;) == 0 || strcmp(values[i], &quot;off&quot;) == 0) {
-57         has_false = true;
-58       }
-59     }
-60 
-61     // If it has both true-like and false-like values, it's boolean
-62     if (has_true &amp;&amp; has_false) {
-63       return &quot;BOOLEAN&quot;;
-64     }
-65   }
+52   // For callback options, check if it's a boolean based on enum values
+53   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values) {
+54     // Check if enum values contain &quot;true&quot; and &quot;false&quot; (boolean-like)
+55     const char *const *values = desc-&gt;metadata.enum_values;
+56     bool has_true = false, has_false = false;
+57 
+58     for (int i = 0; values[i] != NULL; i++) {
+59       if (strcmp(values[i], &quot;true&quot;) == 0 || strcmp(values[i], &quot;yes&quot;) == 0 || strcmp(values[i], &quot;on&quot;) == 0) {
+60         has_true = true;
+61       }
+62       if (strcmp(values[i], &quot;false&quot;) == 0 || strcmp(values[i], &quot;no&quot;) == 0 || strcmp(values[i], &quot;off&quot;) == 0) {
+63         has_false = true;
+64       }
+65     }
 66 
-67   return options_get_type_placeholder(desc-&gt;type);
-68 }</pre>
+67     // If it has both true-like and false-like values, it's boolean
+68     if (has_true &amp;&amp; has_false) {
+69       return &quot;BOOLEAN&quot;;
+70     }
+71   }
+72 
+73   return options_get_type_placeholder(desc-&gt;type);
+74 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
@@ -445,24 +445,24 @@
 <h2 class="Ss"><b>bool</b> is_option_set (const <b>options_config_t</b> *
   config, const void * options_struct, const char * option_name)</h2>
 <p class="Pp">Check if an option is set (has non-default value).</p>
-<p class="Pp">Definition at line <b>350</b> of file <b>builder.c</b>.</p>
-<pre>350                                                                                                         {
-351   const option_descriptor_t *desc = find_option(config, option_name);
-352   if (!desc)
-353     return false;
-354 
-355   const char *base = (const char *)options_struct;
-356   const void *field = base + desc-&gt;offset;
-357 
-358   // Use handler registry to check if option is set
-359   if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
-360     if (g_builder_handlers[desc-&gt;type].is_set) {
-361       return g_builder_handlers[desc-&gt;type].is_set(field, desc);
-362     }
-363   }
-364 
-365   return false;
-366 }</pre>
+<p class="Pp">Definition at line <b>356</b> of file <b>builder.c</b>.</p>
+<pre>356                                                                                                         {
+357   const option_descriptor_t *desc = find_option(config, option_name);
+358   if (!desc)
+359     return false;
+360 
+361   const char *base = (const char *)options_struct;
+362   const void *field = base + desc-&gt;offset;
+363 
+364   // Use handler registry to check if option is set
+365   if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
+366     if (g_builder_handlers[desc-&gt;type].is_set) {
+367       return g_builder_handlers[desc-&gt;type].is_set(field, desc);
+368     }
+369   }
+370 
+371   return false;
+372 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>find_option()</b>, <b>g_builder_handlers</b>,
@@ -483,39 +483,39 @@
 <i>for_binary_help</i> If true, show binary options; if false, hide them</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if option should be shown for this mode</div>
-<p class="Pp">Definition at line <b>171</b> of file <b>builder.c</b>.</p>
-<pre>171                                                                                                           {
-172   if (!desc) {
-173     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Descriptor is NULL&quot;);
-174     return false;
-175   }
-176 
-177   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
-178   // show options that apply to the default mode (DISCOVERY) or binary-level options only.
-179   // Don't show mode-specific options for other modes (server, client, mirror, discovery-service).
-180   if (for_binary_help) {
-181     // Binary-level options or options that apply to discovery mode (the default)
-182     option_mode_bitmask_t default_modes = OPTION_MODE_BINARY | OPTION_MODE_DISCOVERY;
-183     return (desc-&gt;mode_bitmask &amp; default_modes) != 0 &amp;&amp; !desc-&gt;hide_from_binary_help;
-184   }
-185 
-186   // For mode-specific help (non-discovery modes), show only options for that mode.
-187   // Do not show binary options here unless it also specifically applies to the mode.
-188   // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
-189   if (mode &lt; 0 || mode &gt; MODE_DISCOVERY) { // Use MODE_INVALID as upper bound for valid modes
-190     return false;
-191   }
-192   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
-193 
-194   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
-195   if ((desc-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(desc-&gt;mode_bitmask &amp; mode_bit)) {
-196     return false; // Binary options not shown in mode-specific help unless also mode-specific
+<p class="Pp">Definition at line <b>177</b> of file <b>builder.c</b>.</p>
+<pre>177                                                                                                           {
+178   if (!desc) {
+179     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Descriptor is NULL&quot;);
+180     return false;
+181   }
+182 
+183   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
+184   // show options that apply to the default mode (DISCOVERY) or binary-level options only.
+185   // Don't show mode-specific options for other modes (server, client, mirror, discovery-service).
+186   if (for_binary_help) {
+187     // Binary-level options or options that apply to discovery mode (the default)
+188     option_mode_bitmask_t default_modes = OPTION_MODE_BINARY | OPTION_MODE_DISCOVERY;
+189     return (desc-&gt;mode_bitmask &amp; default_modes) != 0 &amp;&amp; !desc-&gt;hide_from_binary_help;
+190   }
+191 
+192   // For mode-specific help (non-discovery modes), show only options for that mode.
+193   // Do not show binary options here unless it also specifically applies to the mode.
+194   // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
+195   if (mode &lt; 0 || mode &gt; MODE_DISCOVERY) { // Use MODE_INVALID as upper bound for valid modes
+196     return false;
 197   }
-198 
-199   bool applies = (desc-&gt;mode_bitmask &amp; mode_bit) != 0;
-200 
-201   return applies &amp;&amp; !desc-&gt;hide_from_mode_help;
-202 }</pre>
+198   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
+199 
+200   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
+201   if ((desc-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(desc-&gt;mode_bitmask &amp; mode_bit)) {
+202     return false; // Binary options not shown in mode-specific help unless also mode-specific
+203   }
+204 
+205   bool applies = (desc-&gt;mode_bitmask &amp; mode_bit) != 0;
+206 
+207   return applies &amp;&amp; !desc-&gt;hide_from_mode_help;
+208 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -560,7 +560,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

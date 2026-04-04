@@ -62,7 +62,10 @@
 <p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
     input_len)
   <br/>
-  Strip all ANSI escape sequences from a string. <b>bool</b>
+  Strip all ANSI escape sequences from a string. const char *
+    <b>ansi_skip_escape</b> (const char *ptr, const char *end)
+  <br/>
+  Find the end of an ANSI CSI escape sequence. <b>bool</b>
     <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
   <br/>
   Check if a position in text is already colored. char *
@@ -143,12 +146,12 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>36</b> of file <b>ansi.h</b>.</p>
-<pre>36              {
-37   ANSI_MODE_FOREGROUND = 0,
-38   ANSI_MODE_BACKGROUND,
-39   ANSI_MODE_FOREGROUND_BACKGROUND,
-40 } ansi_color_mode_t;</pre>
+<p class="Pp">Definition at line <b>38</b> of file <b>ansi.h</b>.</p>
+<pre>38              {
+39   ANSI_MODE_FOREGROUND = 0,
+40   ANSI_MODE_BACKGROUND,
+41   ANSI_MODE_FOREGROUND_BACKGROUND,
+42 } ansi_color_mode_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -162,11 +165,11 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize fast
     ANSI generation (call once at startup)</b></p>
-<p class="Pp">Definition at line <b>295</b> of file <b>ansi.c</b>.</p>
-<pre>295                           {
-296   // Initialize the dec3 cache used by truecolor functions
-297   ascii_simd_init();
-298 }</pre>
+<p class="Pp">Definition at line <b>319</b> of file <b>ansi.c</b>.</p>
+<pre>319                           {
+320   // Initialize the dec3 cache used by truecolor functions
+321   ascii_simd_init();
+322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_simd_init()</b>.</p>
@@ -179,13 +182,13 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize
     16-color mode (thread-safe, called on first use)</b></p>
-<p class="Pp">Definition at line <b>374</b> of file <b>ansi.c</b>.</p>
-<pre>374                                   {
-375   if (!lifecycle_init(&amp;g_color16_lc, &quot;ansi_16color&quot;)) {
-376     return; // Already initialized
-377   }
-378   do_init_16color();
-379 }</pre>
+<p class="Pp">Definition at line <b>398</b> of file <b>ansi.c</b>.</p>
+<pre>398                                   {
+399   if (!lifecycle_init(&amp;g_color16_lc, &quot;ansi_16color&quot;)) {
+400     return; // Already initialized
+401   }
+402   do_init_16color();
+403 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init()</b>.</p>
@@ -202,13 +205,13 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize
     256-color mode (thread-safe, called on first use)</b></p>
-<p class="Pp">Definition at line <b>310</b> of file <b>ansi.c</b>.</p>
-<pre>310                                    {
-311   if (!lifecycle_init(&amp;g_color256_lc, &quot;ansi_256color&quot;)) {
-312     return; // Already initialized
-313   }
-314   do_init_256color();
-315 }</pre>
+<p class="Pp">Definition at line <b>334</b> of file <b>ansi.c</b>.</p>
+<pre>334                                    {
+335   if (!lifecycle_init(&amp;g_color256_lc, &quot;ansi_256color&quot;)) {
+336     return; // Already initialized
+337   }
+338   do_init_256color();
+339 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init()</b>.</p>
@@ -234,35 +237,35 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if already colored (not in reset state), false if in
   reset state</div>
-<p class="Pp">Definition at line <b>74</b> of file <b>ansi.c</b>.</p>
-<pre>74                                                                 {
-75   if (!message) {
-76     return false;
-77   }
-78 
-79   bool in_reset = true; // Start in reset state
-80 
-81   // Scan from beginning to current position looking for ANSI codes
-82   for (size_t i = 0; i &lt; pos &amp;&amp; message[i] != '\0'; i++) {
-83     if (message[i] == '\x1b' &amp;&amp; message[i + 1] == '[') {
-84       // Found ANSI escape sequence start
-85       // Look for the end marker 'm'
-86       size_t j = i + 2;
-87       while (message[j] != '\0' &amp;&amp; message[j] != 'm') {
-88         j++;
-89       }
-90 
-91       if (message[j] == 'm') {
-92         // Extract the color code part (between [ and m)
-93         // Check if it's a reset code: \x1b[0m or \x1b[m
-94         in_reset = ((j == i + 3 &amp;&amp; message[i + 2] == '0') || (j == i + 2));
-95       }
-96     }
-97   }
-98 
-99   // Return true if NOT in reset state (already colorized)
-100   return !in_reset;
-101 }</pre>
+<p class="Pp">Definition at line <b>98</b> of file <b>ansi.c</b>.</p>
+<pre>98                                                                 {
+99   if (!message) {
+100     return false;
+101   }
+102 
+103   bool in_reset = true; // Start in reset state
+104 
+105   // Scan from beginning to current position looking for ANSI codes
+106   for (size_t i = 0; i &lt; pos &amp;&amp; message[i] != '\0'; i++) {
+107     if (message[i] == '\x1b' &amp;&amp; message[i + 1] == '[') {
+108       // Found ANSI escape sequence start
+109       // Look for the end marker 'm'
+110       size_t j = i + 2;
+111       while (message[j] != '\0' &amp;&amp; message[j] != 'm') {
+112         j++;
+113       }
+114 
+115       if (message[j] == 'm') {
+116         // Extract the color code part (between [ and m)
+117         // Check if it's a reset code: \x1b[0m or \x1b[m
+118         in_reset = ((j == i + 3 &amp;&amp; message[i + 2] == '0') || (j == i + 2));
+119       }
+120     }
+121   }
+122 
+123   // Return true if NOT in reset state (already colorized)
+124   return !in_reset;
+125 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>colorize_log_message()</b>.</p>
@@ -284,47 +287,47 @@
 <i>b</i> Blue component
 <br/>
 <i>ascii_char</i> ASCII character to append</div>
-<p class="Pp">Definition at line <b>237</b> of file <b>ansi.c</b>.</p>
-<pre>237                                                                                                    {
-238   // Check if we need to emit a new SGR sequence
-239   bool color_changed = ctx-&gt;first_pixel || (r != ctx-&gt;last_r) || (g != ctx-&gt;last_g) || (b != ctx-&gt;last_b);
-240 
-241   if (color_changed) {
-242     if (ctx-&gt;length + 40 &gt;= ctx-&gt;capacity) {
-243       // Log when we can't add a color change due to buffer capacity
-244       log_warn_every(US_PER_SEC_INT, &quot;RLE_CAPACITY: Cannot add SGR at length=%zu, capacity=%zu (need 40 bytes)&quot;,
-245                      ctx-&gt;length, ctx-&gt;capacity);
-246     }
-247   }
-248 
-249   if (color_changed &amp;&amp; (ctx-&gt;length + 40 &lt; ctx-&gt;capacity)) { // Reserve 40 bytes for SGR (FG+BG max is 38)
-250     char *pos = ctx-&gt;buffer + ctx-&gt;length;
-251 
-252     switch (ctx-&gt;mode) {
-253     case ANSI_MODE_FOREGROUND:
-254       pos = append_truecolor_fg(pos, r, g, b);
-255       break;
-256     case ANSI_MODE_BACKGROUND:
-257       pos = append_truecolor_bg(pos, r, g, b);
-258       break;
-259     case ANSI_MODE_FOREGROUND_BACKGROUND:
-260       // For FG+BG mode, use a default background (black) or implement dual-color logic
-261       pos = append_truecolor_fg_bg(pos, r, g, b, 0, 0, 0);
-262       break;
-263     }
+<p class="Pp">Definition at line <b>261</b> of file <b>ansi.c</b>.</p>
+<pre>261                                                                                                    {
+262   // Check if we need to emit a new SGR sequence
+263   bool color_changed = ctx-&gt;first_pixel || (r != ctx-&gt;last_r) || (g != ctx-&gt;last_g) || (b != ctx-&gt;last_b);
 264 
-265     ctx-&gt;length = (size_t)(pos - ctx-&gt;buffer);
-266     ctx-&gt;last_r = r;
-267     ctx-&gt;last_g = g;
-268     ctx-&gt;last_b = b;
-269     ctx-&gt;first_pixel = false;
-270   }
-271 
-272   // Add the ASCII character
-273   if (ctx-&gt;length &lt; ctx-&gt;capacity - 1) {
-274     ctx-&gt;buffer[ctx-&gt;length++] = ascii_char;
-275   }
-276 }</pre>
+265   if (color_changed) {
+266     if (ctx-&gt;length + 40 &gt;= ctx-&gt;capacity) {
+267       // Log when we can't add a color change due to buffer capacity
+268       log_warn_every(US_PER_SEC_INT, &quot;RLE_CAPACITY: Cannot add SGR at length=%zu, capacity=%zu (need 40 bytes)&quot;,
+269                      ctx-&gt;length, ctx-&gt;capacity);
+270     }
+271   }
+272 
+273   if (color_changed &amp;&amp; (ctx-&gt;length + 40 &lt; ctx-&gt;capacity)) { // Reserve 40 bytes for SGR (FG+BG max is 38)
+274     char *pos = ctx-&gt;buffer + ctx-&gt;length;
+275 
+276     switch (ctx-&gt;mode) {
+277     case ANSI_MODE_FOREGROUND:
+278       pos = append_truecolor_fg(pos, r, g, b);
+279       break;
+280     case ANSI_MODE_BACKGROUND:
+281       pos = append_truecolor_bg(pos, r, g, b);
+282       break;
+283     case ANSI_MODE_FOREGROUND_BACKGROUND:
+284       // For FG+BG mode, use a default background (black) or implement dual-color logic
+285       pos = append_truecolor_fg_bg(pos, r, g, b, 0, 0, 0);
+286       break;
+287     }
+288 
+289     ctx-&gt;length = (size_t)(pos - ctx-&gt;buffer);
+290     ctx-&gt;last_r = r;
+291     ctx-&gt;last_g = g;
+292     ctx-&gt;last_b = b;
+293     ctx-&gt;first_pixel = false;
+294   }
+295 
+296   // Add the ASCII character
+297   if (ctx-&gt;length &lt; ctx-&gt;capacity - 1) {
+298     ctx-&gt;buffer[ctx-&gt;length++] = ascii_char;
+299   }
+300 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ANSI_MODE_BACKGROUND</b>,
@@ -346,19 +349,19 @@
     sequence with reset and null terminator</b></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> RLE context</div>
-<p class="Pp">Definition at line <b>279</b> of file <b>ansi.c</b>.</p>
-<pre>279                                               {
-280   // Add reset sequence (requires 4 bytes + 1 for null terminator = 5 bytes total)
-281   if (ctx-&gt;length + 5 &lt;= ctx-&gt;capacity) {
-282     SAFE_MEMCPY(ctx-&gt;buffer + ctx-&gt;length, 4, &quot;\033[0m&quot;, 4);
-283     ctx-&gt;length += 4;
-284   }
-285 
-286   // Null terminate
-287   if (ctx-&gt;length &lt; ctx-&gt;capacity) {
-288     ctx-&gt;buffer[ctx-&gt;length] = '\0';
-289   }
-290 }</pre>
+<p class="Pp">Definition at line <b>303</b> of file <b>ansi.c</b>.</p>
+<pre>303                                               {
+304   // Add reset sequence (requires 4 bytes + 1 for null terminator = 5 bytes total)
+305   if (ctx-&gt;length + 5 &lt;= ctx-&gt;capacity) {
+306     SAFE_MEMCPY(ctx-&gt;buffer + ctx-&gt;length, 4, &quot;\033[0m&quot;, 4);
+307     ctx-&gt;length += 4;
+308   }
+309 
+310   // Null terminate
+311   if (ctx-&gt;length &lt; ctx-&gt;capacity) {
+312     ctx-&gt;buffer[ctx-&gt;length] = '\0';
+313   }
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_rle_context_t::buffer</b>,
@@ -381,18 +384,18 @@
 <i>capacity</i> Buffer capacity
 <br/>
 <i>mode</i> Color mode (foreground/background/both)</div>
-<p class="Pp">Definition at line <b>224</b> of file <b>ansi.c</b>.</p>
-<pre>224                                                                                                    {
-225   ctx-&gt;buffer = buffer;
-226   ctx-&gt;capacity = capacity;
-227   ctx-&gt;length = 0;
-228   ctx-&gt;mode = mode;
-229   ctx-&gt;first_pixel = true;
-230   // Initialize with impossible color values to force first SGR
-231   ctx-&gt;last_r = 0xFF;
-232   ctx-&gt;last_g = 0xFF;
-233   ctx-&gt;last_b = 0xFF;
-234 }</pre>
+<p class="Pp">Definition at line <b>248</b> of file <b>ansi.c</b>.</p>
+<pre>248                                                                                                    {
+249   ctx-&gt;buffer = buffer;
+250   ctx-&gt;capacity = capacity;
+251   ctx-&gt;length = 0;
+252   ctx-&gt;mode = mode;
+253   ctx-&gt;first_pixel = true;
+254   // Initialize with impossible color values to force first SGR
+255   ctx-&gt;last_r = 0xFF;
+256   ctx-&gt;last_g = 0xFF;
+257   ctx-&gt;last_b = 0xFF;
+258 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_rle_context_t::buffer</b>,
@@ -401,6 +404,50 @@
     <b>ansi_rle_context_t::last_r</b>, <b>ansi_rle_context_t::length</b>, and
     <b>ansi_rle_context_t::mode</b>.</p>
 <p class="Pp">Referenced by <b>image_print_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ansi_skip_escape_(const_char_*_ptr,_const_char_*_end)"><a class="permalink" href="#const_char_*_ansi_skip_escape_(const_char_*_ptr,_const_char_*_end)">const
+  char * ansi_skip_escape (const char * ptr, const char * end)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
+<p class="Pp">Find the end of an ANSI CSI escape sequence. Given a pointer to an
+    ESC character (\x1b) that starts a CSI sequence, returns a pointer past the
+    final byte of the sequence. If the pointer does not point to a valid CSI
+    sequence start, returns ptr + 1.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to the ESC (\x1b) character
+<br/>
+<i>end</i> Pointer past the end of the string</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to the first byte after the escape sequence</div>
+<p class="Pp">Definition at line <b>74</b> of file <b>ansi.c</b>.</p>
+<pre>74                                                                {
+75   if (!ptr || ptr &gt;= end || *ptr != '\x1b') {
+76     return ptr ? ptr + 1 : ptr;
+77   }
+78 
+79   const char *p = ptr + 1;
+80   if (p &gt;= end || *p != '[') {
+81     return p; // Not a CSI sequence, skip just the ESC byte
+82   }
+83   p++; // Skip '['
+84 
+85   // Skip parameter bytes (0x30-0x3F) and intermediate bytes (0x20-0x2F)
+86   while (p &lt; end &amp;&amp; ((*p &gt;= 0x30 &amp;&amp; *p &lt;= 0x3F) || (*p &gt;= 0x20 &amp;&amp; *p &lt;= 0x2F))) {
+87     p++;
+88   }
+89 
+90   // Skip final byte (0x40-0x7E)
+91   if (p &lt; end &amp;&amp; *p &gt;= 0x40 &amp;&amp; *p &lt;= 0x7E) {
+92     p++;
+93   }
+94 
+95   return p;
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>truncate_with_ellipsis()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)"><a class="permalink" href="#char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)">char
@@ -488,22 +535,22 @@
 <i>color_index</i> 16-color index (0-15)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>397</b> of file <b>ansi.c</b>.</p>
-<pre>397                                                         {
-398   // Ensure initialization before use
-399   ansi_fast_init_16color();
-400 
-401   if (color_index &gt;= 16) {
-402     color_index = 0; // Default to black background
-403   }
-404 
-405   const char *color_str = color16_bg_strings[color_index];
-406   while (*color_str) {
-407     *dst++ = *color_str++;
-408   }
-409 
-410   return dst;
-411 }</pre>
+<p class="Pp">Definition at line <b>421</b> of file <b>ansi.c</b>.</p>
+<pre>421                                                         {
+422   // Ensure initialization before use
+423   ansi_fast_init_16color();
+424 
+425   if (color_index &gt;= 16) {
+426     color_index = 0; // Default to black background
+427   }
+428 
+429   const char *color_str = color16_bg_strings[color_index];
+430   while (*color_str) {
+431     *dst++ = *color_str++;
+432   }
+433 
+434   return dst;
+435 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
@@ -523,22 +570,22 @@
 <i>color_index</i> 16-color index (0-15)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>381</b> of file <b>ansi.c</b>.</p>
-<pre>381                                                         {
-382   // Ensure initialization before use
-383   ansi_fast_init_16color();
-384 
-385   if (color_index &gt;= 16) {
-386     color_index = 7; // Default to white
-387   }
-388 
-389   const char *color_str = color16_fg_strings[color_index];
-390   while (*color_str) {
-391     *dst++ = *color_str++;
-392   }
-393 
-394   return dst;
-395 }</pre>
+<p class="Pp">Definition at line <b>405</b> of file <b>ansi.c</b>.</p>
+<pre>405                                                         {
+406   // Ensure initialization before use
+407   ansi_fast_init_16color();
+408 
+409   if (color_index &gt;= 16) {
+410     color_index = 7; // Default to white
+411   }
+412 
+413   const char *color_str = color16_fg_strings[color_index];
+414   while (*color_str) {
+415     *dst++ = *color_str++;
+416   }
+417 
+418   return dst;
+419 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
@@ -559,13 +606,13 @@
 <i>color_index</i> 256-color palette index (0-255)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>328</b> of file <b>ansi.c</b>.</p>
-<pre>328                                                          {
-329   const char *color_str = color256_bg_strings[color_index];
-330   size_t len = strlen(color_str);
-331   SAFE_MEMCPY(dst, len, color_str, len);
-332   return dst + len;
-333 }</pre>
+<p class="Pp">Definition at line <b>352</b> of file <b>ansi.c</b>.</p>
+<pre>352                                                          {
+353   const char *color_str = color256_bg_strings[color_index];
+354   size_t len = strlen(color_str);
+355   SAFE_MEMCPY(dst, len, color_str, len);
+356   return dst + len;
+357 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
@@ -583,13 +630,13 @@
 <i>color_index</i> 256-color palette index (0-255)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>320</b> of file <b>ansi.c</b>.</p>
-<pre>320                                                          {
-321   const char *color_str = color256_strings[color_index];
-322   size_t len = strlen(color_str);
-323   SAFE_MEMCPY(dst, len, color_str, len);
-324   return dst + len;
-325 }</pre>
+<p class="Pp">Definition at line <b>344</b> of file <b>ansi.c</b>.</p>
+<pre>344                                                          {
+345   const char *color_str = color256_strings[color_index];
+346   size_t len = strlen(color_str);
+347   SAFE_MEMCPY(dst, len, color_str, len);
+348   return dst + len;
+349 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
@@ -616,29 +663,29 @@
 <i>mode</i> Terminal color mode capability</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>564</b> of file <b>ansi.c</b>.</p>
-<pre>564                                                                                                        {
-565   switch (mode) {
-566   case COLOR_MODE_TRUECOLOR:
-567     return append_truecolor_fg(dst, r, g, b);
-568 
-569   case COLOR_MODE_256_COLOR: {
-570     uint8_t color_index = rgb_to_256color(r, g, b);
-571     return append_256color_fg(dst, color_index);
-572   }
-573 
-574   case COLOR_MODE_16_COLOR: {
-575     uint8_t color_index = rgb_to_16color(r, g, b);
-576     return append_16color_fg(dst, color_index);
-577   }
-578 
-579   case COLOR_MODE_NONE:
-580   case COLOR_MODE_AUTO:
-581   default:
-582     // No color output for monochrome mode or auto mode (fallback)
-583     return dst;
-584   }
-585 }</pre>
+<p class="Pp">Definition at line <b>588</b> of file <b>ansi.c</b>.</p>
+<pre>588                                                                                                        {
+589   switch (mode) {
+590   case COLOR_MODE_TRUECOLOR:
+591     return append_truecolor_fg(dst, r, g, b);
+592 
+593   case COLOR_MODE_256_COLOR: {
+594     uint8_t color_index = rgb_to_256color(r, g, b);
+595     return append_256color_fg(dst, color_index);
+596   }
+597 
+598   case COLOR_MODE_16_COLOR: {
+599     uint8_t color_index = rgb_to_16color(r, g, b);
+600     return append_16color_fg(dst, color_index);
+601   }
+602 
+603   case COLOR_MODE_NONE:
+604   case COLOR_MODE_AUTO:
+605   default:
+606     // No color output for monochrome mode or auto mode (fallback)
+607     return dst;
+608   }
+609 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>append_16color_fg()</b>,
@@ -665,30 +712,30 @@
 <i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>149</b> of file <b>ansi.c</b>.</p>
-<pre>149                                                                       {
-150   // Ensure dec3 cache is initialized
-151   if (!g_dec3_cache.dec3_initialized) {
-152     init_dec3();
-153   }
-154 
-155   SAFE_MEMCPY(dst, 19, &quot;\033[48;2;&quot;, 7);
-156   dst += 7;
-157 
-158   SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
-159   dst += g_dec3_cache.dec3_table[r].len;
-160   *dst++ = ';';
-161 
-162   SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
-163   dst += g_dec3_cache.dec3_table[g].len;
-164   *dst++ = ';';
-165 
-166   SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
-167   dst += g_dec3_cache.dec3_table[b].len;
-168   *dst++ = 'm';
-169 
-170   return dst;
-171 }</pre>
+<p class="Pp">Definition at line <b>173</b> of file <b>ansi.c</b>.</p>
+<pre>173                                                                       {
+174   // Ensure dec3 cache is initialized
+175   if (!g_dec3_cache.dec3_initialized) {
+176     init_dec3();
+177   }
+178 
+179   SAFE_MEMCPY(dst, 19, &quot;\033[48;2;&quot;, 7);
+180   dst += 7;
+181 
+182   SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+183   dst += g_dec3_cache.dec3_table[r].len;
+184   *dst++ = ';';
+185 
+186   SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+187   dst += g_dec3_cache.dec3_table[g].len;
+188   *dst++ = ';';
+189 
+190   SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+191   dst += g_dec3_cache.dec3_table[b].len;
+192   *dst++ = 'm';
+193 
+194   return dst;
+195 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
@@ -714,34 +761,34 @@
 <i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>119</b> of file <b>ansi.c</b>.</p>
-<pre>119                                                                       {
-120   // Ensure dec3 cache is initialized
-121   if (!g_dec3_cache.dec3_initialized) {
-122     init_dec3();
-123   }
-124 
-125   // Static prefix - 7 bytes
-126   SAFE_MEMCPY(dst, 19, &quot;\033[38;2;&quot;, 7);
-127   dst += 7;
-128 
-129   // Red component + semicolon
-130   SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
-131   dst += g_dec3_cache.dec3_table[r].len;
-132   *dst++ = ';';
-133 
-134   // Green component + semicolon
-135   SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
-136   dst += g_dec3_cache.dec3_table[g].len;
-137   *dst++ = ';';
-138 
-139   // Blue component + suffix
-140   SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
-141   dst += g_dec3_cache.dec3_table[b].len;
-142   *dst++ = 'm';
-143 
-144   return dst;
-145 }</pre>
+<p class="Pp">Definition at line <b>143</b> of file <b>ansi.c</b>.</p>
+<pre>143                                                                       {
+144   // Ensure dec3 cache is initialized
+145   if (!g_dec3_cache.dec3_initialized) {
+146     init_dec3();
+147   }
+148 
+149   // Static prefix - 7 bytes
+150   SAFE_MEMCPY(dst, 19, &quot;\033[38;2;&quot;, 7);
+151   dst += 7;
+152 
+153   // Red component + semicolon
+154   SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+155   dst += g_dec3_cache.dec3_table[r].len;
+156   *dst++ = ';';
+157 
+158   // Green component + semicolon
+159   SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+160   dst += g_dec3_cache.dec3_table[g].len;
+161   *dst++ = ';';
+162 
+163   // Blue component + suffix
+164   SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+165   dst += g_dec3_cache.dec3_table[b].len;
+166   *dst++ = 'm';
+167 
+168   return dst;
+169 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
@@ -774,51 +821,51 @@
 <i>bg_b</i> Background blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>175</b> of file <b>ansi.c</b>.</p>
-<pre>176                                            {
-177   // Ensure dec3 cache is initialized
-178   if (!g_dec3_cache.dec3_initialized) {
-179     init_dec3();
-180   }
-181 
-182   SAFE_MEMCPY(dst, 38, &quot;\033[38;2;&quot;, 7);
-183   dst += 7;
-184 
-185   // Foreground RGB (remaining: 31 bytes max)
-186   SAFE_MEMCPY(dst, 31, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
-187   dst += g_dec3_cache.dec3_table[fg_r].len;
-188   *dst++ = ';';
-189 
-190   // Remaining: 27 bytes max
-191   SAFE_MEMCPY(dst, 27, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
-192   dst += g_dec3_cache.dec3_table[fg_g].len;
-193   *dst++ = ';';
-194 
-195   // Remaining: 23 bytes max
-196   SAFE_MEMCPY(dst, 23, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
-197   dst += g_dec3_cache.dec3_table[fg_b].len;
-198 
-199   // Background RGB (remaining: 20 bytes max)
-200   SAFE_MEMCPY(dst, 20, &quot;;48;2;&quot;, 6);
-201   dst += 6;
-202 
-203   // Remaining: 14 bytes max
-204   SAFE_MEMCPY(dst, 14, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
-205   dst += g_dec3_cache.dec3_table[bg_r].len;
-206   *dst++ = ';';
-207 
-208   // Remaining: 10 bytes max
-209   SAFE_MEMCPY(dst, 10, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
-210   dst += g_dec3_cache.dec3_table[bg_g].len;
-211   *dst++ = ';';
-212 
-213   // Remaining: 6 bytes max
-214   SAFE_MEMCPY(dst, 6, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
-215   dst += g_dec3_cache.dec3_table[bg_b].len;
-216   *dst++ = 'm';
-217 
-218   return dst;
-219 }</pre>
+<p class="Pp">Definition at line <b>199</b> of file <b>ansi.c</b>.</p>
+<pre>200                                            {
+201   // Ensure dec3 cache is initialized
+202   if (!g_dec3_cache.dec3_initialized) {
+203     init_dec3();
+204   }
+205 
+206   SAFE_MEMCPY(dst, 38, &quot;\033[38;2;&quot;, 7);
+207   dst += 7;
+208 
+209   // Foreground RGB (remaining: 31 bytes max)
+210   SAFE_MEMCPY(dst, 31, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
+211   dst += g_dec3_cache.dec3_table[fg_r].len;
+212   *dst++ = ';';
+213 
+214   // Remaining: 27 bytes max
+215   SAFE_MEMCPY(dst, 27, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
+216   dst += g_dec3_cache.dec3_table[fg_g].len;
+217   *dst++ = ';';
+218 
+219   // Remaining: 23 bytes max
+220   SAFE_MEMCPY(dst, 23, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
+221   dst += g_dec3_cache.dec3_table[fg_b].len;
+222 
+223   // Background RGB (remaining: 20 bytes max)
+224   SAFE_MEMCPY(dst, 20, &quot;;48;2;&quot;, 6);
+225   dst += 6;
+226 
+227   // Remaining: 14 bytes max
+228   SAFE_MEMCPY(dst, 14, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
+229   dst += g_dec3_cache.dec3_table[bg_r].len;
+230   *dst++ = ';';
+231 
+232   // Remaining: 10 bytes max
+233   SAFE_MEMCPY(dst, 10, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
+234   dst += g_dec3_cache.dec3_table[bg_g].len;
+235   *dst++ = ';';
+236 
+237   // Remaining: 6 bytes max
+238   SAFE_MEMCPY(dst, 6, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
+239   dst += g_dec3_cache.dec3_table[bg_b].len;
+240   *dst++ = 'm';
+241 
+242   return dst;
+243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
@@ -840,36 +887,36 @@
 <i>g</i> Output green component
 <br/>
 <i>b</i> Output blue component</div>
-<p class="Pp">Definition at line <b>456</b> of file <b>ansi.c</b>.</p>
-<pre>456                                                                               {
-457   // Same color table as rgb_to_16color()
-458   static const uint8_t ansi_colors[16][3] = {
-459       {0, 0, 0},       // 0: Black
-460       {128, 0, 0},     // 1: Dark Red
-461       {0, 128, 0},     // 2: Dark Green
-462       {128, 128, 0},   // 3: Dark Yellow (Brown)
-463       {0, 0, 128},     // 4: Dark Blue
-464       {128, 0, 128},   // 5: Dark Magenta
-465       {0, 128, 128},   // 6: Dark Cyan
-466       {192, 192, 192}, // 7: Light Gray
-467       {128, 128, 128}, // 8: Dark Gray
-468       {255, 0, 0},     // 9: Bright Red
-469       {0, 255, 0},     // 10: Bright Green
-470       {255, 255, 0},   // 11: Bright Yellow
-471       {0, 0, 255},     // 12: Bright Blue
-472       {255, 0, 255},   // 13: Bright Magenta
-473       {0, 255, 255},   // 14: Bright Cyan
-474       {255, 255, 255}  // 15: White
-475   };
-476 
-477   if (color_index &gt;= 16) {
-478     color_index = 7; // Default to light gray
-479   }
-480 
-481   *r = ansi_colors[color_index][0];
-482   *g = ansi_colors[color_index][1];
-483   *b = ansi_colors[color_index][2];
-484 }</pre>
+<p class="Pp">Definition at line <b>480</b> of file <b>ansi.c</b>.</p>
+<pre>480                                                                               {
+481   // Same color table as rgb_to_16color()
+482   static const uint8_t ansi_colors[16][3] = {
+483       {0, 0, 0},       // 0: Black
+484       {128, 0, 0},     // 1: Dark Red
+485       {0, 128, 0},     // 2: Dark Green
+486       {128, 128, 0},   // 3: Dark Yellow (Brown)
+487       {0, 0, 128},     // 4: Dark Blue
+488       {128, 0, 128},   // 5: Dark Magenta
+489       {0, 128, 128},   // 6: Dark Cyan
+490       {192, 192, 192}, // 7: Light Gray
+491       {128, 128, 128}, // 8: Dark Gray
+492       {255, 0, 0},     // 9: Bright Red
+493       {0, 255, 0},     // 10: Bright Green
+494       {255, 255, 0},   // 11: Bright Yellow
+495       {0, 0, 255},     // 12: Bright Blue
+496       {255, 0, 255},   // 13: Bright Magenta
+497       {0, 255, 255},   // 14: Bright Cyan
+498       {255, 255, 255}  // 15: White
+499   };
+500 
+501   if (color_index &gt;= 16) {
+502     color_index = 7; // Default to light gray
+503   }
+504 
+505   *r = ansi_colors[color_index][0];
+506   *g = ansi_colors[color_index][1];
+507   *b = ansi_colors[color_index][2];
+508 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by
@@ -891,48 +938,48 @@
 <i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">16-color index (0-15)</div>
-<p class="Pp">Definition at line <b>413</b> of file <b>ansi.c</b>.</p>
-<pre>413                                                         {
-414   // Convert RGB to the closest 16-color ANSI color
-415   // This uses a simple distance-based approach
-416 
-417   // Define the 16 ANSI colors in RGB
-418   static const uint8_t ansi_colors[16][3] = {
-419       {0, 0, 0},       // 0: Black
-420       {128, 0, 0},     // 1: Dark Red
-421       {0, 128, 0},     // 2: Dark Green
-422       {128, 128, 0},   // 3: Dark Yellow (Brown)
-423       {0, 0, 128},     // 4: Dark Blue
-424       {128, 0, 128},   // 5: Dark Magenta
-425       {0, 128, 128},   // 6: Dark Cyan
-426       {192, 192, 192}, // 7: Light Gray
-427       {128, 128, 128}, // 8: Dark Gray
-428       {255, 0, 0},     // 9: Bright Red
-429       {0, 255, 0},     // 10: Bright Green
-430       {255, 255, 0},   // 11: Bright Yellow
-431       {0, 0, 255},     // 12: Bright Blue
-432       {255, 0, 255},   // 13: Bright Magenta
-433       {0, 255, 255},   // 14: Bright Cyan
-434       {255, 255, 255}  // 15: White
-435   };
-436 
-437   uint8_t best_match = 0;
-438   int min_distance = INT_MAX;
-439 
-440   for (int i = 0; i &lt; 16; i++) {
-441     int dr = (int)r - (int)ansi_colors[i][0];
-442     int dg = (int)g - (int)ansi_colors[i][1];
-443     int db = (int)b - (int)ansi_colors[i][2];
-444     int distance = dr * dr + dg * dg + db * db;
-445 
-446     if (distance &lt; min_distance) {
-447       min_distance = distance;
-448       best_match = i;
-449     }
-450   }
-451 
-452   return best_match;
-453 }</pre>
+<p class="Pp">Definition at line <b>437</b> of file <b>ansi.c</b>.</p>
+<pre>437                                                         {
+438   // Convert RGB to the closest 16-color ANSI color
+439   // This uses a simple distance-based approach
+440 
+441   // Define the 16 ANSI colors in RGB
+442   static const uint8_t ansi_colors[16][3] = {
+443       {0, 0, 0},       // 0: Black
+444       {128, 0, 0},     // 1: Dark Red
+445       {0, 128, 0},     // 2: Dark Green
+446       {128, 128, 0},   // 3: Dark Yellow (Brown)
+447       {0, 0, 128},     // 4: Dark Blue
+448       {128, 0, 128},   // 5: Dark Magenta
+449       {0, 128, 128},   // 6: Dark Cyan
+450       {192, 192, 192}, // 7: Light Gray
+451       {128, 128, 128}, // 8: Dark Gray
+452       {255, 0, 0},     // 9: Bright Red
+453       {0, 255, 0},     // 10: Bright Green
+454       {255, 255, 0},   // 11: Bright Yellow
+455       {0, 0, 255},     // 12: Bright Blue
+456       {255, 0, 255},   // 13: Bright Magenta
+457       {0, 255, 255},   // 14: Bright Cyan
+458       {255, 255, 255}  // 15: White
+459   };
+460 
+461   uint8_t best_match = 0;
+462   int min_distance = INT_MAX;
+463 
+464   for (int i = 0; i &lt; 16; i++) {
+465     int dr = (int)r - (int)ansi_colors[i][0];
+466     int dg = (int)g - (int)ansi_colors[i][1];
+467     int db = (int)b - (int)ansi_colors[i][2];
+468     int distance = dr * dr + dg * dg + db * db;
+469 
+470     if (distance &lt; min_distance) {
+471       min_distance = distance;
+472       best_match = i;
+473     }
+474   }
+475 
+476   return best_match;
+477 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
@@ -964,80 +1011,80 @@
 <i>error_buffer</i> Dithering error buffer (width*height elements)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">16-color index with dithering applied</div>
-<p class="Pp">Definition at line <b>487</b> of file <b>ansi.c</b>.</p>
-<pre>487                                                                                                                      {
-488   // Add accumulated error from previous pixels
-489   if (error_buffer) {
-490     // Use size_t for index calculation to prevent integer overflow on large images
-491     size_t error_idx = (size_t)y * (size_t)width + (size_t)x;
-492     r += error_buffer[error_idx].r;
-493     g += error_buffer[error_idx].g;
-494     b += error_buffer[error_idx].b;
-495 
-496     // Reset error for this pixel
-497     error_buffer[error_idx].r = 0;
-498     error_buffer[error_idx].g = 0;
-499     error_buffer[error_idx].b = 0;
-500   }
-501 
-502   // Clamp values to [0, 255]
-503   uint8_t r_clamped = clamp_rgb((int)r);
-504   uint8_t g_clamped = clamp_rgb((int)g);
-505   uint8_t b_clamped = clamp_rgb((int)b);
-506 
-507   // Find the closest 16-color match
-508   uint8_t closest_color = rgb_to_16color(r_clamped, g_clamped, b_clamped);
-509 
-510   // Calculate quantization error if dithering is enabled
-511   if (error_buffer) {
-512     uint8_t actual_r, actual_g, actual_b;
-513     get_16color_rgb(closest_color, &amp;actual_r, &amp;actual_g, &amp;actual_b);
-514 
-515     int error_r = r - (int)actual_r;
-516     int error_g = g - (int)actual_g;
-517     int error_b = b - (int)actual_b;
-518 
-519     // Distribute error using Floyd-Steinberg weights:
-520     //     * 7/16
-521     // 3/16 5/16 1/16
-522 
-523     // Error to right pixel (x+1, y)
-524     // Use size_t for all index calculations to prevent integer overflow
-525     if (x + 1 &lt; width) {
-526       size_t right_idx = (size_t)y * (size_t)width + (size_t)(x + 1);
-527       error_buffer[right_idx].r += (error_r * 7) / 16;
-528       error_buffer[right_idx].g += (error_g * 7) / 16;
-529       error_buffer[right_idx].b += (error_b * 7) / 16;
-530     }
-531 
-532     // Error to pixels on next row (y+1)
-533     if (y + 1 &lt; height) {
-534       // Bottom-left pixel (x-1, y+1)
-535       if (x - 1 &gt;= 0) {
-536         size_t bl_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x - 1);
-537         error_buffer[bl_idx].r += (error_r * 3) / 16;
-538         error_buffer[bl_idx].g += (error_g * 3) / 16;
-539         error_buffer[bl_idx].b += (error_b * 3) / 16;
-540       }
-541 
-542       // Bottom pixel (x, y+1)
-543       size_t bottom_idx = (size_t)(y + 1) * (size_t)width + (size_t)x;
-544       error_buffer[bottom_idx].r += (error_r * 5) / 16;
-545       error_buffer[bottom_idx].g += (error_g * 5) / 16;
-546       error_buffer[bottom_idx].b += (error_b * 5) / 16;
-547 
-548       // Bottom-right pixel (x+1, y+1)
-549       if (x + 1 &lt; width) {
-550         size_t br_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x + 1);
-551         error_buffer[br_idx].r += (error_r * 1) / 16;
-552         error_buffer[br_idx].g += (error_g * 1) / 16;
-553         error_buffer[br_idx].b += (error_b * 1) / 16;
-554       }
-555     }
-556   }
-557 
-558   return closest_color;
-559 }</pre>
+<p class="Pp">Definition at line <b>511</b> of file <b>ansi.c</b>.</p>
+<pre>511                                                                                                                      {
+512   // Add accumulated error from previous pixels
+513   if (error_buffer) {
+514     // Use size_t for index calculation to prevent integer overflow on large images
+515     size_t error_idx = (size_t)y * (size_t)width + (size_t)x;
+516     r += error_buffer[error_idx].r;
+517     g += error_buffer[error_idx].g;
+518     b += error_buffer[error_idx].b;
+519 
+520     // Reset error for this pixel
+521     error_buffer[error_idx].r = 0;
+522     error_buffer[error_idx].g = 0;
+523     error_buffer[error_idx].b = 0;
+524   }
+525 
+526   // Clamp values to [0, 255]
+527   uint8_t r_clamped = clamp_rgb((int)r);
+528   uint8_t g_clamped = clamp_rgb((int)g);
+529   uint8_t b_clamped = clamp_rgb((int)b);
+530 
+531   // Find the closest 16-color match
+532   uint8_t closest_color = rgb_to_16color(r_clamped, g_clamped, b_clamped);
+533 
+534   // Calculate quantization error if dithering is enabled
+535   if (error_buffer) {
+536     uint8_t actual_r, actual_g, actual_b;
+537     get_16color_rgb(closest_color, &amp;actual_r, &amp;actual_g, &amp;actual_b);
+538 
+539     int error_r = r - (int)actual_r;
+540     int error_g = g - (int)actual_g;
+541     int error_b = b - (int)actual_b;
+542 
+543     // Distribute error using Floyd-Steinberg weights:
+544     //     * 7/16
+545     // 3/16 5/16 1/16
+546 
+547     // Error to right pixel (x+1, y)
+548     // Use size_t for all index calculations to prevent integer overflow
+549     if (x + 1 &lt; width) {
+550       size_t right_idx = (size_t)y * (size_t)width + (size_t)(x + 1);
+551       error_buffer[right_idx].r += (error_r * 7) / 16;
+552       error_buffer[right_idx].g += (error_g * 7) / 16;
+553       error_buffer[right_idx].b += (error_b * 7) / 16;
+554     }
+555 
+556     // Error to pixels on next row (y+1)
+557     if (y + 1 &lt; height) {
+558       // Bottom-left pixel (x-1, y+1)
+559       if (x - 1 &gt;= 0) {
+560         size_t bl_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x - 1);
+561         error_buffer[bl_idx].r += (error_r * 3) / 16;
+562         error_buffer[bl_idx].g += (error_g * 3) / 16;
+563         error_buffer[bl_idx].b += (error_b * 3) / 16;
+564       }
+565 
+566       // Bottom pixel (x, y+1)
+567       size_t bottom_idx = (size_t)(y + 1) * (size_t)width + (size_t)x;
+568       error_buffer[bottom_idx].r += (error_r * 5) / 16;
+569       error_buffer[bottom_idx].g += (error_g * 5) / 16;
+570       error_buffer[bottom_idx].b += (error_b * 5) / 16;
+571 
+572       // Bottom-right pixel (x+1, y+1)
+573       if (x + 1 &lt; width) {
+574         size_t br_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x + 1);
+575         error_buffer[br_idx].r += (error_r * 1) / 16;
+576         error_buffer[br_idx].g += (error_g * 1) / 16;
+577         error_buffer[br_idx].b += (error_b * 1) / 16;
+578       }
+579     }
+580   }
+581 
+582   return closest_color;
+583 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>rgb_error_t::b</b>, <b>rgb_error_t::g</b>,
@@ -1061,27 +1108,27 @@
 <i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">256-color palette index (0-255)</div>
-<p class="Pp">Definition at line <b>336</b> of file <b>ansi.c</b>.</p>
-<pre>336                                                          {
-337   // Map to 6x6x6 color cube (216 colors) + grayscale ramp
-338 
-339   // Check if it's close to grayscale
-340   int avg = (r + g + b) / 3;
-341   int gray_diff = abs(r - avg) + abs(g - avg) + abs(b - avg);
-342 
-343   if (gray_diff &lt; 30) {
-344     // Use grayscale ramp (colors 232-255)
-345     int gray_level = (avg * 23) / 255;
-346     return (uint8_t)(232 + gray_level);
-347   }
-348 
-349   // Use 6x6x6 color cube (colors 16-231)
-350   int r6 = (r * 5) / 255;
-351   int g6 = (g * 5) / 255;
-352   int b6 = (b * 5) / 255;
-353 
-354   return (uint8_t)(16 + (r6 * 36) + (g6 * 6) + b6);
-355 }</pre>
+<p class="Pp">Definition at line <b>360</b> of file <b>ansi.c</b>.</p>
+<pre>360                                                          {
+361   // Map to 6x6x6 color cube (216 colors) + grayscale ramp
+362 
+363   // Check if it's close to grayscale
+364   int avg = (r + g + b) / 3;
+365   int gray_diff = abs(r - avg) + abs(g - avg) + abs(b - avg);
+366 
+367   if (gray_diff &lt; 30) {
+368     // Use grayscale ramp (colors 232-255)
+369     int gray_level = (avg * 23) / 255;
+370     return (uint8_t)(232 + gray_level);
+371   }
+372 
+373   // Use 6x6x6 color cube (colors 16-231)
+374   int r6 = (r * 5) / 255;
+375   int g6 = (g * 5) / 255;
+376   int b6 = (b * 5) / 255;
+377 
+378   return (uint8_t)(16 + (r6 * 36) + (g6 * 6) + b6);
+379 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
@@ -1096,7 +1143,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

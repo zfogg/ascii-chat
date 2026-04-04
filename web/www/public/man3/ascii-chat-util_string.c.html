@@ -73,12 +73,14 @@
     const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
     *text)
   <br/>
-  Build a colored string for terminal output. void
-    <b>truncate_utf8_with_ellipsis</b> (const char *input, char *output, size_t
-    output_size, int max_width)
+  Build a colored string for terminal output. void <b>truncate_with_ellipsis</b>
+    (const char *input, char *output, size_t output_size, int max_width)
   <br/>
-  Truncate UTF-8 string to fit within max display width, adding ellipsis if
-    truncated.
+  Truncate a string to a maximum display width, with ellipsis. void
+    <b>strip_ansi_codes</b> (const char *input, char *output, size_t
+    output_size)
+  <br/>
+  Strip ANSI escape codes from a string.
   <br/>
 </p>
 </section>
@@ -111,31 +113,31 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> string_needs_shell_quoting (const char * str)</h2>
-<p class="Pp">Definition at line <b>216</b> of file <b>util/string.c</b>.</p>
-<pre>216                                                  {
-217   if (!str || str[0] == '\0') {
-218     return false; // Empty strings don't need quoting
-219   }
-220 
-221   // Check for characters that need shell quoting
-222   for (size_t i = 0; str[i] != '\0'; i++) {
-223     char c = str[i];
-224 
-225     // Whitespace characters always need quoting
-226     if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-227       return true;
-228     }
-229 
-230     // Shell special characters
-231     if (c == '&quot;' || c == '\'' || c == '$' || c == '`' || c == '\\' || c == '&lt;' || c == '&gt;' || c == '&amp;' || c == ';' ||
-232         c == '|' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '*' || c == '?' ||
-233         c == '!' || c == '~' || c == '#' || c == '@') {
-234       return true;
-235     }
-236   }
-237 
-238   return false;
-239 }</pre>
+<p class="Pp">Definition at line <b>219</b> of file <b>util/string.c</b>.</p>
+<pre>219                                                  {
+220   if (!str || str[0] == '\0') {
+221     return false; // Empty strings don't need quoting
+222   }
+223 
+224   // Check for characters that need shell quoting
+225   for (size_t i = 0; str[i] != '\0'; i++) {
+226     char c = str[i];
+227 
+228     // Whitespace characters always need quoting
+229     if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+230       return true;
+231     }
+232 
+233     // Shell special characters
+234     if (c == '&quot;' || c == '\'' || c == '$' || c == '`' || c == '\\' || c == '&lt;' || c == '&gt;' || c == '&amp;' || c == ';' ||
+235         c == '|' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '*' || c == '?' ||
+236         c == '!' || c == '~' || c == '#' || c == '@') {
+237       return true;
+238     }
+239   }
+240 
+241   return false;
+242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>escape_path_for_shell()</b>.</p>
@@ -143,76 +145,76 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> validate_shell_safe (const char * str, const char *
   allowed_chars)</h2>
-<p class="Pp">Definition at line <b>59</b> of file <b>util/string.c</b>.</p>
-<pre>59                                                                      {
-60   if (!str) {
-61     return false;
-62   }
-63 
-64   // Shell metacharacters that are dangerous
-65   // ; &amp; | $ ` \ &quot; ' &lt; &gt; ( ) [ ] { } * ? ! ~ # @ space tab newline
-66   const char *dangerous = &quot;;|$`\\\&quot;'&lt;&gt;()[]{}*?!~#@ \t\n\r&quot;;
-67 
-68   // First pass: validate UTF-8 encoding
-69   if (!utf8_is_valid(str)) {
-70     return false;
-71   }
-72 
-73   // Second pass: validate each character for shell safety
-74   // Convert to codepoints and check only ASCII range for dangerous characters
-75   // (non-ASCII characters are allowed by default)
-76   const uint8_t *p = (const uint8_t *)str;
-77   while (*p) {
-78     uint32_t codepoint;
-79     int decode_len = utf8_decode(p, &amp;codepoint);
-80     if (decode_len &lt; 0) {
-81       return false; // Should not happen after utf8_is_valid check
-82     }
-83 
-84     // Only validate ASCII range where shell metacharacters exist
-85     // Non-ASCII characters (codepoint &gt; 127) are allowed
-86     if (codepoint &lt;= 127) {
-87       unsigned char c = (unsigned char)codepoint;
-88 
-89       // Allow ASCII alphanumeric characters
-90       if (isalnum(c)) {
-91         p += decode_len;
-92         continue;
-93       }
-94 
-95       // Check if character is in allowed_chars list
-96       if (allowed_chars) {
-97         bool is_allowed = false;
-98         for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
-99           if (c == (unsigned char)allowed_chars[j]) {
-100             is_allowed = true;
-101             break;
-102           }
-103         }
-104         if (is_allowed) {
-105           p += decode_len;
-106           continue;
-107         }
-108       }
-109 
-110       // Check if character is dangerous
-111       bool is_dangerous = false;
-112       for (size_t j = 0; dangerous[j] != '\0'; j++) {
-113         if (c == (unsigned char)dangerous[j]) {
-114           is_dangerous = true;
-115           break;
-116         }
-117       }
-118       if (is_dangerous) {
-119         return false;
+<p class="Pp">Definition at line <b>62</b> of file <b>util/string.c</b>.</p>
+<pre>62                                                                      {
+63   if (!str) {
+64     return false;
+65   }
+66 
+67   // Shell metacharacters that are dangerous
+68   // ; &amp; | $ ` \ &quot; ' &lt; &gt; ( ) [ ] { } * ? ! ~ # @ space tab newline
+69   const char *dangerous = &quot;;|$`\\\&quot;'&lt;&gt;()[]{}*?!~#@ \t\n\r&quot;;
+70 
+71   // First pass: validate UTF-8 encoding
+72   if (!utf8_is_valid(str)) {
+73     return false;
+74   }
+75 
+76   // Second pass: validate each character for shell safety
+77   // Convert to codepoints and check only ASCII range for dangerous characters
+78   // (non-ASCII characters are allowed by default)
+79   const uint8_t *p = (const uint8_t *)str;
+80   while (*p) {
+81     uint32_t codepoint;
+82     int decode_len = utf8_decode(p, &amp;codepoint);
+83     if (decode_len &lt; 0) {
+84       return false; // Should not happen after utf8_is_valid check
+85     }
+86 
+87     // Only validate ASCII range where shell metacharacters exist
+88     // Non-ASCII characters (codepoint &gt; 127) are allowed
+89     if (codepoint &lt;= 127) {
+90       unsigned char c = (unsigned char)codepoint;
+91 
+92       // Allow ASCII alphanumeric characters
+93       if (isalnum(c)) {
+94         p += decode_len;
+95         continue;
+96       }
+97 
+98       // Check if character is in allowed_chars list
+99       if (allowed_chars) {
+100         bool is_allowed = false;
+101         for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
+102           if (c == (unsigned char)allowed_chars[j]) {
+103             is_allowed = true;
+104             break;
+105           }
+106         }
+107         if (is_allowed) {
+108           p += decode_len;
+109           continue;
+110         }
+111       }
+112 
+113       // Check if character is dangerous
+114       bool is_dangerous = false;
+115       for (size_t j = 0; dangerous[j] != '\0'; j++) {
+116         if (c == (unsigned char)dangerous[j]) {
+117           is_dangerous = true;
+118           break;
+119         }
 120       }
-121     }
-122 
-123     p += decode_len;
-124   }
+121       if (is_dangerous) {
+122         return false;
+123       }
+124     }
 125 
-126   return true;
-127 }</pre>
+126     p += decode_len;
+127   }
+128 
+129   return true;
+130 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_decode()</b>, and <b>utf8_is_valid()</b>.</p>
@@ -226,7 +228,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

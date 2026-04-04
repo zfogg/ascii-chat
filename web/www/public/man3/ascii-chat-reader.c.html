@@ -132,7 +132,7 @@
 30     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid fd or frame height: fd=%d, height=%d&quot;, fd, frame_height);
 31   }
 32 
-33   FILE *fp = fdopen(fd, &quot;r&quot;);
+33   FILE *fp = platform_fdopen(&quot;terminal_fd_reader&quot;, fd, &quot;r&quot;);
 34   if (!fp) {
 35     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fdopen failed for FD %d&quot;, fd);
 36   }
@@ -159,8 +159,8 @@
     <b>terminal_fd_reader_s::frame_width</b>,
     <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
     <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and
-    <b>SET_ERRNO_SYS</b>.</p>
+    <b>platform_fdopen()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
@@ -309,7 +309,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

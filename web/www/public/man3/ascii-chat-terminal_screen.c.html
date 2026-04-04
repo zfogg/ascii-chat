@@ -271,8 +271,8 @@
 133     terminal_size_t new_size = {0};
 134 
 135     // PRIORITY 1: COLUMNS and ROWS environment variables (most reliable, user-controlled)
-136     const char *cols_env = getenv(&quot;COLUMNS&quot;);
-137     const char *rows_env = getenv(&quot;ROWS&quot;);
+136     const char *cols_env = SAFE_GETENV(&quot;COLUMNS&quot;);
+137     const char *rows_env = SAFE_GETENV(&quot;ROWS&quot;);
 138     if (cols_env &amp;&amp; rows_env) {
 139       char *endptr;
 140       errno = 0;
@@ -383,7 +383,7 @@
 245           size_t line_len = content - line_start;
 246           char line_buf[1024];
 247           if (line_len &lt; sizeof(line_buf)) {
-248             strncpy(line_buf, line_start, line_len);
+248             memcpy(line_buf, line_start, line_len);
 249             line_buf[line_len] = '\0';
 250 
 251             int line_height = display_height(line_buf, g_cached_term_size.cols);
@@ -619,9 +619,10 @@
     <b>NS_PER_SEC_INT</b>, <b>options_get()</b>,
     <b>platform_get_monotonic_time_us()</b>,
     <b>terminal_screen_config_t::render_header</b>,
-    <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>session_log_buffer_get_recent()</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
-    <b>SESSION_LOG_LINE_MAX</b>, <b>terminal_screen_config_t::show_logs</b>,
+    <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+    <b>SAFE_MALLOC</b>, <b>session_log_buffer_get_recent()</b>,
+    <b>SESSION_LOG_BUFFER_SIZE</b>, <b>SESSION_LOG_LINE_MAX</b>,
+    <b>terminal_screen_config_t::show_logs</b>,
     <b>TERM_SIZE_CHECK_INTERVAL_US</b>, <b>terminal_cursor_show()</b>,
     <b>terminal_get_size()</b>, <b>terminal_screen_config_t::user_data</b>, and
     <b>options_state::width</b>.</p>
@@ -658,7 +659,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

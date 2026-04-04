@@ -75,30 +75,30 @@
 <i>buf</i> Message buffer
 <br/>
 <i>count</i> Message length</div>
-<p class="Pp">Definition at line <b>145</b> of file <b>console.c</b>.</p>
-<pre>145                                                                    {
-146   // For WASM, route stdout/stderr to browser console
-147   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
-148     // Parse log level from formatted message
-149     int level = wasm_parse_log_level(buf, count);
-150     if (level &gt;= 0) {
-151       // Create null-terminated string for console output
-152       // Copy buffer to local array and null-terminate
-153       static char msg_buffer[4096];
-154       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
-155       memcpy(msg_buffer, buf, copy_len);
-156       msg_buffer[copy_len] = '\0';
-157 
-158       // Remove trailing newline if present (console adds it automatically)
-159       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
-160         msg_buffer[copy_len - 1] = '\0';
-161       }
-162 
-163       // Route to console
-164       js_console_log(level, msg_buffer);
-165     }
-166   }
-167 }</pre>
+<p class="Pp">Definition at line <b>113</b> of file <b>wasm.c</b>.</p>
+<pre>113                                                                    {
+114   // For WASM, route stdout/stderr to browser console
+115   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
+116     // Parse log level from formatted message
+117     int level = wasm_parse_log_level(buf, count);
+118     if (level &gt;= 0) {
+119       // Create null-terminated string for console output
+120       // Copy buffer to local array and null-terminate
+121       static char msg_buffer[4096];
+122       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
+123       memcpy(msg_buffer, buf, copy_len);
+124       msg_buffer[copy_len] = '\0';
+125 
+126       // Remove trailing newline if present (console adds it automatically)
+127       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
+128         msg_buffer[copy_len - 1] = '\0';
+129       }
+130 
+131       // Route to console
+132       js_console_log(level, msg_buffer);
+133     }
+134   }
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>wasm_parse_log_level()</b>.</p>
@@ -116,56 +116,56 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent"><b>log_level_t</b> enum value (0-5), or -1 if not
   found</div>
-<p class="Pp">Definition at line <b>94</b> of file <b>console.c</b>.</p>
-<pre>94                                                            {
-95   if (!buf || count &lt; 5) {
-96     return -1; // Too short to contain [LEVEL]
-97   }
-98 
-99   // Check if message starts with [
-100   if (buf[0] != '[') {
-101     return -1;
-102   }
-103 
-104   // Look for closing ]
-105   int bracket_end = -1;
-106   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
-107     if (buf[i] == ']') {
-108       bracket_end = (int)i;
-109       break;
-110     }
-111   }
-112 
-113   if (bracket_end &lt; 3) {
-114     return -1; // Too short, minimum is [XX]
-115   }
-116 
-117   // Extract level string
-118   int level_len = bracket_end - 1;
-119   const char *level_start = (const char *)&amp;buf[1];
-120 
-121   // Match against known level strings (from logging.c)
-122   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
-123     return LOG_DEV;
-124   }
-125   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
-126     return LOG_DEBUG;
-127   }
-128   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
-129     return LOG_INFO;
-130   }
-131   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
-132     return LOG_WARN;
-133   }
-134   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
-135     return LOG_ERROR;
-136   }
-137   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
-138     return LOG_FATAL;
-139   }
-140 
-141   return -1; // Level not recognized
-142 }</pre>
+<p class="Pp">Definition at line <b>62</b> of file <b>wasm.c</b>.</p>
+<pre>62                                                            {
+63   if (!buf || count &lt; 5) {
+64     return -1; // Too short to contain [LEVEL]
+65   }
+66 
+67   // Check if message starts with [
+68   if (buf[0] != '[') {
+69     return -1;
+70   }
+71 
+72   // Look for closing ]
+73   int bracket_end = -1;
+74   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
+75     if (buf[i] == ']') {
+76       bracket_end = (int)i;
+77       break;
+78     }
+79   }
+80 
+81   if (bracket_end &lt; 3) {
+82     return -1; // Too short, minimum is [XX]
+83   }
+84 
+85   // Extract level string
+86   int level_len = bracket_end - 1;
+87   const char *level_start = (const char *)&amp;buf[1];
+88 
+89   // Match against known level strings (from logging.c)
+90   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
+91     return LOG_DEV;
+92   }
+93   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
+94     return LOG_DEBUG;
+95   }
+96   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
+97     return LOG_INFO;
+98   }
+99   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
+100     return LOG_WARN;
+101   }
+102   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
+103     return LOG_ERROR;
+104   }
+105   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
+106     return LOG_FATAL;
+107   }
+108 
+109   return -1; // Level not recognized
+110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
@@ -180,7 +180,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

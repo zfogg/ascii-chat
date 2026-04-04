@@ -429,8 +429,7 @@
     <b>tcp_server::running</b>, <b>rwlock_destroy()</b>, <b>rwlock_wrlock</b>,
     <b>rwlock_wrunlock</b>, <b>SAFE_FREE</b>, <b>socket_close()</b>,
     <b>thread_pool_destroy()</b>, and <b>tcp_client_entry::threads</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>,
-    <b>acds_server_shutdown()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_server_foreach_client_("><a class="permalink" href="#void_tcp_server_foreach_client_(">void
@@ -694,8 +693,7 @@
     <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_RWLOCK</b>,
     <b>tcp_server_config_t::port</b>, <b>tcp_server::running</b>,
     <b>rwlock_init()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, and
-  <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_server_reject_client_("><a class="permalink" href="#void_tcp_server_reject_client_(">void
@@ -943,7 +941,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_server_config_t::accept_timeout_sec</b>,
     <b>tcp_client_context_t::addr</b>, <b>tcp_client_context_t::addr_len</b>,
-    <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>atomic_load_bool()</b>, <b>tcp_server_config_t::client_handler</b>,
     <b>tcp_client_context_t::client_socket</b>, <b>tcp_server::config</b>,
     <b>EINTR</b>, <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>,
@@ -959,8 +957,7 @@
     <b>tcp_server_config_t::status_update_fn</b>, <b>US_PER_SEC_INT</b>,
     <b>tcp_client_context_t::user_data</b>, and
     <b>tcp_server_config_t::user_data</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_run()</b>, and
-  <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_server_set_cleanup_callback_("><a class="permalink" href="#void_tcp_server_set_cleanup_callback_(">void
@@ -1074,7 +1071,7 @@
 604 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, <b>rwlock_rdlock</b>,
@@ -1145,7 +1142,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

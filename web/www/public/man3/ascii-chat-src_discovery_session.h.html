@@ -313,72 +313,72 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>2297</b> of file
+<p class="Pp">Definition at line <b>2298</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2297                                                                               {
-2298   if (!session) {
-2299     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-2300     return ERROR_INVALID_PARAM;
-2301   }
-2302 
-2303   log_info(&quot;Starting as new host after migration (participant ID: %02x%02x...)&quot;, session-&gt;participant_id[0],
-2304            session-&gt;participant_id[1]);
-2305 
-2306   // Get configured port (or use default)
-2307   int host_port = GET_OPTION(port);
-2308 
-2309   // Mark ourselves as host
-2310   session-&gt;is_host = true;
-2311 
-2312   // Create host context if needed with configured port
-2313   if (!session-&gt;host_ctx) {
-2314     session_host_config_t hconfig = {
-2315         .port = host_port,
-2316         .ipv4_address = &quot;0.0.0.0&quot;,
-2317         .max_clients = 32,
-2318         .encryption_enabled = true,
-2319     };
-2320 
-2321     session-&gt;host_ctx = session_host_create(&amp;hconfig);
-2322     if (!session-&gt;host_ctx) {
-2323       log_error(&quot;Failed to create host context for migration&quot;);
-2324       return ERROR_MEMORY;
-2325     }
-2326 
-2327     // Start listening for new participant connections
-2328     asciichat_error_t hstart = session_host_start(session-&gt;host_ctx);
-2329     if (hstart != ASCIICHAT_OK) {
-2330       log_error(&quot;Failed to start host after migration: %d&quot;, hstart);
-2331       return hstart;
-2332     }
-2333 
-2334     log_info(&quot;Host restarted after migration, listening on port %d&quot;, host_port);
-2335   }
-2336 
-2337   // Send HOST_ANNOUNCEMENT to ACDS so other participants can reconnect
-2338   acip_host_announcement_t announcement = {0};
-2339   memcpy(announcement.session_id, session-&gt;session_id, 16);
-2340   memcpy(announcement.host_id, session-&gt;participant_id, 16);
-2341   SAFE_STRNCPY(announcement.host_address, session-&gt;host_address, sizeof(announcement.host_address));
-2342   announcement.host_port = host_port;
-2343   // Set connection type based on NAT quality (for now use DIRECT_PUBLIC for localhost dev environments)
-2344   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
-2345 
-2346   if (session-&gt;acds_transport) {
-2347     packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &amp;announcement,
-2348                               sizeof(announcement), 0);
-2349     log_info(&quot;Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u&quot;, announcement.host_id[0],
-2350              announcement.host_id[1], announcement.host_address, announcement.host_port);
-2351   }
-2352 
-2353   // Mark migration complete
-2354   session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
-2355 
-2356   // Transition to ACTIVE state (host is ready)
-2357   set_state(session, DISCOVERY_STATE_ACTIVE);
-2358 
-2359   return ASCIICHAT_OK;
-2360 }</pre>
+<pre>2298                                                                               {
+2299   if (!session) {
+2300     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+2301     return ERROR_INVALID_PARAM;
+2302   }
+2303 
+2304   log_info(&quot;Starting as new host after migration (participant ID: %02x%02x...)&quot;, session-&gt;participant_id[0],
+2305            session-&gt;participant_id[1]);
+2306 
+2307   // Get configured port (or use default)
+2308   int host_port = GET_OPTION(port);
+2309 
+2310   // Mark ourselves as host
+2311   session-&gt;is_host = true;
+2312 
+2313   // Create host context if needed with configured port
+2314   if (!session-&gt;host_ctx) {
+2315     session_host_config_t hconfig = {
+2316         .port = host_port,
+2317         .ipv4_address = &quot;0.0.0.0&quot;,
+2318         .max_clients = 32,
+2319         .encryption_enabled = true,
+2320     };
+2321 
+2322     session-&gt;host_ctx = session_host_create(&amp;hconfig);
+2323     if (!session-&gt;host_ctx) {
+2324       log_error(&quot;Failed to create host context for migration&quot;);
+2325       return ERROR_MEMORY;
+2326     }
+2327 
+2328     // Start listening for new participant connections
+2329     asciichat_error_t hstart = session_host_start(session-&gt;host_ctx);
+2330     if (hstart != ASCIICHAT_OK) {
+2331       log_error(&quot;Failed to start host after migration: %d&quot;, hstart);
+2332       return hstart;
+2333     }
+2334 
+2335     log_info(&quot;Host restarted after migration, listening on port %d&quot;, host_port);
+2336   }
+2337 
+2338   // Send HOST_ANNOUNCEMENT to ACDS so other participants can reconnect
+2339   acip_host_announcement_t announcement = {0};
+2340   memcpy(announcement.session_id, session-&gt;session_id, 16);
+2341   memcpy(announcement.host_id, session-&gt;participant_id, 16);
+2342   SAFE_STRNCPY(announcement.host_address, session-&gt;host_address, sizeof(announcement.host_address));
+2343   announcement.host_port = host_port;
+2344   // Set connection type based on NAT quality (for now use DIRECT_PUBLIC for localhost dev environments)
+2345   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+2346 
+2347   if (session-&gt;acds_transport) {
+2348     packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &amp;announcement,
+2349                               sizeof(announcement), 0);
+2350     log_info(&quot;Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u&quot;, announcement.host_id[0],
+2351              announcement.host_id[1], announcement.host_address, announcement.host_port);
+2352   }
+2353 
+2354   // Mark migration complete
+2355   session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
+2356 
+2357   // Transition to ACTIVE state (host is ready)
+2358   set_state(session, DISCOVERY_STATE_ACTIVE);
+2359 
+2360   return ASCIICHAT_OK;
+2361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
@@ -405,80 +405,80 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if host alive, error if disconnected</div>
-<p class="Pp">Definition at line <b>2174</b> of file
+<p class="Pp">Definition at line <b>2175</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2174                                                                                    {
-2175   if (!session || session-&gt;is_host) {
-2176     // We are the host, so &quot;host&quot; is always alive
-2177     return ASCIICHAT_OK;
-2178   }
-2179 
-2180   // For WebRTC sessions, check the WebRTC transport instead of participant_ctx
-2181   if (session-&gt;session_type == SESSION_TYPE_WEBRTC) {
-2182     // If we have a WebRTC transport and it's marked as ready, host is alive
-2183     if (session-&gt;webrtc_transport_ready) {
-2184       return ASCIICHAT_OK;
-2185     }
-2186     // WebRTC transport not ready yet - might still be connecting
-2187     return ERROR_NETWORK;
-2188   }
-2189 
-2190   // For TCP sessions, check participant context
-2191   // If we don't have a participant context yet, we're not connected
-2192   if (!session-&gt;participant_ctx) {
-2193     return ERROR_NETWORK;
-2194   }
-2195 
-2196   // Check migration state - if we're already migrating, host is definitely not alive
-2197   if (session-&gt;migration.state != MIGRATION_STATE_NONE) {
-2198     return ERROR_NETWORK; // Already detected disconnect
-2199   }
-2200 
-2201   uint64_t now_ms = session_get_current_time_ms();
-2202 
-2203   // Check if we have a ping in flight that timed out
-2204   if (session-&gt;liveness.ping_in_flight) {
-2205     uint64_t ping_age_ms = now_ms - session-&gt;liveness.last_ping_sent_ms;
-2206     if (ping_age_ms &gt; session-&gt;liveness.timeout_ms) {
-2207       // Ping timed out
-2208       session-&gt;liveness.consecutive_failures++;
-2209       session-&gt;liveness.ping_in_flight = false;
-2210       log_warn(&quot;Host ping timeout (attempt %u/%u, age=%llu ms)&quot;, session-&gt;liveness.consecutive_failures,
-2211                session-&gt;liveness.max_failures, (unsigned long long)ping_age_ms);
-2212 
-2213       // Check if we've exceeded failure threshold
-2214       if (session-&gt;liveness.consecutive_failures &gt;= session-&gt;liveness.max_failures) {
-2215         log_error(&quot;Host declared dead after %u consecutive ping failures&quot;, session-&gt;liveness.consecutive_failures);
-2216         return ERROR_NETWORK;
-2217       }
-2218     }
-2219   }
-2220 
-2221   // Check if it's time to send a new ping
-2222   uint64_t time_since_last_ping = now_ms - session-&gt;liveness.last_ping_sent_ms;
-2223   if (!session-&gt;liveness.ping_in_flight &amp;&amp; time_since_last_ping &gt;= session-&gt;liveness.ping_interval_ms) {
-2224     // Send ping to host via participant connection
-2225     socket_t host_socket = session_participant_get_socket(session-&gt;participant_ctx);
-2226     if (host_socket != INVALID_SOCKET_VALUE) {
-2227       asciichat_error_t result = packet_send(host_socket, PACKET_TYPE_PING, NULL, 0);
-2228       if (result == ASCIICHAT_OK) {
-2229         session-&gt;liveness.last_ping_sent_ms = now_ms;
-2230         session-&gt;liveness.ping_in_flight = true;
-2231         log_debug(&quot;Sent ping to host (attempt %u/%u)&quot;, session-&gt;liveness.consecutive_failures + 1,
-2232                   session-&gt;liveness.max_failures);
-2233       } else {
-2234         log_warn(&quot;Failed to send ping to host: %d&quot;, result);
-2235         session-&gt;liveness.consecutive_failures++;
-2236         if (session-&gt;liveness.consecutive_failures &gt;= session-&gt;liveness.max_failures) {
-2237           log_error(&quot;Host declared dead after %u consecutive send failures&quot;, session-&gt;liveness.consecutive_failures);
-2238           return ERROR_NETWORK;
-2239         }
-2240       }
-2241     }
-2242   }
-2243 
-2244   return ASCIICHAT_OK;
-2245 }</pre>
+<pre>2175                                                                                    {
+2176   if (!session || session-&gt;is_host) {
+2177     // We are the host, so &quot;host&quot; is always alive
+2178     return ASCIICHAT_OK;
+2179   }
+2180 
+2181   // For WebRTC sessions, check the WebRTC transport instead of participant_ctx
+2182   if (session-&gt;session_type == SESSION_TYPE_WEBRTC) {
+2183     // If we have a WebRTC transport and it's marked as ready, host is alive
+2184     if (session-&gt;webrtc_transport_ready) {
+2185       return ASCIICHAT_OK;
+2186     }
+2187     // WebRTC transport not ready yet - might still be connecting
+2188     return ERROR_NETWORK;
+2189   }
+2190 
+2191   // For TCP sessions, check participant context
+2192   // If we don't have a participant context yet, we're not connected
+2193   if (!session-&gt;participant_ctx) {
+2194     return ERROR_NETWORK;
+2195   }
+2196 
+2197   // Check migration state - if we're already migrating, host is definitely not alive
+2198   if (session-&gt;migration.state != MIGRATION_STATE_NONE) {
+2199     return ERROR_NETWORK; // Already detected disconnect
+2200   }
+2201 
+2202   uint64_t now_ms = session_get_current_time_ms();
+2203 
+2204   // Check if we have a ping in flight that timed out
+2205   if (session-&gt;liveness.ping_in_flight) {
+2206     uint64_t ping_age_ms = now_ms - session-&gt;liveness.last_ping_sent_ms;
+2207     if (ping_age_ms &gt; session-&gt;liveness.timeout_ms) {
+2208       // Ping timed out
+2209       session-&gt;liveness.consecutive_failures++;
+2210       session-&gt;liveness.ping_in_flight = false;
+2211       log_warn(&quot;Host ping timeout (attempt %u/%u, age=%llu ms)&quot;, session-&gt;liveness.consecutive_failures,
+2212                session-&gt;liveness.max_failures, (unsigned long long)ping_age_ms);
+2213 
+2214       // Check if we've exceeded failure threshold
+2215       if (session-&gt;liveness.consecutive_failures &gt;= session-&gt;liveness.max_failures) {
+2216         log_error(&quot;Host declared dead after %u consecutive ping failures&quot;, session-&gt;liveness.consecutive_failures);
+2217         return ERROR_NETWORK;
+2218       }
+2219     }
+2220   }
+2221 
+2222   // Check if it's time to send a new ping
+2223   uint64_t time_since_last_ping = now_ms - session-&gt;liveness.last_ping_sent_ms;
+2224   if (!session-&gt;liveness.ping_in_flight &amp;&amp; time_since_last_ping &gt;= session-&gt;liveness.ping_interval_ms) {
+2225     // Send ping to host via participant connection
+2226     socket_t host_socket = session_participant_get_socket(session-&gt;participant_ctx);
+2227     if (host_socket != INVALID_SOCKET_VALUE) {
+2228       asciichat_error_t result = packet_send(host_socket, PACKET_TYPE_PING, NULL, 0);
+2229       if (result == ASCIICHAT_OK) {
+2230         session-&gt;liveness.last_ping_sent_ms = now_ms;
+2231         session-&gt;liveness.ping_in_flight = true;
+2232         log_debug(&quot;Sent ping to host (attempt %u/%u)&quot;, session-&gt;liveness.consecutive_failures + 1,
+2233                   session-&gt;liveness.max_failures);
+2234       } else {
+2235         log_warn(&quot;Failed to send ping to host: %d&quot;, result);
+2236         session-&gt;liveness.consecutive_failures++;
+2237         if (session-&gt;liveness.consecutive_failures &gt;= session-&gt;liveness.max_failures) {
+2238           log_error(&quot;Host declared dead after %u consecutive send failures&quot;, session-&gt;liveness.consecutive_failures);
+2239           return ERROR_NETWORK;
+2240         }
+2241       }
+2242     }
+2243   }
+2244 
+2245   return ASCIICHAT_OK;
+2246 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -507,63 +507,63 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>2362</b> of file
+<p class="Pp">Definition at line <b>2363</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2362                                                                                          {
-2363   if (!session) {
-2364     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-2365     return ERROR_INVALID_PARAM;
-2366   }
-2367 
-2368   log_info(&quot;Reconnecting to future host: %s:%u (connection type: %u)&quot;, session-&gt;ring.future_host_address,
-2369            session-&gt;ring.future_host_port, session-&gt;ring.future_host_connection_type);
-2370 
-2371   // Destroy old participant context if present
-2372   if (session-&gt;participant_ctx) {
-2373     session_participant_destroy(session-&gt;participant_ctx);
-2374     session-&gt;participant_ctx = NULL;
-2375   }
-2376 
-2377   // Create new participant context for the future host
-2378   session_participant_config_t pconfig = {
-2379       .address = session-&gt;ring.future_host_address,
-2380       .port = session-&gt;ring.future_host_port,
-2381       .enable_audio = true,
-2382       .enable_video = true,
-2383       .encryption_enabled = true,
-2384   };
-2385 
-2386   session-&gt;participant_ctx = session_participant_create(&amp;pconfig);
-2387   if (!session-&gt;participant_ctx) {
-2388     log_error(&quot;Failed to create participant context for future host&quot;);
-2389     return ERROR_MEMORY;
-2390   }
-2391 
-2392   // Attempt connection to future host
-2393   asciichat_error_t pconn = session_participant_connect(session-&gt;participant_ctx);
-2394   if (pconn != ASCIICHAT_OK) {
-2395     log_error(&quot;Failed to connect to future host: %d&quot;, pconn);
-2396     return pconn;
-2397   }
-2398 
-2399   log_info(&quot;Connected to future host after migration&quot;);
-2400 
-2401   // Update our host info with the new future host details
-2402   memcpy(session-&gt;host_id, session-&gt;ring.future_host_id, 16);
-2403   SAFE_STRNCPY(session-&gt;host_address, session-&gt;ring.future_host_address, sizeof(session-&gt;host_address));
-2404   session-&gt;host_port = session-&gt;ring.future_host_port;
-2405 
-2406   log_info(&quot;Updated host info to: %s:%u (id: %02x%02x...)&quot;, session-&gt;host_address, session-&gt;host_port,
-2407            session-&gt;host_id[0], session-&gt;host_id[1]);
-2408 
-2409   // Mark migration complete (in real implementation, this would be done after successful connection)
-2410   session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
-2411 
-2412   // Transition to ACTIVE state (participant is ready)
-2413   set_state(session, DISCOVERY_STATE_ACTIVE);
-2414 
-2415   return ASCIICHAT_OK;
-2416 }</pre>
+<pre>2363                                                                                          {
+2364   if (!session) {
+2365     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+2366     return ERROR_INVALID_PARAM;
+2367   }
+2368 
+2369   log_info(&quot;Reconnecting to future host: %s:%u (connection type: %u)&quot;, session-&gt;ring.future_host_address,
+2370            session-&gt;ring.future_host_port, session-&gt;ring.future_host_connection_type);
+2371 
+2372   // Destroy old participant context if present
+2373   if (session-&gt;participant_ctx) {
+2374     session_participant_destroy(session-&gt;participant_ctx);
+2375     session-&gt;participant_ctx = NULL;
+2376   }
+2377 
+2378   // Create new participant context for the future host
+2379   session_participant_config_t pconfig = {
+2380       .address = session-&gt;ring.future_host_address,
+2381       .port = session-&gt;ring.future_host_port,
+2382       .enable_audio = true,
+2383       .enable_video = true,
+2384       .encryption_enabled = true,
+2385   };
+2386 
+2387   session-&gt;participant_ctx = session_participant_create(&amp;pconfig);
+2388   if (!session-&gt;participant_ctx) {
+2389     log_error(&quot;Failed to create participant context for future host&quot;);
+2390     return ERROR_MEMORY;
+2391   }
+2392 
+2393   // Attempt connection to future host
+2394   asciichat_error_t pconn = session_participant_connect(session-&gt;participant_ctx);
+2395   if (pconn != ASCIICHAT_OK) {
+2396     log_error(&quot;Failed to connect to future host: %d&quot;, pconn);
+2397     return pconn;
+2398   }
+2399 
+2400   log_info(&quot;Connected to future host after migration&quot;);
+2401 
+2402   // Update our host info with the new future host details
+2403   memcpy(session-&gt;host_id, session-&gt;ring.future_host_id, 16);
+2404   SAFE_STRNCPY(session-&gt;host_address, session-&gt;ring.future_host_address, sizeof(session-&gt;host_address));
+2405   session-&gt;host_port = session-&gt;ring.future_host_port;
+2406 
+2407   log_info(&quot;Updated host info to: %s:%u (id: %02x%02x...)&quot;, session-&gt;host_address, session-&gt;host_port,
+2408            session-&gt;host_id[0], session-&gt;host_id[1]);
+2409 
+2410   // Mark migration complete (in real implementation, this would be done after successful connection)
+2411   session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
+2412 
+2413   // Transition to ACTIVE state (participant is ready)
+2414   set_state(session, DISCOVERY_STATE_ACTIVE);
+2415 
+2416   return ASCIICHAT_OK;
+2417 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>DISCOVERY_STATE_ACTIVE</b>,
@@ -876,26 +876,26 @@
 <i>out_connection_type</i> Output: Connection type</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if future host known, error otherwise</div>
-<p class="Pp">Definition at line <b>2418</b> of file
+<p class="Pp">Definition at line <b>2419</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2420                                                                                   {
-2421   if (!session || !out_id || !out_address || !out_port || !out_connection_type) {
-2422     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameters&quot;);
-2423     return ERROR_INVALID_PARAM;
-2424   }
-2425 
-2426   if (session-&gt;ring.future_host_id[0] == 0) {
-2427     SET_ERRNO(ERROR_NOT_FOUND, &quot;Future host not elected yet&quot;);
-2428     return ERROR_NOT_FOUND;
-2429   }
-2430 
-2431   memcpy(out_id, session-&gt;ring.future_host_id, 16);
-2432   SAFE_STRNCPY(out_address, session-&gt;ring.future_host_address, 64);
-2433   *out_port = session-&gt;ring.future_host_port;
-2434   *out_connection_type = session-&gt;ring.future_host_connection_type;
-2435 
-2436   return ASCIICHAT_OK;
-2437 }</pre>
+<pre>2421                                                                                   {
+2422   if (!session || !out_id || !out_address || !out_port || !out_connection_type) {
+2423     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameters&quot;);
+2424     return ERROR_INVALID_PARAM;
+2425   }
+2426 
+2427   if (session-&gt;ring.future_host_id[0] == 0) {
+2428     SET_ERRNO(ERROR_NOT_FOUND, &quot;Future host not elected yet&quot;);
+2429     return ERROR_NOT_FOUND;
+2430   }
+2431 
+2432   memcpy(out_id, session-&gt;ring.future_host_id, 16);
+2433   SAFE_STRNCPY(out_address, session-&gt;ring.future_host_address, 64);
+2434   *out_port = session-&gt;ring.future_host_port;
+2435   *out_connection_type = session-&gt;ring.future_host_connection_type;
+2436 
+2437   return ASCIICHAT_OK;
+2438 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -913,15 +913,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Host context or NULL</div>
-<p class="Pp">Definition at line <b>2019</b> of file
+<p class="Pp">Definition at line <b>2020</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2019                                                                          {
-2020   if (!session) {
-2021     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-2022     return NULL;
-2023   }
-2024   return session-&gt;host_ctx;
-2025 }</pre>
+<pre>2020                                                                          {
+2021   if (!session) {
+2022     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+2023     return NULL;
+2024   }
+2025   return session-&gt;host_ctx;
+2026 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -935,15 +935,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Participant context or NULL</div>
-<p class="Pp">Definition at line <b>2027</b> of file
+<p class="Pp">Definition at line <b>2028</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2027                                                                                        {
-2028   if (!session) {
-2029     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-2030     return NULL;
-2031   }
-2032   return session-&gt;participant_ctx;
-2033 }</pre>
+<pre>2028                                                                                        {
+2029   if (!session) {
+2030     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+2031     return NULL;
+2032   }
+2033   return session-&gt;participant_ctx;
+2034 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -957,15 +957,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Current state</div>
-<p class="Pp">Definition at line <b>1987</b> of file
+<p class="Pp">Definition at line <b>1988</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>1987                                                                                   {
-1988   if (!session) {
-1989     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-1990     return DISCOVERY_STATE_FAILED;
-1991   }
-1992   return session-&gt;state;
-1993 }</pre>
+<pre>1988                                                                                   {
+1989   if (!session) {
+1990     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+1991     return DISCOVERY_STATE_FAILED;
+1992   }
+1993   return session-&gt;state;
+1994 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>DISCOVERY_STATE_FAILED</b>,
@@ -981,15 +981,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Session string or NULL if not yet assigned</div>
-<p class="Pp">Definition at line <b>2003</b> of file
+<p class="Pp">Definition at line <b>2004</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2003                                                                              {
-2004   if (!session || session-&gt;session_string[0] == '\0') {
-2005     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session or session string is empty&quot;);
-2006     return NULL;
-2007   }
-2008   return session-&gt;session_string;
-2009 }</pre>
+<pre>2004                                                                              {
+2005   if (!session || session-&gt;session_string[0] == '\0') {
+2006     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session or session string is empty&quot;);
+2007     return NULL;
+2008   }
+2009   return session-&gt;session_string;
+2010 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -1005,57 +1005,57 @@
 <i>disconnect_reason</i> Reason code for disconnect</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on successful failover</div>
-<p class="Pp">Definition at line <b>2247</b> of file
+<p class="Pp">Definition at line <b>2248</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2247                                                                                                                      {
-2248   if (!session) {
-2249     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-2250     return ERROR_INVALID_PARAM;
-2251   }
-2252 
-2253   log_warn(&quot;Host disconnect detected: reason=%u&quot;, disconnect_reason);
-2254 
-2255   // Initialize migration context
-2256   session-&gt;migration.state = MIGRATION_STATE_DETECTED;
-2257   session-&gt;migration.detection_time_ms = session_get_current_time_ms();
-2258   memcpy(session-&gt;migration.last_host_id, session-&gt;host_id, 16);
-2259   session-&gt;migration.disconnect_reason = disconnect_reason;
-2260 
-2261   // Notify ACDS of host loss (lightweight notification, no NAT data exchanged!)
-2262   acip_host_lost_t host_lost = {0};
-2263   memcpy(host_lost.session_id, session-&gt;session_id, 16);
-2264   memcpy(host_lost.participant_id, session-&gt;participant_id, 16);
-2265   memcpy(host_lost.last_host_id, session-&gt;host_id, 16);
-2266   host_lost.disconnect_reason = disconnect_reason;
-2267   host_lost.disconnect_time_ms = session-&gt;migration.detection_time_ms;
-2268 
-2269   packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &amp;host_lost, sizeof(host_lost), 0);
-2270 
-2271   // Check if we have a pre-elected future host (from last 5-minute ring round)
-2272   if (session-&gt;ring.future_host_id[0] == 0) {
-2273     // No future host known! This shouldn't happen if we just received FUTURE_HOST_ELECTED
-2274     // within the last 5 minutes. Fall back to treating this as fatal.
-2275     log_error(&quot;No future host pre-elected! Session cannot recover from host disconnect.&quot;);
-2276     session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
-2277     return ERROR_NETWORK; // Session should end
-2278   }
-2279 
-2280   // **SIMPLIFIED**: No metrics exchange needed! Future host was already elected 5 minutes ago.
-2281   // Just failover to the pre-elected host.
-2282   session-&gt;migration.state = MIGRATION_STATE_FAILOVER;
-2283 
-2284   // Check if I am the future host
-2285   if (session-&gt;ring.am_future_host) {
-2286     // I become the new host immediately! (no election delay!)
-2287     log_info(&quot;Becoming host (I'm the pre-elected future host)&quot;);
-2288     return discovery_session_become_host(session);
-2289   } else {
-2290     // Connect to pre-elected future host (address already stored!)
-2291     log_info(&quot;Connecting to pre-elected future host: %s:%u&quot;, session-&gt;ring.future_host_address,
-2292              session-&gt;ring.future_host_port);
-2293     return discovery_session_connect_to_future_host(session);
-2294   }
-2295 }</pre>
+<pre>2248                                                                                                                      {
+2249   if (!session) {
+2250     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+2251     return ERROR_INVALID_PARAM;
+2252   }
+2253 
+2254   log_warn(&quot;Host disconnect detected: reason=%u&quot;, disconnect_reason);
+2255 
+2256   // Initialize migration context
+2257   session-&gt;migration.state = MIGRATION_STATE_DETECTED;
+2258   session-&gt;migration.detection_time_ms = session_get_current_time_ms();
+2259   memcpy(session-&gt;migration.last_host_id, session-&gt;host_id, 16);
+2260   session-&gt;migration.disconnect_reason = disconnect_reason;
+2261 
+2262   // Notify ACDS of host loss (lightweight notification, no NAT data exchanged!)
+2263   acip_host_lost_t host_lost = {0};
+2264   memcpy(host_lost.session_id, session-&gt;session_id, 16);
+2265   memcpy(host_lost.participant_id, session-&gt;participant_id, 16);
+2266   memcpy(host_lost.last_host_id, session-&gt;host_id, 16);
+2267   host_lost.disconnect_reason = disconnect_reason;
+2268   host_lost.disconnect_time_ms = session-&gt;migration.detection_time_ms;
+2269 
+2270   packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &amp;host_lost, sizeof(host_lost), 0);
+2271 
+2272   // Check if we have a pre-elected future host (from last 5-minute ring round)
+2273   if (session-&gt;ring.future_host_id[0] == 0) {
+2274     // No future host known! This shouldn't happen if we just received FUTURE_HOST_ELECTED
+2275     // within the last 5 minutes. Fall back to treating this as fatal.
+2276     log_error(&quot;No future host pre-elected! Session cannot recover from host disconnect.&quot;);
+2277     session-&gt;migration.state = MIGRATION_STATE_COMPLETE;
+2278     return ERROR_NETWORK; // Session should end
+2279   }
+2280 
+2281   // **SIMPLIFIED**: No metrics exchange needed! Future host was already elected 5 minutes ago.
+2282   // Just failover to the pre-elected host.
+2283   session-&gt;migration.state = MIGRATION_STATE_FAILOVER;
+2284 
+2285   // Check if I am the future host
+2286   if (session-&gt;ring.am_future_host) {
+2287     // I become the new host immediately! (no election delay!)
+2288     log_info(&quot;Becoming host (I'm the pre-elected future host)&quot;);
+2289     return discovery_session_become_host(session);
+2290   } else {
+2291     // Connect to pre-elected future host (address already stored!)
+2292     log_info(&quot;Connecting to pre-elected future host: %s:%u&quot;, session-&gt;ring.future_host_address,
+2293              session-&gt;ring.future_host_port);
+2294     return discovery_session_connect_to_future_host(session);
+2295   }
+2296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
@@ -1089,23 +1089,23 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>2129</b> of file
+<p class="Pp">Definition at line <b>2130</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2129                                                                             {
-2130   if (!session) {
-2131     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-2132     return ERROR_INVALID_PARAM;
-2133   }
-2134 
-2135   // Simplified for new architecture: just initialize timing
-2136   // No participant list needed - host runs the election
-2137   session-&gt;ring.last_ring_round_ms = session_get_current_time_ms();
-2138   session-&gt;ring.am_future_host = false;
-2139   memset(session-&gt;ring.future_host_id, 0, 16);
-2140 
-2141   log_info(&quot;Ring consensus initialized (host-mediated model)&quot;);
-2142   return ASCIICHAT_OK;
-2143 }</pre>
+<pre>2130                                                                             {
+2131   if (!session) {
+2132     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+2133     return ERROR_INVALID_PARAM;
+2134   }
+2135 
+2136   // Simplified for new architecture: just initialize timing
+2137   // No participant list needed - host runs the election
+2138   session-&gt;ring.last_ring_round_ms = session_get_current_time_ms();
+2139   session-&gt;ring.am_future_host = false;
+2140   memset(session-&gt;ring.future_host_id, 0, 16);
+2141 
+2142   log_info(&quot;Ring consensus initialized (host-mediated model)&quot;);
+2143   return ASCIICHAT_OK;
+2144 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ring_consensus_t::am_future_host</b>,
@@ -1122,15 +1122,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">True if active</div>
-<p class="Pp">Definition at line <b>1995</b> of file
+<p class="Pp">Definition at line <b>1996</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>1995                                                                      {
-1996   if (!session) {
-1997     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-1998     return false;
-1999   }
-2000   return session-&gt;state == DISCOVERY_STATE_ACTIVE;
-2001 }</pre>
+<pre>1996                                                                      {
+1997   if (!session) {
+1998     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+1999     return false;
+2000   }
+2001   return session-&gt;state == DISCOVERY_STATE_ACTIVE;
+2002 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>DISCOVERY_STATE_ACTIVE</b>,
@@ -1145,15 +1145,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">True if we will be host if current host dies</div>
-<p class="Pp">Definition at line <b>2439</b> of file
+<p class="Pp">Definition at line <b>2440</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2439                                                                           {
-2440   if (!session) {
-2441     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-2442     return false;
-2443   }
-2444   return session-&gt;ring.am_future_host;
-2445 }</pre>
+<pre>2440                                                                           {
+2441   if (!session) {
+2442     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+2443     return false;
+2444   }
+2445   return session-&gt;ring.am_future_host;
+2446 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ring_consensus_t::am_future_host</b>,
@@ -1168,15 +1168,15 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">True if we are hosting</div>
-<p class="Pp">Definition at line <b>2011</b> of file
+<p class="Pp">Definition at line <b>2012</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2011                                                                    {
-2012   if (!session) {
-2013     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
-2014     return false;
-2015   }
-2016   return session-&gt;is_host;
-2017 }</pre>
+<pre>2012                                                                    {
+2013   if (!session) {
+2014     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
+2015     return false;
+2016   }
+2017   return session-&gt;is_host;
+2018 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -1195,556 +1195,556 @@
   non-blocking)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error on failure</div>
-<p class="Pp">Definition at line <b>1416</b> of file
+<p class="Pp">Definition at line <b>1417</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>1416                                                                                               {
-1417   if (!session) {
-1418     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-1419   }
-1420 
-1421   // Handle state-specific processing
-1422   switch (session-&gt;state) {
-1423   case DISCOVERY_STATE_WAITING_PEER: {
-1424     // Wait for PARTICIPANT_JOINED notification from ACDS
-1425     // Note: don't use a hard timeout here - let the outer process timeout (snapshot delay) control max wait
-1426     // The discovery_run() loop will keep calling this until session becomes active or process exits
-1427     uint64_t now_ns = time_get_ns();
-1428     uint64_t wait_duration = now_ns - session-&gt;waiting_peer_start_ns;
-1429 
-1430     log_debug(&quot;&#x2605; WAITING_PEER: duration=%.3fs (no timeout, waiting for peer...)&quot;, wait_duration / 1e9);
-1431 
-1432     if (session-&gt;acds_transport &amp;&amp; timeout_ns &gt; 0) {
-1433       // Do not set socket timeout - let receive_packet_secure use its own timeout
-1434       // Setting a short socket timeout conflicts with its hardcoded 1-second timeout
-1435       packet_type_t type;
-1436       void *data = NULL;
-1437       size_t len = 0;
-1438       void *alloc_buffer = NULL;
-1439 
-1440       // Try to receive a packet
-1441       asciichat_error_t recv_result =
-1442           packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
-1443       if (recv_result == ASCIICHAT_OK) {
-1444         if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
-1445           log_info(&quot;Peer joined session, transitioning to negotiation&quot;);
-1446           set_state(session, DISCOVERY_STATE_NEGOTIATING);
-1447           buffer_pool_free(NULL, alloc_buffer, 0);
-1448         } else {
-1449           // Got some other packet, handle it or ignore
-1450           log_debug(&quot;Received packet type %d while waiting for peer&quot;, type);
-1451           buffer_pool_free(NULL, alloc_buffer, 0);
-1452         }
-1453       } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
-1454         // Timeout is normal, just return
-1455       } else {
-1456         log_debug(&quot;Packet receive error while waiting for peer: %d&quot;, recv_result);
-1457       }
-1458     } else {
-1459       // Fallback to sleep if no timeout or invalid transport
-1460       platform_sleep_us(timeout_ns / 1000);
-1461     }
-1462     break;
-1463   }
-1464 
-1465   case DISCOVERY_STATE_NEGOTIATING: {
-1466     // Handle NAT negotiation
-1467     if (session-&gt;negotiate.state == NEGOTIATE_STATE_INIT) {
-1468       // Initialize negotiation
-1469       negotiate_init(&amp;session-&gt;negotiate, session-&gt;session_id, session-&gt;participant_id, session-&gt;is_initiator);
-1470       log_info(&quot;Starting NAT negotiation (initiator=%d)&quot;, session-&gt;is_initiator);
-1471 
-1472       // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
-1473       asciichat_error_t send_result = send_network_quality_to_acds(session);
-1474       if (send_result != ASCIICHAT_OK) {
-1475         log_warn(&quot;Failed to send initial NETWORK_QUALITY: %d&quot;, send_result);
-1476       }
-1477 
-1478       // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
-1479       // For now in discovery mode, assume we're the only one and become host immediately
-1480       // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
-1481       log_info(&quot;Proceeding as host (ACDS cannot relay peer quality in solo mode)&quot;);
-1482       session-&gt;negotiate.our_quality.detection_complete = true;
-1483       session-&gt;negotiate.peer_quality_received = true;
-1484       memset(&amp;session-&gt;negotiate.peer_quality, 0, sizeof(session-&gt;negotiate.peer_quality));
-1485       // Mark peer quality as detected but with worst NAT type so we win host election
-1486       session-&gt;negotiate.peer_quality.detection_complete = true;
-1487       session-&gt;negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
-1488     }
-1489 
-1490     // Check for HOST_ANNOUNCEMENT from ACDS (in case we're waiting for host discovery)
-1491     if (session-&gt;acds_transport &amp;&amp; !session-&gt;is_initiator &amp;&amp; !session-&gt;host_address[0]) {
-1492       packet_type_t type;
-1493       void *data = NULL;
-1494       size_t len = 0;
-1495       void *alloc_buffer = NULL;
-1496 
-1497       asciichat_error_t recv_result = packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
-1498       if (recv_result == ASCIICHAT_OK &amp;&amp; type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
-1499         acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
-1500         log_info(&quot;Received HOST_ANNOUNCEMENT from ACDS: %s:%u&quot;, announcement-&gt;host_address, announcement-&gt;host_port);
-1501         SAFE_STRNCPY(session-&gt;host_address, announcement-&gt;host_address, sizeof(session-&gt;host_address));
-1502         session-&gt;host_port = announcement-&gt;host_port;
-1503         buffer_pool_free(NULL, alloc_buffer, 0);
-1504         // Continue to host role determination below
-1505       } else if (recv_result == ASCIICHAT_OK) {
-1506         buffer_pool_free(NULL, alloc_buffer, 0);
-1507       }
-1508     }
-1509 
-1510     // Determine host role (now that peer_quality is set)
-1511     if (session-&gt;negotiate.peer_quality_received &amp;&amp; session-&gt;negotiate.state != NEGOTIATE_STATE_COMPARING) {
-1512       log_info(&quot;Determining host role based on NAT qualities...&quot;);
-1513       asciichat_error_t result = negotiate_determine_result(&amp;session-&gt;negotiate);
-1514       if (result == ASCIICHAT_OK) {
-1515         session-&gt;is_host = session-&gt;negotiate.we_are_host;
-1516 
-1517         if (session-&gt;is_host) {
-1518           // We become the host
-1519           log_info(&quot;&#x1F3E0; NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)&quot;,
-1520                    nat_compute_tier(&amp;session-&gt;negotiate.our_quality),
-1521                    nat_compute_tier(&amp;session-&gt;negotiate.peer_quality));
-1522           memcpy(session-&gt;host_id, session-&gt;participant_id, 16);
-1523           SAFE_STRNCPY(session-&gt;host_address, session-&gt;negotiate.host_address, sizeof(session-&gt;host_address));
-1524           session-&gt;host_port = session-&gt;negotiate.host_port;
-1525 
-1526           // Fallback to localhost if NAT detection failed to determine address
-1527           if (!session-&gt;host_address[0]) {
-1528             log_warn(&quot;NAT address empty, using localhost fallback&quot;);
-1529             SAFE_STRNCPY(session-&gt;host_address, &quot;127.0.0.1&quot;, sizeof(session-&gt;host_address));
-1530           }
-1531 
-1532           set_state(session, DISCOVERY_STATE_STARTING_HOST);
-1533         } else {
-1534           // They are host (shouldn't happen in solo mode, but handle it)
-1535           log_info(&quot;&#x1F464; NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)&quot;,
-1536                    session-&gt;negotiate.host_address, session-&gt;negotiate.host_port,
-1537                    nat_compute_tier(&amp;session-&gt;negotiate.our_quality),
-1538                    nat_compute_tier(&amp;session-&gt;negotiate.peer_quality));
-1539           SAFE_STRNCPY(session-&gt;host_address, session-&gt;negotiate.host_address, sizeof(session-&gt;host_address));
-1540           session-&gt;host_port = session-&gt;negotiate.host_port;
-1541 
-1542           // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
-1543           if (!session-&gt;host_address[0]) {
-1544             log_info(&quot;Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...&quot;);
-1545             // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
-1546             break;
-1547           }
-1548 
-1549           set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
-1550         }
-1551       } else {
-1552         log_error(&quot;Failed to determine negotiation result: %d&quot;, result);
-1553         set_error(session, result, &quot;Host election failed&quot;);
-1554       }
-1555     }
-1556     break;
-1557   }
-1558 
-1559   case DISCOVERY_STATE_STARTING_HOST: {
-1560     // Start hosting
-1561     if (!session-&gt;host_ctx) {
-1562       // Create host context with configured port
-1563       int host_port = GET_OPTION(port);
-1564 
-1565       session_host_config_t hconfig = {
-1566           .port = host_port,
-1567           .ipv4_address = &quot;0.0.0.0&quot;,
-1568           .max_clients = 32,
-1569           .encryption_enabled = true,
-1570       };
-1571 
-1572       session-&gt;host_ctx = session_host_create(&amp;hconfig);
-1573       if (!session-&gt;host_ctx) {
-1574         log_error(&quot;Failed to create host context&quot;);
-1575         set_error(session, ERROR_MEMORY, &quot;Failed to create host context&quot;);
-1576         break;
-1577       }
-1578 
-1579       // Start listening
-1580       asciichat_error_t hstart = session_host_start(session-&gt;host_ctx);
-1581       if (hstart != ASCIICHAT_OK) {
-1582         log_error(&quot;Failed to start host: %d&quot;, hstart);
-1583         set_error(session, hstart, &quot;Failed to start host&quot;);
-1584         break;
-1585       }
-1586 
-1587       log_info(&quot;Host started, listening for connections&quot;);
-1588     }
-1589 
-1590     // Notify listeners that we're ready
-1591     if (session-&gt;on_session_ready) {
-1592       session-&gt;on_session_ready(session-&gt;session_string, session-&gt;callback_user_data);
-1593     }
-1594 
-1595     // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
-1596     int host_port = GET_OPTION(port);
-1597     acip_host_announcement_t announcement = {0};
-1598     memcpy(announcement.session_id, session-&gt;session_id, 16);
-1599     memcpy(announcement.host_id, session-&gt;host_id, 16);
-1600     SAFE_STRNCPY(announcement.host_address, session-&gt;host_address, sizeof(announcement.host_address));
-1601     announcement.host_port = host_port;
-1602     announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
-1603 
-1604     if (session-&gt;acds_transport) {
-1605       packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &amp;announcement,
-1606                                 sizeof(announcement), 0);
-1607       log_info(&quot;Sent HOST_ANNOUNCEMENT to ACDS at %s:%u&quot;, announcement.host_address, announcement.host_port);
-1608     }
-1609 
-1610     set_state(session, DISCOVERY_STATE_ACTIVE);
-1611     break;
-1612   }
-1613 
-1614   case DISCOVERY_STATE_CONNECTING_HOST: {
-1615     // Connect to host as participant
-1616 
-1617     // For WebRTC sessions, wait for DataChannel to open
-1618     if (session-&gt;session_type == SESSION_TYPE_WEBRTC) {
-1619       // Check if transport is ready (DataChannel opened)
-1620       if (session-&gt;webrtc_transport_ready) {
-1621         log_info(&quot;WebRTC DataChannel established, transitioning to ACTIVE state&quot;);
-1622         set_state(session, DISCOVERY_STATE_ACTIVE);
-1623         break;
-1624       }
-1625 
-1626       // If not ready and we haven't initiated connection yet, initiate it
-1627       if (session-&gt;peer_manager &amp;&amp; !session-&gt;webrtc_connection_initiated) {
-1628         log_info(&quot;Initiating WebRTC connection to host (attempt %d/%d)...&quot;, session-&gt;webrtc_retry_attempt + 1,
-1629                  GET_OPTION(webrtc_reconnect_attempts) + 1);
-1630 
-1631         // Initiate connection (generates offer, triggers SDP exchange)
-1632         asciichat_error_t conn_result =
-1633             webrtc_peer_manager_connect(session-&gt;peer_manager, session-&gt;session_id, session-&gt;host_id);
-1634 
-1635         if (conn_result != ASCIICHAT_OK) {
-1636           log_error(&quot;Failed to initiate WebRTC connection: %d&quot;, conn_result);
-1637           set_error(session, conn_result, &quot;Failed to initiate WebRTC connection&quot;);
-1638           break;
-1639         }
-1640 
-1641         log_info(&quot;WebRTC connection initiated, waiting for DataChannel...&quot;);
-1642         session-&gt;webrtc_connection_initiated = true;
-1643         session-&gt;webrtc_last_attempt_time_ms = APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
-1644       }
-1645 
-1646       // Check for ICE gathering timeout on all peers
-1647       if (session-&gt;webrtc_connection_initiated &amp;&amp; session-&gt;peer_manager) {
-1648         int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
-1649         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session-&gt;peer_manager, timeout_ms);
-1650 
-1651         if (timed_out_count &gt; 0) {
-1652           log_error(&quot;ICE gathering timeout: %d peer(s) failed to gather candidates within %dms&quot;, timed_out_count,
-1653                     timeout_ms);
-1654 
-1655           // Check if we have retries remaining
-1656           int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
-1657           if (session-&gt;webrtc_retry_attempt &lt; max_attempts) {
-1658             // Calculate exponential backoff delay
-1659             uint32_t backoff_ms = calculate_backoff_delay_ms(session-&gt;webrtc_retry_attempt);
-1660 
-1661             log_warn(&quot;WebRTC connection attempt %d/%d failed, retrying in %ums...&quot;, session-&gt;webrtc_retry_attempt + 1,
-1662                      max_attempts + 1, backoff_ms);
-1663 
-1664             // Wait for backoff period
-1665             APP_CALLBACK_VOID(platform_pump_events);
-1666             APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
-1667 
-1668             // Destroy old peer manager
-1669             webrtc_peer_manager_destroy(session-&gt;peer_manager);
-1670             session-&gt;peer_manager = NULL;
-1671 
-1672             // Re-initialize peer manager for retry
-1673             asciichat_error_t reinit_result = initialize_webrtc_peer_manager(session);
-1674             if (reinit_result != ASCIICHAT_OK) {
-1675               log_error(&quot;Failed to re-initialize WebRTC for retry: %d&quot;, reinit_result);
-1676               set_error(session, reinit_result, &quot;Failed to re-initialize WebRTC for retry&quot;);
-1677 
-1678               // If --prefer-webrtc is set, this is a fatal error
-1679               if (GET_OPTION(prefer_webrtc)) {
-1680                 log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
-1681                 set_state(session, DISCOVERY_STATE_FAILED);
-1682                 return ERROR_NETWORK_TIMEOUT;
-1683               }
-1684 
-1685               break; // Exit this case to allow fallback to TCP
-1686             }
-1687 
-1688             // Reset connection state for retry
-1689             session-&gt;webrtc_connection_initiated = false;
-1690             session-&gt;webrtc_retry_attempt++;
-1691 
-1692             log_info(&quot;WebRTC peer manager re-initialized for attempt %d/%d&quot;, session-&gt;webrtc_retry_attempt + 1,
-1693                      max_attempts + 1);
-1694           } else {
-1695             // No more retries - connection failed
-1696             log_error(&quot;WebRTC connection failed after %d attempts (timeout: %dms)&quot;, max_attempts + 1, timeout_ms);
-1697 
-1698             // Set error state - WebRTC connection failed
-1699             char error_msg[256];
-1700             snprintf(error_msg, sizeof(error_msg), &quot;WebRTC connection failed after %d attempts (%dms timeout)&quot;,
-1701                      max_attempts + 1, timeout_ms);
-1702             set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
-1703 
-1704             // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
-1705             if (GET_OPTION(prefer_webrtc)) {
-1706               log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
-1707               set_state(session, DISCOVERY_STATE_FAILED);
-1708               return ERROR_NETWORK_TIMEOUT;
-1709             }
-1710 
-1711             break; // Exit this case to allow fallback to TCP
-1712           }
-1713         }
-1714       }
-1715 
-1716       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
-1717       // while waiting for DataChannel to open
-1718       if (session-&gt;acds_transport &amp;&amp; acip_transport_has_pending_data(session-&gt;acds_transport)) {
-1719         packet_type_t type;
-1720         void *data = NULL;
-1721         size_t len = 0;
-1722         void *alloc_buffer = NULL;
-1723 
-1724         asciichat_error_t recv_result =
-1725             packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
-1726 
-1727         if (recv_result == ASCIICHAT_OK) {
-1728           // Dispatch to appropriate handler
-1729           handle_acds_webrtc_packet(session, type, data, len);
-1730           buffer_pool_free(NULL, alloc_buffer, 0);
-1731         } else {
-1732           log_debug(&quot;Failed to receive ACDS packet: %d&quot;, recv_result);
-1733         }
-1734       }
-1735 
-1736       // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
-1737       // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
-1738       break;
-1739     }
-1740 
-1741     if (!session-&gt;participant_ctx) {
-1742       // Create participant context for this session
-1743       session_participant_config_t pconfig = {
-1744           .address = session-&gt;host_address,
-1745           .port = session-&gt;host_port,
-1746           .enable_audio = true,
-1747           .enable_video = true,
-1748           .encryption_enabled = true,
-1749       };
-1750 
-1751       session-&gt;participant_ctx = session_participant_create(&amp;pconfig);
-1752       if (!session-&gt;participant_ctx) {
-1753         log_error(&quot;Failed to create participant context&quot;);
-1754         set_error(session, ERROR_MEMORY, &quot;Failed to create participant context&quot;);
-1755         break;
-1756       }
-1757 
-1758       // Attempt connection
-1759       asciichat_error_t pconn = session_participant_connect(session-&gt;participant_ctx);
-1760       if (pconn != ASCIICHAT_OK) {
-1761         log_error(&quot;Failed to connect as participant: %d&quot;, pconn);
-1762         // Stay in this state, will retry on next process() call
-1763         break;
-1764       }
-1765 
-1766       log_info(&quot;Connected to host, performing crypto handshake...&quot;);
-1767 
-1768       // Perform crypto handshake with server
-1769       // Get the socket from participant context
-1770       socket_t participant_socket = session_participant_get_socket(session-&gt;participant_ctx);
-1771       if (participant_socket == INVALID_SOCKET_VALUE) {
-1772         log_error(&quot;Failed to get socket from participant context&quot;);
-1773         set_error(session, ERROR_NETWORK, &quot;Failed to get participant socket&quot;);
-1774         session_participant_disconnect(session-&gt;participant_ctx);
-1775         break;
-1776       }
-1777 
-1778       // Step 1: Send client protocol version
-1779       log_debug(&quot;Sending protocol version to server...&quot;);
-1780       protocol_version_packet_t client_version = {0};
-1781       client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
-1782       client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-1783       client_version.supports_encryption = 1;                // We support encryption
-1784       client_version.compression_algorithms = 0;
-1785       client_version.compression_threshold = 0;
-1786       client_version.feature_flags = 0;
-1787 
-1788       int result = send_protocol_version_packet(participant_socket, &amp;client_version);
-1789       if (result != 0) {
-1790         log_error(&quot;Failed to send protocol version to server&quot;);
-1791         set_error(session, ERROR_NETWORK, &quot;Failed to send protocol version&quot;);
-1792         session_participant_disconnect(session-&gt;participant_ctx);
-1793         break;
-1794       }
-1795 
-1796       // Step 2: Receive server protocol version
-1797       log_debug(&quot;Receiving server protocol version...&quot;);
-1798       packet_type_t packet_type;
-1799       void *payload = NULL;
-1800       size_t payload_len = 0;
-1801 
-1802       int recv_result = receive_packet(participant_socket, &amp;packet_type, &amp;payload, &amp;payload_len);
-1803       if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-1804         log_error(&quot;Failed to receive server protocol version (got type 0x%x)&quot;, packet_type);
-1805         if (payload) {
-1806           buffer_pool_free(NULL, payload, payload_len);
-1807         }
-1808         set_error(session, ERROR_NETWORK, &quot;Failed to receive protocol version from server&quot;);
-1809         session_participant_disconnect(session-&gt;participant_ctx);
-1810         break;
-1811       }
-1812 
-1813       if (payload_len != sizeof(protocol_version_packet_t)) {
-1814         log_error(&quot;Invalid protocol version packet size: %zu&quot;, payload_len);
-1815         buffer_pool_free(NULL, payload, payload_len);
-1816         set_error(session, ERROR_NETWORK, &quot;Invalid protocol version packet&quot;);
-1817         session_participant_disconnect(session-&gt;participant_ctx);
-1818         break;
-1819       }
-1820 
-1821       protocol_version_packet_t server_version;
-1822       memcpy(&amp;server_version, payload, sizeof(protocol_version_packet_t));
-1823       buffer_pool_free(NULL, payload, payload_len);
-1824 
-1825       if (!server_version.supports_encryption) {
-1826         log_error(&quot;Server does not support encryption&quot;);
-1827         set_error(session, ERROR_NETWORK, &quot;Server does not support encryption&quot;);
-1828         session_participant_disconnect(session-&gt;participant_ctx);
-1829         break;
-1830       }
-1831 
-1832       log_info(&quot;Server protocol version: %u.%u (encryption: yes)&quot;, NET_TO_HOST_U16(server_version.protocol_version),
-1833                NET_TO_HOST_U16(server_version.protocol_revision));
-1834 
-1835       // Step 3: Send crypto capabilities
-1836       log_debug(&quot;Sending crypto capabilities...&quot;);
-1837       crypto_capabilities_packet_t client_caps = {0};
-1838       client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
-1839       client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
-1840       client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
-1841       client_caps.requires_verification = 0;
-1842       client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
-1843       client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
-1844       client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
-1845 
-1846       result = send_crypto_capabilities_packet(participant_socket, &amp;client_caps);
-1847       if (result != 0) {
-1848         log_error(&quot;Failed to send crypto capabilities&quot;);
-1849         set_error(session, ERROR_NETWORK, &quot;Failed to send crypto capabilities&quot;);
-1850         session_participant_disconnect(session-&gt;participant_ctx);
-1851         break;
-1852       }
-1853 
-1854       log_info(&quot;Crypto handshake initiated successfully&quot;);
-1855       log_warn(&quot;*** Connected to host as participant - transitioning to ACTIVE ***&quot;);
-1856     }
-1857 
-1858     // Check if connection is established
-1859     bool ctx_valid = session-&gt;participant_ctx != NULL;
-1860     bool is_connected = ctx_valid ? session_participant_is_connected(session-&gt;participant_ctx) : false;
-1861     log_debug(&quot;discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d&quot;,
-1862               session-&gt;participant_ctx, ctx_valid, is_connected);
-1863 
-1864     if (ctx_valid &amp;&amp; !is_connected) {
-1865       // Log more details about why it's not connected
-1866       log_debug(&quot;discovery_session_process: CONNECTING_HOST - context exists but not connected yet&quot;);
-1867     }
-1868 
-1869     if (is_connected) {
-1870       log_info(&quot;Participant connection confirmed, transitioning to ACTIVE state&quot;);
-1871       set_state(session, DISCOVERY_STATE_ACTIVE);
-1872     } else {
-1873       log_debug(&quot;discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, &quot;
-1874                 &quot;is_connected=%d)&quot;,
-1875                 ctx_valid, is_connected);
-1876     }
-1877     break;
-1878   }
-1879 
-1880   case DISCOVERY_STATE_ACTIVE:
-1881     // Receive and handle ACDS packets for WebRTC signaling (NEW)
-1882     if (session-&gt;session_type == SESSION_TYPE_WEBRTC &amp;&amp; session-&gt;acds_transport &amp;&amp;
-1883         acip_transport_has_pending_data(session-&gt;acds_transport)) {
-1884       packet_type_t type;
-1885       void *data = NULL;
-1886       size_t len = 0;
-1887       void *alloc_buffer = NULL;
-1888 
-1889       asciichat_error_t recv_result =
-1890           packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
-1891 
-1892       if (recv_result == ASCIICHAT_OK) {
-1893         // Dispatch to appropriate handler
-1894         handle_acds_webrtc_packet(session, type, data, len);
-1895         buffer_pool_free(NULL, alloc_buffer, 0);
-1896       }
-1897     }
-1898 
-1899     // Session is active - check for host disconnect
-1900     if (!session-&gt;is_host) {
-1901       // We are a participant - check if host is still alive
-1902       asciichat_error_t host_check = discovery_session_check_host_alive(session);
-1903       if (host_check != ASCIICHAT_OK) {
-1904         // Host is down! Trigger automatic failover to pre-elected future host
-1905         log_warn(&quot;Host disconnect detected during ACTIVE state&quot;);
-1906 
-1907         // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
-1908         const options_t *opts = options_get();
-1909         if (opts &amp;&amp; opts-&gt;prefer_webrtc) {
-1910           log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
-1911           set_state(session, DISCOVERY_STATE_FAILED);
-1912           session-&gt;error = ERROR_NETWORK;
-1913           return ERROR_NETWORK;
-1914         }
-1915 
-1916         set_state(session, DISCOVERY_STATE_MIGRATING);
-1917         // Reason code: 1 = timeout/disconnect detected during ACTIVE session
-1918         discovery_session_handle_host_disconnect(session, 1);
-1919       }
-1920     }
-1921     platform_sleep_us(timeout_ns / 1000);
-1922     break;
-1923 
-1924   case DISCOVERY_STATE_MIGRATING:
-1925     // Host migration in progress
-1926     // Check if migration has timed out (if it takes &gt;30 seconds, give up)
-1927     if (session-&gt;migration.state == MIGRATION_STATE_COMPLETE) {
-1928       // Migration completed successfully
-1929       set_state(session, DISCOVERY_STATE_ACTIVE);
-1930       log_info(&quot;Migration complete, session resumed&quot;);
-1931     } else if (session_get_current_time_ms() - session-&gt;migration.detection_time_ms &gt; 30 * MS_PER_SEC_INT) {
-1932       // Migration timed out after 30 seconds
-1933       log_error(&quot;Host migration timeout - session cannot recover&quot;);
-1934       set_state(session, DISCOVERY_STATE_FAILED);
-1935       session-&gt;error = ERROR_NETWORK;
-1936     }
-1937     platform_sleep_us(timeout_ns / 1000);
-1938     break;
-1939 
-1940   case DISCOVERY_STATE_FAILED:
-1941     // Session has failed - return error on further processing
-1942     return session-&gt;error != ASCIICHAT_OK ? session-&gt;error : ERROR_NETWORK;
-1943 
-1944   case DISCOVERY_STATE_ENDED:
-1945     // Session has ended gracefully - return OK
-1946     return ASCIICHAT_OK;
-1947 
-1948   case DISCOVERY_STATE_INIT:
-1949   case DISCOVERY_STATE_CONNECTING_ACDS:
-1950   case DISCOVERY_STATE_CREATING_SESSION:
-1951   case DISCOVERY_STATE_JOINING_SESSION:
-1952     // These states are handled during discovery_session_start(), not in the process loop
-1953     // If we reach here, something went wrong - sleep and wait
-1954     log_debug(&quot;discovery_session_process: State %d should be handled by discovery_session_start&quot;, session-&gt;state);
-1955     platform_sleep_us(timeout_ns / 1000);
-1956     break;
-1957 
-1958   default:
-1959     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid session state: %d&quot;, session-&gt;state);
-1960   }
-1961 
-1962   return ASCIICHAT_OK;
-1963 }</pre>
+<pre>1417                                                                                               {
+1418   if (!session) {
+1419     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+1420   }
+1421 
+1422   // Handle state-specific processing
+1423   switch (session-&gt;state) {
+1424   case DISCOVERY_STATE_WAITING_PEER: {
+1425     // Wait for PARTICIPANT_JOINED notification from ACDS
+1426     // Note: don't use a hard timeout here - let the outer process timeout (snapshot delay) control max wait
+1427     // The discovery_run() loop will keep calling this until session becomes active or process exits
+1428     uint64_t now_ns = time_get_ns();
+1429     uint64_t wait_duration = now_ns - session-&gt;waiting_peer_start_ns;
+1430 
+1431     log_debug(&quot;&#x2605; WAITING_PEER: duration=%.3fs (no timeout, waiting for peer...)&quot;, wait_duration / 1e9);
+1432 
+1433     if (session-&gt;acds_transport &amp;&amp; timeout_ns &gt; 0) {
+1434       // Do not set socket timeout - let receive_packet_secure use its own timeout
+1435       // Setting a short socket timeout conflicts with its hardcoded 1-second timeout
+1436       packet_type_t type;
+1437       void *data = NULL;
+1438       size_t len = 0;
+1439       void *alloc_buffer = NULL;
+1440 
+1441       // Try to receive a packet
+1442       asciichat_error_t recv_result =
+1443           packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
+1444       if (recv_result == ASCIICHAT_OK) {
+1445         if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+1446           log_info(&quot;Peer joined session, transitioning to negotiation&quot;);
+1447           set_state(session, DISCOVERY_STATE_NEGOTIATING);
+1448           buffer_pool_free(NULL, alloc_buffer, 0);
+1449         } else {
+1450           // Got some other packet, handle it or ignore
+1451           log_debug(&quot;Received packet type %d while waiting for peer&quot;, type);
+1452           buffer_pool_free(NULL, alloc_buffer, 0);
+1453         }
+1454       } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
+1455         // Timeout is normal, just return
+1456       } else {
+1457         log_debug(&quot;Packet receive error while waiting for peer: %d&quot;, recv_result);
+1458       }
+1459     } else {
+1460       // Fallback to sleep if no timeout or invalid transport
+1461       platform_sleep_us(timeout_ns / 1000);
+1462     }
+1463     break;
+1464   }
+1465 
+1466   case DISCOVERY_STATE_NEGOTIATING: {
+1467     // Handle NAT negotiation
+1468     if (session-&gt;negotiate.state == NEGOTIATE_STATE_INIT) {
+1469       // Initialize negotiation
+1470       negotiate_init(&amp;session-&gt;negotiate, session-&gt;session_id, session-&gt;participant_id, session-&gt;is_initiator);
+1471       log_info(&quot;Starting NAT negotiation (initiator=%d)&quot;, session-&gt;is_initiator);
+1472 
+1473       // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
+1474       asciichat_error_t send_result = send_network_quality_to_acds(session);
+1475       if (send_result != ASCIICHAT_OK) {
+1476         log_warn(&quot;Failed to send initial NETWORK_QUALITY: %d&quot;, send_result);
+1477       }
+1478 
+1479       // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
+1480       // For now in discovery mode, assume we're the only one and become host immediately
+1481       // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
+1482       log_info(&quot;Proceeding as host (ACDS cannot relay peer quality in solo mode)&quot;);
+1483       session-&gt;negotiate.our_quality.detection_complete = true;
+1484       session-&gt;negotiate.peer_quality_received = true;
+1485       memset(&amp;session-&gt;negotiate.peer_quality, 0, sizeof(session-&gt;negotiate.peer_quality));
+1486       // Mark peer quality as detected but with worst NAT type so we win host election
+1487       session-&gt;negotiate.peer_quality.detection_complete = true;
+1488       session-&gt;negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
+1489     }
+1490 
+1491     // Check for HOST_ANNOUNCEMENT from ACDS (in case we're waiting for host discovery)
+1492     if (session-&gt;acds_transport &amp;&amp; !session-&gt;is_initiator &amp;&amp; !session-&gt;host_address[0]) {
+1493       packet_type_t type;
+1494       void *data = NULL;
+1495       size_t len = 0;
+1496       void *alloc_buffer = NULL;
+1497 
+1498       asciichat_error_t recv_result = packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
+1499       if (recv_result == ASCIICHAT_OK &amp;&amp; type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
+1500         acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
+1501         log_info(&quot;Received HOST_ANNOUNCEMENT from ACDS: %s:%u&quot;, announcement-&gt;host_address, announcement-&gt;host_port);
+1502         SAFE_STRNCPY(session-&gt;host_address, announcement-&gt;host_address, sizeof(session-&gt;host_address));
+1503         session-&gt;host_port = announcement-&gt;host_port;
+1504         buffer_pool_free(NULL, alloc_buffer, 0);
+1505         // Continue to host role determination below
+1506       } else if (recv_result == ASCIICHAT_OK) {
+1507         buffer_pool_free(NULL, alloc_buffer, 0);
+1508       }
+1509     }
+1510 
+1511     // Determine host role (now that peer_quality is set)
+1512     if (session-&gt;negotiate.peer_quality_received &amp;&amp; session-&gt;negotiate.state != NEGOTIATE_STATE_COMPARING) {
+1513       log_info(&quot;Determining host role based on NAT qualities...&quot;);
+1514       asciichat_error_t result = negotiate_determine_result(&amp;session-&gt;negotiate);
+1515       if (result == ASCIICHAT_OK) {
+1516         session-&gt;is_host = session-&gt;negotiate.we_are_host;
+1517 
+1518         if (session-&gt;is_host) {
+1519           // We become the host
+1520           log_info(&quot;&#x1F3E0; NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)&quot;,
+1521                    nat_compute_tier(&amp;session-&gt;negotiate.our_quality),
+1522                    nat_compute_tier(&amp;session-&gt;negotiate.peer_quality));
+1523           memcpy(session-&gt;host_id, session-&gt;participant_id, 16);
+1524           SAFE_STRNCPY(session-&gt;host_address, session-&gt;negotiate.host_address, sizeof(session-&gt;host_address));
+1525           session-&gt;host_port = session-&gt;negotiate.host_port;
+1526 
+1527           // Fallback to localhost if NAT detection failed to determine address
+1528           if (!session-&gt;host_address[0]) {
+1529             log_warn(&quot;NAT address empty, using localhost fallback&quot;);
+1530             SAFE_STRNCPY(session-&gt;host_address, &quot;127.0.0.1&quot;, sizeof(session-&gt;host_address));
+1531           }
+1532 
+1533           set_state(session, DISCOVERY_STATE_STARTING_HOST);
+1534         } else {
+1535           // They are host (shouldn't happen in solo mode, but handle it)
+1536           log_info(&quot;&#x1F464; NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)&quot;,
+1537                    session-&gt;negotiate.host_address, session-&gt;negotiate.host_port,
+1538                    nat_compute_tier(&amp;session-&gt;negotiate.our_quality),
+1539                    nat_compute_tier(&amp;session-&gt;negotiate.peer_quality));
+1540           SAFE_STRNCPY(session-&gt;host_address, session-&gt;negotiate.host_address, sizeof(session-&gt;host_address));
+1541           session-&gt;host_port = session-&gt;negotiate.host_port;
+1542 
+1543           // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
+1544           if (!session-&gt;host_address[0]) {
+1545             log_info(&quot;Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...&quot;);
+1546             // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
+1547             break;
+1548           }
+1549 
+1550           set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+1551         }
+1552       } else {
+1553         log_error(&quot;Failed to determine negotiation result: %d&quot;, result);
+1554         set_error(session, result, &quot;Host election failed&quot;);
+1555       }
+1556     }
+1557     break;
+1558   }
+1559 
+1560   case DISCOVERY_STATE_STARTING_HOST: {
+1561     // Start hosting
+1562     if (!session-&gt;host_ctx) {
+1563       // Create host context with configured port
+1564       int host_port = GET_OPTION(port);
+1565 
+1566       session_host_config_t hconfig = {
+1567           .port = host_port,
+1568           .ipv4_address = &quot;0.0.0.0&quot;,
+1569           .max_clients = 32,
+1570           .encryption_enabled = true,
+1571       };
+1572 
+1573       session-&gt;host_ctx = session_host_create(&amp;hconfig);
+1574       if (!session-&gt;host_ctx) {
+1575         log_error(&quot;Failed to create host context&quot;);
+1576         set_error(session, ERROR_MEMORY, &quot;Failed to create host context&quot;);
+1577         break;
+1578       }
+1579 
+1580       // Start listening
+1581       asciichat_error_t hstart = session_host_start(session-&gt;host_ctx);
+1582       if (hstart != ASCIICHAT_OK) {
+1583         log_error(&quot;Failed to start host: %d&quot;, hstart);
+1584         set_error(session, hstart, &quot;Failed to start host&quot;);
+1585         break;
+1586       }
+1587 
+1588       log_info(&quot;Host started, listening for connections&quot;);
+1589     }
+1590 
+1591     // Notify listeners that we're ready
+1592     if (session-&gt;on_session_ready) {
+1593       session-&gt;on_session_ready(session-&gt;session_string, session-&gt;callback_user_data);
+1594     }
+1595 
+1596     // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
+1597     int host_port = GET_OPTION(port);
+1598     acip_host_announcement_t announcement = {0};
+1599     memcpy(announcement.session_id, session-&gt;session_id, 16);
+1600     memcpy(announcement.host_id, session-&gt;host_id, 16);
+1601     SAFE_STRNCPY(announcement.host_address, session-&gt;host_address, sizeof(announcement.host_address));
+1602     announcement.host_port = host_port;
+1603     announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+1604 
+1605     if (session-&gt;acds_transport) {
+1606       packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &amp;announcement,
+1607                                 sizeof(announcement), 0);
+1608       log_info(&quot;Sent HOST_ANNOUNCEMENT to ACDS at %s:%u&quot;, announcement.host_address, announcement.host_port);
+1609     }
+1610 
+1611     set_state(session, DISCOVERY_STATE_ACTIVE);
+1612     break;
+1613   }
+1614 
+1615   case DISCOVERY_STATE_CONNECTING_HOST: {
+1616     // Connect to host as participant
+1617 
+1618     // For WebRTC sessions, wait for DataChannel to open
+1619     if (session-&gt;session_type == SESSION_TYPE_WEBRTC) {
+1620       // Check if transport is ready (DataChannel opened)
+1621       if (session-&gt;webrtc_transport_ready) {
+1622         log_info(&quot;WebRTC DataChannel established, transitioning to ACTIVE state&quot;);
+1623         set_state(session, DISCOVERY_STATE_ACTIVE);
+1624         break;
+1625       }
+1626 
+1627       // If not ready and we haven't initiated connection yet, initiate it
+1628       if (session-&gt;peer_manager &amp;&amp; !session-&gt;webrtc_connection_initiated) {
+1629         log_info(&quot;Initiating WebRTC connection to host (attempt %d/%d)...&quot;, session-&gt;webrtc_retry_attempt + 1,
+1630                  GET_OPTION(webrtc_reconnect_attempts) + 1);
+1631 
+1632         // Initiate connection (generates offer, triggers SDP exchange)
+1633         asciichat_error_t conn_result =
+1634             webrtc_peer_manager_connect(session-&gt;peer_manager, session-&gt;session_id, session-&gt;host_id);
+1635 
+1636         if (conn_result != ASCIICHAT_OK) {
+1637           log_error(&quot;Failed to initiate WebRTC connection: %d&quot;, conn_result);
+1638           set_error(session, conn_result, &quot;Failed to initiate WebRTC connection&quot;);
+1639           break;
+1640         }
+1641 
+1642         log_info(&quot;WebRTC connection initiated, waiting for DataChannel...&quot;);
+1643         session-&gt;webrtc_connection_initiated = true;
+1644         session-&gt;webrtc_last_attempt_time_ms = APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
+1645       }
+1646 
+1647       // Check for ICE gathering timeout on all peers
+1648       if (session-&gt;webrtc_connection_initiated &amp;&amp; session-&gt;peer_manager) {
+1649         int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
+1650         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session-&gt;peer_manager, timeout_ms);
+1651 
+1652         if (timed_out_count &gt; 0) {
+1653           log_error(&quot;ICE gathering timeout: %d peer(s) failed to gather candidates within %dms&quot;, timed_out_count,
+1654                     timeout_ms);
+1655 
+1656           // Check if we have retries remaining
+1657           int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+1658           if (session-&gt;webrtc_retry_attempt &lt; max_attempts) {
+1659             // Calculate exponential backoff delay
+1660             uint32_t backoff_ms = calculate_backoff_delay_ms(session-&gt;webrtc_retry_attempt);
+1661 
+1662             log_warn(&quot;WebRTC connection attempt %d/%d failed, retrying in %ums...&quot;, session-&gt;webrtc_retry_attempt + 1,
+1663                      max_attempts + 1, backoff_ms);
+1664 
+1665             // Wait for backoff period
+1666             APP_CALLBACK_VOID(platform_pump_events);
+1667             APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
+1668 
+1669             // Destroy old peer manager
+1670             webrtc_peer_manager_destroy(session-&gt;peer_manager);
+1671             session-&gt;peer_manager = NULL;
+1672 
+1673             // Re-initialize peer manager for retry
+1674             asciichat_error_t reinit_result = initialize_webrtc_peer_manager(session);
+1675             if (reinit_result != ASCIICHAT_OK) {
+1676               log_error(&quot;Failed to re-initialize WebRTC for retry: %d&quot;, reinit_result);
+1677               set_error(session, reinit_result, &quot;Failed to re-initialize WebRTC for retry&quot;);
+1678 
+1679               // If --prefer-webrtc is set, this is a fatal error
+1680               if (GET_OPTION(prefer_webrtc)) {
+1681                 log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
+1682                 set_state(session, DISCOVERY_STATE_FAILED);
+1683                 return ERROR_NETWORK_TIMEOUT;
+1684               }
+1685 
+1686               break; // Exit this case to allow fallback to TCP
+1687             }
+1688 
+1689             // Reset connection state for retry
+1690             session-&gt;webrtc_connection_initiated = false;
+1691             session-&gt;webrtc_retry_attempt++;
+1692 
+1693             log_info(&quot;WebRTC peer manager re-initialized for attempt %d/%d&quot;, session-&gt;webrtc_retry_attempt + 1,
+1694                      max_attempts + 1);
+1695           } else {
+1696             // No more retries - connection failed
+1697             log_error(&quot;WebRTC connection failed after %d attempts (timeout: %dms)&quot;, max_attempts + 1, timeout_ms);
+1698 
+1699             // Set error state - WebRTC connection failed
+1700             char error_msg[256];
+1701             snprintf(error_msg, sizeof(error_msg), &quot;WebRTC connection failed after %d attempts (%dms timeout)&quot;,
+1702                      max_attempts + 1, timeout_ms);
+1703             set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
+1704 
+1705             // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
+1706             if (GET_OPTION(prefer_webrtc)) {
+1707               log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
+1708               set_state(session, DISCOVERY_STATE_FAILED);
+1709               return ERROR_NETWORK_TIMEOUT;
+1710             }
+1711 
+1712             break; // Exit this case to allow fallback to TCP
+1713           }
+1714         }
+1715       }
+1716 
+1717       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
+1718       // while waiting for DataChannel to open
+1719       if (session-&gt;acds_transport &amp;&amp; acip_transport_has_pending_data(session-&gt;acds_transport)) {
+1720         packet_type_t type;
+1721         void *data = NULL;
+1722         size_t len = 0;
+1723         void *alloc_buffer = NULL;
+1724 
+1725         asciichat_error_t recv_result =
+1726             packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
+1727 
+1728         if (recv_result == ASCIICHAT_OK) {
+1729           // Dispatch to appropriate handler
+1730           handle_acds_webrtc_packet(session, type, data, len);
+1731           buffer_pool_free(NULL, alloc_buffer, 0);
+1732         } else {
+1733           log_debug(&quot;Failed to receive ACDS packet: %d&quot;, recv_result);
+1734         }
+1735       }
+1736 
+1737       // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
+1738       // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
+1739       break;
+1740     }
+1741 
+1742     if (!session-&gt;participant_ctx) {
+1743       // Create participant context for this session
+1744       session_participant_config_t pconfig = {
+1745           .address = session-&gt;host_address,
+1746           .port = session-&gt;host_port,
+1747           .enable_audio = true,
+1748           .enable_video = true,
+1749           .encryption_enabled = true,
+1750       };
+1751 
+1752       session-&gt;participant_ctx = session_participant_create(&amp;pconfig);
+1753       if (!session-&gt;participant_ctx) {
+1754         log_error(&quot;Failed to create participant context&quot;);
+1755         set_error(session, ERROR_MEMORY, &quot;Failed to create participant context&quot;);
+1756         break;
+1757       }
+1758 
+1759       // Attempt connection
+1760       asciichat_error_t pconn = session_participant_connect(session-&gt;participant_ctx);
+1761       if (pconn != ASCIICHAT_OK) {
+1762         log_error(&quot;Failed to connect as participant: %d&quot;, pconn);
+1763         // Stay in this state, will retry on next process() call
+1764         break;
+1765       }
+1766 
+1767       log_info(&quot;Connected to host, performing crypto handshake...&quot;);
+1768 
+1769       // Perform crypto handshake with server
+1770       // Get the socket from participant context
+1771       socket_t participant_socket = session_participant_get_socket(session-&gt;participant_ctx);
+1772       if (participant_socket == INVALID_SOCKET_VALUE) {
+1773         log_error(&quot;Failed to get socket from participant context&quot;);
+1774         set_error(session, ERROR_NETWORK, &quot;Failed to get participant socket&quot;);
+1775         session_participant_disconnect(session-&gt;participant_ctx);
+1776         break;
+1777       }
+1778 
+1779       // Step 1: Send client protocol version
+1780       log_debug(&quot;Sending protocol version to server...&quot;);
+1781       protocol_version_packet_t client_version = {0};
+1782       client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
+1783       client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
+1784       client_version.supports_encryption = 1;                // We support encryption
+1785       client_version.compression_algorithms = 0;
+1786       client_version.compression_threshold = 0;
+1787       client_version.feature_flags = 0;
+1788 
+1789       int result = send_protocol_version_packet(participant_socket, &amp;client_version);
+1790       if (result != 0) {
+1791         log_error(&quot;Failed to send protocol version to server&quot;);
+1792         set_error(session, ERROR_NETWORK, &quot;Failed to send protocol version&quot;);
+1793         session_participant_disconnect(session-&gt;participant_ctx);
+1794         break;
+1795       }
+1796 
+1797       // Step 2: Receive server protocol version
+1798       log_debug(&quot;Receiving server protocol version...&quot;);
+1799       packet_type_t packet_type;
+1800       void *payload = NULL;
+1801       size_t payload_len = 0;
+1802 
+1803       int recv_result = receive_packet(participant_socket, &amp;packet_type, &amp;payload, &amp;payload_len);
+1804       if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
+1805         log_error(&quot;Failed to receive server protocol version (got type 0x%x)&quot;, packet_type);
+1806         if (payload) {
+1807           buffer_pool_free(NULL, payload, payload_len);
+1808         }
+1809         set_error(session, ERROR_NETWORK, &quot;Failed to receive protocol version from server&quot;);
+1810         session_participant_disconnect(session-&gt;participant_ctx);
+1811         break;
+1812       }
+1813 
+1814       if (payload_len != sizeof(protocol_version_packet_t)) {
+1815         log_error(&quot;Invalid protocol version packet size: %zu&quot;, payload_len);
+1816         buffer_pool_free(NULL, payload, payload_len);
+1817         set_error(session, ERROR_NETWORK, &quot;Invalid protocol version packet&quot;);
+1818         session_participant_disconnect(session-&gt;participant_ctx);
+1819         break;
+1820       }
+1821 
+1822       protocol_version_packet_t server_version;
+1823       memcpy(&amp;server_version, payload, sizeof(protocol_version_packet_t));
+1824       buffer_pool_free(NULL, payload, payload_len);
+1825 
+1826       if (!server_version.supports_encryption) {
+1827         log_error(&quot;Server does not support encryption&quot;);
+1828         set_error(session, ERROR_NETWORK, &quot;Server does not support encryption&quot;);
+1829         session_participant_disconnect(session-&gt;participant_ctx);
+1830         break;
+1831       }
+1832 
+1833       log_info(&quot;Server protocol version: %u.%u (encryption: yes)&quot;, NET_TO_HOST_U16(server_version.protocol_version),
+1834                NET_TO_HOST_U16(server_version.protocol_revision));
+1835 
+1836       // Step 3: Send crypto capabilities
+1837       log_debug(&quot;Sending crypto capabilities...&quot;);
+1838       crypto_capabilities_packet_t client_caps = {0};
+1839       client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
+1840       client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
+1841       client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
+1842       client_caps.requires_verification = 0;
+1843       client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
+1844       client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
+1845       client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
+1846 
+1847       result = send_crypto_capabilities_packet(participant_socket, &amp;client_caps);
+1848       if (result != 0) {
+1849         log_error(&quot;Failed to send crypto capabilities&quot;);
+1850         set_error(session, ERROR_NETWORK, &quot;Failed to send crypto capabilities&quot;);
+1851         session_participant_disconnect(session-&gt;participant_ctx);
+1852         break;
+1853       }
+1854 
+1855       log_info(&quot;Crypto handshake initiated successfully&quot;);
+1856       log_warn(&quot;*** Connected to host as participant - transitioning to ACTIVE ***&quot;);
+1857     }
+1858 
+1859     // Check if connection is established
+1860     bool ctx_valid = session-&gt;participant_ctx != NULL;
+1861     bool is_connected = ctx_valid ? session_participant_is_connected(session-&gt;participant_ctx) : false;
+1862     log_debug(&quot;discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d&quot;,
+1863               session-&gt;participant_ctx, ctx_valid, is_connected);
+1864 
+1865     if (ctx_valid &amp;&amp; !is_connected) {
+1866       // Log more details about why it's not connected
+1867       log_debug(&quot;discovery_session_process: CONNECTING_HOST - context exists but not connected yet&quot;);
+1868     }
+1869 
+1870     if (is_connected) {
+1871       log_info(&quot;Participant connection confirmed, transitioning to ACTIVE state&quot;);
+1872       set_state(session, DISCOVERY_STATE_ACTIVE);
+1873     } else {
+1874       log_debug(&quot;discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, &quot;
+1875                 &quot;is_connected=%d)&quot;,
+1876                 ctx_valid, is_connected);
+1877     }
+1878     break;
+1879   }
+1880 
+1881   case DISCOVERY_STATE_ACTIVE:
+1882     // Receive and handle ACDS packets for WebRTC signaling (NEW)
+1883     if (session-&gt;session_type == SESSION_TYPE_WEBRTC &amp;&amp; session-&gt;acds_transport &amp;&amp;
+1884         acip_transport_has_pending_data(session-&gt;acds_transport)) {
+1885       packet_type_t type;
+1886       void *data = NULL;
+1887       size_t len = 0;
+1888       void *alloc_buffer = NULL;
+1889 
+1890       asciichat_error_t recv_result =
+1891           packet_receive_via_transport(session-&gt;acds_transport, &amp;type, &amp;data, &amp;len, &amp;alloc_buffer);
+1892 
+1893       if (recv_result == ASCIICHAT_OK) {
+1894         // Dispatch to appropriate handler
+1895         handle_acds_webrtc_packet(session, type, data, len);
+1896         buffer_pool_free(NULL, alloc_buffer, 0);
+1897       }
+1898     }
+1899 
+1900     // Session is active - check for host disconnect
+1901     if (!session-&gt;is_host) {
+1902       // We are a participant - check if host is still alive
+1903       asciichat_error_t host_check = discovery_session_check_host_alive(session);
+1904       if (host_check != ASCIICHAT_OK) {
+1905         // Host is down! Trigger automatic failover to pre-elected future host
+1906         log_warn(&quot;Host disconnect detected during ACTIVE state&quot;);
+1907 
+1908         // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
+1909         const options_t *opts = options_get();
+1910         if (opts &amp;&amp; opts-&gt;prefer_webrtc) {
+1911           log_fatal(&quot;WebRTC connection failed and --prefer-webrtc is set - exiting&quot;);
+1912           set_state(session, DISCOVERY_STATE_FAILED);
+1913           session-&gt;error = ERROR_NETWORK;
+1914           return ERROR_NETWORK;
+1915         }
+1916 
+1917         set_state(session, DISCOVERY_STATE_MIGRATING);
+1918         // Reason code: 1 = timeout/disconnect detected during ACTIVE session
+1919         discovery_session_handle_host_disconnect(session, 1);
+1920       }
+1921     }
+1922     platform_sleep_us(timeout_ns / 1000);
+1923     break;
+1924 
+1925   case DISCOVERY_STATE_MIGRATING:
+1926     // Host migration in progress
+1927     // Check if migration has timed out (if it takes &gt;30 seconds, give up)
+1928     if (session-&gt;migration.state == MIGRATION_STATE_COMPLETE) {
+1929       // Migration completed successfully
+1930       set_state(session, DISCOVERY_STATE_ACTIVE);
+1931       log_info(&quot;Migration complete, session resumed&quot;);
+1932     } else if (session_get_current_time_ms() - session-&gt;migration.detection_time_ms &gt; 30 * MS_PER_SEC_INT) {
+1933       // Migration timed out after 30 seconds
+1934       log_error(&quot;Host migration timeout - session cannot recover&quot;);
+1935       set_state(session, DISCOVERY_STATE_FAILED);
+1936       session-&gt;error = ERROR_NETWORK;
+1937     }
+1938     platform_sleep_us(timeout_ns / 1000);
+1939     break;
+1940 
+1941   case DISCOVERY_STATE_FAILED:
+1942     // Session has failed - return error on further processing
+1943     return session-&gt;error != ASCIICHAT_OK ? session-&gt;error : ERROR_NETWORK;
+1944 
+1945   case DISCOVERY_STATE_ENDED:
+1946     // Session has ended gracefully - return OK
+1947     return ASCIICHAT_OK;
+1948 
+1949   case DISCOVERY_STATE_INIT:
+1950   case DISCOVERY_STATE_CONNECTING_ACDS:
+1951   case DISCOVERY_STATE_CREATING_SESSION:
+1952   case DISCOVERY_STATE_JOINING_SESSION:
+1953     // These states are handled during discovery_session_start(), not in the process loop
+1954     // If we reach here, something went wrong - sleep and wait
+1955     log_debug(&quot;discovery_session_process: State %d should be handled by discovery_session_start&quot;, session-&gt;state);
+1956     platform_sleep_us(timeout_ns / 1000);
+1957     break;
+1958 
+1959   default:
+1960     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid session state: %d&quot;, session-&gt;state);
+1961   }
+1962 
+1963   return ASCIICHAT_OK;
+1964 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
@@ -1834,196 +1834,196 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>1227</b> of file
+<p class="Pp">Definition at line <b>1228</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>1227                                                                         {
-1228   log_info(&quot;discovery_session_start: ENTRY - session=%p&quot;, session);
-1229 
-1230   if (!session) {
-1231     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-1232   }
-1233 
-1234   log_info(&quot;discovery_session_start: is_initiator=%d, session_string='%s'&quot;, session-&gt;is_initiator,
-1235            session-&gt;session_string);
-1236 
-1237   // Check if we should exit before starting blocking operations
-1238   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
-1239     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (before ACDS connect)&quot;);
-1240     return ASCIICHAT_OK; // Return success to allow clean shutdown
-1241   }
-1242 
-1243   log_info(&quot;discovery_session_start: Calling connect_to_acds...&quot;);
-1244   // Connect to ACDS
-1245   asciichat_error_t result = connect_to_acds(session);
-1246   if (result != ASCIICHAT_OK) {
-1247     log_error(&quot;discovery_session_start: connect_to_acds FAILED - result=%d&quot;, result);
-1248     set_state(session, DISCOVERY_STATE_FAILED);
-1249     return result;
-1250   }
-1251   log_info(&quot;discovery_session_start: connect_to_acds succeeded&quot;);
-1252 
-1253   // Check again after connection
-1254   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
-1255     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (after ACDS connect)&quot;);
-1256     return ASCIICHAT_OK; // Return success to allow clean shutdown
-1257   }
-1258 
-1259   // Perform crypto handshake with ACDS (same as client-server handshake)
-1260   log_info(&quot;discovery_session_start: Performing crypto handshake with ACDS...&quot;);
-1261   crypto_handshake_context_t handshake_ctx;
-1262   memset(&amp;handshake_ctx, 0, sizeof(handshake_ctx));
-1263 
-1264   result = crypto_handshake_init(&quot;discovery_client&quot;, &amp;handshake_ctx, false);
-1265   if (result != ASCIICHAT_OK) {
-1266     log_error(&quot;discovery_session_start: Handshake init failed - %s&quot;, asciichat_error_string(result));
-1267     set_error(session, result, &quot;Crypto handshake init failed&quot;);
-1268     return result;
-1269   }
-1270 
-1271   // Store identity key in handshake context
-1272   handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
-1273   handshake_ctx.client_private_key.type = KEY_TYPE_ED25519;
-1274   memcpy(handshake_ctx.client_public_key.key, session-&gt;identity_pubkey, 32);
-1275   memcpy(handshake_ctx.client_private_key.key.ed25519, session-&gt;identity_seckey, 64);
-1276 
-1277   // Step 0: Send protocol version to ACDS
-1278   log_debug(&quot;Sending protocol version to ACDS...&quot;);
-1279   protocol_version_packet_t client_version = {0};
-1280   client_version.protocol_version = HOST_TO_NET_U16(1);
-1281   client_version.protocol_revision = HOST_TO_NET_U16(0);
-1282   client_version.supports_encryption = 1;
-1283   client_version.compression_algorithms = 0;
-1284   client_version.compression_threshold = 0;
-1285   client_version.feature_flags = 0;
-1286 
-1287   result = packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_PROTOCOL_VERSION, &amp;client_version,
-1288                                      sizeof(client_version), 0);
-1289   if (result != ASCIICHAT_OK) {
-1290     log_error(&quot;discovery_session_start: Failed to send protocol version to ACDS&quot;);
-1291     set_error(session, result, &quot;Failed to send protocol version to ACDS&quot;);
-1292     return result;
-1293   }
-1294 
-1295   // Step 0.5: Receive CRYPTO_PARAMETERS from ACDS
-1296   {
-1297     packet_type_t pkt_type;
-1298     void *pkt_data = NULL;
-1299     size_t pkt_len = 0;
-1300     void *alloc_buffer = NULL;
-1301 
-1302     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-1303     if (result != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
-1304       log_error(&quot;discovery_session_start: Failed to receive CRYPTO_PARAMETERS (got type %u)&quot;, pkt_type);
-1305       buffer_pool_free(NULL, alloc_buffer, 0);
-1306       set_error(session, result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL,
-1307                 &quot;Failed to receive CRYPTO_PARAMETERS&quot;);
-1308       return result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
-1309     }
-1310 
-1311     if (pkt_len != sizeof(crypto_parameters_packet_t)) {
-1312       log_error(&quot;discovery_session_start: Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)&quot;, pkt_len,
-1313                 sizeof(crypto_parameters_packet_t));
-1314       buffer_pool_free(NULL, alloc_buffer, 0);
-1315       set_error(session, ERROR_NETWORK_PROTOCOL, &quot;Invalid CRYPTO_PARAMETERS size&quot;);
-1316       return ERROR_NETWORK_PROTOCOL;
-1317     }
-1318 
-1319     crypto_parameters_packet_t server_params;
-1320     memcpy(&amp;server_params, pkt_data, sizeof(crypto_parameters_packet_t));
-1321     buffer_pool_free(NULL, alloc_buffer, 0);
-1322 
-1323     // Pass params in network byte order &#x2014; crypto_handshake_set_parameters
-1324     // handles conversion internally for client (is_server=false)
-1325     result = crypto_handshake_set_parameters(&amp;handshake_ctx, &amp;server_params);
-1326     if (result != ASCIICHAT_OK) {
-1327       log_error(&quot;discovery_session_start: Failed to set crypto parameters&quot;);
-1328       set_error(session, result, &quot;Failed to set crypto parameters&quot;);
-1329       return result;
-1330     }
-1331     log_info(&quot;discovery_session_start: CRYPTO_PARAMETERS received and applied&quot;);
-1332   }
-1333 
-1334   // Step 1: Key exchange - receive KEY_EXCHANGE_INIT and respond
-1335   {
-1336     packet_type_t pkt_type;
-1337     void *pkt_data = NULL;
-1338     size_t pkt_len = 0;
-1339     void *alloc_buffer = NULL;
-1340 
-1341     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-1342     if (result != ASCIICHAT_OK) {
-1343       log_error(&quot;discovery_session_start: Failed to receive KEY_EXCHANGE_INIT&quot;);
-1344       set_error(session, result, &quot;Handshake key exchange recv failed&quot;);
-1345       return result;
-1346     }
-1347 
-1348     result = crypto_handshake_client_key_exchange(&amp;handshake_ctx, session-&gt;acds_transport, pkt_type, pkt_data, pkt_len);
-1349     buffer_pool_free(NULL, alloc_buffer, 0);
-1350 
-1351     if (result != ASCIICHAT_OK) {
-1352       log_error(&quot;discovery_session_start: Handshake key exchange failed&quot;);
-1353       set_error(session, result, &quot;Handshake key exchange failed&quot;);
-1354       return result;
-1355     }
-1356   }
-1357 
-1358   // Step 2: Receive CRYPTO_HANDSHAKE_COMPLETE from server to finalize handshake
-1359   {
-1360     packet_type_t pkt_type;
-1361     void *pkt_data = NULL;
-1362     size_t pkt_len = 0;
-1363     void *alloc_buffer = NULL;
-1364 
-1365     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-1366     if (result != ASCIICHAT_OK) {
-1367       log_error(&quot;discovery_session_start: Failed to receive CRYPTO_HANDSHAKE_COMPLETE&quot;);
-1368       set_error(session, result, &quot;Failed to receive handshake complete&quot;);
-1369       return result;
-1370     }
-1371 
-1372     if (pkt_type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
-1373       log_error(&quot;discovery_session_start: Expected CRYPTO_HANDSHAKE_COMPLETE, got packet type %d&quot;, pkt_type);
-1374       buffer_pool_free(NULL, alloc_buffer, 0);
-1375       set_error(session, ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto handshake completion packet&quot;);
-1376       return ERROR_NETWORK_PROTOCOL;
-1377     }
-1378 
-1379     buffer_pool_free(NULL, alloc_buffer, 0);
-1380   }
-1381 
-1382   // For ACDS, handshake completes after key exchange (no auth required)
-1383   log_info(&quot;discovery_session_start: ACDS handshake complete&quot;);
-1384   log_info(&quot;discovery_session_start: Crypto handshake with ACDS completed&quot;);
-1385 
-1386   // Check again after handshake
-1387   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
-1388     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (after handshake)&quot;);
-1389     return ASCIICHAT_OK; // Return success to allow clean shutdown
-1390   }
-1391 
-1392   // Create or join session
-1393   if (session-&gt;is_initiator) {
-1394     log_info(&quot;discovery_session_start: Calling create_session - participant_ctx before=%p&quot;, session-&gt;participant_ctx);
-1395     result = create_session(session);
-1396     log_info(&quot;discovery_session_start: create_session returned - participant_ctx after=%p, result=%d&quot;,
-1397              session-&gt;participant_ctx, result);
-1398 
-1399     if (result == ASCIICHAT_OK) {
-1400       // Initiator also needs to register itself as a participant so it can receive PARTICIPANT_JOINED notifications
-1401       // when other peers join. This makes the initiator discoverable to other participants.
-1402       log_info(&quot;Initiator: now registering self as participant in created session&quot;);
-1403       result = join_session(session);
-1404       log_info(&quot;Initiator: join_session result=%d&quot;, result);
-1405     }
-1406     return result;
-1407   } else {
-1408     log_info(&quot;discovery_session_start: Calling join_session - participant_ctx before=%p&quot;, session-&gt;participant_ctx);
-1409     asciichat_error_t result = join_session(session);
-1410     log_info(&quot;discovery_session_start: join_session returned - participant_ctx after=%p, state=%d, result=%d&quot;,
-1411              session-&gt;participant_ctx, session-&gt;state, result);
-1412     return result;
-1413   }
-1414 }</pre>
+<pre>1228                                                                         {
+1229   log_info(&quot;discovery_session_start: ENTRY - session=%p&quot;, session);
+1230 
+1231   if (!session) {
+1232     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+1233   }
+1234 
+1235   log_info(&quot;discovery_session_start: is_initiator=%d, session_string='%s'&quot;, session-&gt;is_initiator,
+1236            session-&gt;session_string);
+1237 
+1238   // Check if we should exit before starting blocking operations
+1239   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
+1240     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (before ACDS connect)&quot;);
+1241     return ASCIICHAT_OK; // Return success to allow clean shutdown
+1242   }
+1243 
+1244   log_info(&quot;discovery_session_start: Calling connect_to_acds...&quot;);
+1245   // Connect to ACDS
+1246   asciichat_error_t result = connect_to_acds(session);
+1247   if (result != ASCIICHAT_OK) {
+1248     log_error(&quot;discovery_session_start: connect_to_acds FAILED - result=%d&quot;, result);
+1249     set_state(session, DISCOVERY_STATE_FAILED);
+1250     return result;
+1251   }
+1252   log_info(&quot;discovery_session_start: connect_to_acds succeeded&quot;);
+1253 
+1254   // Check again after connection
+1255   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
+1256     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (after ACDS connect)&quot;);
+1257     return ASCIICHAT_OK; // Return success to allow clean shutdown
+1258   }
+1259 
+1260   // Perform crypto handshake with ACDS (same as client-server handshake)
+1261   log_info(&quot;discovery_session_start: Performing crypto handshake with ACDS...&quot;);
+1262   crypto_handshake_context_t handshake_ctx;
+1263   memset(&amp;handshake_ctx, 0, sizeof(handshake_ctx));
+1264 
+1265   result = crypto_handshake_init(&quot;discovery_client&quot;, &amp;handshake_ctx, false);
+1266   if (result != ASCIICHAT_OK) {
+1267     log_error(&quot;discovery_session_start: Handshake init failed - %s&quot;, asciichat_error_string(result));
+1268     set_error(session, result, &quot;Crypto handshake init failed&quot;);
+1269     return result;
+1270   }
+1271 
+1272   // Store identity key in handshake context
+1273   handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
+1274   handshake_ctx.client_private_key.type = KEY_TYPE_ED25519;
+1275   memcpy(handshake_ctx.client_public_key.key, session-&gt;identity_pubkey, 32);
+1276   memcpy(handshake_ctx.client_private_key.key.ed25519, session-&gt;identity_seckey, 64);
+1277 
+1278   // Step 0: Send protocol version to ACDS
+1279   log_debug(&quot;Sending protocol version to ACDS...&quot;);
+1280   protocol_version_packet_t client_version = {0};
+1281   client_version.protocol_version = HOST_TO_NET_U16(1);
+1282   client_version.protocol_revision = HOST_TO_NET_U16(0);
+1283   client_version.supports_encryption = 1;
+1284   client_version.compression_algorithms = 0;
+1285   client_version.compression_threshold = 0;
+1286   client_version.feature_flags = 0;
+1287 
+1288   result = packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_PROTOCOL_VERSION, &amp;client_version,
+1289                                      sizeof(client_version), 0);
+1290   if (result != ASCIICHAT_OK) {
+1291     log_error(&quot;discovery_session_start: Failed to send protocol version to ACDS&quot;);
+1292     set_error(session, result, &quot;Failed to send protocol version to ACDS&quot;);
+1293     return result;
+1294   }
+1295 
+1296   // Step 0.5: Receive CRYPTO_PARAMETERS from ACDS
+1297   {
+1298     packet_type_t pkt_type;
+1299     void *pkt_data = NULL;
+1300     size_t pkt_len = 0;
+1301     void *alloc_buffer = NULL;
+1302 
+1303     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
+1304     if (result != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
+1305       log_error(&quot;discovery_session_start: Failed to receive CRYPTO_PARAMETERS (got type %u)&quot;, pkt_type);
+1306       buffer_pool_free(NULL, alloc_buffer, 0);
+1307       set_error(session, result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL,
+1308                 &quot;Failed to receive CRYPTO_PARAMETERS&quot;);
+1309       return result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
+1310     }
+1311 
+1312     if (pkt_len != sizeof(crypto_parameters_packet_t)) {
+1313       log_error(&quot;discovery_session_start: Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)&quot;, pkt_len,
+1314                 sizeof(crypto_parameters_packet_t));
+1315       buffer_pool_free(NULL, alloc_buffer, 0);
+1316       set_error(session, ERROR_NETWORK_PROTOCOL, &quot;Invalid CRYPTO_PARAMETERS size&quot;);
+1317       return ERROR_NETWORK_PROTOCOL;
+1318     }
+1319 
+1320     crypto_parameters_packet_t server_params;
+1321     memcpy(&amp;server_params, pkt_data, sizeof(crypto_parameters_packet_t));
+1322     buffer_pool_free(NULL, alloc_buffer, 0);
+1323 
+1324     // Pass params in network byte order &#x2014; crypto_handshake_set_parameters
+1325     // handles conversion internally for client (is_server=false)
+1326     result = crypto_handshake_set_parameters(&amp;handshake_ctx, &amp;server_params);
+1327     if (result != ASCIICHAT_OK) {
+1328       log_error(&quot;discovery_session_start: Failed to set crypto parameters&quot;);
+1329       set_error(session, result, &quot;Failed to set crypto parameters&quot;);
+1330       return result;
+1331     }
+1332     log_info(&quot;discovery_session_start: CRYPTO_PARAMETERS received and applied&quot;);
+1333   }
+1334 
+1335   // Step 1: Key exchange - receive KEY_EXCHANGE_INIT and respond
+1336   {
+1337     packet_type_t pkt_type;
+1338     void *pkt_data = NULL;
+1339     size_t pkt_len = 0;
+1340     void *alloc_buffer = NULL;
+1341 
+1342     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
+1343     if (result != ASCIICHAT_OK) {
+1344       log_error(&quot;discovery_session_start: Failed to receive KEY_EXCHANGE_INIT&quot;);
+1345       set_error(session, result, &quot;Handshake key exchange recv failed&quot;);
+1346       return result;
+1347     }
+1348 
+1349     result = crypto_handshake_client_key_exchange(&amp;handshake_ctx, session-&gt;acds_transport, pkt_type, pkt_data, pkt_len);
+1350     buffer_pool_free(NULL, alloc_buffer, 0);
+1351 
+1352     if (result != ASCIICHAT_OK) {
+1353       log_error(&quot;discovery_session_start: Handshake key exchange failed&quot;);
+1354       set_error(session, result, &quot;Handshake key exchange failed&quot;);
+1355       return result;
+1356     }
+1357   }
+1358 
+1359   // Step 2: Receive CRYPTO_HANDSHAKE_COMPLETE from server to finalize handshake
+1360   {
+1361     packet_type_t pkt_type;
+1362     void *pkt_data = NULL;
+1363     size_t pkt_len = 0;
+1364     void *alloc_buffer = NULL;
+1365 
+1366     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
+1367     if (result != ASCIICHAT_OK) {
+1368       log_error(&quot;discovery_session_start: Failed to receive CRYPTO_HANDSHAKE_COMPLETE&quot;);
+1369       set_error(session, result, &quot;Failed to receive handshake complete&quot;);
+1370       return result;
+1371     }
+1372 
+1373     if (pkt_type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+1374       log_error(&quot;discovery_session_start: Expected CRYPTO_HANDSHAKE_COMPLETE, got packet type %d&quot;, pkt_type);
+1375       buffer_pool_free(NULL, alloc_buffer, 0);
+1376       set_error(session, ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto handshake completion packet&quot;);
+1377       return ERROR_NETWORK_PROTOCOL;
+1378     }
+1379 
+1380     buffer_pool_free(NULL, alloc_buffer, 0);
+1381   }
+1382 
+1383   // For ACDS, handshake completes after key exchange (no auth required)
+1384   log_info(&quot;discovery_session_start: ACDS handshake complete&quot;);
+1385   log_info(&quot;discovery_session_start: Crypto handshake with ACDS completed&quot;);
+1386 
+1387   // Check again after handshake
+1388   if (session-&gt;should_exit_callback &amp;&amp; session-&gt;should_exit_callback(session-&gt;exit_callback_data)) {
+1389     log_info(&quot;discovery_session_start: Exiting early due to should_exit_callback (after handshake)&quot;);
+1390     return ASCIICHAT_OK; // Return success to allow clean shutdown
+1391   }
+1392 
+1393   // Create or join session
+1394   if (session-&gt;is_initiator) {
+1395     log_info(&quot;discovery_session_start: Calling create_session - participant_ctx before=%p&quot;, session-&gt;participant_ctx);
+1396     result = create_session(session);
+1397     log_info(&quot;discovery_session_start: create_session returned - participant_ctx after=%p, result=%d&quot;,
+1398              session-&gt;participant_ctx, result);
+1399 
+1400     if (result == ASCIICHAT_OK) {
+1401       // Initiator also needs to register itself as a participant so it can receive PARTICIPANT_JOINED notifications
+1402       // when other peers join. This makes the initiator discoverable to other participants.
+1403       log_info(&quot;Initiator: now registering self as participant in created session&quot;);
+1404       result = join_session(session);
+1405       log_info(&quot;Initiator: join_session result=%d&quot;, result);
+1406     }
+1407     return result;
+1408   } else {
+1409     log_info(&quot;discovery_session_start: Calling join_session - participant_ctx before=%p&quot;, session-&gt;participant_ctx);
+1410     asciichat_error_t result = join_session(session);
+1411     log_info(&quot;discovery_session_start: join_session returned - participant_ctx after=%p, state=%d, result=%d&quot;,
+1412              session-&gt;participant_ctx, session-&gt;state, result);
+1413     return result;
+1414   }
+1415 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
@@ -2065,36 +2065,36 @@
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>2145</b> of file
+<p class="Pp">Definition at line <b>2146</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>2145                                                                                    {
-2146   if (!session) {
-2147     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-2148     return ERROR_INVALID_PARAM;
-2149   }
-2150 
-2151   session-&gt;ring.last_ring_round_ms = session_get_current_time_ms();
-2152 
-2153   if (session-&gt;is_host) {
-2154     log_info(&quot;Starting 5-minute proactive election round (collecting NETWORK_QUALITY from participants)&quot;);
-2155 
-2156     // HOST: Run proactive host election
-2157     // 1. Collect NETWORK_QUALITY from all connected participants (TODO: request fresh data)
-2158     // 2. Measure the host's own NAT quality
-2159     // 3. Run deterministic election to determine future host
-2160     // 4. Broadcast FUTURE_HOST_ELECTED to all participants via ACDS
-2161     asciichat_error_t result = discovery_session_run_election(session);
-2162     if (result != ASCIICHAT_OK) {
-2163       log_error(&quot;Host election failed: %d&quot;, result);
-2164       return result;
-2165     }
-2166 
-2167     return ASCIICHAT_OK;
-2168   } else {
-2169     log_debug(&quot;Ring round timer triggered (waiting for host to broadcast FUTURE_HOST_ELECTED)&quot;);
-2170     return ASCIICHAT_OK;
-2171   }
-2172 }</pre>
+<pre>2146                                                                                    {
+2147   if (!session) {
+2148     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+2149     return ERROR_INVALID_PARAM;
+2150   }
+2151 
+2152   session-&gt;ring.last_ring_round_ms = session_get_current_time_ms();
+2153 
+2154   if (session-&gt;is_host) {
+2155     log_info(&quot;Starting 5-minute proactive election round (collecting NETWORK_QUALITY from participants)&quot;);
+2156 
+2157     // HOST: Run proactive host election
+2158     // 1. Collect NETWORK_QUALITY from all connected participants (TODO: request fresh data)
+2159     // 2. Measure the host's own NAT quality
+2160     // 3. Run deterministic election to determine future host
+2161     // 4. Broadcast FUTURE_HOST_ELECTED to all participants via ACDS
+2162     asciichat_error_t result = discovery_session_run_election(session);
+2163     if (result != ASCIICHAT_OK) {
+2164       log_error(&quot;Host election failed: %d&quot;, result);
+2165       return result;
+2166     }
+2167 
+2168     return ASCIICHAT_OK;
+2169   } else {
+2170     log_debug(&quot;Ring round timer triggered (waiting for host to broadcast FUTURE_HOST_ELECTED)&quot;);
+2171     return ASCIICHAT_OK;
+2172   }
+2173 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -2109,29 +2109,29 @@
 <p class="Pp">Stop the discovery session.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session context</b></div>
-<p class="Pp">Definition at line <b>1965</b> of file
+<p class="Pp">Definition at line <b>1966</b> of file
     <b>src/discovery/session.c</b>.</p>
-<pre>1965                                                           {
-1966   if (!session) {
-1967     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
-1968     return;
-1969   }
-1970 
-1971   log_info(&quot;Stopping discovery session...&quot;);
-1972 
-1973   // Send SESSION_LEAVE if connected
-1974   if (session-&gt;acds_transport &amp;&amp; session-&gt;session_id[0] != 0) {
-1975     acip_session_leave_t leave_msg;
-1976     memset(&amp;leave_msg, 0, sizeof(leave_msg));
-1977     memcpy(leave_msg.session_id, session-&gt;session_id, 16);
-1978     memcpy(leave_msg.participant_id, session-&gt;participant_id, 16);
-1979 
-1980     packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &amp;leave_msg, sizeof(leave_msg),
-1981                               0);
-1982   }
-1983 
-1984   set_state(session, DISCOVERY_STATE_ENDED);
-1985 }</pre>
+<pre>1966                                                           {
+1967   if (!session) {
+1968     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
+1969     return;
+1970   }
+1971 
+1972   log_info(&quot;Stopping discovery session...&quot;);
+1973 
+1974   // Send SESSION_LEAVE if connected
+1975   if (session-&gt;acds_transport &amp;&amp; session-&gt;session_id[0] != 0) {
+1976     acip_session_leave_t leave_msg;
+1977     memset(&amp;leave_msg, 0, sizeof(leave_msg));
+1978     memcpy(leave_msg.session_id, session-&gt;session_id, 16);
+1979     memcpy(leave_msg.participant_id, session-&gt;participant_id, 16);
+1980 
+1981     packet_send_via_transport(session-&gt;acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &amp;leave_msg, sizeof(leave_msg),
+1982                               0);
+1983   }
+1984 
+1985   set_state(session, DISCOVERY_STATE_ENDED);
+1986 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
@@ -2150,7 +2150,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

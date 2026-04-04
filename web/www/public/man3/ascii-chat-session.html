@@ -45,7 +45,9 @@
   Keyboard help overlay TUI rendering implementation. file <b>splash.c</b>
   <br/>
   Intro and status screen display implementation with animated rainbow effects.
-    file <b>audio.c</b>
+    file <b>update_banner.c</b>
+  <br/>
+  Update available prompt screen implementation. file <b>audio.c</b>
   <br/>
   &#x1F50A; Session-level audio coordination implementation file <b>audio.h</b>
   <br/>
@@ -104,11 +106,11 @@
   Centralized render loop abstraction for all display modes. file
     <b>server_like.c</b>
   <br/>
-  Implementation of server_like abstraction for unified server mode lifecycle.
-    file <b>server_like.h</b>
+  Unified lifecycle for server-like modes (server, discovery-service). file
+    <b>server_like.h</b>
   <br/>
-  Shared initialization and teardown for server-like modes (server,
-    discovery-service). file <b>settings.c</b>
+  Shared initialization, networking, and teardown for server-like modes. file
+    <b>settings.c</b>
   <br/>
   &#x2699;&#xFE0F; Session settings serialization implementation file
     <b>settings.h</b>
@@ -129,7 +131,9 @@
     file <b>status.h</b>
   <br/>
   &#x1F4CA; Status screen display and management for server/discovery service
-    modes
+    modes file <b>update_banner.h</b>
+  <br/>
+  Update available prompt screen shown after splash.
   <br/>
 </p>
 </section>
@@ -155,10 +159,7 @@
   Callback function prototypes for session participant events. struct
     <b>session_participant_config_t</b>
   <br/>
-  Configuration for session participant. struct
-    <b>session_server_like_config</b>
-  <br/>
-  struct <b>session_settings_t</b>
+  Configuration for session participant. struct <b>session_settings_t</b>
   <br/>
   Session settings for transmission between peers.
   <br/>
@@ -221,21 +222,8 @@
     <b>session_keyboard_handler_fn</b>) (<b>session_capture_ctx_t</b> *capture,
     int key, void *user_data)
   <br/>
-  Keyboard input handler callback type. typedef <b>asciichat_error_t</b>(*
-    <b>session_server_like_init_fn</b>) (void *user_data)
-  <br/>
-  typedef <b>asciichat_error_t</b>(* <b>session_server_like_run_fn</b>) (void
-    *user_data)
-  <br/>
-  typedef void(* <b>session_server_like_interrupt_fn</b>) (void)
-  <br/>
-  typedef void(* <b>session_server_like_status_fn</b>) (void *user_data,
-    <b>ui_status_t</b> *out_status)
-  <br/>
-  typedef struct <b>session_server_like_config</b>
-    <b>session_server_like_config_t</b>
-  <br/>
-  typedef struct <b>fps_counter_s</b> <b>fps_counter_t</b>
+  Keyboard input handler callback type. typedef struct <b>fps_counter_s</b>
+    <b>fps_counter_t</b>
   <br/>
   Opaque FPS counter handle.
   <br/>
@@ -605,11 +593,8 @@
     sleep_cb, <b>session_keyboard_handler_fn</b> keyboard_handler, void
     *user_data)
   <br/>
-  Unified render loop for all display modes. <b>asciichat_error_t</b>
-    <b>session_server_like_run</b> (const <b>session_server_like_config_t</b>
-    *config)
-  <br/>
-  void <b>session_settings_init</b> (<b>session_settings_t</b> *settings)
+  Unified render loop for all display modes. void <b>session_settings_init</b>
+    (<b>session_settings_t</b> *settings)
   <br/>
   Initialize session settings to defaults. <b>asciichat_error_t</b>
     <b>session_settings_serialize</b> (const <b>session_settings_t</b>
@@ -708,7 +693,25 @@
   Notify splash that the first frame has been rendered. <b>bool</b>
     <b>splash_is_running</b> (void)
   <br/>
-  Check if splash screen animation is currently running.
+  Check if splash screen animation is currently running. void
+    <b>update_banner_set_result</b> (const <b>update_check_result_t</b> *result)
+  <br/>
+  Store the update check result (thread-safe). <b>bool</b>
+    <b>update_banner_has_update</b> (void)
+  <br/>
+  Check if an update is available (thread-safe). <b>bool</b>
+    <b>update_banner_show_prompt</b> (struct <b>session_display_ctx</b> *ctx)
+  <br/>
+  Show the update prompt screen and wait for user input. void
+    <b>update_banner_print_instructions</b> (void)
+  <br/>
+  Print upgrade instructions to stdout and prepare for clean exit. void
+    <b>update_banner_start_check</b> (void)
+  <br/>
+  Start the background update check thread. void
+    <b>update_banner_wait_for_check</b> (void)
+  <br/>
+  Wait for the background update check thread to finish.
   <br/>
 </p>
 </section>
@@ -1008,6 +1011,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
 <p class="Pp"><b>Date</b></p>
 <div class="Bd-indent">February 2026</div>
+<p class="Pp">Provides a blocking prompt screen that shows when a new version of
+    ascii-chat is available. Displayed after the splash screen ends, before
+    video rendering begins. The user can choose to exit and update (Y/Enter) or
+    continue (N/Esc).</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: <b>update_banner_set_result()</b> can be called from
+    the background update check thread while the splash is still running.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1204,100 +1214,6 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Manages connection state, media streams, and event callbacks.
     Created via <b>session_participant_create()</b>, destroyed via
     <b>session_participant_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>session_server_like_config</b>
-  <b>session_server_like_config_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>src/common/session/server_like.h</b>&gt;<b>Configuration for
-    </b><b>session_server_like_run()</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">All logging, terminal, and signal settings are read automatically
-    from <b>GET_OPTION()</b> inside the function. Callers only provide the
-    callbacks and user data below.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(* session_server_like_init_fn)
-  (void *user_data)</h2>
-<p class="Pp">#include
-    &lt;<b>src/common/session/server_like.h</b>&gt;<b>Mode-specific
-    initialization callback.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Called once after shared setup (keepawake, logging) completes.
-    Should create sockets, load keys, start worker threads&#x2014;everything the
-    mode needs before its main accept loop starts.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.init_user_data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK, or error code to abort (cleanup still
-  runs)</div>
-<p class="Pp">Definition at line <b>68</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*_session_server_like_interrupt_fn)_(void)"><a class="permalink" href="#typedef_void(*_session_server_like_interrupt_fn)_(void)">typedef
-  void(* session_server_like_interrupt_fn) (void)</a></h2>
-<p class="Pp">#include
-    &lt;<b>src/common/session/server_like.h</b>&gt;<b>Async-signal-safe
-    interrupt callback.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Called from signal handler context (SIGINT / SIGTERM). Must only
-    use async-signal-safe operations. Responsible for closing listening sockets
-    to unblock the blocking run_fn (accept loop or poll).</p>
-<p class="Pp"></p>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>Server mode: close g_tcp_server listen sockets + websocket cancel</li>
-  <li>Discovery-Service mode: set g_server-&gt;<b>tcp_server.running</b> = false
-      + acds_signal_exit()</li>
-</ul>
-<p class="Pp">Definition at line <b>98</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(* session_server_like_run_fn)
-  (void *user_data)</h2>
-<p class="Pp">#include
-    &lt;<b>src/common/session/server_like.h</b>&gt;<b>Mode-specific blocking
-    main loop.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Called after init_fn succeeds. Blocks until the server shuts down.
-    Typical implementations:</p>
-<ul class="Bl-bullet">
-  <li>Server mode: tcp_server_run(&amp;g_tcp_server)</li>
-  <li>Discovery-Service mode: acds_server_run(&amp;g_server)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.run_user_data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK, or error code (cleanup always runs)</div>
-<p class="Pp">Definition at line <b>83</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*_session_server_like_status_fn)_(void_*user_data,_"><a class="permalink" href="#typedef_void(*_session_server_like_status_fn)_(void_*user_data,_">typedef
-  void(* session_server_like_status_fn) (void *user_data, <b>ui_status_t</b>
-  *out_status)</a></h2>
-<p class="Pp">#include &lt;<b>src/common/session/server_like.h</b>&gt;<b>Status
-    screen data callback.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Called at <b>GET_OPTION(fps)</b> Hz by the status screen thread.
-    Should fill *out_status with current state for <b>ui_status_display()</b>.
-    If NULL, the status screen is not shown even if --status-screen is set.</p>
-<p class="Pp"></p>
-<p class="Pp">The callback receives a zeroed <b>ui_status_t</b> and must
-    populate ALL fields it wants displayed (mode_name, addresses, port,
-    connected_count, session_string, start_time, etc.). No static fields are
-    inherited from the config &#x2014; status_fn owns the entire
-    <b>ui_status_t</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.status_user_data
-<br/>
-<i>out_status</i> Output struct to populate (pre-zeroed by caller, not
-  NULL)</div>
-<p class="Pp">Definition at line <b>117</b> of file <b>server_like.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">typedef <b>bool</b>(* session_should_exit_fn) (void
@@ -1607,286 +1523,286 @@ fps_counter_destroy(fps);</pre>
   output</p>
 </div>
 <p class="Pp">Render keyboard help TUI overlay.</p>
-<p class="Pp">Definition at line <b>318</b> of file <b>keyboard_help.c</b>.</p>
-<pre>318                                                       {
-319   if (!ctx) {
-320     log_error(&quot;keyboard_help_render: ctx is NULL!&quot;);
-321     return;
-322   }
-323 
-324   log_info(&quot;keyboard_help_render: STARTING&quot;);
-325 
-326   // Get terminal dimensions
-327   int term_width = (int)terminal_get_effective_width();
-328   int term_height = (int)terminal_get_effective_height();
-329   log_info(&quot;keyboard_help_render: term_width=%d, term_height=%d&quot;, term_width, term_height);
-330 
-331   // Use available terminal width, capped at preferred width
-332   int box_width = term_width;
-333   if (box_width &gt; 48)
-334     box_width = 48; // Cap at preferred width
-335   if (box_width &lt; 30)
-336     box_width = 30; // Absolute minimum for readability
-337 
-338   // Calculate centering position (true mathematical centering)
-339   // Horizontal centering
-340   int start_col = (term_width - box_width) / 2;
-341   if (start_col &lt; 0) {
-342     start_col = 0;
-343   }
-344 
-345   // Calculate box height dynamically based on content
-346   // With animations separator line added, the standard help screen is 25 rows
-347   int box_height = 25;
-348 
-349   // Vertical centering with dynamic box height
-350   int start_row = (term_height - box_height) / 2 - 3; // -3 offset for proper vertical centering
-351   if (start_row &lt; 0) {
-352     start_row = 0;
-353   }
-354 
-355   // Build help screen content
-356   const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
-357   char *buffer = SAFE_MALLOC(BUFFER_SIZE, char *);
-358   size_t buf_pos = 0;
-359 
-360 #define APPEND(fmt, ...)                                                                                               \
-361   do {                                                                                                                 \
-362     int written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, fmt, ##__VA_ARGS__);                               \
-363     if (written &gt; 0) {                                                                                                 \
-364       buf_pos += written;                                                                                              \
-365     }                                                                                                                  \
-366   } while (0)
-367 
-368   // Clear screen and position cursor
-369   APPEND(&quot;\033[2J&quot;); // Clear screen
-370   APPEND(&quot;\033[H&quot;);  // Cursor to home
-371 
-372   // Build help screen with proper spacing using UTF-8 width-aware padding
-373   char line_buf[256];
-374   char border_buf[256];
-375 
-376   // Generate top border
-377   APPEND(&quot;\033[%d;%dH&quot;, start_row + 1, start_col + 1);
-378   border_buf[0] = '\0';
-379   int border_pos = 0;
-380   int result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2554;&quot;);
-381   if (result &lt; 0) {
-382     log_error(&quot;Failed to write top-left corner: snprintf returned %d&quot;, result);
-383   } else {
-384     border_pos += result;
-385   }
-386   for (int i = 1; i &lt; box_width - 1; i++) {
-387     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
-388     if (result &lt; 0) {
-389       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
-390       break;
-391     }
-392     border_pos += result;
-393   }
-394   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2557;&quot;);
-395   if (result &lt; 0) {
-396     log_error(&quot;Failed to write top-right corner: snprintf returned %d&quot;, result);
-397   }
-398   APPEND(&quot;%s&quot;, border_buf);
-399 
-400   // Title
-401   APPEND(&quot;\033[%d;%dH&quot;, start_row + 2, start_col + 1);
-402   build_help_line(line_buf, sizeof(line_buf), &quot;ascii-chat Keyboard Shortcuts&quot;, box_width);
-403   APPEND(&quot;%s&quot;, line_buf);
-404 
-405   // Generate separator border
-406   APPEND(&quot;\033[%d;%dH&quot;, start_row + 3, start_col + 1);
-407   border_buf[0] = '\0';
-408   border_pos = 0;
-409   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2560;&quot;);
-410   if (result &lt; 0) {
-411     log_error(&quot;Failed to write left T: snprintf returned %d&quot;, result);
-412   } else {
-413     border_pos += result;
-414   }
-415   for (int i = 1; i &lt; box_width - 1; i++) {
-416     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
-417     if (result &lt; 0) {
-418       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
-419       break;
-420     }
-421     border_pos += result;
-422   }
-423   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2563;&quot;);
-424   if (result &lt; 0) {
-425     log_error(&quot;Failed to write right T: snprintf returned %d&quot;, result);
-426   }
-427   APPEND(&quot;%s&quot;, border_buf);
-428 
-429   // Navigation section
-430   int current_row = 4;
-431   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-432                    &quot;Navigation &amp; Control:&quot;);
-433   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-434                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
-435   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-436                    &quot;?       Toggle this help screen&quot;);
-437   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-438                    &quot;Esc     Close help / Quit app&quot;);
-439 
-440   // Check if media is provided (only show Space/Seek keys if media is loaded)
-441   const char *media_url = GET_OPTION(media_url);
-442   const char *media_file = GET_OPTION(media_file);
-443   bool has_media = (media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0);
-444 
-445   if (has_media) {
-446     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-447                      &quot;Space   Play/Pause (files only)&quot;);
-448     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-449                      &quot;&#x2190; / &#x2192;   Seek backward/forward 30s&quot;);
-450   }
-451 
-452   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-453                    &quot;m / M   Mute/Unmute audio&quot;);
-454   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-455                    &quot;&#x2191; / &#x2193;   Volume up/down (10%)&quot;);
-456   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-457                    &quot;c / C   Cycle color mode&quot;);
-458   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-459                    &quot;f / F   Cycle color filter&quot;);
-460   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-461                    &quot;x / X   Flip webcam horizontally&quot;);
-462   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-463                    &quot;y / Y   Flip webcam vertically&quot;);
-464   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-465                    &quot;r / R   Cycle render mode&quot;);
-466 
-467 #ifndef NDEBUG
-468   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-469                    &quot;`       Print current sync primitive state&quot;);
-470 #endif
-471 
-472   // Blank line before settings section
-473   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
-474 
-475   // Current settings section
-476   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Current Settings:&quot;);
-477   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
-478 
-479   // Get current option values
-480   double current_volume = GET_OPTION(speakers_volume);
-481   int current_color_mode = (int)GET_OPTION(color_mode);
-482   int current_render_mode = (int)GET_OPTION(render_mode);
-483   color_filter_t current_color_filter = GET_OPTION(color_filter);
-484   bool flip_x = (bool)GET_OPTION(flip_x);
-485   bool flip_y = (bool)GET_OPTION(flip_y);
-486   bool current_audio = (bool)GET_OPTION(audio_enabled);
-487 
-488   // Format volume bar as &quot;[========  ] 80%&quot;
-489   char volume_bar[32];
-490   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
-491 
-492   // Get string values
-493   const char *color_str = color_mode_to_string(current_color_mode);
-494   const char *filter_str = color_filter_to_string(current_color_filter);
-495   const char *render_str = render_mode_to_string(current_render_mode);
-496 
-497   // Create status indicators for flip, audio, and matrix rain
-498   // Format flip status as &quot;rows=X/O cols=X/O&quot; (rows=flip_y, cols=flip_x)
-499   char flip_status[64];
-500   snprintf(flip_status, sizeof(flip_status), &quot;rows=%s cols=%s&quot;, status_indicator(flip_y), status_indicator(flip_x));
-501 
-502   const char *audio_text = status_indicator(current_audio);
-503   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
-504   const char *matrix_text = status_indicator(matrix_rain_enabled);
-505 
-506   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, &#x2191;/&#x2193;, c, f, x/y, r)
-507   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Audio&quot;,
-508                        audio_text, 6);
-509   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Volume&quot;,
-510                        volume_bar, 6);
-511   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Color&quot;, color_str,
-512                        6);
-513   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Filter&quot;,
-514                        filter_str, 6);
-515   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Render&quot;,
-516                        render_str, 6);
-517   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Flip&quot;,
-518                        flip_status, 6);
-519 
-520   // Blank line before animations section
-521   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
-522 
-523   // Animations section
-524   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-525                    &quot;Animations (number key toggle):&quot;);
-526   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
-527                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
-528 
-529   // Format: &quot;(0) Matrix \&quot;Digital Rain\&quot; : X/O&quot;
-530   char animation_line[256];
-531   snprintf(animation_line, sizeof(animation_line), &quot;(0) Matrix \&quot;Digital Rain\&quot; : %s&quot;, matrix_text);
-532   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, animation_line);
-533 
-534   // FPS Counter toggle
-535   char fps_line[256];
-536   snprintf(fps_line, sizeof(fps_line), &quot;(-) FPS Counter : %s&quot;, status_indicator(GET_OPTION(fps_counter)));
-537   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, fps_line);
-538 
-539   // Blank line before footer
-540   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
-541 
-542   // Footer
-543   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Press ? to close&quot;);
-544 
-545   // Bottom border
-546   int remaining_buf = BUFFER_SIZE - buf_pos;
-547   int written = snprintf(buffer + buf_pos, remaining_buf, &quot;\033[%d;%dH&quot;, start_row + current_row, start_col + 1);
-548   if (written &gt; 0) {
-549     buf_pos += written;
-550   }
-551   border_buf[0] = '\0';
-552   border_pos = 0;
-553   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x255A;&quot;);
-554   if (result &lt; 0) {
-555     log_error(&quot;Failed to write bottom-left corner: snprintf returned %d&quot;, result);
-556   } else {
-557     border_pos += result;
-558   }
-559   for (int i = 1; i &lt; box_width - 1; i++) {
-560     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
-561     if (result &lt; 0) {
-562       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
-563       break;
-564     }
-565     border_pos += result;
-566   }
-567   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x255D;&quot;);
-568   if (result &lt; 0) {
-569     log_error(&quot;Failed to write bottom-right corner: snprintf returned %d&quot;, result);
-570   }
-571   written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, &quot;%s&quot;, border_buf);
-572   if (written &gt; 0) {
-573     buf_pos += written;
-574   }
-575 
-576 #undef APPEND
-577 
-578   log_info(&quot;keyboard_help_render: buffer prepared, buf_pos=%zu&quot;, buf_pos);
-579 
-580   // Write buffer to terminal
-581   session_display_write_raw(ctx, buffer, buf_pos);
-582   log_info(&quot;keyboard_help_render: buffer written to terminal&quot;);
-583 
-584   // Flush output
-585   if (ctx &amp;&amp; session_display_has_tty(ctx)) {
-586     int tty_fd = session_display_get_tty_fd(ctx);
-587     log_info(&quot;keyboard_help_render: tty_fd=%d&quot;, tty_fd);
-588     if (tty_fd &gt;= 0) {
-589       (void)terminal_flush(tty_fd);
-590       log_info(&quot;keyboard_help_render: terminal flushed&quot;);
-591     }
-592   }
-593 
-594   SAFE_FREE(buffer);
-595   log_info(&quot;keyboard_help_render: COMPLETE&quot;);
-596 }</pre>
+<p class="Pp">Definition at line <b>319</b> of file <b>keyboard_help.c</b>.</p>
+<pre>319                                                       {
+320   if (!ctx) {
+321     log_error(&quot;keyboard_help_render: ctx is NULL!&quot;);
+322     return;
+323   }
+324 
+325   log_info(&quot;keyboard_help_render: STARTING&quot;);
+326 
+327   // Get terminal dimensions
+328   int term_width = (int)terminal_get_effective_width();
+329   int term_height = (int)terminal_get_effective_height();
+330   log_info(&quot;keyboard_help_render: term_width=%d, term_height=%d&quot;, term_width, term_height);
+331 
+332   // Use available terminal width, capped at preferred width
+333   int box_width = term_width;
+334   if (box_width &gt; 48)
+335     box_width = 48; // Cap at preferred width
+336   if (box_width &lt; 30)
+337     box_width = 30; // Absolute minimum for readability
+338 
+339   // Calculate centering position (true mathematical centering)
+340   // Horizontal centering
+341   int start_col = (term_width - box_width) / 2;
+342   if (start_col &lt; 0) {
+343     start_col = 0;
+344   }
+345 
+346   // Calculate box height dynamically based on content
+347   // With animations separator line added, the standard help screen is 25 rows
+348   int box_height = 25;
+349 
+350   // Vertical centering with dynamic box height
+351   int start_row = (term_height - box_height) / 2 - 3; // -3 offset for proper vertical centering
+352   if (start_row &lt; 0) {
+353     start_row = 0;
+354   }
+355 
+356   // Build help screen content
+357   const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
+358   char *buffer = SAFE_MALLOC(BUFFER_SIZE, char *);
+359   size_t buf_pos = 0;
+360 
+361 #define APPEND(fmt, ...)                                                                                               \
+362   do {                                                                                                                 \
+363     int written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, fmt, ##__VA_ARGS__);                               \
+364     if (written &gt; 0) {                                                                                                 \
+365       buf_pos += written;                                                                                              \
+366     }                                                                                                                  \
+367   } while (0)
+368 
+369   // Clear screen and position cursor
+370   APPEND(&quot;\033[2J&quot;); // Clear screen
+371   APPEND(&quot;\033[H&quot;);  // Cursor to home
+372 
+373   // Build help screen with proper spacing using UTF-8 width-aware padding
+374   char line_buf[256];
+375   char border_buf[256];
+376 
+377   // Generate top border
+378   APPEND(&quot;\033[%d;%dH&quot;, start_row + 1, start_col + 1);
+379   border_buf[0] = '\0';
+380   int border_pos = 0;
+381   int result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2554;&quot;);
+382   if (result &lt; 0) {
+383     log_error(&quot;Failed to write top-left corner: snprintf returned %d&quot;, result);
+384   } else {
+385     border_pos += result;
+386   }
+387   for (int i = 1; i &lt; box_width - 1; i++) {
+388     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
+389     if (result &lt; 0) {
+390       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
+391       break;
+392     }
+393     border_pos += result;
+394   }
+395   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2557;&quot;);
+396   if (result &lt; 0) {
+397     log_error(&quot;Failed to write top-right corner: snprintf returned %d&quot;, result);
+398   }
+399   APPEND(&quot;%s&quot;, border_buf);
+400 
+401   // Title
+402   APPEND(&quot;\033[%d;%dH&quot;, start_row + 2, start_col + 1);
+403   build_help_line(line_buf, sizeof(line_buf), &quot;ascii-chat Keyboard Shortcuts&quot;, box_width);
+404   APPEND(&quot;%s&quot;, line_buf);
+405 
+406   // Generate separator border
+407   APPEND(&quot;\033[%d;%dH&quot;, start_row + 3, start_col + 1);
+408   border_buf[0] = '\0';
+409   border_pos = 0;
+410   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2560;&quot;);
+411   if (result &lt; 0) {
+412     log_error(&quot;Failed to write left T: snprintf returned %d&quot;, result);
+413   } else {
+414     border_pos += result;
+415   }
+416   for (int i = 1; i &lt; box_width - 1; i++) {
+417     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
+418     if (result &lt; 0) {
+419       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
+420       break;
+421     }
+422     border_pos += result;
+423   }
+424   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2563;&quot;);
+425   if (result &lt; 0) {
+426     log_error(&quot;Failed to write right T: snprintf returned %d&quot;, result);
+427   }
+428   APPEND(&quot;%s&quot;, border_buf);
+429 
+430   // Navigation section
+431   int current_row = 4;
+432   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+433                    &quot;Navigation &amp; Control:&quot;);
+434   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+435                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+436   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+437                    &quot;?       Toggle this help screen&quot;);
+438   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+439                    &quot;Esc     Close help / Quit app&quot;);
+440 
+441   // Check if media is provided (only show Space/Seek keys if media is loaded)
+442   const char *media_url = GET_OPTION(media_url);
+443   const char *media_file = GET_OPTION(media_file);
+444   bool has_media = (media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0);
+445 
+446   if (has_media) {
+447     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+448                      &quot;Space   Play/Pause (files only)&quot;);
+449     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+450                      &quot;&#x2190; / &#x2192;   Seek backward/forward 30s&quot;);
+451   }
+452 
+453   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+454                    &quot;m / M   Mute/Unmute audio&quot;);
+455   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+456                    &quot;&#x2191; / &#x2193;   Volume up/down (10%)&quot;);
+457   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+458                    &quot;c / C   Cycle color mode&quot;);
+459   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+460                    &quot;f / F   Cycle color filter&quot;);
+461   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+462                    &quot;x / X   Flip webcam horizontally&quot;);
+463   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+464                    &quot;y / Y   Flip webcam vertically&quot;);
+465   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+466                    &quot;r / R   Cycle render mode&quot;);
+467 
+468 #ifndef NDEBUG
+469   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+470                    &quot;`       Print current sync primitive state&quot;);
+471 #endif
+472 
+473   // Blank line before settings section
+474   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+475 
+476   // Current settings section
+477   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Current Settings:&quot;);
+478   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+479 
+480   // Get current option values
+481   double current_volume = GET_OPTION(speakers_volume);
+482   int current_color_mode = (int)GET_OPTION(color_mode);
+483   int current_render_mode = (int)GET_OPTION(render_mode);
+484   color_filter_t current_color_filter = GET_OPTION(color_filter);
+485   bool flip_x = (bool)GET_OPTION(flip_x);
+486   bool flip_y = (bool)GET_OPTION(flip_y);
+487   bool current_audio = (bool)GET_OPTION(audio_enabled);
+488 
+489   // Format volume bar as &quot;[========  ] 80%&quot;
+490   char volume_bar[32];
+491   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
+492 
+493   // Get string values
+494   const char *color_str = color_mode_to_string(current_color_mode);
+495   const char *filter_str = color_filter_to_string(current_color_filter);
+496   const char *render_str = render_mode_to_string(current_render_mode);
+497 
+498   // Create status indicators for flip, audio, and matrix rain
+499   // Format flip status as &quot;rows=X/O cols=X/O&quot; (rows=flip_y, cols=flip_x)
+500   char flip_status[64];
+501   snprintf(flip_status, sizeof(flip_status), &quot;rows=%s cols=%s&quot;, status_indicator(flip_y), status_indicator(flip_x));
+502 
+503   const char *audio_text = status_indicator(current_audio);
+504   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+505   const char *matrix_text = status_indicator(matrix_rain_enabled);
+506 
+507   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, &#x2191;/&#x2193;, c, f, x/y, r)
+508   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Audio&quot;,
+509                        audio_text, 6);
+510   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Volume&quot;,
+511                        volume_bar, 6);
+512   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Color&quot;, color_str,
+513                        6);
+514   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Filter&quot;,
+515                        filter_str, 6);
+516   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Render&quot;,
+517                        render_str, 6);
+518   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Flip&quot;,
+519                        flip_status, 6);
+520 
+521   // Blank line before animations section
+522   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+523 
+524   // Animations section
+525   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+526                    &quot;Animations (number key toggle):&quot;);
+527   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+528                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+529 
+530   // Format: &quot;(0) Matrix \&quot;Digital Rain\&quot; : X/O&quot;
+531   char animation_line[256];
+532   snprintf(animation_line, sizeof(animation_line), &quot;(0) Matrix \&quot;Digital Rain\&quot; : %s&quot;, matrix_text);
+533   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, animation_line);
+534 
+535   // FPS Counter toggle
+536   char fps_line[256];
+537   snprintf(fps_line, sizeof(fps_line), &quot;(-) FPS Counter : %s&quot;, status_indicator(GET_OPTION(fps_counter)));
+538   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, fps_line);
+539 
+540   // Blank line before footer
+541   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+542 
+543   // Footer
+544   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Press ? to close&quot;);
+545 
+546   // Bottom border
+547   int remaining_buf = BUFFER_SIZE - buf_pos;
+548   int written = snprintf(buffer + buf_pos, remaining_buf, &quot;\033[%d;%dH&quot;, start_row + current_row, start_col + 1);
+549   if (written &gt; 0) {
+550     buf_pos += written;
+551   }
+552   border_buf[0] = '\0';
+553   border_pos = 0;
+554   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x255A;&quot;);
+555   if (result &lt; 0) {
+556     log_error(&quot;Failed to write bottom-left corner: snprintf returned %d&quot;, result);
+557   } else {
+558     border_pos += result;
+559   }
+560   for (int i = 1; i &lt; box_width - 1; i++) {
+561     result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x2550;&quot;);
+562     if (result &lt; 0) {
+563       log_error(&quot;Failed to write horizontal line: snprintf returned %d&quot;, result);
+564       break;
+565     }
+566     border_pos += result;
+567   }
+568   result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, &quot;%s&quot;, &quot;&#x255D;&quot;);
+569   if (result &lt; 0) {
+570     log_error(&quot;Failed to write bottom-right corner: snprintf returned %d&quot;, result);
+571   }
+572   written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, &quot;%s&quot;, border_buf);
+573   if (written &gt; 0) {
+574     buf_pos += written;
+575   }
+576 
+577 #undef APPEND
+578 
+579   log_info(&quot;keyboard_help_render: buffer prepared, buf_pos=%zu&quot;, buf_pos);
+580 
+581   // Write buffer to terminal
+582   session_display_write_raw(ctx, buffer, buf_pos);
+583   log_info(&quot;keyboard_help_render: buffer written to terminal&quot;);
+584 
+585   // Flush output
+586   if (ctx &amp;&amp; session_display_has_tty(ctx)) {
+587     int tty_fd = session_display_get_tty_fd(ctx);
+588     log_info(&quot;keyboard_help_render: tty_fd=%d&quot;, tty_fd);
+589     if (tty_fd &gt;= 0) {
+590       (void)terminal_flush(tty_fd);
+591       log_info(&quot;keyboard_help_render: terminal flushed&quot;);
+592     }
+593   }
+594 
+595   SAFE_FREE(buffer);
+596   log_info(&quot;keyboard_help_render: COMPLETE&quot;);
+597 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APPEND</b>, <b>bool</b>,
@@ -3282,10 +3198,10 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to <b>terminal_fd_reader_t</b>, or NULL if not in
   stdin render mode</div>
-<p class="Pp">Definition at line <b>53</b> of file <b>client_like.c</b>.</p>
-<pre>53                                                                  {
-54   return g_stdin_reader;
-55 }</pre>
+<p class="Pp">Definition at line <b>54</b> of file <b>client_like.c</b>.</p>
+<pre>54                                                                  {
+55   return g_stdin_reader;
+56 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -5009,7 +4925,8 @@ fps_counter_destroy(fps);</pre>
     <b>session_display_ctx::initialized</b>, <b>platform_write_all()</b>,
     <b>SET_ERRNO</b>, <b>terminal_flush()</b>, and
     <b>session_display_ctx::tty_info</b>.</p>
-<p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_render()</b>, and
+    <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_handle_keyboard_input_("><a class="permalink" href="#void_session_handle_keyboard_input_(">void
@@ -5787,8 +5704,8 @@ fps_counter_destroy(fps);</pre>
     <b>SET_ERRNO</b>, <b>session_host::socket_v4</b>,
     <b>session_host::socket_v6</b>, <b>session_host::user_data</b>, and
     <b>session_host_config_t::user_data</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
-    <b>discovery_session_process()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_become_host()</b>, and
+    <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_host_destroy_("><a class="permalink" href="#void_session_host_destroy_(">void
@@ -5868,8 +5785,7 @@ fps_counter_destroy(fps);</pre>
     <b>session_audio_destroy()</b>, <b>session_host_stop()</b>,
     <b>socket_close()</b>, <b>session_host::socket_v4</b>, and
     <b>session_host::socket_v6</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_destroy()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_host_find_client
@@ -6523,7 +6439,7 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
     <b>session_host::accept_thread_running</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_create()</b>, <b>asciichat_thread_join()</b>,
+    <b>asciichat_thread_create</b>, <b>asciichat_thread_join</b>,
     <b>session_host::callbacks</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_NETWORK_BIND</b>, <b>ERROR_THREAD</b>, <b>GET_ERRNO</b>,
     <b>session_host::initialized</b>, <b>INVALID_SOCKET_VALUE</b>,
@@ -6613,7 +6529,7 @@ fps_counter_destroy(fps);</pre>
 1420 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>session_host::audio_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_INVALID_STATE</b>, <b>ERROR_THREAD</b>,
     <b>session_host::initialized</b>, <b>log_error</b>, <b>log_info</b>,
@@ -6698,7 +6614,7 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
     <b>session_host::accept_thread_running</b>,
-    <b>session_host_client_t::active</b>, <b>asciichat_thread_join()</b>,
+    <b>session_host_client_t::active</b>, <b>asciichat_thread_join</b>,
     <b>session_host::callbacks</b>, <b>session_host::client_count</b>,
     <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
     <b>session_host::clients_mutex</b>, <b>session_host::initialized</b>,
@@ -6757,7 +6673,7 @@ fps_counter_destroy(fps);</pre>
 1452 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>asciichat_thread_join</b>,
     <b>session_host::audio_ctx</b>, <b>session_host::initialized</b>,
     <b>log_info</b>, <b>opus_codec_destroy()</b>,
     <b>session_host::opus_decoder</b>, <b>session_host::opus_encoder</b>,
@@ -7627,7 +7543,7 @@ fps_counter_destroy(fps);</pre>
 700 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>session_participant::audio_capture</b>,
     <b>session_participant::audio_capture_running</b>,
     <b>session_participant::audio_capture_thread</b>,
@@ -7755,7 +7671,7 @@ fps_counter_destroy(fps);</pre>
 630 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>session_participant::connected</b>,
     <b>session_participant::enable_video</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_INVALID_STATE</b>, <b>ERROR_THREAD</b>,
@@ -7829,7 +7745,7 @@ fps_counter_destroy(fps);</pre>
 723 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>asciichat_thread_join</b>,
     <b>session_participant::audio_capture</b>,
     <b>session_participant::audio_capture_running</b>,
     <b>session_participant::audio_capture_thread</b>,
@@ -7896,7 +7812,7 @@ fps_counter_destroy(fps);</pre>
 648 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>asciichat_thread_join</b>,
     <b>session_participant::initialized</b>, <b>log_info</b>,
     <b>session_participant::video_capture_running</b>, and
     <b>session_participant::video_capture_thread</b>.</p>
@@ -8116,413 +8032,417 @@ int main(void) {
 104     }
 105     log_info(&quot;[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...&quot;);
 106 
-107     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
-108 
-109     // In snapshot mode, pass actual capture-based elapsed time to encoder for correct video duration
-110     if (GET_OPTION(snapshot_mode) &amp;&amp; display &amp;&amp; g_snapshot_first_capture_ns &gt; 0) {
-111       uint64_t now_ns = time_get_ns();
-112       uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
-113       double capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-114       log_info(&quot;SNAPSHOT: Pipeline finished - passing capture_elapsed=%.3f to encoder&quot;, capture_elapsed_sec);
-115       session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
-116     }
-117 
-118     session_pipeline_destroy(pipeline);
-119     return run_err;
-120   } else {
-121     log_warn(&quot;[SESSION_RENDER_LOOP] capture is NULL - will not use pipeline (capture_cb=%p)&quot;, (void*)capture_cb);
-122   }
-123 
-124   // Snapshot mode state tracking
-125   bool snapshot_mode = GET_OPTION(snapshot_mode);
-126   bool snapshot_done = false;
-127   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
-128   // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
-129 
-130   // Help screen state tracking for clear-screen transition
-131   bool help_was_active = false;
-132 
-133   // Terminal resize tracking (for auto_width/auto_height mode)
-134   unsigned short int last_terminal_width = terminal_get_effective_width();
-135   unsigned short int last_terminal_height = terminal_get_effective_height();
+107     // Disable logging to stdout/stderr during rendering (same as event-driven mode).
+108     // This prevents logs from mixing with ASCII art output. Logs still go to file.
+109     log_set_terminal_output(false);
+110     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
+111     log_set_terminal_output(true);
+112 
+113     // In snapshot mode, pass actual capture-based elapsed time to encoder for correct video duration
+114     if (GET_OPTION(snapshot_mode) &amp;&amp; display &amp;&amp; g_snapshot_first_capture_ns &gt; 0) {
+115       uint64_t now_ns = time_get_ns();
+116       uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+117       double capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+118       log_info(&quot;SNAPSHOT: Pipeline finished - passing capture_elapsed=%.3f to encoder&quot;, capture_elapsed_sec);
+119       session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
+120     }
+121 
+122     session_pipeline_destroy(pipeline);
+123     return run_err;
+124   } else {
+125     log_warn(&quot;[SESSION_RENDER_LOOP] capture is NULL - will not use pipeline (capture_cb=%p)&quot;, (void*)capture_cb);
+126   }
+127 
+128   // Snapshot mode state tracking
+129   bool snapshot_mode = GET_OPTION(snapshot_mode);
+130   bool snapshot_done = false;
+131   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
+132   // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
+133 
+134   // Help screen state tracking for clear-screen transition
+135   bool help_was_active = false;
 136 
-137   log_info(&quot;session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f&quot;,
-138            (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;,
-139            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
-140   log_info(&quot;session_render_loop: About to enter main loop, should_exit fn check...&quot;);
-141   if (should_exit(user_data)) {
-142     log_warn(&quot;session_render_loop: EXIT signal already set at entry, aborting render loop&quot;);
-143     return ASCIICHAT_OK;
-144   }
-145   log_info(&quot;session_render_loop: OK to proceed with main loop&quot;);
-146 
-147 
-148   // Keyboard input initialization (if keyboard handler is provided)
-149   // Disable keyboard only in snapshot mode
-150   // Keyboard is pre-initialized from asciichat_shared_init()
-151   // Allow keyboard input in all other modes if handler provided
-152   bool keyboard_enabled = keyboard_handler &amp;&amp; !snapshot_mode;
-153 
-154   // Pause mode state tracking (for pause/unpause transitions in event-driven mode)
-155   bool initial_paused_frame_rendered = false;
-156   bool is_paused = false;
-157   log_info(&quot;render_loop: Keyboard setup - handler=%p snapshot=%s enabled=%s&quot;, (void *)keyboard_handler,
-158            snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;, keyboard_enabled ? &quot;YES&quot; : &quot;NO&quot;);
-159 
-160   // Log TTY detection status for debugging keyboard issues
-161   log_info(&quot;TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d&quot;, terminal_is_stdin_tty(),
-162            terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
+137   // Terminal resize tracking (for auto_width/auto_height mode)
+138   unsigned short int last_terminal_width = terminal_get_effective_width();
+139   unsigned short int last_terminal_height = terminal_get_effective_height();
+140 
+141   log_info(&quot;session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f&quot;,
+142            (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;,
+143            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+144   log_info(&quot;session_render_loop: About to enter main loop, should_exit fn check...&quot;);
+145   if (should_exit(user_data)) {
+146     log_warn(&quot;session_render_loop: EXIT signal already set at entry, aborting render loop&quot;);
+147     return ASCIICHAT_OK;
+148   }
+149   log_info(&quot;session_render_loop: OK to proceed with main loop&quot;);
+150 
+151 
+152   // Keyboard input initialization (if keyboard handler is provided)
+153   // Disable keyboard only in snapshot mode
+154   // Keyboard is pre-initialized from asciichat_shared_init()
+155   // Allow keyboard input in all other modes if handler provided
+156   bool keyboard_enabled = keyboard_handler &amp;&amp; !snapshot_mode;
+157 
+158   // Pause mode state tracking (for pause/unpause transitions in event-driven mode)
+159   bool initial_paused_frame_rendered = false;
+160   bool is_paused = false;
+161   log_info(&quot;render_loop: Keyboard setup - handler=%p snapshot=%s enabled=%s&quot;, (void *)keyboard_handler,
+162            snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;, keyboard_enabled ? &quot;YES&quot; : &quot;NO&quot;);
 163 
-164   // Frame rate timing (event-driven mode only)
-165   uint64_t frame_count = 0;
-166   uint64_t frame_start_ns = 0;
+164   // Log TTY detection status for debugging keyboard issues
+165   log_info(&quot;TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d&quot;, terminal_is_stdin_tty(),
+166            terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
 167 
-168   // Event-driven mode: disable console logging during rendering to prevent logs from corrupting frame display
-169   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
-170   log_info(&quot;[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s&quot;, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;);
-171   log_set_terminal_output(false);
-172 
-173   // Main render loop
-174   log_debug(&quot;session_render_loop: entering main loop&quot;);
-175   int loop_iteration = 0;
-176   log_info(&quot;[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f&quot;, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;,
-177            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
-178 
-179   // Wait for splash animation to complete before rendering first frame
-180   // This prevents ASCII art from mixing with splash screen output
-181   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
-182   static bool splash_wait_done = false;
-183   if (!splash_wait_done) {
-184     splash_wait_done = true;
-185     if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
-186       // Re-enable logging briefly for splash wait, then disable again
-187       log_set_terminal_output(true);
-188       splash_wait_for_animation();
-189       log_set_terminal_output(false);
-190     }
-191   }
-192 
-193   // In snapshot mode, we must render at least one frame before checking should_exit
-194   // to ensure the snapshot delay timer can start
-195   bool force_first_iteration = snapshot_mode &amp;&amp; frame_count == 0;
+168   // Frame rate timing (event-driven mode only)
+169   uint64_t frame_count = 0;
+170   uint64_t frame_start_ns = 0;
+171 
+172   // Event-driven mode: disable console logging during rendering to prevent logs from corrupting frame display
+173   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
+174   log_info(&quot;[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s&quot;, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;);
+175   log_set_terminal_output(false);
+176 
+177   // Main render loop
+178   log_debug(&quot;session_render_loop: entering main loop&quot;);
+179   int loop_iteration = 0;
+180   log_info(&quot;[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f&quot;, snapshot_mode ? &quot;YES&quot; : &quot;NO&quot;,
+181            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+182 
+183   // Wait for splash animation to complete before rendering first frame
+184   // This prevents ASCII art from mixing with splash screen output
+185   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
+186   static bool splash_wait_done = false;
+187   if (!splash_wait_done) {
+188     splash_wait_done = true;
+189     if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
+190       // Re-enable logging briefly for splash wait, then disable again
+191       log_set_terminal_output(true);
+192       splash_wait_for_animation();
+193       log_set_terminal_output(false);
+194     }
+195   }
 196 
-197   // Register display context globally so signal handlers (Ctrl+C) can access it
-198   // This enables Ctrl+C to close the help screen instead of quitting when help is active
-199   session_display_set_global_context(display);
+197   // In snapshot mode, we must render at least one frame before checking should_exit
+198   // to ensure the snapshot delay timer can start
+199   bool force_first_iteration = snapshot_mode &amp;&amp; frame_count == 0;
 200 
-201   while (force_first_iteration || (!should_exit(user_data) &amp;&amp; !(snapshot_mode &amp;&amp; snapshot_done))) {
-202     force_first_iteration = false;
-203     loop_iteration++;
-204     log_info(&quot;[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu&quot;, loop_iteration, snapshot_done ? &quot;YES&quot; : &quot;NO&quot;, frame_count);
-205     if (loop_iteration % 60 == 0) {
-206       log_debug(&quot;session_render_loop: iteration %d, should_exit check returning false&quot;, loop_iteration);
-207     }
-208     // Snapshot mode: exit at start of iteration if done
-209     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
-210     if (snapshot_mode &amp;&amp; snapshot_done &amp;&amp; frame_count &gt; 0) {
-211       log_info(&quot;[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)&quot;, frame_count);
-212       break;
-213     }
-214 
-215     log_debug_every(US_PER_SEC_INT, &quot;session_render_loop: frame %lu&quot;, frame_count);
-216     // Frame timing - measure total time to maintain target FPS
-217     frame_start_ns = time_get_ns();
+201   // Register display context globally so signal handlers (Ctrl+C) can access it
+202   // This enables Ctrl+C to close the help screen instead of quitting when help is active
+203   session_display_set_global_context(display);
+204 
+205   while (force_first_iteration || (!should_exit(user_data) &amp;&amp; !(snapshot_mode &amp;&amp; snapshot_done))) {
+206     force_first_iteration = false;
+207     loop_iteration++;
+208     log_info(&quot;[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu&quot;, loop_iteration, snapshot_done ? &quot;YES&quot; : &quot;NO&quot;, frame_count);
+209     if (loop_iteration % 60 == 0) {
+210       log_debug(&quot;session_render_loop: iteration %d, should_exit check returning false&quot;, loop_iteration);
+211     }
+212     // Snapshot mode: exit at start of iteration if done
+213     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
+214     if (snapshot_mode &amp;&amp; snapshot_done &amp;&amp; frame_count &gt; 0) {
+215       log_info(&quot;[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)&quot;, frame_count);
+216       break;
+217     }
 218 
-219     // Frame capture and timing - mode-dependent
-220     image_t *image = NULL;
-221     uint64_t capture_start_ns = 0;
-222     uint64_t capture_end_ns = 0;
-223     uint64_t pre_convert_ns = 0;
-224     uint64_t post_convert_ns = 0;
-225     uint64_t conversion_elapsed_ns = 0;
-226 
-227     // EVENT-DRIVEN MODE: Frames come from callbacks
-228     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
-229     sleep_cb(user_data);
-230     image = capture_cb(user_data);
-231 
-232     if (!image) {
-233       // No frame available - this is normal in async modes (network latency, etc.)
-234       // Just continue to next iteration, don't exit
-235       continue;
-236     }
-237 
-238     // Event-driven mode: increment frame count
-239     frame_count++;
-240 
-241     // Check for terminal resize (if auto_width or auto_height is enabled)
-242     // This allows the render to adapt immediately when the user resizes the terminal
-243     bool auto_width = GET_OPTION(auto_width);
-244     bool auto_height = GET_OPTION(auto_height);
-245     if (auto_width || auto_height) {
-246       unsigned short int current_width = 0;
-247       unsigned short int current_height = 0;
-248 
-249       asciichat_error_t size_err = get_terminal_size(&amp;current_width, &amp;current_height);
-250       if (size_err == ASCIICHAT_OK) {
-251         bool width_changed = auto_width &amp;&amp; (current_width != last_terminal_width);
-252         bool height_changed = auto_height &amp;&amp; (current_height != last_terminal_height);
-253 
-254         if (width_changed || height_changed) {
-255           if (width_changed) {
-256             options_set_int(&quot;width&quot;, current_width);
-257             log_info(&quot;Terminal width changed: %u &#x2192; %u&quot;, last_terminal_width, current_width);
-258             last_terminal_width = current_width;
-259           }
-260           if (height_changed) {
-261             options_set_int(&quot;height&quot;, current_height);
-262             log_info(&quot;Terminal height changed: %u &#x2192; %u&quot;, last_terminal_height, current_height);
-263             last_terminal_height = current_height;
-264           }
-265           // Clear screen when terminal is resized to avoid visual artifacts
-266           terminal_clear_screen();
-267         }
-268       }
-269     }
-270 
-271     // Convert image to ASCII using display context
-272     // Handles all palette, terminal caps, width, height, stretch settings
-273     pre_convert_ns = time_get_ns();
-274     char *ascii_frame = session_display_convert_to_ascii(display, image);
-275     post_convert_ns = time_get_ns();
-276     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
-277 
-278 
-279     if (frame_count &lt;= 3) {
-280       log_info(&quot;RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)&quot;,
-281                frame_count, (void *)image, (void *)ascii_frame,
-282                (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
-283     }
-284 
-285     // Declare variables that need scope beyond the if (ascii_frame) block
-286     bool is_paused_frame = initial_paused_frame_rendered &amp;&amp; is_paused;
-287     bool output_paused_frame = snapshot_mode &amp;&amp; is_paused_frame;
-288     uint64_t pre_render_ns = 0, post_render_ns = 0;
-289 
-290     if (ascii_frame) {
-291       log_info_every(1 * NS_PER_SEC_INT, &quot;render_loop: ascii_frame ready (len=%zu)&quot;, strlen(ascii_frame));
-292 
-293       // Always attempt to render frames; the display context will handle filtering based on:
-294       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
-295       // - Piped mode: render all frames without cursor control (for continuous capture)
-296       // - Snapshot mode on non-TTY: only the display context renders the final frame
-297       // BUT: don't render if splash screen is still animating - wait for it to finish
-298       bool splash_running = splash_is_running();
-299       bool should_write = !splash_running;
-300       if (frame_count == 1) {
-301         log_dev(&quot;[RENDER_FRAME] Frame 1: splash_is_running=%s, should_write=%s&quot;, splash_running ? &quot;YES&quot; : &quot;NO&quot;, should_write ? &quot;YES&quot; : &quot;NO&quot;);
-302       }
-303       if (should_write) {
-304         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
-305         // Profile: render frame
-306         pre_render_ns = time_get_ns();
-307         START_TIMER(&quot;render_frame&quot;);
-308 
-309         if (frame_count &lt;= 5 || frame_count % 10 == 0) {
-310           log_info(&quot;RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p&quot;,
-311                    (unsigned long)frame_count, (void *)display);
-312         }
-313 
-314         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
-315         // The signal handler sets an atomic flag instead of touching state directly.
-316         if (display &amp;&amp; keyboard_help_check_signal_cancel()) {
-317           keyboard_help_toggle(display);
-318           log_debug(&quot;Ctrl+C cancelled help screen - returning to ASCII art&quot;);
-319         }
-320 
-321         // Check if help screen is active - if so, render help instead of frame
-322         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-323         bool help_is_active = display &amp;&amp; keyboard_help_is_active(display);
+219     log_debug_every(US_PER_SEC_INT, &quot;session_render_loop: frame %lu&quot;, frame_count);
+220     // Frame timing - measure total time to maintain target FPS
+221     frame_start_ns = time_get_ns();
+222 
+223     // Frame capture and timing - mode-dependent
+224     image_t *image = NULL;
+225     uint64_t capture_start_ns = 0;
+226     uint64_t capture_end_ns = 0;
+227     uint64_t pre_convert_ns = 0;
+228     uint64_t post_convert_ns = 0;
+229     uint64_t conversion_elapsed_ns = 0;
+230 
+231     // EVENT-DRIVEN MODE: Frames come from callbacks
+232     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
+233     sleep_cb(user_data);
+234     image = capture_cb(user_data);
+235 
+236     if (!image) {
+237       // No frame available - this is normal in async modes (network latency, etc.)
+238       // Just continue to next iteration, don't exit
+239       continue;
+240     }
+241 
+242     // Event-driven mode: increment frame count
+243     frame_count++;
+244 
+245     // Check for terminal resize (if auto_width or auto_height is enabled)
+246     // This allows the render to adapt immediately when the user resizes the terminal
+247     bool auto_width = GET_OPTION(auto_width);
+248     bool auto_height = GET_OPTION(auto_height);
+249     if (auto_width || auto_height) {
+250       unsigned short int current_width = 0;
+251       unsigned short int current_height = 0;
+252 
+253       asciichat_error_t size_err = get_terminal_size(&amp;current_width, &amp;current_height);
+254       if (size_err == ASCIICHAT_OK) {
+255         bool width_changed = auto_width &amp;&amp; (current_width != last_terminal_width);
+256         bool height_changed = auto_height &amp;&amp; (current_height != last_terminal_height);
+257 
+258         if (width_changed || height_changed) {
+259           if (width_changed) {
+260             options_set_int(&quot;width&quot;, current_width);
+261             log_info(&quot;Terminal width changed: %u &#x2192; %u&quot;, last_terminal_width, current_width);
+262             last_terminal_width = current_width;
+263           }
+264           if (height_changed) {
+265             options_set_int(&quot;height&quot;, current_height);
+266             log_info(&quot;Terminal height changed: %u &#x2192; %u&quot;, last_terminal_height, current_height);
+267             last_terminal_height = current_height;
+268           }
+269           // Clear screen when terminal is resized to avoid visual artifacts
+270           terminal_clear_screen();
+271         }
+272       }
+273     }
+274 
+275     // Convert image to ASCII using display context
+276     // Handles all palette, terminal caps, width, height, stretch settings
+277     pre_convert_ns = time_get_ns();
+278     char *ascii_frame = session_display_convert_to_ascii(display, image);
+279     post_convert_ns = time_get_ns();
+280     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
+281 
+282 
+283     if (frame_count &lt;= 3) {
+284       log_info(&quot;RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)&quot;,
+285                frame_count, (void *)image, (void *)ascii_frame,
+286                (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
+287     }
+288 
+289     // Declare variables that need scope beyond the if (ascii_frame) block
+290     bool is_paused_frame = initial_paused_frame_rendered &amp;&amp; is_paused;
+291     bool output_paused_frame = snapshot_mode &amp;&amp; is_paused_frame;
+292     uint64_t pre_render_ns = 0, post_render_ns = 0;
+293 
+294     if (ascii_frame) {
+295       log_info_every(1 * NS_PER_SEC_INT, &quot;render_loop: ascii_frame ready (len=%zu)&quot;, strlen(ascii_frame));
+296 
+297       // Always attempt to render frames; the display context will handle filtering based on:
+298       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
+299       // - Piped mode: render all frames without cursor control (for continuous capture)
+300       // - Snapshot mode on non-TTY: only the display context renders the final frame
+301       // BUT: don't render if splash screen is still animating - wait for it to finish
+302       bool splash_running = splash_is_running();
+303       bool should_write = !splash_running;
+304       if (frame_count == 1) {
+305         log_dev(&quot;[RENDER_FRAME] Frame 1: splash_is_running=%s, should_write=%s&quot;, splash_running ? &quot;YES&quot; : &quot;NO&quot;, should_write ? &quot;YES&quot; : &quot;NO&quot;);
+306       }
+307       if (should_write) {
+308         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
+309         // Profile: render frame
+310         pre_render_ns = time_get_ns();
+311         START_TIMER(&quot;render_frame&quot;);
+312 
+313         if (frame_count &lt;= 5 || frame_count % 10 == 0) {
+314           log_info(&quot;RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p&quot;,
+315                    (unsigned long)frame_count, (void *)display);
+316         }
+317 
+318         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
+319         // The signal handler sets an atomic flag instead of touching state directly.
+320         if (display &amp;&amp; keyboard_help_check_signal_cancel()) {
+321           keyboard_help_toggle(display);
+322           log_debug(&quot;Ctrl+C cancelled help screen - returning to ASCII art&quot;);
+323         }
 324 
-325         // Detect transition from help to ASCII art rendering
-326         // When help closes, clear the screen before rendering ASCII art
-327         if (help_was_active &amp;&amp; !help_is_active) {
-328           terminal_clear_screen();
-329           log_debug_every(1 * NS_PER_SEC_INT, &quot;Cleared screen when transitioning from help to ASCII art&quot;);
-330         }
-331 
-332         if (help_is_active) {
-333           keyboard_help_render(display);
-334         } else {
-335           session_display_render_frame(display, ascii_frame);
-336         }
-337 
-338         // Snapshot mode: increment frame counter for all displayed frames
-339         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
-340         // Timer is started by display.c when g_snapshot_first_frame_rendered is set
-341         if (snapshot_mode &amp;&amp; g_snapshot_first_frame_rendered) {
-342           frames_rendered_since_first++;
-343           log_info_every(1 * NS_PER_SEC_INT, &quot;[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu&quot;, frames_rendered_since_first);
-344         }
-345 
-346         // Update help state for next iteration
-347         help_was_active = help_is_active;
-348 
-349         STOP_TIMER(&quot;render_frame&quot;);
-350       }
-351 
-352       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
-353       // Allow keyboard in snapshot mode too (for help screen toggle debugging)
-354       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
-355       // when tcsetattr() modifies the tty line discipline
-356       if (keyboard_enabled &amp;&amp; keyboard_handler) {
-357         START_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
-358         keyboard_key_t key = keyboard_read_nonblocking();
-359         double keyboard_elapsed_ns = STOP_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
-360         if (keyboard_elapsed_ns &gt;= 0.0) {
-361           char _duration_str[32];
-362           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
-363           log_dev_every(1 * NS_PER_SEC_INT, &quot;RENDER[%lu] Keyboard read complete (key=%d) in %s&quot;,
-364                         (unsigned long)frame_count, key, _duration_str);
-365         }
-366         if (key != KEY_NONE) {
-367           log_debug(&quot;KEYBOARD: Key pressed: code=%d char='%c'&quot;, key, (key &gt;= 32 &amp;&amp; key &lt; 127) ? key : '?');
-368           // Check if interactive grep should handle this key
-369           if (log_search_should_handle(key)) {
-370             log_debug(&quot;KEYBOARD: Grep handler taking key %d&quot;, key);
-371             log_search_handle_key(key);
-372             continue; // Force immediate re-render
-373           }
-374 
-375           // Normal keyboard handler
-376           log_debug(&quot;KEYBOARD: Normal handler taking key %d&quot;, key);
-377           keyboard_handler(capture, key, user_data);
-378         }
-379       }
-380 
-381 
-382       // Free frame before checking exit conditions to avoid double-free
-383       SAFE_FREE(ascii_frame);
-384     }
+325         // Check if help screen is active - if so, render help instead of frame
+326         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
+327         bool help_is_active = display &amp;&amp; keyboard_help_is_active(display);
+328 
+329         // Detect transition from help to ASCII art rendering
+330         // When help closes, clear the screen before rendering ASCII art
+331         if (help_was_active &amp;&amp; !help_is_active) {
+332           terminal_clear_screen();
+333           log_debug_every(1 * NS_PER_SEC_INT, &quot;Cleared screen when transitioning from help to ASCII art&quot;);
+334         }
+335 
+336         if (help_is_active) {
+337           keyboard_help_render(display);
+338         } else {
+339           session_display_render_frame(display, ascii_frame);
+340         }
+341 
+342         // Snapshot mode: increment frame counter for all displayed frames
+343         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
+344         // Timer is started by display.c when g_snapshot_first_frame_rendered is set
+345         if (snapshot_mode &amp;&amp; g_snapshot_first_frame_rendered) {
+346           frames_rendered_since_first++;
+347           log_info_every(1 * NS_PER_SEC_INT, &quot;[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu&quot;, frames_rendered_since_first);
+348         }
+349 
+350         // Update help state for next iteration
+351         help_was_active = help_is_active;
+352 
+353         STOP_TIMER(&quot;render_frame&quot;);
+354       }
+355 
+356       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
+357       // Allow keyboard in snapshot mode too (for help screen toggle debugging)
+358       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
+359       // when tcsetattr() modifies the tty line discipline
+360       if (keyboard_enabled &amp;&amp; keyboard_handler) {
+361         START_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
+362         keyboard_key_t key = keyboard_read_nonblocking();
+363         double keyboard_elapsed_ns = STOP_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
+364         if (keyboard_elapsed_ns &gt;= 0.0) {
+365           char _duration_str[32];
+366           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
+367           log_dev_every(1 * NS_PER_SEC_INT, &quot;RENDER[%lu] Keyboard read complete (key=%d) in %s&quot;,
+368                         (unsigned long)frame_count, key, _duration_str);
+369         }
+370         if (key != KEY_NONE) {
+371           log_debug(&quot;KEYBOARD: Key pressed: code=%d char='%c'&quot;, key, (key &gt;= 32 &amp;&amp; key &lt; 127) ? key : '?');
+372           // Check if interactive grep should handle this key
+373           if (log_search_should_handle(key)) {
+374             log_debug(&quot;KEYBOARD: Grep handler taking key %d&quot;, key);
+375             log_search_handle_key(key);
+376             continue; // Force immediate re-render
+377           }
+378 
+379           // Normal keyboard handler
+380           log_debug(&quot;KEYBOARD: Normal handler taking key %d&quot;, key);
+381           keyboard_handler(capture, key, user_data);
+382         }
+383       }
+384 
 385 
-386     // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)
-387     // Separate from capture timing - both should measure their own snapshot_delay
-388     if (snapshot_mode &amp;&amp; !snapshot_done) {
-389       if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
-390         double snapshot_delay = GET_OPTION(snapshot_delay);
-391         uint64_t now_ns = time_get_ns();
-392         uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-393         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-394 
-395         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
-396           log_info(&quot;SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)&quot;,
-397                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
-398         }
-399 
-400         // snapshot_delay=0 means exit after first frame
-401         // snapshot_delay&gt;0 means wait that many seconds before exiting
-402         // Exit is based on elapsed wall-clock time, not frame count
-403         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
-404 
-405         if (should_exit) {
-406           log_info(&quot;SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)&quot;,
-407                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
-408           // We don't end frames with newlines so the next log would print on the same line as the frame's
-409           // last row without an \n here. We only need this \n in stdout when interactive,
-410           // so piped snapshots don't have a weird newline in stdout that they don't need.
-411           if (terminal_is_interactive()) {
-412             printf(&quot;\n&quot;);
-413           }
-414           snapshot_done = true;
-415         }
-416       } else {
-417         if (frames_rendered_since_first == 0) {
-418           log_debug(&quot;SNAPSHOT: Waiting for first_frame_rendered (g_snapshot_first_frame_rendered=%d, g_snapshot_first_frame_rendered_ns=%llu)&quot;,
-419                     g_snapshot_first_frame_rendered, (unsigned long long)g_snapshot_first_frame_rendered_ns);
-420         }
-421       }
-422     }
-423 
-424     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
-425     if (snapshot_mode &amp;&amp; (snapshot_done || output_paused_frame)) {
-426       log_info(&quot;SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d&quot;, snapshot_done, output_paused_frame);
+386       // Free frame before checking exit conditions to avoid double-free
+387       SAFE_FREE(ascii_frame);
+388     }
+389 
+390     // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)
+391     // Separate from capture timing - both should measure their own snapshot_delay
+392     if (snapshot_mode &amp;&amp; !snapshot_done) {
+393       if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
+394         double snapshot_delay = GET_OPTION(snapshot_delay);
+395         uint64_t now_ns = time_get_ns();
+396         uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+397         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+398 
+399         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
+400           log_info(&quot;SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)&quot;,
+401                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
+402         }
+403 
+404         // snapshot_delay=0 means exit after first frame
+405         // snapshot_delay&gt;0 means wait that many seconds before exiting
+406         // Exit is based on elapsed wall-clock time, not frame count
+407         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
+408 
+409         if (should_exit) {
+410           log_info(&quot;SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)&quot;,
+411                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
+412           // We don't end frames with newlines so the next log would print on the same line as the frame's
+413           // last row without an \n here. We only need this \n in stdout when interactive,
+414           // so piped snapshots don't have a weird newline in stdout that they don't need.
+415           if (terminal_is_interactive()) {
+416             printf(&quot;\n&quot;);
+417           }
+418           snapshot_done = true;
+419         }
+420       } else {
+421         if (frames_rendered_since_first == 0) {
+422           log_debug(&quot;SNAPSHOT: Waiting for first_frame_rendered (g_snapshot_first_frame_rendered=%d, g_snapshot_first_frame_rendered_ns=%llu)&quot;,
+423                     g_snapshot_first_frame_rendered, (unsigned long long)g_snapshot_first_frame_rendered_ns);
+424         }
+425       }
+426     }
 427 
-428       // Calculate elapsed time from first frame captured (for video file)
-429       // This is separate from render time - video should span from first capture to last capture
-430       double capture_elapsed_sec = 0.0;
-431       if (g_snapshot_first_capture_ns &gt; 0) {
-432         uint64_t now_ns = time_get_ns();
-433         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
-434         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-435         log_info(&quot;SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, g_snapshot_first_capture_ns=%llu&quot;,
-436                  capture_elapsed_sec,
-437                  (g_snapshot_first_frame_rendered_ns &gt; 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0,
-438                  (unsigned long long)g_snapshot_first_capture_ns);
-439       } else {
-440         log_warn(&quot;SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!&quot;);
-441       }
-442 
-443       // Pass actual capture elapsed time to encoder for correct video duration
-444       log_info(&quot;SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p&quot;,
-445                capture_elapsed_sec, (void *)display);
-446       if (display) {
-447         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
-448       } else {
-449         log_warn(&quot;SNAPSHOT: display context is NULL!&quot;);
-450       }
-451 
-452       // Signal application to exit in snapshot mode
-453       APP_CALLBACK_VOID(signal_exit);
-454       break;
-455     }
-456 
-457     // Frame rendering and timing details (moved down since snapshot exit is now above it)
-458     if (ascii_frame) {
-459 
-460       // Measure frame completion right after rendering, BEFORE keyboard polling
-461       // This gives us accurate timing for just the core frame operations
-462       uint64_t frame_end_render_ns = time_get_ns();
+428     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
+429     if (snapshot_mode &amp;&amp; (snapshot_done || output_paused_frame)) {
+430       log_info(&quot;SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d&quot;, snapshot_done, output_paused_frame);
+431 
+432       // Calculate elapsed time from first frame captured (for video file)
+433       // This is separate from render time - video should span from first capture to last capture
+434       double capture_elapsed_sec = 0.0;
+435       if (g_snapshot_first_capture_ns &gt; 0) {
+436         uint64_t now_ns = time_get_ns();
+437         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+438         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+439         log_info(&quot;SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, g_snapshot_first_capture_ns=%llu&quot;,
+440                  capture_elapsed_sec,
+441                  (g_snapshot_first_frame_rendered_ns &gt; 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0,
+442                  (unsigned long long)g_snapshot_first_capture_ns);
+443       } else {
+444         log_warn(&quot;SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!&quot;);
+445       }
+446 
+447       // Pass actual capture elapsed time to encoder for correct video duration
+448       log_info(&quot;SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p&quot;,
+449                capture_elapsed_sec, (void *)display);
+450       if (display) {
+451         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
+452       } else {
+453         log_warn(&quot;SNAPSHOT: display context is NULL!&quot;);
+454       }
+455 
+456       // Signal application to exit in snapshot mode
+457       APP_CALLBACK_VOID(signal_exit);
+458       break;
+459     }
+460 
+461     // Frame rendering and timing details (moved down since snapshot exit is now above it)
+462     if (ascii_frame) {
 463 
-464       // Calculate each phase duration
-465       uint64_t prestart_ms =
-466           (capture_start_ns &gt; frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
-467       uint64_t capture_ms =
-468           (capture_end_ns &gt; capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
-469       uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
-470       uint64_t render_ms =
-471           (post_render_ns &gt; pre_render_ns &amp;&amp; post_render_ns &gt; 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
-472       uint64_t total_ms =
-473           (frame_end_render_ns &gt; frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
-474 
-475       // Log phase breakdown every 5 frames
-476       if (frame_count % 5 == 0) {
-477         log_dev_every(
-478             2 * NS_PER_SEC_INT,
-479             &quot;PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)&quot;,
-480             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
-481       }
-482     } else {
-483       // Snapshot mode: even if frame conversion failed, check if we should exit
-484       // This ensures snapshot_delay is honored even if display context isn't rendering
-485       if (snapshot_mode &amp;&amp; snapshot_done) {
-486         break;
-487       }
-488     }
-489 
-490     // In event-driven mode, frame rate limiting is handled by the sleep_cb callback
-491     // Synchronous mode (with capture context) uses the pipeline and returns early above
-492 
-493     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
-494     // The image pointers are managed by the source and will be cleaned up on source shutdown
-495   } // while (!should_exit(user_data)) {
+464       // Measure frame completion right after rendering, BEFORE keyboard polling
+465       // This gives us accurate timing for just the core frame operations
+466       uint64_t frame_end_render_ns = time_get_ns();
+467 
+468       // Calculate each phase duration
+469       uint64_t prestart_ms =
+470           (capture_start_ns &gt; frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+471       uint64_t capture_ms =
+472           (capture_end_ns &gt; capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
+473       uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
+474       uint64_t render_ms =
+475           (post_render_ns &gt; pre_render_ns &amp;&amp; post_render_ns &gt; 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
+476       uint64_t total_ms =
+477           (frame_end_render_ns &gt; frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+478 
+479       // Log phase breakdown every 5 frames
+480       if (frame_count % 5 == 0) {
+481         log_dev_every(
+482             2 * NS_PER_SEC_INT,
+483             &quot;PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)&quot;,
+484             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
+485       }
+486     } else {
+487       // Snapshot mode: even if frame conversion failed, check if we should exit
+488       // This ensures snapshot_delay is honored even if display context isn't rendering
+489       if (snapshot_mode &amp;&amp; snapshot_done) {
+490         break;
+491       }
+492     }
+493 
+494     // In event-driven mode, frame rate limiting is handled by the sleep_cb callback
+495     // Synchronous mode (with capture context) uses the pipeline and returns early above
 496 
-497   // Re-enable console logging after rendering completes
-498   log_set_terminal_output(true);
-499   if (!snapshot_mode &amp;&amp; terminal_is_interactive()) {
-500     printf(&quot;\n&quot;);
-501   }
-502 
-503   // Keyboard input cleanup (if it was initialized)
-504   if (keyboard_enabled) {
-505     keyboard_destroy();
-506     log_debug_every(2 * NS_PER_SEC_INT, &quot;Keyboard input disabled&quot;);
-507   }
-508 
-509   // Unregister global display context (for signal handlers)
-510   session_display_set_global_context(NULL);
-511 
-512   return ASCIICHAT_OK;
-513 }</pre>
+497     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
+498     // The image pointers are managed by the source and will be cleaned up on source shutdown
+499   } // while (!should_exit(user_data)) {
+500 
+501   // Re-enable console logging after rendering completes
+502   log_set_terminal_output(true);
+503   if (!snapshot_mode &amp;&amp; terminal_is_interactive()) {
+504     printf(&quot;\n&quot;);
+505   }
+506 
+507   // Keyboard input cleanup (if it was initialized)
+508   if (keyboard_enabled) {
+509     keyboard_destroy();
+510     log_debug_every(2 * NS_PER_SEC_INT, &quot;Keyboard input disabled&quot;);
+511   }
+512 
+513   // Unregister global display context (for signal handlers)
+514   session_display_set_global_context(NULL);
+515 
+516   return ASCIICHAT_OK;
+517 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APP_CALLBACK_VOID</b>, <b>ASCIICHAT_OK</b>,
@@ -8551,154 +8471,6 @@ int main(void) {
     <b>terminal_get_effective_width()</b>, <b>terminal_is_interactive()</b>,
     <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
     <b>time_get_ns()</b>, <b>time_pretty()</b>, and <b>US_PER_SEC_INT</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_server_like_run (const
-  <b>session_server_like_config_t</b> * config)</h2>
-<p class="Pp">#include &lt;<b>src/common/session/server_like.h</b>&gt;<b>Run a
-    server-like mode with unified initialization and shutdown</b></p>
-<p class="Pp"></p>
-<p class="Pp">This function orchestrates the complete lifecycle of server-like
-    modes by handling common boilerplate (keepawake, signal handlers) while
-    delegating mode-specific logic to callbacks. Status screen threading and
-    keyboard handling are the responsibility of individual modes.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Initialization_Sequence"><a class="permalink" href="#Initialization_Sequence">Initialization
-  Sequence</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Keepawake Validation &amp; Setup:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Validates mutual exclusivity of --keepawake and --no-keepawake</dd>
-  <dt> &#x2022;</dt>
-  <dd>Enables keepawake if requested (default: off for server modes)</dd>
-  <dt>2.</dt>
-  <dd><b>Signal Handler Registration:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Stores mode's interrupt_fn in static scope for signal context</dd>
-  <dt> &#x2022;</dt>
-  <dd>Registers SIGINT and SIGTERM to call server_like_signal_wrapper()</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ignores SIGPIPE (TCP/WebSocket friendly)</dd>
-  <dt> &#x2022;</dt>
-  <dd>interrupt_fn must be async-signal-safe and close listening sockets</dd>
-  <dt>3.</dt>
-  <dd><b>Mode-Specific Initialization:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Calls config-&gt;init_fn(config-&gt;init_user_data)</dd>
-  <dt> &#x2022;</dt>
-  <dd>If init_fn fails, returns error code and proceeds to cleanup</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Main_Run_Loop"><a class="permalink" href="#Main_Run_Loop">Main
-  Run Loop</a></h2>
-<p class="Pp">Calls config-&gt;run_fn(config-&gt;run_user_data), which blocks
-    until server shuts down. This is typically an accept loop (tcp_server_run,
-    acds_server_run, etc.).</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Cleanup_(always_runs,_even_on_error)"><a class="permalink" href="#Cleanup_(always_runs,_even_on_error)">Cleanup
-  (always runs, even on error)</a></h2>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Disables keepawake if it was enabled during init</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Notes"><a class="permalink" href="#Notes">Notes</a></h2>
-<ul class="Bl-bullet">
-  <li>Status screen threading is <b>not</b> managed by this layer. Modes that
-      need status display should implement their own status_fn callback and
-      thread management within run_fn.</li>
-  <li>The config-&gt;status_fn field is available for mode-specific use but is
-      not invoked by server_like itself.</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Mode configuration.
-  Must not be NULL. init_fn, run_fn, and interrupt_fn must not be
-  NULL.</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, or the first error code from
-  initialization or from run_fn. Cleanup always runs regardless of return
-  value.</div>
-<p class="Pp">Definition at line <b>38</b> of file <b>server_like.c</b>.</p>
-<pre>38                                                                                       {
-39   if (!config) {
-40     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config is NULL&quot;);
-41   }
-42 
-43   if (!config-&gt;init_fn) {
-44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;init_fn is NULL&quot;);
-45   }
-46 
-47   if (!config-&gt;run_fn) {
-48     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;run_fn is NULL&quot;);
-49   }
-50 
-51   if (!config-&gt;interrupt_fn) {
-52     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;interrupt_fn is NULL&quot;);
-53   }
-54 
-55   asciichat_error_t result = ASCIICHAT_OK;
-56 
-57   /* === INITIALIZATION === */
-58 
-59   /* 1. Validate keepawake mutual exclusivity */
-60   bool keepawake_enabled = GET_OPTION(enable_keepawake);
-61   bool keepawake_disabled = GET_OPTION(disable_keepawake);
-62   if (keepawake_enabled &amp;&amp; keepawake_disabled) {
-63     return SET_ERRNO(ERROR_INVALID_PARAM,
-64                      &quot;Cannot specify both --keepawake and --no-keepawake&quot;);
-65   }
-66 
-67   /* 2. Enable keepawake if requested (default is off for servers) */
-68   if (keepawake_enabled) {
-69     platform_enable_keepawake();
-70   }
-71 
-72   /* 3. Store interrupt callback for signal handlers */
-73   g_server_like_interrupt_fn = config-&gt;interrupt_fn;
-74 
-75   /* 4. Register signal handlers - note: signal handlers call interrupt_fn */
-76   platform_signal(SIGINT, (signal_handler_t)server_like_signal_wrapper);
-77   platform_signal(SIGTERM, (signal_handler_t)server_like_signal_wrapper);
-78   platform_signal(SIGPIPE, SIG_IGN);
-79 
-80   /* 5. Call mode-specific initialization */
-81   result = config-&gt;init_fn(config-&gt;init_user_data);
-82   if (result != ASCIICHAT_OK) {
-83     log_error(&quot;Mode initialization failed&quot;);
-84     goto cleanup;
-85   }
-86 
-87   /* === RUN === */
-88 
-89   /* 6. Call mode-specific blocking run loop */
-90   result = config-&gt;run_fn(config-&gt;run_user_data);
-91 
-92 cleanup:
-93   /* === CLEANUP === */
-94 
-95   /* 7. Disable keepawake */
-96   if (keepawake_enabled) {
-97     platform_disable_keepawake();
-98   }
-99 
-100   return result;
-101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>GET_OPTION</b>, <b>session_server_like_config::init_fn</b>,
-    <b>session_server_like_config::init_user_data</b>,
-    <b>session_server_like_config::interrupt_fn</b>, <b>log_error</b>,
-    <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
-    <b>platform_signal()</b>, <b>session_server_like_config::run_fn</b>,
-    <b>session_server_like_config::run_user_data</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_settings_apply_to_options (const
@@ -9267,7 +9039,7 @@ int main(void) {
 690 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
     <b>atomic_cas_bool()</b>, <b>atomic_store_bool()</b>, <b>log_warn</b>,
     <b>platform_isatty()</b>, <b>splash_log_clear()</b>,
     <b>splash_log_init()</b>, <b>splash_should_display()</b>,
@@ -9449,7 +9221,6 @@ int main(void) {
 <p class="Pp">References <b>lifecycle_init_commit()</b>,
     <b>lifecycle_init_once()</b>, <b>log_debug</b>, <b>mutex_init()</b>,
     <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>SAFE_STRNCPY</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> splash_should_display (<b>bool</b> is_intro)</h2>
@@ -9555,7 +9326,7 @@ int main(void) {
 773 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join</b>,
     <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>log_dev</b>, <b>log_warn</b>,
     <b>NS_PER_MS_INT</b>, <b>shutdown_is_requested()</b>,
@@ -9563,6 +9334,337 @@ int main(void) {
     <b>terminal_flush()</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>, and
     <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> update_banner_has_update (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Check if an update is available (thread-safe).</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if <b>update_banner_set_result()</b> was called with
+  an available update</div>
+<p class="Pp">Definition at line <b>52</b> of file <b>update_banner.c</b>.</p>
+<pre>52                                     {
+53   if (!g_update_result_set) {
+54     return false;
+55   }
+56 
+57   if (lifecycle_init_once(&amp;g_update_result_lifecycle)) {
+58     mutex_init(&amp;g_update_result_mutex, &quot;update_banner_result&quot;);
+59     lifecycle_init_commit(&amp;g_update_result_lifecycle);
+60   }
+61 
+62   mutex_lock(&amp;g_update_result_mutex);
+63   bool available = g_update_result_set &amp;&amp; g_update_result.update_available;
+64   mutex_unlock(&amp;g_update_result_mutex);
+65   return available;
+66 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>, and
+    <b>mutex_unlock</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_banner_print_instructions_(void_)"><a class="permalink" href="#void_update_banner_print_instructions_(void_)">void
+  update_banner_print_instructions (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Print upgrade instructions to stdout and prepare for clean exit.
+    Called after <b>update_banner_show_prompt()</b> returns true. Prints a
+    clear, copy-pasteable upgrade command to stdout.</p>
+<p class="Pp">Definition at line <b>306</b> of file <b>update_banner.c</b>.</p>
+<pre>306                                             {
+307   mutex_lock(&amp;g_update_result_mutex);
+308   update_check_result_t result;
+309   memcpy(&amp;result, &amp;g_update_result, sizeof(result));
+310   mutex_unlock(&amp;g_update_result_mutex);
+311 
+312   install_method_t method = update_check_detect_install_method();
+313   char suggestion[512];
+314   update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
+315 
+316   terminal_clear_screen();
+317 
+318   fprintf(stdout, &quot;\nUpdate available: %s &#x2192; %s\n\n&quot;, result.current_version, result.latest_version);
+319 
+320   if (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) {
+321     fprintf(stdout, &quot;Download the latest release:\n\n    %s\n\n&quot;, suggestion);
+322   } else {
+323     fprintf(stdout, &quot;To upgrade, run:\n\n    %s\n\n&quot;, suggestion);
+324   }
+325 
+326   if (result.release_url[0] != '\0') {
+327     fprintf(stdout, &quot;Release notes: %s\n\n&quot;, result.release_url);
+328   }
+329 
+330   fflush(stdout);
+331 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>update_check_result_t::current_version</b>,
+    <b>INSTALL_METHOD_GITHUB</b>, <b>INSTALL_METHOD_UNKNOWN</b>,
+    <b>update_check_result_t::latest_version</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>update_check_result_t::release_url</b>,
+    <b>terminal_clear_screen()</b>, <b>update_check_detect_install_method()</b>,
+    and <b>update_check_get_upgrade_suggestion()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_banner_set_result_(const_"><a class="permalink" href="#void_update_banner_set_result_(const_">void
+  update_banner_set_result (const <b>update_check_result_t</b> *
+  result)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Store the update check result (thread-safe). Called from the
+    background update check thread after a successful check that found an
+    available update. The result is stored under mutex protection.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>result</i> Update check result to store (copied
+  internally)</div>
+<p class="Pp">Definition at line <b>36</b> of file <b>update_banner.c</b>.</p>
+<pre>36                                                                    {
+37   if (!result || !result-&gt;update_available) {
+38     return;
+39   }
+40 
+41   if (lifecycle_init_once(&amp;g_update_result_lifecycle)) {
+42     mutex_init(&amp;g_update_result_mutex, &quot;update_banner_result&quot;);
+43     lifecycle_init_commit(&amp;g_update_result_lifecycle);
+44   }
+45 
+46   mutex_lock(&amp;g_update_result_mutex);
+47   memcpy(&amp;g_update_result, result, sizeof(g_update_result));
+48   g_update_result_set = true;
+49   mutex_unlock(&amp;g_update_result_mutex);
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>update_check_result_t::update_available</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> update_banner_show_prompt (struct
+  <b>session_display_ctx</b> * ctx)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Show the update prompt screen and wait for user input. Renders a
+    centered box with version info, upgrade command, and release URL. Blocks
+    until the user presses a key:</p>
+<ul class="Bl-bullet">
+  <li>Y/y/Enter: returns true (user wants to exit and update)</li>
+  <li>N/n/Esc: returns false (user wants to continue)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Display context for terminal output</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if user chose to update, false if user chose to
+  continue</div>
+<p class="Pp">Definition at line <b>166</b> of file <b>update_banner.c</b>.</p>
+<pre>166                                                            {
+167   if (!ctx) {
+168     return false;
+169   }
+170 
+171   // Get a copy of the result under mutex
+172   update_check_result_t result;
+173   mutex_lock(&amp;g_update_result_mutex);
+174   memcpy(&amp;result, &amp;g_update_result, sizeof(result));
+175   mutex_unlock(&amp;g_update_result_mutex);
+176 
+177   // Get upgrade suggestion
+178   install_method_t method = update_check_detect_install_method();
+179   char suggestion[512];
+180   update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
+181 
+182   // Terminal dimensions
+183   int term_width = (int)terminal_get_effective_width();
+184   int term_height = (int)terminal_get_effective_height();
+185 
+186   // Box sizing
+187   int box_width = 52;
+188   if (box_width &gt; term_width - 2) {
+189     box_width = term_width - 2;
+190   }
+191   if (box_width &lt; 30) {
+192     box_width = 30;
+193   }
+194 
+195   int box_height = 16;
+196   int start_col = (term_width - box_width) / 2;
+197   if (start_col &lt; 0) {
+198     start_col = 0;
+199   }
+200   int start_row = (term_height - box_height) / 2;
+201   if (start_row &lt; 0) {
+202     start_row = 0;
+203   }
+204 
+205   // Build the screen
+206   const size_t BUF_SIZE = 4096;
+207   char *buffer = SAFE_MALLOC(BUF_SIZE, char *);
+208   size_t buf_pos = 0;
+209 
+210 #define APPEND(fmt, ...)                                                                                               \
+211   do {                                                                                                                 \
+212     int _w = snprintf(buffer + buf_pos, BUF_SIZE - buf_pos, fmt, ##__VA_ARGS__);                                       \
+213     if (_w &gt; 0) {                                                                                                      \
+214       buf_pos += (size_t)_w;                                                                                           \
+215     }                                                                                                                  \
+216   } while (0)
+217 
+218   // Clear screen
+219   APPEND(&quot;\033[2J\033[H&quot;);
+220 
+221   int row = 1;
+222 
+223   // Top border
+224   append_border(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&#x2554;&quot;, &quot;&#x2557;&quot;);
+225 
+226   // Title (bold yellow)
+227   {
+228     char title_content[256];
+229     snprintf(title_content, sizeof(title_content), &quot;\033[1;33mUpdate Available\033[0m&quot;);
+230     append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, title_content);
+231   }
+232 
+233   // Separator
+234   append_border(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&#x2560;&quot;, &quot;&#x2563;&quot;);
+235 
+236   // Blank line
+237   append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&quot;);
+238 
+239   // Current version
+240   {
+241     char line[256];
+242     snprintf(line, sizeof(line), &quot;Current : %s (%.8s)&quot;, result.current_version, result.current_sha);
+243     append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, line);
+244   }
+245 
+246   // Latest version (green)
+247   {
+248     char line[256];
+249     snprintf(line, sizeof(line), &quot;Latest  : \033[32m%s\033[0m&quot;, result.latest_version);
+250     append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, line);
+251   }
+252 
+253   // Blank line
+254   append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&quot;);
+255 
+256   // Separator
+257   append_border(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&#x2560;&quot;, &quot;&#x2563;&quot;);
+258 
+259   // Upgrade instructions
+260   append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;To upgrade:&quot;);
+261   append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&quot;);
+262 
+263   // Upgrade command (bold white)
+264   {
+265     char line[256];
+266     snprintf(line, sizeof(line), &quot;  \033[1m%s\033[0m&quot;, suggestion);
+267     append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, line);
+268   }
+269 
+270   // Blank line
+271   append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&quot;);
+272 
+273   // Separator
+274   append_border(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&#x2560;&quot;, &quot;&#x2563;&quot;);
+275 
+276   // Prompt (grey)
+277   {
+278     char line[256];
+279     snprintf(line, sizeof(line), &quot;\033[90m[Y/Enter] exit to update  [N/Esc] continue\033[0m&quot;);
+280     append_line(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, line);
+281   }
+282 
+283   // Bottom border
+284   append_border(buffer, &amp;buf_pos, BUF_SIZE, start_row, &amp;row, start_col, box_width, &quot;&#x255A;&quot;, &quot;&#x255D;&quot;);
+285 
+286 #undef APPEND
+287 
+288   // Write to terminal
+289   session_display_write_raw(ctx, buffer, buf_pos);
+290   terminal_flush(STDOUT_FILENO);
+291   SAFE_FREE(buffer);
+292 
+293   // Block for user input
+294   while (true) {
+295     keyboard_key_t key = keyboard_read_with_timeout(60000); // 60s timeout, re-loop
+296     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
+297       return true;
+298     }
+299     if (key == 'n' || key == 'N' || key == KEY_ESCAPE) {
+300       return false;
+301     }
+302     // Ignore other keys (including KEY_NONE on timeout &#x2014; just re-render/wait)
+303   }
+304 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>APPEND</b>,
+    <b>update_check_result_t::current_sha</b>,
+    <b>update_check_result_t::current_version</b>,
+    <b>update_check_result_t::latest_version</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>session_display_write_raw()</b>, <b>terminal_flush()</b>,
+    <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>,
+    <b>update_check_detect_install_method()</b>, and
+    <b>update_check_get_upgrade_suggestion()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_banner_start_check_(void_)"><a class="permalink" href="#void_update_banner_start_check_(void_)">void
+  update_banner_start_check (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Start the background update check thread. Spawns a background
+    thread that performs the update check (DNS + HTTPS) and stores the result.
+    The splash screen notification is also set if an update is found. Call
+    <b>update_banner_wait_for_check()</b> later to join.</p>
+<p class="Pp">Definition at line <b>351</b> of file <b>update_banner.c</b>.</p>
+<pre>351                                      {
+352   if (asciichat_thread_create(&amp;g_update_thread, &quot;update_check&quot;, update_check_thread_func, NULL) == 0) {
+353     g_update_thread_started = true;
+354   }
+355 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_banner_wait_for_check_(void_)"><a class="permalink" href="#void_update_banner_wait_for_check_(void_)">void
+  update_banner_wait_for_check (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/ui/update_banner.h</b>&gt;<b></b></p>
+<p class="Pp">Wait for the background update check thread to finish. Blocks up
+    to 5 seconds for the background check to complete. Safe to call even if no
+    check was started.</p>
+<p class="Pp">Definition at line <b>357</b> of file <b>update_banner.c</b>.</p>
+<pre>357                                         {
+358   if (!g_update_thread_started) {
+359     return;
+360   }
+361   int ret = asciichat_thread_join_timeout(&amp;g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+362   if (ret != 0) {
+363     // Timeout &#x2014; thread is still alive. Do a blocking join to avoid orphaning it.
+364     // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
+365     log_warn(&quot;Update check thread did not finish within 5s, waiting for completion&quot;);
+366     asciichat_thread_join(&amp;g_update_thread, NULL);
+367   }
+368   g_update_thread_started = false;
+369 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_join</b>,
+    <b>asciichat_thread_join_timeout()</b>, <b>log_warn</b>, and
+    <b>NS_PER_SEC_INT</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -9572,7 +9674,7 @@ int main(void) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

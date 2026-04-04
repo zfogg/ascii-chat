@@ -49,7 +49,8 @@
   <br/>
   Parsed instrumentation log record. struct <b>thread_entry</b>
   <br/>
-  Hash table entry for thread-local last log record.
+  Hash table entry for thread-local last log record. struct <b>collect_ctx_t</b>
+  <br/>
   <br/>
 </p>
 </section>
@@ -121,40 +122,40 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_char_**_argv)">int
   main (int argc, char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>642</b> of file <b>report.c</b>.</p>
-<pre>642                                 {
-643   report_config_t config = {
-644       .log_dir = NULL,
-645       .log_file = NULL,
-646       .include_filter = NULL,
-647       .exclude_filter = NULL,
-648       .threads = {.values = NULL, .count = 0, .capacity = 0},
-649       .emit_raw_line = false,
-650   };
-651 
-652   log_init(NULL, LOG_INFO, false, false);
-653 
-654   int exit_code = EXIT_SUCCESS;
-655   if (!parse_arguments(argc, argv, &amp;config)) {
-656     exit_code = ERROR_USAGE;
-657     goto cleanup;
-658   }
-659 
-660   thread_entry_t *entries = NULL;
-661   if (!collect_entries(&amp;config, &amp;entries)) {
-662     exit_code = ERROR_GENERAL;
-663     destroy_entries(&amp;entries);
-664     goto cleanup;
-665   }
-666 
-667   print_summary(&amp;config, &amp;entries);
-668   destroy_entries(&amp;entries);
-669 
-670 cleanup:
-671   thread_filter_list_destroy(&amp;config.threads);
-672   log_destroy();
-673   return exit_code;
-674 }</pre>
+<p class="Pp">Definition at line <b>576</b> of file <b>report.c</b>.</p>
+<pre>576                                 {
+577   report_config_t config = {
+578       .log_dir = NULL,
+579       .log_file = NULL,
+580       .include_filter = NULL,
+581       .exclude_filter = NULL,
+582       .threads = {.values = NULL, .count = 0, .capacity = 0},
+583       .emit_raw_line = false,
+584   };
+585 
+586   log_init(NULL, LOG_INFO, false, false);
+587 
+588   int exit_code = EXIT_SUCCESS;
+589   if (!parse_arguments(argc, argv, &amp;config)) {
+590     exit_code = ERROR_USAGE;
+591     goto cleanup;
+592   }
+593 
+594   thread_entry_t *entries = NULL;
+595   if (!collect_entries(&amp;config, &amp;entries)) {
+596     exit_code = ERROR_GENERAL;
+597     destroy_entries(&amp;entries);
+598     goto cleanup;
+599   }
+600 
+601   print_summary(&amp;config, &amp;entries);
+602   destroy_entries(&amp;entries);
+603 
+604 cleanup:
+605   thread_filter_list_destroy(&amp;config.threads);
+606   log_destroy();
+607   return exit_code;
+608 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_GENERAL</b>, <b>ERROR_USAGE</b>,
@@ -169,7 +170,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

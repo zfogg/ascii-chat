@@ -116,7 +116,7 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_APP_NAME___'ascii"><a class="permalink" href="#_define_APP_NAME___'ascii">#define
   APP_NAME 'ascii-chat'</a></h2>
-<p class="Pp">Definition at line <b>93</b> of file <b>main.c</b>.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>main.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_REGISTER_GLOBAL_ATOMICS()"><a class="permalink" href="#_define_REGISTER_GLOBAL_ATOMICS()">#define
@@ -136,15 +136,15 @@
 } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>185</b> of file <b>main.c</b>.</p>
-<pre>185 #define REGISTER_GLOBAL_ATOMICS()                                                                                      \
-186   do {                                                                                                                 \
-187     static bool _global_atomics_registered = false;                                                                    \
-188     if (!_global_atomics_registered) {                                                                                 \
-189       NAMED_REGISTER_ATOMIC(&amp;g_should_exit, &quot;application_exit_flag&quot;, NULL);                                            \
-190       _global_atomics_registered = true;                                                                               \
-191     }                                                                                                                  \
-192   } while (0)</pre>
+<p class="Pp">Definition at line <b>190</b> of file <b>main.c</b>.</p>
+<pre>190 #define REGISTER_GLOBAL_ATOMICS()                                                                                      \
+191   do {                                                                                                                 \
+192     static bool _global_atomics_registered = false;                                                                    \
+193     if (!_global_atomics_registered) {                                                                                 \
+194       NAMED_REGISTER_ATOMIC(&amp;g_should_exit, &quot;application_exit_flag&quot;, NULL);                                            \
+195       _global_atomics_registered = true;                                                                               \
+196     }                                                                                                                  \
+197   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
@@ -152,7 +152,7 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_VERSION___"><a class="permalink" href="#_define_VERSION___">#define
   VERSION <b>ASCII_CHAT_VERSION_FULL</b></a></h2>
-<p class="Pp">Definition at line <b>94</b> of file <b>main.c</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>main.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -161,7 +161,7 @@
 <section class="Ss">
 <h2 class="Ss" id="typedef_int(*_mode_entry_point_t)_(void)"><a class="permalink" href="#typedef_int(*_mode_entry_point_t)_(void)">typedef
   int(* mode_entry_point_t) (void)</a></h2>
-<p class="Pp">Definition at line <b>359</b> of file <b>main.c</b>.</p>
+<p class="Pp">Definition at line <b>364</b> of file <b>main.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -177,554 +177,544 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
   main (int argc, char * argv[])</a></h2>
-<p class="Pp">Definition at line <b>467</b> of file <b>main.c</b>.</p>
-<pre>467                                  {
-468   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
-469   g_argc = argc;
-470   g_argv = argv;
-471 
-472   // Validate basic argument structure
-473   if (argc &lt; 1 || argv == NULL || argv[0] == NULL) {
-474     return 1;
-475   }
+<p class="Pp">Definition at line <b>472</b> of file <b>main.c</b>.</p>
+<pre>472                                  {
+473   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
+474   g_argc = argc;
+475   g_argv = argv;
 476 
-477   // Show cursor early in case a previous session crashed with it hidden
-478   (void)terminal_cursor_show();
-479 
-480   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
-481 #ifndef NDEBUG
-482   named_init();
-483   // Initialize atomic operations debug tracking
-484   debug_atomic_init();
-485   // Register global atomics with descriptive names for debug sync state monitoring
-486   REGISTER_GLOBAL_ATOMICS();
-487   // Static atomics are now auto-registered via ATOMIC_INIT_AUTO macro at definition time
-488   // Register all packet types from the packet_type_t enum
-489   named_registry_register_packet_types();
-490 #endif
-491 
-492   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations
-493 #ifndef NDEBUG
-494 #ifdef _WIN32
-495   NAMED_REGISTER_THREAD(GetCurrentThread(), &quot;main&quot;, NULL);
-496 #else
-497   NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), &quot;main&quot;, NULL);
-498 #endif
-499   // Also save main thread ID for memory reporting (must be very early)
-500   debug_sync_set_main_thread_id();
-501 #endif
-502 
-503   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
-504   // This sets global flags that persist through cleanup, enabling --color to force colors
-505   for (int i = 1; i &lt; argc; i++) {
-506     if (strcmp(argv[i], &quot;--color&quot;) == 0 || strcmp(argv[i], &quot;--color=true&quot;) == 0) {
-507       g_color_flag_passed = true;
-508       g_color_flag_value = true;
-509       break;
-510     } else if (strncmp(argv[i], &quot;--color=&quot;, 8) == 0) {
-511       g_color_flag_passed = true;
-512       g_color_flag_value = strcmp(argv[i], &quot;--color=false&quot;) != 0;
-513       break;
-514     }
-515   }
-516 
-517   // SECOND: Scan for --grep BEFORE ANY logging initialization
-518   // This ensures ALL logs (including from shared_init) can be filtered
-519   // Supports multiple --grep patterns (ORed together)
-520   for (int i = 1; i &lt; argc - 1; i++) {
-521     if (strcmp(argv[i], &quot;--grep&quot;) == 0) {
-522       const char *pattern = argv[i + 1];
-523       asciichat_error_t filter_result = grep_init(pattern);
-524       if (filter_result != ASCIICHAT_OK) {
-525         log_error(&quot;Invalid --grep pattern or invalid flags: \&quot;%s\&quot; - use /pattern/flags format (e.g., \&quot;/query/ig\&quot; or \&quot;/literal/F\&quot;)&quot;, pattern);
-526         return 1;
-527       }
-528       i++; // Skip the pattern argument
-529     }
-530   }
-531 
-532   // Detect terminal capabilities early so colored help output works
-533   // Logging will be initialized by asciichat_shared_init() before options_init()
-534   log_redetect_terminal_capabilities();
-535   terminal_capabilities_t caps = detect_terminal_capabilities();
-536   caps = apply_color_mode_override(caps);
-537 
-538   // Warn if Release build was built from dirty working tree
-539 #if ASCII_CHAT_GIT_IS_DIRTY
-540   if (strcmp(ASCII_CHAT_BUILD_TYPE, &quot;Release&quot;) == 0) {
-541     // Dirty git warning will be logged after logging initialization
-542   }
-543 #endif
-544 
-545   // Load color scheme early (from config files and CLI) before logging initialization
-546   // This allows logging to use the correct colors from the start
-547   options_colorscheme_init_early(argc, argv);
-548 
-549   // Parse --color-scheme from argv early to set logging colors for help output
-550   const char *colorscheme_name = &quot;pastel&quot;; // default
-551   for (int i = 1; i &lt; argc - 1; i++) {
-552     if (strcmp(argv[i], &quot;--color-scheme&quot;) == 0) {
-553       colorscheme_name = argv[i + 1];
-554       break;
-555     }
-556   }
-557 
-558   // Load and apply colorscheme to logging BEFORE options_init() so help gets colors
-559   color_scheme_t scheme;
-560   if (colorscheme_load_builtin(colorscheme_name, &amp;scheme) == ASCIICHAT_OK) {
-561     log_set_color_scheme(&amp;scheme);
-562   } else {
-563     // Fall back to default pastel if scheme not found
-564     if (colorscheme_load_builtin(&quot;pastel&quot;, &amp;scheme) == ASCIICHAT_OK) {
-565       log_set_color_scheme(&amp;scheme);
-566     }
-567   }
-568 
-569   // Initialize logging colors so they're ready for help output
-570   log_init_colors();
-571 
-572   // EARLY PARSE: Find the mode position (first positional argument)
-573   // Binary-level options must appear BEFORE the mode
-574   int mode_position = -1;
-575   for (int i = 1; i &lt; argc; i++) {
-576     if (argv[i][0] != '-') {
-577       // Found a positional argument - this is the mode or session string
-578       mode_position = i;
-579       break;
-580     }
-581 
-582     // Skip option and its argument if needed
-583     // Check if this is an option that takes a required argument
-584     const char *arg = argv[i];
-585     const char *opt_name = arg;
-586     if (arg[0] == '-') {
-587       opt_name = arg + (arg[1] == '-' ? 2 : 1);
-588     }
-589 
-590     // Handle --option=value format
-591     if (strchr(opt_name, '=')) {
-592       continue; // Value is part of this arg, no need to skip next
+477   // Validate basic argument structure
+478   if (argc &lt; 1 || argv == NULL || argv[0] == NULL) {
+479     return 1;
+480   }
+481 
+482   // Show cursor early in case a previous session crashed with it hidden
+483   (void)terminal_cursor_show();
+484 
+485   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
+486 #ifndef NDEBUG
+487   named_init();
+488   // Initialize atomic operations debug tracking
+489   debug_atomic_init();
+490   // Register global atomics with descriptive names for debug sync state monitoring
+491   REGISTER_GLOBAL_ATOMICS();
+492   // Static atomics are now auto-registered via ATOMIC_INIT_AUTO macro at definition time
+493   // Register all packet types from the packet_type_t enum
+494   named_registry_register_packet_types();
+495 #endif
+496 
+497   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations
+498 #ifndef NDEBUG
+499 #ifdef _WIN32
+500   NAMED_REGISTER_THREAD(GetCurrentThread(), &quot;main&quot;, NULL);
+501 #else
+502   NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), &quot;main&quot;, NULL);
+503 #endif
+504   // Also save main thread ID for memory reporting (must be very early)
+505   debug_sync_set_main_thread_id();
+506 #endif
+507 
+508   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
+509   // This sets global flags that persist through cleanup, enabling --color to force colors
+510   for (int i = 1; i &lt; argc; i++) {
+511     if (strcmp(argv[i], &quot;--color&quot;) == 0 || strcmp(argv[i], &quot;--color=true&quot;) == 0) {
+512       g_color_flag_passed = true;
+513       g_color_flag_value = true;
+514       break;
+515     } else if (strncmp(argv[i], &quot;--color=&quot;, 8) == 0) {
+516       g_color_flag_passed = true;
+517       g_color_flag_value = strcmp(argv[i], &quot;--color=false&quot;) != 0;
+518       break;
+519     }
+520   }
+521 
+522   // SECOND: Scan for --grep BEFORE ANY logging initialization
+523   // This ensures ALL logs (including from shared_init) can be filtered
+524   // Supports multiple --grep patterns (ORed together)
+525   for (int i = 1; i &lt; argc - 1; i++) {
+526     if (strcmp(argv[i], &quot;--grep&quot;) == 0) {
+527       const char *pattern = argv[i + 1];
+528       asciichat_error_t filter_result = grep_init(pattern);
+529       if (filter_result != ASCIICHAT_OK) {
+530         log_error(&quot;Invalid --grep pattern or invalid flags: \&quot;%s\&quot; - use /pattern/flags format (e.g., \&quot;/query/ig\&quot; or \&quot;/literal/F\&quot;)&quot;, pattern);
+531         return 1;
+532       }
+533       i++; // Skip the pattern argument
+534     }
+535   }
+536 
+537   // Detect terminal capabilities early so colored help output works
+538   // Logging will be initialized by asciichat_shared_init() before options_init()
+539   log_redetect_terminal_capabilities();
+540   terminal_capabilities_t caps = detect_terminal_capabilities();
+541   caps = apply_color_mode_override(caps);
+542 
+543   // Warn if Release build was built from dirty working tree
+544 #if ASCII_CHAT_GIT_IS_DIRTY
+545   if (strcmp(ASCII_CHAT_BUILD_TYPE, &quot;Release&quot;) == 0) {
+546     // Dirty git warning will be logged after logging initialization
+547   }
+548 #endif
+549 
+550   // Load color scheme early (from config files and CLI) before logging initialization
+551   // This allows logging to use the correct colors from the start
+552   options_colorscheme_init_early(argc, argv);
+553 
+554   // Parse --color-scheme from argv early to set logging colors for help output
+555   const char *colorscheme_name = &quot;pastel&quot;; // default
+556   for (int i = 1; i &lt; argc - 1; i++) {
+557     if (strcmp(argv[i], &quot;--color-scheme&quot;) == 0) {
+558       colorscheme_name = argv[i + 1];
+559       break;
+560     }
+561   }
+562 
+563   // Load and apply colorscheme to logging BEFORE options_init() so help gets colors
+564   color_scheme_t scheme;
+565   if (colorscheme_load_builtin(colorscheme_name, &amp;scheme) == ASCIICHAT_OK) {
+566     log_set_color_scheme(&amp;scheme);
+567   } else {
+568     // Fall back to default pastel if scheme not found
+569     if (colorscheme_load_builtin(&quot;pastel&quot;, &amp;scheme) == ASCIICHAT_OK) {
+570       log_set_color_scheme(&amp;scheme);
+571     }
+572   }
+573 
+574   // Initialize logging colors so they're ready for help output
+575   log_init_colors();
+576 
+577   // EARLY PARSE: Find the mode position (first positional argument)
+578   // Binary-level options must appear BEFORE the mode
+579   int mode_position = -1;
+580   for (int i = 1; i &lt; argc; i++) {
+581     if (argv[i][0] != '-') {
+582       // Found a positional argument - this is the mode or session string
+583       mode_position = i;
+584       break;
+585     }
+586 
+587     // Skip option and its argument if needed
+588     // Check if this is an option that takes a required argument
+589     const char *arg = argv[i];
+590     const char *opt_name = arg;
+591     if (arg[0] == '-') {
+592       opt_name = arg + (arg[1] == '-' ? 2 : 1);
 593     }
 594 
-595     // Options that take required arguments
-596     if (strcmp(arg, &quot;--log-file&quot;) == 0 || strcmp(arg, &quot;-L&quot;) == 0 || strcmp(arg, &quot;--log-level&quot;) == 0 ||
-597         strcmp(arg, &quot;--config&quot;) == 0 || strcmp(arg, &quot;--color-scheme&quot;) == 0 || strcmp(arg, &quot;--log-template&quot;) == 0) {
-598       if (i + 1 &lt; argc) {
-599         i++; // Skip the argument value
-600       }
-601     }
-602   }
-603 
-604   // EARLY PARSE: Determine mode from argv to know if this is client-like mode
-605   // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds
-606   bool is_client_like_mode = false;
-607   if (mode_position &gt; 0) {
-608     const char *first_arg = argv[mode_position];
-609     if (strcmp(first_arg, &quot;client&quot;) == 0 || strcmp(first_arg, &quot;mirror&quot;) == 0 || strcmp(first_arg, &quot;discovery&quot;) == 0) {
-610       is_client_like_mode = true;
-611     }
-612   }
-613 
-614   // EARLY PARSE: Extract log file from argv (--log-file or -L)
-615   // Must appear BEFORE the mode
-616   // Generate default log path based on build type and mode
-617   char default_log_path[PATH_MAX];
-618   asciichat_mode_t detected_mode = MODE_INVALID;
-619   if (mode_position &gt; 0) {
-620     const char *mode_str = argv[mode_position];
-621     // Convert mode string to enum
-622     if (strcmp(mode_str, &quot;server&quot;) == 0) {
-623       detected_mode = MODE_SERVER;
-624     } else if (strcmp(mode_str, &quot;client&quot;) == 0) {
-625       detected_mode = MODE_CLIENT;
-626     } else if (strcmp(mode_str, &quot;mirror&quot;) == 0) {
-627       detected_mode = MODE_MIRROR;
-628     } else if (strcmp(mode_str, &quot;acds&quot;) == 0 || strcmp(mode_str, &quot;discovery-service&quot;) == 0) {
-629       detected_mode = MODE_DISCOVERY_SERVICE;
-630     } else if (strcmp(mode_str, &quot;discovery&quot;) == 0) {
-631       detected_mode = MODE_DISCOVERY;
-632     }
-633   }
-634   generate_default_log_path(detected_mode, default_log_path, sizeof(default_log_path));
-635 
-636   const char *log_file = default_log_path;
-637   int max_search = (mode_position &gt; 0) ? mode_position : argc;
-638   for (int i = 1; i &lt; max_search - 1; i++) {
-639     if ((strcmp(argv[i], &quot;--log-file&quot;) == 0 || strcmp(argv[i], &quot;-L&quot;) == 0)) {
-640       log_file = argv[i + 1];
-641       break;
-642     }
-643   }
-644 
-645   // EARLY PARSE: Check for --json (JSON logging format)
-646   // If JSON format is enabled, we'll use the JSON filename during early init
-647   // --json MUST appear BEFORE the mode
-648   bool early_json_format = false;
-649   if (mode_position &gt; 0) {
-650     for (int i = 1; i &lt; mode_position; i++) {
-651       if (strcmp(argv[i], &quot;--json&quot;) == 0) {
-652         early_json_format = true;
-653         break;
-654       }
-655     }
-656   } else {
-657     // If no mode found, search entire argv
-658     for (int i = 1; i &lt; argc; i++) {
-659       if (strcmp(argv[i], &quot;--json&quot;) == 0) {
-660         early_json_format = true;
-661         break;
-662       }
-663     }
-664   }
-665 
-666   // EARLY PARSE: Extract log template from argv (--log-template)
-667   // Note: This is for format templates, different from --log-format which is the output format
-668   // Binary-level options must appear BEFORE the mode
-669   const char *early_log_template = NULL;
-670   bool early_log_template_console_only = false;
-671   for (int i = 1; i &lt; max_search - 1; i++) {
-672     if (strcmp(argv[i], &quot;--log-template&quot;) == 0) {
-673       early_log_template = argv[i + 1];
-674       break;
-675     }
-676   }
-677   for (int i = 1; i &lt; max_search; i++) {
-678     if (strcmp(argv[i], &quot;--log-format-console-only&quot;) == 0) {
-679       early_log_template_console_only = true;
-680       break;
-681     }
-682   }
-683 
-684   // Initialize shared subsystems BEFORE options_init()
-685   // This ensures options parsing can use properly configured logging with colors
-686   // If JSON format is requested, don't write text logs to file
-687   // All logs will be JSON formatted later once options_init() runs
-688   const char *early_log_file = early_json_format ? NULL : log_file;
-689   asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
-690   if (init_result != ASCIICHAT_OK) {
-691     return init_result;
-692   }
-693 
-694   // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
-695   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
-696   if (terminal_should_force_stderr()) {
-697     log_set_force_stderr(true);
-698   }
-699 
-700   // Register cleanup of shared subsystems to run on normal exit
-701   // Library code doesn't call atexit() - the application is responsible
-702   // IMPORTANT: atexit handlers run in LIFO order - last registered runs first
-703   // So register order (top to bottom) = execution order (bottom to top):
-704   // 1. PCRE2 cleanup (runs last) - frees compiled regexes after all code stops using them
-705   // 2. Path cleanup (runs 3rd) - now a no-op but kept for API compatibility
-706   // 3. Shared destroy (runs 2nd) - frees all shared resources
-707   // 4. Cursor show (runs 1st) - shows cursor before exit
-708   (void)atexit(asciichat_pcre2_cleanup_all);
-709   (void)atexit(path_cleanup_thread_locals);
-710   (void)atexit(asciichat_shared_destroy);
-711   (void)atexit(on_exit_show_cursor);
-712 
-713   // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
-714   // Prints a backtrace and exits immediately - useful for debugging hangs
-715 #ifndef NDEBUG
-716   for (int i = 1; i &lt; argc; i++) {
-717     if (strcmp(argv[i], &quot;--backtrace&quot;) == 0) {
-718       log_info(&quot;=== Backtrace at startup ===&quot;);
-719       backtrace_print_simple(0);
-720       log_info(&quot;=== End Backtrace ===&quot;);
-721       asciichat_shared_destroy();
-722       return 0;
-723     }
-724   }
-725 #endif
-726 
-727   // NOW parse all options - can use logging with colors!
-728   asciichat_error_t options_result = options_init(argc, argv);
-729   if (options_result != ASCIICHAT_OK) {
-730     asciichat_error_context_t error_ctx;
-731     if (HAS_ERRNO(&amp;error_ctx)) {
-732       log_error(&quot;Error: %s&quot;, error_ctx.context_message);
-733     } else {
-734       log_error(&quot;Error: Failed to initialize options (error code: %d)&quot;, options_result);
-735     }
-736 
-737     // Clean up options state before exiting
-738     options_state_destroy();
-739     options_cleanup_schema();
-740 
-741     exit(options_result);
-742   }
-743 
-744   // Get parsed options
-745   const options_t *opts = options_get();
-746   if (!opts) {
-747     log_error(&quot;Error: Options not initialized&quot;);
-748     return 1;
-749   }
-750 
-751   // Determine final log file path (use mode-specific default from options if available)
-752   // Determine output format early to decide on filename and logging strategy
-753   bool use_json_logging = GET_OPTION(json);
-754 
-755   // Determine the log filename
-756   // Check if user explicitly passed --log-file (not just the mode-specific default from options_init)
-757   bool user_specified_log_file = false;
-758   for (int i = 1; i &lt; argc - 1; i++) {
-759     if (strcmp(argv[i], &quot;--log-file&quot;) == 0 || strcmp(argv[i], &quot;-L&quot;) == 0) {
-760       user_specified_log_file = true;
-761       break;
-762     }
-763   }
-764 
-765   const char *final_log_file = opts-&gt;log_file;
-766   char json_filename_buf[256];
-767 
-768   if (use_json_logging) {
-769     // When JSON logging is enabled, determine JSON output filename
-770     if (user_specified_log_file) {
-771       // User explicitly specified a log file - use it exactly for JSON output
-772       SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
-773     } else {
-774       // Using default: replace .log with .json in the mode-specific default
-775       // e.g., server.log -&gt; server.json, mirror.log -&gt; mirror.json, etc.
-776       size_t len = strlen(final_log_file);
-777       if (len &gt; 4 &amp;&amp; strcmp(&amp;final_log_file[len - 4], &quot;.log&quot;) == 0) {
-778         // File ends with .log - replace with .json
-779         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
-780         // Replace .log with .json
-781         asciichat_error_t strcpy_result = SAFE_STRCPY(&amp;json_filename_buf[len - 4],
-782                                                        sizeof(json_filename_buf) - (len - 4), &quot;.json&quot;);
-783         if (strcpy_result != ASCIICHAT_OK) {
-784           log_error(&quot;Failed to write .json extension: %s&quot;, asciichat_error_string(strcpy_result));
-785         }
-786       } else {
-787         // File doesn't end with .log - just append .json
-788         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
-789         strncat(json_filename_buf, &quot;.json&quot;, sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
-790       }
-791     }
-792     final_log_file = json_filename_buf;
-793     // For JSON mode: Initialize logging without file (text will be disabled)
-794     // We'll set up JSON output separately below
-795     // Note: log_init() was already called in asciichat_shared_init()
-796   } else {
-797     // Text logging mode: use the file from options (which is mode-specific default or user-specified)
-798     // Note: log_init() was already called in asciichat_shared_init()
-799   }
-800 
-801   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
-802   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
-803   bool final_format_console_only =
-804       early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
-805   if (final_format &amp;&amp; final_format[0] != '\0') {
-806     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
-807     if (fmt_result != ASCIICHAT_OK) {
-808       log_error(&quot;Failed to apply custom log format&quot;);
-809     }
-810   }
-811 
-812   // Configure JSON output if requested
-813   if (use_json_logging) {
-814     // Open the JSON file for output
-815     int json_fd = platform_open(&quot;main_log_file&quot;, final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-816     if (json_fd &gt;= 0) {
-817       log_set_json_output(json_fd);
-818     } else {
-819       // Failed to open JSON file - report error and exit
-820       SET_ERRNO(ERROR_CONFIG, &quot;Failed to open JSON output file: %s&quot;, final_log_file);
-821       return ERROR_CONFIG;
-822     }
-823   }
-824 
-825   // Initialize colors now that logging is fully initialized
-826   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
-827   log_init_colors();
+595     // Handle --option=value format
+596     if (strchr(opt_name, '=')) {
+597       continue; // Value is part of this arg, no need to skip next
+598     }
+599 
+600     // Options that take required arguments
+601     if (strcmp(arg, &quot;--log-file&quot;) == 0 || strcmp(arg, &quot;-L&quot;) == 0 || strcmp(arg, &quot;--log-level&quot;) == 0 ||
+602         strcmp(arg, &quot;--config&quot;) == 0 || strcmp(arg, &quot;--color-scheme&quot;) == 0 || strcmp(arg, &quot;--log-template&quot;) == 0) {
+603       if (i + 1 &lt; argc) {
+604         i++; // Skip the argument value
+605       }
+606     }
+607   }
+608 
+609   // EARLY PARSE: Determine mode from argv to know if this is client-like mode
+610   // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds
+611   bool is_client_like_mode = false;
+612   if (mode_position &gt; 0) {
+613     const char *first_arg = argv[mode_position];
+614     if (strcmp(first_arg, &quot;client&quot;) == 0 || strcmp(first_arg, &quot;mirror&quot;) == 0 || strcmp(first_arg, &quot;discovery&quot;) == 0) {
+615       is_client_like_mode = true;
+616     }
+617   }
+618 
+619   // EARLY PARSE: Extract log file from argv (--log-file or -L)
+620   // Must appear BEFORE the mode
+621   // Generate default log path based on build type and mode
+622   char default_log_path[PATH_MAX];
+623   asciichat_mode_t detected_mode = MODE_INVALID;
+624   if (mode_position &gt; 0) {
+625     const char *mode_str = argv[mode_position];
+626     // Convert mode string to enum
+627     if (strcmp(mode_str, &quot;server&quot;) == 0) {
+628       detected_mode = MODE_SERVER;
+629     } else if (strcmp(mode_str, &quot;client&quot;) == 0) {
+630       detected_mode = MODE_CLIENT;
+631     } else if (strcmp(mode_str, &quot;mirror&quot;) == 0) {
+632       detected_mode = MODE_MIRROR;
+633     } else if (strcmp(mode_str, &quot;acds&quot;) == 0 || strcmp(mode_str, &quot;discovery-service&quot;) == 0) {
+634       detected_mode = MODE_DISCOVERY_SERVICE;
+635     } else if (strcmp(mode_str, &quot;discovery&quot;) == 0) {
+636       detected_mode = MODE_DISCOVERY;
+637     }
+638   }
+639   generate_default_log_path(detected_mode, default_log_path, sizeof(default_log_path));
+640 
+641   const char *log_file = default_log_path;
+642   int max_search = (mode_position &gt; 0) ? mode_position : argc;
+643   for (int i = 1; i &lt; max_search - 1; i++) {
+644     if ((strcmp(argv[i], &quot;--log-file&quot;) == 0 || strcmp(argv[i], &quot;-L&quot;) == 0)) {
+645       log_file = argv[i + 1];
+646       break;
+647     }
+648   }
+649 
+650   // EARLY PARSE: Check for --json (JSON logging format)
+651   // If JSON format is enabled, we'll use the JSON filename during early init
+652   // --json MUST appear BEFORE the mode
+653   bool early_json_format = false;
+654   if (mode_position &gt; 0) {
+655     for (int i = 1; i &lt; mode_position; i++) {
+656       if (strcmp(argv[i], &quot;--json&quot;) == 0) {
+657         early_json_format = true;
+658         break;
+659       }
+660     }
+661   } else {
+662     // If no mode found, search entire argv
+663     for (int i = 1; i &lt; argc; i++) {
+664       if (strcmp(argv[i], &quot;--json&quot;) == 0) {
+665         early_json_format = true;
+666         break;
+667       }
+668     }
+669   }
+670 
+671   // EARLY PARSE: Extract log template from argv (--log-template)
+672   // Note: This is for format templates, different from --log-format which is the output format
+673   // Binary-level options must appear BEFORE the mode
+674   const char *early_log_template = NULL;
+675   bool early_log_template_console_only = false;
+676   for (int i = 1; i &lt; max_search - 1; i++) {
+677     if (strcmp(argv[i], &quot;--log-template&quot;) == 0) {
+678       early_log_template = argv[i + 1];
+679       break;
+680     }
+681   }
+682   for (int i = 1; i &lt; max_search; i++) {
+683     if (strcmp(argv[i], &quot;--log-format-console-only&quot;) == 0) {
+684       early_log_template_console_only = true;
+685       break;
+686     }
+687   }
+688 
+689   // Initialize shared subsystems BEFORE options_init()
+690   // This ensures options parsing can use properly configured logging with colors
+691   // If JSON format is requested, don't write text logs to file
+692   // All logs will be JSON formatted later once options_init() runs
+693   const char *early_log_file = early_json_format ? NULL : log_file;
+694   asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
+695   if (init_result != ASCIICHAT_OK) {
+696     return init_result;
+697   }
+698 
+699   // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
+700   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
+701   if (terminal_should_force_stderr()) {
+702     log_set_force_stderr(true);
+703   }
+704 
+705   // Register cleanup of shared subsystems to run on normal exit
+706   // Library code doesn't call atexit() - the application is responsible
+707   // IMPORTANT: atexit handlers run in LIFO order - last registered runs first
+708   // So register order (top to bottom) = execution order (bottom to top):
+709   // 1. PCRE2 cleanup (runs last) - frees compiled regexes after all code stops using them
+710   // 2. Path cleanup (runs 3rd) - now a no-op but kept for API compatibility
+711   // 3. Shared destroy (runs 2nd) - frees all shared resources
+712   // 4. Cursor show (runs 1st) - shows cursor before exit
+713   (void)atexit(asciichat_pcre2_cleanup_all);
+714   (void)atexit(path_cleanup_thread_locals);
+715   (void)atexit(asciichat_shared_destroy);
+716   (void)atexit(on_exit_show_cursor);
+717 
+718   // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
+719   // Prints a backtrace and exits immediately - useful for debugging hangs
+720 #ifndef NDEBUG
+721   for (int i = 1; i &lt; argc; i++) {
+722     if (strcmp(argv[i], &quot;--backtrace&quot;) == 0) {
+723       log_info(&quot;=== Backtrace at startup ===&quot;);
+724       backtrace_print_simple(0);
+725       log_info(&quot;=== End Backtrace ===&quot;);
+726       asciichat_shared_destroy();
+727       return 0;
+728     }
+729   }
+730 #endif
+731 
+732   // NOW parse all options - can use logging with colors!
+733   asciichat_error_t options_result = options_init(argc, argv);
+734   if (options_result != ASCIICHAT_OK) {
+735     asciichat_error_context_t error_ctx;
+736     if (HAS_ERRNO(&amp;error_ctx)) {
+737       log_error(&quot;Error: %s&quot;, error_ctx.context_message);
+738     } else {
+739       log_error(&quot;Error: Failed to initialize options (error code: %d)&quot;, options_result);
+740     }
+741 
+742     // Clean up options state before exiting
+743     options_state_destroy();
+744     options_cleanup_schema();
+745 
+746     exit(options_result);
+747   }
+748 
+749   // Get parsed options
+750   const options_t *opts = options_get();
+751   if (!opts) {
+752     log_error(&quot;Error: Options not initialized&quot;);
+753     return 1;
+754   }
+755 
+756   // Determine final log file path (use mode-specific default from options if available)
+757   // Determine output format early to decide on filename and logging strategy
+758   bool use_json_logging = GET_OPTION(json);
+759 
+760   // Determine the log filename
+761   // Check if user explicitly passed --log-file (not just the mode-specific default from options_init)
+762   bool user_specified_log_file = false;
+763   for (int i = 1; i &lt; argc - 1; i++) {
+764     if (strcmp(argv[i], &quot;--log-file&quot;) == 0 || strcmp(argv[i], &quot;-L&quot;) == 0) {
+765       user_specified_log_file = true;
+766       break;
+767     }
+768   }
+769 
+770   const char *final_log_file = opts-&gt;log_file;
+771   char json_filename_buf[256];
+772 
+773   if (use_json_logging) {
+774     // When JSON logging is enabled, determine JSON output filename
+775     if (user_specified_log_file) {
+776       // User explicitly specified a log file - use it exactly for JSON output
+777       SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+778     } else {
+779       // Using default: replace .log with .json in the mode-specific default
+780       // e.g., server.log -&gt; server.json, mirror.log -&gt; mirror.json, etc.
+781       size_t len = strlen(final_log_file);
+782       if (len &gt; 4 &amp;&amp; strcmp(&amp;final_log_file[len - 4], &quot;.log&quot;) == 0) {
+783         // File ends with .log - replace with .json
+784         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+785         // Replace .log with .json
+786         asciichat_error_t strcpy_result = SAFE_STRCPY(&amp;json_filename_buf[len - 4],
+787                                                        sizeof(json_filename_buf) - (len - 4), &quot;.json&quot;);
+788         if (strcpy_result != ASCIICHAT_OK) {
+789           log_error(&quot;Failed to write .json extension: %s&quot;, asciichat_error_string(strcpy_result));
+790         }
+791       } else {
+792         // File doesn't end with .log - just append .json
+793         snprintf(json_filename_buf, sizeof(json_filename_buf), &quot;%s.json&quot;, final_log_file);
+794       }
+795     }
+796     final_log_file = json_filename_buf;
+797     // For JSON mode: Initialize logging without file (text will be disabled)
+798     // We'll set up JSON output separately below
+799     // Note: log_init() was already called in asciichat_shared_init()
+800   } else {
+801     // Text logging mode: use the file from options (which is mode-specific default or user-specified)
+802     // Note: log_init() was already called in asciichat_shared_init()
+803   }
+804 
+805   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
+806   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
+807   bool final_format_console_only =
+808       early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
+809   if (final_format &amp;&amp; final_format[0] != '\0') {
+810     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
+811     if (fmt_result != ASCIICHAT_OK) {
+812       log_error(&quot;Failed to apply custom log format&quot;);
+813     }
+814   }
+815 
+816   // Configure JSON output if requested
+817   if (use_json_logging) {
+818     // Open the JSON file for output
+819     int json_fd = platform_open(&quot;main_log_file&quot;, final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+820     if (json_fd &gt;= 0) {
+821       log_set_json_output(json_fd);
+822     } else {
+823       // Failed to open JSON file - report error and exit
+824       SET_ERRNO(ERROR_CONFIG, &quot;Failed to open JSON output file: %s&quot;, final_log_file);
+825       return ERROR_CONFIG;
+826     }
+827   }
 828 
-829   // Apply quiet mode - disables terminal output
-830   // Status screen mode only disables terminal output if terminal is interactive
-831   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-832   if (GET_OPTION(quiet) ||
-833       (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; GET_OPTION(status_screen) &amp;&amp; terminal_is_interactive())) {
-834     log_set_terminal_output(false);
-835   }
-836 
-837   // Initialize palette based on command line options
-838   const char *custom_chars = opts &amp;&amp; opts-&gt;palette_custom_set ? opts-&gt;palette_custom : NULL;
-839   if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
-840     FATAL(ERROR_CONFIG, &quot;Failed to apply palette configuration&quot;);
-841   }
-842 
-843   // Set quiet mode for memory debugging
-844 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-845   debug_memory_set_quiet_mode(GET_OPTION(quiet));
-846 #endif
-847 
-848   // Truncate log if it's already too large
-849   log_truncate_if_large();
-850   fflush(stderr);
+829   // Initialize colors now that logging is fully initialized
+830   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
+831   log_init_colors();
+832 
+833   // Apply quiet mode - disables terminal output
+834   // Status screen mode only disables terminal output if terminal is interactive
+835   // In non-interactive mode (piped output), logs go to stdout/stderr normally
+836   if (GET_OPTION(quiet) ||
+837       (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; GET_OPTION(status_screen) &amp;&amp; terminal_is_interactive())) {
+838     log_set_terminal_output(false);
+839   }
+840 
+841   // Initialize palette based on command line options
+842   const char *custom_chars = opts &amp;&amp; opts-&gt;palette_custom_set ? opts-&gt;palette_custom : NULL;
+843   if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
+844     FATAL(ERROR_CONFIG, &quot;Failed to apply palette configuration&quot;);
+845   }
+846 
+847   // Set quiet mode for memory debugging
+848 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+849   debug_memory_set_quiet_mode(GET_OPTION(quiet));
+850 #endif
 851 
-852   // Handle --help and --version (these are detected and flagged by options_init)
-853   // Terminal capabilities already initialized before options_init() at startup
-854   if (opts-&gt;help) {
-855     print_usage(opts-&gt;detected_mode);
-856     fflush(NULL);
-857     _Exit(0);
-858   }
-859 
-860   if (opts-&gt;version) {
-861     log_set_terminal_output(true);
-862     action_show_version();
-863     // action_show_version() calls _Exit(), so we don't reach here
-864   }
-865 
-866 #ifndef NDEBUG
-867   // Handle --debug-state (debug builds only)
-868   // Sleep for specified time AFTER mode initialization so locks are created
-869   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
-870     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
-871   }
-872 #endif
-873 
-874   // For server mode with status screen: disable terminal output only if interactive
-875   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-876   // The status screen (when shown) will capture and display logs in its buffer instead
-877   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
-878     log_set_terminal_output(false);
-879   }
-880 
-881   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
-882 
-883   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
-884   // 1. Tools like ripgrep can display ANSI colors when piped
-885   // 2. Sandboxed/containerized environments may report false positives for isatty()
-886   // 3. Users can explicitly disable colors with --color=false if needed
-887   // Color behavior is now fully controlled by --color and --color-mode options.
-888 
-889 #ifndef NDEBUG
-890   // Initialize lock debugging system after logging is fully set up
-891   log_debug(&quot;Initializing lock debug system...&quot;);
-892   int debug_sync_result = debug_sync_init();
-893   if (debug_sync_result != 0) {
-894     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
-895     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
-896   }
-897   log_debug(&quot;Debug sync system initialized successfully&quot;);
-898 
-899   // Initialize memory debug system
-900   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
-901   // log_debug(&quot;Initializing memory debug system...&quot;);
-902   // int debug_memory_result = debug_memory_thread_init();
-903   // if (debug_memory_result != 0) {
-904   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
-905   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
-906   // }
-907   // log_debug(&quot;Memory debug system initialized successfully&quot;);
-908 
-909   // Start memory debug (now just prints report directly)
-910   // if (debug_memory_thread_start() != 0) {
-911   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
-912   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
-913   // }
-914 
-915 #ifndef _WIN32
-916   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
-917   sigset_t set;
-918   sigemptyset(&amp;set);
-919   sigaddset(&amp;set, SIGUSR1);
-920   sigaddset(&amp;set, SIGUSR2);
-921   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
-922 
-923   // Register SIGUSR1 to trigger synchronization debugging output in all modes
-924   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
-925   if (old_usr1 == SIG_ERR) {
-926     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
-927   } else {
-928     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
-929   }
-930 
-931   // Register SIGUSR2 to trigger memory report in all modes
-932   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
-933   if (old_usr2 == SIG_ERR) {
-934     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
-935   } else {
-936     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
-937   }
-938 #endif
-939 #endif
-940 
-941   if (opts-&gt;fps &gt; 0) {
-942     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
-943       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
-944     } else {
-945       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
-946     }
-947   }
-948 
-949   // Automatic update check at startup (once per week maximum)
-950   if (!GET_OPTION(no_check_update)) {
-951     update_check_result_t update_result;
-952     asciichat_error_t update_err = update_check_startup(&amp;update_result);
-953     if (update_err == ASCIICHAT_OK &amp;&amp; update_result.update_available) {
-954       char notification[1024];
-955       update_check_format_notification(&amp;update_result, notification, sizeof(notification));
-956       log_info(&quot;%s&quot;, notification);
+852   // Truncate log if it's already too large
+853   log_truncate_if_large();
+854   fflush(stderr);
+855 
+856   // Handle --help and --version (these are detected and flagged by options_init)
+857   // Terminal capabilities already initialized before options_init() at startup
+858   if (opts-&gt;help) {
+859     print_usage(opts-&gt;detected_mode);
+860     fflush(NULL);
+861     _Exit(0);
+862   }
+863 
+864   if (opts-&gt;version) {
+865     log_set_terminal_output(true);
+866     action_show_version();
+867     // action_show_version() calls _Exit(), so we don't reach here
+868   }
+869 
+870 #ifndef NDEBUG
+871   // Handle --debug-state (debug builds only)
+872   // Sleep for specified time AFTER mode initialization so locks are created
+873   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
+874     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
+875   }
+876 #endif
+877 
+878   // For server mode with status screen: disable terminal output only if interactive
+879   // In non-interactive mode (piped output), logs go to stdout/stderr normally
+880   // The status screen (when shown) will capture and display logs in its buffer instead
+881   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
+882     log_set_terminal_output(false);
+883   }
+884 
+885   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
+886 
+887   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
+888   // 1. Tools like ripgrep can display ANSI colors when piped
+889   // 2. Sandboxed/containerized environments may report false positives for isatty()
+890   // 3. Users can explicitly disable colors with --color=false if needed
+891   // Color behavior is now fully controlled by --color and --color-mode options.
+892 
+893 #ifndef NDEBUG
+894   // Initialize lock debugging system after logging is fully set up
+895   log_debug(&quot;Initializing lock debug system...&quot;);
+896   int debug_sync_result = debug_sync_init();
+897   if (debug_sync_result != 0) {
+898     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
+899     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
+900   }
+901   log_debug(&quot;Debug sync system initialized successfully&quot;);
+902 
+903   // Initialize memory debug system
+904   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
+905   // log_debug(&quot;Initializing memory debug system...&quot;);
+906   // int debug_memory_result = debug_memory_thread_init();
+907   // if (debug_memory_result != 0) {
+908   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
+909   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
+910   // }
+911   // log_debug(&quot;Memory debug system initialized successfully&quot;);
+912 
+913   // Start memory debug (now just prints report directly)
+914   // if (debug_memory_thread_start() != 0) {
+915   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
+916   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
+917   // }
+918 
+919 #ifndef _WIN32
+920   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
+921   sigset_t set;
+922   sigemptyset(&amp;set);
+923   sigaddset(&amp;set, SIGUSR1);
+924   sigaddset(&amp;set, SIGUSR2);
+925   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
+926 
+927   // Register SIGUSR1 to trigger synchronization debugging output in all modes
+928   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
+929   if (old_usr1 == SIG_ERR) {
+930     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
+931   } else {
+932     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
+933   }
+934 
+935   // Register SIGUSR2 to trigger memory report in all modes
+936   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
+937   if (old_usr2 == SIG_ERR) {
+938     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
+939   } else {
+940     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
+941   }
+942 #endif
+943 #endif
+944 
+945   if (opts-&gt;fps &gt; 0) {
+946     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
+947       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
+948     } else {
+949       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
+950     }
+951   }
+952 
+953   // Automatic update check in background thread (once per week maximum)
+954   if (!GET_OPTION(no_check_update)) {
+955     update_banner_start_check();
+956   }
 957 
-958       // Set update notification for splash/status screens
-959       splash_set_update_notification(notification);
-960     }
-961   }
-962 
-963   // Set up global signal handlers BEFORE mode dispatch
-964   // All modes use the same centralized exit mechanism
-965   setup_signal_handlers();
-966 
-967   // Register application callbacks so lib code can check exit flags
-968   // This connects the render loop's should_exit check to signal_exit()
-969   static const app_callbacks_t app_callbacks = {
-970       .should_exit = should_exit,
-971       .signal_exit = signal_exit,
-972       .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
-973       .platform_sleep_ms = platform_sleep_ms,
-974   };
-975   app_callbacks_register(&amp;app_callbacks);
-976 
-977   // Register shutdown callback so splash thread and other code can check for exit
-978   shutdown_register_callback((shutdown_check_fn)should_exit);
-979 
-980 #ifndef NDEBUG
-981   // Start debug threads now, after initialization but before mode entry
-982   // This avoids lock contention during critical initialization phase
-983   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
-984   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
-985   // deadlock during thread startup
-986   if (debug_sync_start_thread() != 0) {
-987     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
-988     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
-989   }
-990   log_debug(&quot;Debug sync thread started&quot;);
-991 
-992 #endif
-993 
-994   // Find and dispatch to mode entry point
-995   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
-996   if (!mode) {
-997     log_error(&quot;Error: Mode not found for detected_mode=%d&quot;, opts-&gt;detected_mode);
-998     return 1;
-999   }
-1000 
-1001   // Call the mode-specific entry point
-1002   // Mode entry points use options_get() to access parsed options
-1003   int exit_code = mode-&gt;entry_point();
-1004 
-1005   // Named registry cleanup is handled by asciichat_shared_destroy()
-1006   // (called via atexit handler), which runs AFTER the memory report
-1007 
-1008   if (exit_code == ERROR_USAGE) {
-1009     exit(ERROR_USAGE);
-1010   }
-1011 
-1012   return exit_code;
-1013 }</pre>
+958   // Set up global signal handlers BEFORE mode dispatch
+959   // All modes use the same centralized exit mechanism
+960   setup_signal_handlers();
+961 
+962   // Register application callbacks so lib code can check exit flags
+963   // This connects the render loop's should_exit check to signal_exit()
+964   static const app_callbacks_t app_callbacks = {
+965       .should_exit = should_exit,
+966       .signal_exit = signal_exit,
+967       .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
+968       .platform_sleep_ms = platform_sleep_ms,
+969   };
+970   app_callbacks_register(&amp;app_callbacks);
+971 
+972   // Register shutdown callback so splash thread and other code can check for exit
+973   shutdown_register_callback((shutdown_check_fn)should_exit);
+974 
+975 #ifndef NDEBUG
+976   // Start debug threads now, after initialization but before mode entry
+977   // This avoids lock contention during critical initialization phase
+978   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
+979   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
+980   // deadlock during thread startup
+981   if (debug_sync_start_thread() != 0) {
+982     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
+983     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
+984   }
+985   log_debug(&quot;Debug sync thread started&quot;);
+986 
+987 #endif
+988 
+989   // Find and dispatch to mode entry point
+990   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
+991   if (!mode) {
+992     log_error(&quot;Error: Mode not found for detected_mode=%d&quot;, opts-&gt;detected_mode);
+993     return 1;
+994   }
+995 
+996   // Call the mode-specific entry point
+997   // Mode entry points use options_get() to access parsed options
+998   int exit_code = mode-&gt;entry_point();
+999 
+1000   // Named registry cleanup is handled by asciichat_shared_destroy()
+1001   // (called via atexit handler), which runs AFTER the memory report
+1002 
+1003   if (exit_code == ERROR_USAGE) {
+1004     exit(ERROR_USAGE);
+1005   }
+1006 
+1007   return exit_code;
+1008 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_show_version()</b>,
@@ -732,7 +722,7 @@
     <b>apply_palette_config()</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
     <b>ASCIICHAT_OK</b>, <b>asciichat_pcre2_cleanup_all()</b>,
     <b>asciichat_shared_destroy()</b>, <b>asciichat_shared_init()</b>,
-    <b>asciichat_thread_self()</b>, <b>backtrace_print_simple()</b>,
+    <b>asciichat_thread_self</b>, <b>backtrace_print_simple()</b>,
     <b>colorscheme_load_builtin()</b>,
     <b>asciichat_error_context_t::context_message</b>,
     <b>debug_atomic_init()</b>, <b>debug_memory_set_quiet_mode()</b>,
@@ -766,12 +756,9 @@
     <b>REGISTER_GLOBAL_ATOMICS</b>, <b>SAFE_STRCPY</b>, <b>SAFE_STRNCPY</b>,
     <b>SET_ERRNO</b>, <b>setup_signal_handlers()</b>, <b>should_exit()</b>,
     <b>shutdown_register_callback()</b>, <b>signal_exit()</b>,
-    <b>splash_set_update_notification()</b>,
     <b>options_state::status_screen</b>, <b>terminal_cursor_show()</b>,
     <b>terminal_is_interactive()</b>, <b>terminal_should_force_stderr()</b>,
-    <b>update_check_result_t::update_available</b>,
-    <b>update_check_format_notification()</b>, <b>update_check_startup()</b>,
-    and <b>options_state::version</b>.</p>
+    <b>update_banner_start_check()</b>, and <b>options_state::version</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_set_interrupt_callback_(void(*_cb_)(void))"><a class="permalink" href="#void_set_interrupt_callback_(void(*_cb_)(void))">void
@@ -793,10 +780,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>222</b> of file <b>main.c</b>.</p>
-<pre>222                                               {
-223   g_interrupt_callback = cb;
-224 }</pre>
+<p class="Pp">Definition at line <b>227</b> of file <b>main.c</b>.</p>
+<pre>227                                               {
+228   g_interrupt_callback = cb;
+229 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -805,20 +792,20 @@
   setup_signal_handlers (void )</a></h2>
 <p class="Pp">Set up global signal handlers Called once at startup before mode
     dispatch</p>
-<p class="Pp">Definition at line <b>341</b> of file <b>main.c</b>.</p>
-<pre>341                                  {
-342   platform_set_console_ctrl_handler(console_ctrl_handler);
-343 
-344 #ifndef _WIN32
-345   platform_signal_handler_t handlers[] = {
-346       {SIGINT, handle_sigterm},
-347       {SIGTERM, handle_sigterm},
-348       {SIGPIPE, SIG_IGN},
-349   };
-350   platform_register_signal_handlers(handlers, 3);
-351   log_debug(&quot;Signal handlers registered&quot;);
-352 #endif
-353 }</pre>
+<p class="Pp">Definition at line <b>346</b> of file <b>main.c</b>.</p>
+<pre>346                                  {
+347   platform_set_console_ctrl_handler(console_ctrl_handler);
+348 
+349 #ifndef _WIN32
+350   platform_signal_handler_t handlers[] = {
+351       {SIGINT, handle_sigterm},
+352       {SIGTERM, handle_sigterm},
+353       {SIGPIPE, SIG_IGN},
+354   };
+355   platform_register_signal_handlers(handlers, 3);
+356   log_debug(&quot;Signal handlers registered&quot;);
+357 #endif
+358 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>,
@@ -836,10 +823,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>206</b> of file <b>main.c</b>.</p>
-<pre>206                        {
-207   return atomic_load_bool(&amp;g_should_exit);
-208 }</pre>
+<p class="Pp">Definition at line <b>211</b> of file <b>main.c</b>.</p>
+<pre>211                        {
+212   return atomic_load_bool(&amp;g_should_exit);
+213 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -854,18 +841,18 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>210</b> of file <b>main.c</b>.</p>
-<pre>210                        {
-211   // Note: This function may be called from a signal handler context where
-212   // other threads may hold mutex locks. We avoid log_console() here to prevent
-213   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
-214   // The shutdown will be logged by normal thread context later.
-215   atomic_store_bool(&amp;g_should_exit, true);
-216   void (*cb)(void) = g_interrupt_callback;
-217   if (cb) {
-218     cb();
-219   }
-220 }</pre>
+<p class="Pp">Definition at line <b>215</b> of file <b>main.c</b>.</p>
+<pre>215                        {
+216   // Note: This function may be called from a signal handler context where
+217   // other threads may hold mutex locks. We avoid log_console() here to prevent
+218   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
+219   // The shutdown will be logged by normal thread context later.
+220   atomic_store_bool(&amp;g_should_exit, true);
+221   void (*cb)(void) = g_interrupt_callback;
+222   if (cb) {
+223     cb();
+224   }
+225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, and
@@ -879,7 +866,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

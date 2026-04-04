@@ -313,6 +313,7 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
     return ASCIICHAT_OK;
   asciichat_error_t err = ffmpeg_encoder_destroy(ctx->encoder);
   term_renderer_destroy(ctx->renderer);
+  term_renderer_glyph_cache_cleanup();
   SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);
   return err;

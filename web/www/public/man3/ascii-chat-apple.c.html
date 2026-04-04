@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>apple.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">apple.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">apple.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">apple.c - Apple unified logging (os_log) integration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>APPLE_LOG_SUBSYSTEM</b> 'com.ascii-chat'
+  <br/>
+  #define <b>APPLE_LOG_CATEGORY</b> 'default'
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>platform_log_hook</b> (<b>log_level_t</b> level, const
+    char *message)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Apple unified logging (os_log) integration.</p>
+<p class="Pp">Routes ascii-chat log messages to Apple's unified logging system
+    via os_log. Messages appear in Console.app and are queryable with the log
+    CLI tool:</p>
+<p class="Pp"></p>
+<p class="Pp">log stream --predicate 'subsystem ==
+    &quot;chat.ascii.ascii-chat&quot;' --level debug</p>
+<p class="Pp">Definition in file <b>apple.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_APPLE_LOG_CATEGORY___'default'"><a class="permalink" href="#_define_APPLE_LOG_CATEGORY___'default'">#define
+  APPLE_LOG_CATEGORY 'default'</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>apple.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_APPLE_LOG_SUBSYSTEM___'com"><a class="permalink" href="#_define_APPLE_LOG_SUBSYSTEM___'com">#define
+  APPLE_LOG_SUBSYSTEM 'com.ascii-chat'</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>apple.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_log_hook_("><a class="permalink" href="#void_platform_log_hook_(">void
+  platform_log_hook (<b>log_level_t</b> level, const char * message)</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>apple.c</b>.</p>
+<pre>52                                                                {
+53     if (!message) {
+54         return;
+55     }
+56 
+57     os_log_t log = get_apple_log();
+58 
+59     // Strip ANSI escape codes for clean system log output
+60     char clean[4096];
+61     strip_ansi_codes(message, clean, sizeof(clean));
+62 
+63     os_log_with_type(log, level_to_os_log_type(level), &quot;%{public}s&quot;, clean);
+64 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

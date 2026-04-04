@@ -107,7 +107,7 @@
 21     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid fd: %d&quot;, fd);
 22   }
 23 
-24   FILE *fp = fdopen(fd, &quot;w&quot;);
+24   FILE *fp = platform_fdopen(&quot;terminal_fd_writer&quot;, fd, &quot;w&quot;);
 25   if (!fp) {
 26     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fdopen failed for FD %d&quot;, fd);
 27   }
@@ -122,8 +122,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>terminal_fd_writer_s::fp</b>, <b>log_debug</b>, <b>SAFE_CALLOC</b>,
-    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
+    <b>terminal_fd_writer_s::fp</b>, <b>log_debug</b>, <b>platform_fdopen()</b>,
+    <b>SAFE_CALLOC</b>, <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_fd_writer_destroy_("><a class="permalink" href="#void_terminal_fd_writer_destroy_(">void
@@ -198,7 +198,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-date">Version 0.11.0</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>
