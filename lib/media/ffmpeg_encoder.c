@@ -916,9 +916,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   }
 
   // Flush video encoder (capture libx264 final statistics)
+  // In snapshot mode, skip flush packets to maintain exact duration
+  // Flush packets are x264 codec artifacts (lookahead/B-frame buffer) not part of captured content
   LOG_IO("ffmpeg", {
     avcodec_send_frame(enc->codec_ctx, NULL);
-    int flush_pkt_count = 0;
     while (1) {
       int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
@@ -926,21 +927,18 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       if (ret < 0)
         break;
 
-      flush_pkt_count++;
+      // In snapshot mode, discard flush packets to maintain exact duration
+      if (snapshot_mode) {
+        av_packet_unref(enc->pkt);
+        continue; // Skip writing flush packets in snapshot mode
+      }
 
       // Set packet duration in codec time base if not already set
       if (enc->pkt->duration == 0) {
         enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
       }
 
-      // In snapshot mode, rescale to stream time_base and apply adjusted duration if set
-      int64_t duration_before = enc->pkt->duration;
       av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
-      if (snapshot_mode && adjusted_packet_duration > 0) {
-        enc->pkt->duration = adjusted_packet_duration;
-        log_debug("ffmpeg_encoder_destroy: Flush packet %d duration adjusted from %lld to %lld",
-                  flush_pkt_count, (long long)duration_before, (long long)adjusted_packet_duration);
-      }
       enc->pkt->stream_index = enc->stream->index;
       av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
       av_packet_unref(enc->pkt);
