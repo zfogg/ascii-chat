@@ -34,8 +34,8 @@
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)
-  FT_Bitmap bitmap;    // FreeType bitmap structure with buffer pointer set to bitmap_buf
-  uint8_t *bitmap_buf; // Owned bitmap data
+  FT_Bitmap bitmap;    // FreeType bitmap structure that points at bitmap_buf after initialization
+  uint8_t *bitmap_buf; // Owned copy of the bitmap data
   int bitmap_left;     // Glyph positioning offsets
   int bitmap_top;
   UT_hash_handle hh;   // uthash handle
@@ -95,13 +95,7 @@ static glyph_cache_entry_t *glyph_cache_get(terminal_renderer_t *r, FT_Face face
     return NULL;
   }
 
-  FT_Bitmap cached_bitmap = *src_bitmap;
-  // The copied FT_Bitmap initially points at FreeType-owned memory.
-  // Reset the pointer now and repoint it to bitmap_buf after we copy the data.
-  cached_bitmap.buffer = NULL;
-
   entry->codepoint = codepoint;
-  entry->bitmap = cached_bitmap;
   entry->bitmap_buf = NULL;
   if (bitmap_size > 0 && src_bitmap->buffer) {
     entry->bitmap_buf = SAFE_MALLOC(bitmap_size, uint8_t *);
@@ -110,8 +104,9 @@ static glyph_cache_entry_t *glyph_cache_get(terminal_renderer_t *r, FT_Face face
       return NULL;
     }
     memcpy(entry->bitmap_buf, src_bitmap->buffer, bitmap_size);
-    entry->bitmap.buffer = entry->bitmap_buf;
   }
+  entry->bitmap = *src_bitmap;
+  entry->bitmap.buffer = entry->bitmap_buf;
   entry->bitmap_left = face->glyph->bitmap_left;
   entry->bitmap_top = face->glyph->bitmap_top;
 
