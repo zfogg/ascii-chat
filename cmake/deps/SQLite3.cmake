@@ -112,7 +112,7 @@ if(USE_MUSL)
                 -DSQLITE_ENABLE_JSON1
                 -O3
                 -fPIC
-                -flto=thin
+                -flto
                 "${SQLITE3_SOURCE_DIR}/sqlite3.c"
                 -o "${SQLITE3_BUILD_DIR}/sqlite3.o"
             RESULT_VARIABLE COMPILE_RESULT
