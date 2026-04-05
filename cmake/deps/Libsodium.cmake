@@ -178,6 +178,46 @@ if(USE_MUSL)
     return()
 endif()
 
+# Handle Release Linux builds - build from source to ensure static linking
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL)
+    message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (Release Linux)...")
+
+    include(ExternalProject)
+
+    set(LIBSODIUM_PREFIX "${CMAKE_BINARY_DIR}/deps-cache/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${CMAKE_BINARY_DIR}/deps-cache/libsodium-build")
+
+    if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+        message(STATUS "  libsodium library not found in cache, will build from source")
+
+        ExternalProject_Add(libsodium-linux
+            URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+            URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${LIBSODIUM_BUILD_DIR}
+            STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+            BUILD_COMMAND make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
+        add_custom_target(libsodium-linux)
+    endif()
+
+    set(LIBSODIUM_FOUND TRUE)
+    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+    return()
+endif()
+
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
 find_dependency_library(
