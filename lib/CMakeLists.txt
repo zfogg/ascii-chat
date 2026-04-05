@@ -752,8 +752,6 @@ if(USE_MUSL)
     set(_build_shared_lib FALSE)
 elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     set(_build_shared_lib FALSE)
-elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-    set(_build_shared_lib FALSE)
 endif()
 if(_build_shared_lib)
 add_library(ascii-chat-shared SHARED
