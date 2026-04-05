@@ -90,13 +90,15 @@ static glyph_cache_entry_t *glyph_cache_get(terminal_renderer_t *r, FT_Face face
   size_t bitmap_size = (size_t)src_bitmap->pitch * src_bitmap->rows;
 
   // Create and populate cache entry
-  entry = SAFE_CALLOC(1, sizeof(glyph_cache_entry_t), glyph_cache_entry_t *);
+  entry = SAFE_MALLOC(sizeof(glyph_cache_entry_t), glyph_cache_entry_t *);
   if (!entry) {
     return NULL;
   }
 
   entry->codepoint = codepoint;
   entry->bitmap = *src_bitmap;
+  entry->bitmap_buf = NULL;
+  entry->bitmap.buffer = NULL;
   if (bitmap_size > 0 && src_bitmap->buffer) {
     entry->bitmap_buf = SAFE_MALLOC(bitmap_size, uint8_t *);
     if (!entry->bitmap_buf) {
