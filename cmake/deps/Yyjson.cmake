@@ -26,7 +26,7 @@ macro(_yyjson_build_from_submodule source_dir label)
     set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "Disable yyjson fuzzer" FORCE)
     set(YYJSON_BUILD_MISC OFF CACHE BOOL "Disable yyjson misc" FORCE)
     set(YYJSON_BUILD_DOC OFF CACHE BOOL "Disable yyjson documentation" FORCE)
-    set(BUILD_SHARED_LIBS ON CACHE BOOL "Build yyjson as static library" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build yyjson as static library" FORCE)
 
     add_subdirectory(
         "${${source_dir}}"
