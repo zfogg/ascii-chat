@@ -21,12 +21,12 @@ macro(_yyjson_build_from_submodule source_dir label)
     # Build options — disable unused features to reduce binary size
     set(YYJSON_DISABLE_READER OFF CACHE BOOL "Enable JSON reader for update checker" FORCE)
     set(YYJSON_DISABLE_UTILS ON CACHE BOOL "Disable JSON Pointer/Patch/Merge utilities" FORCE)
-    set(YYJSON_DISABLE_INCR_READER ON CACHE BOOL "Disable incremental reader" FORCE)
+    set(YYJSON_DISABLE_INCR_READER OFF CACHE BOOL "Disable incremental reader" FORCE)
     set(YYJSON_BUILD_TESTS OFF CACHE BOOL "Disable yyjson tests" FORCE)
     set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "Disable yyjson fuzzer" FORCE)
     set(YYJSON_BUILD_MISC OFF CACHE BOOL "Disable yyjson misc" FORCE)
     set(YYJSON_BUILD_DOC OFF CACHE BOOL "Disable yyjson documentation" FORCE)
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build yyjson as static library" FORCE)
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "Build yyjson as static library" FORCE)
 
     add_subdirectory(
         "${${source_dir}}"
@@ -62,21 +62,20 @@ function(configure_yyjson)
         return()
     endif()
 
-    # Non-musl: Try pkg-config first (finds shared lib with reader enabled),
-    # then fall back to CMake config. The CMake config at /usr/local may point
-    # to a static lib built with the reader disabled, causing undefined symbols.
-    include(FindPkgConfig)
-    pkg_check_modules(yyjson QUIET yyjson)
-
-    if(yyjson_FOUND AND NOT TARGET yyjson::yyjson)
-        add_library(yyjson::yyjson INTERFACE IMPORTED)
-        target_include_directories(yyjson::yyjson INTERFACE ${yyjson_INCLUDE_DIRS})
-        target_link_libraries(yyjson::yyjson INTERFACE ${yyjson_LIBRARIES})
-    endif()
+    # Non-musl: Try system package first, then submodule fallback
+    find_package(yyjson QUIET CONFIG)
 
     if(NOT yyjson_FOUND)
-        # Fall back to CMake config if pkg-config not found
-        find_package(yyjson QUIET CONFIG)
+        # Fall back to pkg-config if CMake config not found
+        include(FindPkgConfig)
+        pkg_check_modules(yyjson QUIET yyjson)
+
+        # Create interface library for compatibility
+        if(yyjson_FOUND AND NOT TARGET yyjson::yyjson)
+            add_library(yyjson::yyjson INTERFACE IMPORTED)
+            target_include_directories(yyjson::yyjson INTERFACE ${yyjson_INCLUDE_DIRS})
+            target_link_libraries(yyjson::yyjson INTERFACE ${yyjson_LIBRARIES})
+        endif()
     endif()
 
     # If still not found, build from submodule source
