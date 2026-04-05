@@ -38,8 +38,9 @@ static acds_server_t g_server;
  * server_like Callbacks
  * ============================================================================ */
 
-static void acds_interrupt_fn(void) {
-  // Set TCP server running flag to false so select() exits
+static void acds_interrupt_fn(int sig) {
+  (void)sig;
+
   tcp_server_t *tcp = session_server_like_get_tcp_server();
   if (tcp) {
     atomic_store_bool(&tcp->running, false);
@@ -237,6 +238,12 @@ static asciichat_error_t acds_init_fn(void *user_data) {
     config.turn_secret[0] = '\0';
   }
 
+  // Check for shutdown request during startup
+  if (session_server_like_shutdown_requested()) {
+    log_info("Shutdown signal received during initialization, aborting startup");
+    return ASCIICHAT_OK;
+  }
+
   // Copy identity keys to server struct (needed by handlers for handshake)
   memcpy(g_server.identity_public, public_key, 32);
   memcpy(g_server.identity_secret, secret_key, 64);
@@ -246,6 +253,12 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   if (result != ASCIICHAT_OK) {
     log_error("Server initialization failed");
     return result;
+  }
+
+  // Check again after server init in case SIGTERM arrived during init
+  if (session_server_like_shutdown_requested()) {
+    log_info("Shutdown signal received after server initialization");
+    return ASCIICHAT_OK;
   }
 
   log_info("Discovery service initialized");

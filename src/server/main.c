@@ -461,9 +461,10 @@ size_t g_num_whitelisted_clients = 0;
  * - POSIX: socket_close() alone typically suffices
  * - Both: Avoid mutex operations (signal may interrupt mutex holder)
  *
- * @param sigint The signal number (unused, required by signal handler signature)
+ * @param sig The signal number (SIGINT=2, SIGTERM=15)
  */
-static void server_handle_sigint(void) {
+static void server_handle_sigint(int sig) {
+  (void)sig;
   // If in grep input mode, cancel grep instead of shutting down.
   // Uses atomic reads only (no mutex) - safe from signal context.
   if (log_search_is_entering_atomic()) {
@@ -1496,6 +1497,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
+  g_client_manager_rwlock_initialized = true;
 
   // Register global sync primitives for debugging
   NAMED_REGISTER_RWLOCK(&g_client_manager_rwlock, "client_manager_rwlock", NULL);
@@ -1589,6 +1591,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
   // Update server context fields that depend on init results
   g_server_ctx.rate_limiter = g_rate_limiter;
   g_server_ctx.audio_mixer = g_audio_mixer;
+  g_server_ctx.h265_server = g_h265_server;  // Sync H.265 context created in this function
 
   // ACDS Session Creation: Register this server with discovery service
   // This also determines the session string for mDNS (if --acds is enabled)
@@ -1972,16 +1975,19 @@ static void server_cleanup_fn(void *user_data) {
   static_cond_broadcast(&g_shutdown_cond);
 
   // Close all client sockets immediately to unblock receive threads.
+  // Only do this if initialization succeeded and created the rwlock.
   log_debug("Closing all client sockets to unblock receive threads...");
-  rwlock_wrlock(&g_client_manager_rwlock);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id[0] != '\0' && client->socket != INVALID_SOCKET_VALUE) {
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
+  if (g_client_manager_rwlock_initialized) {
+    rwlock_wrlock(&g_client_manager_rwlock);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->client_id[0] != '\0' && client->socket != INVALID_SOCKET_VALUE) {
+        socket_close(client->socket);
+        client->socket = INVALID_SOCKET_VALUE;
+      }
     }
+    rwlock_wrunlock(&g_client_manager_rwlock);
   }
-  rwlock_wrunlock(&g_client_manager_rwlock);
 
   log_debug("Signaling all clients to stop (sockets closed, g_should_exit set)...");
 
@@ -1998,8 +2004,8 @@ static void server_cleanup_fn(void *user_data) {
     g_rate_limiter = NULL;
   }
 
-  // Wait for all client handler threads to exit
-  {
+  // Wait for all client handler threads to exit (only if rwlock was initialized)
+  if (g_client_manager_rwlock_initialized) {
     int retry_count = 0;
     while (retry_count < 50) { // Max 500ms wait
       rwlock_rdlock(&g_client_manager_rwlock);
@@ -2025,21 +2031,23 @@ static void server_cleanup_fn(void *user_data) {
   debug_sync_destroy();
 #endif
 
-  // Clean up all connected clients
+  // Clean up all connected clients (only if rwlock was initialized)
   log_debug("Cleaning up connected clients...");
   char clients_to_remove[MAX_CLIENTS][MAX_CLIENT_ID_LEN];
   int client_count = 0;
 
-  rwlock_rdlock(&g_client_manager_rwlock);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id[0] == '\0') {
-      continue;
+  if (g_client_manager_rwlock_initialized) {
+    rwlock_rdlock(&g_client_manager_rwlock);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->client_id[0] == '\0') {
+        continue;
+      }
+      SAFE_STRNCPY(clients_to_remove[client_count], client->client_id, MAX_CLIENT_ID_LEN - 1);
+      client_count++;
     }
-    SAFE_STRNCPY(clients_to_remove[client_count], client->client_id, MAX_CLIENT_ID_LEN - 1);
-    client_count++;
+    rwlock_rdunlock(&g_client_manager_rwlock);
   }
-  rwlock_rdunlock(&g_client_manager_rwlock);
 
   for (int i = 0; i < client_count; i++) {
     if (remove_client(&g_server_ctx, clients_to_remove[i]) != 0) {
@@ -2068,8 +2076,11 @@ static void server_cleanup_fn(void *user_data) {
     log_debug("H.265 codec server context shut down");
   }
 
-  // Clean up synchronization primitives
-  rwlock_destroy(&g_client_manager_rwlock);
+  // Clean up synchronization primitives (only if they were initialized)
+  if (g_client_manager_rwlock_initialized) {
+    rwlock_destroy(&g_client_manager_rwlock);
+    g_client_manager_rwlock_initialized = false;
+  }
   mutex_destroy(&g_client_manager.mutex);
 
 #ifndef NDEBUG
@@ -2187,14 +2198,8 @@ int server_main(void) {
     log_debug("Statistics logger thread started");
   }
 
-  // Create H.265 server decoder context for multi-client codec support
-  h265_server_context_t *h265_server_ctx = h265_server_context_create();
-  if (!h265_server_ctx) {
-    log_error("Failed to create H.265 server context");
-    FATAL(ERROR_MEDIA_INIT, "Cannot initialize H.265 codec support");
-  }
-
   // Initialize static server context (populated further in server_init_fn)
+  // H.265 context is initialized in server_init_fn, not here
   g_server_ctx = (server_context_t){
       .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
       .rate_limiter = g_rate_limiter,
@@ -2209,7 +2214,7 @@ int server_main(void) {
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
       .session_host = NULL,
-      .h265_server = h265_server_ctx,
+      .h265_server = NULL, // Initialized in server_init_fn
   };
 
   session_server_like_config_t config = {
@@ -2239,8 +2244,12 @@ int server_main(void) {
               .enabled = GET_OPTION(enable_upnp),
               .description = "ascii-chat Server",
           },
-      .raise_fd_limit = false,
-      .fd_limit_target = 0,
+      // Raise FD limit for high-client-count scenarios (matches discovery-service policy)
+      // Server accepts MAX_CLIENTS connections plus WebSocket, TCP, UPnP, mDNS, etc.
+      // Each client may use multiple FDs (socket, media buffers, file handles)
+      // Raising to 65536 ensures we don't hit system limits under load
+      .raise_fd_limit = true,
+      .fd_limit_target = 65536,
   };
 
   asciichat_error_t result = session_server_like_run(&config);

@@ -20,19 +20,31 @@
  * - mDNS context and service advertisement
  * - UPnP port mapping
  * - Per-client crypto handshake (single shared implementation)
- * - Signal handler registration (SIGINT, SIGTERM, SIGPIPE)
+ * - Signal handler registration (SIGINT, SIGTERM, SIGPIPE) with persistent shutdown flag
  * - Keepawake system (platform sleep prevention)
  * - Status screen thread with keyboard input and grep mode
  * - File descriptor limit raising
- * - Proper cleanup ordering
+ * - Proper cleanup ordering with partial-init safety
  *
  * ## Mode-Specific Responsibilities
  *
  * Mode files provide callbacks for:
  * - `init_fn`: Mode-specific setup (crypto keys, rate limiter, mixer, DB, etc.)
- * - `interrupt_fn`: Async-signal-safe shutdown (close sockets, set exit flag)
+ *   - Called AFTER network infrastructure is ready but BEFORE WebSocket thread starts
+ *   - Can detect early shutdown via session_server_like_shutdown_requested()
+ *   - Failure triggers clean shutdown (cleanup still runs)
+ * - `interrupt_fn(int sig)`: Async-signal-safe shutdown (close sockets, set exit flag)
+ *   - Called from signal handler (SIGINT/SIGTERM)
+ *   - Must use only async-signal-safe operations
+ *   - Receives signal number as parameter
  * - `cleanup_fn`: Mode-specific teardown (clients, threads, resources)
+ *   - Called after WebSocket event loop stops
+ *   - TCP registry still available for iteration
+ *   - Only called if config provided (safe against NULL)
  * - `status_fn`: Optional status screen data population
+ *   - Called at GET_OPTION(fps) Hz by dedicated status thread
+ *   - Receives pre-zeroed ui_status_t struct to populate
+ *   - NULL = no status screen even if --status-screen is set
  *
  * ## Memory and Lifecycle
  *
@@ -40,8 +52,15 @@
  * Modes access these via accessors (e.g., session_server_like_get_tcp_server()).
  * Mode-specific state (clients, mixer, DB) is owned by the mode.
  *
+ * CRITICAL SAFETY GUARANTEES:
+ * - Cleanup operations only destroy resources that were successfully initialized
+ * - Mode init failures do not cause undefined behavior during cleanup
+ * - Early SIGINT/SIGTERM during init is preserved and detectable
+ * - WebSocket callbacks do not run before mode init completes
+ * - Signal handler type is correct (void(*)(int)) with no casts
+ *
  * @author Zachary Fogg <me@zfo.gg>
- * @date March 2026
+ * @date April 2026 (Refactored)
  */
 
 #pragma once
@@ -77,15 +96,17 @@ typedef asciichat_error_t (*session_server_like_init_fn)(void *user_data);
 /**
  * Async-signal-safe interrupt callback.
  *
- * Called from signal handler context (SIGINT / SIGTERM). Must only use
- * async-signal-safe operations. Responsible for:
+ * Called from signal handler context (SIGINT / SIGTERM) with the signal number.
+ * Must only use async-signal-safe operations. Responsible for:
  * 1. Setting the mode's shutdown flag (atomic)
  * 2. Closing TCP listen sockets to unblock accept loop
  * 3. Optionally stopping WebSocket server
  *
  * Use session_server_like_get_tcp_server() to access listen sockets.
+ *
+ * @param sig Signal number (SIGINT=2, SIGTERM=15)
  */
-typedef void (*session_server_like_interrupt_fn)(void);
+typedef void (*session_server_like_interrupt_fn)(int sig);
 
 /**
  * Mode-specific teardown callback.
@@ -219,29 +240,43 @@ typedef struct session_server_like_config {
 /**
  * Run a server-like mode with unified lifecycle management.
  *
- * Orchestrates the complete lifecycle:
+ * Orchestrates the complete lifecycle with proper initialization ordering to
+ * ensure mode-specific state is ready before external clients can connect.
  *
  * ## Initialization Sequence
  * 1. Keepawake validation and setup
  * 2. File descriptor limit raising (if configured)
- * 3. Signal handler registration (SIGINT, SIGTERM, SIGPIPE)
+ * 3. Signal handler registration (SIGINT, SIGTERM, SIGPIPE) with shutdown persistence
  * 4. TCP server init (binds to GET_OPTION port/address)
  * 5. UPnP port mapping (if enabled)
  * 6. mDNS context init and optional immediate advertisement
- * 7. WebSocket server init and event loop thread (if enabled)
- * 8. Mode-specific init_fn()
- * 9. Status screen and keyboard threads (if status_fn provided)
- * 10. TCP accept loop (blocks until shutdown)
+ * 7. WebSocket server construction (object created, event loop thread deferred)
+ * 8. Mode-specific init_fn() - mode initializes its state (crypto keys, rate limiter, DB, etc.)
+ * 9. WebSocket event loop thread start (only if mode init succeeds)
+ * 10. Status screen and keyboard threads (if status_fn provided)
+ * 11. TCP accept loop (blocks until shutdown)
  *
- * ## Cleanup (always runs, in order)
- * 11. Join status screen and keyboard threads
- * 12. Stop WebSocket server (atomic stop, cancel, join with 500ms timeout)
- * 13. Mode-specific cleanup_fn() (TCP registry still available)
- * 14. Destroy WebSocket server
- * 15. Destroy TCP server
- * 16. Close UPnP port mapping
- * 17. Destroy mDNS context
- * 18. Disable keepawake
+ * CRITICAL ORDERING NOTES:
+ * - WebSocket event loop thread ONLY starts after mode init succeeds (step 9, not step 7)
+ * - This prevents clients from arriving before mode state is ready
+ * - If SIGINT/SIGTERM arrives during init, subsequent steps are skipped
+ * - Mode-specific init can check session_server_like_shutdown_requested() for early shutdowns
+ *
+ * ## Cleanup (always runs, in order, guarded against partial init)
+ * 12. Join status screen and keyboard threads
+ * 13. Stop WebSocket server (only if thread was started, atomic stop, cancel, join with 500ms timeout)
+ * 14. Mode-specific cleanup_fn() (TCP registry still available, guarded by mode state flags)
+ * 15. Destroy WebSocket server (only if successfully initialized)
+ * 16. Destroy TCP server
+ * 17. Close UPnP port mapping
+ * 18. Destroy mDNS context
+ * 19. Disable keepawake
+ *
+ * SAFETY GUARANTEES:
+ * - Cleanup operations only touch resources that were successfully initialized
+ * - Signal handler safely sets shutdown flag during early initialization
+ * - Modes can detect early shutdown via session_server_like_shutdown_requested()
+ * - Partial initialization failures do not trigger undefined behavior in cleanup
  *
  * @param config Mode configuration (must not be NULL)
  * @return ASCIICHAT_OK on success, or first error from init or accept loop
@@ -255,19 +290,20 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 /**
  * Get the TCP server instance owned by server_like.
  *
- * Available after tcp_server_init() completes (i.e., during init_fn and after).
- * Modes use this for client registry operations and to close listen sockets
- * in interrupt_fn.
+ * READINESS GUARANTEE: Available from step 4 onward (during init_fn, interrupt_fn, cleanup_fn).
+ * Modes use this for client registry operations and to close listen sockets in interrupt_fn.
+ * The TCP server is guaranteed to be valid during init_fn and in interrupt_fn (async-signal context).
  *
- * @return Pointer to TCP server, or NULL if not initialized
+ * @return Pointer to TCP server (never NULL after step 4), or NULL if called before TCP init
  */
 tcp_server_t *session_server_like_get_tcp_server(void);
 
 /**
  * Get the mDNS context owned by server_like.
  *
- * Available after mDNS init completes (i.e., during init_fn and after).
+ * READINESS GUARANTEE: Available from step 6 onward (during init_fn and after).
  * Use for deferred advertisement when service_name is not known at config time.
+ * NULL if mDNS is disabled or initialization failed (non-fatal).
  *
  * @return Pointer to mDNS context, or NULL if not initialized or disabled
  */
@@ -276,8 +312,9 @@ asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
 /**
  * Get the UPnP context owned by server_like.
  *
- * Available after UPnP mapping completes (i.e., during init_fn and after).
- * Use for querying the public address.
+ * READINESS GUARANTEE: Available from step 5 onward (during init_fn and after).
+ * Use for querying the public address. NULL if port mapping failed or was disabled.
+ * Failure to map UPnP is non-fatal; WebRTC fallback will be used.
  *
  * @return Pointer to UPnP context, or NULL if not initialized or disabled
  */
@@ -286,7 +323,13 @@ nat_upnp_context_t *session_server_like_get_upnp_ctx(void);
 /**
  * Get the WebSocket server instance owned by server_like.
  *
- * Available after WebSocket init completes (i.e., during init_fn and after).
+ * READINESS GUARANTEE: WebSocket object is constructed at step 7, but the event loop
+ * thread does NOT start until after mode init succeeds (step 9). Callbacks will not run
+ * until after init_fn returns successfully. This prevents client connections before mode
+ * state is ready.
+ *
+ * Available for configuration during init_fn, and for state queries after init_fn succeeds.
+ * The WebSocket object is valid for the lifetime of the session_server_like_run() call.
  *
  * @return Pointer to WebSocket server, or NULL if not initialized or disabled
  */
@@ -328,3 +371,13 @@ asciichat_error_t session_server_like_mdns_advertise(const char *name, const cha
  * @return ASCIICHAT_OK on success, error code on handshake failure
  */
 asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport);
+
+/**
+ * Check if a shutdown request was received during initialization.
+ *
+ * Modes can use this during init_fn to detect early SIGINT/SIGTERM signals
+ * and exit gracefully instead of proceeding with partial initialization.
+ *
+ * @return true if SIGINT or SIGTERM was received, false otherwise
+ */
+bool session_server_like_shutdown_requested(void);

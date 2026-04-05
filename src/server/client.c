@@ -350,6 +350,9 @@ client_manager_t g_client_manager;
  */
 rwlock_t g_client_manager_rwlock = {0};
 
+/** Track whether g_client_manager_rwlock was successfully initialized. */
+bool g_client_manager_rwlock_initialized = false;
+
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
 void *client_send_thread_func(void *arg);         ///< Client packet send thread

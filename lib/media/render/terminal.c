@@ -47,6 +47,32 @@ typedef struct {
 static glyph_cache_entry_t *g_glyph_cache = NULL;
 
 /**
+ * Free all entries in glyph cache.
+ */
+static void glyph_cache_destroy(glyph_cache_entry_t **cache) {
+  glyph_cache_entry_t *curr, *tmp;
+  HASH_ITER(hh, *cache, curr, tmp) {
+    HASH_DEL(*cache, curr);
+    SAFE_FREE(curr->bitmap_buf);
+    SAFE_FREE(curr);
+  }
+}
+
+struct terminal_renderer_s {
+  VTerm *vt;
+  VTermScreen *vts;
+  int cols, rows;
+  FT_Library ft_lib;
+  FT_Face ft_face;
+  int cell_w, cell_h, baseline;
+  uint8_t *framebuffer;
+  int width_px, height_px, pitch;
+  term_renderer_theme_t theme;
+  bool is_matrix_font;
+  glyph_cache_entry_t *glyph_cache; // Per-renderer glyph cache (per-font)
+};
+
+/**
  * Lookup or create glyph cache entry.
  * If glyph is already cached in the renderer's font-specific cache, returns cached bitmap.
  * Otherwise, loads and renders glyph, caches it, returns rendered bitmap.
@@ -106,32 +132,6 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   new_result.buffer = entry->bitmap_buf;
   return &new_result;
 }
-
-/**
- * Free all entries in glyph cache.
- */
-static void glyph_cache_destroy(glyph_cache_entry_t **cache) {
-  glyph_cache_entry_t *curr, *tmp;
-  HASH_ITER(hh, *cache, curr, tmp) {
-    HASH_DEL(*cache, curr);
-    SAFE_FREE(curr->bitmap_buf);
-    SAFE_FREE(curr);
-  }
-}
-
-struct terminal_renderer_s {
-  VTerm *vt;
-  VTermScreen *vts;
-  int cols, rows;
-  FT_Library ft_lib;
-  FT_Face ft_face;
-  int cell_w, cell_h, baseline;
-  uint8_t *framebuffer;
-  int width_px, height_px, pitch;
-  term_renderer_theme_t theme;
-  bool is_matrix_font;
-  glyph_cache_entry_t *glyph_cache; // Per-renderer glyph cache (per-font)
-};
 
 static int screen_damage(VTermRect r, void *u) {
   (void)r;

@@ -74,6 +74,7 @@ typedef struct {
 // Global client manager
 extern client_manager_t g_client_manager;
 extern rwlock_t g_client_manager_rwlock;
+extern bool g_client_manager_rwlock_initialized;
 
 // Client management functions
 client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port);

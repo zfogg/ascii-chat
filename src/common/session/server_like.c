@@ -33,6 +33,7 @@ static tcp_server_t g_tcp_server;
 static bool g_tcp_server_initialized = false;
 
 static websocket_server_t g_websocket_server;
+static bool g_websocket_initialized = false;
 static asciichat_thread_t g_websocket_thread;
 static bool g_websocket_thread_started = false;
 
@@ -42,6 +43,10 @@ static nat_upnp_context_t *g_upnp_ctx = NULL;
 static asciichat_thread_t g_status_screen_thread;
 static bool g_status_screen_thread_started = false;
 
+/** Status screen callback and user data (immutable after thread start, cleared at shutdown). */
+static session_server_like_status_fn g_status_fn = NULL;
+static void *g_status_user_data = NULL;
+
 /** Stored config pointer (valid during session_server_like_run scope). */
 static const session_server_like_config_t *g_config = NULL;
 
@@ -49,11 +54,15 @@ static const session_server_like_config_t *g_config = NULL;
  * Signal Handler
  * ============================================================================ */
 
+/** Persistent shutdown request flag (set by interrupt handler during early init). */
+static atomic_t g_shutdown_requested = {0};
+
 static session_server_like_interrupt_fn g_interrupt_fn = NULL;
 
-static void server_like_signal_handler(void) {
+static void server_like_signal_handler(int sig) {
+  atomic_store_u64(&g_shutdown_requested, 1);
   if (g_interrupt_fn) {
-    g_interrupt_fn();
+    g_interrupt_fn(sig);
   }
 }
 
@@ -202,10 +211,11 @@ static void *status_screen_thread_func(void *arg) {
     }
 
     // Call mode's status callback to populate status data
-    if (g_config && g_config->status_fn) {
+    // Use direct static pointers instead of g_config to avoid stale reference during shutdown
+    if (g_status_fn) {
       ui_status_t status;
       memset(&status, 0, sizeof(status));
-      g_config->status_fn(g_config->status_user_data, &status);
+      g_status_fn(g_status_user_data, &status);
       ui_status_display_interactive(&status);
     }
 
@@ -296,6 +306,14 @@ asciichat_error_t session_server_like_mdns_advertise(const char *name, const cha
   }
 
   return result;
+}
+
+/* ============================================================================
+ * Accessors (shutdown state and network resources)
+ * ============================================================================ */
+
+bool session_server_like_shutdown_requested(void) {
+  return (bool)atomic_load_u64(&g_shutdown_requested);
 }
 
 /* ============================================================================
@@ -434,9 +452,10 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   /* === 3. Signal handlers === */
 
+  atomic_store_u64(&g_shutdown_requested, 0);
   g_interrupt_fn = config->interrupt_fn;
-  platform_signal(SIGINT, (signal_handler_t)server_like_signal_handler);
-  platform_signal(SIGTERM, (signal_handler_t)server_like_signal_handler);
+  platform_signal(SIGINT, server_like_signal_handler);
+  platform_signal(SIGTERM, server_like_signal_handler);
 #ifndef _WIN32
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
@@ -502,7 +521,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
-  /* === 7. WebSocket server === */
+  /* === 7. WebSocket server construction (thread deferred until after mode init) === */
 
   if (config->websocket.enabled) {
     websocket_server_config_t ws_config = {
@@ -518,14 +537,9 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     if (ws_result != ASCIICHAT_OK) {
       log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
     } else {
-      log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
-      if (asciichat_thread_create(&g_websocket_thread, "websocket_event_loop", websocket_server_thread_wrapper,
-                                  &g_websocket_server) == 0) {
-        g_websocket_thread_started = true;
-        log_info("WebSocket event loop thread started");
-      } else {
-        log_error("Failed to start WebSocket event loop thread");
-      }
+      g_websocket_initialized = true;
+      log_info("WebSocket server initialized on port %d (event loop deferred until after mode init)",
+               GET_OPTION(websocket_port));
     }
   }
 
@@ -537,6 +551,18 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     goto cleanup;
   }
 
+  /* === 8b. WebSocket event loop thread start (after mode init succeeds) === */
+
+  if (g_websocket_initialized && !atomic_load_u64(&g_shutdown_requested)) {
+    if (asciichat_thread_create(&g_websocket_thread, "websocket_event_loop", websocket_server_thread_wrapper,
+                                &g_websocket_server) == 0) {
+      g_websocket_thread_started = true;
+      log_info("WebSocket event loop thread started");
+    } else {
+      log_error("Failed to start WebSocket event loop thread");
+    }
+  }
+
   /* === 9. Status screen === */
 
   if (config->status_fn) {
@@ -546,12 +572,18 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       atomic_store_bool(&g_status_should_exit, false);
       ui_status_log_init();
 
+      // Store callback and user data for status thread (avoids reliance on g_config lifetime)
+      g_status_fn = config->status_fn;
+      g_status_user_data = config->status_user_data;
+
       if (asciichat_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
         g_status_screen_thread_started = true;
         log_info("Status screen thread started");
       } else {
         log_error("Failed to start status screen thread");
         ui_status_log_destroy();
+        g_status_fn = NULL;
+        g_status_user_data = NULL;
       }
     }
   }
@@ -577,10 +609,12 @@ cleanup:
       log_warn("Status screen thread did not exit within 2s");
     }
     g_status_screen_thread_started = false;
+    g_status_fn = NULL;
+    g_status_user_data = NULL;
     ui_status_log_destroy();
   }
 
-  /* 12. Stop WebSocket server */
+  /* 12. Stop WebSocket server (only if thread was started, i.e., init succeeded) */
   if (g_websocket_thread_started) {
     atomic_store_bool(&g_websocket_server.running, false);
     websocket_server_cancel_service(&g_websocket_server);
@@ -591,14 +625,15 @@ cleanup:
     g_websocket_thread_started = false;
   }
 
-  /* 13. Mode-specific cleanup */
-  if (config->cleanup_fn) {
+  /* 13. Mode-specific cleanup (only call if config provided) */
+  if (config && config->cleanup_fn) {
     config->cleanup_fn(config->cleanup_user_data);
   }
 
-  /* 14. Destroy WebSocket server */
-  if (config->websocket.enabled) {
+  /* 14. Destroy WebSocket server (only if successfully initialized) */
+  if (g_websocket_initialized) {
     websocket_server_destroy(&g_websocket_server);
+    g_websocket_initialized = false;
     log_debug("WebSocket server destroyed");
   }
 
