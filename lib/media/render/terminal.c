@@ -34,17 +34,12 @@
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)
-  uint8_t *bitmap_buf; // Allocated bitmap data
-  int width;           // Bitmap dimensions (in pixels)
-  int rows;            // Bitmap height (in rows)
-  int pitch;           // Bytes per row
+  FT_Bitmap bitmap;    // Cached FreeType bitmap metadata
+  uint8_t *bitmap_buf; // Owned bitmap data
   int bitmap_left;     // Glyph positioning offsets
   int bitmap_top;
   UT_hash_handle hh;   // uthash handle
 } glyph_cache_entry_t;
-
-// Global glyph cache — persists across renderer lifetimes to avoid re-rasterizing
-static glyph_cache_entry_t *g_glyph_cache = NULL;
 
 /**
  * Free all entries in glyph cache.
@@ -74,23 +69,16 @@ struct terminal_renderer_s {
 
 /**
  * Lookup or create glyph cache entry.
- * If glyph is already cached in the renderer's font-specific cache, returns cached bitmap.
- * Otherwise, loads and renders glyph, caches it, returns rendered bitmap.
+ * If glyph is already cached in the renderer's font-specific cache, returns the cached entry.
+ * Otherwise, loads and renders glyph, caches it, returns the cached entry.
  */
-static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t codepoint) {
+static glyph_cache_entry_t *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t codepoint) {
   glyph_cache_entry_t *entry = NULL;
 
   // Lookup in renderer's per-font cache
   HASH_FIND_INT(r->glyph_cache, &codepoint, entry);
-  if (entry) {
-    // Return cached bitmap
-    static FT_Bitmap cached_result;
-    cached_result.width = entry->width;
-    cached_result.rows = entry->rows;
-    cached_result.pitch = entry->pitch;
-    cached_result.buffer = entry->bitmap_buf;
-    return &cached_result;
-  }
+  if (entry)
+    return entry;
 
   // Not in cache — load and render glyph
   FT_UInt gi = FT_Get_Char_Index(face, codepoint);
@@ -102,35 +90,29 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   size_t bitmap_size = (size_t)src_bitmap->pitch * src_bitmap->rows;
 
   // Create and populate cache entry
-  entry = SAFE_MALLOC(sizeof(glyph_cache_entry_t), glyph_cache_entry_t *);
+  entry = SAFE_CALLOC(1, sizeof(glyph_cache_entry_t), glyph_cache_entry_t *);
   if (!entry) {
     return NULL;
   }
 
   entry->codepoint = codepoint;
-  entry->bitmap_buf = SAFE_MALLOC(bitmap_size, uint8_t *);
-  if (!entry->bitmap_buf) {
-    SAFE_FREE(entry);
-    return NULL;
+  entry->bitmap = *src_bitmap;
+  if (bitmap_size > 0 && src_bitmap->buffer) {
+    entry->bitmap_buf = SAFE_MALLOC(bitmap_size, uint8_t *);
+    if (!entry->bitmap_buf) {
+      SAFE_FREE(entry);
+      return NULL;
+    }
+    memcpy(entry->bitmap_buf, src_bitmap->buffer, bitmap_size);
+    entry->bitmap.buffer = entry->bitmap_buf;
   }
-
-  memcpy(entry->bitmap_buf, src_bitmap->buffer, bitmap_size);
-  entry->width = src_bitmap->width;
-  entry->rows = src_bitmap->rows;
-  entry->pitch = src_bitmap->pitch;
   entry->bitmap_left = face->glyph->bitmap_left;
   entry->bitmap_top = face->glyph->bitmap_top;
 
   // Add to renderer's per-font hash table
   HASH_ADD_INT(r->glyph_cache, codepoint, entry);
 
-  // Return the cached bitmap
-  static FT_Bitmap new_result;
-  new_result.width = entry->width;
-  new_result.rows = entry->rows;
-  new_result.pitch = entry->pitch;
-  new_result.buffer = entry->bitmap_buf;
-  return &new_result;
+  return entry;
 }
 
 static int screen_damage(VTermRect r, void *u) {
@@ -511,16 +493,11 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
 
         // Use per-renderer glyph cache to avoid rasterizing every glyph every frame
-        FT_Bitmap *cached_bitmap = glyph_cache_get(r, r->ft_face, char_to_render);
-        if (cached_bitmap && cached_bitmap->width > 0 && cached_bitmap->rows > 0) {
-          // Find cache entry to get positioning offsets
-          glyph_cache_entry_t *cache_entry = NULL;
-          HASH_FIND_INT(r->glyph_cache, &char_to_render, cache_entry);
-          if (cache_entry) {
-            blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
-                        fr, fg, fb, br, bg, bb);
-            glyph_rendered_count++;
-          }
+        glyph_cache_entry_t *cache_entry = glyph_cache_get(r, r->ft_face, char_to_render);
+        if (cache_entry && cache_entry->bitmap.width > 0 && cache_entry->bitmap.rows > 0) {
+          blit_glyph(r, &cache_entry->bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
+                      fr, fg, fb, br, bg, bb);
+          glyph_rendered_count++;
         }
       }
     }
