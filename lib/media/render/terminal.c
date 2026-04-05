@@ -34,7 +34,7 @@
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)
-  FT_Bitmap bitmap;    // Cached FreeType bitmap metadata
+  FT_Bitmap bitmap;    // Cached FreeType bitmap with buffer retargeted to bitmap_buf
   uint8_t *bitmap_buf; // Owned bitmap data
   int bitmap_left;     // Glyph positioning offsets
   int bitmap_top;
@@ -95,10 +95,12 @@ static glyph_cache_entry_t *glyph_cache_get(terminal_renderer_t *r, FT_Face face
     return NULL;
   }
 
+  FT_Bitmap cached_bitmap = *src_bitmap;
+  cached_bitmap.buffer = NULL;
+
   entry->codepoint = codepoint;
-  entry->bitmap = *src_bitmap;
+  entry->bitmap = cached_bitmap;
   entry->bitmap_buf = NULL;
-  entry->bitmap.buffer = NULL;
   if (bitmap_size > 0 && src_bitmap->buffer) {
     entry->bitmap_buf = SAFE_MALLOC(bitmap_size, uint8_t *);
     if (!entry->bitmap_buf) {
