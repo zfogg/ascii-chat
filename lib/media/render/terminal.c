@@ -34,7 +34,7 @@
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)
-  FT_Bitmap bitmap;    // FreeType bitmap structure that points at bitmap_buf after initialization
+  FT_Bitmap bitmap;    // Copy of the source bitmap with its buffer redirected to bitmap_buf
   uint8_t *bitmap_buf; // Owned copy of the bitmap data
   int bitmap_left;     // Glyph positioning offsets
   int bitmap_top;
@@ -495,7 +495,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
         // Use per-renderer glyph cache to avoid rasterizing every glyph every frame
         glyph_cache_entry_t *cache_entry = glyph_cache_get(r, r->ft_face, char_to_render);
-        if (cache_entry && cache_entry->bitmap.width > 0 && cache_entry->bitmap.rows > 0) {
+        if (cache_entry && cache_entry->bitmap.buffer != NULL && cache_entry->bitmap.width > 0 &&
+            cache_entry->bitmap.rows > 0) {
           blit_glyph(r, &cache_entry->bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
                       fr, fg, fb, br, bg, bb);
           glyph_rendered_count++;
