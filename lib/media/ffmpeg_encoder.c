@@ -557,9 +557,9 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: av_frame_get_buffer failed");
   }
 
-  // Create SWS context for RGB → target format conversion
+  // Create SWS context for RGBA → target format conversion
   LOG_IO("swscaler", {
-    enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGB24, width_px, height_px, enc->target_pix_fmt,
+    enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGBA, width_px, height_px, enc->target_pix_fmt,
                                   SWS_BICUBIC, NULL, NULL, NULL);
   });
   if (!enc->sws_ctx) {
@@ -656,15 +656,15 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   log_debug("ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d, captured_ns=%llu", enc->frame_count, pitch, enc->width_px,
             enc->height_px, (unsigned long long)captured_ns);
 
-  // Set up RGB frame for conversion
+  // Set up RGBA frame for conversion
   uint8_t *data[1] = {(uint8_t *)rgb};
   int linesize[1] = {pitch};
 
-  // CRITICAL: Ensure frame format is set before each sws_scale call
-  // Some FFmpeg versions reset the format field, so we need to set it explicitly
+  // Ensure frame format is set before each sws_scale call.
+  // Some FFmpeg versions reset the format field, so we set it explicitly.
   enc->frame_encoded->format = enc->target_pix_fmt;
 
-  // Convert RGB24 to target format
+  // Convert RGBA to target format
   sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
 

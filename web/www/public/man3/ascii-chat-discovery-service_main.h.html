@@ -66,57 +66,57 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Exit code (0 = success, non-zero = error)</div>
-<p class="Pp">Definition at line <b>266</b> of file
+<p class="Pp">Definition at line <b>279</b> of file
     <b>discovery-service/main.c</b>.</p>
-<pre>266                     {
-267   session_server_like_config_t config = {
-268       // Required callbacks
-269       .init_fn = acds_init_fn,
-270       .init_user_data = NULL,
-271       .interrupt_fn = acds_interrupt_fn,
-272 
-273       // Cleanup
-274       .cleanup_fn = acds_cleanup_fn,
-275       .cleanup_user_data = NULL,
-276 
-277       // No status screen for ACDS (for now)
-278       .status_fn = NULL,
-279       .status_user_data = NULL,
-280 
-281       // TCP handler
-282       .tcp_handler = acds_client_handler,
-283       .tcp_user_data = &amp;g_server,
-284 
-285       // WebSocket
-286       .websocket =
-287           {
-288               .enabled = true,
-289               .handler = acds_websocket_client_handler,
-290               .user_data = &amp;g_server,
-291           },
-292 
-293       // mDNS
-294       .mdns =
-295           {
-296               .enabled = true,
-297               .service_name = &quot;ascii-chat-Discovery-Service&quot;,
-298               .service_type = &quot;_ascii-chat-discovery-service._tcp&quot;,
-299           },
-300 
-301       // UPnP
-302       .upnp =
-303           {
-304               .enabled = true,
-305               .description = &quot;ascii-chat ACDS&quot;,
-306           },
-307 
-308       // System
-309       .raise_fd_limit = true,
-310       .fd_limit_target = 65536,
-311   };
-312 
-313   return session_server_like_run(&amp;config);
-314 }</pre>
+<pre>279                     {
+280   session_server_like_config_t config = {
+281       // Required callbacks
+282       .init_fn = acds_init_fn,
+283       .init_user_data = NULL,
+284       .interrupt_fn = acds_interrupt_fn,
+285 
+286       // Cleanup
+287       .cleanup_fn = acds_cleanup_fn,
+288       .cleanup_user_data = NULL,
+289 
+290       // No status screen for ACDS (for now)
+291       .status_fn = NULL,
+292       .status_user_data = NULL,
+293 
+294       // TCP handler
+295       .tcp_handler = acds_client_handler,
+296       .tcp_user_data = &amp;g_server,
+297 
+298       // WebSocket
+299       .websocket =
+300           {
+301               .enabled = true,
+302               .handler = acds_websocket_client_handler,
+303               .user_data = &amp;g_server,
+304           },
+305 
+306       // mDNS
+307       .mdns =
+308           {
+309               .enabled = true,
+310               .service_name = &quot;ascii-chat-Discovery-Service&quot;,
+311               .service_type = &quot;_ascii-chat-discovery-service._tcp&quot;,
+312           },
+313 
+314       // UPnP
+315       .upnp =
+316           {
+317               .enabled = true,
+318               .description = &quot;ascii-chat ACDS&quot;,
+319           },
+320 
+321       // System
+322       .raise_fd_limit = true,
+323       .fd_limit_target = 65536,
+324   };
+325 
+326   return session_server_like_run(&amp;config);
+327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_client_handler()</b>,
@@ -131,7 +131,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-date">Version 0.11.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

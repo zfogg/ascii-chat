@@ -192,131 +192,128 @@ ascii-chat server --port 8080
 # Options parsed in main.c, then server_main() called
 </pre>
 </div>
-<p class="Pp">Definition at line <b>2142</b> of file <b>server/main.c</b>.</p>
-<pre>2142                       {
-2143   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
-2144 
-2145   // Register atomic for debug tracking
-2146   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
-2147 
-2148   // Register shutdown check callback for library code
-2149   shutdown_register_callback(check_shutdown);
-2150 
-2151   // Initialize crypto after logging is ready
-2152   log_debug(&quot;Initializing crypto...&quot;);
-2153   if (init_server_crypto() != 0) {
-2154     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
-2155     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
-2156   }
-2157   log_debug(&quot;Crypto initialized successfully&quot;);
+<p class="Pp">Definition at line <b>2153</b> of file <b>server/main.c</b>.</p>
+<pre>2153                       {
+2154   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
+2155 
+2156   // Register atomic for debug tracking
+2157   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
 2158 
-2159   log_info(&quot;ascii-chat server starting...&quot;);
-2160 
-2161   int port = GET_OPTION(port);
-2162   if (port &lt; 1 || port &gt; 65535) {
-2163     log_error(&quot;Invalid port configuration: %d&quot;, port);
-2164     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
-2165   }
-2166 
-2167   ascii_simd_init();
-2168   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+2159   // Register shutdown check callback for library code
+2160   shutdown_register_callback(check_shutdown);
+2161 
+2162   // Initialize crypto after logging is ready
+2163   log_debug(&quot;Initializing crypto...&quot;);
+2164   if (init_server_crypto() != 0) {
+2165     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
+2166     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+2167   }
+2168   log_debug(&quot;Crypto initialized successfully&quot;);
 2169 
-2170 #ifndef NDEBUG
-2171   if (stats_init() != 0) {
-2172     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
-2173   }
-2174 #endif
-2175 
-2176   // Create background worker thread pool for server operations
-2177   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
-2178   if (!g_server_worker_pool) {
-2179     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
-2180     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
-2181   }
-2182 
-2183   // Spawn statistics logging thread in worker pool
-2184   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
-2185     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
-2186   } else {
-2187     log_debug(&quot;Statistics logger thread started&quot;);
-2188   }
-2189 
-2190   // Create H.265 server decoder context for multi-client codec support
-2191   h265_server_context_t *h265_server_ctx = h265_server_context_create();
-2192   if (!h265_server_ctx) {
-2193     log_error(&quot;Failed to create H.265 server context&quot;);
-2194     FATAL(ERROR_MEDIA_INIT, &quot;Cannot initialize H.265 codec support&quot;);
-2195   }
-2196 
-2197   // Initialize static server context (populated further in server_init_fn)
-2198   g_server_ctx = (server_context_t){
-2199       .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
-2200       .rate_limiter = g_rate_limiter,
-2201       .client_manager = &amp;g_client_manager,
-2202       .client_manager_rwlock = &amp;g_client_manager_rwlock,
-2203       .server_should_exit = &amp;g_should_exit,
-2204       .audio_mixer = g_audio_mixer,
-2205       .stats = &amp;g_stats,
-2206       .stats_mutex = &amp;g_stats_mutex,
-2207       .encryption_enabled = g_server_encryption_enabled,
-2208       .server_private_key = &amp;g_server_private_key,
-2209       .client_whitelist = g_client_whitelist,
-2210       .num_whitelisted_clients = g_num_whitelisted_clients,
-2211       .session_host = NULL,
-2212       .h265_server = h265_server_ctx,
-2213   };
-2214 
-2215   session_server_like_config_t config = {
-2216       .init_fn = server_init_fn,
-2217       .init_user_data = NULL,
-2218       .interrupt_fn = server_handle_sigint,
-2219       .cleanup_fn = server_cleanup_fn,
-2220       .cleanup_user_data = NULL,
-2221       .status_fn = server_status_fn,
-2222       .status_user_data = NULL,
-2223       .tcp_handler = ascii_chat_client_handler,
-2224       .tcp_user_data = &amp;g_server_ctx,
-2225       .websocket =
-2226           {
-2227               .enabled = true,
-2228               .handler = websocket_client_handler,
-2229               .user_data = &amp;g_server_ctx,
-2230           },
-2231       .mdns =
-2232           {
-2233               .enabled = !GET_OPTION(no_mdns_advertise),
-2234               .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
-2235               .service_type = &quot;_ascii-chat._tcp&quot;,
-2236           },
-2237       .upnp =
-2238           {
-2239               .enabled = GET_OPTION(enable_upnp),
-2240               .description = &quot;ascii-chat Server&quot;,
+2170   log_info(&quot;ascii-chat server starting...&quot;);
+2171 
+2172   int port = GET_OPTION(port);
+2173   if (port &lt; 1 || port &gt; 65535) {
+2174     log_error(&quot;Invalid port configuration: %d&quot;, port);
+2175     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
+2176   }
+2177 
+2178   ascii_simd_init();
+2179   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+2180 
+2181 #ifndef NDEBUG
+2182   if (stats_init() != 0) {
+2183     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
+2184   }
+2185 #endif
+2186 
+2187   // Create background worker thread pool for server operations
+2188   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
+2189   if (!g_server_worker_pool) {
+2190     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
+2191     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
+2192   }
+2193 
+2194   // Spawn statistics logging thread in worker pool
+2195   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
+2196     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
+2197   } else {
+2198     log_debug(&quot;Statistics logger thread started&quot;);
+2199   }
+2200 
+2201   // Initialize static server context (populated further in server_init_fn)
+2202   // H.265 context is initialized in server_init_fn, not here
+2203   g_server_ctx = (server_context_t){
+2204       .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
+2205       .rate_limiter = g_rate_limiter,
+2206       .client_manager = &amp;g_client_manager,
+2207       .client_manager_rwlock = &amp;g_client_manager_rwlock,
+2208       .server_should_exit = &amp;g_should_exit,
+2209       .audio_mixer = g_audio_mixer,
+2210       .stats = &amp;g_stats,
+2211       .stats_mutex = &amp;g_stats_mutex,
+2212       .encryption_enabled = g_server_encryption_enabled,
+2213       .server_private_key = &amp;g_server_private_key,
+2214       .client_whitelist = g_client_whitelist,
+2215       .num_whitelisted_clients = g_num_whitelisted_clients,
+2216       .session_host = NULL,
+2217       .h265_server = NULL, // Initialized in server_init_fn
+2218   };
+2219 
+2220   session_server_like_config_t config = {
+2221       .init_fn = server_init_fn,
+2222       .init_user_data = NULL,
+2223       .interrupt_fn = server_handle_sigint,
+2224       .cleanup_fn = server_cleanup_fn,
+2225       .cleanup_user_data = NULL,
+2226       .status_fn = server_status_fn,
+2227       .status_user_data = NULL,
+2228       .tcp_handler = ascii_chat_client_handler,
+2229       .tcp_user_data = &amp;g_server_ctx,
+2230       .websocket =
+2231           {
+2232               .enabled = true,
+2233               .handler = websocket_client_handler,
+2234               .user_data = &amp;g_server_ctx,
+2235           },
+2236       .mdns =
+2237           {
+2238               .enabled = !GET_OPTION(no_mdns_advertise),
+2239               .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
+2240               .service_type = &quot;_ascii-chat._tcp&quot;,
 2241           },
-2242       .raise_fd_limit = false,
-2243       .fd_limit_target = 0,
-2244   };
-2245 
-2246   asciichat_error_t result = session_server_like_run(&amp;config);
-2247   return (result == ASCIICHAT_OK) ? 0 : 1;
-2248 }</pre>
+2242       .upnp =
+2243           {
+2244               .enabled = GET_OPTION(enable_upnp),
+2245               .description = &quot;ascii-chat Server&quot;,
+2246           },
+2247       // Raise FD limit for high-client-count scenarios (matches discovery-service policy)
+2248       // Server accepts MAX_CLIENTS connections plus WebSocket, TCP, UPnP, mDNS, etc.
+2249       // Each client may use multiple FDs (socket, media buffers, file handles)
+2250       // Raising to 65536 ensures we don't hit system limits under load
+2251       .raise_fd_limit = true,
+2252       .fd_limit_target = 65536,
+2253   };
+2254 
+2255   asciichat_error_t result = session_server_like_run(&amp;config);
+2256   return (result == ASCIICHAT_OK) ? 0 : 1;
+2257 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
     <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
-    <b>FATAL</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>, <b>FATAL</b>,
+    <b>g_audio_mixer</b>, <b>g_client_manager</b>,
     <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
     <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
     <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
     <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
-    <b>GET_OPTION</b>, <b>h265_server_context_create()</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>precalc_rgb_palettes()</b>, <b>session_server_like_run()</b>,
-    <b>shutdown_register_callback()</b>, <b>stats_init()</b>,
-    <b>stats_logger_thread()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_spawn()</b>, <b>weight_blue</b>, <b>weight_green</b>, and
-    <b>weight_red</b>.</p>
+    <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
+    <b>session_server_like_run()</b>, <b>shutdown_register_callback()</b>,
+    <b>stats_init()</b>, <b>stats_logger_thread()</b>,
+    <b>thread_pool_create()</b>, <b>thread_pool_spawn()</b>, <b>weight_blue</b>,
+    <b>weight_green</b>, and <b>weight_red</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -501,7 +498,7 @@ ascii-chat server --port 8080
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-date">Version 0.11.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

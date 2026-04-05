@@ -9,7 +9,7 @@
  * to disk. The encoder automatically detects the output format and codec from the file
  * extension, handling all necessary color space conversions and encoder configuration.
  *
- * **Input format:** RGB24 (8-bit per channel, 24-bit per pixel)
+ * **Input format:** RGBA (8-bit per channel, 32-bit per pixel)
  * **Output:** File on disk with automatic format/codec detection
  *
  * @section ffmpeg_encoder_formats Supported Formats & Codecs
@@ -39,7 +39,7 @@
  * - Provides reasonable quality for most use cases without manual tuning
  *
  * **Color Space Conversion:**
- * - Input: RGB24 (24-bit color, standard in graphics/video capture)
+ * - Input: RGBA (32-bit color, matches terminal renderer framebuffer)
  * - Conversion method: libswscale with SWS_BICUBIC algorithm
  * - SWS_BICUBIC: Bicubic interpolation offering good quality-to-speed balance
  * - Pixel format selection:
@@ -69,9 +69,9 @@
  *     // Handle error
  * }
  *
- * // Write frames (RGB24 format, pitch in bytes per row)
- * uint8_t *frame_rgb = get_frame_data();
- * int pitch = 1920 * 3;  // 1920 pixels × 3 bytes per pixel
+ * // Write frames (RGBA format, pitch in bytes per row)
+ * uint8_t *frame_rgba = get_frame_data();
+ * int pitch = 1920 * 4;  // 1920 pixels × 4 bytes per pixel (RGBA)
  * ffmpeg_encoder_write_frame(enc, frame_rgb, pitch);
  *
  * // Cleanup and finalize file
@@ -169,7 +169,7 @@ typedef struct ffmpeg_encoder_s ffmpeg_encoder_t;
  *
  * **Bitrate:** Automatically calculated from resolution (~1 Mbps per megapixel, clamped to 500-5000 kbps).
  *
- * **Color Space:** Input is expected in RGB24 format. Internal conversion to the appropriate
+ * **Color Space:** Input is expected in RGBA format. Internal conversion to the appropriate
  * output pixel format (YUV420P for video, RGB24 for PNG, YUVJ420P for JPEG) is handled automatically.
  *
  * @param output_path Path to the output file (extension determines format and codec)
@@ -193,13 +193,13 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
 /**
  * Write a single video frame to the output file.
  *
- * The frame must be in RGB24 format (8-bit per channel, 24-bit per pixel).
+ * The frame must be in RGBA format (8-bit per channel, 32-bit per pixel).
  * Internal color space conversion is performed automatically based on the
  * output format (see @ref ffmpeg_encoder_options for details).
  *
  * **Pitch Parameter:**
  * The `pitch` parameter specifies the byte offset from one row to the next.
- * For tightly-packed RGB data: `pitch = width_px × 3`.
+ * For tightly-packed RGBA data: `pitch = width_px × 4`.
  * For padded/aligned buffers: `pitch` must reflect the actual row size.
  *
  * **Timestamp Parameter:**
@@ -209,7 +209,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
  * captured_ns should be the time when the frame was acquired from the media source.
  *
  * @param enc         Encoder handle (created with ffmpeg_encoder_create())
- * @param rgb         Pointer to frame data in RGB24 format (not copied, used immediately)
+ * @param rgb         Pointer to frame data in RGBA format (not copied, used immediately)
  * @param pitch       Byte offset between rows (must match actual buffer layout)
  * @param captured_ns Wall-clock timestamp in nanoseconds when frame was captured
  *

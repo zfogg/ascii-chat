@@ -68,6 +68,8 @@
   <br/>
   <b>bool</b> <b>is_matrix_font</b>
   <br/>
+  <b>glyph_cache_entry_t</b> * <b>glyph_cache</b>
+  <br/>
   <br/>
 </p>
 </section>
@@ -75,7 +77,7 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>122</b> of file
+<p class="Pp">Definition at line <b>58</b> of file
     <b>media/render/terminal.c</b>.</p>
 </section>
 <section class="Sh">
@@ -84,7 +86,7 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::baseline"><a class="permalink" href="#int_terminal_renderer_s::baseline">int
   terminal_renderer_s::baseline</a></h2>
-<p class="Pp">Definition at line <b>128</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -92,7 +94,7 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::cell_h"><a class="permalink" href="#int_terminal_renderer_s::cell_h">int
   terminal_renderer_s::cell_h</a></h2>
-<p class="Pp">Definition at line <b>128</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -100,7 +102,7 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::cell_w"><a class="permalink" href="#int_terminal_renderer_s::cell_w">int
   terminal_renderer_s::cell_w</a></h2>
-<p class="Pp">Definition at line <b>128</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -108,14 +110,14 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::cols"><a class="permalink" href="#int_terminal_renderer_s::cols">int
   terminal_renderer_s::cols</a></h2>
-<p class="Pp">Definition at line <b>125</b> of file
+<p class="Pp">Definition at line <b>61</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_feed()</b>, and <b>term_renderer_get_cols()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>* terminal_renderer_s::framebuffer</h2>
-<p class="Pp">Definition at line <b>129</b> of file
+<p class="Pp">Definition at line <b>65</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_destroy()</b>, <b>term_renderer_feed()</b>, and
@@ -124,7 +126,7 @@
 <section class="Ss">
 <h2 class="Ss" id="FT_Face_terminal_renderer_s::ft_face"><a class="permalink" href="#FT_Face_terminal_renderer_s::ft_face">FT_Face
   terminal_renderer_s::ft_face</a></h2>
-<p class="Pp">Definition at line <b>127</b> of file
+<p class="Pp">Definition at line <b>63</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_destroy()</b>, and <b>term_renderer_feed()</b>.</p>
@@ -132,22 +134,29 @@
 <section class="Ss">
 <h2 class="Ss" id="FT_Library_terminal_renderer_s::ft_lib"><a class="permalink" href="#FT_Library_terminal_renderer_s::ft_lib">FT_Library
   terminal_renderer_s::ft_lib</a></h2>
-<p class="Pp">Definition at line <b>126</b> of file
+<p class="Pp">Definition at line <b>62</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_destroy()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>glyph_cache_entry_t</b>* terminal_renderer_s::glyph_cache</h2>
+<p class="Pp">Definition at line <b>69</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<p class="Pp">Referenced by <b>term_renderer_create()</b>,
+    <b>term_renderer_destroy()</b>, and <b>term_renderer_feed()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::height_px"><a class="permalink" href="#int_terminal_renderer_s::height_px">int
   terminal_renderer_s::height_px</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_feed()</b>, and <b>term_renderer_height_px()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_renderer_s::is_matrix_font</h2>
-<p class="Pp">Definition at line <b>132</b> of file
+<p class="Pp">Definition at line <b>68</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -155,7 +164,7 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::pitch"><a class="permalink" href="#int_terminal_renderer_s::pitch">int
   terminal_renderer_s::pitch</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_feed()</b>, and <b>term_renderer_pitch()</b>.</p>
@@ -163,14 +172,14 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::rows"><a class="permalink" href="#int_terminal_renderer_s::rows">int
   terminal_renderer_s::rows</a></h2>
-<p class="Pp">Definition at line <b>125</b> of file
+<p class="Pp">Definition at line <b>61</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_feed()</b>, and <b>term_renderer_get_rows()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>term_renderer_theme_t</b> terminal_renderer_s::theme</h2>
-<p class="Pp">Definition at line <b>131</b> of file
+<p class="Pp">Definition at line <b>67</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -178,7 +187,7 @@
 <section class="Ss">
 <h2 class="Ss" id="VTerm*_terminal_renderer_s::vt"><a class="permalink" href="#VTerm*_terminal_renderer_s::vt">VTerm*
   terminal_renderer_s::vt</a></h2>
-<p class="Pp">Definition at line <b>123</b> of file
+<p class="Pp">Definition at line <b>59</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_destroy()</b>, and <b>term_renderer_feed()</b>.</p>
@@ -186,7 +195,7 @@
 <section class="Ss">
 <h2 class="Ss" id="VTermScreen*_terminal_renderer_s::vts"><a class="permalink" href="#VTermScreen*_terminal_renderer_s::vts">VTermScreen*
   terminal_renderer_s::vts</a></h2>
-<p class="Pp">Definition at line <b>124</b> of file
+<p class="Pp">Definition at line <b>60</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>, and
     <b>term_renderer_feed()</b>.</p>
@@ -194,7 +203,7 @@
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_renderer_s::width_px"><a class="permalink" href="#int_terminal_renderer_s::width_px">int
   terminal_renderer_s::width_px</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>media/render/terminal.c</b>.</p>
 <p class="Pp">Referenced by <b>term_renderer_create()</b>,
     <b>term_renderer_feed()</b>, and <b>term_renderer_width_px()</b>.</p>
@@ -208,7 +217,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-date">Version 0.11.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

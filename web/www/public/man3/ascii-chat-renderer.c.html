@@ -193,24 +193,22 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> render_file_destroy
   (<b>render_file_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>311</b> of file <b>renderer.c</b>.</p>
-<pre>311                                                               {
-312   if (!ctx)
-313     return ASCIICHAT_OK;
-314   asciichat_error_t err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
-315   term_renderer_destroy(ctx-&gt;renderer);
-316   term_renderer_glyph_cache_cleanup();
-317   SAFE_FREE(ctx-&gt;audio_read_buf);
-318   SAFE_FREE(ctx);
-319   return err;
-320 }</pre>
+<p class="Pp">Definition at line <b>325</b> of file <b>renderer.c</b>.</p>
+<pre>325                                                               {
+326   if (!ctx)
+327     return ASCIICHAT_OK;
+328   asciichat_error_t err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
+329   term_renderer_destroy(ctx-&gt;renderer);
+330   SAFE_FREE(ctx-&gt;audio_read_buf);
+331   SAFE_FREE(ctx);
+332   return err;
+333 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>render_file_ctx_s::audio_read_buf</b>, <b>render_file_ctx_s::encoder</b>,
     <b>ffmpeg_encoder_destroy()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_FREE</b>, <b>term_renderer_destroy()</b>, and
-    <b>term_renderer_glyph_cache_cleanup()</b>.</p>
+    <b>SAFE_FREE</b>, and <b>term_renderer_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -236,12 +234,12 @@
 <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
   render_file_set_snapshot_actual_duration (<b>render_file_ctx_t</b> * ctx,
   double actual_duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>305</b> of file <b>renderer.c</b>.</p>
-<pre>305                                                                                                   {
-306   if (!ctx || !ctx-&gt;encoder)
-307     return;
-308   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
-309 }</pre>
+<p class="Pp">Definition at line <b>319</b> of file <b>renderer.c</b>.</p>
+<pre>319                                                                                                   {
+320   if (!ctx || !ctx-&gt;encoder)
+321     return;
+322   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
+323 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>render_file_ctx_s::encoder</b>, and
@@ -297,143 +295,157 @@
 164 
 165   // Check pixels in multiple locations to verify content
 166   if (pixels) {
-167     // Check pixel at (0,0) - top left corner
-168     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
-169 
-170     // Check pixel at (500, 100) where we injected a test red stripe
-171     size_t test_offset = 100 * pitch + 500 * 3;
-172     uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2];
-173 
-174     // Check pixel at middle of screen
-175     uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
-176             sample_b_mid = pixels[(height_px / 2) * pitch + 2];
-177 
-178     log_info(&quot;  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)&quot;, sample_r,
-179              sample_g, sample_b, test_r, test_g, test_b, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid);
-180   }
-181 
-182   // CRITICAL: Copy pixel buffer before encoding
-183   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
-184   // overwritten on the next frame. We must copy the data before passing to the encoder.
-185   uint8_t *pixels_copy = NULL;
-186   if (pixels) {
-187     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
-188     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
-189     memcpy(pixels_copy, pixels, pixel_buffer_size);
-190     log_info(&quot;render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)&quot;, pixel_buffer_size,
-191              (void *)pixels, (void *)pixels_copy);
-192 
-193     // DEBUG: Inject test red stripe to verify encoder is working
-194     static int frame_num = 0;
-195     if (frame_num++ &lt; 1) {
-196       log_info(&quot;DEBUG: Injecting test RED vertical stripe into pixel buffer for verification&quot;);
-197       // Fill a 100-pixel-wide vertical stripe with bright red at x=500
-198       for (int y = 0; y &lt; height_px; y++) {
-199         for (int x = 500; x &lt; 600 &amp;&amp; x &lt; width_px; x++) {
-200           uint8_t *pixel = pixels_copy + y * pitch + x * 3;
-201           pixel[0] = 255; // R
-202           pixel[1] = 0;   // G
-203           pixel[2] = 0;   // B
-204         }
-205       }
-206     }
-207   }
-208 
-209   err = ffmpeg_encoder_write_frame(ctx-&gt;encoder, pixels_copy, pitch, captured_ns);
-210   if (err != ASCIICHAT_OK) {
-211     log_warn(&quot;render_file_write_frame: ffmpeg_encoder_write_frame failed: %s&quot;, asciichat_error_string(err));
-212   }
-213 
-214   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
-215   SAFE_FREE(pixels_copy);
-216 
-217   // Write synchronized audio for this frame if available
-218   // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
-219   if (ctx &amp;&amp; ctx-&gt;audio_read_buf &amp;&amp; ctx-&gt;encoder) {
-220     // Detect if we're in snapshot mode
-221     bool snapshot_mode = GET_OPTION(snapshot_mode);
-222     double snapshot_delay = GET_OPTION(snapshot_delay);
-223 
-224     int samples_per_frame;
-225 
-226     // Track frame timing for dynamic FPS calculation in snapshot mode
-227     static uint64_t first_frame_ns = 0;
-228     static int log_once = 0;
-229 
-230     if (first_frame_ns == 0) {
-231       first_frame_ns = captured_ns;
-232     }
-233 
-234     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
-235       // Simple approach: distribute snapshot_delay * sample_rate evenly across expected ~70 frames
-236       // This ensures total audio duration = snapshot_delay seconds
-237       int total_target_samples = (int)(ctx-&gt;audio_sample_rate * snapshot_delay);
-238       int expected_frame_count = (int)(13.6 * snapshot_delay); // 13.6 FPS is typical capture rate
-239       samples_per_frame = total_target_samples / expected_frame_count;
+167     // The framebuffer is RGBA (4 bytes per pixel)
+168     // Check pixel at (0,0) - top left corner
+169     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2], sample_a = pixels[3];
+170 
+171     // Check pixel at (500, 100) where we'll inject a test red stripe
+172     size_t test_offset = 100 * pitch + 500 * 4; // 4 bytes per pixel for RGBA
+173     uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2],
+174             test_a = pixels[test_offset + 3];
+175 
+176     // Check pixel at middle of screen
+177     size_t mid_offset = (height_px / 2) * pitch;
+178     uint8_t sample_r_mid = pixels[mid_offset], sample_g_mid = pixels[mid_offset + 1],
+179             sample_b_mid = pixels[mid_offset + 2], sample_a_mid = pixels[mid_offset + 3];
+180 
+181     log_info(&quot;  pixel[0,0]: RGBA(%u,%u,%u,%u), test_pos[500,100]: RGBA(%u,%u,%u,%u), pixel[0,%d]: RGBA(%u,%u,%u,%u)&quot;,
+182              sample_r, sample_g, sample_b, sample_a, test_r, test_g, test_b, test_a, height_px / 2, sample_r_mid,
+183              sample_g_mid, sample_b_mid, sample_a_mid);
+184   }
+185 
+186   // CRITICAL: Copy pixel buffer before encoding
+187   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
+188   // overwritten on the next frame. We must copy the data before passing to the encoder.
+189   uint8_t *pixels_copy = NULL;
+190   if (pixels) {
+191     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
+192     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
+193     memcpy(pixels_copy, pixels, pixel_buffer_size);
+194     log_info(&quot;render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)&quot;, pixel_buffer_size,
+195              (void *)pixels, (void *)pixels_copy);
+196   }
+197 
+198   err = ffmpeg_encoder_write_frame(ctx-&gt;encoder, pixels_copy, pitch, captured_ns);
+199   if (err != ASCIICHAT_OK) {
+200     log_warn(&quot;render_file_write_frame: ffmpeg_encoder_write_frame failed: %s&quot;, asciichat_error_string(err));
+201   }
+202 
+203   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
+204   SAFE_FREE(pixels_copy);
+205 
+206   // Write synchronized audio for this frame if available
+207   // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
+208   if (ctx &amp;&amp; ctx-&gt;audio_read_buf &amp;&amp; ctx-&gt;encoder) {
+209     // Detect if we're in snapshot mode
+210     bool snapshot_mode = GET_OPTION(snapshot_mode);
+211     double snapshot_delay = GET_OPTION(snapshot_delay);
+212 
+213     int samples_per_frame;
+214 
+215     // Track frame timing for dynamic FPS calculation in snapshot mode
+216     static uint64_t first_frame_ns = 0;
+217     static int log_once = 0;
+218 
+219     if (first_frame_ns == 0) {
+220       first_frame_ns = captured_ns;
+221     }
+222 
+223     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
+224       // In snapshot mode, write samples based on actual elapsed wall-clock time
+225       // This will be overridden by the time-based calculation below
+226       samples_per_frame = (int)(ctx-&gt;audio_sample_rate / 60.0);
+227 
+228       // Ensure minimum to avoid rounding to 0
+229       if (samples_per_frame &lt; 100) {
+230         samples_per_frame = 100;
+231       }
+232 
+233     } else {
+234       // Normal/live mode: use 60 FPS baseline
+235       samples_per_frame = ctx-&gt;audio_sample_rate / 60;
+236       if (!log_once++) {
+237         log_info(&quot;[AUDIO_CALC] Normal mode: samples_per_frame=%d&quot;, samples_per_frame);
+238       }
+239     }
 240 
-241       // Ensure minimum to avoid rounding to 0
-242       if (samples_per_frame &lt; 100) {
-243         samples_per_frame = 100;
-244       }
-245 
-246     } else {
-247       // Normal/live mode: use 60 FPS baseline
-248       samples_per_frame = ctx-&gt;audio_sample_rate / 60;
-249       if (!log_once++) {
-250         log_info(&quot;[AUDIO_CALC] Normal mode: samples_per_frame=%d&quot;, samples_per_frame);
-251       }
-252     }
-253 
-254     if (samples_per_frame &gt; ctx-&gt;audio_buf_size) {
-255       samples_per_frame = ctx-&gt;audio_buf_size;
-256       if (!log_once++) {
-257         log_warn(&quot;[AUDIO_CALC] samples_per_frame clamped to buffer size %d&quot;, ctx-&gt;audio_buf_size);
-258       }
-259     }
-260     if (samples_per_frame &lt;= 0) {
-261       samples_per_frame = 800; // Fallback minimum
-262     }
-263 
-264     int samples_read = 0;
-265     static int audio_eof_reached = 0;
-266 
-267     // Read from whichever audio source is available (prefer media source, fallback to capture)
-268     if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_media_source) {
-269       // Read from media source (file/URL audio) - try to get samples
-270       samples_read = media_source_read_audio(ctx-&gt;audio_media_source, ctx-&gt;audio_read_buf, samples_per_frame);
-271 
-272       if (samples_read &lt;= 0) {
-273         // EOF reached or error - no more audio samples available from source
-274         audio_eof_reached = 1;
-275         samples_read = 0;
+241     if (samples_per_frame &gt; ctx-&gt;audio_buf_size) {
+242       samples_per_frame = ctx-&gt;audio_buf_size;
+243       if (!log_once++) {
+244         log_warn(&quot;[AUDIO_CALC] samples_per_frame clamped to buffer size %d&quot;, ctx-&gt;audio_buf_size);
+245       }
+246     }
+247     if (samples_per_frame &lt;= 0) {
+248       samples_per_frame = 800; // Fallback minimum
+249     }
+250 
+251     int samples_read = 0;
+252     static int audio_eof_reached = 0;
+253     static int total_audio_samples_written = 0;
+254 
+255     // In snapshot mode, write samples based on elapsed wall-clock time to match snapshot_delay exactly
+256     int actual_samples_per_frame = samples_per_frame;
+257     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
+258       uint64_t elapsed_ns = captured_ns - first_frame_ns;
+259       double elapsed_sec = (double)elapsed_ns / 1e9;
+260       double target_fraction = elapsed_sec / snapshot_delay;
+261       target_fraction = (target_fraction &gt; 1.0) ? 1.0 : target_fraction; // Cap at 100%
+262 
+263       int total_target_samples = (int)(ctx-&gt;audio_sample_rate * snapshot_delay);
+264       int expected_samples_at_this_point = (int)(target_fraction * total_target_samples);
+265 
+266       // Calculate how many samples to write for THIS frame
+267       actual_samples_per_frame = expected_samples_at_this_point - total_audio_samples_written;
+268 
+269       // Never write more than the buffer allows
+270       if (actual_samples_per_frame &gt; ctx-&gt;audio_buf_size) {
+271         actual_samples_per_frame = ctx-&gt;audio_buf_size;
+272       }
+273       // Never write negative or zero (shouldn't happen, but safety check)
+274       if (actual_samples_per_frame &lt;= 0) {
+275         actual_samples_per_frame = 0;
 276       }
-277     } else if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_capture_rb) {
-278       // Read from ring buffer (live mic capture)
-279       samples_read = audio_ring_buffer_read(ctx-&gt;audio_capture_rb, ctx-&gt;audio_read_buf, samples_per_frame);
-280       if (samples_read &lt; 0) {
-281         samples_read = 0; // On error, write silence
-282         audio_eof_reached = 1;
-283       } else if (samples_read == 0) {
-284         audio_eof_reached = 1;
-285       }
-286       log_debug(&quot;render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)&quot;,
-287                 samples_per_frame, samples_read);
-288     }
-289 
-290     // Write audio: either from source or silence to fill remaining time
-291     if (samples_read &gt; 0) {
-292       // We got samples from the source - write them
-293       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_read);
-294     } else {
-295       // No samples available (EOF reached or not available) - write silence to maintain sync
-296       // This ensures audio track duration matches video track duration
-297       memset(ctx-&gt;audio_read_buf, 0, samples_per_frame * sizeof(float));
-298       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_per_frame);
-299     }
-300   }
+277     }
+278 
+279     // Read from whichever audio source is available (prefer media source, fallback to capture)
+280     if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_media_source) {
+281       // Read from media source (file/URL audio) - try to get samples
+282       samples_read = media_source_read_audio(ctx-&gt;audio_media_source, ctx-&gt;audio_read_buf, actual_samples_per_frame);
+283 
+284       if (samples_read &lt;= 0) {
+285         // EOF reached or error - no more audio samples available from source
+286         audio_eof_reached = 1;
+287         samples_read = 0;
+288       }
+289     } else if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_capture_rb) {
+290       // Read from ring buffer (live mic capture)
+291       samples_read = audio_ring_buffer_read(ctx-&gt;audio_capture_rb, ctx-&gt;audio_read_buf, actual_samples_per_frame);
+292       if (samples_read &lt; 0) {
+293         samples_read = 0; // On error, write silence
+294         audio_eof_reached = 1;
+295       } else if (samples_read == 0) {
+296         audio_eof_reached = 1;
+297       }
+298       log_debug(&quot;render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)&quot;,
+299                 actual_samples_per_frame, samples_read);
+300     }
 301 
-302   return err;
-303 }</pre>
+302     // Write audio: either from source or silence to fill remaining time
+303     if (samples_read &gt; 0) {
+304       // We got samples from the source - write them
+305       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_read);
+306       total_audio_samples_written += samples_read;
+307     } else if (actual_samples_per_frame &gt; 0) {
+308       // No samples available (EOF reached or not available) - write silence to maintain sync
+309       // This ensures audio track duration matches video track duration
+310       memset(ctx-&gt;audio_read_buf, 0, actual_samples_per_frame * sizeof(float));
+311       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, actual_samples_per_frame);
+312       total_audio_samples_written += actual_samples_per_frame;
+313     }
+314   }
+315 
+316   return err;
+317 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -459,7 +471,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-date">Version 0.11.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

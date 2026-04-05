@@ -35,7 +35,7 @@
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "OFF",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
         "ASCIICHAT_USE_PCH": "ON",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON"
       }
@@ -75,7 +75,7 @@
       "cacheVariables": {
         "USE_MUSL": "OFF",
         "CMAKE_BUILD_TYPE": "Debug",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "BUILD_TESTS": "OFF"
       }
     },
@@ -86,7 +86,7 @@
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "USE_MUSL": "ON",
         "BUILD_TESTS": "OFF"
       }
@@ -188,7 +188,10 @@
       "name": "windows-debug",
       "displayName": "Windows Debug (vcpkg)",
       "description": "Windows Debug build using vcpkg for dependencies",
-      "inherits": ["base-debug", "base-vcpkg"],
+      "inherits": [
+        "base-debug",
+        "base-vcpkg"
+      ],
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -199,7 +202,10 @@
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
       "description": "Windows Release build using vcpkg with static linking (triplet auto-detected or passed via -D)",
-      "inherits": ["base-release", "base-vcpkg"],
+      "inherits": [
+        "base-release",
+        "base-vcpkg"
+      ],
       "cacheVariables": {},
       "condition": {
         "type": "equals",

@@ -150,14 +150,14 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>116</b> of file <b>src/web/client.c</b>.</p>
-<pre>116              {
-117   CONNECTION_STATE_DISCONNECTED = 0,
-118   CONNECTION_STATE_CONNECTING = 1,
-119   CONNECTION_STATE_HANDSHAKE = 2,
-120   CONNECTION_STATE_CONNECTED = 3,
-121   CONNECTION_STATE_ERROR = 4
-122 } connection_state_t;</pre>
+<p class="Pp">Definition at line <b>115</b> of file <b>src/web/client.c</b>.</p>
+<pre>115              {
+116   CONNECTION_STATE_DISCONNECTED = 0,
+117   CONNECTION_STATE_CONNECTING = 1,
+118   CONNECTION_STATE_HANDSHAKE = 2,
+119   CONNECTION_STATE_CONNECTED = 3,
+120   CONNECTION_STATE_ERROR = 4
+121 } connection_state_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -168,27 +168,25 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
   void client_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>180</b> of file <b>src/web/client.c</b>.</p>
-<pre>180                           {
-181 
-182   // Clean up crypto handshake context
-183   crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-184   memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-185 
-186   g_handshake_complete = false;
-187   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-188   g_initialized = false;
-189   term_renderer_glyph_cache_cleanup();
-190   options_state_destroy();
-191   platform_destroy();
-192 
-193 }</pre>
+<p class="Pp">Definition at line <b>179</b> of file <b>src/web/client.c</b>.</p>
+<pre>179                           {
+180 
+181   // Clean up crypto handshake context
+182   crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+183   memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+184 
+185   g_handshake_complete = false;
+186   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+187   g_initialized = false;
+188   options_state_destroy();
+189   platform_destroy();
+190 
+191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CONNECTION_STATE_DISCONNECTED</b>,
-    <b>crypto_handshake_destroy()</b>, <b>options_state_destroy()</b>,
-    <b>platform_destroy()</b>, and
-  <b>term_renderer_glyph_cache_cleanup()</b>.</p>
+    <b>crypto_handshake_destroy()</b>, <b>options_state_destroy()</b>, and
+    <b>platform_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_">EMSCRIPTEN_KEEPALIVE
@@ -209,23 +207,23 @@
 <i>out_len</i> Output parameter for plaintext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>549</b> of file <b>src/web/client.c</b>.</p>
-<pre>550                                            {
-551   if (!g_handshake_complete) {
-552     return -1;
-553   }
-554 
-555   // Decrypt the packet using handshake context's crypto context
-556   size_t plaintext_len = 0;
-557   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
-558                                           plaintext_size, &amp;plaintext_len);
-559   if (result != CRYPTO_OK) {
-560     return -1;
-561   }
-562 
-563   *out_len = plaintext_len;
-564   return 0;
-565 }</pre>
+<p class="Pp">Definition at line <b>547</b> of file <b>src/web/client.c</b>.</p>
+<pre>548                                            {
+549   if (!g_handshake_complete) {
+550     return -1;
+551   }
+552 
+553   // Decrypt the packet using handshake context's crypto context
+554   size_t plaintext_len = 0;
+555   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
+556                                           plaintext_size, &amp;plaintext_len);
+557   if (result != CRYPTO_OK) {
+558     return -1;
+559   }
+560 
+561   *out_len = plaintext_len;
+562   return 0;
+563 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_decrypt()</b>, and <b>CRYPTO_OK</b>.</p>
@@ -249,23 +247,23 @@
 <i>out_len</i> Output parameter for ciphertext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>521</b> of file <b>src/web/client.c</b>.</p>
-<pre>522                                            {
-523   if (!g_handshake_complete) {
-524     return -1;
-525   }
-526 
-527   // Encrypt the packet using handshake context's crypto context
-528   size_t ciphertext_len = 0;
-529   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
-530                                           ciphertext_size, &amp;ciphertext_len);
-531   if (result != CRYPTO_OK) {
-532     return -1;
-533   }
-534 
-535   *out_len = ciphertext_len;
-536   return 0;
-537 }</pre>
+<p class="Pp">Definition at line <b>519</b> of file <b>src/web/client.c</b>.</p>
+<pre>520                                            {
+521   if (!g_handshake_complete) {
+522     return -1;
+523   }
+524 
+525   // Encrypt the packet using handshake context's crypto context
+526   size_t ciphertext_len = 0;
+527   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
+528                                           ciphertext_size, &amp;ciphertext_len);
+529   if (result != CRYPTO_OK) {
+530     return -1;
+531   }
+532 
+533   *out_len = ciphertext_len;
+534   return 0;
+535 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_encrypt()</b>, and <b>CRYPTO_OK</b>.</p>
@@ -273,10 +271,10 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
   void client_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>684</b> of file <b>src/web/client.c</b>.</p>
-<pre>684                                    {
-685   SAFE_FREE(ptr);
-686 }</pre>
+<p class="Pp">Definition at line <b>682</b> of file <b>src/web/client.c</b>.</p>
+<pre>682                                    {
+683   SAFE_FREE(ptr);
+684 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>.</p>
@@ -287,29 +285,29 @@
 <p class="Pp">Generate client keypair for handshake</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>204</b> of file <b>src/web/client.c</b>.</p>
-<pre>204                                   {
-205 
-206   if (!g_initialized) {
-207     return -1;
-208   }
-209 
-210   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
-211   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-212     crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-213     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-214     g_handshake_complete = false;
-215   }
-216 
-217   // Initialize crypto handshake context
-218   asciichat_error_t result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false /* is_server */);
-219   if (result != ASCIICHAT_OK) {
-220     return -1;
-221   }
-222 
-223   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-224   return 0;
-225 }</pre>
+<p class="Pp">Definition at line <b>202</b> of file <b>src/web/client.c</b>.</p>
+<pre>202                                   {
+203 
+204   if (!g_initialized) {
+205     return -1;
+206   }
+207 
+208   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
+209   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+210     crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+211     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+212     g_handshake_complete = false;
+213   }
+214 
+215   // Initialize crypto handshake context
+216   asciichat_error_t result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false /* is_server */);
+217   if (result != ASCIICHAT_OK) {
+218     return -1;
+219   }
+220 
+221   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+222   return 0;
+223 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -322,10 +320,10 @@
 <p class="Pp">Get current connection state</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Connection state enum value</div>
-<p class="Pp">Definition at line <b>675</b> of file <b>src/web/client.c</b>.</p>
-<pre>675                                       {
-676   return (int)g_connection_state;
-677 }</pre>
+<p class="Pp">Definition at line <b>673</b> of file <b>src/web/client.c</b>.</p>
+<pre>673                                       {
+674   return (int)g_connection_state;
+675 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -336,32 +334,32 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated hex string (caller must free with
   client_free_string), or NULL on error</div>
-<p class="Pp">Definition at line <b>255</b> of file <b>src/web/client.c</b>.</p>
-<pre>255                                       {
-256   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
-257     return NULL;
-258   }
-259 
-260   // Get public key from handshake context
-261   const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
-262   if (!pubkey) {
-263     return NULL;
-264   }
-265 
-266   // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
-267   char *hex_buffer = SAFE_MALLOC(65, char *);
-268   if (!hex_buffer) {
-269     return NULL;
-270   }
-271 
-272   // Convert public key to hex
-273   for (int i = 0; i &lt; 32; i++) {
-274     snprintf(hex_buffer + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
-275   }
-276   hex_buffer[64] = '\0';
-277 
-278   return hex_buffer;
-279 }</pre>
+<p class="Pp">Definition at line <b>253</b> of file <b>src/web/client.c</b>.</p>
+<pre>253                                       {
+254   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
+255     return NULL;
+256   }
+257 
+258   // Get public key from handshake context
+259   const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
+260   if (!pubkey) {
+261     return NULL;
+262   }
+263 
+264   // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
+265   char *hex_buffer = SAFE_MALLOC(65, char *);
+266   if (!hex_buffer) {
+267     return NULL;
+268   }
+269 
+270   // Convert public key to hex
+271   for (int i = 0; i &lt; 32; i++) {
+272     snprintf(hex_buffer + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
+273   }
+274   hex_buffer[64] = '\0';
+275 
+276   return hex_buffer;
+277 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_HANDSHAKE_DISABLED</b>, and
@@ -378,47 +376,47 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>412</b> of file <b>src/web/client.c</b>.</p>
-<pre>412                                                                            {
-413 
-414   if (!packet || packet_len == 0) {
-415     return -1;
-416   }
-417 
-418   // Extract packet type and payload
-419   if (packet_len &lt; sizeof(packet_header_t)) {
-420     return -1;
-421   }
-422 
-423   const packet_header_t *header = (const packet_header_t *)packet;
-424   packet_type_t packet_type = ntohs(header-&gt;type);
-425   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-426   size_t payload_len = packet_len - sizeof(packet_header_t);
-427 
-428 
-429   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-430   uint8_t *payload = NULL;
-431   if (payload_len &gt; 0) {
-432     payload = buffer_pool_alloc(NULL, payload_len);
-433     if (!payload) {
-434       g_connection_state = CONNECTION_STATE_ERROR;
-435       return -1;
-436     }
-437     memcpy(payload, payload_src, payload_len);
-438   }
-439 
-440   // Process auth challenge
-441   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
-442                                                                    packet_type, payload, payload_len);
-443 
-444 
-445   if (result != ASCIICHAT_OK) {
-446     g_connection_state = CONNECTION_STATE_ERROR;
-447     return -1;
-448   }
-449 
-450   return 0;
-451 }</pre>
+<p class="Pp">Definition at line <b>410</b> of file <b>src/web/client.c</b>.</p>
+<pre>410                                                                            {
+411 
+412   if (!packet || packet_len == 0) {
+413     return -1;
+414   }
+415 
+416   // Extract packet type and payload
+417   if (packet_len &lt; sizeof(packet_header_t)) {
+418     return -1;
+419   }
+420 
+421   const packet_header_t *header = (const packet_header_t *)packet;
+422   packet_type_t packet_type = ntohs(header-&gt;type);
+423   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+424   size_t payload_len = packet_len - sizeof(packet_header_t);
+425 
+426 
+427   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+428   uint8_t *payload = NULL;
+429   if (payload_len &gt; 0) {
+430     payload = buffer_pool_alloc(NULL, payload_len);
+431     if (!payload) {
+432       g_connection_state = CONNECTION_STATE_ERROR;
+433       return -1;
+434     }
+435     memcpy(payload, payload_src, payload_len);
+436   }
+437 
+438   // Process auth challenge
+439   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
+440                                                                    packet_type, payload, payload_len);
+441 
+442 
+443   if (result != ASCIICHAT_OK) {
+444     g_connection_state = CONNECTION_STATE_ERROR;
+445     return -1;
+446   }
+447 
+448   return 0;
+449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -438,52 +436,52 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>359</b> of file <b>src/web/client.c</b>.</p>
-<pre>359                                                                               {
-360 
-361   if (!packet || packet_len == 0) {
-362     return -1;
-363   }
-364 
-365   // Extract packet type and payload
-366   if (packet_len &lt; sizeof(packet_header_t)) {
-367     return -1;
-368   }
-369 
-370   const packet_header_t *header = (const packet_header_t *)packet;
-371   packet_type_t packet_type = ntohs(header-&gt;type);
-372   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-373   size_t payload_len = packet_len - sizeof(packet_header_t);
-374 
-375 
-376   // Allocate payload copy from buffer pool
-377   uint8_t *payload = NULL;
-378   if (payload_len &gt; 0) {
-379     payload = buffer_pool_alloc(NULL, payload_len);
-380     if (!payload) {
-381       g_connection_state = CONNECTION_STATE_ERROR;
-382       return -1;
-383     }
-384     memcpy(payload, payload_src, payload_len);
-385   }
-386 
-387   // Process crypto parameters
-388   asciichat_error_t result = crypto_handshake_set_parameters(&amp;g_crypto_handshake_ctx,
-389                                                               (const crypto_parameters_packet_t *)payload);
-390 
-391 
-392   // Free payload
-393   if (payload) {
-394     buffer_pool_free(NULL, payload, payload_len);
-395   }
-396 
-397   if (result != ASCIICHAT_OK) {
-398     g_connection_state = CONNECTION_STATE_ERROR;
-399     return -1;
-400   }
-401 
-402   return 0;
-403 }</pre>
+<p class="Pp">Definition at line <b>357</b> of file <b>src/web/client.c</b>.</p>
+<pre>357                                                                               {
+358 
+359   if (!packet || packet_len == 0) {
+360     return -1;
+361   }
+362 
+363   // Extract packet type and payload
+364   if (packet_len &lt; sizeof(packet_header_t)) {
+365     return -1;
+366   }
+367 
+368   const packet_header_t *header = (const packet_header_t *)packet;
+369   packet_type_t packet_type = ntohs(header-&gt;type);
+370   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+371   size_t payload_len = packet_len - sizeof(packet_header_t);
+372 
+373 
+374   // Allocate payload copy from buffer pool
+375   uint8_t *payload = NULL;
+376   if (payload_len &gt; 0) {
+377     payload = buffer_pool_alloc(NULL, payload_len);
+378     if (!payload) {
+379       g_connection_state = CONNECTION_STATE_ERROR;
+380       return -1;
+381     }
+382     memcpy(payload, payload_src, payload_len);
+383   }
+384 
+385   // Process crypto parameters
+386   asciichat_error_t result = crypto_handshake_set_parameters(&amp;g_crypto_handshake_ctx,
+387                                                               (const crypto_parameters_packet_t *)payload);
+388 
+389 
+390   // Free payload
+391   if (payload) {
+392     buffer_pool_free(NULL, payload, payload_len);
+393   }
+394 
+395   if (result != ASCIICHAT_OK) {
+396     g_connection_state = CONNECTION_STATE_ERROR;
+397     return -1;
+398   }
+399 
+400   return 0;
+401 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -502,53 +500,53 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>460</b> of file <b>src/web/client.c</b>.</p>
-<pre>460                                                                                {
-461 
-462   if (!packet || packet_len == 0) {
-463     return -1;
-464   }
-465 
-466   // Extract packet type and payload
-467   if (packet_len &lt; sizeof(packet_header_t)) {
-468     return -1;
-469   }
-470 
-471   const packet_header_t *header = (const packet_header_t *)packet;
-472   packet_type_t packet_type = ntohs(header-&gt;type);
-473   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-474   size_t payload_len = packet_len - sizeof(packet_header_t);
-475 
-476 
-477   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-478   uint8_t *payload = NULL;
-479   if (payload_len &gt; 0) {
-480     payload = buffer_pool_alloc(NULL, payload_len);
-481     if (!payload) {
-482       g_connection_state = CONNECTION_STATE_ERROR;
-483       return -1;
-484     }
-485     memcpy(payload, payload_src, payload_len);
-486   }
-487 
-488   // Complete handshake (takes ownership of payload and will free it)
-489   asciichat_error_t result =
-490       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
-491 
-492 
-493   if (result != ASCIICHAT_OK) {
-494     g_connection_state = CONNECTION_STATE_ERROR;
-495     return -1;
-496   }
-497 
-498   g_handshake_complete = true;
-499   g_connection_state = CONNECTION_STATE_CONNECTED;
-500 
-501   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
-502   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
-503 
-504   return 0;
-505 }</pre>
+<p class="Pp">Definition at line <b>458</b> of file <b>src/web/client.c</b>.</p>
+<pre>458                                                                                {
+459 
+460   if (!packet || packet_len == 0) {
+461     return -1;
+462   }
+463 
+464   // Extract packet type and payload
+465   if (packet_len &lt; sizeof(packet_header_t)) {
+466     return -1;
+467   }
+468 
+469   const packet_header_t *header = (const packet_header_t *)packet;
+470   packet_type_t packet_type = ntohs(header-&gt;type);
+471   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+472   size_t payload_len = packet_len - sizeof(packet_header_t);
+473 
+474 
+475   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+476   uint8_t *payload = NULL;
+477   if (payload_len &gt; 0) {
+478     payload = buffer_pool_alloc(NULL, payload_len);
+479     if (!payload) {
+480       g_connection_state = CONNECTION_STATE_ERROR;
+481       return -1;
+482     }
+483     memcpy(payload, payload_src, payload_len);
+484   }
+485 
+486   // Complete handshake (takes ownership of payload and will free it)
+487   asciichat_error_t result =
+488       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
+489 
+490 
+491   if (result != ASCIICHAT_OK) {
+492     g_connection_state = CONNECTION_STATE_ERROR;
+493     return -1;
+494   }
+495 
+496   g_handshake_complete = true;
+497   g_connection_state = CONNECTION_STATE_CONNECTED;
+498 
+499   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
+500   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
+501 
+502   return 0;
+503 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -568,68 +566,68 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>289</b> of file <b>src/web/client.c</b>.</p>
-<pre>289                                                                               {
-290 
-291   // Safety check: if handshake context is not in INIT state, reinitialize it
-292   // This handles cases where previous handshakes weren't properly cleaned up
-293   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
-294 
-295     // Destroy and reset
-296     if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-297       crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-298     }
-299     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-300 
-301     // Reinitialize to INIT state
-302     asciichat_error_t init_result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false);
-303     if (init_result != ASCIICHAT_OK) {
-304       return -1;
-305     }
-306   }
-307 
-308   if (!packet || packet_len == 0) {
-309     return -1;
-310   }
-311 
-312   // Extract packet type and payload
-313   if (packet_len &lt; sizeof(packet_header_t)) {
-314     return -1;
-315   }
-316 
-317   const packet_header_t *header = (const packet_header_t *)packet;
-318   packet_type_t packet_type = ntohs(header-&gt;type);
-319   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-320   size_t payload_len = packet_len - sizeof(packet_header_t);
-321 
-322 
-323   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-324   // The raw packet pointer from JS cannot be passed directly because the crypto
-325   // handshake function calls buffer_pool_free() on the payload when done.
-326   uint8_t *payload = NULL;
-327   if (payload_len &gt; 0) {
-328     payload = buffer_pool_alloc(NULL, payload_len);
-329     if (!payload) {
-330       g_connection_state = CONNECTION_STATE_ERROR;
-331       return -1;
-332     }
-333     memcpy(payload, payload_src, payload_len);
-334   }
+<p class="Pp">Definition at line <b>287</b> of file <b>src/web/client.c</b>.</p>
+<pre>287                                                                               {
+288 
+289   // Safety check: if handshake context is not in INIT state, reinitialize it
+290   // This handles cases where previous handshakes weren't properly cleaned up
+291   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
+292 
+293     // Destroy and reset
+294     if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+295       crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+296     }
+297     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+298 
+299     // Reinitialize to INIT state
+300     asciichat_error_t init_result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false);
+301     if (init_result != ASCIICHAT_OK) {
+302       return -1;
+303     }
+304   }
+305 
+306   if (!packet || packet_len == 0) {
+307     return -1;
+308   }
+309 
+310   // Extract packet type and payload
+311   if (packet_len &lt; sizeof(packet_header_t)) {
+312     return -1;
+313   }
+314 
+315   const packet_header_t *header = (const packet_header_t *)packet;
+316   packet_type_t packet_type = ntohs(header-&gt;type);
+317   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+318   size_t payload_len = packet_len - sizeof(packet_header_t);
+319 
+320 
+321   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+322   // The raw packet pointer from JS cannot be passed directly because the crypto
+323   // handshake function calls buffer_pool_free() on the payload when done.
+324   uint8_t *payload = NULL;
+325   if (payload_len &gt; 0) {
+326     payload = buffer_pool_alloc(NULL, payload_len);
+327     if (!payload) {
+328       g_connection_state = CONNECTION_STATE_ERROR;
+329       return -1;
+330     }
+331     memcpy(payload, payload_src, payload_len);
+332   }
+333 
+334   // Process key exchange using transport-abstracted handshake
 335 
-336   // Process key exchange using transport-abstracted handshake
-337 
-338   asciichat_error_t result = crypto_handshake_client_key_exchange(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
-339                                                                   packet_type, payload, payload_len);
-340 
-341 
-342   if (result != ASCIICHAT_OK) {
-343     g_connection_state = CONNECTION_STATE_ERROR;
-344     return -1;
-345   }
-346 
-347   g_connection_state = CONNECTION_STATE_HANDSHAKE;
-348   return 0;
-349 }</pre>
+336   asciichat_error_t result = crypto_handshake_client_key_exchange(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
+337                                                                   packet_type, payload, payload_len);
+338 
+339 
+340   if (result != ASCIICHAT_OK) {
+341     g_connection_state = CONNECTION_STATE_ERROR;
+342     return -1;
+343   }
+344 
+345   g_connection_state = CONNECTION_STATE_HANDSHAKE;
+346   return 0;
+347 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -648,49 +646,49 @@
   strings, e.g. &quot;client --width 80 --height 40&quot;</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>src/web/client.c</b>.</p>
-<pre>136                                                  {
-137 
-138   // Parse space-separated arguments
-139   char *args_copy = NULL;
-140   char *argv[64] = {NULL};
-141   int argc = wasm_parse_args(args_json, argv, 64, &amp;args_copy);
-142   if (argc &lt; 0) {
-143     return -1;
-144   }
-145 
-146   // Initialize options (sets up RCU, defaults, etc.)
-147   asciichat_error_t err = options_init(argc, argv);
-148   free(args_copy);
-149 
-150   if (g_initialized) {
-151     return -1;
-152   }
-153 
-154   // Initialize platform layer
-155   err = platform_init();
-156   if (err != ASCIICHAT_OK) {
-157     return -1;
-158   }
-159 
-160   // Initialize logging to stderr (console.error in browser)
-161   log_init(NULL, LOG_DEBUG, true, false);
-162   // Use debug-style format in WASM so browser console shows full log headers
-163   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
-164   log_info(&quot;WASM client initialized via logging system&quot;);
-165 
-166   if (err != ASCIICHAT_OK) {
-167     return -1;
-168   }
-169 
-170   // Initialize ANSI color code generation
-171   ansi_fast_init();
-172 
-173   g_initialized = true;
-174   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-175 
-176   return 0;
-177 }</pre>
+<p class="Pp">Definition at line <b>135</b> of file <b>src/web/client.c</b>.</p>
+<pre>135                                                  {
+136 
+137   // Parse space-separated arguments
+138   char *args_copy = NULL;
+139   char *argv[64] = {NULL};
+140   int argc = wasm_parse_args(args_json, argv, 64, &amp;args_copy);
+141   if (argc &lt; 0) {
+142     return -1;
+143   }
+144 
+145   // Initialize options (sets up RCU, defaults, etc.)
+146   asciichat_error_t err = options_init(argc, argv);
+147   free(args_copy);
+148 
+149   if (g_initialized) {
+150     return -1;
+151   }
+152 
+153   // Initialize platform layer
+154   err = platform_init();
+155   if (err != ASCIICHAT_OK) {
+156     return -1;
+157   }
+158 
+159   // Initialize logging to stderr (console.error in browser)
+160   log_init(NULL, LOG_DEBUG, true, false);
+161   // Use debug-style format in WASM so browser console shows full log headers
+162   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
+163   log_info(&quot;WASM client initialized via logging system&quot;);
+164 
+165   if (err != ASCIICHAT_OK) {
+166     return -1;
+167   }
+168 
+169   // Initialize ANSI color code generation
+170   ansi_fast_init();
+171 
+172   g_initialized = true;
+173   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+174 
+175   return 0;
+176 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
@@ -717,19 +715,19 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of samples decoded per channel, or -1 on
   error</div>
-<p class="Pp">Definition at line <b>772</b> of file <b>src/web/client.c</b>.</p>
-<pre>772                                                                                                                     {
-773   if (!g_opus_decoder) {
-774     return -1;
-775   }
-776 
-777   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
-778   if (decoded_samples &lt; 0) {
-779     return -1;
-780   }
-781 
-782   return decoded_samples;
-783 }</pre>
+<p class="Pp">Definition at line <b>770</b> of file <b>src/web/client.c</b>.</p>
+<pre>770                                                                                                                     {
+771   if (!g_opus_decoder) {
+772     return -1;
+773   }
+774 
+775   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
+776   if (decoded_samples &lt; 0) {
+777     return -1;
+778   }
+779 
+780   return decoded_samples;
+781 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -737,13 +735,13 @@
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
   void client_opus_decoder_cleanup (void )</a></h2>
 <p class="Pp">Cleanup Opus decoder</p>
-<p class="Pp">Definition at line <b>800</b> of file <b>src/web/client.c</b>.</p>
-<pre>800                                        {
-801   if (g_opus_decoder) {
-802     opus_decoder_destroy(g_opus_decoder);
-803     g_opus_decoder = NULL;
-804   }
-805 }</pre>
+<p class="Pp">Definition at line <b>798</b> of file <b>src/web/client.c</b>.</p>
+<pre>798                                        {
+799   if (g_opus_decoder) {
+800     opus_decoder_destroy(g_opus_decoder);
+801     g_opus_decoder = NULL;
+802   }
+803 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -758,21 +756,21 @@
 <i>channels</i> Number of channels (1=mono, 2=stereo)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>725</b> of file <b>src/web/client.c</b>.</p>
-<pre>725                                                             {
-726   if (g_opus_decoder) {
-727     opus_decoder_destroy(g_opus_decoder);
-728     g_opus_decoder = NULL;
-729   }
-730 
-731   int error;
-732   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
-733   if (error != OPUS_OK || !g_opus_decoder) {
-734     return -1;
-735   }
-736 
-737   return 0;
-738 }</pre>
+<p class="Pp">Definition at line <b>723</b> of file <b>src/web/client.c</b>.</p>
+<pre>723                                                             {
+724   if (g_opus_decoder) {
+725     opus_decoder_destroy(g_opus_decoder);
+726     g_opus_decoder = NULL;
+727   }
+728 
+729   int error;
+730   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
+731   if (error != OPUS_OK || !g_opus_decoder) {
+732     return -1;
+733   }
+734 
+735   return 0;
+736 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -791,19 +789,19 @@
 <i>max_opus_bytes</i> Maximum size of output buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes encoded, or -1 on error</div>
-<p class="Pp">Definition at line <b>749</b> of file <b>src/web/client.c</b>.</p>
-<pre>749                                                                                                         {
-750   if (!g_opus_encoder) {
-751     return -1;
-752   }
-753 
-754   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
-755   if (encoded_bytes &lt; 0) {
-756     return -1;
-757   }
-758 
-759   return encoded_bytes;
-760 }</pre>
+<p class="Pp">Definition at line <b>747</b> of file <b>src/web/client.c</b>.</p>
+<pre>747                                                                                                         {
+748   if (!g_opus_encoder) {
+749     return -1;
+750   }
+751 
+752   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
+753   if (encoded_bytes &lt; 0) {
+754     return -1;
+755   }
+756 
+757   return encoded_bytes;
+758 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -811,13 +809,13 @@
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
   void client_opus_encoder_cleanup (void )</a></h2>
 <p class="Pp">Cleanup Opus encoder</p>
-<p class="Pp">Definition at line <b>789</b> of file <b>src/web/client.c</b>.</p>
-<pre>789                                        {
-790   if (g_opus_encoder) {
-791     opus_encoder_destroy(g_opus_encoder);
-792     g_opus_encoder = NULL;
-793   }
-794 }</pre>
+<p class="Pp">Definition at line <b>787</b> of file <b>src/web/client.c</b>.</p>
+<pre>787                                        {
+788   if (g_opus_encoder) {
+789     opus_encoder_destroy(g_opus_encoder);
+790     g_opus_encoder = NULL;
+791   }
+792 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -835,24 +833,24 @@
 <i>bitrate</i> Target bitrate in bits/sec</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>700</b> of file <b>src/web/client.c</b>.</p>
-<pre>700                                                                          {
-701   if (g_opus_encoder) {
-702     opus_encoder_destroy(g_opus_encoder);
-703     g_opus_encoder = NULL;
-704   }
-705 
-706   int error;
-707   g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &amp;error);
-708   if (error != OPUS_OK || !g_opus_encoder) {
-709     return -1;
-710   }
-711 
-712   // Set bitrate
-713   opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
-714 
-715   return 0;
-716 }</pre>
+<p class="Pp">Definition at line <b>698</b> of file <b>src/web/client.c</b>.</p>
+<pre>698                                                                          {
+699   if (g_opus_encoder) {
+700     opus_encoder_destroy(g_opus_encoder);
+701     g_opus_encoder = NULL;
+702   }
+703 
+704   int error;
+705   g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &amp;error);
+706   if (error != OPUS_OK || !g_opus_encoder) {
+707     return -1;
+708   }
+709 
+710   // Set bitrate
+711   opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
+712 
+713   return 0;
+714 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>OPUS_APPLICATION_VOIP</b>.</p>
@@ -869,37 +867,37 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated JSON string with packet metadata (caller must
   free), or NULL on error</div>
-<p class="Pp">Definition at line <b>574</b> of file <b>src/web/client.c</b>.</p>
-<pre>574                                                                         {
-575   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
-576     return NULL;
-577   }
-578 
-579   // Parse packet header directly from bytes
-580   const packet_header_t *header = (const packet_header_t *)raw_packet;
-581 
-582   // Validate magic number (convert from network byte order)
-583   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
-584   if (magic != PACKET_MAGIC) {
-585     return NULL;
-586   }
-587 
-588   // Convert header fields from network byte order
-589   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
-590   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
-591   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
-592   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
-593 
-594   // Build JSON response with packet metadata
-595   char *json = SAFE_MALLOC(1024, char *);
-596   if (!json) {
-597     return NULL;
-598   }
+<p class="Pp">Definition at line <b>572</b> of file <b>src/web/client.c</b>.</p>
+<pre>572                                                                         {
+573   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
+574     return NULL;
+575   }
+576 
+577   // Parse packet header directly from bytes
+578   const packet_header_t *header = (const packet_header_t *)raw_packet;
+579 
+580   // Validate magic number (convert from network byte order)
+581   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
+582   if (magic != PACKET_MAGIC) {
+583     return NULL;
+584   }
+585 
+586   // Convert header fields from network byte order
+587   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
+588   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
+589   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
+590   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
+591 
+592   // Build JSON response with packet metadata
+593   char *json = SAFE_MALLOC(1024, char *);
+594   if (!json) {
+595     return NULL;
+596   }
+597 
+598   snprintf(json, 1024, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type, length, client_id, crc32);
 599 
-600   snprintf(json, 1024, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type, length, client_id, crc32);
-601 
-602   return json;
-603 }</pre>
+600   return json;
+601 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>packet_header_t::client_id</b>,
@@ -921,20 +919,20 @@
 <i>height</i> Frame height</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>652</b> of file <b>src/web/client.c</b>.</p>
-<pre>652                                                                              {
-653   if (!g_initialized) {
-654     return -1;
-655   }
-656 
-657   // This is a placeholder - actual implementation would:
-658   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
-659   // 2. Build frame packet
-660   // 3. Encrypt if handshake complete
-661   // 4. Return serialized packet via callback to JS
-662 
-663   return 0;
-664 }</pre>
+<p class="Pp">Definition at line <b>650</b> of file <b>src/web/client.c</b>.</p>
+<pre>650                                                                              {
+651   if (!g_initialized) {
+652     return -1;
+653   }
+654 
+655   // This is a placeholder - actual implementation would:
+656   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
+657   // 2. Build frame packet
+658   // 3. Encrypt if handshake complete
+659   // 4. Return serialized packet via callback to JS
+660 
+661   return 0;
+662 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -958,33 +956,33 @@
 <i>out_len</i> Output parameter for total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>616</b> of file <b>src/web/client.c</b>.</p>
-<pre>617                                                               {
-618   if (!output || !out_len) {
-619     return -1;
-620   }
-621 
-622   // Calculate CRC32 of payload (use software version for WASM)
-623   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
-624 
-625   // Build packet header (convert to network byte order)
-626   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-627                             .type = HOST_TO_NET_U16(packet_type),
-628                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
-629                             .crc32 = HOST_TO_NET_U32(crc),
-630                             .client_id = HOST_TO_NET_U32(client_id)};
-631 
-632   // Copy header to output
-633   memcpy(output, &amp;header, sizeof(packet_header_t));
-634 
-635   // Copy payload to output
-636   if (payload &amp;&amp; payload_len &gt; 0) {
-637     memcpy(output + sizeof(packet_header_t), payload, payload_len);
-638   }
-639 
-640   *out_len = sizeof(packet_header_t) + payload_len;
-641   return 0;
-642 }</pre>
+<p class="Pp">Definition at line <b>614</b> of file <b>src/web/client.c</b>.</p>
+<pre>615                                                               {
+616   if (!output || !out_len) {
+617     return -1;
+618   }
+619 
+620   // Calculate CRC32 of payload (use software version for WASM)
+621   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
+622 
+623   // Build packet header (convert to network byte order)
+624   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+625                             .type = HOST_TO_NET_U16(packet_type),
+626                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
+627                             .crc32 = HOST_TO_NET_U32(crc),
+628                             .client_id = HOST_TO_NET_U32(client_id)};
+629 
+630   // Copy header to output
+631   memcpy(output, &amp;header, sizeof(packet_header_t));
+632 
+633   // Copy payload to output
+634   if (payload &amp;&amp; payload_len &gt; 0) {
+635     memcpy(output + sizeof(packet_header_t), payload, payload_len);
+636   }
+637 
+638   *out_len = sizeof(packet_header_t) + payload_len;
+639   return 0;
+640 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_crc32_sw()</b>, <b>HOST_TO_NET_U16</b>,
@@ -1001,22 +999,22 @@
 <i>server_port</i> Server port number</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>234</b> of file <b>src/web/client.c</b>.</p>
-<pre>234                                                                         {
-235   if (!g_initialized) {
-236     return -1;
-237   }
-238 
-239   if (!server_host || server_port &lt;= 0 || server_port &gt; 65535) {
-240     return -1;
-241   }
-242 
-243   // Set server IP and port in handshake context
-244   SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
-245   g_crypto_handshake_ctx.server_port = server_port;
-246 
-247   return 0;
-248 }</pre>
+<p class="Pp">Definition at line <b>232</b> of file <b>src/web/client.c</b>.</p>
+<pre>232                                                                         {
+233   if (!g_initialized) {
+234     return -1;
+235   }
+236 
+237   if (!server_host || server_port &lt;= 0 || server_port &gt; 65535) {
+238     return -1;
+239   }
+240 
+241   // Set server IP and port in handshake context
+242   SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
+243   g_crypto_handshake_ctx.server_port = server_port;
+244 
+245   return 0;
+246 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_STRNCPY</b>.</p>
@@ -1041,7 +1039,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.0</td>
+    <td class="foot-date">Version 0.11.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

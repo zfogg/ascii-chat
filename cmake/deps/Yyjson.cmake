@@ -62,20 +62,21 @@ function(configure_yyjson)
         return()
     endif()
 
-    # Non-musl: Try system package first, then submodule fallback
-    find_package(yyjson QUIET CONFIG)
+    # Non-musl: Try pkg-config first (finds shared lib with reader enabled),
+    # then fall back to CMake config. The CMake config at /usr/local may point
+    # to a static lib built with the reader disabled, causing undefined symbols.
+    include(FindPkgConfig)
+    pkg_check_modules(yyjson QUIET yyjson)
+
+    if(yyjson_FOUND AND NOT TARGET yyjson::yyjson)
+        add_library(yyjson::yyjson INTERFACE IMPORTED)
+        target_include_directories(yyjson::yyjson INTERFACE ${yyjson_INCLUDE_DIRS})
+        target_link_libraries(yyjson::yyjson INTERFACE ${yyjson_LIBRARIES})
+    endif()
 
     if(NOT yyjson_FOUND)
-        # Fall back to pkg-config if CMake config not found
-        include(FindPkgConfig)
-        pkg_check_modules(yyjson QUIET yyjson)
-
-        # Create interface library for compatibility
-        if(yyjson_FOUND AND NOT TARGET yyjson::yyjson)
-            add_library(yyjson::yyjson INTERFACE IMPORTED)
-            target_include_directories(yyjson::yyjson INTERFACE ${yyjson_INCLUDE_DIRS})
-            target_link_libraries(yyjson::yyjson INTERFACE ${yyjson_LIBRARIES})
-        endif()
+        # Fall back to CMake config if pkg-config not found
+        find_package(yyjson QUIET CONFIG)
     endif()
 
     # If still not found, build from submodule source
