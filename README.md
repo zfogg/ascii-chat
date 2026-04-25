@@ -1,6 +1,4 @@
-# 💻📸 ascii-chat 🔡💬
-
-Video chat in your terminal
+# 💻📸 ascii-chat 🔡💬 Video chat in your terminal
 
 🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
 
