@@ -136,7 +136,7 @@ C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
 # Helper targets
 # =============================================================================
 
-.PHONY: help format format-check clang-tidy analyze cloc
+.PHONY: help format format-check clang-tidy analyze cloc cloc-all-code
 
 help:
 	@echo "Available targets:"
