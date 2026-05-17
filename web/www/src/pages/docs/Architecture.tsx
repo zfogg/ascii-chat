@@ -1533,41 +1533,78 @@ interface Man3Entry {
   sourcePath: string | null;
 }
 
+// Hand-written overrides for the handful of paths whose filename doesn't
+// follow the standard encoding (full-path or basename).
+const MAN3_OVERRIDES: Record<string, string> = {
+  "lib/network/tcp/tcp.c": "/man3/ascii-chat-lib_network_tcp_client.c.html",
+  "lib/platform/font.c": "/man3/ascii-chat-platform_font.h.html",
+  "lib/video/ascii/avx2/color.c": "/man3/ascii-chat-avx2_color.c.html",
+  "lib/video/ascii/neon/color.c": "/man3/ascii-chat-neon_color.c.html",
+};
+
 export default function Architecture() {
   const [flowId, setFlowId] = useState("options");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [man3Map, setMan3Map] = useState<Record<string, string>>({});
+  const [man3Files, setMan3Files] = useState<Set<string>>(new Set());
+  const [man3BySource, setMan3BySource] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/man3/pages.json")
       .then((r) => r.json())
       .then((pages: Man3Entry[]) => {
-        const map: Record<string, string> = {};
+        // Set of all filenames present on disk
+        const files = new Set(pages.map((p) => p.file));
+
+        // sourcePath → file (prefer .c.html / .h.html over bare .html)
+        const bySource: Record<string, string> = {};
         for (const p of pages) {
           if (p.sourcePath) {
-            const existing = map[p.sourcePath];
-            // Prefer .c.html / .h.html over bare .html
+            const ex = bySource[p.sourcePath];
             if (
-              !existing ||
+              !ex ||
               p.file.includes(".c.html") ||
               p.file.includes(".h.html")
             ) {
-              map[p.sourcePath] = `/man3/${p.file}`;
+              bySource[p.sourcePath] = `/man3/${p.file}`;
             }
           }
-          // Also index by name (for struct/type entries)
-          if (!map[`__name__${p.name}`]) {
-            map[`__name__${p.name}`] = `/man3/${p.file}`;
-          }
         }
-        setMan3Map(map);
+
+        setMan3Files(files);
+        setMan3BySource(bySource);
       })
       .catch(() => {
-        // Fail silently — links just won't appear
+        // Fail silently — links won't appear
       });
   }, []);
 
-  const getMan3Url = (path: string): string | null => man3Map[path] ?? null;
+  // Return a /man3/... URL for a source path, or null if no page exists.
+  // Strategy (first match wins):
+  //   1. Hand-written override
+  //   2. sourcePath index from pages.json
+  //   3. Full path encoded:  lib/foo/bar.c → ascii-chat-lib_foo_bar.c.html
+  //   4. Strip lib/ prefix:  lib/foo/bar.c → ascii-chat-foo_bar.c.html
+  //   5. Basename only:      lib/foo/bar.c → ascii-chat-bar.c.html
+  const getMan3Url = (path: string): string | null => {
+    const p = path.replace(/\/$/, ""); // strip trailing slash
+
+    if (MAN3_OVERRIDES[p]) return MAN3_OVERRIDES[p];
+    if (man3BySource[p]) return man3BySource[p];
+
+    const encode = (s: string) =>
+      "ascii-chat-" + s.replace(/\//g, "_") + ".html";
+
+    const candidates = [
+      encode(p),
+      p.startsWith("lib/") ? encode(p.slice(4)) : null,
+      encode(p.split("/").at(-1) ?? p),
+    ];
+
+    for (const c of candidates) {
+      if (c && man3Files.has(c)) return `/man3/${c}`;
+    }
+    return null;
+  };
 
   const flow = FLOWS[flowId] ?? FLOWS["options"]!;
   const selectedNode = selectedId
