@@ -111,6 +111,14 @@ export default function DocsHub() {
       to: "/man3",
       ...getRandomColor(),
     },
+    {
+      icon: "🗺️",
+      title: "Architecture & Flows",
+      description:
+        "Interactive diagrams: options pipeline, media, render-file, network protocol, crypto handshake, discovery",
+      to: "/docs/architecture",
+      ...getRandomColor(),
+    },
   ];
 
   return (

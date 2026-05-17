@@ -48,7 +48,11 @@ export default function Navigation() {
 
   const navItems = [
     { to: "/", label: "Home", paths: "/" },
-    { to: "/docs", label: "Docs", paths: ["/docs", "/docs/", "/crypto"] },
+    {
+      to: "/docs",
+      label: "Docs",
+      paths: ["/docs", "/docs/", "/crypto", "/docs/architecture"],
+    },
     { to: "/man1", label: "ascii-chat(1)", paths: "/man1" },
     { to: "/man5", label: "ascii-chat(5)", paths: "/man5" },
     { to: "/man3", label: "ascii-chat-*(3)", paths: "/man3" },

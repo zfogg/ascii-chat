@@ -1,0 +1,365 @@
+{
+  "version": "1.0",
+  "project": "ascii-chat",
+  "description": "Internal flow documentation for ascii-chat — how data moves through the system",
+  "flows": [
+    {
+      "id": "options-flow",
+      "title": "Options Parsing & RCU Publishing",
+      "subtitle": "How a CLI flag (or WASM call) becomes a live option readable by any thread",
+      "color": "#6366f1",
+      "icon": "⚙️",
+      "summary": "Options go through a five-stage pipeline: mode detection → registry lookup → parsing → validation → RCU atomic publish. After publishing, any thread can read via GET_OPTION() with zero locks.",
+      "stages": [
+        {
+          "id": "opt-entry",
+          "name": "Entry Point",
+          "description": "main() calls options_init(argc, argv). On WASM/web, JS calls the exported C function directly, populating the same options_t struct.",
+          "files": [
+            { "path": "src/main.c", "fn": "main()", "line": 733, "note": "Calls options_init() then options_get()" },
+            { "path": "lib/options/options.c", "fn": "options_init()", "line": 1, "note": "Unified entry point for all parsing" }
+          ]
+        },
+        {
+          "id": "opt-mode",
+          "name": "Mode Detection",
+          "description": "Scans argv for the mode keyword (server, client, mirror, discovery-service) or a session string. Falls back to discovery mode if no mode given. Binary-level flags (--log-file, --verbose, etc.) are parsed here too.",
+          "files": [
+            { "path": "lib/options/options.c", "fn": "detect_mode_and_parse_binary_options()", "line": 100, "note": "Detects mode before builder runs" },
+            { "path": "lib/options/strings.c", "fn": "asciichat_mode_from_string()", "line": 1, "note": "Maps 'server' → MODE_SERVER etc." }
+          ]
+        },
+        {
+          "id": "opt-registry",
+          "name": "Registry Lookup",
+          "description": "A global registry_entry_t[] table (up to 2048 slots) holds every option's metadata: long name, short name, type (bool/int/string/enum/double), field offset in options_t, env var name, range constraints, validator. Categories (audio, display, network, security, media…) are merged at startup via registry_init_from_builders().",
+          "files": [
+            { "path": "lib/options/registry/core.c", "fn": "registry_init_from_builders()", "line": 23, "note": "Merges all category arrays into g_options_registry[]" },
+            { "path": "lib/options/registry/general.c", "fn": "g_general_options[]", "line": 1, "note": "Example category: port, address, fps…" },
+            { "path": "lib/options/registry/audio.c", "fn": "g_audio_options[]", "line": 1, "note": "Audio category entries" },
+            { "path": "lib/options/registry/display.c", "fn": "g_display_options[]", "line": 1, "note": "Color, palette, render mode…" },
+            { "path": "lib/options/registry/security.c", "fn": "g_security_options[]", "line": 1, "note": "Crypto/auth options" }
+          ]
+        },
+        {
+          "id": "opt-parse",
+          "name": "Argument Parsing",
+          "description": "The option builder walks argv using the mode-specific preset (options_preset_unified). For each --flag, it finds the registry entry and calls the appropriate typed parser. Custom parsers handle complex types (timestamps, port ranges, palette strings, PCRE2 grep patterns, session strings).",
+          "files": [
+            { "path": "lib/options/options.c", "fn": "options_config_parse_args()", "line": 200, "note": "Builder-based argv walking" },
+            { "path": "lib/options/builder/builder.c", "fn": "options_build()", "line": 1, "note": "Core builder logic" },
+            { "path": "lib/options/parsing/parsers.c", "fn": "parse_setting() / parse_enum() / parse_grep_pattern()", "line": 80, "note": "Typed parsers with PCRE2 validation" },
+            { "path": "lib/options/config/config.c", "fn": "options_config_parse_toml()", "line": 1, "note": "TOML config file merge (--config)" },
+            { "path": "lib/options/config/presets.c", "fn": "options_preset_unified()", "line": 1, "note": "Mode-specific option sets" }
+          ]
+        },
+        {
+          "id": "opt-env",
+          "name": "Environment Variable Override",
+          "description": "After CLI parsing, each registry entry's env_var_name (e.g. ASCII_CHAT_FPS) is checked. Env vars override config-file values but are overridden by explicit CLI flags. The special ASCII_CHAT_QUESTION_PROMPT_RESPONSE stack pre-answers interactive prompts for automation.",
+          "files": [
+            { "path": "lib/options/parsing/parsers.c", "fn": "apply_env_var_overrides()", "line": 200, "note": "Iterates registry, applies env vars" },
+            { "path": "lib/options/parsing/validation.c", "fn": "options_validate()", "line": 1, "note": "Cross-field validation after env merge" }
+          ]
+        },
+        {
+          "id": "opt-rcu",
+          "name": "RCU Publish",
+          "description": "options_state_init() allocates an options_t on the heap and stores its pointer in a global atomic_ptr_t (g_options). options_state_set() memcpy's the parsed struct in. Worker threads read via options_get() / GET_OPTION() which does a single atomic_ptr_load — no locks. Runtime updates (e.g. live FPS change) call options_set_int() which does a full copy-on-write: allocate new struct, memcpy, call updater, atomic swap, defer-free old.",
+          "files": [
+            { "path": "lib/options/rcu.c", "fn": "options_state_init()", "line": 365, "note": "Allocates initial options_t, stores in g_options" },
+            { "path": "lib/options/rcu.c", "fn": "options_get()", "line": 482, "note": "Lock-free atomic_ptr_load; falls back to g_default_options" },
+            { "path": "lib/options/rcu.c", "fn": "options_update()", "line": 506, "note": "Copy-on-write writer path (mutex-serialized)" },
+            { "path": "lib/options/rcu.c", "fn": "deferred_free_add()", "line": 288, "note": "Old structs freed at shutdown (up to 64 deferred)" },
+            { "path": "include/ascii-chat/options/rcu.h", "fn": "GET_OPTION(field)", "line": 1, "note": "Convenience macro: options_get()->field" }
+          ]
+        }
+      ],
+      "notes": [
+        "The static g_default_options is used as a safe fallback before options_state_init() and after options_state_destroy() — atexit handlers can call GET_OPTION() safely.",
+        "Fork safety: pthread_atfork() handler resets the lifecycle and atomic pointer in the child process.",
+        "WASM: The same options_t struct and GET_OPTION() macro are used. The JS caller sets fields via exported C wrappers before starting the render loop."
+      ]
+    },
+    {
+      "id": "media-pipeline",
+      "title": "Media Pipeline: Input → ASCII → Terminal",
+      "subtitle": "From webcam / file / stdin / URL all the way to colored glyphs on the screen",
+      "color": "#10b981",
+      "icon": "🎥",
+      "summary": "A unified media_source_t abstraction hides webcam, FFmpeg-decoded files, yt-dlp-resolved URLs, and stdin pipes behind one interface. Frames flow through SIMD-accelerated RGBA conversion, luminance-to-character mapping, ANSI color code generation, and finally write() to the terminal fd.",
+      "stages": [
+        {
+          "id": "media-source",
+          "name": "Media Source Creation",
+          "description": "media_source_create() examines the options: if --file/-f is set it picks FILE mode (or STDIN for '-'). If --url is set, the smart resolver tries a direct FFmpeg open first, then falls back to yt-dlp subprocess to extract the real stream URL (cached 30 s). Webcam is the default. Test pattern is activated by --test-pattern.",
+          "files": [
+            { "path": "lib/media/source.c", "fn": "media_source_create()", "line": 1, "note": "Factory: picks WEBCAM / FILE / STDIN / TEST / URL" },
+            { "path": "lib/media/source.c", "fn": "url_has_ffmpeg_native_extension()", "line": 72, "note": "Detects .mp4, .mkv, .m3u8, rtsp:// etc." },
+            { "path": "lib/media/yt_dlp.c", "fn": "yt_dlp_extract_url()", "line": 1, "note": "Runs yt-dlp subprocess, caches result 30s" },
+            { "path": "lib/media/ffmpeg_decoder.c", "fn": "ffmpeg_decoder_create()", "line": 1, "note": "Opens AVFormatContext; AVIO buffer for stdin" },
+            { "path": "lib/video/webcam/webcam.c", "fn": "webcam_init()", "line": 1, "note": "V4L2 on Linux, AVFoundation on macOS" }
+          ]
+        },
+        {
+          "id": "media-decode",
+          "name": "Frame Decode",
+          "description": "media_source_read_video_frame() returns an image_t* (RGBA pixels). For webcam: V4L2/AVFoundation captured frame converted by SwsContext to RGBA. For files: FFmpeg reads packets, decodes via AVCodecContext, SwsContext rescales to terminal pixel dimensions. For stdin: AVIO reads from fd 0 into a 64 KB buffer.",
+          "files": [
+            { "path": "lib/media/source.c", "fn": "media_source_read_video_frame()", "line": 200, "note": "Dispatches to webcam_capture or ffmpeg_decoder_read_video_frame" },
+            { "path": "lib/media/ffmpeg_decoder.c", "fn": "ffmpeg_decoder_read_video_frame()", "line": 100, "note": "av_read_frame → avcodec_decode → sws_scale → image_t" },
+            { "path": "lib/video/rgba/image.c", "fn": "image_create() / image_set_pixel()", "line": 1, "note": "RGBA framebuffer with SAFE_MALLOC tracking" }
+          ]
+        },
+        {
+          "id": "media-colorfilter",
+          "name": "Color Filter / Effects",
+          "description": "After frame decode, optional color_filter_apply() modifies the RGBA pixels. Filters include: GRAYSCALE, SEPIA, INVERT, HIGH_CONTRAST, COOL, WARM, MATRIX_GREEN, NIGHT_VISION, CRT. These run on full RGBA data before ASCII conversion. --color-filter selects the filter; --color-scheme-name picks a named palette.",
+          "files": [
+            { "path": "lib/video/rgba/color_filter.c", "fn": "color_filter_apply()", "line": 1, "note": "In-place RGBA pixel transformation" },
+            { "path": "lib/video/anim/digital_rain.c", "fn": "digital_rain_update()", "line": 1, "note": "--matrix mode: overlays falling katakana glyphs" }
+          ]
+        },
+        {
+          "id": "media-ascii",
+          "name": "RGBA → ASCII Conversion",
+          "description": "ascii_convert() maps each pixel block to a character using a luminance palette. The dispatcher picks the fastest SIMD path available (AVX2 > SSSE3 > SSE2 > NEON/SVE on ARM > scalar). For color mode, each cell gets ANSI SGR escape sequences (16-color, 256-color, or 24-bit truecolor depending on terminal capability). For halfblock mode (▀▄), each character represents two vertical pixels.",
+          "files": [
+            { "path": "lib/video/ascii/ascii.c", "fn": "ascii_convert()", "line": 72, "note": "Main entry: dispatches to SIMD-specific paths" },
+            { "path": "lib/video/ascii/avx2/color.c", "fn": "ascii_convert_avx2_color()", "line": 1, "note": "256-color AVX2 path (8 pixels/cycle)" },
+            { "path": "lib/video/ascii/neon/color.c", "fn": "ascii_convert_neon_color()", "line": 1, "note": "ARM NEON path" },
+            { "path": "lib/video/ascii/scalar/foreground.c", "fn": "ascii_convert_scalar_fg()", "line": 1, "note": "Fallback scalar path" },
+            { "path": "lib/video/ascii/palette.c", "fn": "palette_get_chars()", "line": 1, "note": "Returns char string for selected palette type" },
+            { "path": "lib/video/ascii/sgr.c", "fn": "sgr_color_256() / sgr_color_truecolor()", "line": 1, "note": "Generates ANSI SGR color escape codes" }
+          ]
+        },
+        {
+          "id": "media-rle",
+          "name": "RLE Compression (network)",
+          "description": "When sending frames over the network, ascii_rle_encode() compresses repeated characters (runs of same char+color). Typical compression ratio is 3-8x for video frames. The receiver calls ascii_rle_decode(). Disabled by --no-compress. Threshold: packets > 100 KB are compressed.",
+          "files": [
+            { "path": "lib/video/ascii/rle.c", "fn": "ascii_rle_encode() / ascii_rle_decode()", "line": 1, "note": "Run-length encoding for ASCII frame payloads" },
+            { "path": "lib/video/ascii/output_buffer.c", "fn": "output_buffer_write()", "line": 1, "note": "Accumulates ASCII data before sending" }
+          ]
+        },
+        {
+          "id": "media-render",
+          "name": "Terminal Rendering",
+          "description": "session_display_render_frame() writes the ASCII string (with ANSI escapes) to the terminal fd. It uses cursor repositioning (\\033[H) rather than clearing the screen to minimize flicker. If --strip-ansi is set, escape codes are stripped before writing. For --snapshot mode, a single frame is written to stdout and the process exits.",
+          "files": [
+            { "path": "lib/video/terminal/ansi.c", "fn": "ansi_write_frame()", "line": 1, "note": "Repositions cursor, writes ANSI frame atomically" },
+            { "path": "lib/platform/terminal.c", "fn": "terminal_should_use_control_sequences()", "line": 1, "note": "Detects TTY; suppresses sequences when piped" },
+            { "path": "lib/video/ascii/ascii.c", "fn": "ascii_write_init()", "line": 44, "note": "Sets raw mode, hides cursor, clears screen" }
+          ]
+        }
+      ],
+      "notes": [
+        "Audio follows a parallel path: media_source_read_audio() returns PCM floats → Opus encoder → PACKET_TYPE_AUDIO_OPUS_BATCH sent over network. Locally, PortAudio plays decoded PCM.",
+        "Stdin pipe mode: pass --file '-' or pipe data to the process. FFmpeg opens stdin via an AVIO context with a 64 KB buffer.",
+        "yt-dlp extracted URLs are cached for 30 seconds to avoid repeated subprocess spawns during startup FPS probing.",
+        "For --render-file output: the frame goes through libvterm (terminal emulation) + FreeType2 (glyph rasterization) → RGBA pixel buffer → FFmpeg H.264 encoder → output .mp4 file."
+      ]
+    },
+    {
+      "id": "render-file-pipeline",
+      "title": "Render-File Pipeline: ASCII → Pixel Video",
+      "subtitle": "How --render-file turns ASCII art into a real video file via libvterm + FreeType2 + FFmpeg",
+      "color": "#f59e0b",
+      "icon": "🎬",
+      "summary": "render_file_create() builds a chain: terminal_renderer (libvterm emulates a terminal, FreeType2 rasterizes glyphs into an RGBA pixel buffer) → ffmpeg_encoder (encodes the pixel buffer as H.264 into an output file or stdout). Each ASCII frame is fed through the chain, synchronized with audio from PortAudio or the media source.",
+      "stages": [
+        {
+          "id": "rf-create",
+          "name": "Context Creation",
+          "description": "render_file_create() resolves the font (platform_font_resolve: fontconfig on Linux, CoreText on macOS, or bundled matrix font). Creates a term_renderer_config_t specifying cols×rows cells and font size. Passes that to term_renderer_create() (libvterm + FreeType2), then to ffmpeg_encoder_create() which opens the output path (or stdout if '-').",
+          "files": [
+            { "path": "lib/media/render/renderer.c", "fn": "render_file_create()", "line": 28, "note": "Orchestrates font resolution, renderer, encoder creation" },
+            { "path": "lib/platform/font.c", "fn": "platform_font_resolve()", "line": 1, "note": "fontconfig / CoreText / bundled matrix font" },
+            { "path": "lib/media/render/terminal.c", "fn": "term_renderer_create()", "line": 1, "note": "Initializes VTerm + FreeType2 + per-renderer glyph cache" },
+            { "path": "lib/media/ffmpeg_encoder.c", "fn": "ffmpeg_encoder_create()", "line": 1, "note": "Opens output container (mp4/stdout), H.264 codec" }
+          ]
+        },
+        {
+          "id": "rf-frame",
+          "name": "Frame Rendering",
+          "description": "render_file_push_frame() writes the ASCII string (with ANSI escapes) into libvterm via vterm_input_write(). libvterm parses the escape sequences and updates its VTermScreen cell grid. Then term_renderer_render_to_buffer() iterates each cell: looks up the Unicode codepoint in the per-renderer FreeType2 glyph cache (hash table), blends the glyph bitmap onto an RGBA framebuffer at cell_w × cell_h pixels. The result is one full terminal frame as pixels.",
+          "files": [
+            { "path": "lib/media/render/terminal.c", "fn": "term_renderer_render_to_buffer()", "line": 100, "note": "VTermScreen → pixel buffer via FreeType2 glyph cache" },
+            { "path": "lib/media/render/terminal.c", "fn": "glyph_cache_get()", "line": 77, "note": "Hash lookup + FT_Load_Glyph + rasterization on miss" },
+            { "path": "lib/media/render/renderer.c", "fn": "render_file_push_frame()", "line": 120, "note": "Calls term_renderer_render + ffmpeg_encoder_write_frame" }
+          ]
+        },
+        {
+          "id": "rf-encode",
+          "name": "FFmpeg Encoding",
+          "description": "The RGBA pixel buffer is converted to YUV420p (via SwsContext) and submitted to the FFmpeg H.264 encoder (AVCodecContext). Encoded packets are written to the output AVFormatContext (mp4 container). If output_path is '-' or NULL, the AVIO context routes bytes to stdout, enabling piping to other ffmpeg processes.",
+          "files": [
+            { "path": "lib/media/ffmpeg_encoder.c", "fn": "ffmpeg_encoder_write_frame()", "line": 1, "note": "RGBA → YUV420p → H.264 AVPacket → AVFormatContext" },
+            { "path": "lib/media/ffmpeg_encoder.c", "fn": "ffmpeg_encoder_create()", "line": 1, "note": "stdout path: avio_open with custom AVIO callback" }
+          ]
+        },
+        {
+          "id": "rf-audio",
+          "name": "Audio Mixing",
+          "description": "Audio samples are collected from either a media_source (file audio via ffmpeg_decoder) or a live PortAudio capture ring buffer. render_file_push_audio_from_source() drains the ring buffer and submits float PCM to ffmpeg_encoder_write_audio(). The encoder converts to AAC and muxes alongside the video.",
+          "files": [
+            { "path": "lib/media/render/renderer.c", "fn": "render_file_push_audio_from_source()", "line": 200, "note": "Reads audio ring buffer, submits PCM to encoder" },
+            { "path": "lib/media/ffmpeg_encoder.c", "fn": "ffmpeg_encoder_write_audio()", "line": 1, "note": "Float PCM → AAC → mux into mp4" }
+          ]
+        }
+      ],
+      "notes": [
+        "The glyph cache is per-renderer and per-font. A cache miss triggers FT_Load_Glyph + FT_Render_Glyph and stores the bitmap. Typical cache hit rate is >99% after the first frame.",
+        "Stdout output enables: ascii-chat mirror --render-file '-' | ffmpeg -i - output.mp4 for live transcoding.",
+        "Matrix rain mode auto-selects the bundled matrix font (Courier-like monospace katakana variant) unless --render-font overrides it."
+      ]
+    },
+    {
+      "id": "network-flow",
+      "title": "Network Protocol: Client ↔ Server",
+      "subtitle": "How packets flow between client and server over TCP, WebSocket, or WebRTC",
+      "color": "#3b82f6",
+      "icon": "🌐",
+      "summary": "All communication is routed through an acip_transport_t abstraction that hides whether the underlying connection is TCP, WebSocket, or WebRTC. Packets have a fixed 24-byte header (magic, type, length, CRC32, client_id) followed by a variable payload. After the crypto handshake, all session packets are encrypted.",
+      "stages": [
+        {
+          "id": "net-connect",
+          "name": "Connection Establishment",
+          "description": "The client resolves the server address and opens a TCP socket (or WebSocket/WebRTC if configured). An acip_transport_t is created wrapping the socket with a function-pointer vtable (send/recv/is_connected/get_socket). Both ends are now ready for the handshake.",
+          "files": [
+            { "path": "lib/network/tcp/tcp.c", "fn": "tcp_connect()", "line": 1, "note": "Creates and wraps TCP socket" },
+            { "path": "lib/network/websocket/websocket.c", "fn": "websocket_connect()", "line": 1, "note": "WebSocket upgrade path" },
+            { "path": "lib/network/acip/client.c", "fn": "acip_client_connect()", "line": 1, "note": "Assembles transport, initiates handshake" }
+          ]
+        },
+        {
+          "id": "net-handshake",
+          "name": "Crypto Handshake",
+          "description": "The handshake is a 6-message exchange using X25519 ephemeral DH + optional Ed25519 identity keys. Client sends CRYPTO_CLIENT_HELLO → server responds CRYPTO_CAPABILITIES → CRYPTO_PARAMETERS → CRYPTO_KEY_EXCHANGE_INIT (server ephemeral pubkey + identity pubkey + signature) → client sends CRYPTO_KEY_EXCHANGE_RESP → both derive shared secret via X25519 → server sends CRYPTO_HANDSHAKE_COMPLETE. Password auth inserts a CRYPTO_AUTH_CHALLENGE/RESPONSE round. All subsequent packets use XSalsa20-Poly1305 AEAD.",
+          "files": [
+            { "path": "lib/crypto/handshake/client.c", "fn": "crypto_handshake_client_key_exchange()", "line": 31, "note": "Receives server keys, validates signature, sends client key" },
+            { "path": "lib/crypto/handshake/server.c", "fn": "crypto_handshake_server_key_exchange()", "line": 1, "note": "Sends server keys, derives shared secret" },
+            { "path": "lib/crypto/crypto.c", "fn": "crypto_derive_shared_secret()", "line": 1, "note": "X25519 DH: crypto_box_beforenm() from libsodium" },
+            { "path": "lib/crypto/known_hosts.c", "fn": "known_hosts_verify()", "line": 1, "note": "TOFU: verifies server key against ~/.ssh/known_hosts" },
+            { "path": "lib/crypto/ssh/ssh_keys.c", "fn": "ssh_key_parse_ed25519()", "line": 1, "note": "Parses PEM/OpenSSH ed25519 keys" }
+          ]
+        },
+        {
+          "id": "net-packet",
+          "name": "Packet Structure",
+          "description": "Every packet: [magic:8B][type:2B][length:4B][crc32:4B][client_id:4B][payload:N]. Magic is the hex approximation of 'ASCIICCHAT'. CRC32 is computed over the payload. For encrypted packets, the payload is XSalsa20-Poly1305 ciphertext (type = PACKET_TYPE_ENCRYPTED=1200). The original type is embedded in the first bytes of the plaintext.",
+          "files": [
+            { "path": "include/ascii-chat/network/packet/packet.h", "fn": "packet_header_t", "line": 280, "note": "Wire format: magic+type+length+crc32+client_id" },
+            { "path": "lib/network/acip/send.c", "fn": "send_packet_secure()", "line": 1, "note": "Builds header, optionally encrypts, writes to socket" },
+            { "path": "lib/network/acip/server.c", "fn": "receive_packet_secure()", "line": 59, "note": "Reads header, validates CRC, decrypts payload" }
+          ]
+        },
+        {
+          "id": "net-session",
+          "name": "Session Data Flow",
+          "description": "After handshake, the client sends its webcam/file frames as PACKET_TYPE_ASCII_FRAME (compressed ASCII art) or PACKET_TYPE_IMAGE_FRAME_H265 (H.265 encoded video). Audio is sent as PACKET_TYPE_AUDIO_OPUS_BATCH. The server receives frames from all clients, composites them into a grid, and broadcasts the merged ASCII frame back to all clients.",
+          "files": [
+            { "path": "lib/network/acip/handlers.c", "fn": "acip_handle_ascii_frame()", "line": 1, "note": "Server receives ASCII frame from client" },
+            { "path": "lib/network/acip/server.c", "fn": "acip_server_send_ascii_frame()", "line": 1, "note": "Server broadcasts merged frame to all clients" },
+            { "path": "lib/network/acip/client.c", "fn": "acip_client_receive_and_dispatch()", "line": 1, "note": "Client receives server frame, dispatches to renderer" }
+          ]
+        }
+      ],
+      "notes": [
+        "WebRTC path (--webrtc): ICE/STUN/TURN negotiation happens via the discovery service. Once the data channel is open, the same acip_transport_t vtable is used — the rest of the code is identical.",
+        "Packet compression: packets > 100 KB are zstd-compressed before encryption. The receiver decompresses after decryption.",
+        "Rekey: CRYPTO_REKEY_REQUEST/RESPONSE/COMPLETE packets renegotiate the session key without dropping the connection.",
+        "PACKET_TYPE_SIZE_MESSAGE (2000) is sent by the server to inform the client of the current terminal grid dimensions, so the client can adjust its local rendering."
+      ]
+    },
+    {
+      "id": "discovery-flow",
+      "title": "Discovery Service (ACDS)",
+      "subtitle": "How two peers find each other without knowing each other's IP address",
+      "color": "#8b5cf6",
+      "icon": "🔍",
+      "summary": "The ascii-chat Discovery Service (ACDS) is a lightweight signalling server. Servers register a human-readable session string (e.g. 'blue-mountain-tiger'). Clients look up that string and get back connection info. WebRTC ICE candidates are exchanged through the same channel for P2P connections.",
+      "stages": [
+        {
+          "id": "disc-register",
+          "name": "Session Registration",
+          "description": "When --discovery is passed, the server sends ACIP_SESSION_CREATE to ACDS with its session string, IP (if --discovery-expose-ip), port, and crypto capabilities. ACDS stores the session in SQLite and returns ACIP_SESSION_CREATED with the canonical session string.",
+          "files": [
+            { "path": "lib/network/acip/acds_server.c", "fn": "acds_server_register_session()", "line": 1, "note": "Sends SESSION_CREATE, stores string in SQLite" },
+            { "path": "lib/discovery/session.c", "fn": "discovery_session_create()", "line": 1, "note": "Generates or validates the session string" },
+            { "path": "src/discovery-service/main.c", "fn": "acds_main()", "line": 1, "note": "ACDS server: listens for registration/lookup" }
+          ]
+        },
+        {
+          "id": "disc-lookup",
+          "name": "Session Lookup",
+          "description": "The client sends ACIP_SESSION_LOOKUP with the session string. ACDS returns ACIP_SESSION_INFO with the server's address. If --webrtc, ACDS facilitates SDP and ICE candidate exchange (ACIP_WEBRTC_SDP, ACIP_WEBRTC_ICE) so the peers can establish a direct WebRTC data channel.",
+          "files": [
+            { "path": "lib/network/acip/acds_client.c", "fn": "acds_client_lookup_session()", "line": 1, "note": "Sends SESSION_LOOKUP, receives SESSION_INFO" },
+            { "path": "lib/network/webrtc/webrtc.c", "fn": "webrtc_create_offer()", "line": 1, "note": "WebRTC SDP offer/answer via libdatachannel" },
+            { "path": "lib/network/nat/nat.c", "fn": "nat_discover_port()", "line": 1, "note": "UPnP port mapping for NAT traversal" }
+          ]
+        }
+      ],
+      "notes": [
+        "Session strings are human-readable adjective-noun-animal combos (e.g. 'blue-mountain-tiger') for easy verbal sharing.",
+        "IP privacy: by default ACDS does not expose the server's IP. --discovery-expose-ip must be explicitly passed.",
+        "mDNS (--lan-discovery): on local networks, the server advertises itself via mDNS so clients can auto-discover without ACDS."
+      ]
+    },
+    {
+      "id": "session-lifecycle",
+      "title": "Session Lifecycle & Startup",
+      "subtitle": "What happens between typing './ascii-chat client' and seeing the first ASCII frame",
+      "color": "#ec4899",
+      "icon": "🚀",
+      "summary": "Startup is carefully sequenced: logging, colorscheme, terminal capabilities, options parsing, ACDS connection, crypto handshake, splash screen, then the render loop. Each step is guarded by lifecycle_t atomics to prevent TOCTOU races.",
+      "stages": [
+        {
+          "id": "sl-early",
+          "name": "Early Initialization",
+          "description": "Before options_init(), the shared subsystem sets up: signal handlers (SIGINT→g_should_exit), early logging to stderr, terminal capability detection (color level, UTF-8 support), colorscheme loading, PCRE2 singleton initialization. The CLAUDECODE env var is checked to enable/disable splash screen and status screen.",
+          "files": [
+            { "path": "src/main.c", "fn": "main()", "line": 538, "note": "Shared init: signals, logging, terminal, colorscheme" },
+            { "path": "lib/platform/terminal.c", "fn": "terminal_detect_capabilities()", "line": 1, "note": "Detects color mode, UTF-8, ANSI support" },
+            { "path": "lib/log/log.c", "fn": "log_init()", "line": 1, "note": "Sets up log level, grep filter, file output" }
+          ]
+        },
+        {
+          "id": "sl-options",
+          "name": "Options Parsing",
+          "description": "options_init(argc, argv) runs the full parsing pipeline (see Options flow). After this, GET_OPTION() is live.",
+          "files": [
+            { "path": "lib/options/options.c", "fn": "options_init()", "line": 1, "note": "Full parse + RCU publish" }
+          ]
+        },
+        {
+          "id": "sl-splash",
+          "name": "Splash Screen",
+          "description": "The animated splash screen captures log output (up to 100 entries in a ring buffer) and displays it below a rainbow ASCII art header. It runs in a dedicated thread. Logs during media source creation, FPS probing, and crypto handshake are visible here. The splash exits when the first frame arrives or on timeout.",
+          "files": [
+            { "path": "lib/session/splash.c", "fn": "session_splash_start()", "line": 1, "note": "Starts splash thread, hooks into log buffer" },
+            { "path": "lib/session/session_log_buffer.c", "fn": "session_log_buffer_append()", "line": 1, "note": "Called from logging.c for every log line" },
+            { "path": "lib/session/server_status.c", "fn": "server_status_start()", "line": 1, "note": "Server mode: live status screen instead of splash" }
+          ]
+        },
+        {
+          "id": "sl-loop",
+          "name": "Render Loop",
+          "description": "session_render_loop() is the main loop: capture frame → apply color filter → convert to ASCII → render to terminal → sleep for FPS. The loop checks g_should_exit (atomic) on every iteration. Keyboard input is polled non-blocking in the same thread. On EOF or SIGINT, the loop exits and session cleanup runs.",
+          "files": [
+            { "path": "src/mirror/main.c", "fn": "session_render_loop()", "line": 1, "note": "Unified render loop for mirror and client modes" },
+            { "path": "src/main.c", "fn": "g_should_exit", "line": 186, "note": "Atomic exit flag, set by signal handler" },
+            { "path": "lib/session/display.c", "fn": "session_display_convert_to_ascii()", "line": 1, "note": "Calls ascii_convert() with current palette/color mode" },
+            { "path": "lib/session/display.c", "fn": "session_display_render_frame()", "line": 1, "note": "Writes ASCII frame to terminal fd" }
+          ]
+        }
+      ],
+      "notes": [
+        "The server mode runs a status screen (not a splash) showing connected clients, frame rate, and the live log feed.",
+        "Snapshot mode (--snapshot): the render loop runs exactly one iteration, writes to stdout, then calls _Exit(0). No atexit cleanup (intentional — avoids debug memory report polluting snapshot output).",
+        "The lifecycle_t atomic in options_state_init() uses a three-state machine (UNINITIALIZED → INITIALIZING → INITIALIZED) with CAS to prevent double-init races."
+      ]
+    }
+  ]
+}

@@ -18,6 +18,7 @@ const Display = lazy(() => import("./pages/docs/Display"));
 const Snapshot = lazy(() => import("./pages/docs/Snapshot"));
 const Network = lazy(() => import("./pages/docs/Network"));
 const Media = lazy(() => import("./pages/docs/Media"));
+const Architecture = lazy(() => import("./pages/docs/Architecture"));
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/docs/network" element={<Network />} />
               <Route path="/docs/media" element={<Media />} />
               <Route path="/docs/crypto" element={<Crypto />} />
+              <Route path="/docs/architecture" element={<Architecture />} />
               <Route path="/man1" element={<Man1 />} />
               <Route path="/man5" element={<Man5 />} />
               <Route path="/man3" element={<Man3 />} />
