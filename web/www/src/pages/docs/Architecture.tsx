@@ -1527,9 +1527,47 @@ function FlowDiagram({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+interface Man3Entry {
+  name: string;
+  file: string;
+  sourcePath: string | null;
+}
+
 export default function Architecture() {
   const [flowId, setFlowId] = useState("options");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [man3Map, setMan3Map] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/man3/pages.json")
+      .then((r) => r.json())
+      .then((pages: Man3Entry[]) => {
+        const map: Record<string, string> = {};
+        for (const p of pages) {
+          if (p.sourcePath) {
+            const existing = map[p.sourcePath];
+            // Prefer .c.html / .h.html over bare .html
+            if (
+              !existing ||
+              p.file.includes(".c.html") ||
+              p.file.includes(".h.html")
+            ) {
+              map[p.sourcePath] = `/man3/${p.file}`;
+            }
+          }
+          // Also index by name (for struct/type entries)
+          if (!map[`__name__${p.name}`]) {
+            map[`__name__${p.name}`] = `/man3/${p.file}`;
+          }
+        }
+        setMan3Map(map);
+      })
+      .catch(() => {
+        // Fail silently — links just won't appear
+      });
+  }, []);
+
+  const getMan3Url = (path: string): string | null => man3Map[path] ?? null;
 
   const flow = FLOWS[flowId] ?? FLOWS["options"]!;
   const selectedNode = selectedId
@@ -1641,6 +1679,7 @@ export default function Architecture() {
                     {selectedNode.files.map((f, i) => {
                       const color =
                         COLORS[selectedNode.color] ?? COLORS["core"];
+                      const man3Url = getMan3Url(f.path);
                       return (
                         <div key={i} className="text-xs">
                           <div className="flex items-start gap-2 mb-1">
@@ -1655,15 +1694,38 @@ export default function Architecture() {
                               {i + 1}
                             </div>
                             <div className="min-w-0">
-                              <div
-                                className="text-gray-200 font-mono truncate"
-                                title={f.path}
-                              >
-                                {f.path}
-                              </div>
-                              <div className="text-purple-300 font-mono mt-0.5">
-                                {f.fn}
-                              </div>
+                              {man3Url ? (
+                                <a
+                                  href={man3Url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block font-mono truncate text-gray-200 hover:text-cyan-300 underline underline-offset-2 decoration-gray-600 hover:decoration-cyan-500 transition-colors"
+                                  title={f.path}
+                                >
+                                  {f.path}
+                                </a>
+                              ) : (
+                                <div
+                                  className="font-mono truncate text-gray-200"
+                                  title={f.path}
+                                >
+                                  {f.path}
+                                </div>
+                              )}
+                              {man3Url ? (
+                                <a
+                                  href={man3Url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block font-mono mt-0.5 text-purple-300 hover:text-purple-200 underline underline-offset-2 decoration-purple-800 hover:decoration-purple-400 transition-colors"
+                                >
+                                  {f.fn}
+                                </a>
+                              ) : (
+                                <div className="font-mono mt-0.5 text-purple-300">
+                                  {f.fn}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {f.note && (
