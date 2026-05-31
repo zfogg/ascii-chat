@@ -1,3 +1,4 @@
+[![CI](https://github.com/Arvuno/ascii-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Arvuno/ascii-chat/actions)
 # 💻📸 ascii-chat 🔡💬 Video chat in your terminal
 
 🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
