@@ -28,10 +28,11 @@ For homebrew-core:
 
 ### 1. Prepare the Formula
 
-I've created a simplified formula at:
+Create a simplified formula in your homebrew-core fork (this repo does not
+ship a homebrew-core formula file):
 
 ```
-Formula/ascii-chat-homebrew-core.rb
+<homebrew-core-fork>/Formula/a/ascii-chat.rb
 ```
 
 **Key differences from your tap formula:**
@@ -47,8 +48,8 @@ Formula/ascii-chat-homebrew-core.rb
 **On macOS:**
 
 ```bash
-# Test building from source
-brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+# Test building from source (run inside the homebrew-core fork checkout)
+brew install --build-from-source Formula/a/ascii-chat.rb
 
 # Run tests
 brew test ascii-chat
@@ -67,8 +68,8 @@ brew uninstall ascii-chat
 If you have access to a Linux machine with Homebrew:
 
 ```bash
-# Same commands as macOS
-brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+# Same commands as macOS (run inside the homebrew-core fork checkout)
+brew install --build-from-source Formula/a/ascii-chat.rb
 brew test ascii-chat
 ```
 
@@ -82,8 +83,8 @@ docker run -it --rm \
   homebrew/brew:latest \
   bash
 
-# Inside container:
-brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+# Inside container (run inside the homebrew-core fork checkout)
+brew install --build-from-source Formula/a/ascii-chat.rb
 brew test ascii-chat
 ```
 
@@ -91,10 +92,10 @@ brew test ascii-chat
 
 ```bash
 # Audit the formula for style and correctness
-brew audit --strict --online Formula/ascii-chat-homebrew-core.rb
+brew audit --strict --online Formula/a/ascii-chat.rb
 
 # Check formula style
-brew style Formula/ascii-chat-homebrew-core.rb
+brew style Formula/a/ascii-chat.rb
 
 # Verify dependencies are available in homebrew-core
 brew info libsodium opus portaudio zstd mimalloc ca-certificates gnupg
@@ -137,8 +138,9 @@ git checkout -b ascii-chat
 ### 6. Add the Formula
 
 ```bash
-# Copy your formula to homebrew-core
-cp ~/src/github.com/zfogg/ascii-chat/Formula/ascii-chat-homebrew-core.rb \
+# Copy your formula into the homebrew-core fork (adapt source path to where
+# you created the simplified formula, e.g. your homebrew-core fork checkout)
+cp /path/to/your/simplified-formula.rb \
    Formula/a/ascii-chat.rb
 
 # Note: Homebrew organizes formulas alphabetically by first letter
