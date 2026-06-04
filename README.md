@@ -1,4 +1,4 @@
-[![CI](https://github.com/Arvuno/ascii-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Arvuno/ascii-chat/actions)
+[![CI](https://github.com/Arvuno/ascii-chat/actions/workflows/test.yml/badge.svg)](https://github.com/Arvuno/ascii-chat/actions)
 # 💻📸 ascii-chat 🔡💬 Video chat in your terminal
 
 🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
@@ -609,7 +609,7 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ## Troubleshooting
 
 This section summarizes common issues and where to look for fixes. For deeper
-diagnostic material, see the project docs in `docs/debugging/` and `docs/topics/`.
+diagnostic material, see the project docs in `docs/debugging/` and `docs/tooling/`.
 
 - **WebSocket crashes during large video frame transmission (SIGABRT)**: When a
   client sends a large video frame (e.g. 230+ KB) over a WebSocket, the frame is
