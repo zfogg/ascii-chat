@@ -65,6 +65,8 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
   - [libasciichat](#libasciichat)
   - [Open Source](#open-source)
   - [TODO](#todo)
+  - [Troubleshooting](#troubleshooting)
+  - [Links](#links)
   - [Notes](#notes)
 
 ## Get ascii-chat
@@ -603,6 +605,56 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [x] ascii-chat homebrew tap (zfogg/homebrew-ascii-chat)
 - [ ] ascii-chat official homebrew bottles (brew install ascii-chat with no tap)
 - [ ] get libgcrypt and gpg fixed and integrate with libgcrypt
+
+## Troubleshooting
+
+This section summarizes common issues and where to look for fixes. For deeper
+diagnostic material, see the project docs in `docs/debugging/` and `docs/topics/`.
+
+- **WebSocket crashes during large video frame transmission (SIGABRT)**: When a
+  client sends a large video frame (e.g. 230+ KB) over a WebSocket, the frame is
+  fragmented into 4096-byte chunks. The first fragment typically succeeds, but
+  subsequent fragments can trigger a SIGABRT crash inside libwebsockets'
+  `rops_handle_POLLIN_ws()` due to improper state management between fragment
+  calls. The fragmentation logic in `lib/network/websocket/transport.c`
+  (`websocket_send()`) uses different `lws_write()` flags per fragment
+  (`LWS_WRITE_BINARY` for the first, `LWS_WRITE_CONTINUATION` for the rest)
+  and must keep state in sync. See
+  [`docs/debugging/websocket-fragmentation-analysis.md`](docs/debugging/websocket-fragmentation-analysis.md)
+  for the full reproduction steps, backtrace, and next steps to investigate
+  the issue.
+
+- **WebSocket fragmentation / 0fps regression**: Frames delivered at 0 fps
+  (complete throttling) make video chat unusable. Run
+  `scripts/test-websocket-fps-regression.sh` to detect regressions against the
+  minimum 1 fps baseline. See
+  [`docs/WEBSOCKET_FPS_REGRESSION.md`](docs/WEBSOCKET_FPS_REGRESSION.md) for
+  the regression test details and the related throttling bug it guards
+  against.
+
+- **Query tool can't attach / "Connection refused" on port 9999**: The
+  `ascii-query-server` controller isn't running, the port is wrong, or the
+  controller crashed. On macOS, an unsigned or wrongly-entitled binary fails
+  to attach (rebuild to pick up the `get-task-allow` entitlement). On Linux,
+  `kernel.yama.ptrace_scope = 1` blocks ptrace; run as root, set
+  `ptrace_scope = 0`, or use `PR_SET_PTRACER`. In Docker, run with
+  `--cap-add=SYS_PTRACE`. See
+  [`docs/tooling/query-troubleshooting.md`](docs/tooling/query-troubleshooting.md)
+  for the full connection, attachment, and platform-specific issue list.
+
+- **Query tool says "No debug info for file:line"**: The binary was built in
+  Release mode and the variable/line has been optimized out. Rebuild with
+  `cmake -B build -DCMAKE_BUILD_TYPE=Debug` (and ensure
+  `ASCIICHAT_BUILD_WITH_QUERY=ON`) and re-query. See
+  [`docs/tooling/query-troubleshooting.md`](docs/tooling/query-troubleshooting.md).
+
+- **Performance regression / WebSocket callback overhead**: Use the WebSocket
+  callback profiler to inspect per-callback timing, frequency, and byte
+  counts. The server-side `LWS_CALLBACK_ESTABLISHED` callback can take 5-20ms
+  (it spawns a handler thread) and `LWS_CALLBACK_CLOSED` 10-100ms (it joins
+  it), so small regressions there dominate client-perceived latency. See
+  [`docs/websocket-callback-profiling.md`](docs/websocket-callback-profiling.md)
+  for the profiled callback reference.
 
 ## Links
 
