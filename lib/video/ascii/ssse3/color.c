@@ -12,10 +12,10 @@
 
 #include <tmmintrin.h>
 
-#include <ascii-chat/video/ascii/ssse3/foreground.h>
-#include <ascii-chat/video/ascii/ascii_simd.h>
+#include <ascii-chat/video/ascii/ssse3.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/output_buffer.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/util/overflow.h>
 
 static inline uint8_t rgb_to_256color_ssse3(uint8_t r, uint8_t g, uint8_t b) {
