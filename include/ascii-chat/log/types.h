@@ -16,7 +16,7 @@
  * Converts a log level to a bit flag.
  * Used to pack multiple log levels in the same number (array of flags).
  */
-#define LOG_BIT(n) (1 << (n))
+#define LOG_BIT(n) (1ULL << (n))
 
 /**
  * @brief Logging levels enumeration

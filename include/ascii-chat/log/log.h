@@ -521,7 +521,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #define log_only(bitmask, level, ...) \
-    ({ if (bitmask & LOG_BIT(level)) log_as(level, __VA_ARGS__); })
+    ({ if ((bitmask) & LOG_BIT(level)) log_as(level, __VA_ARGS__); })
 
 /**
  * @brief Log a DEV message (most verbose, development only)
