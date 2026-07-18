@@ -23,11 +23,11 @@
 #elif SIMD_SUPPORT_AVX2
 #include <ascii-chat/video/ascii/avx2.h>
 #elif SIMD_SUPPORT_SSSE3
-#include <ascii-chat/video/ascii/ssse3/foreground.h>
+#include <ascii-chat/video/ascii/ssse3.h>
 #elif SIMD_SUPPORT_SSE2
-#include <ascii-chat/video/ascii/sse2/foreground.h>
+#include <ascii-chat/video/ascii/sse2.h>
 #elif SIMD_SUPPORT_SVE
-#include <ascii-chat/video/ascii/sve/foreground.h>
+#include <ascii-chat/video/ascii/sve.h>
 #endif
 
 // Default luminance palette initialization lifecycle
