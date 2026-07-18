@@ -500,6 +500,30 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  */
 
 /**
+ * @brief Log a message given the associated level
+ * @param level The log level to use
+ * @param ... Format string and arguments (printf-style)
+ *
+ * @ingroup logging
+ */
+#ifdef NDEBUG
+#define log_as(level, ...) log_msg(level, NULL, 0, NULL, __VA_ARGS__)
+#else
+#define log_as(level, ...) log_msg(level, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#endif
+
+/**
+ * @brief Log a message given its level and if the bitmask allows so
+ * @param bitmask The severity bitmask, where level n is encoded as 2^n.
+ * @param level The log level used by the message
+ * @param ... Format string and arguments (printf-style)
+ *
+ * @ingroup logging
+ */
+#define log_only(bitmask, level, ...) \
+    ({ if ((bitmask) & LOG_BIT(level)) log_as(level, __VA_ARGS__); })
+
+/**
  * @brief Log a DEV message (most verbose, development only)
  * @param ... Format string and arguments (printf-style)
  *
@@ -508,11 +532,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #if LOG_COMPILE_LEVEL <= LOG_DEV
-#ifdef NDEBUG
-#define log_dev(...) log_msg(LOG_DEV, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_dev(...) log_msg(LOG_DEV, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_dev(...) log_only(LOG_BIT(LOG_DEV), LOG_DEV, __VA_ARGS__)
 #else
 #define log_dev(...) ((void)0)
 #endif
@@ -526,11 +546,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #if LOG_COMPILE_LEVEL <= LOG_DEBUG
-#ifdef NDEBUG
-#define log_debug(...) log_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_debug(...) log_only(LOG_BIT(LOG_DEBUG), LOG_DEBUG, __VA_ARGS__)
 #else
 #define log_debug(...) ((void)0)
 #endif
@@ -543,11 +559,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #if LOG_COMPILE_LEVEL <= LOG_INFO
-#ifdef NDEBUG
-#define log_info(...) log_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_info(...) log_only(LOG_BIT(LOG_INFO), LOG_INFO, __VA_ARGS__)
 #else
 #define log_info(...) ((void)0)
 #endif
@@ -560,11 +572,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #if LOG_COMPILE_LEVEL <= LOG_WARN
-#ifdef NDEBUG
-#define log_warn(...) log_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_warn(...) log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_warn(...) log_only(LOG_BIT(LOG_WARN), LOG_WARN, __VA_ARGS__)
 #else
 #define log_warn(...) ((void)0)
 #endif
@@ -577,11 +585,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #if LOG_COMPILE_LEVEL <= LOG_ERROR
-#ifdef NDEBUG
-#define log_error(...) log_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_error(...) log_only(LOG_BIT(LOG_ERROR), LOG_ERROR, __VA_ARGS__)
 #else
 #define log_error(...) ((void)0)
 #endif
@@ -593,11 +597,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @note FATAL messages are never stripped (always compiled in).
  * @ingroup logging
  */
-#ifdef NDEBUG
-#define log_fatal(...) log_msg(LOG_FATAL, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
+#define log_fatal(...) log_only(LOG_BIT(LOG_FATAL), LOG_FATAL, __VA_ARGS__)
 
 /** @} */
 
