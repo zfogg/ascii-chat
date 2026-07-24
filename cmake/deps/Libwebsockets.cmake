@@ -167,7 +167,10 @@ if(USE_MUSL)
                 -DLWS_WITHOUT_TEST_PING=ON
                 -DLWS_WITHOUT_TEST_CLIENT=ON
                 -DLWS_WITH_SSL=ON
+                -DLWS_WITH_MBEDTLS=OFF
                 -DLWS_WITH_GNUTLS=OFF
+                -DLWS_WITH_HTTP3=OFF
+                -DLWS_ROLE_QUIC=OFF
                 -DOPENSSL_ROOT_DIR=${OPENSSL_PREFIX}
                 -DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}
                 -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}
