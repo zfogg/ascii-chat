@@ -1003,7 +1003,7 @@ void debug_memory_report(void) {
             }
             if (second_colon > g_suppression_counters[j].key) {
               int line_from_key = 0;
-              sscanf(second_colon + 1, "%d", &line_from_key);
+              SAFE_SSCANF(second_colon + 1, "%d", &line_from_key);
               size_t file_len = second_colon - g_suppression_counters[j].key;
               if (file_len == strlen(g_suppression_config[i].file) && line_from_key == g_suppression_config[i].line &&
                   strncmp(g_suppression_counters[j].key, g_suppression_config[i].file, file_len) == 0) {
@@ -1206,24 +1206,26 @@ void debug_memory_report(void) {
               size_t file_len = first_colon - site->key;
 
               if (file_len > 0 && file_len < sizeof(file)) {
-                strncpy(file, site->key, file_len);
+                SAFE_MEMCPY(file, sizeof(file), site->key, file_len);
                 file[file_len] = '\0';
 
                 // Extract line (between first and last colon)
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%" SCNu64, &tid) == 1) {
+                if (SAFE_SSCANF(first_colon + 1, "%d", &line) == 1 &&
+                    SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
                   parse_success = true;
                 }
               } else if (file_len >= sizeof(file)) {
                 // Filename too long, truncate with ellipsis
                 size_t max_len = sizeof(file) - 4;
-                strncpy(file, site->key, max_len);
+                SAFE_MEMCPY(file, sizeof(file), site->key, max_len);
                 file[max_len] = '\0';
                 int snprintf_result = SAFE_SNPRINTF(file + max_len, sizeof(file) - max_len, "%s", "...");
                 if (snprintf_result < 0) {
                   log_error("Failed to append ellipsis to filename: snprintf returned %d", snprintf_result);
                 }
 
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%" SCNu64, &tid) == 1) {
+                if (SAFE_SSCANF(first_colon + 1, "%d", &line) == 1 &&
+                    SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
                   parse_success = true;
                 }
               }
