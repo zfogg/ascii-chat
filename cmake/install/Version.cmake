@@ -19,6 +19,11 @@
 
 include_guard(GLOBAL)
 
+# Use CMake's process timeout and the platform-native Git executable. In
+# particular, invoking `bash` on Windows may start WSL, where accessing a
+# Windows-mounted checkout can exceed the timeout before Git produces output.
+find_program(GIT_EXECUTABLE NAMES git)
+
 # =============================================================================
 # _get_version_date() - Helper to extract version date from git history
 # Sets: PROJECT_VERSION_DATE
@@ -28,22 +33,24 @@ macro(_get_version_date _tag_name)
     # Try to get tag date from git history (date tag was created)
     if(NOT "${_tag_name}" STREQUAL "")
         execute_process(
-            COMMAND bash -c "timeout 3 git log -1 --format=%ci '${_tag_name}' 2>/dev/null | cut -d' ' -f1"
+            COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cs "${_tag_name}"
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             OUTPUT_VARIABLE PROJECT_VERSION_DATE
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
+            TIMEOUT 3
         )
     endif()
 
     # If tag date not available, try first commit date
     if(NOT PROJECT_VERSION_DATE OR PROJECT_VERSION_DATE STREQUAL "")
         execute_process(
-            COMMAND bash -c "timeout 3 git log --reverse --pretty=format:%ci 2>/dev/null | head -1 | cut -d' ' -f1"
+            COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cs --max-parents=0 HEAD
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             OUTPUT_VARIABLE PROJECT_VERSION_DATE
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
+            TIMEOUT 3
         )
     endif()
 
@@ -75,14 +82,13 @@ macro(version_detect)
         message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
     else()
         # Get git describe output at configure time
-        # Use bash -c to invoke GNU timeout (Windows' timeout.exe is a "wait N seconds"
-        # utility, not a command wrapper, and CMake's execute_process finds it first)
         execute_process(
-            COMMAND bash -c "timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'"
+            COMMAND "${GIT_EXECUTABLE}" describe --tags --long --dirty --always --match "v[0-9]*"
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
+            TIMEOUT 3
         )
 
         # Parse git describe output
@@ -149,11 +155,12 @@ macro(library_version_detect)
     else()
         # Get the highest lib/v* tag (sorted by version)
         execute_process(
-            COMMAND bash -c "timeout 3 git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname"
+            COMMAND "${GIT_EXECUTABLE}" tag -l "lib/v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             OUTPUT_VARIABLE _LIB_TAGS
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
+            TIMEOUT 3
         )
 
         # Extract the first (highest) tag
@@ -242,11 +249,12 @@ if(DEFINED ENV{SOURCE_COMMIT})
 else()
     # Get git describe output (includes commits since last tag)
     execute_process(
-        COMMAND bash -c \"timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'\"
+        COMMAND \"${GIT_EXECUTABLE}\" describe --tags --long --dirty --always --match \"v[0-9]*\"
         WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
         OUTPUT_VARIABLE GIT_DESCRIBE
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
+        TIMEOUT 3
     )
 
     set(GIT_DESCRIBE_AVAILABLE TRUE)
@@ -327,11 +335,12 @@ set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 # Get git commit hash and dirty state (skip if SOURCE_COMMIT already set above)
 if(NOT DEFINED GIT_COMMIT_HASH OR GIT_COMMIT_HASH STREQUAL \"\")
     execute_process(
-        COMMAND bash -c \"timeout 3 git rev-parse HEAD\"
+        COMMAND \"${GIT_EXECUTABLE}\" rev-parse HEAD
         WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
         OUTPUT_VARIABLE GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
+        TIMEOUT 3
     )
     if(NOT GIT_COMMIT_HASH)
         set(GIT_COMMIT_HASH \"unknown\")
@@ -341,10 +350,11 @@ endif()
 # Check if working tree is dirty (skip if SOURCE_COMMIT already set)
 if(NOT DEFINED GIT_IS_DIRTY)
     execute_process(
-        COMMAND bash -c \"timeout 3 git diff-index --quiet HEAD --\"
+        COMMAND \"${GIT_EXECUTABLE}\" diff-index --quiet HEAD --
         WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
         RESULT_VARIABLE GIT_DIRTY_RESULT
         ERROR_QUIET
+        TIMEOUT 3
     )
     if(GIT_DIRTY_RESULT EQUAL 0)
         set(GIT_IS_DIRTY \"false\")
@@ -360,11 +370,12 @@ string(TIMESTAMP BUILD_DATE \"%Y-%m-%d\" UTC)
 if(\"${CMAKE_BUILD_TYPE}\" STREQUAL \"Release\")
     # Get list of all tracked files from git
     execute_process(
-        COMMAND bash -c \"timeout 3 git ls-files\"
+        COMMAND \"${GIT_EXECUTABLE}\" ls-files
         WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
         OUTPUT_VARIABLE GIT_TRACKED_FILES
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
+        TIMEOUT 3
     )
 
     if(GIT_TRACKED_FILES)
