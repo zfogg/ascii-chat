@@ -47,22 +47,17 @@ function(copy_windows_dlls TARGET_NAME)
                 set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TARGET_TRIPLET}/bin")
             endif()
 
-            # DLLs to copy from vcpkg
-            # Core dependencies (FFmpeg is NOT from vcpkg on Windows - copied separately below)
-            set(VCPKG_DLLS zstd.dll portaudio.dll libsodium.dll opus.dll sqlite3.dll miniupnpc.dll)
-            # WebRTC/datachannel and its dependencies
-            list(APPEND VCPKG_DLLS datachannel.dll juice.dll libssl-3-x64.dll libcrypto-3-x64.dll)
-            # Regex, websocket, and libuv libraries
+            # Copy every vcpkg runtime DLL. Keeping a hand-written list misses
+            # transitive dependencies (for example FreeType's PNG/Brotli DLLs).
+            # FFmpeg is not installed by vcpkg on Windows and is handled below.
+            file(GLOB VCPKG_DLLS
+                RELATIVE "${DLL_SOURCE_DIR}"
+                "${DLL_SOURCE_DIR}/*.dll"
+            )
+
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                list(APPEND VCPKG_DLLS pcre2-8d.dll websockets.dll uv.dll)
-            else()
-                list(APPEND VCPKG_DLLS pcre2-8.dll websockets.dll uv.dll)
-            endif()
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                list(APPEND VCPKG_DLLS mimalloc-debug.dll mimalloc-redirect.dll)
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
             else()
-                list(APPEND VCPKG_DLLS mimalloc.dll mimalloc-redirect.dll)
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc.dll.pdb)
             endif()
 
@@ -85,6 +80,42 @@ function(copy_windows_dlls TARGET_NAME)
             endforeach()
 
             message(STATUS "DLL/PDB copying: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
+
+            # vcpkg Debug DLLs use the MSVC Debug CRT, which is not on PATH.
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                if(VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+                    set(_debug_crt_arch arm64)
+                else()
+                    set(_debug_crt_arch x64)
+                endif()
+
+                if(ASCIICHAT_NMAKE_EXECUTABLE)
+                    string(REGEX REPLACE "/VC/.*" "" _vs_install_dir "${ASCIICHAT_NMAKE_EXECUTABLE}")
+                    file(GLOB _msvc_debug_crt_dirs
+                        "${_vs_install_dir}/VC/Redist/MSVC/*/debug_nonredist/${_debug_crt_arch}/Microsoft.VC*.DebugCRT"
+                    )
+                    if(_msvc_debug_crt_dirs)
+                        list(SORT _msvc_debug_crt_dirs COMPARE NATURAL ORDER DESCENDING)
+                        list(GET _msvc_debug_crt_dirs 0 _msvc_debug_crt_dir)
+                        copy_dlls_post_build(
+                            TARGET ${TARGET_NAME}
+                            NAMES msvcp140d.dll vcruntime140d.dll vcruntime140_1d.dll
+                            SOURCE_DIR "${_msvc_debug_crt_dir}"
+                            COMMENT "from MSVC Debug CRT"
+                        )
+                    endif()
+                endif()
+
+                set(_ucrt_debug_dir "${WINDOWS_KITS_DIR}/bin/${WINDOWS_SDK_VERSION}/${_debug_crt_arch}/ucrt")
+                if(EXISTS "${_ucrt_debug_dir}/ucrtbased.dll")
+                    copy_dlls_post_build(
+                        TARGET ${TARGET_NAME}
+                        NAMES ucrtbased.dll
+                        SOURCE_DIR "${_ucrt_debug_dir}"
+                        COMMENT "from Windows SDK Debug UCRT"
+                    )
+                endif()
+            endif()
         else()
             message(STATUS "DLL/PDB copying: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
         endif()

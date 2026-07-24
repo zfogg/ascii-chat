@@ -202,7 +202,7 @@ endif()
 
 find_dependency_library(
     NAME PCRE2
-    VCPKG_NAMES pcre2-8 pcre2
+    VCPKG_NAMES pcre2-8 pcre2 pcre2-8d pcre2d
     HEADER pcre2.h
     PKG_CONFIG libpcre2-8
     HOMEBREW_PKG pcre2

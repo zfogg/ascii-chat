@@ -1287,7 +1287,15 @@ if(ASCIICHAT_INTERNAL_SYMBOLS)
 endif()
 
 # Validate symbols in shared library after build
-if(ASCIICHAT_LLVM_NM_EXECUTABLE)
+# Prefer the tool CMake selected for the active compiler toolchain. This avoids
+# mixing llvm-nm from a different or incomplete LLVM installation.
+if(CMAKE_NM)
+    set(ASCIICHAT_SYMBOL_NM_EXECUTABLE "${CMAKE_NM}")
+else()
+    set(ASCIICHAT_SYMBOL_NM_EXECUTABLE "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
+endif()
+
+if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
     # On Unix, check the shared object directly
     if(WIN32)
@@ -1299,7 +1307,7 @@ if(ASCIICHAT_LLVM_NM_EXECUTABLE)
     # Build the validation command with optional internal symbols
     set(_VALIDATE_CMD
         ${CMAKE_COMMAND}
-        -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
+        -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
         -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
         -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
     )
@@ -1557,12 +1565,12 @@ target_link_libraries(ascii-chat-static-lib-with-deps PRIVATE INTERFACE
 # =============================================================================
 # Validates that key ascii-chat symbols exist in the combined library
 # Uses ASCIICHAT_SYMBOLS_CSV defined earlier (shared between static and shared lib validation)
-if(ASCIICHAT_LLVM_NM_EXECUTABLE)
+if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # Add validation step after library is created
     add_custom_command(
         OUTPUT ${STATIC_LIB_OUTPUT}.validated
         COMMAND ${CMAKE_COMMAND}
-            -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
+            -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
             -DLIBRARY=${STATIC_LIB_OUTPUT}
             -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
@@ -1654,4 +1662,3 @@ target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
 # Static Library Archive Creation (custom command handles basename collisions)
 # =============================================================================
 # See cmake/scripts/create_static_archive.cmake for implementation details
-

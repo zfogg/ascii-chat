@@ -47,15 +47,33 @@ if(BUILD_EXECUTABLES)
         @ONLY
     )
 
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        COMMAND bash -c "2>/dev/null ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 2 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1' < /dev/null"
-        DEPENDS
-            $<TARGET_FILE:ascii-chat>
-            "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
-        COMMENT "Building man page"
-        VERBATIM
-    )
+    if(WIN32)
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMAND ${CMAKE_COMMAND} -E env
+                "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
+                "ASCIICHAT_RESOURCE_DIR=${CMAKE_BINARY_DIR}"
+                "LSAN_OPTIONS=verbosity=0:halt_on_error=0"
+                "ASAN_OPTIONS=verbosity=0:halt_on_error=0"
+                "${ASCII_CHAT_EXECUTABLE}"
+                --man-page-create "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            DEPENDS
+                $<TARGET_FILE:ascii-chat>
+                "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
+            COMMENT "Building man page"
+            VERBATIM
+        )
+    else()
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMAND bash -c "2>/dev/null ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 2 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1' < /dev/null"
+            DEPENDS
+                $<TARGET_FILE:ascii-chat>
+                "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
+            COMMENT "Building man page"
+            VERBATIM
+        )
+    endif()
 
     # Build man pages target (works for both Debug and Release)
     add_custom_target(man1 ALL
@@ -290,4 +308,3 @@ if(UNIX)
     )
     message(STATUS "Custom target ${BoldGreen}man5${ColorReset} available: ${BoldBlue}cmake --build build --target man5${ColorReset}")
 endif()
-
