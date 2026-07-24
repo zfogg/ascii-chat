@@ -241,8 +241,7 @@ asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src)
                      dest_size);
   }
 
-  SAFE_STRNCPY(dest, src, dest_size - 1);
-  dest[dest_size - 1] = '\0';
+  SAFE_STRNCPY(dest, src, dest_size);
   return ASCIICHAT_OK;
 }
 
