@@ -473,9 +473,8 @@ runs:
         $ErrorActionPreference = 'Stop'
         $arch = "${{ runner.arch }}"
         if ($arch -eq "X64") {
-          # Visual Studio 18 requires Clang 20+, while Clang 21 produces a
-          # release binary that crashes during generated-doc execution.
-          $LLVM_VERSION = "20.1.8"
+          # The x64 release runs on Windows Server 2022 with Visual Studio 17.
+          $LLVM_VERSION = "19.1.6"
           $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-win64.exe"
           $LLVM_INSTALL_DIR = "C:\LLVM"
         } else {

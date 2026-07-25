@@ -590,7 +590,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: windows-latest
+          - runner: windows-2022
             arch: amd64
             vcpkg-triplet: "x64-windows"
             vcpkg-static-triplet: "x64-windows-static"
