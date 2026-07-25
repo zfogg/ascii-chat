@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      library_version: ${{ steps.version.outputs.library_version }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
@@ -84,7 +85,15 @@ jobs:
             echo "Next version: $VERSION"
           fi
 
+          LIBRARY_TAG=$(git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          LIBRARY_VERSION="${LIBRARY_TAG#lib/v}"
+          if [[ ! "$LIBRARY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Could not determine the library version from lib/v* tags"
+            exit 1
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "library_version=$LIBRARY_VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
         id: changelog
@@ -466,7 +475,9 @@ jobs:
         run: |
           DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
-          CMAKE_ARGS="--preset release"
+          RELEASE_TAG="${{ needs.create-release.outputs.version }}"
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }}"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
