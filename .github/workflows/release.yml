@@ -659,6 +659,7 @@ jobs:
           $args = @("--preset", "windows-release",
             "-DASCIICHAT_DEFER_TOOL=$deferTool",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
+            "-DASCIICHAT_ENABLE_NSIS=OFF",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args

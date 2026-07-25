@@ -1355,4 +1355,3 @@ ascii-chat [mode] --help  # Show all options (or for [mode])")
 else()
     message(STATUS "${Red}CPack:${ColorReset} Package generation disabled (set USE_CPACK=ON to enable)")
 endif()
-
