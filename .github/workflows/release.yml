@@ -675,6 +675,7 @@ jobs:
       - name: Build and package with CPack
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib

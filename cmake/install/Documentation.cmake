@@ -90,6 +90,12 @@ endif()
 # Lightweight target that generates only man(3) pages without HTML docs
 # This is much faster than the full `docs` target and is used for web builds
 if(ASCIICHAT_DOXYGEN_EXECUTABLE)
+    if(WIN32)
+        set(ASCIICHAT_DOXYGEN_COMMAND "${ASCIICHAT_DOXYGEN_EXECUTABLE}")
+    else()
+        set(ASCIICHAT_DOXYGEN_COMMAND timeout 120 "${ASCIICHAT_DOXYGEN_EXECUTABLE}")
+    endif()
+
     # Create man3 directory
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
 
@@ -154,7 +160,7 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/.man3.done"
-        COMMAND timeout 120 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
+        COMMAND ${ASCIICHAT_DOXYGEN_COMMAND} ${DOXYFILE_MAN3_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
@@ -206,7 +212,7 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
 
     # HTML documentation target (builds first)
     add_custom_target(docs-html
-        COMMAND timeout 120 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_HTML}
+        COMMAND ${ASCIICHAT_DOXYGEN_COMMAND} ${DOXYFILE_HTML}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating HTML documentation with Doxygen"
         VERBATIM
@@ -214,7 +220,7 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
 
     # Man3 documentation target (builds second, depends on HTML completion)
     add_custom_target(docs-man3
-        COMMAND timeout 120 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN}
+        COMMAND ${ASCIICHAT_DOXYGEN_COMMAND} ${DOXYFILE_MAN}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
@@ -224,10 +230,15 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
         VERBATIM
     )
 
-    # Combined documentation target (builds all four doc targets without rebuilding)
+    # Combined documentation target. The man5 target is only available on Unix.
+    set(DOCS_TARGET_DEPENDENCIES docs-html man1 man3)
+    if(UNIX)
+        list(APPEND DOCS_TARGET_DEPENDENCIES man5)
+    endif()
+
     add_custom_target(docs
-        DEPENDS docs-html man1 man3 man5
-        COMMENT "All documentation targets complete (HTML, man1, man3, man5)"
+        DEPENDS ${DOCS_TARGET_DEPENDENCIES}
+        COMMENT "All documentation targets complete"
     )
 
     # Create a target to open documentation in browser (cross-platform)
