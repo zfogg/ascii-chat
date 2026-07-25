@@ -134,8 +134,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
   // (implemented via should_force_stderr check above)
   const char *render_file_early = GET_OPTION(render_file);
-  log_info("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)",
-           render_file_early ? render_file_early : "(null)", (void *)render_file_early);
+  log_info("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)", render_file_early ? render_file_early : "(null)",
+           (void *)render_file_early);
   if (render_file_early && render_file_early[0] != '\0' &&
       (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
     log_info("--render-file=- will output binary video to stdout, logging sent to stderr");
@@ -179,6 +179,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   display_config.color_mode = TERM_COLOR_AUTO;
   display_config.should_exit_callback = display_should_exit_adapter;
   display_config.callback_data = NULL;
+  display_config.defer_render_file = true;
 
   log_debug("[SETUP_DISPLAY_EARLY] Creating display context (before splash)");
   display = session_display_create(&display_config);
@@ -235,7 +236,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
 
-  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
+  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)",
+            GET_OPTION(snapshot_mode), config->discovery != NULL);
   // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
   // Discovery participants should show logs, only hosts should have logs disabled for rendering
   bool should_disable_logging = !GET_OPTION(snapshot_mode) && (config->discovery == NULL);
@@ -244,7 +246,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_set_terminal_output(false);
     log_debug("session_client_like_run(): RETURNED from log_set_terminal_output(false)");
   } else {
-    log_debug("session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
+    log_debug("session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)",
+              GET_OPTION(snapshot_mode), config->discovery != NULL);
   }
   log_debug("session_client_like_run(): Terminal logging setup complete, starting media source setup");
 
@@ -261,7 +264,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Determine FPS explicitly set by user
   log_debug("session_client_like_run(): Getting FPS option");
   int user_fps = GET_OPTION(fps);
-  bool fps_explicitly_set = user_fps > 0;
+  bool fps_explicitly_set = GET_OPTION(fps_explicitly_set);
   log_debug("session_client_like_run(): FPS=%d (explicitly_set=%d)", user_fps, fps_explicitly_set);
 
   // Select media source based on options (priority order)
@@ -308,8 +311,21 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_info("Using stdin for media streaming (webcam disabled)");
       capture_config.type = MEDIA_SOURCE_STDIN;
       capture_config.path = NULL;
-      capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
       capture_config.loop = false;
+      if (fps_explicitly_set) {
+        capture_config.target_fps = (uint32_t)user_fps;
+      } else {
+        log_debug("Probing FPS from buffered stdin media");
+        probe_source = media_source_create(MEDIA_SOURCE_STDIN, NULL);
+        if (probe_source) {
+          double stdin_fps = media_source_get_video_fps(probe_source);
+          log_info("Detected stdin video FPS: %.1f", stdin_fps);
+          capture_config.target_fps = stdin_fps > 0.0 ? (uint32_t)(stdin_fps + 0.5) : 60;
+        } else {
+          log_warn("Failed to probe stdin FPS, using default 60 FPS");
+          capture_config.target_fps = 60;
+        }
+      }
     } else {
       log_info("Using media file: %s (webcam disabled)", media_file_val);
       capture_config.type = MEDIA_SOURCE_FILE;
@@ -392,6 +408,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
               capture_config.target_fps);
   }
 
+  asciichat_error_t render_init_result = session_display_init_render_file(display, capture_config.target_fps);
+  if (render_init_result != ASCIICHAT_OK) {
+    result = render_init_result;
+    goto cleanup;
+  }
+
   // ============================================================================
   // SETUP: Network Transports (TCP/WebSocket)
   // ============================================================================
@@ -401,15 +423,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   bool networked_mode = session_client_like_is_networked(config->kind);
 
   switch (config->kind) {
-    case SESSION_CLIENT_LIKE_KIND_MIRROR:
-      log_debug("Mirror mode detected - will use local capture with media source");
-      break;
-    case SESSION_CLIENT_LIKE_KIND_CLIENT:
-      log_debug("Client/Network mode detected - will use network capture without local media source");
-      break;
-    case SESSION_CLIENT_LIKE_KIND_DISCOVERY:
-      log_debug("Discovery mode detected - discovery session will manage networking");
-      break;
+  case SESSION_CLIENT_LIKE_KIND_MIRROR:
+    log_debug("Mirror mode detected - will use local capture with media source");
+    break;
+  case SESSION_CLIENT_LIKE_KIND_CLIENT:
+    log_debug("Client/Network mode detected - will use network capture without local media source");
+    break;
+  case SESSION_CLIENT_LIKE_KIND_DISCOVERY:
+    log_debug("Discovery mode detected - discovery session will manage networking");
+    break;
   }
 
   // ============================================================================
@@ -427,8 +449,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   int frame_height = GET_OPTION(height);
   bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
   bool has_media_source = (media_url_val && strlen(media_url_val) > 0) ||
-                          (media_file_val && strlen(media_file_val) > 0) ||
-                          GET_OPTION(test_pattern);
+                          (media_file_val && strlen(media_file_val) > 0) || GET_OPTION(test_pattern);
 
   // Enable audio capture if render-file is active and media source exists
   if (render_file_opt && strlen(render_file_opt) > 0 && has_media_source) {
@@ -436,9 +457,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("Audio capture enabled for render-file encoding");
   }
 
-  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
-                            !terminal_is_stdin_tty() && height_explicitly_set &&
-                            !has_media_source && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
+  bool stdin_render_mode =
+      (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty() && height_explicitly_set &&
+       !has_media_source && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
 
   if (stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
@@ -617,9 +638,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     // Set audio source for render-file encoding (after capture is created)
     media_source_t *render_audio_source = session_capture_get_media_source(capture);
     const char *render_file_path = GET_OPTION(render_file);
-    log_info("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu",
-             render_audio_source, render_file_path ? render_file_path : "(null)",
-             render_file_path ? strlen(render_file_path) : 0);
+    log_info("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu", render_audio_source,
+             render_file_path ? render_file_path : "(null)", render_file_path ? strlen(render_file_path) : 0);
     if (render_audio_source && render_file_path && strlen(render_file_path) > 0) {
       session_display_set_render_audio_source(display, render_audio_source);
       log_info("Audio source set for render-file output");

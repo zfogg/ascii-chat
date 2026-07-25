@@ -1050,6 +1050,7 @@ typedef struct options_state {
   bool show_capabilities;           ///< Show terminal capabilities and exit
   int force_utf8;                   ///< UTF-8 support setting (auto/true/false)
   int fps;                          ///< Target framerate (1-144, default: 60)
+  bool fps_explicitly_set;          ///< True if FPS was explicitly configured by the user
   bool flip_x;                      ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
   bool flip_y;                      ///< Flip video vertically (Y-axis)
 
@@ -1168,7 +1169,7 @@ typedef struct options_state {
 #endif
 
   // ============================================================================
-  // Render-to-file Options (macOS and Linux only)
+  // Render-to-file options
   // ============================================================================
   char render_file[OPTIONS_BUFF_SIZE]; ///< Output file path (e.g. output.mp4)
   int render_theme;                    ///< 0=dark 1=light 2=auto

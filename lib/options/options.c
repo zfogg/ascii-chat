@@ -422,8 +422,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Try to match against known modes
   const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "default", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER,  MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                          MODE_INVALID};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -536,6 +535,7 @@ options_t options_t_new(void) {
   opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
   opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
+  opts.fps_explicitly_set = false;
   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
@@ -599,13 +599,11 @@ options_t options_t_new(void) {
   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
   // yt_dlp_options is already zeroed by memset
 
-  // Render-to-file options (Unix only)
-#ifndef _WIN32
+  // Render-to-file options
   // render_file is already zeroed by memset
   opts.render_theme = OPT_RENDER_THEME_DEFAULT;
   // render_font is already zeroed by memset
   opts.render_font_size = OPT_RENDER_FONT_SIZE_DEFAULT;
-#endif
 
   // ============================================================================
   // NETWORK CATEGORY - Network connectivity and protocol options
@@ -1524,6 +1522,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool saved_encrypt_enabled = opts.encrypt_enabled;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
+  bool fps_set_by_config = opts.fps != OPT_FPS_DEFAULT;
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(&opts, &binary_before_config);
 
@@ -1601,6 +1600,17 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
     return result;
   }
+
+  bool fps_set_by_cli = false;
+  for (int i = 0; i < mode_argc; i++) {
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--fps") == 0 || strncmp(mode_argv[i], "--fps=", strlen("--fps=")) == 0)) {
+      fps_set_by_cli = true;
+      break;
+    }
+  }
+  const char *fps_env = SAFE_GETENV("ASCII_CHAT_FPS");
+  opts.fps_explicitly_set = fps_set_by_config || fps_set_by_cli || (fps_env && fps_env[0] != '\0');
 
   // ========================================================================
   // STAGE 6.5: Publish Parsed Options Early
@@ -1702,8 +1712,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       bool splash_value = true; // Default to true for plain --splash-screen
       if (strncmp(mode_argv[i], "--splash-screen=", 16) == 0) {
         const char *value = mode_argv[i] + 16;
-        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 ||
-            strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
+        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 ||
+            strcasecmp(value, "off") == 0) {
           splash_value = false;
         }
       }
@@ -1716,8 +1726,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       bool status_value = true; // Default to true for plain --status-screen
       if (strncmp(mode_argv[i], "--status-screen=", 16) == 0) {
         const char *value = mode_argv[i] + 16;
-        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 ||
-            strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
+        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 ||
+            strcasecmp(value, "off") == 0) {
           status_value = false;
         }
       }
@@ -1831,10 +1841,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Validate all string options contain valid UTF-8
-  // This prevents crashes and corruption from invalid UTF-8 in any option
-  // DISABLED IN RELEASE BUILDS: utf8_is_valid() has performance issues with musl
-  #ifndef NDEBUG
+// Validate all string options contain valid UTF-8
+// This prevents crashes and corruption from invalid UTF-8 in any option
+// DISABLED IN RELEASE BUILDS: utf8_is_valid() has performance issues with musl
+#ifndef NDEBUG
   const char *string_fields[][2] = {{"address", opts.address},
                                     {"address6", opts.address6},
                                     {"encrypt_key", opts.encrypt_key},
@@ -1873,7 +1883,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       return option_error_invalid();
     }
   }
-  #endif
+#endif
   // Validate options
   log_info("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
   result = validate_options_and_report(config, &opts);
@@ -1909,7 +1919,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Preference: /usr/local/var/ascii-chat/ > ~/.local/share/ascii-chat/ > ~/.config/ascii-chat/
       log_info("★ DISCOVERY_SERVICE: About to call get_discovery_database_dir()");
       char *db_dir = get_discovery_database_dir();
-      log_info("★ DISCOVERY_SERVICE: get_discovery_database_dir() returned %p", (void*)db_dir);
+      log_info("★ DISCOVERY_SERVICE: get_discovery_database_dir() returned %p", (void *)db_dir);
       if (!db_dir) {
         options_config_destroy(config);
         SAFE_FREE(allocated_mode_argv);

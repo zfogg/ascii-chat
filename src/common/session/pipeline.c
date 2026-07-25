@@ -208,11 +208,21 @@ static void *pipeline_capture_thread(void *arg) {
   log_info("[PIPELINE_CAPTURE] Starting capture thread");
 
   bool snapshot_mode = GET_OPTION(snapshot_mode);
+  uint64_t snapshot_frames_captured = 0;
+  uint64_t snapshot_target_frames = 1;
+  media_source_t *capture_source = session_capture_get_media_source(pipeline->capture);
+  media_source_type_t capture_source_type = media_source_get_type(capture_source);
+  bool snapshot_uses_frame_target =
+      capture_source_type == MEDIA_SOURCE_FILE || capture_source_type == MEDIA_SOURCE_STDIN;
   if (snapshot_mode) {
     // Initialize duration estimate BEFORE encoding frames so PTS scaling works from frame 1
     extern uint64_t g_snapshot_actual_duration_ms;
     double snapshot_delay = GET_OPTION(snapshot_delay);
     g_snapshot_actual_duration_ms = (uint64_t)(snapshot_delay * 1000.0);
+    if (snapshot_delay > 0.0 && snapshot_uses_frame_target) {
+      double target_frames = snapshot_delay * session_capture_get_target_fps(pipeline->capture);
+      snapshot_target_frames = (uint64_t)(target_frames + 0.999999);
+    }
     log_info(
         "[PIPELINE_CAPTURE] Snapshot mode: initialized g_snapshot_actual_duration_ms=%llu ms (snapshot_delay=%.2f)",
         (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
@@ -280,6 +290,7 @@ static void *pipeline_capture_thread(void *arg) {
 
     // Check snapshot mode elapsed time AFTER queueing frame (ensure at least 1 frame is queued)
     if (snapshot_mode) {
+      snapshot_frames_captured++;
       uint64_t now_ns = time_get_ns();
 
       // Set first capture timestamp on first frame (only once)
@@ -291,8 +302,11 @@ static void *pipeline_capture_thread(void *arg) {
       // Calculate elapsed time from first capture
       double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
       double snapshot_delay = GET_OPTION(snapshot_delay);
+      bool snapshot_complete = snapshot_uses_frame_target
+                                   ? snapshot_frames_captured >= snapshot_target_frames
+                                   : elapsed >= snapshot_delay;
 
-      if (elapsed >= snapshot_delay) {
+      if (snapshot_complete) {
         log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
                  "encode queue to drain",
                  elapsed, snapshot_delay);
@@ -300,7 +314,9 @@ static void *pipeline_capture_thread(void *arg) {
         // Update with actual measured duration so encoder can scale frames accurately
         extern uint64_t g_snapshot_actual_duration_ms;
         extern uint64_t g_snapshot_last_capture_elapsed_ns;
-        uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
+        uint64_t actual_ms = snapshot_uses_frame_target
+                                 ? (uint64_t)(snapshot_delay * 1000.0)
+                                 : (uint64_t)(elapsed * 1000.0);
         g_snapshot_actual_duration_ms = actual_ms;
         uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
@@ -475,21 +491,21 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     if (!frame)
       continue; // timeout, check should_exit again
 
+    // EOF sentinels are intentionally zero-initialized and therefore do not
+    // satisfy normal frame validation.
+    if (!frame->pixels) {
+      log_info("[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping");
+      free_frame(frame);
+      frame = NULL;
+      break;
+    }
+
     // Validate frame structure exists before accessing fields
     if (!frame_is_valid(frame)) {
       log_error("Received invalid frame: corrupted or NULL");
       free_frame(frame);
       frame = NULL;
       continue;
-    }
-
-    // Check for EOF sentinel (NULL pixels)
-    if (!frame->pixels) {
-      // EOF sentinel
-      log_info("[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping");
-      free_frame(frame);
-      frame = NULL;
-      break;
     }
 
     // Log frame pop with timestamp

@@ -21,6 +21,7 @@ struct render_file_ctx_s {
   media_source_t *audio_media_source;    // for --file/--url audio
   audio_ring_buffer_t *audio_capture_rb; // for live mic capture
   uint32_t audio_sample_rate;            // 48000 Hz
+  int fps;
   float *audio_read_buf;                 // Temporary buffer for reading audio samples
   int audio_buf_size;                    // Size of audio_read_buf
 };
@@ -52,8 +53,13 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
-    log_warn("renderer: font resolution failed for '%s' — using system default",
+    log_warn("renderer: font resolution failed for '%s' — using bundled default",
              raw_font ? raw_font : "(explicit system)");
+    fe = platform_font_resolve("default", font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
+    if (fe != ASCIICHAT_OK) {
+      SAFE_FREE(ctx);
+      return fe;
+    }
   }
 
   log_debug("render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec,
@@ -61,12 +67,18 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   // Use reasonable default font size for render-file quality
   double font_size_pt = GET_OPTION(render_font_size);
+  term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
+  if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
+    resolved_theme = terminal_has_dark_background() ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
+    log_debug("render_file_create: auto theme resolved to %s",
+              resolved_theme == TERM_RENDERER_THEME_DARK ? "dark" : "light");
+  }
 
   term_renderer_config_t tr_cfg = {
       .cols = cols,
       .rows = rows,
       .font_size_pt = font_size_pt,
-      .theme = (term_renderer_theme_t)theme,
+      .theme = resolved_theme,
       .font_is_path = font_is_path,
       .font_data = font_data,
       .font_data_size = font_data_size,
@@ -97,6 +109,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   // Initialize audio fields
   ctx->audio_sample_rate = 48000; // Audio pipeline is 48kHz
+  ctx->fps = fps;
   // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
   // Use 8192 to comfortably handle snapshot reads without excessive overhead
   ctx->audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
@@ -162,28 +175,16 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
 
   log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
 
-  // Check pixels in multiple locations to verify content
   if (pixels) {
-    // The framebuffer is RGBA (4 bytes per pixel)
-    // Check pixel at (0,0) - top left corner
     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2], sample_a = pixels[3];
-
-    // Check pixel at (500, 100) where we'll inject a test red stripe
-    size_t test_offset = 100 * pitch + 500 * 4; // 4 bytes per pixel for RGBA
-    uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2],
-            test_a = pixels[test_offset + 3];
-
-    // Check pixel at middle of screen
-    size_t mid_offset = (height_px / 2) * pitch;
+    size_t mid_offset = (size_t)(height_px / 2) * (size_t)pitch + (size_t)(width_px / 2) * 4;
     uint8_t sample_r_mid = pixels[mid_offset], sample_g_mid = pixels[mid_offset + 1],
             sample_b_mid = pixels[mid_offset + 2], sample_a_mid = pixels[mid_offset + 3];
 
-    log_info("  pixel[0,0]: RGBA(%u,%u,%u,%u), test_pos[500,100]: RGBA(%u,%u,%u,%u), pixel[0,%d]: RGBA(%u,%u,%u,%u)",
-             sample_r, sample_g, sample_b, sample_a, test_r, test_g, test_b, test_a, height_px / 2, sample_r_mid,
-             sample_g_mid, sample_b_mid, sample_a_mid);
+    log_info("  pixel[0,0]: RGBA(%u,%u,%u,%u), pixel[%d,%d]: RGBA(%u,%u,%u,%u)", sample_r, sample_g, sample_b,
+             sample_a, width_px / 2, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid, sample_a_mid);
   }
 
-  // CRITICAL: Copy pixel buffer before encoding
   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
   // overwritten on the next frame. We must copy the data before passing to the encoder.
   uint8_t *pixels_copy = NULL;
@@ -231,8 +232,7 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       }
 
     } else {
-      // Normal/live mode: use 60 FPS baseline
-      samples_per_frame = ctx->audio_sample_rate / 60;
+      samples_per_frame = ctx->audio_sample_rate / (ctx->fps > 0 ? ctx->fps : 60);
       if (!log_once++) {
         log_info("[AUDIO_CALC] Normal mode: samples_per_frame=%d", samples_per_frame);
       }

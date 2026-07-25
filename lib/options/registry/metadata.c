@@ -120,7 +120,7 @@ const char *g_render_descs[] = {"Render using foreground characters only",
                                 NULL};
 
 // ============================================================================
-// Render-file Theme Metadata (macOS and Linux only)
+// Render-file theme metadata
 // ============================================================================
 
 const char *g_render_theme_values[] = {"dark", "light", "auto", NULL};

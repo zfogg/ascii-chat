@@ -112,6 +112,7 @@ struct ffmpeg_decoder_t {
   // State flags
   bool eof_reached; ///< Whether end of file was reached
   bool is_stdin;    ///< Whether reading from stdin
+  bool video_draining; ///< Whether EOF was sent to the video decoder
 
   // Stdin I/O context
   AVIOContext *avio_ctx;      ///< Custom I/O context for stdin
@@ -340,6 +341,15 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     // Mutex is re-acquired after cond_wait - KEEP IT HELD
 
+    // Keep at most one decoded frame pending. Without this check, the producer
+    // can overwrite current_prefetch_image repeatedly and reach EOF before the
+    // consumer has observed the intervening frames.
+    if (decoder->prefetch_frame_ready) {
+      mutex_unlock(&decoder->prefetch_mutex);
+      platform_sleep_us(1 * US_PER_MS_INT);
+      continue;
+    }
+
     // Check if the buffer we want to use is still in use by the main thread
     // If so, skip this iteration and try again later
     bool buffer_in_use = use_image_a ? decoder->buffer_a_in_use : decoder->buffer_b_in_use;
@@ -359,34 +369,60 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     // Read packets until we get a video frame - read_frame_mutex HELD
     while (true) {
-      int ret = av_read_frame(decoder->format_ctx, decoder->packet);
-      if (ret < 0) {
+      int ret;
+      if (decoder->video_draining) {
+        ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
         if (ret == AVERROR_EOF) {
           decoder->eof_reached = true;
+          break;
         }
-        break;
-      }
+        if (ret < 0) {
+          break;
+        }
+      } else {
+        ret = av_read_frame(decoder->format_ctx, decoder->packet);
+        if (ret < 0) {
+          if (ret != AVERROR_EOF) {
+            break;
+          }
 
-      // Check if this is a video packet
-      if (decoder->packet->stream_index != decoder->video_stream_idx) {
-        av_packet_unref(decoder->packet);
-        continue;
-      }
+          ret = avcodec_send_packet(decoder->video_codec_ctx, NULL);
+          decoder->video_draining = true;
+          if (ret < 0 && ret != AVERROR_EOF) {
+            break;
+          }
 
-      // Send packet to decoder
-      ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
-      av_packet_unref(decoder->packet);
+          ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
+            decoder->eof_reached = true;
+            break;
+          }
+          if (ret < 0) {
+            break;
+          }
+        } else {
+          // Check if this is a video packet
+          if (decoder->packet->stream_index != decoder->video_stream_idx) {
+            av_packet_unref(decoder->packet);
+            continue;
+          }
 
-      if (ret < 0) {
-        continue;
-      }
+          // Send packet to decoder
+          ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
+          av_packet_unref(decoder->packet);
 
-      // Receive decoded frame
-      ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
-      if (ret == AVERROR(EAGAIN)) {
-        continue; // Need more packets
-      } else if (ret < 0) {
-        break;
+          if (ret < 0) {
+            continue;
+          }
+
+          // Receive decoded frame
+          ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          if (ret == AVERROR(EAGAIN)) {
+            continue; // Need more packets
+          } else if (ret < 0) {
+            break;
+          }
+        }
       }
 
       // Frame decoded - mutex still held
@@ -857,8 +893,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   reader->buffer = g_stdin_buffer;
   reader->pos = 0;  // Each decoder starts from position 0
 
-  // Allocate a small internal buffer for AVIO (required by avio_alloc_context)
-  decoder->avio_buffer = SAFE_MALLOC(AVIO_BUFFER_SIZE, unsigned char *);
+  // AVIO takes ownership of this buffer and may resize or free it with av_free().
+  decoder->avio_buffer = av_malloc(AVIO_BUFFER_SIZE);
   if (!decoder->avio_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate AVIO buffer");
     SAFE_FREE(reader);
@@ -877,7 +913,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   if (!decoder->avio_ctx) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create AVIO context");
-    SAFE_FREE(decoder->avio_buffer);
+    av_free(decoder->avio_buffer);
+    decoder->avio_buffer = NULL;
     SAFE_FREE(decoder);
     return NULL;
   }
@@ -1462,6 +1499,7 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
   }
 
   decoder->eof_reached = false;
+  decoder->video_draining = false;
   decoder->audio_buffer_offset = 0;
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
@@ -1513,6 +1551,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
 
   // Reset state
   decoder->eof_reached = false;
+  decoder->video_draining = false;
   decoder->audio_buffer_offset = 0;
   // Clear any stale audio data in buffer
   if (decoder->audio_buffer) {

@@ -176,7 +176,7 @@ const registry_entry_t g_media_entries[] = {
      "",
      sizeof(((options_t *)0)->render_file),
      "Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: "
-     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only).",
+     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg.",
      "MEDIA",
      "PATH",
      false,
@@ -195,7 +195,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_theme),
      &default_render_theme_value,
      sizeof(int),
-     "Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only).",
+     "Terminal color scheme for rendered output: dark, light, auto.",
      "MEDIA",
      "THEME",
      false,
@@ -217,9 +217,8 @@ const registry_entry_t g_media_entries[] = {
      "",
      sizeof(((options_t *)0)->render_font),
      "Font for render-file output: bundled names (matrix or default), system font names, or absolute .ttf/.otf path. "
-     "Default: matrix (Matrix Resurrected font). Falls back to default (DejaVu Sans Mono) if unavailable. "
-     "Examples: matrix, default, JetBrains Mono, Nerd Font Mono, /path/to/font.ttf. "
-     "(macOS and Linux only).",
+     "Default: default (bundled DejaVu Sans Mono). "
+     "Examples: matrix, default, JetBrains Mono, Nerd Font Mono, /path/to/font.ttf.",
      "MEDIA",
      "FONT",
      false,
@@ -238,8 +237,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_font_size),
      &default_render_font_size_value,
      sizeof(double),
-     "Font size in points for render-file output (default: 12.0, must be > 0, fractional sizes supported e.g. 10.5).  "
-     "(macOS and Linux only).",
+     "Font size in points for render-file output (default: 12.0, must be > 0, fractional sizes supported e.g. 10.5).",
      "MEDIA",
      "SIZE",
      false,

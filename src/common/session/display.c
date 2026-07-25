@@ -124,6 +124,44 @@ typedef struct session_display_ctx {
  * Session Display Lifecycle Functions
  * ============================================================================ */
 
+asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, uint32_t fps) {
+  if (!ctx) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL");
+  }
+
+  const char *render_file_opt = GET_OPTION(render_file);
+  if (!render_file_opt || render_file_opt[0] == '\0') {
+    return ASCIICHAT_OK;
+  }
+  if (ctx->render_file) {
+    return ASCIICHAT_OK;
+  }
+
+  uint32_t encoder_fps = fps;
+  if (encoder_fps == 0) {
+    encoder_fps = (uint32_t)GET_OPTION(fps);
+  }
+  if (encoder_fps == 0) {
+    encoder_fps = 60;
+  }
+
+  int width = (int)GET_OPTION(width);
+  int height = (int)GET_OPTION(height);
+  ctx->render_fps = encoder_fps;
+
+  log_info("render-file: Initializing encoder after media timing selection: path='%s', grid=%dx%d, fps=%u",
+           render_file_opt, width, height, encoder_fps);
+  asciichat_error_t err =
+      render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &ctx->render_file);
+  if (err != ASCIICHAT_OK) {
+    log_error("render-file: Failed to create encoder with error %d", err);
+    return err;
+  }
+
+  log_info("render-file: Encoder initialized successfully at %u FPS", encoder_fps);
+  return ASCIICHAT_OK;
+}
+
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
   // Auto-create config from command-line options if NULL
   session_display_config_t auto_config = {0};
@@ -257,56 +295,19 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
-  // Initialize render-file if enabled (FFmpeg encodes to stdout when "-" is specified)
+  // Initialize render-file unless media setup needs to determine its timing first.
   const char *render_file_opt = GET_OPTION(render_file);
-  log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), will initialize=%s",
-           render_file_opt ? render_file_opt : "(null)", render_file_opt ? strlen(render_file_opt) : 0,
-           (render_file_opt && strlen(render_file_opt) > 0) ? "YES" : "NO");
-  if (render_file_opt && strlen(render_file_opt) > 0) {
-    int width = (int)GET_OPTION(width);
-    int height = (int)GET_OPTION(height);
-    log_info("render-file: Creating encoder with cols=%d, rows=%d", width, height);
-    // Determine encoder FPS: in snapshot mode, use actual capture rate for correct duration;
-    // in normal mode, use configured fps option
-    uint32_t encoder_fps = 0;
-    if (GET_OPTION(snapshot_mode) && config->render_fps > 0) {
-      // Snapshot mode with known capture rate - use capture rate for correct duration
-      encoder_fps = config->render_fps;
-      log_debug("render-file: SNAPSHOT MODE - using capture rate FPS=%u (snapshot_delay=%.2f sec)", encoder_fps,
-                GET_OPTION(snapshot_delay));
-    } else if (config->render_fps > 0) {
-      // Normal mode with known capture rate - use it
-      encoder_fps = config->render_fps;
-      log_debug("render-file: Using capture rate FPS=%u for encoding", encoder_fps);
-    } else {
-      // No capture rate available - use option default
-      encoder_fps = (uint32_t)GET_OPTION(fps);
-      if (encoder_fps == 0)
-        encoder_fps = 60;
-      log_debug("render-file: Using option FPS=%u (no capture rate available)", encoder_fps);
+  log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
+           render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
+  if (!config->defer_render_file) {
+    asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
+    if (render_err != ASCIICHAT_OK) {
+      log_error("render-file: Initialization failed with error %d", render_err);
+    } else if (ctx->render_file && config->render_file_audio_source) {
+      render_file_set_audio_source(ctx->render_file, config->render_file_audio_source, NULL);
+    } else if (ctx->render_file && config->render_file_audio_capture_rb) {
+      render_file_set_audio_source(ctx->render_file, NULL, config->render_file_audio_capture_rb);
     }
-    log_info("render-file: Final encoder FPS=%u (config_render_fps=%u, option_fps=%u)", encoder_fps, config->render_fps,
-             (uint32_t)GET_OPTION(fps));
-    log_info("render-file: Calling render_file_create with path='%s', %dx%d, fps=%d", render_file_opt, width, height,
-             encoder_fps);
-    asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
-                                                  GET_OPTION(render_theme), &ctx->render_file);
-    if (rf_err != ASCIICHAT_OK) {
-      log_error("render-file: FAILED to create with error %d (ctx->render_file=%p)", rf_err, (void *)ctx->render_file);
-    } else {
-      log_info("render-file: SUCCESS - encoder initialized, ctx->render_file=%p", (void *)ctx->render_file);
-      // Set audio sources if render_file_set_audio_source is available
-      if (ctx->render_file && config->render_file_audio_source) {
-        render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, config->render_file_audio_source, NULL);
-        log_debug("render-file: audio source set (media_source=%p)", config->render_file_audio_source);
-      }
-      if (ctx->render_file && config->render_file_audio_capture_rb) {
-        render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, NULL, config->render_file_audio_capture_rb);
-        log_debug("render-file: audio capture ring buffer set");
-      }
-    }
-  } else {
-    log_info("render-file: NOT initializing (render_file_opt is %s)", render_file_opt ? "empty" : "NULL");
   }
 
   ctx->initialized = true;

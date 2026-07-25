@@ -44,7 +44,7 @@ extern const char *g_render_values[];
 extern const int g_render_integers[];
 extern const char *g_render_descs[];
 
-// Render-file theme metadata (macOS and Linux only)
+// Render-file theme metadata
 extern const char *g_render_theme_values[];
 extern const int g_render_theme_integers[];
 extern const char *g_render_theme_descs[];

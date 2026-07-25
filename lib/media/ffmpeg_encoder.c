@@ -179,7 +179,7 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   } else if (strcmp(ext, "gif") == 0) {
     *codec = "gif";
     *format = "gif";
-    *pix_fmt = AV_PIX_FMT_RGB24; // GIF from RGB24 (FFmpeg handles palette conversion)
+    *pix_fmt = AV_PIX_FMT_RGB8;
   } else if (strcmp(ext, "png") == 0) {
     *codec = "png";
     *format = "image2";
@@ -698,8 +698,15 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   uint64_t elapsed_ns = captured_ns - enc->first_frame_captured_ns;
   int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc->fps) / 1000000000ULL);
 
+  // Normal file rendering is constant-frame-rate. Wall-clock capture timestamps
+  // include scheduler jitter and can create gaps or duplicate PTS values, so use
+  // the encoded frame index for exact N / FPS duration.
+  if (!snapshot_mode || enc->estimated_frame_count > 0) {
+    pts_from_timestamp = enc->frame_count;
+  }
+
   // In snapshot mode, distribute frames linearly across the actual duration
-  if (snapshot_mode) {
+  if (snapshot_mode && enc->estimated_frame_count == 0) {
     extern uint64_t g_snapshot_actual_duration_ms;
     extern uint64_t g_snapshot_last_capture_elapsed_ns;
     if (g_snapshot_actual_duration_ms > 0) {
@@ -915,9 +922,8 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
               (double)adjusted_packet_duration / enc->stream->time_base.den);
   }
 
-  // Flush video encoder (capture libx264 final statistics)
-  // In snapshot mode, skip flush packets to maintain exact duration
-  // Flush packets are x264 codec artifacts (lookahead/B-frame buffer) not part of captured content
+  // Flush delayed video packets. Encoders such as VP9 may buffer every short
+  // snapshot frame until this point.
   LOG_IO("ffmpeg", {
     avcodec_send_frame(enc->codec_ctx, NULL);
     while (1) {
@@ -926,12 +932,6 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
         break;
       if (ret < 0)
         break;
-
-      // In snapshot mode, discard flush packets to maintain exact duration
-      if (snapshot_mode) {
-        av_packet_unref(enc->pkt);
-        continue; // Skip writing flush packets in snapshot mode
-      }
 
       // Set packet duration in codec time base if not already set
       if (enc->pkt->duration == 0) {
@@ -1022,7 +1022,6 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     }
     enc->stream->duration = duration;
 
-    // CRITICAL: Adjust last frame duration to ensure total duration matches stream->duration
     // Each frame was encoded with FPS-based duration, but snapshot mode needs them distributed
     // across the actual capture duration. Since we can't change past frame durations, we extend
     // the last frame's duration to make the sum equal the desired total.

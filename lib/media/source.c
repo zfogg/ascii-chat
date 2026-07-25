@@ -110,6 +110,13 @@ static bool url_has_ffmpeg_native_extension(const char *url) {
     return true;
   }
 
+  // Still and animated image formats handled directly by FFmpeg
+  if (strcasecmp(ext, "png") == 0 || strcasecmp(ext, "jpg") == 0 || strcasecmp(ext, "jpeg") == 0 ||
+      strcasecmp(ext, "gif") == 0 || strcasecmp(ext, "bmp") == 0 || strcasecmp(ext, "webp") == 0 ||
+      strcasecmp(ext, "tif") == 0 || strcasecmp(ext, "tiff") == 0) {
+    return true;
+  }
+
   // Streaming
   if (strcasecmp(ext, "m3u8") == 0 || strcasecmp(ext, "mpd") == 0) {
     return true;

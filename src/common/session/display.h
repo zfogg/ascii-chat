@@ -100,6 +100,9 @@ typedef struct {
   /** @brief Video FPS for render-file encoding (0 = use default/option) */
   uint32_t render_fps;
 
+  /** @brief Defer render-file encoder creation until media timing is known */
+  bool defer_render_file;
+
   /** @brief Audio source for render-file output (media source for file/URL audio, borrowed) */
   void *render_file_audio_source;
 
@@ -289,6 +292,14 @@ bool session_display_has_render_file(session_display_ctx_t *ctx);
  * @ingroup session
  */
 uint32_t session_display_get_render_fps(session_display_ctx_t *ctx);
+
+/**
+ * @brief Initialize render-file output after the capture frame rate is known
+ * @param ctx Display context
+ * @param fps Frame rate used for output timing
+ * @return ASCIICHAT_OK on success
+ */
+asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, uint32_t fps);
 
 /**
  * @brief Set the render FPS for file output encoding

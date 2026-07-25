@@ -95,7 +95,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg);
 bool parse_render_mode(const char *arg, void *dest, char **error_msg);
 
 /**
- * @brief Parse render theme option for pixel rendering (macOS and Linux only)
+ * @brief Parse render theme option for pixel rendering
  * @param arg String argument (e.g., "dark", "light", "auto")
  * @param dest Destination pointer (int*, will store term_renderer_theme_t value)
  * @param error_msg Optional error message output (set on failure)

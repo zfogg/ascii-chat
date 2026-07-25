@@ -78,7 +78,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_matrix_resurrected;
     if (out_font_data_size)
       *out_font_data_size = g_font_matrix_resurrected_size;
-    out[0] = '\0';
+    snprintf(out, out_size, "matrix");
     *out_is_path = false;
     log_info("platform_font_resolve: USING MATRIX FONT - g_font_matrix_resurrected=%p (size=%zu), g_font_default=%p (size=%zu)",
              (void *)g_font_matrix_resurrected, g_font_matrix_resurrected_size, (void *)g_font_default, g_font_default_size);
@@ -90,7 +90,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_default;
     if (out_font_data_size)
       *out_font_data_size = g_font_default_size;
-    out[0] = '\0';
+    snprintf(out, out_size, "default");
     *out_is_path = false;
     log_info("platform_font_resolve: USING DEFAULT FONT - g_font_default=%p (size=%zu), g_font_matrix_resurrected=%p (size=%zu)",
              (void *)g_font_default, g_font_default_size, (void *)g_font_matrix_resurrected, g_font_matrix_resurrected_size);

@@ -197,6 +197,7 @@ static const options_t g_default_options = (options_t){
     .render_mode = OPT_RENDER_MODE_DEFAULT,
     .show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT,
     .fps = OPT_FPS_DEFAULT,
+    .fps_explicitly_set = false,
     .palette_type = OPT_PALETTE_TYPE_DEFAULT,
     .palette_custom = OPT_STRING_EMPTY_DEFAULT,
     .palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT,
@@ -611,10 +612,12 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
       break;
     }
   }
-  if (!opt_name) return ASCIICHAT_OK; // No mapping → skip validation
+  if (!opt_name)
+    return ASCIICHAT_OK; // No mapping → skip validation
 
   const registry_entry_t *entry = registry_find_entry_by_name(opt_name);
-  if (!entry) return ASCIICHAT_OK; // Not in registry → skip
+  if (!entry)
+    return ASCIICHAT_OK; // Not in registry → skip
 
   // Cross-field validate_fn (future-proofing)
   if (entry->validate_fn) {
@@ -739,22 +742,38 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
 
     // Skip RCU update if value is already set (avoids unnecessary alloc+deferred-free)
     int cur_value = 0;
-    if (strcmp(field_name, "width") == 0) cur_value = cur->width;
-    else if (strcmp(field_name, "height") == 0) cur_value = cur->height;
-    else if (strcmp(field_name, "max_clients") == 0) cur_value = cur->max_clients;
-    else if (strcmp(field_name, "compression_level") == 0) cur_value = cur->compression_level;
-    else if (strcmp(field_name, "reconnect_attempts") == 0) cur_value = cur->reconnect_attempts;
-    else if (strcmp(field_name, "microphone_index") == 0) cur_value = cur->microphone_index;
-    else if (strcmp(field_name, "speakers_index") == 0) cur_value = cur->speakers_index;
-    else if (strcmp(field_name, "discovery_port") == 0) cur_value = cur->discovery_port;
-    else if (strcmp(field_name, "port") == 0) cur_value = cur->port;
-    else if (strcmp(field_name, "fps") == 0) cur_value = cur->fps;
-    else if (strcmp(field_name, "color_mode") == 0) cur_value = (int)cur->color_mode;
-    else if (strcmp(field_name, "color_filter") == 0) cur_value = (int)cur->color_filter;
-    else if (strcmp(field_name, "render_mode") == 0) cur_value = (int)cur->render_mode;
-    else if (strcmp(field_name, "log_level") == 0) cur_value = (int)cur->log_level;
-    else if (strcmp(field_name, "palette_type") == 0) cur_value = (int)cur->palette_type;
-    if (cur_value == value) return ASCIICHAT_OK;
+    if (strcmp(field_name, "width") == 0)
+      cur_value = cur->width;
+    else if (strcmp(field_name, "height") == 0)
+      cur_value = cur->height;
+    else if (strcmp(field_name, "max_clients") == 0)
+      cur_value = cur->max_clients;
+    else if (strcmp(field_name, "compression_level") == 0)
+      cur_value = cur->compression_level;
+    else if (strcmp(field_name, "reconnect_attempts") == 0)
+      cur_value = cur->reconnect_attempts;
+    else if (strcmp(field_name, "microphone_index") == 0)
+      cur_value = cur->microphone_index;
+    else if (strcmp(field_name, "speakers_index") == 0)
+      cur_value = cur->speakers_index;
+    else if (strcmp(field_name, "discovery_port") == 0)
+      cur_value = cur->discovery_port;
+    else if (strcmp(field_name, "port") == 0)
+      cur_value = cur->port;
+    else if (strcmp(field_name, "fps") == 0)
+      cur_value = cur->fps;
+    else if (strcmp(field_name, "color_mode") == 0)
+      cur_value = (int)cur->color_mode;
+    else if (strcmp(field_name, "color_filter") == 0)
+      cur_value = (int)cur->color_filter;
+    else if (strcmp(field_name, "render_mode") == 0)
+      cur_value = (int)cur->render_mode;
+    else if (strcmp(field_name, "log_level") == 0)
+      cur_value = (int)cur->log_level;
+    else if (strcmp(field_name, "palette_type") == 0)
+      cur_value = (int)cur->palette_type;
+    if (cur_value == value)
+      return ASCIICHAT_OK;
 
     options_t temp = *cur;
     // Manually set the field in temp to validate
@@ -790,7 +809,8 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
       temp.palette_type = (palette_type_t)value;
 
     asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK) return err;
+    if (err != ASCIICHAT_OK)
+      return err;
   }
 
   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
@@ -929,18 +949,29 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
 
     // Skip RCU update if value is already set
     bool cur_value = false;
-    if (strcmp(field_name, "no_compress") == 0) cur_value = cur->no_compress;
-    else if (strcmp(field_name, "encode_audio") == 0) cur_value = cur->encode_audio;
-    else if (strcmp(field_name, "flip_x") == 0) cur_value = cur->flip_x;
-    else if (strcmp(field_name, "flip_y") == 0) cur_value = cur->flip_y;
-    else if (strcmp(field_name, "test_pattern") == 0) cur_value = cur->test_pattern;
-    else if (strcmp(field_name, "matrix_rain") == 0) cur_value = cur->matrix_rain;
-    else if (strcmp(field_name, "fps_counter") == 0) cur_value = cur->fps_counter;
-    else if (strcmp(field_name, "splash_screen") == 0) cur_value = cur->splash_screen;
-    else if (strcmp(field_name, "status_screen") == 0) cur_value = cur->status_screen;
+    if (strcmp(field_name, "no_compress") == 0)
+      cur_value = cur->no_compress;
+    else if (strcmp(field_name, "encode_audio") == 0)
+      cur_value = cur->encode_audio;
+    else if (strcmp(field_name, "flip_x") == 0)
+      cur_value = cur->flip_x;
+    else if (strcmp(field_name, "flip_y") == 0)
+      cur_value = cur->flip_y;
+    else if (strcmp(field_name, "test_pattern") == 0)
+      cur_value = cur->test_pattern;
+    else if (strcmp(field_name, "matrix_rain") == 0)
+      cur_value = cur->matrix_rain;
+    else if (strcmp(field_name, "fps_counter") == 0)
+      cur_value = cur->fps_counter;
+    else if (strcmp(field_name, "splash_screen") == 0)
+      cur_value = cur->splash_screen;
+    else if (strcmp(field_name, "status_screen") == 0)
+      cur_value = cur->status_screen;
     // For less common fields, always update (safe default)
-    else cur_value = !value;
-    if (cur_value == value) return ASCIICHAT_OK;
+    else
+      cur_value = !value;
+    if (cur_value == value)
+      return ASCIICHAT_OK;
 
     options_t temp = *cur;
     // Manually set the field in temp to validate
@@ -1028,7 +1059,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       temp.fps_counter = value;
 
     asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK) return err;
+    if (err != ASCIICHAT_OK)
+      return err;
   }
 
   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
@@ -1156,7 +1188,8 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
       SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
 
     asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK) return err;
+    if (err != ASCIICHAT_OK)
+      return err;
   }
 
   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
@@ -1214,7 +1247,8 @@ asciichat_error_t options_set_double(const char *field_name, double value) {
       temp.speakers_volume = value;
 
     asciichat_error_t err = rcu_validate_field(internal_name, &temp);
-    if (err != ASCIICHAT_OK) return err;
+    if (err != ASCIICHAT_OK)
+      return err;
   }
 
   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};

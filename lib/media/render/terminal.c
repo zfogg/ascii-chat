@@ -6,7 +6,7 @@
  * Cross-platform implementation using:
  * - libvterm: Terminal emulation without any display backend
  * - FreeType2: Glyph rasterization (RGBA framebuffer) with uthash-based glyph cache
- * - fontconfig: Font resolution (Linux/macOS)
+ * - Platform font resolution (Windows, Linux, and macOS)
  * - uthash: Hash table for caching pre-rendered glyphs
  *
  * No platform-specific code (#if guards) needed — this code compiles on all platforms.
@@ -14,6 +14,7 @@
 
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/uthash.h>
@@ -404,7 +405,11 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
   // Clear framebuffer to ensure no leftover pixels from previous frames
-  uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+  uint8_t def_fg_r, def_fg_g, def_fg_b;
+  uint8_t def_bg_r, def_bg_g, def_bg_b;
+  terminal_get_default_foreground_color(r->theme, &def_fg_r, &def_fg_g, &def_fg_b);
+  terminal_get_default_background_color(r->theme, &def_bg_r, &def_bg_g, &def_bg_b);
+  uint8_t def_bg = def_bg_r;
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
 
   // Reset scrolling region and cursor position to prevent vertical shifts
@@ -471,20 +476,24 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
 
       uint8_t fr, fg, fb, br, bg, bb;
-      if (VTERM_COLOR_IS_RGB(&cell.fg)) {
+      if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg) && VTERM_COLOR_IS_RGB(&cell.fg)) {
         fr = cell.fg.rgb.red;
         fg = cell.fg.rgb.green;
         fb = cell.fg.rgb.blue;
       } else {
-        fr = fg = fb = 204;
+        fr = def_fg_r;
+        fg = def_fg_g;
+        fb = def_fg_b;
       }
 
-      if (VTERM_COLOR_IS_RGB(&cell.bg)) {
+      if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg) && VTERM_COLOR_IS_RGB(&cell.bg)) {
         br = cell.bg.rgb.red;
         bg = cell.bg.rgb.green;
         bb = cell.bg.rgb.blue;
       } else {
-        br = bg = bb = def_bg;
+        br = def_bg_r;
+        bg = def_bg_g;
+        bb = def_bg_b;
       }
 
       int px = offset_x + col * r->cell_w, py = offset_y + row * r->cell_h;
