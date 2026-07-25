@@ -465,15 +465,15 @@ runs:
     # The official LLVM Windows installer and scoop/choco/winget packages only
     # include compiler binaries (clang.exe), NOT the development libraries
     # (LLVMSupport.lib, clangTooling.lib, etc.) needed to build the defer tool.
-    # AMD64: Use vovkos/llvm-package-windows which provides full LLVM dev libraries.
-    # ARM64: Use official LLVM woa64 installer (LLVM 19.x has native ARM64 support).
+    # Use the official LLVM installers for both AMD64 and ARM64.
     - name: Install LLVM with dev libraries (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
         $arch = "${{ runner.arch }}"
-        $LLVM_VERSION = "19.1.6"
+        # Visual Studio 18's MSVC STL rejects Clang versions older than 20.
+        $LLVM_VERSION = "21.1.8"
         if ($arch -eq "X64") {
           $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-win64.exe"
           $LLVM_INSTALL_DIR = "C:\LLVM"
