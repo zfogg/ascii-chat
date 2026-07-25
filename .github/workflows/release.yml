@@ -646,6 +646,12 @@ jobs:
         run: |
           choco install wixtoolset --no-progress -y
 
+      - name: Set up MSVC developer environment
+        if: matrix.arch == 'amd64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure with CMake
         shell: pwsh
         run: |
