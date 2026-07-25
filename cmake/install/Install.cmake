@@ -986,9 +986,9 @@ ascii-chat [mode] --help  # Show all options (or for [mode])")
         endif()
 
         # Normalize architecture name to lowercase amd64/arm64
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        if(VCPKG_TARGET_TRIPLET MATCHES "^arm64-" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
             set(_PACKAGE_ARCH "arm64")
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+        elseif(VCPKG_TARGET_TRIPLET MATCHES "^x64-" OR CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
             set(_PACKAGE_ARCH "amd64")
         else()
             set(_PACKAGE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")

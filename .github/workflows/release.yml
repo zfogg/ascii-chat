@@ -262,7 +262,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
@@ -421,7 +421,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
@@ -551,17 +551,24 @@ jobs:
             cp "$artifact" dist/
           done
 
-          # Verify required package types exist
-          echo "Checking for required package types..."
+          # Verify required package names, including the release version and architecture.
+          echo "Checking for required package names..."
           ls -l dist
 
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "arm64" ]]; then
+            arch="arm64"
+          else
+            arch="amd64"
+          fi
+
           missing=""
-          ls dist/*ascii-chat*.pkg 1>/dev/null 2>&1 || missing="$missing ascii-chat.pkg"
-          ls dist/*libasciichat*.pkg 1>/dev/null 2>&1 || missing="$missing libasciichat.pkg"
-          ls dist/*ascii-chat*.tar.gz 1>/dev/null 2>&1 || missing="$missing ascii-chat.tar.gz"
-          ls dist/*libasciichat*.tar.gz 1>/dev/null 2>&1 || missing="$missing libasciichat.tar.gz"
-          ls dist/*ascii-chat*.sh 1>/dev/null 2>&1 || missing="$missing ascii-chat.sh"
-          ls dist/*libasciichat*.sh 1>/dev/null 2>&1 || missing="$missing libasciichat.sh"
+          [[ -f "dist/ascii-chat-${version}-macOS-${arch}.pkg" ]] || missing="$missing ascii-chat.pkg"
+          [[ -f "dist/ascii-chat-${version}-macOS-${arch}.tar.gz" ]] || missing="$missing ascii-chat.tar.gz"
+          [[ -f "dist/libasciichat-${version}-macOS-${arch}.tar.gz" ]] || missing="$missing libasciichat.tar.gz"
+          [[ -f "dist/ascii-chat-${version}-macOS-${arch}.sh" ]] || missing="$missing ascii-chat.sh"
+          [[ -f "dist/libasciichat-${version}-macOS-${arch}.sh" ]] || missing="$missing libasciichat.sh"
 
           if [[ -n "$missing" ]]; then
             echo "::error::Missing required packages:$missing"
@@ -614,7 +621,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
@@ -731,17 +738,19 @@ jobs:
             }
           }
 
-          # Verify required package types exist
-          Write-Host "Checking for required package types..."
+          # Verify required package names, including the release version and target architecture.
+          Write-Host "Checking for required package names..."
           Get-ChildItem dist
 
+          $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
+          $arch = "${{ matrix.arch }}"
           $missing = @()
           # MSI only on amd64 (WiX v3 is x86-only, can't run on ARM64)
-          if ("${{ matrix.arch }}" -ne "arm64") {
-            if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.msi" }
+          if ($arch -ne "arm64") {
+            if (-not (Test-Path "dist/ascii-chat-$version-Windows-$arch.msi")) { $missing += "ascii-chat.msi" }
           }
-          if (-not (Get-ChildItem dist/*ascii-chat*.zip -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.zip" }
-          if (-not (Get-ChildItem dist/*libasciichat*.zip -ErrorAction SilentlyContinue)) { $missing += "libasciichat.zip" }
+          if (-not (Test-Path "dist/ascii-chat-$version-Windows-$arch.zip")) { $missing += "ascii-chat.zip" }
+          if (-not (Test-Path "dist/libasciichat-$version-Windows-$arch.zip")) { $missing += "libasciichat.zip" }
 
           if ($missing.Count -gt 0) {
             Write-Host "::error::Missing required packages: $($missing -join ', ')"
