@@ -226,9 +226,9 @@ if(USE_MUSL)
 endif()
 
 # =============================================================================
-# Windows: use vcpkg via find_package
+# Package-manager builds and Windows: use the installed package
 # =============================================================================
-if(WIN32)
+if(WIN32 OR ASCIICHAT_SHARED_DEPS)
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)
@@ -240,21 +240,24 @@ if(WIN32)
             target_link_libraries(libwebsockets::libwebsockets INTERFACE ${libwebsockets_LIBRARIES})
         endif()
     endif()
-    message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets found (Windows vcpkg)")
+    message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets found (installed package)")
     add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
-    # Create compatibility variables for the rest of the build
-    # vcpkg provides websockets_shared target, create an alias for compatibility
+    # Prefer the shared target when the package exports both static and shared
+    # variants. Linking the static target into libasciichat can fail when the
+    # package was not compiled as position-independent code.
     if(TARGET websockets_shared)
         set(LIBWEBSOCKETS_LIBRARIES websockets_shared)
-        if(NOT TARGET websockets)
-            add_library(websockets ALIAS websockets_shared)
-        endif()
     elseif(TARGET websockets)
         set(LIBWEBSOCKETS_LIBRARIES websockets)
+    elseif(TARGET libwebsockets::libwebsockets)
+        set(LIBWEBSOCKETS_LIBRARIES libwebsockets::libwebsockets)
+    elseif(libwebsockets_LINK_LIBRARIES)
+        set(LIBWEBSOCKETS_LIBRARIES ${libwebsockets_LINK_LIBRARIES})
     else()
-        set(LIBWEBSOCKETS_LIBRARIES websockets)
+        message(FATAL_ERROR "libwebsockets was found, but it did not provide a link target or library")
     endif()
+    set(LIBWEBSOCKETS_INCLUDE_DIRS ${libwebsockets_INCLUDE_DIRS})
     set(LIBWEBSOCKETS_FOUND TRUE)
     return()
 endif()

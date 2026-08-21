@@ -12,10 +12,10 @@
 
 #include <emmintrin.h>
 
-#include <ascii-chat/video/ascii/sse2/foreground.h>
-#include <ascii-chat/video/ascii/ascii_simd.h>
+#include <ascii-chat/video/ascii/sse2.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/output_buffer.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/util/overflow.h>
 
 //=============================================================================

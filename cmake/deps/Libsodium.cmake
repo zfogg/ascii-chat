@@ -182,7 +182,7 @@ if(USE_MUSL)
 endif()
 
 # Handle Release Linux builds - build from source to ensure static linking
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL AND NOT ASCIICHAT_SHARED_DEPS)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (Release Linux)...")
 
     include(ExternalProject)

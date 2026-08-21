@@ -43,23 +43,34 @@ mkdir -p "$RELEASE_DIR"
 # Export main repo (excludes submodules)
 git archive HEAD | tar -x -C "$RELEASE_DIR"
 
-# Copy submodule contents (not as git repos, just the files)
+# Preserve version information that is normally discovered from Git metadata.
+SOURCE_COMMIT="$(git rev-parse HEAD)"
+SOURCE_DATE="$(git log -1 --format=%cs HEAD)"
+LIB_VERSION="$(git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+LIB_VERSION="${LIB_VERSION#lib/v}"
+if [[ ! "$LIB_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Unable to determine the library version from lib/v* tags" >&2
+  exit 1
+fi
+cat >"$RELEASE_DIR/cmake/install/SourceArchiveVersion.cmake" <<EOF
+set(PROJECT_VERSION_FROM_GIT "$VERSION")
+set(PROJECT_VERSION_DATE "$SOURCE_DATE")
+set(ASCIICHAT_LIB_VERSION "$LIB_VERSION")
+set(ASCIICHAT_SOURCE_COMMIT "$SOURCE_COMMIT")
+EOF
+
+# Copy every submodule as tracked source files, without Git metadata.
 echo "Bundling submodules..."
-for submodule in deps/ascii-chat-deps/bearssl deps/ascii-chat-deps/tomlc17 deps/ascii-chat-deps/libsodium-bcrypt-pbkdf deps/ascii-chat-deps/sokol; do
+while read -r _ submodule; do
   if [[ -d "$submodule" ]]; then
     echo "  - $submodule"
     mkdir -p "$RELEASE_DIR/$submodule"
-    # Copy all files from submodule, excluding .git
-    (cd "$submodule" && find . -type f ! -path './.git/*' -exec cp --parents {} "$RELEASE_DIR/$submodule/" \;)
+    git -C "$submodule" archive HEAD | tar -x -C "$RELEASE_DIR/$submodule"
+  else
+    echo "Missing initialized submodule: $submodule" >&2
+    exit 1
   fi
-done
-
-# Optional: include doxygen-awesome-css for docs
-if [[ -d "deps/doxygen-awesome-css" ]]; then
-  echo "  - deps/doxygen-awesome-css"
-  mkdir -p "$RELEASE_DIR/deps/doxygen-awesome-css"
-  (cd "deps/doxygen-awesome-css" && find . -type f ! -path './.git/*' -exec cp --parents {} "$RELEASE_DIR/deps/doxygen-awesome-css/" \;)
-fi
+done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$')
 
 # Create the tarball
 OUTPUT="$REPO_ROOT/ascii-chat-$VERSION-full.tar.gz"

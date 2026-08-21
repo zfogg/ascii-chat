@@ -19,6 +19,7 @@ on:
       - "CMakePresets.json"
       - ".github/workflows/build.yml"
       - ".github/actions/install-deps/**"
+      - "scripts/create-release-tarball.sh"
   pull_request:
     branches: [master, main]
     paths:
@@ -37,6 +38,7 @@ on:
       - "CMakePresets.json"
       - ".github/workflows/build.yml"
       - ".github/actions/install-deps/**"
+      - "scripts/create-release-tarball.sh"
   workflow_dispatch:
 
 env:
@@ -44,6 +46,34 @@ env:
   CXX: clang++
 
 jobs:
+  release-archive:
+    name: Release archive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Create and verify full source archive
+        run: |
+          ./scripts/create-release-tarball.sh 0.0.0-test
+          archive="ascii-chat-0.0.0-test-full.tar.gz"
+          root="ascii-chat-0.0.0-test"
+          tar -tzf "$archive" >/tmp/archive-contents.txt
+          grep -q "^${root}/cmake/install/SourceArchiveVersion.cmake$" /tmp/archive-contents.txt
+          while read -r _ submodule; do
+            grep -q "^${root}/${submodule}/[^/].*" /tmp/archive-contents.txt || {
+              echo "Submodule is missing from release archive: ${submodule}"
+              exit 1
+            }
+          done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$')
+          if grep -Eq '(^|/)\.git(/|$)' /tmp/archive-contents.txt; then
+            echo "Git metadata found in release archive"
+            exit 1
+          fi
+
   build:
     name: ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
