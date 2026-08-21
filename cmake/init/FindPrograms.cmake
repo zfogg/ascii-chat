@@ -413,7 +413,9 @@ if(WIN32)
     if(NOT ASCIICHAT_NMAKE_EXECUTABLE)
         find_program(_ASCIICHAT_VSWHERE_EXECUTABLE
             NAMES vswhere vswhere.exe
-            PATHS "$ENV{ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
+            PATHS
+                "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer"
+                "C:/Program Files (x86)/Microsoft Visual Studio/Installer"
             DOC "Visual Studio installation locator"
         )
         if(_ASCIICHAT_VSWHERE_EXECUTABLE)
