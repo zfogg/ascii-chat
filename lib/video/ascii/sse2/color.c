@@ -24,8 +24,7 @@ static inline uint8_t rgb_to_256color_sse2(uint8_t r, uint8_t g, uint8_t b) {
 
 // Unified SSE2 function for all color modes (full implementation like NEON)
 
-char *render_ascii_color_sse2(const image_t *image, bool use_background, bool use_256color,
-                                          const char *ascii_chars) {
+char *render_ascii_color_sse2(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -322,6 +321,5 @@ void sse2_caches_destroy(void) {
   // SSE2 currently uses shared caches from common.c, so no specific cleanup needed
   log_debug("SSE2_CACHE: SSE2 caches cleaned up");
 }
-
 
 #endif /* SIMD_SUPPORT_SSE2 */
