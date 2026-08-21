@@ -407,6 +407,39 @@ if(WIN32)
     _find_llvm_tool(ASCIICHAT_CLANG_CL_EXECUTABLE clang-cl)
     _find_llvm_tool(ASCIICHAT_LLVM_LIB_EXECUTABLE llvm-lib)
 
+    # GitHub's windows-latest image and local developer machines may have a
+    # newer Visual Studio release whose tools are not on PATH. Use vswhere to
+    # discover the active installation instead of assuming a specific year.
+    if(NOT ASCIICHAT_NMAKE_EXECUTABLE)
+        find_program(_ASCIICHAT_VSWHERE_EXECUTABLE
+            NAMES vswhere vswhere.exe
+            PATHS "$ENV{ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
+            DOC "Visual Studio installation locator"
+        )
+        if(_ASCIICHAT_VSWHERE_EXECUTABLE)
+            execute_process(
+                COMMAND "${_ASCIICHAT_VSWHERE_EXECUTABLE}" -latest -products * -property installationPath
+                OUTPUT_VARIABLE _ASCIICHAT_VS_INSTALL_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(_ASCIICHAT_VS_INSTALL_DIR)
+                file(GLOB_RECURSE _ASCIICHAT_NMAKE_CANDIDATES
+                    LIST_DIRECTORIES FALSE
+                    "${_ASCIICHAT_VS_INSTALL_DIR}/VC/Tools/MSVC/*/bin/*/*/nmake.exe"
+                )
+                if(_ASCIICHAT_NMAKE_CANDIDATES)
+                    list(SORT _ASCIICHAT_NMAKE_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+                    list(GET _ASCIICHAT_NMAKE_CANDIDATES 0 ASCIICHAT_NMAKE_EXECUTABLE)
+                    set(ASCIICHAT_NMAKE_EXECUTABLE "${ASCIICHAT_NMAKE_EXECUTABLE}" CACHE FILEPATH "Microsoft NMAKE" FORCE)
+                endif()
+            endif()
+        endif()
+        unset(_ASCIICHAT_NMAKE_CANDIDATES)
+        unset(_ASCIICHAT_VS_INSTALL_DIR)
+        unset(_ASCIICHAT_VSWHERE_EXECUTABLE CACHE)
+    endif()
+
     # Debug output for Windows LLVM tools (helps diagnose CI issues)
     message(STATUS "[DEBUG] clang-cl found: ${ASCIICHAT_CLANG_CL_EXECUTABLE}")
     message(STATUS "[DEBUG] llvm-lib found: ${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
