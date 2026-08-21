@@ -424,10 +424,33 @@ if(WIN32)
                 ERROR_QUIET
             )
             if(_ASCIICHAT_VS_INSTALL_DIR)
-                file(GLOB_RECURSE _ASCIICHAT_NMAKE_CANDIDATES
-                    LIST_DIRECTORIES FALSE
-                    "${_ASCIICHAT_VS_INSTALL_DIR}/VC/Tools/MSVC/*/bin/*/*/nmake.exe"
-                )
+                if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+                    set(_ASCIICHAT_NMAKE_SUFFIXES
+                        "Hostarm64/arm64"
+                        "Hostx64/arm64"
+                        "Hostarm64/x64"
+                    )
+                else()
+                    set(_ASCIICHAT_NMAKE_SUFFIXES
+                        "Hostx64/x64"
+                        "Hostx86/x64"
+                    )
+                endif()
+                foreach(_ASCIICHAT_NMAKE_SUFFIX IN LISTS _ASCIICHAT_NMAKE_SUFFIXES)
+                    file(GLOB _ASCIICHAT_NMAKE_CANDIDATES
+                        LIST_DIRECTORIES FALSE
+                        "${_ASCIICHAT_VS_INSTALL_DIR}/VC/Tools/MSVC/*/bin/${_ASCIICHAT_NMAKE_SUFFIX}/nmake.exe"
+                    )
+                    if(_ASCIICHAT_NMAKE_CANDIDATES)
+                        break()
+                    endif()
+                endforeach()
+                if(NOT _ASCIICHAT_NMAKE_CANDIDATES)
+                    file(GLOB_RECURSE _ASCIICHAT_NMAKE_CANDIDATES
+                        LIST_DIRECTORIES FALSE
+                        "${_ASCIICHAT_VS_INSTALL_DIR}/VC/Tools/MSVC/*/bin/*/*/nmake.exe"
+                    )
+                endif()
                 if(_ASCIICHAT_NMAKE_CANDIDATES)
                     list(SORT _ASCIICHAT_NMAKE_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
                     list(GET _ASCIICHAT_NMAKE_CANDIDATES 0 ASCIICHAT_NMAKE_EXECUTABLE)
@@ -436,6 +459,8 @@ if(WIN32)
             endif()
         endif()
         unset(_ASCIICHAT_NMAKE_CANDIDATES)
+        unset(_ASCIICHAT_NMAKE_SUFFIX)
+        unset(_ASCIICHAT_NMAKE_SUFFIXES)
         unset(_ASCIICHAT_VS_INSTALL_DIR)
         unset(_ASCIICHAT_VSWHERE_EXECUTABLE CACHE)
     endif()
