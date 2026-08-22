@@ -426,7 +426,7 @@ if(WIN32)
                 ERROR_QUIET
             )
             if(_ASCIICHAT_VS_INSTALL_DIR)
-                if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+                if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
                     set(_ASCIICHAT_NMAKE_SUFFIXES
                         "Hostarm64/arm64"
                         "Hostx64/arm64"
