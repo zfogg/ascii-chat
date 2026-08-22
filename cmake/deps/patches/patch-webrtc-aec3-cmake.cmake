@@ -67,8 +67,8 @@ string(REPLACE
 
 # Fix: Robust build-type check (original used unquoted variable and can fail with "if STREQUAL debug")
 string(REPLACE
-    "if(${CMAKE_BUILD_TYPE} STREQUAL debug)\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
-    "string(TOLOWER \"${CMAKE_BUILD_TYPE}\" _webrtc_build_type)\nif(_webrtc_build_type STREQUAL \"debug\")\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
+    "if(\${CMAKE_BUILD_TYPE} STREQUAL debug)\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
+    "string(TOLOWER \"\${CMAKE_BUILD_TYPE}\" _webrtc_build_type)\nif(_webrtc_build_type STREQUAL \"debug\")\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
     CMAKE_CONTENT
     "${CMAKE_CONTENT}"
 )
