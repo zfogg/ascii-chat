@@ -319,7 +319,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             else()
                 # macOS: strip symbols then codesign (must strip BEFORE codesigning)
                 add_custom_command(TARGET ascii-chat POST_BUILD
-                    COMMAND timeout 3 ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+                    COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols from ascii-chat"
                 )
                 # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
@@ -330,7 +330,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Fallback: just strip symbols if objcopy not available
         if (APPLE)
             add_custom_command(TARGET ascii-chat POST_BUILD
-                COMMAND timeout 3 ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+                COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols from ascii-chat"
             )
             # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
