@@ -785,9 +785,9 @@ add_library(ascii-chat-shared SHARED
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
-        # macOS: Use relative install name so CMake doesn't force absolute paths in RPATH
+        # macOS: Consumers resolve the library through their configured runtime paths.
         MACOSX_RPATH TRUE
-        INSTALL_NAME_DIR "@loader_path"
+        INSTALL_NAME_DIR "@rpath"
     )
 
     # Set RPATH on shared library so it can find dependencies at runtime
