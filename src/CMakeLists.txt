@@ -133,9 +133,7 @@ if(NOT _use_shared_lib AND NOT USE_MUSL)
         endif()
         target_link_libraries(ascii-chat PRIVATE OpenSSL::SSL OpenSSL::Crypto)
         # libwebsockets
-        if(TARGET websockets)
-            target_link_libraries(ascii-chat PRIVATE websockets)
-        elseif(LIBWEBSOCKETS_LIBRARIES)
+        if(LIBWEBSOCKETS_LIBRARIES)
             target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
         endif()
         # FreeType and Fontconfig
@@ -286,7 +284,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     set_target_properties(ascii-chat PROPERTIES
         BUILD_RPATH "${_install_rpath}"
         INSTALL_RPATH "${_install_rpath}"
-        INSTALL_RPATH_USE_LINK_PATH TRUE
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")

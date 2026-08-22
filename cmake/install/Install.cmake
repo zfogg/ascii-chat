@@ -202,16 +202,6 @@ else()
             OPTIONAL
         )
 
-        # Force-recreate symlinks to handle CMake's limitation with existing symlinks
-        # CMake's file(INSTALL) doesn't force-replace existing symlinks, so we need a custom rule
-        install(CODE "
-            file(REMOVE \"${CMAKE_INSTALL_PREFIX}/lib/libasciichat.so.0\")
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E create_symlink
-                    libasciichat.so.0.3.0
-                    \"${CMAKE_INSTALL_PREFIX}/lib/libasciichat.so.0\"
-            )
-        " COMPONENT Development)
     endif()
 
     message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.a${ColorReset} (optional) and ${BoldBlue}${_ascii_chat_shared_label}${ColorReset} (optional) → ${BoldYellow}lib/${ColorReset}")
