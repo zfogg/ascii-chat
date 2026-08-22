@@ -120,7 +120,7 @@ jobs:
           # Windows AMD64
           - os: Windows
             arch: amd64
-            runner: windows-latest
+            runner: windows-2022
             vcpkg-packages: "zstd portaudio libsodium opus openssl"
             vcpkg-static-packages: "zstd portaudio libsodium mimalloc opus openssl"
             vcpkg-triplet: "x64-windows"

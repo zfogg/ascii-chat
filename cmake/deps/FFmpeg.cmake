@@ -291,20 +291,30 @@ if(WIN32)
 
     # Auto-download prebuilt FFmpeg if not provided and not available via vcpkg
     if(NOT _ffmpeg_prebuilt_dir)
-        set(_ffmpeg_version "7.1")
+        set(_ffmpeg_version "8.1")
+        set(_ffmpeg_build "n8.1.2-44-g7c533d0f86")
+        set(_ffmpeg_release "autobuild-2026-08-21-13-40")
         if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
             set(_ffmpeg_arch "winarm64")
+            set(_ffmpeg_hash "607a3e2608103dd8cbfa64ed65e021ecef850d6b19074ab753328abf7736e147")
         else()
             set(_ffmpeg_arch "win64")
+            set(_ffmpeg_hash "e30201900132c0e3da178c63c7dac65aa0a0dcd971779546ae964b86b47bd499")
         endif()
-        set(_ffmpeg_archive "ffmpeg-n${_ffmpeg_version}-latest-${_ffmpeg_arch}-lgpl-shared-${_ffmpeg_version}")
+        set(_ffmpeg_archive "ffmpeg-${_ffmpeg_build}-${_ffmpeg_arch}-lgpl-shared-${_ffmpeg_version}")
         set(_ffmpeg_prebuilt_dir "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}")
 
         if(NOT EXISTS "${_ffmpeg_prebuilt_dir}/include/libavcodec/avcodec.h")
-            set(_ffmpeg_url "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${_ffmpeg_archive}.zip")
+            set(_ffmpeg_url "https://github.com/BtbN/FFmpeg-Builds/releases/download/${_ffmpeg_release}/${_ffmpeg_archive}.zip")
             set(_ffmpeg_zip "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}.zip")
             message(STATUS "Downloading prebuilt FFmpeg ${_ffmpeg_version} (${_ffmpeg_arch})...")
-            file(DOWNLOAD "${_ffmpeg_url}" "${_ffmpeg_zip}" STATUS _dl_status SHOW_PROGRESS)
+            file(DOWNLOAD
+                "${_ffmpeg_url}"
+                "${_ffmpeg_zip}"
+                EXPECTED_HASH "SHA256=${_ffmpeg_hash}"
+                STATUS _dl_status
+                SHOW_PROGRESS
+            )
             list(GET _dl_status 0 _dl_code)
             if(_dl_code EQUAL 0)
                 message(STATUS "Extracting prebuilt FFmpeg...")
@@ -360,9 +370,7 @@ if(WIN32)
         message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
         return()
     else()
-        message(WARNING "FFmpeg not found - media file streaming will be disabled")
-        set(FFMPEG_FOUND FALSE)
-        return()
+        message(FATAL_ERROR "FFmpeg not found - required dependency")
     endif()
 endif()
 
