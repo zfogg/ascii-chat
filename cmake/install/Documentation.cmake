@@ -63,6 +63,16 @@ if(BUILD_EXECUTABLES)
             COMMENT "Building man page"
             VERBATIM
         )
+    elseif(APPLE)
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMAND bash -c "2>/dev/null ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1' < /dev/null"
+            DEPENDS
+                $<TARGET_FILE:ascii-chat>
+                "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
+            COMMENT "Building man page"
+            VERBATIM
+        )
     else()
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
@@ -90,7 +100,7 @@ endif()
 # Lightweight target that generates only man(3) pages without HTML docs
 # This is much faster than the full `docs` target and is used for web builds
 if(ASCIICHAT_DOXYGEN_EXECUTABLE)
-    if(WIN32)
+    if(WIN32 OR APPLE)
         set(ASCIICHAT_DOXYGEN_COMMAND "${ASCIICHAT_DOXYGEN_EXECUTABLE}")
     else()
         set(ASCIICHAT_DOXYGEN_COMMAND timeout 120 "${ASCIICHAT_DOXYGEN_EXECUTABLE}")

@@ -119,6 +119,13 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             message(STATUS "Cleaned old WebRTC AEC3 build artifacts")
         endif()
 
+        # A compiler or build-type change can make CMake invalidate its cache
+        # during configuration and lose command-line settings on the retry.
+        file(REMOVE_RECURSE
+            "${WEBRTC_BUILD_DIR}/CMakeCache.txt"
+            "${WEBRTC_BUILD_DIR}/CMakeFiles"
+        )
+
         # Remove patch marker so patches are reapplied on next configure
         set(_patch_marker_to_clean "${webrtc_aec3_SOURCE_DIR}/.patches_applied")
         if(EXISTS "${_patch_marker_to_clean}")
