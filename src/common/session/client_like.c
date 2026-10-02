@@ -372,7 +372,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_debug("session_client_like_run(): Stdout is TTY, using local webcam");
       log_info("Using local webcam");
       capture_config.type = MEDIA_SOURCE_WEBCAM;
-      capture_config.path = NULL;
+      static char webcam_index_str[32];
+      safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+      capture_config.path = webcam_index_str;
+      log_info("Using webcam device index %u", GET_OPTION(webcam_index));
       capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
       capture_config.loop = false;
     } else {

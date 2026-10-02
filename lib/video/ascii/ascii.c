@@ -35,6 +35,51 @@
  * ============================================================================
  */
 
+/*
+ * Resize a source image to a terminal viewport while preserving its visual
+ * aspect ratio. The source is cropped to the viewport's aspect ratio first,
+ * so the output fills the viewport instead of introducing letterbox bars.
+ * Terminal cells are approximately twice as tall as they are wide, hence the
+ * factor of two in the source crop ratio.
+ */
+static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width,
+                               ssize_t viewport_height) {
+  if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 ||
+      viewport_height <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_resize_cover: invalid image or viewport dimensions");
+    return;
+  }
+
+  const double source_aspect = (double)source->w / (double)source->h;
+  const double viewport_aspect = (double)viewport_width / ((double)viewport_height * 2.0);
+  int crop_width = source->w;
+  int crop_height = source->h;
+  int crop_x = 0;
+  int crop_y = 0;
+
+  if (source_aspect > viewport_aspect) {
+    crop_width = (int)lround((double)source->h * viewport_aspect);
+    crop_width = crop_width < 1 ? 1 : crop_width;
+    crop_width = crop_width > source->w ? source->w : crop_width;
+    crop_x = (source->w - crop_width) / 2;
+  } else if (source_aspect < viewport_aspect) {
+    crop_height = (int)lround((double)source->w / viewport_aspect);
+    crop_height = crop_height < 1 ? 1 : crop_height;
+    crop_height = crop_height > source->h ? source->h : crop_height;
+    crop_y = (source->h - crop_height) / 2;
+  }
+
+  for (int y = 0; y < dest->h; y++) {
+    int source_y = crop_y + (int)(((int64_t)y * crop_height) / dest->h);
+    const rgb_pixel_t *source_row = source->pixels + ((size_t)source_y * (size_t)source->w);
+    rgb_pixel_t *dest_row = dest->pixels + ((size_t)y * (size_t)dest->w);
+    for (int x = 0; x < dest->w; x++) {
+      int source_x = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
+      dest_row[x] = source_row[source_x];
+    }
+  }
+}
+
 asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
   log_info("Initializing ASCII reader with webcam index %u", webcam_index);
   webcam_init(webcam_index);
@@ -211,46 +256,21 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
-  // Start with the target dimensions requested by the user
+  // Start with the target dimensions requested by the user.
   ssize_t resized_width = width;
   ssize_t resized_height = height;
 
-  // Apply aspect ratio BEFORE doubling height for half-block mode
-  // This ensures the width is correct relative to the original aspect ratio
-  if (use_aspect_ratio) {
-    aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
-  }
-
-  // Save the aspect-corrected dimensions in output row space (before half-block doubling)
-  // for padding calculations, since padding operates on output rows not pixel rows
-  ssize_t output_width = resized_width;
-  ssize_t output_height = resized_height;
+  // Preserve aspect ratio by cropping the source to cover the viewport. The
+  // destination dimensions remain the full requested viewport dimensions.
 
   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     resized_height = resized_height * 2;
   }
 
-  // Calculate padding for centering (only if client wants padding)
+  // Cover rendering fills the viewport, so no aspect-ratio padding is needed.
   size_t pad_width = 0;
   size_t pad_height = 0;
-
-  if (use_aspect_ratio && caps->wants_padding) {
-    ssize_t pad_width_ss = width > output_width ? (width - output_width) / 2 : 0;
-    pad_width = (size_t)pad_width_ss;
-
-    ssize_t pad_height_ss = height > output_height ? (height - output_height) / 2 : 0;
-    pad_height = (size_t)pad_height_ss;
-
-    log_debug_every(10 * US_PER_SEC_INT,
-                    "ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, "
-                    "pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d",
-                    width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps->wants_padding);
-  } else if (!caps->wants_padding) {
-    log_debug_every(10 * US_PER_SEC_INT,
-                    "ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd",
-                    width, height);
-  }
 
   // Resize the captured frame to the aspect-correct dimensions
   if (resized_width <= 0 || resized_height <= 0) {
@@ -283,7 +303,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   START_TIMER("image_resize");
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
-  image_resize(original, resized);
+  if (use_aspect_ratio && !stretch) {
+    image_resize_cover(original, resized, width, height);
+  } else {
+    image_resize(original, resized);
+  }
 
   uint64_t prof_resize_end_ns = time_get_ns();
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_resize",

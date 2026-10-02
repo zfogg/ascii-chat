@@ -157,10 +157,19 @@ char *https_get(const char *hostname, const char *path) {
     goto cleanup_anchors;
   }
 
-  // Set socket timeouts to avoid blocking indefinitely on stalled connections
+  // Set socket timeouts to avoid blocking indefinitely on stalled connections.
+  // Windows expects a DWORD timeout in milliseconds, while POSIX expects a
+  // struct timeval. Passing timeval to Winsock makes the timeout effectively
+  // a few milliseconds and commonly aborts the TLS handshake.
+#ifdef _WIN32
+  DWORD timeout_ms = 5000;
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+#else
   struct timeval timeout = {.tv_sec = 5, .tv_usec = 0};
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
   setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
+#endif
 
   // Connect to server
   if (connect(sock, result->ai_addr, (int)result->ai_addrlen) != 0) {
