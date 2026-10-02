@@ -129,7 +129,7 @@ if(ENABLE_SIMD_NEON)
 endif()
 
 # SSE2 support (x86/x86_64) - SSSE3 and AVX2 require SSE2
-if(NOT "\${CMAKE_SYSTEM_PROCESSOR}" MATCHES "ARM|arm|aarch64")
+if(NOT \"\${CMAKE_SYSTEM_PROCESSOR}\" MATCHES \"ARM|arm|aarch64\")
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_sse2.cc)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_sse.cc)
 endif()
