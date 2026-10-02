@@ -181,7 +181,7 @@ function(configure_llvm_pre_project)
     # Must happen here so archive rules use llvm-ar, not system ar
     # =============================================================================
     # ASCIICHAT_LLVM_AR_EXECUTABLE was found by FindPrograms.cmake
-    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+    if(WIN32 AND CMAKE_C_COMPILER MATCHES "clang-cl" AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
         set(CMAKE_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
         set(CMAKE_C_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "C compiler archiver" FORCE)
         set(CMAKE_CXX_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "CXX compiler archiver" FORCE)
@@ -460,7 +460,7 @@ function(find_llvm_tools)
     # and cache entries are created. We must set them WITHOUT the CACHE keyword to
     # override the cached values, then update the cache variables manually.
 
-    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+    if(WIN32 AND CMAKE_C_COMPILER MATCHES "clang-cl" AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
         # clang-cl uses MSVC archive syntax; llvm-ar is GNU-style and rejects
         # the /out and /machine flags emitted by CMake's MSVC platform rules.
         set(CMAKE_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
@@ -494,7 +494,7 @@ endfunction()
 # =============================================================================
 
 function(fix_llvm_ranlib)
-    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+    if(WIN32 AND CMAKE_C_COMPILER MATCHES "clang-cl" AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
         # llvm-lib creates the COFF archive and index in one invocation.
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
         set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
