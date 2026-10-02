@@ -58,8 +58,8 @@ struct media_source_t {
   void *audio_ctx; ///< Audio context for clearing buffers on seek (opaque)
 
   // Test pattern state (for MEDIA_SOURCE_TEST)
-  image_t *test_pattern_frame;       ///< Reusable 320x240 frame buffer for test pattern
-  unsigned int test_frame_counter;   ///< Animation phase counter for test pattern
+  image_t *test_pattern_frame;     ///< Reusable 320x240 frame buffer for test pattern
+  unsigned int test_frame_counter; ///< Animation phase counter for test pattern
 };
 
 /* ============================================================================
@@ -391,8 +391,8 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   case MEDIA_SOURCE_TEST: {
     // Test pattern state is encapsulated in media_source_t
     source->webcam_index = 0;
-    source->webcam_ctx = NULL; // No context needed for test pattern
-    source->test_pattern_frame = NULL;  // Allocated lazily on first read
+    source->webcam_ctx = NULL;         // No context needed for test pattern
+    source->test_pattern_frame = NULL; // Allocated lazily on first read
     source->test_frame_counter = 0;
 
     log_debug("Media source: Test pattern");
@@ -522,7 +522,7 @@ image_t *media_source_read_video(media_source_t *source) {
     }
 
     // Generate animated color bars that shift based on frame counter
-    unsigned int animation_phase = source->test_frame_counter / 2;  // Slow down animation
+    unsigned int animation_phase = source->test_frame_counter / 2; // Slow down animation
     source->test_frame_counter++;
 
     for (int y = 0; y < source->test_pattern_frame->h; y++) {
@@ -535,17 +535,17 @@ image_t *media_source_read_video(media_source_t *source) {
 
         // Base pattern: color bars that animate horizontally
         switch (grid_x % 3) {
-        case 0:  // Red
+        case 0: // Red
           pixel->r = 255;
           pixel->g = 0;
           pixel->b = 0;
           break;
-        case 1:  // Green
+        case 1: // Green
           pixel->r = 0;
           pixel->g = 255;
           pixel->b = 0;
           break;
-        case 2:  // Blue
+        case 2: // Blue
         default:
           pixel->r = 0;
           pixel->g = 0;

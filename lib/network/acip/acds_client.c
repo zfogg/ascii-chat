@@ -191,8 +191,8 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
 
   // Multi-key protocol: set to single-key mode (total_keys=0 for backward compatibility, or =1 for new protocol)
   // For now, using legacy single-key mode (total_keys=0, key_index=0)
-  req.total_keys = 0;  // Legacy mode: server knows this is single-key
-  req.key_index = 0;   // Not used in legacy mode
+  req.total_keys = 0; // Legacy mode: server knows this is single-key
+  req.key_index = 0;  // Not used in legacy mode
 
   // Send SESSION_CREATE packet
   asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));

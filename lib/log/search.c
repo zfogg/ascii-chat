@@ -61,8 +61,8 @@ typedef struct {
   mutex_t mutex;
   lifecycle_t lifecycle;
   atomic_t needs_rerender;
-  atomic_t signal_cancelled;   ///< Set by signal handler, checked by render loop
-  atomic_t mode_atomic;         ///< Shadow of mode for signal-safe reads
+  atomic_t signal_cancelled;       ///< Set by signal handler, checked by render loop
+  atomic_t mode_atomic;            ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
 } log_search_state_t;
 
@@ -702,7 +702,8 @@ void log_search_render_input_line(int width) {
   char output_buf[512];
 
   // Build output: "/" + pattern
-  int pattern_len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_search_state.len, g_search_state.input_buffer);
+  int pattern_len =
+      snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_search_state.len, g_search_state.input_buffer);
 
   if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
     // Write the pattern to terminal

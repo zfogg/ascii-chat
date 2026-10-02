@@ -23,7 +23,7 @@ Test(ascii_simd_integration, quality_metrics_collection) {
 
     // Consume the frame to prevent drops
     const video_frame_t *read_frame = video_frame_get_latest(vfb);
-    (void)read_frame;  // Suppress unused variable warning
+    (void)read_frame; // Suppress unused variable warning
   }
 
   // Get statistics

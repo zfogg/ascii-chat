@@ -569,8 +569,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           // SAFE_STRNCPY uses strlcpy which only copies size-1 bytes
           memcpy(current_auto_section, section_start, section_name_len);
           current_auto_section[section_name_len] = '\0';
-          log_debug("[MANPAGE] Found AUTO-START section: '%s' (%zu bytes)", current_auto_section,
-                   section_name_len);
+          log_debug("[MANPAGE] Found AUTO-START section: '%s' (%zu bytes)", current_auto_section, section_name_len);
         }
       }
 

@@ -87,7 +87,6 @@ extern client_manager_t g_client_manager;
  */
 extern rwlock_t g_client_manager_rwlock;
 
-
 /**
  * @brief Global audio mixer
  *

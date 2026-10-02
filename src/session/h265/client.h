@@ -29,10 +29,10 @@ typedef struct h265_client_encoder h265_client_encoder_t;
  * Media source type
  */
 typedef enum {
-    H265_SOURCE_TEST_PATTERN = 0,   // Procedural test pattern
-    H265_SOURCE_FILE = 1,           // Local file
-    H265_SOURCE_URL = 2,            // Remote URL (with yt-dlp support)
-    H265_SOURCE_WEBCAM = 3,         // Live camera
+  H265_SOURCE_TEST_PATTERN = 0, // Procedural test pattern
+  H265_SOURCE_FILE = 1,         // Local file
+  H265_SOURCE_URL = 2,          // Remote URL (with yt-dlp support)
+  H265_SOURCE_WEBCAM = 3,       // Live camera
 } h265_media_source_t;
 
 /**
@@ -67,11 +67,8 @@ void h265_client_context_destroy(h265_client_context_t *ctx);
  *   h265_client_init_media_source(ctx, H265_SOURCE_WEBCAM, "/dev/video0")
  *   h265_client_init_media_source(ctx, H265_SOURCE_TEST_PATTERN, NULL)
  */
-asciichat_error_t h265_client_init_media_source(
-    h265_client_context_t *ctx,
-    h265_media_source_t source_type,
-    const char *source_location
-);
+asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265_media_source_t source_type,
+                                                const char *source_location);
 
 /**
  * Capture and encode the next frame
@@ -86,11 +83,7 @@ asciichat_error_t h265_client_init_media_source(
  *   [flags: u8][width: u16][height: u16][x265_data...]
  * as defined in h265_encoder
  */
-asciichat_error_t h265_client_capture_and_encode(
-    h265_client_context_t *ctx,
-    uint8_t *output_buf,
-    size_t *output_size
-);
+asciichat_error_t h265_client_capture_and_encode(h265_client_context_t *ctx, uint8_t *output_buf, size_t *output_size);
 
 /**
  * Request a keyframe on the next encode
@@ -108,9 +101,5 @@ void h265_client_request_keyframe(h265_client_context_t *ctx);
  * @param keyframes Output: total keyframes encoded
  * @param avg_bitrate Output: average bitrate in bits per second
  */
-void h265_client_get_stats(
-    h265_client_context_t *ctx,
-    uint64_t *total_frames,
-    uint64_t *keyframes,
-    uint32_t *avg_bitrate
-);
+void h265_client_get_stats(h265_client_context_t *ctx, uint64_t *total_frames, uint64_t *keyframes,
+                           uint32_t *avg_bitrate);

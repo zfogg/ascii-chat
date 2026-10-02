@@ -22,8 +22,8 @@ struct render_file_ctx_s {
   audio_ring_buffer_t *audio_capture_rb; // for live mic capture
   uint32_t audio_sample_rate;            // 48000 Hz
   int fps;
-  float *audio_read_buf;                 // Temporary buffer for reading audio samples
-  int audio_buf_size;                    // Size of audio_read_buf
+  float *audio_read_buf; // Temporary buffer for reading audio samples
+  int audio_buf_size;    // Size of audio_read_buf
 };
 
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
@@ -181,8 +181,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     uint8_t sample_r_mid = pixels[mid_offset], sample_g_mid = pixels[mid_offset + 1],
             sample_b_mid = pixels[mid_offset + 2], sample_a_mid = pixels[mid_offset + 3];
 
-    log_info("  pixel[0,0]: RGBA(%u,%u,%u,%u), pixel[%d,%d]: RGBA(%u,%u,%u,%u)", sample_r, sample_g, sample_b,
-             sample_a, width_px / 2, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid, sample_a_mid);
+    log_info("  pixel[0,0]: RGBA(%u,%u,%u,%u), pixel[%d,%d]: RGBA(%u,%u,%u,%u)", sample_r, sample_g, sample_b, sample_a,
+             width_px / 2, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid, sample_a_mid);
   }
 
   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets

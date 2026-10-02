@@ -24,8 +24,7 @@ static inline uint8_t rgb_to_256color_ssse3(uint8_t r, uint8_t g, uint8_t b) {
 
 // Unified SSSE3 function for all color modes (full implementation like NEON)
 
-char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color,
-                                           const char *ascii_chars) {
+char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -323,6 +322,5 @@ void ssse3_caches_destroy(void) {
   // SSSE3 currently uses shared caches from common.c, so no specific cleanup needed
   log_debug("SSSE3_CACHE: SSSE3 caches cleaned up");
 }
-
 
 #endif /* SIMD_SUPPORT_SSSE3 */

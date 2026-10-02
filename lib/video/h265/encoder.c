@@ -27,7 +27,8 @@ static int h265_thread_count(void) {
 #else
   long cores = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
-  if (cores <= 0) cores = 4;
+  if (cores <= 0)
+    cores = 4;
   int half = (int)(cores / 2);
   return half > 4 ? half : 4;
 }
@@ -170,9 +171,7 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
   }
   if (encoder->codec_ctx) {
     // Capture x265 encoder cleanup output (final frame stats, etc.)
-    LOG_IO("hevc", {
-      avcodec_free_context(&encoder->codec_ctx);
-    });
+    LOG_IO("hevc", { avcodec_free_context(&encoder->codec_ctx); });
   }
   if (encoder->yuv_buf) {
     SAFE_FREE(encoder->yuv_buf);
@@ -208,9 +207,7 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
 
   log_dev("[H265_OPEN] avcodec_open2 for %ux%u (threads=%d)", width, height, encoder->codec_ctx->thread_count);
   int codec_open_result = 0;
-  LOG_IO("hevc", {
-    codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL);
-  });
+  LOG_IO("hevc", { codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL); });
 
   if (codec_open_result < 0) {
     return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC encoder for %ux%u", width, height);
@@ -268,8 +265,8 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
   for (uint32_t y = 0; y < (uint32_t)height; y += 2) {
     for (uint32_t x = 0; x < (uint32_t)width; x += 2) {
       // Average 2x2 RGB block for chroma
-      uint32_t idx00 = ((y) * width + x) * 3;
-      uint32_t idx10 = ((y) * width + x + 1) * 3;
+      uint32_t idx00 = ((y)*width + x) * 3;
+      uint32_t idx10 = ((y)*width + x + 1) * 3;
       uint32_t idx01 = ((y + 1) * width + x) * 3;
       uint32_t idx11 = ((y + 1) * width + x + 1) * 3;
 
@@ -299,7 +296,8 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
-  log_info("[H265_ENCODE_2] Reconfigure %ux%u -> %ux%u", encoder->current_width, encoder->current_height, width, height);
+  log_info("[H265_ENCODE_2] Reconfigure %ux%u -> %ux%u", encoder->current_width, encoder->current_height, width,
+           height);
   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
   log_info("[H265_ENCODE_3] Reconfigure returned %d", result);
   if (result != ASCIICHAT_OK) {

@@ -90,7 +90,7 @@
 #include <ascii-chat/platform/system.h> // For platform_memcpy
 
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/debug/named.h>  // For NAMED_REGISTER_ATOMIC macro
+#include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 #include <string.h>
 #include <math.h>
 

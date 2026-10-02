@@ -15,8 +15,8 @@
 #include <ascii-chat/options/strings.h>
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/enums.h>
-#include <ascii-chat/platform/terminal.h> // For term_color_level_t
-#include <ascii-chat/video/ascii/palette.h>     // For palette_type_t
+#include <ascii-chat/platform/terminal.h>   // For term_color_level_t
+#include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <stdio.h>

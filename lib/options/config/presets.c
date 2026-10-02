@@ -174,9 +174,9 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                           "wss://secure.example.com:443"};
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
-  static const char *discovery_examples[] = {"(empty/unset) start new session. generates a session string to give someone to connect to you.", (const char *)example_buf7,
-                                             (const char *)example_buf8, (const char *)example_buf9,
-                                             (const char *)example_buf10};
+  static const char *discovery_examples[] = {
+      "(empty/unset) start new session. generates a session string to give someone to connect to you.",
+      (const char *)example_buf7, (const char *)example_buf8, (const char *)example_buf9, (const char *)example_buf10};
   options_builder_add_positional(
       b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.",
       false, "POSITIONAL ARGUMENTS", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
@@ -201,10 +201,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                  OPTION_MODE_CLIENT, parse_client_address);
 
   // Mirror mode: [file|url] - file path or URL to stream
-  static const char *mirror_media_examples[] = {
-      "/path/to/video.mp4",
-      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      "https://example.com/stream.m3u8"};
+  static const char *mirror_media_examples[] = {"/path/to/video.mp4", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                                                "https://example.com/stream.m3u8"};
   options_builder_add_positional(b, "file|url",
                                  "(optional) Media file path or URL to stream. If omitted, uses webcam. "
                                  "Cannot be combined with --file or --url.",
@@ -313,7 +311,10 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                               "Enforce identity verification for all parties", false);
 
   // Add mode descriptions
-  options_builder_add_mode(b, "default", "When the ascii-chat binary is used without a mode, it operates as either client or server automatically and uses the discovery-service to make peer connections with session strings");
+  options_builder_add_mode(
+      b, "default",
+      "When the ascii-chat binary is used without a mode, it operates as either client or server automatically and "
+      "uses the discovery-service to make peer connections with session strings");
   options_builder_add_mode(b, "server", "Run as multi-client video chat server");
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
   options_builder_add_mode(b, "mirror", "View local media as ASCII art (no server)");

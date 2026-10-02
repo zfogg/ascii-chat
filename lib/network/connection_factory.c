@@ -20,7 +20,7 @@
 #include <string.h>
 
 static asciichat_error_t connection_factory_open_tcp(const char *name, const connection_endpoint_t *endpoint,
-                                                      crypto_context_t *crypto_ctx, acip_transport_t **transport_out) {
+                                                     crypto_context_t *crypto_ctx, acip_transport_t **transport_out) {
   struct addrinfo hints;
   struct addrinfo *addr_result = NULL;
   struct addrinfo *addr_iter = NULL;

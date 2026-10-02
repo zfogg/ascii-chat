@@ -137,8 +137,8 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     char symbol_buffer[512];
     if (sym_result) {
       if (line_result) {
-        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name,
-                 line_info.FileName, line_info.LineNumber);
+        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, line_info.FileName,
+                 line_info.LineNumber);
       } else {
         snprintf(symbol_buffer, sizeof(symbol_buffer), "%s()", symbol_info->Name);
       }

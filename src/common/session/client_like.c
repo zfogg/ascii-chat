@@ -56,9 +56,9 @@ static asciichat_error_t validate_mirror_webcam_selection(const session_client_l
   unsigned int selected_index = (unsigned int)GET_OPTION(webcam_index);
   if (selected_index >= device_count) {
     if (device_count == 0) {
-      result = SET_ERRNO(ERROR_WEBCAM,
-                         "Webcam index %u is unavailable: no webcam devices were found (run --list-webcams)",
-                         selected_index);
+      result =
+          SET_ERRNO(ERROR_WEBCAM, "Webcam index %u is unavailable: no webcam devices were found (run --list-webcams)",
+                    selected_index);
     } else {
       result = SET_ERRNO(ERROR_WEBCAM,
                          "Webcam index %u is unavailable: %u webcam device(s) found; valid indices are 0-%u "

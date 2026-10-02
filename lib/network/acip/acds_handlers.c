@@ -25,8 +25,9 @@
 // =============================================================================
 
 // ACDS handler function signature
-typedef asciichat_error_t (*acip_acds_handler_func_t)(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                      const char *client_ip, const acip_acds_callbacks_t *callbacks);
+typedef asciichat_error_t (*acip_acds_handler_func_t)(const void *payload, size_t payload_len,
+                                                      acip_transport_t *transport, const char *client_ip,
+                                                      const acip_acds_callbacks_t *callbacks);
 
 // Hash table for O(1) packet dispatch
 #define ACDS_HASH_SIZE 32
@@ -58,10 +59,12 @@ static inline int acds_handler_hash_lookup(const acds_hash_entry_t *table, packe
 // Forward Declarations
 // =============================================================================
 
-static asciichat_error_t handle_acds_session_create(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks);
-static asciichat_error_t handle_acds_session_lookup(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_session_create(const void *payload, size_t payload_len,
+                                                    acip_transport_t *transport, const char *client_ip,
+                                                    const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_session_lookup(const void *payload, size_t payload_len,
+                                                    acip_transport_t *transport, const char *client_ip,
+                                                    const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_session_join(const void *payload, size_t payload_len, acip_transport_t *transport,
                                                   const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_session_leave(const void *payload, size_t payload_len, acip_transport_t *transport,
@@ -74,12 +77,14 @@ static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_le
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, acip_transport_t *transport,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks);
-static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                       const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len,
+                                                       acip_transport_t *transport, const char *client_ip,
+                                                       const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_host_lost(const void *payload, size_t payload_len, acip_transport_t *transport,
                                                const char *client_ip, const acip_acds_callbacks_t *callbacks);
-static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                     const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len,
+                                                     acip_transport_t *transport, const char *client_ip,
+                                                     const acip_acds_callbacks_t *callbacks);
 
 // ACDS handler dispatch table
 static const acip_acds_handler_func_t g_acds_handlers[ACDS_HANDLER_COUNT] = {
@@ -125,7 +130,8 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
   }
 
   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_info("★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type, client_ip, payload_len);
+    log_info("★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type,
+             client_ip, payload_len);
   }
 
   // O(1) dispatch via hash table lookup
@@ -145,8 +151,9 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
 // ACDS Handler Implementations
 // =============================================================================
 
-static asciichat_error_t handle_acds_session_create(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+static asciichat_error_t handle_acds_session_create(const void *payload, size_t payload_len,
+                                                    acip_transport_t *transport, const char *client_ip,
+                                                    const acip_acds_callbacks_t *callbacks) {
   if (!callbacks->on_session_create) {
     return ASCIICHAT_OK;
   }
@@ -182,8 +189,9 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_acds_session_lookup(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+static asciichat_error_t handle_acds_session_lookup(const void *payload, size_t payload_len,
+                                                    acip_transport_t *transport, const char *client_ip,
+                                                    const acip_acds_callbacks_t *callbacks) {
   if (!callbacks->on_session_lookup) {
     return ASCIICHAT_OK;
   }
@@ -300,8 +308,9 @@ static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_le
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                       const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len,
+                                                       acip_transport_t *transport, const char *client_ip,
+                                                       const acip_acds_callbacks_t *callbacks) {
   if (!callbacks->on_host_announcement) {
     return ASCIICHAT_OK;
   }
@@ -330,8 +339,9 @@ static asciichat_error_t handle_acds_host_lost(const void *payload, size_t paylo
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                                     const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len,
+                                                     acip_transport_t *transport, const char *client_ip,
+                                                     const acip_acds_callbacks_t *callbacks) {
   if (!callbacks->on_network_quality) {
     return ASCIICHAT_OK;
   }

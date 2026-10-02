@@ -72,6 +72,7 @@
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/websocket/server.h>
+#include <ascii-chat/platform/api.h>
 #include <ascii-chat/ui/status.h>
 #include <stdbool.h>
 
@@ -380,4 +381,4 @@ asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
  *
  * @return true if SIGINT or SIGTERM was received, false otherwise
  */
-bool session_server_like_shutdown_requested(void);
+ASCIICHAT_API bool session_server_like_shutdown_requested(void);

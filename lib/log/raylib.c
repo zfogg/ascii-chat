@@ -11,7 +11,7 @@
 
 /* Forward declare only the function we need, without including raylib.h
  * This avoids enum conflicts between raylib's LOG_* and ours */
-void SetTraceLogCallback(void (*callback)(int, const char*));
+void SetTraceLogCallback(void (*callback)(int, const char *));
 
 static void raylib_log_callback(int logLevel, const char *text) {
   (void)logLevel;

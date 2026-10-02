@@ -38,10 +38,10 @@
 // Tables are now built inline when needed for optimal performance
 
 // Build NEON lookup tables inline (faster than caching - 30ns rebuild vs 50ns lookup)
-static inline void __attribute__((unused)) build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, uint8x16x4_t *tbl, uint8x16x4_t *char_lut,
-                                            uint8x16x4_t *length_lut, uint8x16x4_t *char_byte0_lut,
-                                            uint8x16x4_t *char_byte1_lut, uint8x16x4_t *char_byte2_lut,
-                                            uint8x16x4_t *char_byte3_lut) {
+static inline void __attribute__((unused))
+build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, uint8x16x4_t *tbl, uint8x16x4_t *char_lut,
+                         uint8x16x4_t *length_lut, uint8x16x4_t *char_byte0_lut, uint8x16x4_t *char_byte1_lut,
+                         uint8x16x4_t *char_byte2_lut, uint8x16x4_t *char_byte3_lut) {
   // Build NEON-specific lookup table with cache64 indices (direct mapping)
   uint8_t cache64_indices[64];
   for (int i = 0; i < 64; i++) {
@@ -108,8 +108,9 @@ static inline void __attribute__((unused)) build_neon_lookup_tables(utf8_palette
 }
 
 // NEON-optimized RLE detection: find run length for char+color pairs
-static inline int __attribute__((unused)) find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf, int start_pos,
-                                           int max_len, uint8_t target_char, uint8_t target_color) {
+static inline int __attribute__((unused)) find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf,
+                                                                   int start_pos, int max_len, uint8_t target_char,
+                                                                   uint8_t target_color) {
   int run_length = 1; // At least the starting position
 
   // Use NEON to check multiple elements at once when possible
@@ -239,10 +240,10 @@ void init_neon_decimal_table(void) {
 // For now, keep the existing scalar approach to avoid breaking the build
 
 // True NEON vectorized ANSI truecolor sequence assembly - no scalar loops!
-static inline size_t __attribute__((unused)) neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals,
-                                                                 uint8x16_t g_vals, uint8x16_t b_vals,
-                                                                 utf8_palette_cache_t *utf8_cache, char *output_buffer,
-                                                                 size_t buffer_capacity, bool use_background) {
+static inline size_t __attribute__((unused))
+neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals, uint8x16_t g_vals,
+                                            uint8x16_t b_vals, utf8_palette_cache_t *utf8_cache, char *output_buffer,
+                                            size_t buffer_capacity, bool use_background) {
   // STREAMLINED IMPLEMENTATION: Focus on the real bottleneck - RGB->decimal conversion
   // Key insight: ANSI sequences are too variable for effective SIMD, but TBL lookups provide major speedup
 

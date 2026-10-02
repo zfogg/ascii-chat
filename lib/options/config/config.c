@@ -410,7 +410,8 @@ static asciichat_error_t parse_validate_bool(const char *value_str, const config
   (void)error_size;
 
   // Parse boolean from string representation ("true" or "false")
-  parsed->bool_value = value_str && (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
+  parsed->bool_value =
+      value_str && (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
   return ASCIICHAT_OK;
 }
 

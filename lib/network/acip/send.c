@@ -140,8 +140,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
 
   // Parse packet header
   if (recv_len < sizeof(packet_header_t)) {
-    log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len,
-             sizeof(packet_header_t));
+    log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len, sizeof(packet_header_t));
     if (*alloc_buffer) {
       buffer_pool_free(NULL, *alloc_buffer, recv_len);
       *alloc_buffer = NULL;

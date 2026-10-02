@@ -81,7 +81,8 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
     p = space + 1;
 
     // Skip whitespace and inode field
-    while (*p == ' ') p++;
+    while (*p == ' ')
+      p++;
     strtoul(p, &end_ptr, 10);
     if (end_ptr == p) {
       continue;

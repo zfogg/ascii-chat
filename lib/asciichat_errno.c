@@ -76,7 +76,7 @@ static struct {
 static void capture_backtrace(backtrace_t *bt) {
 #ifndef NDEBUG // Capture in Debug and Dev modes
   if (bt) {
-    backtrace_capture(bt);  // Capture without symbolizing (symbolize later if needed)
+    backtrace_capture(bt); // Capture without symbolizing (symbolize later if needed)
   }
 #else
   (void)bt;

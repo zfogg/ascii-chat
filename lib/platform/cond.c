@@ -31,7 +31,8 @@
  * @ingroup platform
  */
 void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, const char *func) {
-  if (!cond) return;
+  if (!cond)
+    return;
   cond->last_wait_time_ns = time_get_ns();
   cond->last_wait_mutex = mutex;
   cond->last_wait_file = file;
@@ -53,7 +54,8 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
  * @ingroup platform
  */
 void cond_on_signal(cond_t *cond) {
-  if (!cond) return;
+  if (!cond)
+    return;
   cond->last_signal_time_ns = time_get_ns();
   cond->signal_count++;
   if (atomic_load_u64(&cond->waiting_count) > 0) {
@@ -71,7 +73,8 @@ void cond_on_signal(cond_t *cond) {
  * @ingroup platform
  */
 void cond_on_broadcast(cond_t *cond) {
-  if (!cond) return;
+  if (!cond)
+    return;
   cond->last_broadcast_time_ns = time_get_ns();
   cond->broadcast_count++;
   atomic_store_u64(&cond->waiting_count, 0);
@@ -90,7 +93,8 @@ void cond_on_broadcast(cond_t *cond) {
  * @ingroup platform
  */
 int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
-  if (!cond || !buffer || size == 0) return 0;
+  if (!cond || !buffer || size == 0)
+    return 0;
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
@@ -130,8 +134,8 @@ int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
              (unsigned long long)cond->broadcast_count);
   }
 
-  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",
-                     wait_str, signal_str, broadcast_str, waiting_str, count_str);
+  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s", wait_str, signal_str, broadcast_str, waiting_str,
+                     count_str);
   return offset;
 }
 
@@ -147,10 +151,11 @@ int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
  * @ingroup platform
  */
 void cond_log_state(const cond_t *cond, const char *file, int line, const char *func) {
-  if (!cond) return;
+  if (!cond)
+    return;
   char buf[512];
   cond_format_state(cond, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "cond/state %p: %s", (const void *)cond, buf);
 }
 
-#endif  // !NDEBUG
+#endif // !NDEBUG

@@ -243,11 +243,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         // In snapshot mode, if we haven't rendered any frames yet, don't exit yet
         // Wait until at least one frame has been displayed
         if (!snapshot_mode || g_snapshot_first_frame_rendered) {
-          log_debug("Exit condition met (snapshot_mode=%d, first_frame_rendered=%d)",
-                    snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0);
+          log_debug("Exit condition met (snapshot_mode=%d, first_frame_rendered=%d)", snapshot_mode,
+                    g_snapshot_first_frame_rendered ? 1 : 0);
           break;
         } else {
-          log_debug_every(5 * NS_PER_SEC_INT, "Waiting for first frame (snapshot_mode=true, first_frame_rendered=false)");
+          log_debug_every(5 * NS_PER_SEC_INT,
+                          "Waiting for first frame (snapshot_mode=true, first_frame_rendered=false)");
         }
       }
 
@@ -291,7 +292,7 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
   } else {
     // PARTICIPANT ROLE: Just wait for host connection
     // Don't use capture/display for participant discovery mode
-    (void)capture;  // Not used
+    (void)capture; // Not used
 
     // For participants, destroy the display context to reset terminal state
     // and prevent the discovery framework from rendering anything

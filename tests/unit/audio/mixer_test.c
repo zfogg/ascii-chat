@@ -217,8 +217,8 @@ Test(mixer, process_multiple_sources) {
   audio_ring_buffer_t *buffer1 = create_test_buffer_with_data(test_data1, 256);
   audio_ring_buffer_t *buffer2 = create_test_buffer_with_data(test_data2, 256);
 
-  mixer_add_source(mixer, "100",buffer1);
-  mixer_add_source(mixer, "200",buffer2);
+  mixer_add_source(mixer, "100", buffer1);
+  mixer_add_source(mixer, "200", buffer2);
 
   // Process audio
   float output[256];
@@ -250,8 +250,8 @@ Test(mixer, process_excluding_source) {
   audio_ring_buffer_t *buffer1 = create_test_buffer_with_data(test_data1, 256);
   audio_ring_buffer_t *buffer2 = create_test_buffer_with_data(test_data2, 256);
 
-  mixer_add_source(mixer, "100",buffer1);
-  mixer_add_source(mixer, "200",buffer2);
+  mixer_add_source(mixer, "100", buffer1);
+  mixer_add_source(mixer, "200", buffer2);
 
   // Process normally
   float output_normal[256];
@@ -654,8 +654,8 @@ Test(mixer_integration, full_pipeline_with_processing) {
   audio_ring_buffer_t *sine_buffer = create_test_buffer_with_data(sine_data, 256);
   audio_ring_buffer_t *noise_buffer = create_test_buffer_with_data(noise_data, 256);
 
-  mixer_add_source(mixer, "100",sine_buffer);
-  mixer_add_source(mixer, "200",noise_buffer);
+  mixer_add_source(mixer, "100", sine_buffer);
+  mixer_add_source(mixer, "200", noise_buffer);
 
   // Process through full pipeline
   float output[256];

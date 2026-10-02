@@ -60,8 +60,8 @@ int session_consensus_get_metrics_count(session_consensus_t *consensus);
 TestSuite(test_consensus);
 
 // Mock callbacks for testing
-static asciichat_error_t mock_send_packet(void *context, const uint8_t next_participant_id[16],
-                                          const uint8_t *packet, size_t packet_size) {
+static asciichat_error_t mock_send_packet(void *context, const uint8_t next_participant_id[16], const uint8_t *packet,
+                                          size_t packet_size) {
   (void)context;
   (void)next_participant_id;
   (void)packet;

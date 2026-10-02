@@ -17,7 +17,8 @@
 #include <string.h>
 
 // Server: Send CRYPTO_PARAMETERS packet and set context sizes
-asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_context_t *ctx,
+                                                          acip_transport_t *transport) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, transport=%p", (void *)ctx, (void *)transport);
   }
@@ -637,4 +638,3 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
 
   return ASCIICHAT_OK;
 }
-

@@ -88,7 +88,8 @@ int socket_get_last_error(void) {
 
 /* ===== H.265 encoding stubs ===== */
 
-asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *pixel_data, uint8_t *out_data, size_t *out_len) {
+asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *pixel_data,
+                              uint8_t *out_data, size_t *out_len) {
   (void)encoder;
   (void)width;
   (void)height;
@@ -115,11 +116,9 @@ void h265_encoder_request_keyframe(h265_encoder_t *encoder) {
 
 /* ===== Audio analysis stubs ===== */
 
-void audio_analysis_destroy(void) {
-}
+void audio_analysis_destroy(void) {}
 
-void audio_analysis_print_report(void) {
-}
+void audio_analysis_print_report(void) {}
 
 void audio_analysis_track_received_packet(uint32_t timestamp) {
   (void)timestamp;
@@ -174,8 +173,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   return NULL;
 }
 
-void client_audio_pipeline_default_config(void) {
-}
+void client_audio_pipeline_default_config(void) {}
 
 void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   (void)pipeline;
@@ -233,8 +231,6 @@ asciichat_error_t connection_attempt_tcp(const char *address, int port) {
   (void)port;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "TCP not supported in WASM");
 }
-
-
 
 /* ===== WAV file output stubs ===== */
 
@@ -327,8 +323,7 @@ bool validate_ssh_key_file(const char *path) {
   return false;
 }
 
-asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
-                                        uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
   (void)acds_server;
   (void)key_spec;
   (void)pubkey_out;
@@ -342,23 +337,21 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
   }
 }
 
-
-
-
 /* ===== Thread pool stubs ===== */
 
-asciichat_error_t thread_pool_spawn(void *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id, const char *name) {
+asciichat_error_t thread_pool_spawn(void *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
+                                    const char *name) {
   (void)pool;
   (void)thread_func;
   (void)thread_arg;
   (void)stop_id;
   (void)name;
-  return ASCIICHAT_OK;  // No-op in WASM (no real threads)
+  return ASCIICHAT_OK; // No-op in WASM (no real threads)
 }
 
 asciichat_error_t thread_pool_stop_all(void *pool) {
   (void)pool;
-  return ASCIICHAT_OK;  // No-op in WASM
+  return ASCIICHAT_OK; // No-op in WASM
 }
 
 /* ===== Platform stubs ===== */
