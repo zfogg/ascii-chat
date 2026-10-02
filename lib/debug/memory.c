@@ -1413,6 +1413,10 @@ void debug_memory_thread_cleanup(void) {
   }
 }
 
+void debug_sync_symbolize_allocations(void) {
+  // Allocation backtraces are symbolized when the memory report is rendered.
+}
+
 #else
 
 // ============================================================================
