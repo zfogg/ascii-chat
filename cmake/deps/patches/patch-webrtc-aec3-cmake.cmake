@@ -130,8 +130,10 @@ endif()
 
 # SSE helper sources are required by WebRTC's x86 scalar FFT implementation,
 # even when the main build disables optional SSE2 optimizations. ARM builds
-# enable NEON instead, and must not compile these x86 intrinsic sources.
-if(NOT ENABLE_SIMD_NEON)
+# must not compile these x86 intrinsic sources. Use the parent build's explicit
+# architecture flag because nested clang-cl builds can report an unreliable
+# CMAKE_SYSTEM_PROCESSOR value.
+if(NOT ASCIICHAT_TARGET_ARM64)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_sse2.cc)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_sse.cc)
 endif()

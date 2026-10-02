@@ -81,7 +81,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
     # This ensures cached WebRTC libs match the current build settings
     # Include build type because Debug uses ASan which affects ABI (annotate_string mismatch)
     # Include USE_MUSL so WebRTC is rebuilt with musl target when musl is enabled
-    set(WEBRTC_BUILD_CONFIG "CONFIG=8;BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};COMPILER=${CMAKE_C_COMPILER};SANITIZERS=${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
+    set(WEBRTC_BUILD_CONFIG "CONFIG=9;BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};COMPILER=${CMAKE_C_COMPILER};SANITIZERS=${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
     set(WEBRTC_CONFIG_MARKER "${WEBRTC_BUILD_DIR}/.build_config")
     # Normalize: strip trailing whitespace from config string
     string(STRIP "${WEBRTC_BUILD_CONFIG}" WEBRTC_BUILD_CONFIG)
@@ -165,6 +165,12 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             # Pass shared deps preference for Abseil linking
             -DASCIICHAT_SHARED_DEPS=${ASCIICHAT_SHARED_DEPS}
         )
+
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64|AARCH64")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DASCIICHAT_TARGET_ARM64=ON")
+        else()
+            list(APPEND WEBRTC_CMAKE_ARGS "-DASCIICHAT_TARGET_ARM64=OFF")
+        endif()
 
         # Pass CMAKE_PREFIX_PATH so WebRTC can find system Abseil (Homebrew, vcpkg, etc.)
         if(CMAKE_PREFIX_PATH)
