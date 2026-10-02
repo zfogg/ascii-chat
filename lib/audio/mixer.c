@@ -489,9 +489,8 @@ void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active)
 }
 
 int mixer_process(mixer_t *mixer, float *output, int num_samples) {
-  if (!mixer || !output || num_samples <= 0) {
+  if (!mixer || !output || num_samples <= 0)
     return -1;
-  }
 
   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
@@ -635,8 +634,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 }
 
 int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_samples, uint32_t exclude_client_id) {
-  if (!mixer || !output || num_samples <= 0)
+  if (!mixer || !output || num_samples <= 0) {
     return -1;
+  }
 
   // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
 #ifndef NDEBUG
