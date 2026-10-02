@@ -14,8 +14,8 @@
 #define WEBSOCKET_CALLBACK_TIMING_H
 
 #include <stdint.h>
-#include <time.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/util/time.h>
 
 /**
  * @brief Per-callback timing statistics
@@ -57,9 +57,7 @@ extern websocket_callback_timing_t g_ws_callback_timing;
  * @return Current time in nanoseconds
  */
 static inline uint64_t websocket_callback_timing_start(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+  return time_get_ns();
 }
 
 /**

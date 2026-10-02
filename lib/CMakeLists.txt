@@ -789,6 +789,11 @@ add_library(ascii-chat-shared SHARED
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
+    if(WIN32 AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
+        # GNU-style Clang embeds the DLL name in the import library. Keep the
+        # runtime DLL name aligned with that embedded name on Windows.
+        set_target_properties(ascii-chat-shared PROPERTIES PREFIX "")
+    endif()
 
     # Set RPATH on shared library so it can find dependencies at runtime
     # This ensures transitive dependencies (like custom FFmpeg) are found
@@ -854,7 +859,12 @@ add_library(ascii-chat-shared SHARED
 
     # Windows: Explicitly set import library location for Windows
     if(WIN32)
-        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+        if(CMAKE_C_COMPILER MATCHES "clang-cl")
+            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+        else()
+            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
+        endif()
+        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
     endif()
 
     # Auto-generate .def file from OBJECT libraries
@@ -1296,7 +1306,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
     # On Unix, check the shared object directly
     if(WIN32)
-        set(SHARED_LIB_TO_VALIDATE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+        set(SHARED_LIB_TO_VALIDATE "${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
     else()
         set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
     endif()

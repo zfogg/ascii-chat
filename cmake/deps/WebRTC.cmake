@@ -81,7 +81,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
     # This ensures cached WebRTC libs match the current build settings
     # Include build type because Debug uses ASan which affects ABI (annotate_string mismatch)
     # Include USE_MUSL so WebRTC is rebuilt with musl target when musl is enabled
-    set(WEBRTC_BUILD_CONFIG "BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
+    set(WEBRTC_BUILD_CONFIG "CONFIG=3;BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};COMPILER=${CMAKE_C_COMPILER};SANITIZERS=${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
     set(WEBRTC_CONFIG_MARKER "${WEBRTC_BUILD_DIR}/.build_config")
     # Normalize: strip trailing whitespace from config string
     string(STRIP "${WEBRTC_BUILD_CONFIG}" WEBRTC_BUILD_CONFIG)
@@ -138,12 +138,19 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         set(_webrtc_msvc_runtime "")
         set(_webrtc_c_flags_clean "${CMAKE_C_FLAGS}")
         set(_webrtc_cxx_flags_clean "${CMAKE_CXX_FLAGS}")
+        set(_webrtc_c_compiler "${CMAKE_C_COMPILER}")
+        set(_webrtc_cxx_compiler "${CMAKE_CXX_COMPILER}")
+        if(WIN32 AND ASCIICHAT_CLANG_CL_EXECUTABLE AND CMAKE_C_COMPILER MATCHES "clang(\\.exe)?$")
+            set(_webrtc_c_compiler "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
+            set(_webrtc_cxx_compiler "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
+            message(STATUS "WebRTC Windows build: using clang-cl for MSVC-compatible intrinsics")
+        endif()
         set(WEBRTC_CMAKE_ARGS
             ${_webrtc_msvc_runtime}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DCMAKE_C_COMPILER=${_webrtc_c_compiler}
+            -DCMAKE_CXX_COMPILER=${_webrtc_cxx_compiler}
             -DCMAKE_C_FLAGS=${_webrtc_c_flags_clean}
             -DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags_clean}
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/lib
@@ -269,6 +276,13 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         # Visual Studio generator ignores CMAKE_C_COMPILER and uses cl.exe
         if(WIN32)
             list(PREPEND WEBRTC_CMAKE_ARGS -G Ninja)
+            # WebRTC's x86 implementation references its SSE2 routines even
+            # when runtime dispatch selects the scalar path. x86-64 Windows
+            # has SSE2 as a baseline, so always compile those support files.
+            if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+                list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_SSE2=")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSE2=ON")
+            endif()
             # Prevent ABI detection from trying to link an executable.
             # CMake's Windows-Clang platform adds -nostartfiles -nostdlib to link rules,
             # which causes lld-link to hang during ABI detection.
@@ -277,16 +291,14 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
 
-            # For Debug builds, add sanitizer flags to match the main project.
-            # ASan forces dynamic CRT (/MD) and enables MSVC STL annotations
-            # (annotate_string=1, annotate_vector=1). The WebRTC AEC3 lib must
-            # match these settings to avoid lld-link /failifmismatch errors.
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(_webrtc_sanitizer_flags "-fsanitize=address -fsanitize=undefined -fsanitize=integer -fsanitize=nullability -fsanitize=implicit-conversion -fsanitize=float-divide-by-zero")
+            # Pass sanitizer flags through when the main build actually enables
+            # them. A plain Debug build is not necessarily sanitizer-enabled.
+            if(ASCIICHAT_SANITIZER_COMPILE_FLAGS)
+                set(_webrtc_sanitizer_flags "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
                 set(_webrtc_crt_flags "-D_MT -D_DLL -D_ITERATOR_DEBUG_LEVEL=0")
                 string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
                 string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
-                message(STATUS "WebRTC Windows Debug build: ASan + dynamic CRT (matching main project)")
+                message(STATUS "WebRTC Windows build: sanitizers + dynamic CRT (matching main project)")
             endif()
 
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try
@@ -354,17 +366,38 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
                 string(REPLACE "/" "\\" _webrtc_lib_paths_win "${_webrtc_lib_paths}")
                 string(REPLACE ";" ";" WEBRTC_LIB_ENV "${_webrtc_lib_paths_win}")
                 message(STATUS "WebRTC Windows build: LIB paths set for linker")
+
+                # The GNU-style clang driver does not discover MSVC and Windows
+                # SDK headers in the same way as clang-cl when invoked by this
+                # nested CMake project. Pass the include roots explicitly.
+                set(_webrtc_include_flags "-fms-compatibility -fms-extensions")
+                set(_msvc_include_candidate "${_msvc_latest}/include")
+                if(EXISTS "${_msvc_include_candidate}")
+                    string(APPEND _webrtc_include_flags " -isystem \"${_msvc_include_candidate}\"")
+                endif()
+                foreach(_sdk_include_dir IN ITEMS
+                    "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/ucrt"
+                    "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/um"
+                    "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/shared")
+                    if(EXISTS "${_sdk_include_dir}")
+                        string(APPEND _webrtc_include_flags " -isystem \"${_sdk_include_dir}\"")
+                    endif()
+                endforeach()
+                if(NOT _webrtc_c_compiler MATCHES "clang-cl")
+                    string(APPEND _webrtc_win_c_flags " ${_webrtc_include_flags}")
+                    string(APPEND _webrtc_win_cxx_flags " ${_webrtc_include_flags}")
+                endif()
             endif()
 
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_win_c_flags}")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_win_cxx_flags}")
-            # For Debug builds with ASan, use MultiThreadedDLL (required by ASan)
-            # For Release builds, use MultiThreaded (static) to match main project
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            # ASan requires the DLL CRT. Otherwise match the main GNU-style
+            # Clang build, which uses the static CRT by default on Windows.
+            if(CMAKE_C_FLAGS MATCHES "-fsanitize" OR CMAKE_CXX_FLAGS MATCHES "-fsanitize")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
-                message(STATUS "WebRTC Windows Debug build: using DLL CRT (ASan requirement)")
+                message(STATUS "WebRTC Windows build: using DLL CRT (sanitizer requirement)")
             else()
                 list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
                 message(STATUS "WebRTC Windows Release build: using static CRT")
@@ -414,6 +447,18 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
         if(NOT WEBRTC_INSTALL_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to install WebRTC AEC3")
+        endif()
+
+        # The nested Windows clang-cl build emits COFF archives with a .lib
+        # suffix, while the main GNU-style Clang build expects .a names.
+        if(WIN32 AND CMAKE_STATIC_LIBRARY_SUFFIX STREQUAL ".a")
+            foreach(_webrtc_library IN ITEMS AudioProcess aec3 api base)
+                set(_webrtc_lib_file "${WEBRTC_BUILD_DIR}/lib/${_webrtc_library}.lib")
+                set(_webrtc_archive_file "${WEBRTC_BUILD_DIR}/lib/${_webrtc_library}.a")
+                if(EXISTS "${_webrtc_lib_file}" AND NOT EXISTS "${_webrtc_archive_file}")
+                    file(COPY_FILE "${_webrtc_lib_file}" "${_webrtc_archive_file}")
+                endif()
+            endforeach()
         endif()
 
         # Write build config marker for future cache validation
