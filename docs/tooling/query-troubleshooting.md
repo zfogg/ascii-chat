@@ -1,3 +1,5 @@
+\page custom_query_troubleshooting Query Tool Troubleshooting
+
 # Query Tool Troubleshooting
 
 This guide covers common issues and solutions when using the query tool.

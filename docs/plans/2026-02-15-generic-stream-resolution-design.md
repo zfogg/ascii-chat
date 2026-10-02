@@ -1,3 +1,5 @@
+\page custom_stream_resolution Generic Stream Resolution Design
+
 # Generic Stream Resolution Design
 
 **Date:** 2026-02-15

@@ -1,3 +1,5 @@
+\page custom_ring_consensus Ring Consensus Protocol for ACDS
+
 # Ring Consensus Protocol for ACDS
 
 **Version**: 1.0

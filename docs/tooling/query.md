@@ -1,3 +1,5 @@
+\page custom_query_guide Query Tool User Guide
+
 # Query Tool User Guide
 
 The query tool enables runtime variable inspection in debug builds of ascii-chat. It uses an external LLDB process to read variable values via HTTP queries, allowing you to inspect program state without modifying code or using a full debugger.

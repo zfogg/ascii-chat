@@ -1,3 +1,5 @@
+\page custom_log_format Log Format Customization Implementation Plan
+
 # Log Format Customization Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

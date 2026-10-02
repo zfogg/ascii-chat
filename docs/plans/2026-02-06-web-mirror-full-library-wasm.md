@@ -1,3 +1,5 @@
+\page custom_wasm_full_library Web Mirror Mode: Full Library WASM Build with Settings Panel
+
 # Web Mirror Mode: Full Library WASM Build with Settings Panel
 
 **Date:** 2026-02-06

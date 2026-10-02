@@ -1,3 +1,5 @@
+\page custom_websocket_fps WebSocket FPS Regression Test
+
 # WebSocket FPS Regression Test
 
 ## Overview

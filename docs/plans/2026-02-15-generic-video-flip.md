@@ -1,3 +1,5 @@
+\page custom_video_flip Generic Video Flip Options Implementation Plan
+
 # Generic Video Flip Options Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

@@ -1,3 +1,5 @@
+\page custom_homebrew_submission Homebrew Core Submission Guide for ascii-chat
+
 # Homebrew Core Submission Guide for ascii-chat
 
 This guide walks you through submitting ascii-chat to official Homebrew (homebrew-core).

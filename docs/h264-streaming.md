@@ -1,3 +1,5 @@
+\page custom_h264_streaming H.264 Streaming Architecture for ascii-chat
+
 # H.264 Streaming Architecture for ascii-chat
 
 ## Problem Statement

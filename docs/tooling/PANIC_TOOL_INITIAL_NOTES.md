@@ -1,3 +1,5 @@
+\page custom_panic_notes Panic Tool Initial Notes
+
 ## My Convo with ChatGPT
 
 I had this convo with him on Nov 7, 2025, and I talked to Cursor too.

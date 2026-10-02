@@ -1,3 +1,5 @@
+\page custom_research_lws_callbacks LibWebSockets (LWS) Callback Efficiency Research
+
 # LibWebSockets (LWS) Callback Efficiency Research
 
 **Issue:** #305 - WebSocket FPS bug (1 frame per 45 seconds)

@@ -1,3 +1,5 @@
+\page custom_tooling_instrumentation Tooling Instrumentation
+
 ## Panic Instrumented Builds
 
 ### When to Enable

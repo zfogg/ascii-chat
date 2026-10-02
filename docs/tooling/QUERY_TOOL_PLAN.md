@@ -1,3 +1,5 @@
+\page custom_query_plan Query Tool Plan
+
 # Query Tool Plan
 
 **Branch:** `query-tool`

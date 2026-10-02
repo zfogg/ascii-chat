@@ -1,3 +1,5 @@
+\page custom_websocket_callback_profiling WebSocket Callback Profiling Guide
+
 # WebSocket Callback Profiling Guide
 
 ## Overview

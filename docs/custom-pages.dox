@@ -1,0 +1,31 @@
+/**
+ * @page custom_documentation Custom Documentation
+ * @brief Project plans, research, guides, and implementation notes.
+ *
+ * This section contains authored documentation that supplements the generated
+ * API and architecture reference.
+ *
+ * @subpage custom_discovery_mode_plan
+ * @subpage custom_h264_implementation_plan
+ * @subpage custom_h264_streaming
+ * @subpage custom_homebrew_submission
+ * @subpage custom_ios_client_plan
+ * @subpage custom_websocket_fragmentation
+ * @subpage custom_research_lws_callbacks
+ * @subpage custom_ring_consensus
+ * @subpage custom_tooling_instrumentation
+ * @subpage custom_websocket_fps
+ * @subpage custom_websocket_callback_profiling
+ * @subpage custom_wasm_full_library
+ * @subpage custom_wasm_implementation
+ * @subpage custom_update_checker
+ * @subpage custom_stream_resolution
+ * @subpage custom_video_flip
+ * @subpage custom_log_format
+ * @subpage custom_panic_notes
+ * @subpage custom_panic_plan
+ * @subpage custom_query_plan
+ * @subpage custom_query_api
+ * @subpage custom_query_troubleshooting
+ * @subpage custom_query_guide
+ */

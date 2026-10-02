@@ -1,3 +1,5 @@
+\page custom_websocket_fragmentation WebSocket Fragmentation Crash Analysis
+
 # WebSocket Fragmentation Crash Analysis
 
 **Issue**: SIGABRT crash during multi-fragment WebSocket transmission

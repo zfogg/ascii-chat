@@ -1,3 +1,5 @@
+\page custom_query_api Query Tool HTTP API Reference
+
 # Query Tool HTTP API Reference
 
 This document describes all HTTP endpoints provided by the `ascii-query-server` controller.

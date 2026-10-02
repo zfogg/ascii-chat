@@ -1,3 +1,5 @@
+\page custom_discovery_mode_plan Discovery Mode: Direct P2P Calling for ascii-chat
+
 # Discovery Mode: Direct P2P Calling for ascii-chat
 
 ## Philosophy

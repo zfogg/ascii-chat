@@ -1,3 +1,5 @@
+\page custom_ios_client_plan ascii-chat iOS Client - Implementation Plan (WIP)
+
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
 > **Status**: Draft / Research Phase

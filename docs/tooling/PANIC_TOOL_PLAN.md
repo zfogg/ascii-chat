@@ -1,3 +1,5 @@
+\page custom_panic_plan Full Panic Instrumentation Pipeline Plan
+
 # Full Panic Instrumentation Pipeline Plan
 
 ## Goals
