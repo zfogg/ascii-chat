@@ -158,14 +158,6 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
-      - name: Restore build cache (unit-tests)
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
-
       - name: Build test suite
         run: |
           cmake --build build
@@ -426,14 +418,6 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
-      - name: Restore build cache (integration-tests)
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
-
       - name: Build and run integration tests
         run: |
           cmake --build build
@@ -582,14 +566,6 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
-      - name: Restore build cache (performance-tests)
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
-
       - name: Build performance tests
         run: |
           cmake --build build
@@ -708,14 +684,6 @@ jobs:
           ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
-
-      - name: Restore build cache (memory-tests)
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
 
       - name: Build with AddressSanitizer
         run: |
@@ -857,14 +825,6 @@ jobs:
           ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
-
-      - name: Restore build cache (functional-tests)
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
 
       - name: Build project
         run: |

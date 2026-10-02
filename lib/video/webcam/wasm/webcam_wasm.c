@@ -78,7 +78,7 @@ EM_JS(int, js_webcam_init, (int width, int height), {
  * Copies RGBA data into the provided buffer
  * Returns 1 on success, 0 if stream not ready
  */
-EM_JS(int, js_webcam_read_frame, (uint8_t *rgba_buf, int width, int height), {
+EM_JS(int, js_webcam_read_frame, (uint8_t* rgba_buf, int width, int height), {
   try {
     if (!Module.webcamVideo || !Module.webcamStream || Module.webcamVideo.readyState < 2) {
       console.warn('[WASM Webcam] Video not ready');

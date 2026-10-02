@@ -218,6 +218,9 @@ elseif(_use_shared_lib)
         target_link_libraries(ascii-chat PRIVATE
             ${CORE_LIBS}
         )
+        if(APPLE)
+            target_link_libraries(ascii-chat PRIVATE "-framework SystemConfiguration")
+        endif()
         # Link BearSSL (required)
         target_link_libraries(ascii-chat PRIVATE ${BEARSSL_LIBRARIES})
         # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)

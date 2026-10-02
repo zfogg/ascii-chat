@@ -1170,6 +1170,7 @@ else()
             ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
             ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
+            "-framework SystemConfiguration"
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
@@ -1506,6 +1507,7 @@ elseif(APPLE)
         ${AUDIOUNIT_FRAMEWORK}
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
+        "-framework SystemConfiguration"
         ${ASCIICHAT_STATIC_LIBCXX_LIBS}
     )
 else()

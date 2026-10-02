@@ -37,6 +37,11 @@ macro(_yyjson_build_from_submodule source_dir label)
         message(FATAL_ERROR "yyjson target not created by subdirectory")
     endif()
 
+    # yyjson is linked into ascii-chat's shared library on sanitizer and test
+    # builds.  Keep the static archive position-independent so those links
+    # work on ELF platforms as well as macOS.
+    set_target_properties(yyjson PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
     set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
     set(YYJSON_INCLUDE_DIRS "${${source_dir}}/src" PARENT_SCOPE)
     set(YYJSON_FOUND TRUE PARENT_SCOPE)

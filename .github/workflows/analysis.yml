@@ -55,11 +55,11 @@ jobs:
         with:
           cache-version: v7 # Bumped to force WebRTC rebuild with correct SIMD support
 
-      - name: Clean libraries only
+      - name: Clean cached build outputs
         run: |
-          # Clean library files to prevent stale archive format issues
-          # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
-          rm -rf build/lib/*.a
+          # Keep dependency and compiler caches, but configure the build tree
+          # from scratch so stale linker flags and binaries cannot leak in.
+          rm -rf build
 
       - name: Configure for static analysis
         run: |
@@ -84,14 +84,6 @@ jobs:
           ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
-
-      - name: Restore build cache
-        uses: actions/cache/restore@v4
-        with:
-          path: build
-          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-          restore-keys: |
-            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
 
       - name: Run static analysis
         run: |

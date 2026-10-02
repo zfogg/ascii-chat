@@ -14,7 +14,6 @@
  * @subpage custom_research_lws_callbacks
  * @subpage custom_ring_consensus
  * @subpage custom_tooling_instrumentation
- * @subpage custom_websocket_fps
  * @subpage custom_websocket_callback_profiling
  * @subpage custom_wasm_full_library
  * @subpage custom_wasm_implementation
