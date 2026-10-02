@@ -48,7 +48,14 @@ jobs:
           # CMake configures the full project before the docs target runs.
           # Native Linux builds require ALSA headers even though this job only
           # publishes generated documentation.
-          sudo apt-get install -y doxygen graphviz cmake libasound2-dev portaudio19-dev
+          sudo apt-get install -y \
+            doxygen graphviz cmake pkg-config ninja-build \
+            libasound2-dev portaudio19-dev libopus-dev \
+            libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev \
+            libsystemd-dev libsqlite3-dev libssl-dev libminiupnpc-dev \
+            libprotobuf-c-dev libavformat-dev libavcodec-dev libavutil-dev \
+            libswscale-dev libswresample-dev libabsl-dev libx264-dev libx265-dev \
+            libwebsockets-dev libvterm-dev libfreetype6-dev libfontconfig1-dev
 
       - name: Restore configure and build caches
         id: cache-build
