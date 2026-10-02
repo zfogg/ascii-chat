@@ -1470,7 +1470,7 @@ static bool is_mode_keyword(const char *arg) {
  * An argument is considered a flag if it starts with `-` or is a mode keyword.
  * Special cases:
  * - `--` is treated as the end-of-options marker
- * - Numbers starting with `-` (like `-5`) could be ambiguous, but we treat them as flags
+ * - Negative numbers are values, not flags, so options such as `-c -1` are parsed correctly
  * - Mode keywords (server, client, mirror, etc.) should not be consumed as values
  */
 static bool is_flag_argument(const char *arg) {
@@ -1479,6 +1479,8 @@ static bool is_flag_argument(const char *arg) {
   // Allow "-" as a value (Unix convention for stdin/stdout), but treat other "-" args as flags
   if (arg[0] == '-' && arg[1] == '\0')
     return false; // Just "-" is a value, not a flag
+  if (arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9')
+    return false; // Negative numeric values are values, not flags
   return arg[0] == '-' || is_mode_keyword(arg);
 }
 

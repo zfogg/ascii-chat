@@ -310,6 +310,11 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   // Check numeric range constraints if defined in descriptor's metadata
   if (desc && desc->metadata.numeric_range.max != 0) {
     if (int_value < desc->metadata.numeric_range.min || int_value > desc->metadata.numeric_range.max) {
+      if (desc->long_name && strcmp(desc->long_name, "webcam-index") == 0) {
+        return SET_ERRNO(ERROR_USAGE,
+                         "Webcam index %d is invalid; use a non-negative index (run --list-webcams to see devices)",
+                         int_value);
+      }
       return SET_ERRNO(ERROR_USAGE, "Value %d out of range [%d-%d]", int_value, desc->metadata.numeric_range.min,
                        desc->metadata.numeric_range.max);
     }

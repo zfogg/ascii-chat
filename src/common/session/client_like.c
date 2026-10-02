@@ -34,6 +34,45 @@ static bool capture_should_exit_adapter(void *user_data);
 static bool display_should_exit_adapter(void *user_data);
 static bool session_client_like_is_networked(session_client_like_kind_t kind);
 
+static asciichat_error_t validate_mirror_webcam_selection(const session_client_like_config_t *config) {
+  if (!config || config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR || !terminal_is_stdout_tty() ||
+      GET_OPTION(test_pattern)) {
+    return ASCIICHAT_OK;
+  }
+
+  const char *media_file = GET_OPTION(media_file);
+  const char *media_url = GET_OPTION(media_url);
+  if ((media_file && media_file[0] != '\0') || (media_url && media_url[0] != '\0')) {
+    return ASCIICHAT_OK;
+  }
+
+  webcam_device_info_t *devices = NULL;
+  unsigned int device_count = 0;
+  asciichat_error_t result = webcam_list_devices(&devices, &device_count);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_WEBCAM, "Unable to enumerate webcams before starting mirror mode");
+  }
+
+  unsigned int selected_index = (unsigned int)GET_OPTION(webcam_index);
+  if (selected_index >= device_count) {
+    if (device_count == 0) {
+      result = SET_ERRNO(ERROR_WEBCAM,
+                         "Webcam index %u is unavailable: no webcam devices were found (run --list-webcams)",
+                         selected_index);
+    } else {
+      result = SET_ERRNO(ERROR_WEBCAM,
+                         "Webcam index %u is unavailable: %u webcam device(s) found; valid indices are 0-%u "
+                         "(run --list-webcams)",
+                         selected_index, device_count, device_count - 1);
+    }
+  } else {
+    result = ASCIICHAT_OK;
+  }
+
+  webcam_free_device_list(devices);
+  return result;
+}
+
 // Module-level config for adapter callbacks
 static const session_client_like_config_t *g_current_config = NULL;
 
@@ -166,6 +205,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Keepawake setup complete");
 
+  result = validate_mirror_webcam_selection(config);
+  if (result != ASCIICHAT_OK) {
+    goto cleanup;
+  }
+
   // ============================================================================
   // SETUP: Display Context (before splash for unified TTY initialization)
   // ============================================================================
@@ -204,6 +248,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Use the display context we just created for splash animation
   splash_intro_start(display);
   log_debug("session_client_like_run(): splash_intro_start() returned");
+  if (splash_is_running()) {
+    log_set_terminal_output(false);
+  }
 
   // Detect if we're using media vs webcam (needed for splash timing)
   const char *media_url = GET_OPTION(media_url);

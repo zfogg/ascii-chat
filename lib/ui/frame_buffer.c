@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <stdarg.h>
 
@@ -157,9 +158,40 @@ void frame_buffer_flush(frame_buffer_t *buf) {
     return;
   }
 
-  // Write entire buffer to configured FD in one atomic operation
-  // Uses the terminal screen output FD which may be stderr when piped
-  platform_write_all(g_terminal_screen_output_fd, buf->data, buf->len);
+  // Repaint from the top while erasing each line before writing it. A full
+  // screen erase on every animation frame exposes a black frame on Windows
+  // terminals and makes the splash appear to flicker.
+  size_t line_count = 1;
+  for (size_t i = 0; i < buf->len; i++) {
+    if (buf->data[i] == '\n') {
+      line_count++;
+    }
+  }
+
+  size_t output_size = 3 + buf->len + (line_count * 4);
+  char *output = SAFE_MALLOC(output_size, char *);
+  if (!output) {
+    return;
+  }
+
+  size_t output_len = 0;
+  memcpy(output + output_len, "\033[H", 3);
+  output_len += 3;
+  bool at_line_start = true;
+  for (size_t i = 0; i < buf->len; i++) {
+    if (at_line_start) {
+      memcpy(output + output_len, "\033[2K", 4);
+      output_len += 4;
+      at_line_start = false;
+    }
+    output[output_len++] = buf->data[i];
+    if (buf->data[i] == '\n') {
+      at_line_start = true;
+    }
+  }
+
+  platform_write_all(g_terminal_screen_output_fd, output, output_len);
+  SAFE_FREE(output);
 }
 
 void frame_buffer_set_screen_output_fd(int fd) {

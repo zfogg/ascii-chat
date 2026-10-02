@@ -206,8 +206,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   frame_buffer_reset(g_frame_buf);
 
   if (!grep_entering) {
-    // Normal mode: clear and redraw (all output goes into frame buffer)
-    frame_buffer_clear_screen(g_frame_buf);
+    // Redraw in place; frame_buffer_flush erases each rendered line without
+    // exposing a full-screen clear between frames.
+    frame_buffer_cursor_home(g_frame_buf);
   } else {
     // Grep mode: overwrite in place, never clear whole screen
     frame_buffer_cursor_home(g_frame_buf);
