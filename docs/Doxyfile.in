@@ -139,8 +139,7 @@ EXCLUDE                = @CMAKE_SOURCE_DIR@/tests \
                          @CMAKE_SOURCE_DIR@/build_release \
                          @CMAKE_BINARY_DIR@
 
-EXCLUDE_PATTERNS       = */mainpage.dox \
-                         */.deps-cache* \
+EXCLUDE_PATTERNS       = */.deps-cache* \
                          */deps/*
 
 INPUT_ENCODING         = UTF-8
