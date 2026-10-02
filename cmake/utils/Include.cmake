@@ -22,6 +22,7 @@ function(configure_include_directories)
     # instrumented include directories later during ascii_panic_finalize().
     # Note: All installable dependencies are in deps/ascii-chat-deps/
     include_directories(
+        ${CMAKE_BINARY_DIR}/generated # Configuration-generated public headers
         ${CMAKE_SOURCE_DIR}/include  # Public API headers
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
@@ -83,4 +84,3 @@ function(configure_include_directories)
         endif()
     endif()
 endfunction()
-

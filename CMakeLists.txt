@@ -214,16 +214,7 @@ configure_file(
     "${CMAKE_BINARY_DIR}/generated/paths.h"
     @ONLY
 )
-# Copy generated paths.h back to include/ascii-chat/ for consistency
-file(COPY "${CMAKE_BINARY_DIR}/generated/paths.h"
-     DESTINATION "${CMAKE_SOURCE_DIR}/include/ascii-chat")
 message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${CMAKE_INSTALL_PREFIX}${ColorReset}")
-
-# Also copy generated version.h for consistency with angle-bracket includes
-if(EXISTS "${CMAKE_BINARY_DIR}/generated/version.h")
-    file(COPY "${CMAKE_BINARY_DIR}/generated/version.h"
-         DESTINATION "${CMAKE_SOURCE_DIR}/include/ascii-chat")
-endif()
 
 # Only Ninja generator is supported - enforce this requirement
 #if(NOT CMAKE_GENERATOR MATCHES "Ninja")
