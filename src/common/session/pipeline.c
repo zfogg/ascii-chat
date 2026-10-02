@@ -477,13 +477,15 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_info("[PIPELINE_MAIN] Starting main thread loop");
 
-  bool snapshot_mode = GET_OPTION(snapshot_mode);
-  bool snapshot_done = false;
-
-  while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop) && !snapshot_done) {
+  // Snapshot duration is owned by the capture thread. It records the first
+  // captured frame, runs until snapshot_delay has elapsed, then sends the EOF
+  // sentinel. The display thread must wait for that sentinel instead of using
+  // a second timer based on terminal rendering speed; large terminals can make
+  // ASCII conversion and render-file encoding substantially slower than capture.
+  while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop)) {
     bool exit_check = should_exit(user_data);
-    log_debug_every(NS_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d, snapshot_done=%d", exit_check,
-                    atomic_load_bool(&pipeline->stop), snapshot_done);
+    log_debug_every(NS_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
+                    atomic_load_bool(&pipeline->stop));
 
     uint64_t pop_time_ns = time_get_ns();
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
@@ -542,30 +544,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       }
     }
 
-    // Snapshot mode: check if elapsed time has reached snapshot_delay duration
-    // This check runs every iteration after first frame is rendered (when display.c sets
-    // g_snapshot_first_frame_rendered)
-    if (snapshot_mode && !snapshot_done) {
-      if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
-        double snapshot_delay = GET_OPTION(snapshot_delay);
-        uint64_t now_ns = time_get_ns();
-        uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-        double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-
-        if ((unsigned long)(elapsed_sec * 10) % 10 == 0 || elapsed_sec < 0.2) {
-          log_info("[SNAPSHOT_PIPELINE] CHECK: elapsed=%.3f target=%.2f", elapsed_sec, snapshot_delay);
-        }
-
-        // snapshot_delay=0 means exit after first frame
-        // snapshot_delay>0 means wait that many seconds before exiting
-        bool should_snapshot_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
-
-        if (should_snapshot_exit) {
-          log_info("[SNAPSHOT_PIPELINE] EXITING - elapsed=%.3f target=%.2f", elapsed_sec, snapshot_delay);
-          snapshot_done = true;
-        }
-      }
-    }
   }
 
   log_info("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
