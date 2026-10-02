@@ -128,8 +128,10 @@ if(ENABLE_SIMD_NEON)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_neon.cc)
 endif()
 
-# SSE2 support (x86/x86_64) - SSSE3 and AVX2 require SSE2
-if(NOT \"\${CMAKE_SYSTEM_PROCESSOR}\" MATCHES \"ARM|arm|aarch64\")
+# SSE2 support (x86/x86_64) - SSSE3 and AVX2 require SSE2. Use the explicit
+# feature option because Windows ARM64 can report an x86-like processor name
+# when the nested project is configured with clang-cl.
+if(ENABLE_SIMD_SSE2)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_sse2.cc)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_sse.cc)
 endif()
