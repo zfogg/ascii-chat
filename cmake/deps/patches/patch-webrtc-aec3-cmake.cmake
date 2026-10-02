@@ -162,6 +162,21 @@ add_library(AudioProcess
     "${AP_CMAKE_CONTENT}"
 )
 
+# Keep the generated condition correct when a cached source tree already has
+# an earlier version of this patch applied.
+string(REPLACE
+    "if(ENABLE_SIMD_SSE2)"
+    "if(NOT ASCIICHAT_TARGET_ARM64)"
+    AP_CMAKE_CONTENT
+    "${AP_CMAKE_CONTENT}"
+)
+string(REPLACE
+    "if(NOT ENABLE_SIMD_NEON)"
+    "if(NOT ASCIICHAT_TARGET_ARM64)"
+    AP_CMAKE_CONTENT
+    "${AP_CMAKE_CONTENT}"
+)
+
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt" "${AP_CMAKE_CONTENT}")
 
 message(STATUS "Patched WebRTC AEC3 audio_processing/CMakeLists.txt - added dependencies and conditional SSE")
