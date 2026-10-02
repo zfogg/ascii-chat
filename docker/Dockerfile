@@ -66,9 +66,9 @@ COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 # Copy all system libraries from builder to get all runtime dependencies
 COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
 # Copy clang sanitizer runtime libraries (ASan, UBSan) needed by Debug builds
-COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.asan-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
-COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.ubsan_standalone-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
-COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.ubsan_minimal-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
+COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.asan-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
+COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.ubsan_standalone-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
+COPY --from=builder /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.ubsan_minimal-x86_64.so /usr/lib/llvm-23/lib/clang/23/lib/linux/
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

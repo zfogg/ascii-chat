@@ -165,7 +165,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     curl -fsSL https://bun.com/install | bash
 
     # Try LLVM versions in order from newest to oldest
-    LLVM_VERSIONS="21 20 19 18"
+    LLVM_VERSIONS="23 22 21 20 19 18"
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."

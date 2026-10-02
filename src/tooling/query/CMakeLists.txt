@@ -39,6 +39,8 @@ find_program(LLVM_CONFIG_EXECUTABLE
     NAMES llvm-config llvm-config.exe
     HINTS
         ${HOMEBREW_PREFIX}/opt/llvm/bin
+        /usr/lib/llvm-23/bin            # Debian/Ubuntu LLVM 23
+        /usr/lib/llvm-22/bin            # Debian/Ubuntu LLVM 22
         /usr/lib/llvm-21/bin            # Debian/Ubuntu LLVM 21
         /usr/lib/llvm-20/bin            # Debian/Ubuntu LLVM 20
         /usr/lib/llvm-19/bin            # Debian/Ubuntu LLVM 19
@@ -232,7 +234,7 @@ else()
     )
 
     find_library(LLVM_SHARED_LIB
-        NAMES LLVM LLVM-18 LLVM-19 LLVM-20 LLVM-21 LLVM-22
+        NAMES LLVM LLVM-23 LLVM-22 LLVM-21 LLVM-20 LLVM-19 LLVM-18
         PATHS ${LLVM_LIBRARY_DIRS}
         NO_DEFAULT_PATH
     )

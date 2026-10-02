@@ -924,6 +924,7 @@ int main(int argc, const char **argv) {
 #endif
 #ifdef __linux__
     // System LLVM installations
+    searchPaths.push_back("/usr/lib/llvm-23/lib/clang");
     searchPaths.push_back("/usr/lib/llvm-22/lib/clang");
     searchPaths.push_back("/usr/lib/llvm-21/lib/clang");
     searchPaths.push_back("/usr/lib/llvm-20/lib/clang");

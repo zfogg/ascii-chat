@@ -145,6 +145,7 @@ else()
         /nix/var/nix/profiles/default/bin
         /usr/local/bin
         /usr/lib/llvm/bin
+        /usr/lib/llvm-23/bin
         /usr/lib/llvm-22/bin
         /usr/lib/llvm-21/bin
         /usr/lib/llvm-20/bin
@@ -189,7 +190,7 @@ unset(_CCACHE_HINTS)
 # LLVM Version Configuration
 # =============================================================================
 # Supported LLVM versions (newest first for priority)
-set(_LLVM_SUPPORTED_VERSIONS 22 21 20 19 18)
+set(_LLVM_SUPPORTED_VERSIONS 23 22 21 20 19 18)
 
 # =============================================================================
 # llvm-config - LLVM toolchain configuration (MUST BE FIRST)
@@ -273,7 +274,7 @@ set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}" CACHE
 #
 # Usage: _find_llvm_tool(VAR_NAME base_name [base_name2 ...])
 # Example: _find_llvm_tool(ASCIICHAT_CLANG_EXECUTABLE clang)
-#   -> searches for: clang, clang-22, clang-21, clang-20, clang-19, clang-18
+#   -> searches for: clang, clang-23, clang-22, clang-21, clang-20, clang-19, clang-18
 macro(_find_llvm_tool VAR_NAME)
     # Build list of names: base names first, then versioned variants
     set(_tool_names ${ARGN})

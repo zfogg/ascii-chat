@@ -148,6 +148,7 @@ else()
         else()
             # Linux
             set(_llvm_config_hints
+                /usr/lib/llvm-23/bin
                 /usr/lib/llvm-22/bin
                 /usr/lib/llvm-21/bin
                 /usr/lib/llvm-20/bin

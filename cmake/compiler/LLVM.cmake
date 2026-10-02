@@ -181,12 +181,17 @@ function(configure_llvm_pre_project)
     # Must happen here so archive rules use llvm-ar, not system ar
     # =============================================================================
     # ASCIICHAT_LLVM_AR_EXECUTABLE was found by FindPrograms.cmake
-    if(ASCIICHAT_LLVM_AR_EXECUTABLE)
+    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+        set(CMAKE_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
+        set(CMAKE_C_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "C compiler archiver" FORCE)
+        set(CMAKE_CXX_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "CXX compiler archiver" FORCE)
+        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}llvm-lib${ColorReset} archiver: ${BoldCyan}${CMAKE_AR}${ColorReset}")
+    elseif(ASCIICHAT_LLVM_AR_EXECUTABLE)
         set(CMAKE_AR "${ASCIICHAT_LLVM_AR_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
         message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}llvm-ar${ColorReset} archiver: ${BoldCyan}${CMAKE_AR}${ColorReset}")
     endif()
 
-    if(ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+    if(NOT WIN32 AND ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
         set(CMAKE_RANLIB "${ASCIICHAT_LLVM_RANLIB_EXECUTABLE}" CACHE FILEPATH "Ranlib" FORCE)
         message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}llvm-ranlib${ColorReset} archiver: ${BoldCyan}${CMAKE_RANLIB}${ColorReset}")
     endif()
@@ -455,14 +460,22 @@ function(find_llvm_tools)
     # and cache entries are created. We must set them WITHOUT the CACHE keyword to
     # override the cached values, then update the cache variables manually.
 
-    if(ASCIICHAT_LLVM_AR_EXECUTABLE)
+    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+        # clang-cl uses MSVC archive syntax; llvm-ar is GNU-style and rejects
+        # the /out and /machine flags emitted by CMake's MSVC platform rules.
+        set(CMAKE_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+        set(CMAKE_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
+        set(CMAKE_C_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "C compiler archiver" FORCE)
+        set(CMAKE_CXX_COMPILER_AR "${ASCIICHAT_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "CXX compiler archiver" FORCE)
+        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}llvm-lib${ColorReset} archiver: ${BoldCyan}${CMAKE_AR}${ColorReset}")
+    elseif(ASCIICHAT_LLVM_AR_EXECUTABLE)
         # Set CMAKE_AR both as regular variable AND update cache
         set(CMAKE_AR "${ASCIICHAT_LLVM_AR_EXECUTABLE}")
         set(CMAKE_AR "${ASCIICHAT_LLVM_AR_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
         message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}llvm-ar${ColorReset} archiver: ${BoldCyan}${CMAKE_AR}${ColorReset}")
     endif()
 
-    if(ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+    if(NOT WIN32 AND ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
         # Set CMAKE_RANLIB both as regular variable AND update cache
         set(CMAKE_RANLIB "${ASCIICHAT_LLVM_RANLIB_EXECUTABLE}")
         set(CMAKE_RANLIB "${ASCIICHAT_LLVM_RANLIB_EXECUTABLE}" CACHE FILEPATH "Ranlib" FORCE)
@@ -481,7 +494,15 @@ endfunction()
 # =============================================================================
 
 function(fix_llvm_ranlib)
-    if(CMAKE_RANLIB)
+    if(WIN32 AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
+        # llvm-lib creates the COFF archive and index in one invocation.
+        set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_FINISH "")
+        set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
+        set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")
+        set(CMAKE_CXX_ARCHIVE_FINISH "")
+    elseif(CMAKE_RANLIB)
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>")
         set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
         set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
