@@ -128,10 +128,10 @@ if(ENABLE_SIMD_NEON)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_neon.cc)
 endif()
 
-# SSE2 support (x86/x86_64) - SSSE3 and AVX2 require SSE2. Use the explicit
-# feature option because Windows ARM64 can report an x86-like processor name
-# when the nested project is configured with clang-cl.
-if(ENABLE_SIMD_SSE2)
+# SSE helper sources are required by WebRTC's x86 scalar FFT implementation,
+# even when the main build disables optional SSE2 optimizations. ARM builds
+# enable NEON instead, and must not compile these x86 intrinsic sources.
+if(NOT ENABLE_SIMD_NEON)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_sse2.cc)
     list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_sse.cc)
 endif()
