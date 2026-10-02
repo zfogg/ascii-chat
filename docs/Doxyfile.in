@@ -148,7 +148,9 @@ FILE_PATTERNS          = *.c \
                          *.h \
                          *.cpp \
                          *.hpp \
-                         *.m
+                         *.m \
+                         *.dox \
+                         *.md
 
 RECURSIVE              = YES
 
