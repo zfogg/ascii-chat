@@ -112,7 +112,7 @@ __attribute__((constructor)) static void register_common_fork_handlers(void) {
 }
 #endif
 
-asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
+asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bool quiet_startup) {
   // Initialize shared subsystems BEFORE options_init()
   // This allows options_init() to use properly configured logging with colors
   //
@@ -145,6 +145,10 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
     // Initialize with provided log file
     // Force stderr for client-like modes when stdout is piped to keep stdout clean
     bool force_stderr = is_client && terminal_is_piped_output();
+
+    if (quiet_startup) {
+      log_set_terminal_output(false);
+    }
 
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
     log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);

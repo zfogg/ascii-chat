@@ -686,12 +686,22 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // Documentation actions should not be preceded by startup diagnostics.
+  bool early_quiet_output = false;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 ||
+        strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
+      early_quiet_output = true;
+      break;
+    }
+  }
+
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
   // If JSON format is requested, don't write text logs to file
   // All logs will be JSON formatted later once options_init() runs
   const char *early_log_file = early_json_format ? NULL : log_file;
-  asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
+  asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode, early_quiet_output);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
@@ -700,6 +710,11 @@ int main(int argc, char *argv[]) {
   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
   if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);
+  }
+
+  // Keep documentation output free of diagnostics while parsing the options.
+  if (early_quiet_output) {
+    log_set_terminal_output(false);
   }
 
   // Register cleanup of shared subsystems to run on normal exit
