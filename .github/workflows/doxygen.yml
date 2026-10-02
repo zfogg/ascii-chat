@@ -45,7 +45,10 @@ jobs:
       - name: Install Doxygen
         run: |
           sudo apt-get update
-          sudo apt-get install -y doxygen graphviz cmake
+          # CMake configures the full project before the docs target runs.
+          # Native Linux builds require ALSA headers even though this job only
+          # publishes generated documentation.
+          sudo apt-get install -y doxygen graphviz cmake libasound2-dev
 
       - name: Restore configure and build caches
         id: cache-build
