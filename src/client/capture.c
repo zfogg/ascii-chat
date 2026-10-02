@@ -273,7 +273,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Determine which codec to use based on --video-codec option
     const char *video_codec = GET_OPTION(video_codec);
-    bool use_hevc = video_codec && strcmp(video_codec, "raw") != 0; // Default to HEVC unless explicitly "raw"
+    bool use_hevc = video_codec && strcmp(video_codec, "raw") != 0;  // Default to HEVC unless explicitly "raw"
 
     // Request keyframe periodically to force encoder flush (every 30 frames)
     // This ensures we get some encoded output even when the encoder is buffering inter-frames
@@ -289,13 +289,14 @@ static void *webcam_capture_thread_func(void *arg) {
     if (use_hevc) {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,
                       processed_image->h);
-      send_result = threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
-                                                   (uint32_t)processed_image->h);
+      send_result =
+          threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+                                         (uint32_t)processed_image->h);
     } else {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
                       processed_image->h);
       send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
-                                              (uint32_t)processed_image->h, 1); // pixel_format = 1 (RGB24)
+                                              (uint32_t)processed_image->h, 1);  // pixel_format = 1 (RGB24)
     }
 
     // If send failed due to connection loss, break out of loop

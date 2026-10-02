@@ -18,7 +18,8 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   return ASCIICHAT_OK;
 }
 
-void audio_terminate_portaudio_final(void) {}
+void audio_terminate_portaudio_final(void) {
+}
 
 /* Terminal/rendering stubs */
 tty_info_t get_current_tty(void) {
@@ -33,15 +34,14 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 typedef void render_file_t;
 typedef void media_source_t;
 
-render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id,
-                                  int acodec_id) {
+render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id, int acodec_id) {
   (void)output_file;
   (void)width;
   (void)height;
   (void)fps;
   (void)vcodec_id;
   (void)acodec_id;
-  return NULL; // No file rendering in browser
+  return NULL;  // No file rendering in browser
 }
 
 void render_file_set_audio_source(render_file_t *rf, media_source_t *source, int sample_rate) {
@@ -85,16 +85,20 @@ asciichat_error_t terminal_reset(int fd) {
 
 /* Symbol cache stubs */
 typedef void symbol_cache_t;
-void symbol_cache_destroy(void) {}
+void symbol_cache_destroy(void) {
+}
 
 /* Terminal resize detection stubs */
-void terminal_stop_resize_detection(void) {}
+void terminal_stop_resize_detection(void) {
+}
 
 /* Known hosts stubs */
-void known_hosts_destroy(void) {}
+void known_hosts_destroy(void) {
+}
 
 /* Platform cleanup stubs */
-void platform_cleanup_binary_path_cache(void) {}
+void platform_cleanup_binary_path_cache(void) {
+}
 
 asciichat_error_t platform_restore_timer_resolution(void) {
   return ASCIICHAT_OK;
@@ -106,7 +110,7 @@ h265_encoder_t *h265_encoder_create(int width, int height, double fps) {
   (void)width;
   (void)height;
   (void)fps;
-  return NULL; // No video encoding in WASM
+  return NULL;  // No video encoding in WASM
 }
 
 /* Platform signal stubs */
@@ -126,7 +130,8 @@ void set_interrupt_callback(void (*callback)(void)) {
   (void)callback;
 }
 
-void signal_exit(void) {}
+void signal_exit(void) {
+}
 
 bool should_exit(void) {
   return false;

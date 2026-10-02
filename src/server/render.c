@@ -456,10 +456,10 @@ void *client_video_render_thread(void *arg) {
     // client_id: stable string pointer
     // width/height: stable uint16_t values (set once, never modified)
     // active: atomic_t - use atomic_load for thread safety
-    const char *client_id_snapshot = client->client_id;       // Stable read
-    unsigned short width_snapshot = client->width;            // Stable uint16_t
-    unsigned short height_snapshot = client->height;          // Stable uint16_t
-    bool active_snapshot = atomic_load_bool(&client->active); // Atomic read
+    const char *client_id_snapshot = client->client_id;            // Stable read
+    unsigned short width_snapshot = client->width;                 // Stable uint16_t
+    unsigned short height_snapshot = client->height;               // Stable uint16_t
+    bool active_snapshot = atomic_load_bool(&client->active);      // Atomic read
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -859,7 +859,7 @@ void *client_audio_render_thread(void *arg) {
     // active: atomic_t - use atomic_load
     // audio_queue: Assigned once at init and never changes
     const char *client_id_snapshot = client->client_id;         // Atomic read
-    bool active_snapshot = atomic_load_bool(&client->active);   // Atomic read
+    bool active_snapshot = atomic_load_bool(&client->active);        // Atomic read
     packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
 
     // Check if client is still active after getting snapshot

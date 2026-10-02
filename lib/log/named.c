@@ -143,8 +143,8 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
  * Walks backwards from hex address to find "keyword=" pattern where keyword is a
  * known pointer-type name (transport, client, socket, mutex, etc.).
  */
-static const char *find_hex_type_prefix_start(const char *start, const char *p, const char **out_type,
-                                              size_t *out_type_len) {
+static const char *find_hex_type_prefix_start(const char *start, const char *p,
+                                               const char **out_type, size_t *out_type_len) {
   *out_type = NULL;
   *out_type_len = 0;
 
@@ -179,8 +179,9 @@ static const char *find_hex_type_prefix_start(const char *start, const char *p, 
     const char *type;
     size_t len;
   } known_types[] = {
-      {"transport", 9}, {"client", 6}, {"context", 7}, {"crypto", 6}, {"websocket", 9},   {"mutex", 5},
-      {"rwlock", 6},    {"cond", 4},   {"thread", 6},  {"socket", 6}, {"connection", 10},
+      {"transport", 9}, {"client", 6},  {"context", 7},    {"crypto", 6}, {"websocket", 9},
+      {"mutex", 5},     {"rwlock", 6},  {"cond", 4},       {"thread", 6}, {"socket", 6},
+      {"connection", 10},
   };
 
   for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
@@ -331,6 +332,7 @@ static bool has_fd_prefix(const char *start, const char *p) {
  * ============================================================================
  */
 
+
 /* --- Decimal parsing --- */
 static int parse_decimal_digits(const char *start, const char **end) {
   int value = 0;
@@ -345,8 +347,9 @@ static int parse_decimal_digits(const char *start, const char **end) {
   return value;
 }
 
-static bool write_formatted_packet_type(int pkt_value, const char *name, char *output, size_t output_size,
-                                        size_t *out_pos) {
+
+static bool write_formatted_packet_type(int pkt_value, const char *name,
+                                         char *output, size_t output_size, size_t *out_pos) {
   const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
   if (!fmt_spec) {
     fmt_spec = "%d";
@@ -373,7 +376,8 @@ static bool write_formatted_packet_type(int pkt_value, const char *name, char *o
   return true;
 }
 
-static bool write_formatted_fd(int fd_value, const char *name, char *output, size_t output_size, size_t *out_pos) {
+static bool write_formatted_fd(int fd_value, const char *name,
+                                char *output, size_t output_size, size_t *out_pos) {
   const char *fmt_spec = named_get_fd_format_spec(fd_value);
   if (!fmt_spec) {
     fmt_spec = "%d";
@@ -400,8 +404,8 @@ static bool write_formatted_fd(int fd_value, const char *name, char *output, siz
   return true;
 }
 
-static bool copy_unformatted_decimal(const char *int_start, const char *int_end, char *output, size_t output_size,
-                                     size_t *out_pos) {
+static bool copy_unformatted_decimal(const char *int_start, const char *int_end,
+                                      char *output, size_t output_size, size_t *out_pos) {
   size_t int_len = int_end - int_start;
   if (int_len >= output_size - *out_pos) {
     return false;
@@ -428,8 +432,8 @@ static bool type_equals_inside_parens(const char *p, const char *message) {
   return back >= message && *back == '(';
 }
 
-static bool write_formatted_type_equals(int pkt_value, const char *name, char *output, size_t output_size,
-                                        size_t *out_pos) {
+static bool write_formatted_type_equals(int pkt_value, const char *name,
+                                         char *output, size_t output_size, size_t *out_pos) {
   const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
   if (!fmt_spec) {
     fmt_spec = "%d";
@@ -477,8 +481,8 @@ static void copy_char_to_output(char *output, size_t *out_pos, char c) {
  * @param p Current position in input (updated to skip past hex address)
  * @return true if transformation was applied, false otherwise
  */
-static bool try_format_hex_address(const char *message, const char *hex_start, char *output, size_t output_size,
-                                   size_t *out_pos, const char **p) {
+static bool try_format_hex_address(const char *message, const char *hex_start, char *output,
+                                    size_t output_size, size_t *out_pos, const char **p) {
   const char *hex_ptr = hex_start + 2; /* Skip "0x" */
 
   /* Parse hex digits */
@@ -724,6 +728,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
       }
 
+
       /* Check if this is a registered file descriptor */
       if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
@@ -920,8 +925,7 @@ const char *log_named_format_or_original(const char *message) {
 
   /* Apply formatting iteratively until the message stabilizes (no more changes) */
   const char *current = message;
-  size_t max_iterations =
-      3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
+  size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
 
   for (size_t iter = 0; iter < max_iterations; iter++) {
     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));

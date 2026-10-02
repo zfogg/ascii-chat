@@ -528,8 +528,9 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     bool snapshot_mode_enabled = GET_OPTION(snapshot_mode);
 
     if (!snapshot_check_logged_once) {
-      log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f", snapshot_mode_enabled,
-               (unsigned long long)g_snapshot_first_frame_time_ns, GET_OPTION(snapshot_delay));
+      log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f",
+               snapshot_mode_enabled, (unsigned long long)g_snapshot_first_frame_time_ns,
+               GET_OPTION(snapshot_delay));
       snapshot_check_logged_once = true;
     }
 
@@ -541,19 +542,18 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
       // Log progress every 500ms
       static uint64_t last_progress_log_ns = 0;
       if (current_time_ns - last_progress_log_ns > 500 * 1000 * 1000) {
-        log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                  snapshot_delay, (unsigned long long)g_snapshot_first_frame_time_ns,
-                  (unsigned long long)current_time_ns);
+        log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu",
+                  elapsed, snapshot_delay, (unsigned long long)g_snapshot_first_frame_time_ns, (unsigned long long)current_time_ns);
         last_progress_log_ns = current_time_ns;
       }
 
       if (elapsed >= snapshot_delay) {
         char duration_str[32];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)", duration_str,
-                 snapshot_delay);
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)",
+                 duration_str, snapshot_delay);
         signal_exit();
-        break; // Exit loop, proper shutdown will follow
+        break;  // Exit loop, proper shutdown will follow
       }
     }
 
@@ -571,8 +571,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
       double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
-      log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed,
-               snapshot_delay);
+      log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed, snapshot_delay);
 
       if (elapsed >= snapshot_delay) {
         char duration_str[32];

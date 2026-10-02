@@ -147,7 +147,7 @@ typedef struct {
   char session_string[SESSION_STRING_BUFFER_SIZE];
   bool is_initiator;
   bool is_host;
-  bool host_elected; ///< True if we've been elected as host (even if waiting for peer)
+  bool host_elected;  ///< True if we've been elected as host (even if waiting for peer)
 
   // Identity keys (Ed25519) - Multi-key support
   uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant (primary key)

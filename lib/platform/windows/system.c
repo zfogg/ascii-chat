@@ -1242,8 +1242,7 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
   platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
 
   handle.original_fd = _dup(STDERR_FILENO);
-  if (handle.original_fd < 0)
-    return handle;
+  if (handle.original_fd < 0) return handle;
 
   if (_sopen_s(&handle.devnull_fd, "NUL", _O_WRONLY, _SH_DENYNO, 0) != 0) {
     handle.devnull_fd = -1;
@@ -1289,10 +1288,8 @@ platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) 
   int saved_stdout = _dup(STDOUT_FILENO);
   int saved_stderr = _dup(STDERR_FILENO);
   if (saved_stdout < 0 || saved_stderr < 0) {
-    if (saved_stdout >= 0)
-      _close(saved_stdout);
-    if (saved_stderr >= 0)
-      _close(saved_stderr);
+    if (saved_stdout >= 0) _close(saved_stdout);
+    if (saved_stderr >= 0) _close(saved_stderr);
     return handle;
   }
 
@@ -1461,7 +1458,8 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 /**
  * Execute a subprocess using CreateProcess (Windows implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
     log_error("platform_execute_subprocess: invalid parameters");
     return -1;
@@ -1512,8 +1510,9 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   bool capture_output = (output_buffer && output_size > 0);
 
   if (capture_output) {
-    SECURITY_ATTRIBUTES sa = {
-        .nLength = sizeof(SECURITY_ATTRIBUTES), .bInheritHandle = TRUE, .lpSecurityDescriptor = NULL};
+    SECURITY_ATTRIBUTES sa = {.nLength = sizeof(SECURITY_ATTRIBUTES),
+                              .bInheritHandle = TRUE,
+                              .lpSecurityDescriptor = NULL};
     if (!CreatePipe(&stdout_read, &stdout_write, &sa, 0)) {
       log_error("Failed to create pipe for output capture: error %lu", GetLastError());
       SAFE_FREE(command_line);
@@ -1536,16 +1535,17 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
   }
 
-  BOOL success = CreateProcessA(NULL,           // lpApplicationName - NULL so PATH is searched
-                                command_line,   // lpCommandLine - full command line
-                                NULL,           // lpProcessAttributes
-                                NULL,           // lpThreadAttributes
-                                capture_output, // bInheritHandles - only when capturing output
-                                0,              // dwCreationFlags
-                                NULL,           // lpEnvironment
-                                NULL,           // lpCurrentDirectory
-                                &startup_info,  // lpStartupInfo
-                                &process_info   // lpProcessInformation
+  BOOL success = CreateProcessA(
+    NULL,            // lpApplicationName - NULL so PATH is searched
+    command_line,    // lpCommandLine - full command line
+    NULL,            // lpProcessAttributes
+    NULL,            // lpThreadAttributes
+    capture_output,  // bInheritHandles - only when capturing output
+    0,               // dwCreationFlags
+    NULL,            // lpEnvironment
+    NULL,            // lpCurrentDirectory
+    &startup_info,   // lpStartupInfo
+    &process_info    // lpProcessInformation
   );
 
   SAFE_FREE(command_line);
@@ -1553,10 +1553,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   if (!success) {
     DWORD error = GetLastError();
     log_error("Failed to execute %s: error code %lu", executable, error);
-    if (stdout_read)
-      CloseHandle(stdout_read);
-    if (stdout_write)
-      CloseHandle(stdout_write);
+    if (stdout_read) CloseHandle(stdout_read);
+    if (stdout_write) CloseHandle(stdout_write);
     return -1;
   }
 
@@ -1571,10 +1569,9 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     size_t total_read = 0;
     DWORD bytes_read = 0;
     while (total_read < output_size - 1) {
-      BOOL ok =
-          ReadFile(stdout_read, output_buffer + total_read, (DWORD)(output_size - 1 - total_read), &bytes_read, NULL);
-      if (!ok || bytes_read == 0)
-        break;
+      BOOL ok = ReadFile(stdout_read, output_buffer + total_read,
+                         (DWORD)(output_size - 1 - total_read), &bytes_read, NULL);
+      if (!ok || bytes_read == 0) break;
       total_read += bytes_read;
     }
     output_buffer[total_read] = '\0';
@@ -1590,8 +1587,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   // Clean up handles
   CloseHandle(process_info.hProcess);
   CloseHandle(process_info.hThread);
-  if (stdout_read)
-    CloseHandle(stdout_read);
+  if (stdout_read) CloseHandle(stdout_read);
 
   if (wait_result != WAIT_OBJECT_0) {
     log_error("Failed to wait for process: error code %lu", GetLastError());

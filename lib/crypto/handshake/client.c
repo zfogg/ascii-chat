@@ -865,3 +865,4 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
 
   return ASCIICHAT_OK;
 }
+

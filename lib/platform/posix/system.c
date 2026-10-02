@@ -21,7 +21,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/platform/symbols.h> // For symbol cache
 #include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/options/options.h> // For options_get()
+#include <ascii-chat/options/options.h>  // For options_get()
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -325,19 +325,15 @@ int platform_unsetenv(const char *name) {
 void platform_raise_fd_limit(unsigned int limit) {
 #if defined(__linux__) || defined(__APPLE__)
   struct rlimit rl;
-  if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
-    return;
+  if (getrlimit(RLIMIT_NOFILE, &rl) != 0) return;
 
   rlim_t target = limit > 0 ? (rlim_t)limit : rl.rlim_max;
 #ifdef __APPLE__
   // macOS caps soft limit lower than hard limit
-  if (target > 10240)
-    target = 10240;
+  if (target > 10240) target = 10240;
 #endif
-  if (target > rl.rlim_max)
-    target = rl.rlim_max;
-  if (target <= rl.rlim_cur)
-    return;
+  if (target > rl.rlim_max) target = rl.rlim_max;
+  if (target <= rl.rlim_cur) return;
 
   rl.rlim_cur = target;
   if (setrlimit(RLIMIT_NOFILE, &rl) < 0) {
@@ -1108,7 +1104,8 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
     log_error("platform_execute_subprocess: invalid parameters");
     return -1;
@@ -1131,8 +1128,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     command_line[0] = '\0';
     for (int i = 0; argv[i] != NULL; i++) {
       if (i > 0) {
-        if (safe_snprintf(command_line + strlen(command_line), cmd_len + 1 - strlen(command_line), " %s", argv[i]) <
-            0) {
+        if (safe_snprintf(command_line + strlen(command_line), cmd_len + 1 - strlen(command_line), " %s", argv[i]) < 0) {
           SAFE_FREE(command_line);
           log_error("Failed to build command line");
           return -1;
@@ -1188,10 +1184,10 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   if (pid == 0) {
     // Child process: execute the command
     // argv[0] is conventionally the program name
-    execvp(executable, (char *const *)argv);
+    execvp(executable, (char * const *)argv);
     // If execvp returns, an error occurred
     log_error("Failed to execute %s: %s", executable, SAFE_STRERROR(errno));
-    exit(127); // Standard convention for command not found
+    exit(127);  // Standard convention for command not found
   }
 
   // Parent process: wait for child to complete

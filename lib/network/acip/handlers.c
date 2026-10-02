@@ -171,7 +171,7 @@ static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, s
 static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
                                                                  const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
-                                                         const acip_client_callbacks_t *callbacks);
+                                                          const acip_client_callbacks_t *callbacks);
 
 // Client handler dispatch table (indexed by client_handler_index())
 static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
@@ -570,7 +570,7 @@ static asciichat_error_t handle_client_crypto_handshake_complete(const void *pay
 }
 
 static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
-                                                         const acip_client_callbacks_t *callbacks) {
+                                                          const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_crypto_parameters) {
     return ASCIICHAT_OK;
   }

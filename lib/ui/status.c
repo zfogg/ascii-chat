@@ -50,8 +50,8 @@ void ui_status_log_clear(void) {
 // ============================================================================
 
 asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
-                                   const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                                   bool session_is_mdns_only, ui_status_t *out_status) {
+                                       const char *ipv6_address, uint16_t port, time_t start_time,
+                                       const char *mode_name, bool session_is_mdns_only, ui_status_t *out_status) {
   if (!server || !out_status || !mode_name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for ui_status_gather");
   }
@@ -295,8 +295,8 @@ bool ui_status_display_interactive(const ui_status_t *status) {
 }
 
 void ui_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
-                      const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                      bool session_is_mdns_only, uint64_t *last_update_ns) {
+                          const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+                          bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {
     return;
   }
@@ -320,7 +320,7 @@ void ui_status_update(tcp_server_t *server, const char *session_string, const ch
 
   ui_status_t status;
   if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
-                       session_is_mdns_only, &status) == ASCIICHAT_OK) {
+                           session_is_mdns_only, &status) == ASCIICHAT_OK) {
     ui_status_display(&status);
     *last_update_ns = now_us;
   }

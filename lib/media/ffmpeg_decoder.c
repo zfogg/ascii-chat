@@ -110,8 +110,8 @@ struct ffmpeg_decoder_t {
   bool buffer_b_in_use;         ///< Whether prefetch_image_b is being read by main thread
 
   // State flags
-  bool eof_reached;    ///< Whether end of file was reached
-  bool is_stdin;       ///< Whether reading from stdin
+  bool eof_reached; ///< Whether end of file was reached
+  bool is_stdin;    ///< Whether reading from stdin
   bool video_draining; ///< Whether EOF was sent to the video decoder
 
   // Stdin I/O context
@@ -143,16 +143,16 @@ struct ffmpeg_decoder_t {
  * Structure to track buffered stdin data
  */
 typedef struct {
-  uint8_t *data; ///< Buffered data (shared between decoders)
-  size_t size;   ///< Total size of buffered data
+  uint8_t *data;     ///< Buffered data (shared between decoders)
+  size_t size;       ///< Total size of buffered data
 } stdin_buffer_t;
 
 /**
  * Structure for per-decoder buffer reading state
  */
 typedef struct {
-  stdin_buffer_t *buffer; ///< Pointer to shared buffer
-  size_t pos;             ///< Current read position (per-decoder)
+  stdin_buffer_t *buffer;  ///< Pointer to shared buffer
+  size_t pos;              ///< Current read position (per-decoder)
 } stdin_buffer_reader_t;
 
 /**
@@ -248,10 +248,9 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
 
   log_info("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
   if (sb->size > 0) {
-    log_info(
-        "  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-        sb->data[0], sb->data[1], sb->data[2], sb->data[3], sb->data[4], sb->data[5], sb->data[6], sb->data[7],
-        sb->data[8], sb->data[9], sb->data[10], sb->data[11], sb->data[12], sb->data[13], sb->data[14], sb->data[15]);
+    log_info("  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             sb->data[0], sb->data[1], sb->data[2], sb->data[3], sb->data[4], sb->data[5], sb->data[6], sb->data[7],
+             sb->data[8], sb->data[9], sb->data[10], sb->data[11], sb->data[12], sb->data[13], sb->data[14], sb->data[15]);
   }
   return sb;
 }
@@ -462,8 +461,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       static int decode_count = 0;
       if (++decode_count <= 3) {
         log_info("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
-                 decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format,
-                 decoder->is_stdin);
+                 decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format, decoder->is_stdin);
       }
 
       // For fragmented MP4 from stdin, pixel format might not be set - default to YUV420p
@@ -485,8 +483,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         log_debug("Lazy init swscale: width=%d, height=%d, pix_fmt=%d", width, height, pix_fmt_to_use);
         if (width > 0 && height > 0 && pix_fmt_to_use != AV_PIX_FMT_NONE) {
           LOG_IO("swscaler", {
-            decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height, AV_PIX_FMT_RGB24,
-                                              SWS_BILINEAR, NULL, NULL, NULL);
+            decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height,
+                                              AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
           });
           if (!decoder->sws_ctx) {
             log_error("Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
@@ -507,8 +505,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
           log_debug("Lazy initialized swscale context with %dx%d from pix_fmt=%d", width, height, pix_fmt_to_use);
         } else {
-          log_error("Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width, height,
-                    pix_fmt_to_use, AV_PIX_FMT_NONE);
+          log_error("Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width,
+                    height, pix_fmt_to_use, AV_PIX_FMT_NONE);
           break;
         }
       }
@@ -518,18 +516,19 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         uint8_t *y_data = decoder->frame->data[0];
         uint8_t *u_data = decoder->frame->data[1];
         uint8_t *v_data = decoder->frame->data[2];
-        log_info("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count,
+        log_info("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)",
+                 decode_count,
                  y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
                  decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
       }
 
-      int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
-                                decoder->frame->linesize, 0, height, dst_data, dst_linesize);
+      int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
+                                dst_data, dst_linesize);
       if (decode_count <= 3) {
         log_info("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
         rgb_pixel_t *test_px = (rgb_pixel_t *)decode_buffer->pixels;
-        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u), RGB[100]=(%u,%u,%u)", decode_count, test_px[0].r,
-                 test_px[0].g, test_px[0].b, test_px[100].r, test_px[100].g, test_px[100].b);
+        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u), RGB[100]=(%u,%u,%u)",
+                 decode_count, test_px[0].r, test_px[0].g, test_px[0].b, test_px[100].r, test_px[100].g, test_px[100].b);
       }
 
       frame_decoded = true;
@@ -892,7 +891,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     return NULL;
   }
   reader->buffer = g_stdin_buffer;
-  reader->pos = 0; // Each decoder starts from position 0
+  reader->pos = 0;  // Each decoder starts from position 0
 
   // AVIO takes ownership of this buffer and may resize or free it with av_free().
   decoder->avio_buffer = av_malloc(AVIO_BUFFER_SIZE);
@@ -903,13 +902,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     return NULL;
   }
 
-  decoder->avio_ctx = avio_alloc_context(decoder->avio_buffer, // internal buffer for AVIO
-                                         AVIO_BUFFER_SIZE,     // buffer size
-                                         0,                    // write_flag
-                                         reader,               // opaque (per-decoder reader)
+  decoder->avio_ctx = avio_alloc_context(decoder->avio_buffer,  // internal buffer for AVIO
+                                         AVIO_BUFFER_SIZE,       // buffer size
+                                         0,                      // write_flag
+                                         reader,                 // opaque (per-decoder reader)
                                          memory_read_packet,
-                                         NULL,              // write_packet
-                                         memory_seek_packet // seek (memory is seekable)
+                                         NULL,                   // write_packet
+                                         memory_seek_packet      // seek (memory is seekable)
   );
 
   if (!decoder->avio_ctx) {
@@ -1065,8 +1064,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     // For stdin sources, dimensions might be invalid initially (0x0)
     // Use default dimensions for prefetch buffers; they'll be resized on first frame
     if (width <= 0 || height <= 0) {
-      width = 1920;  // Default width for stdin
-      height = 1080; // Default height for stdin
+      width = 1920;   // Default width for stdin
+      height = 1080;  // Default height for stdin
       log_debug("stdin: Using default prefetch dimensions %dx%d (will be resized on first frame)", width, height);
     }
 

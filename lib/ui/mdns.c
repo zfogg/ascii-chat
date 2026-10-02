@@ -123,6 +123,8 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
   return (int)(selection - 1); // Convert to 0-based index
 }
 
+
+
 /**
  * @brief TUI-based server selection with formatted display
  *
@@ -168,7 +170,8 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
     char addr_buf[128];
     snprintf(addr_buf, sizeof(addr_buf), "%s:%u", addr, srv->port);
 
-    log_plain("\033[1m│\033[0m  %s %-30s %s\n", colored_string(LOG_COLOR_DEBUG, idx_buf), srv->name,
+    log_plain("\033[1m│\033[0m  %s %-30s %s\n",
+              colored_string(LOG_COLOR_DEBUG, idx_buf), srv->name,
               colored_string(LOG_COLOR_WARN, addr_buf));
   }
 

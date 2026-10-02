@@ -107,7 +107,7 @@ static void build_box_line(char *output, size_t output_size, const char *content
 
 // Append a positioned box line to the buffer
 static void append_line(char *buffer, size_t *buf_pos, size_t buf_size, int start_row, int *current_row, int start_col,
-                        int box_width, const char *content) {
+                         int box_width, const char *content) {
   if (!buffer || *buf_pos >= buf_size || !content) {
     return;
   }
@@ -130,7 +130,7 @@ static void append_line(char *buffer, size_t *buf_pos, size_t buf_size, int star
 
 // Build a horizontal border line (top: ╔═╗, middle: ╠═╣, bottom: ╚═╝)
 static void append_border(char *buffer, size_t *buf_pos, size_t buf_size, int start_row, int *current_row,
-                          int start_col, int box_width, const char *left, const char *right) {
+                           int start_col, int box_width, const char *left, const char *right) {
   if (!buffer || *buf_pos >= buf_size) {
     return;
   }

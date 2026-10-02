@@ -27,7 +27,7 @@ static const enum_to_string_entry_t log_level_map[] = {
     {3, OPT_LOG_LEVEL_WARN, "warnings"},
     {4, OPT_LOG_LEVEL_ERROR, "errors"},
     {5, OPT_LOG_LEVEL_FATAL, "fatal errors"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}       /* Terminator */
 };
 
 /**
@@ -39,7 +39,7 @@ static const enum_to_string_entry_t color_mode_map[] = {
     {2, OPT_COLOR_MODE_16, "16 color mode"},
     {3, OPT_COLOR_MODE_256, "256 color mode"},
     {4, OPT_COLOR_MODE_TRUECOLOR, "true color (24-bit RGB)"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}           /* Terminator */
 };
 
 /**
@@ -59,7 +59,7 @@ static const enum_to_string_entry_t color_filter_map[] = {
     {COLOR_FILTER_RED, OPT_COLOR_FILTER_RED, "red tint"},
     {COLOR_FILTER_YELLOW, OPT_COLOR_FILTER_YELLOW, "yellow tint"},
     {COLOR_FILTER_RAINBOW, OPT_COLOR_FILTER_RAINBOW, "rainbow tint"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
@@ -72,7 +72,7 @@ static const enum_to_string_entry_t palette_map[] = {
     {3, OPT_PALETTE_MINIMAL, "minimal palette"},
     {4, OPT_PALETTE_COOL, "cool colors"},
     {5, OPT_PALETTE_CUSTOM, "custom palette"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
@@ -84,7 +84,7 @@ static const enum_to_string_entry_t render_mode_map[] = {
     {RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BACKGROUND, "text background"},
     {RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, "text background (short)"},
     {RENDER_MODE_HALF_BLOCK, OPT_RENDER_MODE_HALF_BLOCK, "half-block characters"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
@@ -93,7 +93,7 @@ static const enum_to_string_entry_t render_mode_map[] = {
 static const enum_to_string_entry_t reconnect_map[] = {
     {0, OPT_RECONNECT_OFF, "disable auto-reconnect"},
     {1, OPT_RECONNECT_AUTO, "enable auto-reconnect"},
-    {-1, NULL, NULL} /* Terminator */
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -104,8 +104,8 @@ static const enum_to_string_entry_t reconnect_map[] = {
  * @brief Descriptor for an enum option with its string value mapping
  */
 typedef struct {
-  const char *option_name;           ///< Option long name (e.g., "log-level")
-  const enum_to_string_entry_t *map; ///< Mapping array from enum values to strings
+  const char *option_name;              ///< Option long name (e.g., "log-level")
+  const enum_to_string_entry_t *map;    ///< Mapping array from enum values to strings
 } enum_map_descriptor_t;
 
 /**
@@ -118,7 +118,7 @@ static const enum_map_descriptor_t enum_registry[] = {
     {.option_name = "palette", .map = palette_map},
     {.option_name = "render-mode", .map = render_mode_map},
     {.option_name = "reconnect", .map = reconnect_map},
-    {.option_name = NULL, .map = NULL} /* Terminator */
+    {.option_name = NULL, .map = NULL}  /* Terminator */
 };
 
 /**

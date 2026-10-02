@@ -13,9 +13,9 @@
 #include <stdint.h>
 
 /* WASM doesn't have real threads, so we use void* placeholders */
-typedef void *asciichat_thread_t;
-typedef void *thread_id_t;
-typedef void *tls_key_t;
+typedef void* asciichat_thread_t;
+typedef void* thread_id_t;
+typedef void* tls_key_t;
 
 /* Stub functions that do nothing in WASM */
 #define asciichat_thread_create(thread_ptr, attr, start_routine, arg) ASCIICHAT_OK
@@ -31,5 +31,5 @@ typedef void *tls_key_t;
 
 #define tls_key_create(key_ptr) ASCIICHAT_OK
 #define tls_key_delete(key) ((void)0)
-#define tls_getspecific(key) ((void *)NULL)
+#define tls_getspecific(key) ((void*)NULL)
 #define tls_setspecific(key, value) ASCIICHAT_OK

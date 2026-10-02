@@ -1017,8 +1017,9 @@ void debug_memory_report(void) {
         // A suppression entry describes live allocations that are expected to
         // remain at report time. If shutdown already freed every allocation at
         // the site, there is nothing to suppress and no mismatch to report.
-        if (total_count > 0 && (total_count != g_suppression_config[i].expected_count ||
-                                total_bytes != g_suppression_config[i].expected_bytes)) {
+        if (total_count > 0 &&
+            (total_count != g_suppression_config[i].expected_count ||
+             total_bytes != g_suppression_config[i].expected_bytes)) {
           char mismatch_details[256] = {0};
           if (total_count != g_suppression_config[i].expected_count) {
             snprintf(mismatch_details, sizeof(mismatch_details), "Count mismatch: expected %d, found %d",

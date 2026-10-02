@@ -27,8 +27,7 @@
  * @ingroup platform
  */
 void rwlock_on_rdlock(rwlock_t *rwlock) {
-  if (!rwlock)
-    return;
+  if (!rwlock) return;
   rwlock->last_rdlock_time_ns = time_get_ns();
   atomic_fetch_add_u64(&rwlock->read_lock_count, 1);
   rwlock->rdlock_count++;
@@ -44,8 +43,7 @@ void rwlock_on_rdlock(rwlock_t *rwlock) {
  * @ingroup platform
  */
 void rwlock_on_wrlock(rwlock_t *rwlock) {
-  if (!rwlock)
-    return;
+  if (!rwlock) return;
   rwlock->last_wrlock_time_ns = time_get_ns();
   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
   rwlock->write_held_by_key = asciichat_thread_to_key(current_thread);
@@ -62,8 +60,7 @@ void rwlock_on_wrlock(rwlock_t *rwlock) {
  * @ingroup platform
  */
 void rwlock_on_unlock(rwlock_t *rwlock) {
-  if (!rwlock)
-    return;
+  if (!rwlock) return;
   rwlock->last_unlock_time_ns = time_get_ns();
   rwlock->unlock_count++;
   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
@@ -88,8 +85,7 @@ void rwlock_on_unlock(rwlock_t *rwlock) {
  * @ingroup platform
  */
 int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
-  if (!rwlock || !buffer || size == 0)
-    return 0;
+  if (!rwlock || !buffer || size == 0) return 0;
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
@@ -131,8 +127,8 @@ int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
              (unsigned long long)rwlock->unlock_count);
   }
 
-  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s", rdlock_str, wrlock_str, unlock_str, held_str,
-                     count_str);
+  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",
+                     rdlock_str, wrlock_str, unlock_str, held_str, count_str);
   return offset;
 }
 
@@ -148,11 +144,10 @@ int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
  * @ingroup platform
  */
 void rwlock_log_state(const rwlock_t *rwlock, const char *file, int line, const char *func) {
-  if (!rwlock)
-    return;
+  if (!rwlock) return;
   char buf[512];
   rwlock_format_state(rwlock, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "rwlock/state %p: %s", (const void *)rwlock, buf);
 }
 
-#endif // !NDEBUG
+#endif  // !NDEBUG

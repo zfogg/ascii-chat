@@ -460,8 +460,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
   client_version.compression_threshold = 0;
   client_version.feature_flags = 0;
 
-  int result =
-      packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &client_version, sizeof(client_version), 0);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &client_version,
+                                          sizeof(client_version), 0);
   if (result != 0) {
     log_error("Failed to send protocol version to server");
     STOP_TIMER("client_crypto_handshake");
@@ -529,7 +529,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
   client_caps.preferred_cipher =
       ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
 
-  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &client_caps, sizeof(client_caps), 0);
+  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &client_caps,
+                                     sizeof(client_caps), 0);
   if (result != 0) {
     log_error("Failed to send crypto capabilities to server");
     STOP_TIMER("client_crypto_handshake");

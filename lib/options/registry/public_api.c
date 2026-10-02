@@ -66,8 +66,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       } else {
         options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset,
                                    entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
-                                   entry->group, entry->required, entry->env_var_name, entry->validate_fn,
-                                   entry->optional_arg);
+                                   entry->group, entry->required, entry->env_var_name, entry->validate_fn, entry->optional_arg);
       }
       break;
     case OPTION_TYPE_CALLBACK:

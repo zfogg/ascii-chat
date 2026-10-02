@@ -159,16 +159,12 @@ static const char *resolve_default_log_dir(void) {
   }
   // Default to system temp directory
   const char *tmp = SAFE_GETENV("TMPDIR");
-  if (!tmp)
-    tmp = SAFE_GETENV("TMP");
-  if (!tmp)
-    tmp = SAFE_GETENV("TEMP");
+  if (!tmp) tmp = SAFE_GETENV("TMP");
+  if (!tmp) tmp = SAFE_GETENV("TEMP");
 #ifdef _WIN32
-  if (!tmp)
-    tmp = ".";
+  if (!tmp) tmp = ".";
 #else
-  if (!tmp)
-    tmp = "/tmp";
+  if (!tmp) tmp = "/tmp";
 #endif
   return tmp;
 }
@@ -542,15 +538,12 @@ typedef struct {
 
 static bool collect_entry_cb(const platform_dir_entry_t *entry, void *user_data) {
   collect_ctx_t *ctx = (collect_ctx_t *)user_data;
-  if (entry->is_dir)
-    return true;
+  if (entry->is_dir) return true;
 
   // Filter: must start with "ascii-instr-" and end with ".log"
-  if (strncmp(entry->name, "ascii-instr-", strlen("ascii-instr-")) != 0)
-    return true;
+  if (strncmp(entry->name, "ascii-instr-", strlen("ascii-instr-")) != 0) return true;
   size_t name_len = strlen(entry->name);
-  if (name_len < 5 || strcmp(entry->name + name_len - 4, ".log") != 0)
-    return true;
+  if (name_len < 5 || strcmp(entry->name + name_len - 4, ".log") != 0) return true;
 
   char path_buffer[PLATFORM_MAX_PATH_LENGTH];
   int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", ctx->config->log_dir, entry->name);

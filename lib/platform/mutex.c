@@ -27,8 +27,7 @@
  * @ingroup platform
  */
 void mutex_on_lock(mutex_t *mutex) {
-  if (!mutex)
-    return;
+  if (!mutex) return;
   mutex->last_lock_time_ns = time_get_ns();
   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
   mutex->currently_held_by_key = asciichat_thread_to_key(current_thread);
@@ -45,8 +44,7 @@ void mutex_on_lock(mutex_t *mutex) {
  * @ingroup platform
  */
 void mutex_on_unlock(mutex_t *mutex) {
-  if (!mutex)
-    return;
+  if (!mutex) return;
   mutex->last_unlock_time_ns = time_get_ns();
   mutex->currently_held_by_key = 0;
   mutex->unlock_count++;
@@ -63,8 +61,7 @@ void mutex_on_unlock(mutex_t *mutex) {
  * @ingroup platform
  */
 void mutex_on_trylock(mutex_t *mutex, bool success) {
-  if (!mutex)
-    return;
+  if (!mutex) return;
   mutex->trylock_count++;
   if (success) {
     mutex->trylock_success_count++;
@@ -87,8 +84,7 @@ void mutex_on_trylock(mutex_t *mutex, bool success) {
  * @ingroup platform
  */
 int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size) {
-  if (!mutex || !buffer || size == 0)
-    return 0;
+  if (!mutex || !buffer || size == 0) return 0;
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
@@ -137,11 +133,10 @@ int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size) {
  * @ingroup platform
  */
 void mutex_log_state(const mutex_t *mutex, const char *file, int line, const char *func) {
-  if (!mutex)
-    return;
+  if (!mutex) return;
   char buf[512];
   mutex_format_state(mutex, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "mutex/state %p: %s", (const void *)mutex, buf);
 }
 
-#endif // !NDEBUG
+#endif  // !NDEBUG

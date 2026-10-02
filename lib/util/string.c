@@ -421,7 +421,8 @@ void strip_ansi_codes(const char *input, char *output, size_t output_size) {
       // Skip until we find the terminating letter (m is most common, also H, J, K, etc.)
       // This handles patterns like: 38;5;74m, 0m, 38;2;255;0;0m, 2J, H, etc.
       while (input[in_idx] != '\0') {
-        if ((input[in_idx] >= 'A' && input[in_idx] <= 'Z') || (input[in_idx] >= 'a' && input[in_idx] <= 'z')) {
+        if ((input[in_idx] >= 'A' && input[in_idx] <= 'Z') ||
+            (input[in_idx] >= 'a' && input[in_idx] <= 'z')) {
           in_idx++; // Skip the terminating letter
           break;
         }

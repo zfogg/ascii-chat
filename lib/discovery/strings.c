@@ -25,6 +25,8 @@
 
 #include <ascii-chat/util/lifecycle.h>
 
+
+
 // ============================================================================
 // Word Cache Implementation (Hashtable for O(1) validation)
 // ============================================================================
@@ -177,8 +179,8 @@ static lifecycle_t g_regex_lc = LIFECYCLE_INIT;
 static void session_regex_init_once(void) {
   int error_code;
   PCRE2_SIZE error_offset;
-  g_session_format_regex = pcre2_compile((PCRE2_SPTR8)SESSION_STRING_FORMAT_PATTERN, PCRE2_ZERO_TERMINATED, 0,
-                                         &error_code, &error_offset, NULL);
+  g_session_format_regex =
+      pcre2_compile((PCRE2_SPTR8)SESSION_STRING_FORMAT_PATTERN, PCRE2_ZERO_TERMINATED, 0, &error_code, &error_offset, NULL);
 
   if (!g_session_format_regex) {
     PCRE2_UCHAR error_buf[256];
@@ -214,6 +216,7 @@ static pcre2_code *session_format_regex_get(void) {
   lifecycle_init_commit(&g_regex_lc);
   return g_session_format_regex;
 }
+
 
 asciichat_error_t acds_string_init(void) {
   return ASCIICHAT_OK;

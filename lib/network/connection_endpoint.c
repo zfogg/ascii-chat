@@ -21,8 +21,8 @@ const char *connection_endpoint_protocol_name(connection_endpoint_protocol_t pro
 }
 
 static asciichat_error_t connection_endpoint_from_parts(connection_endpoint_t *endpoint_out, const url_parts_t *parts,
-                                                        connection_endpoint_protocol_t protocol, uint16_t default_port,
-                                                        const char *input) {
+                                                        connection_endpoint_protocol_t protocol,
+                                                        uint16_t default_port, const char *input) {
   if (!endpoint_out || !parts || !parts->host) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid endpoint parse state");
   }

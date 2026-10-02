@@ -82,8 +82,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
 
   if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+    if (payload) buffer_pool_free(NULL, payload, payload_len);
     return -1;
   }
   buffer_pool_free(NULL, payload, payload_len);
@@ -92,14 +91,12 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   server_version.protocol_version = htons(1);
   server_version.protocol_revision = htons(0);
   server_version.supports_encryption = 1;
-  if (send_protocol_version_packet(server_fd, &server_version) != 0)
-    return -1;
+  if (send_protocol_version_packet(server_fd, &server_version) != 0) return -1;
 
   payload = NULL;
   if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
-    if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+    if (payload) buffer_pool_free(NULL, payload, payload_len);
     return -1;
   }
   buffer_pool_free(NULL, payload, payload_len);
@@ -108,8 +105,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   server_caps.supported_kex_algorithms = htons(KEX_ALGO_X25519);
   server_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519);
   server_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
-  if (send_crypto_capabilities_packet(server_fd, &server_caps) != 0)
-    return -1;
+  if (send_crypto_capabilities_packet(server_fd, &server_caps) != 0) return -1;
 
   crypto_parameters_packet_t server_params = {0};
   server_params.selected_kex = KEX_ALGO_X25519;
@@ -124,8 +120,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   server_params.mac_size = CRYPTO_MAC_SIZE;
   server_params.hmac_size = CRYPTO_HMAC_SIZE;
 
-  if (send_crypto_parameters_packet(server_fd, &server_params) != 0)
-    return -1;
+  if (send_crypto_parameters_packet(server_fd, &server_params) != 0) return -1;
   return crypto_handshake_set_parameters(server_ctx, &server_params);
 }
 
@@ -138,13 +133,11 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   client_version.protocol_version = htons(1);
   client_version.protocol_revision = htons(0);
   client_version.supports_encryption = 1;
-  if (send_protocol_version_packet(client_fd, &client_version) != 0)
-    return -1;
+  if (send_protocol_version_packet(client_fd, &client_version) != 0) return -1;
 
   if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+    if (payload) buffer_pool_free(NULL, payload, payload_len);
     return -1;
   }
   buffer_pool_free(NULL, payload, payload_len);
@@ -153,14 +146,12 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   client_caps.supported_kex_algorithms = htons(KEX_ALGO_X25519);
   client_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
   client_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
-  if (send_crypto_capabilities_packet(client_fd, &client_caps) != 0)
-    return -1;
+  if (send_crypto_capabilities_packet(client_fd, &client_caps) != 0) return -1;
 
   payload = NULL;
   if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
-    if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+    if (payload) buffer_pool_free(NULL, payload, payload_len);
     return -1;
   }
   buffer_pool_free(NULL, payload, payload_len);
@@ -168,8 +159,7 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   payload = NULL;
   if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
-    if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+    if (payload) buffer_pool_free(NULL, payload, payload_len);
     return -1;
   }
 
@@ -204,8 +194,7 @@ static void *client_handshake_thread(void *arg) {
   // Receive server's KEY_EXCHANGE_INIT
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) !=
-      ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
     buffer_pool_free(NULL, payload, payload_len);
     return NULL;
   }
@@ -215,8 +204,7 @@ static void *client_handshake_thread(void *arg) {
   payload = NULL;
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) !=
-      ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
     buffer_pool_free(NULL, payload, payload_len);
     return NULL;
   }
@@ -283,17 +271,13 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
   void *payload = NULL;
   size_t payload_len = 0;
   cr_assert_eq(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-  cr_assert_eq(
-      crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len),
-      ASCIICHAT_OK);
+  cr_assert_eq(crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
   buffer_pool_free(NULL, payload, payload_len);
 
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
     cr_assert_eq(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-    cr_assert_eq(
-        crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len),
-        ASCIICHAT_OK);
+    cr_assert_eq(crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
     buffer_pool_free(NULL, payload, payload_len);
   }
 
@@ -322,10 +306,7 @@ Test(gpg_handshake, gpg_key_parsing_and_verification) {
 
   bool all_zeros = true;
   for (int i = 0; i < 32; i++) {
-    if (public_key.key[i] != 0) {
-      all_zeros = false;
-      break;
-    }
+    if (public_key.key[i] != 0) { all_zeros = false; break; }
   }
   cr_assert_eq(all_zeros, false, "Public key should not be all zeros");
 

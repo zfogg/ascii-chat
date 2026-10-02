@@ -43,8 +43,8 @@ typedef struct {
   int interrupt_signal_num;
   bool cleanup_called;
   bool websocket_clients_allowed;
-  atomic_t init_progress;              // Stage of initialization (0=none, 1=start, 2=end)
-  atomic_t client_connect_during_init; // Did client connect while init was running?
+  atomic_t init_progress;  // Stage of initialization (0=none, 1=start, 2=end)
+  atomic_t client_connect_during_init;  // Did client connect while init was running?
 } test_lifecycle_t;
 
 static test_lifecycle_t g_test_state = {
@@ -65,10 +65,10 @@ static asciichat_error_t mock_init_fn(void *user_data) {
 
   // Simulate some init work
   for (int i = 0; i < 100; i++) {
-    platform_sleep_us(10000); // 10ms
+    platform_sleep_us(10000);  // 10ms
     if (session_server_like_shutdown_requested()) {
       atomic_store_u64(&state->init_progress, 0);
-      return ASCIICHAT_OK; // Graceful exit
+      return ASCIICHAT_OK;  // Graceful exit
     }
   }
 
@@ -134,7 +134,8 @@ Test(server_like_lifecycle, early_sigterm_during_init_handled) {
   memset(&g_test_state, 0, sizeof(g_test_state));
 
   // Verify initial state
-  cr_assert(session_server_like_shutdown_requested() == false, "Shutdown should not be requested at start");
+  cr_assert(session_server_like_shutdown_requested() == false,
+            "Shutdown should not be requested at start");
 
   // Verify that mode init can detect early SIGTERM via session_server_like_shutdown_requested()
   // Regression test for commit 6f79aa6e1 (discovery-service SIGTERM responsiveness)
@@ -196,5 +197,7 @@ Test(server_like_lifecycle, shutdown_flag_persistence) {
   // and persists from signal handler through mode init completion.
   // Modes can check session_server_like_shutdown_requested() at any point.
 
-  cr_assert(session_server_like_shutdown_requested() == false, "Shutdown flag should start as false");
+  cr_assert(session_server_like_shutdown_requested() == false,
+            "Shutdown flag should start as false");
 }
+

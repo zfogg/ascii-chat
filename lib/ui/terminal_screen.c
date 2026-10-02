@@ -300,8 +300,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     session_log_entry_t *buffer_entries =
         SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
     if (buffer_entries) {
-      size_t buffer_count =
-          session_log_buffer_get_recent(g_session_log_buffer, buffer_entries, SESSION_LOG_BUFFER_SIZE);
+      size_t buffer_count = session_log_buffer_get_recent(g_session_log_buffer, buffer_entries, SESSION_LOG_BUFFER_SIZE);
       log_entries = buffer_entries;
       log_count = buffer_count;
     }

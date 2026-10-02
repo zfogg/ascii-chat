@@ -59,7 +59,7 @@ void action_check_update_immediate(void) {
 
 // Additional platform stubs
 asciichat_error_t platform_enable_keepawake(void) {
-  return ASCIICHAT_OK; // No-op in browser (browser manages power)
+  return ASCIICHAT_OK;  // No-op in browser (browser manages power)
 }
 
 void platform_disable_keepawake(void) {
@@ -71,11 +71,11 @@ void platform_disable_keepawake(void) {
 
 keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
   (void)opts;
-  return LINE_EDIT_NO_INPUT; // No input available in WASM
+  return LINE_EDIT_NO_INPUT;  // No input available in WASM
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {
-  return KEY_NONE; // No input available in WASM
+  return KEY_NONE;  // No input available in WASM
 }
 
 void keyboard_destroy(void) {

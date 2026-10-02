@@ -29,9 +29,9 @@
  * @return 0 (exit status)
  */
 int main(void) {
-  // Empty - Emscripten needs this to satisfy linker requirement
-  // Actual initialization is driven by JavaScript calls to exported functions
-  return 0;
+    // Empty - Emscripten needs this to satisfy linker requirement
+    // Actual initialization is driven by JavaScript calls to exported functions
+    return 0;
 }
 
 #endif // __EMSCRIPTEN__

@@ -16,14 +16,13 @@
 // Message contains the COMPLETE formatted log line with timestamp, level, thread, file:line, etc.
 EM_JS(void, js_console_log, (int level, const char *message), {
   const msg = UTF8ToString(message);
-  const levelNames = [ 'DEV', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL' ];
+  const levelNames = ['DEV', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'];
   const levelName = (level >= 0 && level <= 5) ? levelNames[level] : '?????';
 
   // Debug: show message length to verify content is being passed
   const msgLen = msg.length;
-  const hasTimestamp =
-      msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']') + 1] == = ' ';
-  const debugInfo = `[WASM_MSG_LEN = ${msgLen}, HAS_TS = ${hasTimestamp}]`;
+  const hasTimestamp = msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']')+1] === ' ';
+  const debugInfo = `[WASM_MSG_LEN=${msgLen}, HAS_TS=${hasTimestamp}]`;
 
   // Route to appropriate console method
   switch (level) {

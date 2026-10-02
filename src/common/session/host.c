@@ -1061,7 +1061,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
       SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
       host->clients[i].port = 0;
       host->clients[i].active = true;
-      host->clients[i].video_active = true; // Memory participants always have active video/audio
+      host->clients[i].video_active = true;  // Memory participants always have active video/audio
       host->clients[i].audio_active = true;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL;

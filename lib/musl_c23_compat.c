@@ -20,8 +20,8 @@
 // Declare musl's actual strto* functions using asm labels to bypass glibc's C23
 // header redirect (e.g. strtoul → __isoc23_strtoul), which would cause infinite
 // recursion since this file IS the __isoc23_* implementation.
-extern long musl_strtol(const char *, char **, int) __asm__("strtol");
-extern long long musl_strtoll(const char *, char **, int) __asm__("strtoll");
+extern long         musl_strtol(const char *, char **, int) __asm__("strtol");
+extern long long    musl_strtoll(const char *, char **, int) __asm__("strtoll");
 extern unsigned long musl_strtoul(const char *, char **, int) __asm__("strtoul");
 extern unsigned long long musl_strtoull(const char *, char **, int) __asm__("strtoull");
 

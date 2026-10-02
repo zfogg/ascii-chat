@@ -14,7 +14,7 @@
 #include <ascii-chat/platform/abstraction.h>
 
 typedef struct terminal_fd_reader_s {
-  FILE *fp; // File pointer created from FD
+  FILE *fp;          // File pointer created from FD
   int frame_height;
   int frame_width;   // Detected from first frame (0 = not yet detected)
   char *line_buffer; // Temporary buffer for one line

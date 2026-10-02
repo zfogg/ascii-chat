@@ -292,6 +292,7 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
   }
 }
 
+
 static void atomic_t_iter_callback(uintptr_t key, const char *name, void *user_data) {
   sync_buffer_t *buf = (sync_buffer_t *)user_data;
   if (!buf)
@@ -386,7 +387,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
 
 void debug_sync_print_state(void) {
 // Use a single large buffer for all sync state output
-#define SYNC_BUFFER_SIZE 65536 // Increased from 8192 to handle many syncs
+#define SYNC_BUFFER_SIZE 65536  // Increased from 8192 to handle many syncs
   log_debug("[debug_sync_print_state] ENTRY");
 
   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
@@ -441,9 +442,9 @@ typedef enum {
 typedef struct {
   debug_request_type_t request_type; // What to print
   uint64_t delay_ns;
-  atomic_t should_run;                 // Atomic flag set by main thread
-  atomic_t should_exit;                // Atomic flag for shutdown
-  atomic_t signal_triggered;           // Flag set by SIGUSR1 handler
+  atomic_t should_run;            // Atomic flag set by main thread
+  atomic_t should_exit;           // Atomic flag for shutdown
+  atomic_t signal_triggered;      // Flag set by SIGUSR1 handler
   uint64_t memory_report_interval_ns;  // Interval for periodic memory reports (0 = disabled)
   uint64_t last_memory_report_time_ns; // Timestamp of last memory report
   mutex_t mutex;                       // Protects access to flags during locked operations
@@ -468,7 +469,7 @@ static debug_state_request_t g_debug_state_request = {
     .handled_memory_report = false,
 };
 static asciichat_thread_t g_debug_thread;
-static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory reporting
+static uint64_t g_debug_main_thread_id = 0; // Main thread ID for memory reporting
 static atomic_t g_cleanup_in_progress = {0}; // Flag to prevent deadlock checks during shutdown
 
 /**

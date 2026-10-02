@@ -404,8 +404,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
       .size = frame_size,
       .data = data_copy,
   };
-  SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str,
-              strlen(client_id_str) + 1);
+  SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str, strlen(client_id_str) + 1);
 
   // Thread-safe access to framebuffer
   mutex_lock(&fb->mutex);

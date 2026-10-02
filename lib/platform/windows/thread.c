@@ -102,11 +102,11 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
 
   // Exception location
   if (IsBadReadPtr(ctx, sizeof(CONTEXT)) == 0) {
-    offset += safe_snprintf(buffer + offset, buffer_size - offset,
-                            "Exception occurred at:\n  " CTX_PC_NAME ": 0x%016llX\n", (unsigned long long)CTX_PC(ctx));
+    offset +=
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  " CTX_PC_NAME ": 0x%016llX\n", (unsigned long long)CTX_PC(ctx));
   } else {
-    offset += safe_snprintf(buffer + offset, buffer_size - offset,
-                            "Exception occurred at:\n  " CTX_PC_NAME ": <invalid context>\n");
+    offset +=
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  " CTX_PC_NAME ": <invalid context>\n");
   }
 
   // Try to resolve the symbol at the crash address - wrap in try/except for safety

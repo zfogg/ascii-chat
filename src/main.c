@@ -527,9 +527,7 @@ int main(int argc, char *argv[]) {
       const char *pattern = argv[i + 1];
       asciichat_error_t filter_result = grep_init(pattern);
       if (filter_result != ASCIICHAT_OK) {
-        log_error("Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., \"/query/ig\" or "
-                  "\"/literal/F\")",
-                  pattern);
+        log_error("Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., \"/query/ig\" or \"/literal/F\")", pattern);
         return 1;
       }
       i++; // Skip the pattern argument
@@ -691,8 +689,8 @@ int main(int argc, char *argv[]) {
   // Documentation actions should not be preceded by startup diagnostics.
   bool early_quiet_output = false;
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--version") == 0 ||
-        strcmp(argv[i], "-V") == 0) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 ||
+        strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
       early_quiet_output = true;
       break;
     }
@@ -800,8 +798,8 @@ int main(int argc, char *argv[]) {
         // File ends with .log - replace with .json
         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
         // Replace .log with .json
-        asciichat_error_t strcpy_result =
-            SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
+        asciichat_error_t strcpy_result = SAFE_STRCPY(&json_filename_buf[len - 4],
+                                                       sizeof(json_filename_buf) - (len - 4), ".json");
         if (strcpy_result != ASCIICHAT_OK) {
           log_error("Failed to write .json extension: %s", asciichat_error_string(strcpy_result));
         }

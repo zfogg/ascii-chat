@@ -535,12 +535,9 @@ ParameterizedTest(url_test_case_t *test, url_validator, userinfo) {
  * ============================================================================ */
 
 static url_test_case_t scheme_valid_urls[] = {
-    {"http://example.com", "http"},
-    {"https://example.com", "https"},
-    {"HTTP://EXAMPLE.COM", "HTTP uppercase"},
-    {"HTTPS://EXAMPLE.COM", "HTTPS uppercase"},
-    {"Http://Example.com", "mixed case"},
-    {"ws://example.com", "websocket"},
+    {"http://example.com", "http"},           {"https://example.com", "https"},
+    {"HTTP://EXAMPLE.COM", "HTTP uppercase"}, {"HTTPS://EXAMPLE.COM", "HTTPS uppercase"},
+    {"Http://Example.com", "mixed case"},     {"ws://example.com", "websocket"},
     {"wss://example.com", "websocket secure"},
 };
 

@@ -17,26 +17,24 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/util/time.h>
 
+
 // ============================================================================
 // bool Implementation Functions
 // ============================================================================
 
 bool atomic_load_bool_impl(const atomic_t *a) {
-  if (!a)
-    return false;
-  return (bool)atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    if (!a) return false;
+    return (bool)atomic_load((const _Atomic(uint64_t) *)&a->impl);
 }
 
 void atomic_store_bool_impl(atomic_t *a, uint64_t value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, value);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, value);
 }
 
 bool atomic_cas_bool_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
-  if (!a || !expected)
-    return false;
-  return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+    if (!a || !expected) return false;
+    return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
 }
 
 // ============================================================================
@@ -44,27 +42,23 @@ bool atomic_cas_bool_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
 // ============================================================================
 
 int atomic_load_int_impl(const atomic_t *a) {
-  if (!a)
-    return 0;
-  return (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    if (!a) return 0;
+    return (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&a->impl);
 }
 
 void atomic_store_int_impl(atomic_t *a, uint64_t value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, value);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, value);
 }
 
 int atomic_fetch_add_int_impl(atomic_t *a, int64_t delta) {
-  if (!a)
-    return 0;
-  return (int)(int32_t)atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, (uint64_t)delta);
+    if (!a) return 0;
+    return (int)(int32_t)atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, (uint64_t)delta);
 }
 
 int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta) {
-  if (!a)
-    return 0;
-  return (int)(int32_t)atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, (uint64_t)delta);
+    if (!a) return 0;
+    return (int)(int32_t)atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, (uint64_t)delta);
 }
 
 // ============================================================================
@@ -72,42 +66,36 @@ int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta) {
 // ============================================================================
 
 uint64_t atomic_load_u64_impl(const atomic_t *a) {
-  if (!a)
-    return 0;
-  return atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    if (!a) return 0;
+    return atomic_load((const _Atomic(uint64_t) *)&a->impl);
 }
 
 void atomic_store_u64_impl(atomic_t *a, uint64_t value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, value);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, value);
 }
 
 uint64_t atomic_fetch_add_u64_impl(atomic_t *a, uint64_t delta) {
-  if (!a)
-    return 0;
-  return atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, delta);
+    if (!a) return 0;
+    return atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, delta);
 }
 
 uint64_t atomic_fetch_sub_u64_impl(atomic_t *a, uint64_t delta) {
-  if (!a)
-    return 0;
-  return atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
+    if (!a) return 0;
+    return atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
 }
 
 bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
-  if (!a || !expected)
-    return false;
-  return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+    if (!a || !expected) return false;
+    return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
 }
 
 bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value) {
-  if (!a || !expected)
-    return false;
-  uint64_t expected_u64 = (uint64_t)*expected;
-  bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)new_value);
-  *expected = (int64_t)expected_u64;
-  return result;
+    if (!a || !expected) return false;
+    uint64_t expected_u64 = (uint64_t)*expected;
+    bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)new_value);
+    *expected = (int64_t)expected_u64;
+    return result;
 }
 
 // ============================================================================
@@ -115,45 +103,38 @@ bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value) {
 // ============================================================================
 
 void *atomic_ptr_load_impl(const atomic_ptr_t *a) {
-  if (!a)
-    return NULL;
-  return atomic_load((const _Atomic(void *) *)&a->impl);
+    if (!a) return NULL;
+    return atomic_load((const _Atomic(void *) *)&a->impl);
 }
 
 void atomic_ptr_store_impl(atomic_ptr_t *a, void *value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(void *) *)&a->impl, value);
+    if (!a) return;
+    atomic_store((_Atomic(void *) *)&a->impl, value);
 }
 
 bool atomic_ptr_cas_impl(atomic_ptr_t *a, void **expected, void *new_value) {
-  if (!a || !expected)
-    return false;
-  return atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
+    if (!a || !expected) return false;
+    return atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
 }
 
 void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value) {
-  if (!a)
-    return NULL;
-  return atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
+    if (!a) return NULL;
+    return atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
 }
 
 bool atomic_exchange_bool_impl(atomic_t *a, bool new_value) {
-  if (!a)
-    return false;
-  return (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
+    if (!a) return false;
+    return (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
 }
 
 int atomic_exchange_int_impl(atomic_t *a, int new_value) {
-  if (!a)
-    return 0;
-  return (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
+    if (!a) return 0;
+    return (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
 }
 
 uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value) {
-  if (!a)
-    return 0;
-  return atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
+    if (!a) return 0;
+    return atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
 }
 
 // ============================================================================
@@ -163,163 +144,143 @@ uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value) {
 #ifndef NDEBUG
 
 bool atomic_load_bool(atomic_t *a) {
-  if (!a)
-    return false;
-  bool result = (bool)atomic_load((const _Atomic(uint64_t) *)&a->impl);
-  atomic_on_load(a);
-  return result;
+    if (!a) return false;
+    bool result = (bool)atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    atomic_on_load(a);
+    return result;
 }
 
 void atomic_store_bool(atomic_t *a, bool value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, (uint64_t)value);
-  atomic_on_store(a);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, (uint64_t)value);
+    atomic_on_store(a);
 }
 
 bool atomic_cas_bool(atomic_t *a, bool *expected, bool new_value) {
-  if (!a || !expected)
-    return false;
-  uint64_t exp = (uint64_t)*expected;
-  bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &exp, (uint64_t)new_value);
-  *expected = (bool)exp;
-  atomic_on_cas(a, success);
-  return success;
+    if (!a || !expected) return false;
+    uint64_t exp = (uint64_t)*expected;
+    bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &exp, (uint64_t)new_value);
+    *expected = (bool)exp;
+    atomic_on_cas(a, success);
+    return success;
 }
 
 int atomic_load_int(atomic_t *a) {
-  if (!a)
-    return 0;
-  int result = (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&a->impl);
-  atomic_on_load(a);
-  return result;
+    if (!a) return 0;
+    int result = (int)(int32_t)atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    atomic_on_load(a);
+    return result;
 }
 
 void atomic_store_int(atomic_t *a, int value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)value);
-  atomic_on_store(a);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)value);
+    atomic_on_store(a);
 }
 
 int atomic_fetch_add_int(atomic_t *a, int delta) {
-  if (!a)
-    return 0;
-  int result = (int)(int32_t)atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int64_t)delta);
-  atomic_on_fetch(a);
-  return result;
+    if (!a) return 0;
+    int result = (int)(int32_t)atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int64_t)delta);
+    atomic_on_fetch(a);
+    return result;
 }
 
 int atomic_fetch_sub_int(atomic_t *a, int delta) {
-  if (!a)
-    return 0;
-  int result = (int)(int32_t)atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int64_t)delta);
-  atomic_on_fetch(a);
-  return result;
+    if (!a) return 0;
+    int result = (int)(int32_t)atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int64_t)delta);
+    atomic_on_fetch(a);
+    return result;
 }
 
 bool atomic_cas_int(atomic_t *a, int *expected, int new_value) {
-  if (!a || !expected)
-    return false;
-  int64_t exp = (int64_t)*expected;
-  bool success = atomic_cas_int_impl(a, &exp, (int64_t)new_value);
-  *expected = (int)exp;
-  atomic_on_cas(a, success);
-  return success;
+    if (!a || !expected) return false;
+    int64_t exp = (int64_t)*expected;
+    bool success = atomic_cas_int_impl(a, &exp, (int64_t)new_value);
+    *expected = (int)exp;
+    atomic_on_cas(a, success);
+    return success;
 }
 
 uint64_t atomic_load_u64(atomic_t *a) {
-  if (!a)
-    return 0;
-  uint64_t result = atomic_load((const _Atomic(uint64_t) *)&a->impl);
-  atomic_on_load(a);
-  return result;
+    if (!a) return 0;
+    uint64_t result = atomic_load((const _Atomic(uint64_t) *)&a->impl);
+    atomic_on_load(a);
+    return result;
 }
 
 void atomic_store_u64(atomic_t *a, uint64_t value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(uint64_t) *)&a->impl, value);
-  atomic_on_store(a);
+    if (!a) return;
+    atomic_store((_Atomic(uint64_t) *)&a->impl, value);
+    atomic_on_store(a);
 }
 
 uint64_t atomic_fetch_add_u64(atomic_t *a, uint64_t delta) {
-  if (!a)
-    return 0;
-  uint64_t result = atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, delta);
-  atomic_on_fetch(a);
-  return result;
+    if (!a) return 0;
+    uint64_t result = atomic_fetch_add((_Atomic(uint64_t) *)&a->impl, delta);
+    atomic_on_fetch(a);
+    return result;
 }
 
 uint64_t atomic_fetch_sub_u64(atomic_t *a, uint64_t delta) {
-  if (!a)
-    return 0;
-  uint64_t result = atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
-  atomic_on_fetch(a);
-  return result;
+    if (!a) return 0;
+    uint64_t result = atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
+    atomic_on_fetch(a);
+    return result;
 }
 
 bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value) {
-  if (!a || !expected)
-    return false;
-  bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
-  atomic_on_cas(a, success);
-  return success;
+    if (!a || !expected) return false;
+    bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+    atomic_on_cas(a, success);
+    return success;
 }
 
 void *atomic_ptr_load(atomic_ptr_t *a) {
-  if (!a)
-    return NULL;
-  void *result = atomic_load((const _Atomic(void *) *)&a->impl);
-  atomic_ptr_on_load(a);
-  return result;
+    if (!a) return NULL;
+    void *result = atomic_load((const _Atomic(void *) *)&a->impl);
+    atomic_ptr_on_load(a);
+    return result;
 }
 
 void atomic_ptr_store(atomic_ptr_t *a, void *value) {
-  if (!a)
-    return;
-  atomic_store((_Atomic(void *) *)&a->impl, value);
-  atomic_ptr_on_store(a);
+    if (!a) return;
+    atomic_store((_Atomic(void *) *)&a->impl, value);
+    atomic_ptr_on_store(a);
 }
 
 bool atomic_ptr_cas(atomic_ptr_t *a, void **expected, void *new_value) {
-  if (!a || !expected)
-    return false;
-  bool success = atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
-  atomic_ptr_on_cas(a, success);
-  return success;
+    if (!a || !expected) return false;
+    bool success = atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
+    atomic_ptr_on_cas(a, success);
+    return success;
 }
 
 void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value) {
-  if (!a)
-    return NULL;
-  void *result = atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
-  atomic_ptr_on_exchange(a);
-  return result;
+    if (!a) return NULL;
+    void *result = atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
+    atomic_ptr_on_exchange(a);
+    return result;
 }
 
 bool atomic_exchange_bool(atomic_t *a, bool new_value) {
-  if (!a)
-    return false;
-  bool result = (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
-  atomic_on_store(a);
-  return result;
+    if (!a) return false;
+    bool result = (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
+    atomic_on_store(a);
+    return result;
 }
 
 int atomic_exchange_int(atomic_t *a, int new_value) {
-  if (!a)
-    return 0;
-  int result = (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
-  atomic_on_store(a);
-  return result;
+    if (!a) return 0;
+    int result = (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
+    atomic_on_store(a);
+    return result;
 }
 
 uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value) {
-  if (!a)
-    return 0;
-  uint64_t result = atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
-  atomic_on_store(a);
-  return result;
+    if (!a) return 0;
+    uint64_t result = atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
+    atomic_on_store(a);
+    return result;
 }
 
 // ============================================================================
@@ -330,65 +291,57 @@ uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value) {
 extern bool debug_atomic_is_initialized(void);
 
 void atomic_on_load(atomic_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->last_load_time_ns = time_get_ns();
-  a->load_count++;
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_load_time_ns = time_get_ns();
+    a->load_count++;
 }
 
 void atomic_on_store(atomic_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->last_store_time_ns = time_get_ns();
-  a->store_count++;
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_store_time_ns = time_get_ns();
+    a->store_count++;
 }
 
 void atomic_on_cas(atomic_t *a, bool success) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->cas_count++;
-  if (success) {
-    a->cas_success_count++;
-    a->last_store_time_ns = time_get_ns();
-  }
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->cas_count++;
+    if (success) {
+        a->cas_success_count++;
+        a->last_store_time_ns = time_get_ns();
+    }
 }
 
 void atomic_on_fetch(atomic_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->fetch_count++;
-  a->last_store_time_ns = time_get_ns();
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->fetch_count++;
+    a->last_store_time_ns = time_get_ns();
 }
 
 void atomic_ptr_on_load(atomic_ptr_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->last_load_time_ns = time_get_ns();
-  a->load_count++;
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_load_time_ns = time_get_ns();
+    a->load_count++;
 }
 
 void atomic_ptr_on_store(atomic_ptr_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->last_store_time_ns = time_get_ns();
-  a->store_count++;
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_store_time_ns = time_get_ns();
+    a->store_count++;
 }
 
 void atomic_ptr_on_cas(atomic_ptr_t *a, bool success) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->cas_count++;
-  if (success) {
-    a->cas_success_count++;
-    a->last_store_time_ns = time_get_ns();
-  }
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->cas_count++;
+    if (success) {
+        a->cas_success_count++;
+        a->last_store_time_ns = time_get_ns();
+    }
 }
 
 void atomic_ptr_on_exchange(atomic_ptr_t *a) {
-  if (!a || !debug_atomic_is_initialized())
-    return;
-  a->exchange_count++;
-  a->last_store_time_ns = time_get_ns();
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->exchange_count++;
+    a->last_store_time_ns = time_get_ns();
 }
 
-#endif // !NDEBUG
+#endif  // !NDEBUG

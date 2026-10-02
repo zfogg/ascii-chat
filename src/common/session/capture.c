@@ -305,6 +305,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
       // (frame_count and elapsed_time must match the new playback position)
       ctx->frame_count = 0;
       ctx->start_time_ns = time_get_ns();
+
     }
   }
 

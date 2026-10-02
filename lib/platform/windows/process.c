@@ -34,7 +34,9 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
   }
 
   FILE *stream = NULL;
-  LOG_IO(name, { stream = _popen(command, mode); });
+  LOG_IO(name, {
+    stream = _popen(command, mode);
+  });
   if (!stream) {
     return SET_ERRNO_SYS(ERROR_PROCESS_FAILED, "Failed to execute command: %s", command);
   }

@@ -97,11 +97,11 @@ asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
  */
 typedef struct {
   ui_mdns_server_t *servers; ///< Array of discovered servers
-  int count;                 ///< Number of servers discovered so far
-  int capacity;              ///< Allocated capacity
-  int64_t start_time_ms;     ///< When discovery started (for timeout)
-  int timeout_ms;            ///< Discovery timeout in milliseconds
-  bool query_complete;       ///< Set when discovery completes
+  int count;                       ///< Number of servers discovered so far
+  int capacity;                    ///< Allocated capacity
+  int64_t start_time_ms;           ///< When discovery started (for timeout)
+  int timeout_ms;                  ///< Discovery timeout in milliseconds
+  bool query_complete;             ///< Set when discovery completes
 } mdns_query_state_t;
 
 /**

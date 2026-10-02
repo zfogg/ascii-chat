@@ -77,7 +77,7 @@ typedef struct {
   int registry_id;             ///< Socket or synthetic ID used in tcp_server registry
 
   // Protocol state
-  bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
+  bool session_established;    ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
 } acds_client_data_t;
 
 /**

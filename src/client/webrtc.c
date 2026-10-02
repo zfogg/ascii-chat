@@ -83,8 +83,7 @@ static lifecycle_t g_signaling_lc = LIFECYCLE_INIT_MUTEX(&g_signaling_mutex);
  * is handled automatically by lifecycle_init.
  */
 static void ensure_mutex_initialized(void) {
-  if (!lifecycle_init(&g_signaling_lc, "signaling"))
-    return;
+  if (!lifecycle_init(&g_signaling_lc, "signaling")) return;
 }
 
 // =============================================================================

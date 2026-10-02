@@ -142,7 +142,12 @@ Test(crypto_handshake, ephemeral_key_generation) {
 
 Test(crypto_handshake, various_names) {
   const char *names[] = {
-      "simple", "with-dashes", "with_underscores", "123numbers", "UPPERCASE", "CamelCase",
+      "simple",
+      "with-dashes",
+      "with_underscores",
+      "123numbers",
+      "UPPERCASE",
+      "CamelCase",
   };
 
   for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {

@@ -195,7 +195,7 @@ const char *get_level_string_padded(log_level_t level) {
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
     platform_write(_log_fd, "\n", 1);                                                                                  \
-    backtrace_print_simple(0);                                                                                         \
+    backtrace_print_simple(0);                                                                                       \
   } while (0)
 #else
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
@@ -207,7 +207,7 @@ const char *get_level_string_padded(log_level_t level) {
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
     platform_write(_log_fd, "\n", 1);                                                                                  \
-    backtrace_print_simple(0);                                                                                         \
+    backtrace_print_simple(0);                                                                                       \
   } while (0)
 #endif
 
@@ -676,6 +676,7 @@ void log_system_init(void) {
 
   // Initialize color scheme based on terminal capabilities
   log_init_colors();
+
 }
 
 /**
@@ -1609,6 +1610,7 @@ void log_redetect_terminal_capabilities(void) {
     return;
   }
 
+
   // Detect if not initialized, or if we're using defaults (not reliably detected)
   // This ensures we get proper detection after logging is ready, replacing any defaults
   // Once we have reliable detection, never re-detect to keep colors consistent
@@ -1617,6 +1619,7 @@ void log_redetect_terminal_capabilities(void) {
     g_log.terminal_caps = detect_terminal_capabilities();
     g_log.terminal_caps_detecting = false;
     g_log.terminal_caps_initialized = true;
+
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
     log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
@@ -1678,14 +1681,17 @@ void log_init_colors(void) {
     return;
   }
 
+
   /* Skip color initialization before logging is fully initialized */
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
 
+
   if (g_log.log_colorscheme_initialized) {
     return;
   }
+
 
   /* Get active color scheme - this ensures color system is initialized */
   const color_scheme_t *scheme = colorscheme_get_active_scheme();
@@ -1693,6 +1699,7 @@ void log_init_colors(void) {
     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
     return;
   }
+
 
   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
   mutex_lock(&g_colorscheme_mutex);

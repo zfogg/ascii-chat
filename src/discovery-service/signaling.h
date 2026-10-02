@@ -59,7 +59,7 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
-                                                  const acip_nat_quality_t *quality, size_t total_packet_len);
+                                                   const acip_nat_quality_t *quality, size_t total_packet_len);
 
 /**
  * @brief Broadcast packet to all session participants

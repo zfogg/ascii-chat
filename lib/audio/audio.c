@@ -67,7 +67,9 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
   PaError err;
-  LOG_IO("portaudio", { err = Pa_Initialize(); });
+  LOG_IO("portaudio", {
+    err = Pa_Initialize();
+  });
 
   if (err != paNoError) {
     return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
@@ -87,7 +89,9 @@ void audio_terminate_portaudio_final(void) {
     log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
     PaError err;
-    LOG_IO("portaudio", { err = Pa_Terminate(); });
+    LOG_IO("portaudio", {
+      err = Pa_Terminate();
+    });
 
     log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
@@ -260,7 +264,8 @@ static void *audio_worker_thread(void *arg) {
           // Both buffers have identical, frame-aligned sample counts - AEC3 sees
           // the real continuous audio stream with no padding or gaps
           client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
-                                               ctx->worker_capture_batch, (int)capture_read, ctx->worker_capture_batch);
+                                               ctx->worker_capture_batch, (int)capture_read,
+                                               ctx->worker_capture_batch);
 
           long aec3_ns = (long)time_elapsed_ns(aec3_start_ns, time_get_ns());
 
@@ -286,10 +291,8 @@ static void *audio_worker_thread(void *arg) {
         // Apply microphone sensitivity
         float mic_sensitivity = GET_OPTION(microphone_sensitivity);
         if (mic_sensitivity != 1.0f) {
-          if (mic_sensitivity < 0.0f)
-            mic_sensitivity = 0.0f;
-          if (mic_sensitivity > 1.0f)
-            mic_sensitivity = 1.0f;
+          if (mic_sensitivity < 0.0f) mic_sensitivity = 0.0f;
+          if (mic_sensitivity > 1.0f) mic_sensitivity = 1.0f;
           for (size_t i = 0; i < capture_read; i++) {
             ctx->worker_capture_batch[i] *= mic_sensitivity;
           }
@@ -856,10 +859,8 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   NAMED_REGISTER_ATOMIC(&rb->read_index, "read_index_consumer_position", (uintptr_t)(const void *)(rb));
 
   // Jitter buffer state management
-  NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag",
-                        (uintptr_t)(const void *)(rb));
-  NAMED_REGISTER_ATOMIC(&rb->crossfade_samples_remaining, "crossfade_samples_remaining_count",
-                        (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->crossfade_samples_remaining, "crossfade_samples_remaining_count", (uintptr_t)(const void *)(rb));
   NAMED_REGISTER_ATOMIC(&rb->crossfade_fade_in, "crossfade_fade_in_direction_flag", (uintptr_t)(const void *)(rb));
 
   // Audio quality monitoring
@@ -1502,9 +1503,13 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     });
 
     if (err == paNoError) {
-      LOG_IO("portaudio", { err = Pa_StartStream(ctx->duplex_stream); });
+      LOG_IO("portaudio", {
+        err = Pa_StartStream(ctx->duplex_stream);
+      });
       if (err != paNoError) {
-        LOG_IO("portaudio", { Pa_CloseStream(ctx->duplex_stream); });
+        LOG_IO("portaudio", {
+          Pa_CloseStream(ctx->duplex_stream);
+        });
         ctx->duplex_stream = NULL;
         log_warn("Full-duplex stream failed to start: %s", Pa_GetErrorText(err));
         try_separate = true;
@@ -1555,8 +1560,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
       // Try preferred rate first
       LOG_IO("portaudio", {
-        err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER,
-                            paClipOff, callback, ctx);
+        err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                            callback, ctx);
       });
 
       if (err == paNoError) {
@@ -1570,7 +1575,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         // If first Pa_OpenStream call left a partial stream, clean it up before retrying
         if (ctx->output_stream) {
           log_debug("Closing partially-opened output stream from failed preferred rate");
-          LOG_IO("portaudio", { Pa_CloseStream(ctx->output_stream); });
+          LOG_IO("portaudio", {
+            Pa_CloseStream(ctx->output_stream);
+          });
           ctx->output_stream = NULL;
         }
 
@@ -1589,7 +1596,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
           // Clean up if fallback also failed
           if (ctx->output_stream) {
             log_debug("Closing partially-opened output stream from failed native rate");
-            LOG_IO("portaudio", { Pa_CloseStream(ctx->output_stream); });
+            LOG_IO("portaudio", {
+              Pa_CloseStream(ctx->output_stream);
+            });
             ctx->output_stream = NULL;
           }
         }
@@ -1612,8 +1621,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       // In input-only mode, we don't need to match output device rate
       double input_stream_rate = AUDIO_SAMPLE_RATE;
       LOG_IO("portaudio", {
-        err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER,
-                            paClipOff, input_callback, ctx);
+        err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                            input_callback, ctx);
       });
       input_ok = (err == paNoError);
 
@@ -1624,7 +1633,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         // Clean up partial stream from first attempt before retrying
         if (ctx->input_stream) {
           log_debug("Closing partially-opened input stream from failed primary device");
-          LOG_IO("portaudio", { Pa_CloseStream(ctx->input_stream); });
+          LOG_IO("portaudio", {
+            Pa_CloseStream(ctx->input_stream);
+          });
           ctx->input_stream = NULL;
         }
 
@@ -1644,7 +1655,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
             // Clean up if fallback also failed
             if (ctx->input_stream) {
               log_debug("Closing partially-opened input stream from failed fallback device");
-              LOG_IO("portaudio", { Pa_CloseStream(ctx->input_stream); });
+              LOG_IO("portaudio", {
+                Pa_CloseStream(ctx->input_stream);
+              });
               ctx->input_stream = NULL;
             }
           }
@@ -1677,12 +1690,18 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
     // Start output stream if it's open
     if (ctx->output_stream) {
-      LOG_IO("portaudio", { err = Pa_StartStream(ctx->output_stream); });
+      LOG_IO("portaudio", {
+        err = Pa_StartStream(ctx->output_stream);
+      });
       if (err != paNoError) {
         if (ctx->input_stream) {
-          LOG_IO("portaudio", { Pa_CloseStream(ctx->input_stream); });
+          LOG_IO("portaudio", {
+            Pa_CloseStream(ctx->input_stream);
+          });
         }
-        LOG_IO("portaudio", { Pa_CloseStream(ctx->output_stream); });
+        LOG_IO("portaudio", {
+          Pa_CloseStream(ctx->output_stream);
+        });
         ctx->input_stream = NULL;
         ctx->output_stream = NULL;
         audio_ring_buffer_destroy(ctx->render_buffer);
@@ -1693,16 +1712,24 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
     // Start input stream if it's open
     if (ctx->input_stream) {
-      LOG_IO("portaudio", { err = Pa_StartStream(ctx->input_stream); });
+      LOG_IO("portaudio", {
+        err = Pa_StartStream(ctx->input_stream);
+      });
       if (err != paNoError) {
         if (ctx->output_stream) {
-          LOG_IO("portaudio", { Pa_StopStream(ctx->output_stream); });
+          LOG_IO("portaudio", {
+            Pa_StopStream(ctx->output_stream);
+          });
         }
         if (ctx->input_stream) {
-          LOG_IO("portaudio", { Pa_CloseStream(ctx->input_stream); });
+          LOG_IO("portaudio", {
+            Pa_CloseStream(ctx->input_stream);
+          });
         }
         if (ctx->output_stream) {
-          LOG_IO("portaudio", { Pa_CloseStream(ctx->output_stream); });
+          LOG_IO("portaudio", {
+            Pa_CloseStream(ctx->output_stream);
+          });
         }
         ctx->input_stream = NULL;
         ctx->output_stream = NULL;
@@ -1789,12 +1816,16 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   if (ctx->duplex_stream) {
     log_debug("Stopping duplex stream");
     PaError err;
-    LOG_IO("portaudio", { err = Pa_StopStream(ctx->duplex_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_StopStream(ctx->duplex_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_StopStream failed: %s", Pa_GetErrorText(err));
     }
     log_debug("Closing duplex stream");
-    LOG_IO("portaudio", { err = Pa_CloseStream(ctx->duplex_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_CloseStream(ctx->duplex_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_CloseStream failed: %s", Pa_GetErrorText(err));
     } else {
@@ -1807,12 +1838,16 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   if (ctx->input_stream) {
     log_debug("Stopping input stream");
     PaError err;
-    LOG_IO("portaudio", { err = Pa_StopStream(ctx->input_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_StopStream(ctx->input_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_StopStream input failed: %s", Pa_GetErrorText(err));
     }
     log_debug("Closing input stream");
-    LOG_IO("portaudio", { err = Pa_CloseStream(ctx->input_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_CloseStream(ctx->input_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_CloseStream input failed: %s", Pa_GetErrorText(err));
     } else {
@@ -1824,12 +1859,16 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   if (ctx->output_stream) {
     log_debug("Stopping output stream");
     PaError err;
-    LOG_IO("portaudio", { err = Pa_StopStream(ctx->output_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_StopStream(ctx->output_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_StopStream output failed: %s", Pa_GetErrorText(err));
     }
     log_debug("Closing output stream");
-    LOG_IO("portaudio", { err = Pa_CloseStream(ctx->output_stream); });
+    LOG_IO("portaudio", {
+      err = Pa_CloseStream(ctx->output_stream);
+    });
     if (err != paNoError) {
       log_warn("Pa_CloseStream output failed: %s", Pa_GetErrorText(err));
     } else {

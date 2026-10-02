@@ -66,7 +66,7 @@ int terminal_choose_log_fd(log_level_t level) {
   // This matches the native implementation and allows Emscripten to route to
   // console.log for INFO/DEBUG/DEV and console.error for WARN/ERROR/FATAL
   if (level >= 3) { // LOG_WARN = 3, LOG_ERROR = 4, LOG_FATAL = 5
-    return 2;       // STDERR_FILENO
+    return 2; // STDERR_FILENO
   }
   return 1; // STDOUT_FILENO (LOG_DEV=0, LOG_DEBUG=1, LOG_INFO=2)
 }
@@ -77,7 +77,7 @@ int terminal_choose_log_fd(log_level_t level) {
 typedef struct session_log_buffer session_log_buffer_t;
 
 session_log_buffer_t *session_log_buffer_create(void) {
-  return NULL; // No-op - session log buffer not used in WASM
+  return NULL;  // No-op - session log buffer not used in WASM
 }
 
 void session_log_buffer_destroy(session_log_buffer_t *buf) {
@@ -96,7 +96,9 @@ void session_log_buffer_append(session_log_buffer_t *buf, const char *message) {
   // No-op - session log buffer not used in WASM
 }
 
-size_t session_log_buffer_get_recent(session_log_buffer_t *buf, session_log_entry_t *out_entries, size_t max_count) {
+size_t session_log_buffer_get_recent(session_log_buffer_t *buf,
+                                      session_log_entry_t *out_entries,
+                                      size_t max_count) {
   (void)buf;
   (void)out_entries;
   (void)max_count;

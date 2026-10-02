@@ -93,6 +93,7 @@ char *manpage_content_generate_examples(const options_config_t *config) {
     return buffer;
   }
 
+
   // Allocate growing buffer for examples section
   size_t buffer_capacity = 8192;
   char *buffer = SAFE_MALLOC(buffer_capacity, char *);

@@ -11,8 +11,8 @@
 #include <stdint.h>
 #include <ascii-chat/video/ascii/sve.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/common.h>        // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
-#include <ascii-chat/video/ascii/output_buffer.h> // For outbuf_t, emit_*, ob_*
+#include <ascii-chat/video/ascii/common.h> // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
+#include <ascii-chat/video/ascii/output_buffer.h>    // For outbuf_t, emit_*, ob_*
 
 #include <arm_sve.h>
 
@@ -24,7 +24,8 @@ static inline uint8_t rgb_to_256color_sve(uint8_t r, uint8_t g, uint8_t b) {
 
 // Unified SVE function for all color modes (full implementation like NEON)
 
-char *render_ascii_color_sve(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars) {
+char *render_ascii_color_sve(const image_t *image, bool use_background, bool use_256color,
+                                         const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -336,5 +337,6 @@ void sve_caches_destroy(void) {
   // SVE currently uses shared caches from common.c, so no specific cleanup needed
   log_debug("SVE_CACHE: SVE caches cleaned up");
 }
+
 
 #endif /* SIMD_SUPPORT_SVE */

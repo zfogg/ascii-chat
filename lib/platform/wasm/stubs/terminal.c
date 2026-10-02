@@ -45,15 +45,15 @@ unsigned short int terminal_get_effective_height(void) {
   return OPT_HEIGHT_DEFAULT;
 }
 
+
 // Terminal reader stubs
 #include <ascii-chat/terminal/fd/reader.h>
 
 asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out) {
   (void)fd;
   (void)frame_height;
-  if (out)
-    *out = NULL;
-  return ASCIICHAT_OK; // Stub - no stdin available in WASM
+  if (out) *out = NULL;
+  return ASCIICHAT_OK;  // Stub - no stdin available in WASM
 }
 
 void terminal_fd_reader_destroy(terminal_fd_reader_t *reader) {
@@ -63,7 +63,6 @@ void terminal_fd_reader_destroy(terminal_fd_reader_t *reader) {
 
 asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **out_frame) {
   (void)reader;
-  if (out_frame)
-    *out_frame = NULL; // Signal EOF immediately
+  if (out_frame) *out_frame = NULL;  // Signal EOF immediately
   return ASCIICHAT_OK;
 }

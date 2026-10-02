@@ -21,6 +21,7 @@
 #include <string.h>
 #include <inttypes.h>
 
+
 #define MAX_NAME_LEN 256
 #define DESCRIBE_BUFFER_SIZE 768
 
@@ -31,8 +32,7 @@
  * system, which can cause deadlocks when called while holding entries_lock.
  */
 static char *entry_strdup(const char *s) {
-  if (!s)
-    return NULL;
+  if (!s) return NULL;
   size_t len = strlen(s) + 1;
   char *dup = malloc(len);
   if (dup) {
@@ -57,7 +57,7 @@ typedef struct named_entry {
   char *file;
   int line;
   char *func;
-  UT_hash_handle hh; // uthash handle
+  UT_hash_handle hh;  // uthash handle
 } named_entry_t;
 
 /**
@@ -68,8 +68,8 @@ typedef struct named_entry {
  * No mutations occur while holding the lock - avoids deadlocks.
  */
 typedef struct {
-  named_entry_t *entries; // uthash hash table
-  rwlock_t entries_lock;  // Protects hash table
+  named_entry_t *entries;  // uthash hash table
+  rwlock_t entries_lock;   // Protects hash table
   lifecycle_t lifecycle;
 } named_registry_t;
 
@@ -91,7 +91,7 @@ asciichat_error_t named_init(void) {
 
   if (rwlock_init(&g_named_registry.entries_lock, "named_registry_lock") != 0) {
     lifecycle_shutdown(&g_named_registry.lifecycle);
-    return ASCIICHAT_OK; // Continue even if rwlock init fails
+    return ASCIICHAT_OK;  // Continue even if rwlock init fails
   }
 
   lifecycle_init_commit(&g_named_registry.lifecycle);
@@ -122,14 +122,10 @@ void named_destroy(void) {
 
     // Free all other entries
     free(e->name);
-    if (e->type)
-      free(e->type);
-    if (e->format_spec)
-      free(e->format_spec);
-    if (e->file)
-      free(e->file);
-    if (e->func)
-      free(e->func);
+    if (e->type) free(e->type);
+    if (e->format_spec) free(e->format_spec);
+    if (e->file) free(e->file);
+    if (e->func) free(e->func);
     free(e);
     e = next;
   }
@@ -155,8 +151,8 @@ static uint64_t atomic_counter = 0;
  * @brief Initialize a named registry entry with all fields
  * @note Assumes entry->name is already set (may be pre-allocated or via entry_strdup)
  */
-static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec, const char *file,
-                             int line, const char *func) {
+static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec,
+                             const char *file, int line, const char *func) {
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
   entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
@@ -171,8 +167,7 @@ static void named_entry_init(named_entry_t *entry, const char *type, const char 
  * @note Caller must hold read lock
  */
 static const char *named_lookup_name_unlocked(uintptr_t parent_key) {
-  if (parent_key == 0)
-    return NULL;
+  if (parent_key == 0) return NULL;
   named_entry_t *entry = NULL;
   HASH_FIND(hh, g_named_registry.entries, &parent_key, sizeof(uintptr_t), entry);
   return entry ? entry->name : NULL;
@@ -223,7 +218,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     } else if (strcmp(type, "atomic") == 0) {
       counter = __sync_fetch_and_add(&atomic_counter, 1);
     }
-    snprintf(name_buffer, sizeof(name_buffer), "%s.%" PRIu64, final_base_name, counter);
+    snprintf(name_buffer, sizeof(name_buffer), "%s.%"PRIu64, final_base_name, counter);
   } else {
     // Hierarchical names don't get counters - parent already has one
     snprintf(name_buffer, sizeof(name_buffer), "%s", final_base_name);
@@ -231,15 +226,14 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 
   // Allocate entry BEFORE acquiring lock (avoid long critical section)
   named_entry_t *entry = malloc(sizeof(named_entry_t));
-  if (!entry)
-    return base_name;
+  if (!entry) return base_name;
 
   entry->key = key;
   entry->name = entry_strdup(name_buffer);
   named_entry_init(entry, type, format_spec, file, line, func);
 
   // Only hold lock for the hash table operation
-  log_dev("[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s", (void *)key, type);
+  log_dev("[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s", (void*)key, type);
   rwlock_wrlock(&g_named_registry.entries_lock);
   log_dev("[NAMED_REGISTER_LOCK_2] ✅ Acquired entries_lock, adding hash entry");
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
@@ -302,14 +296,10 @@ void named_unregister(uintptr_t key) {
   if (entry) {
     HASH_DEL(g_named_registry.entries, entry);
     free(entry->name);
-    if (entry->type)
-      free(entry->type);
-    if (entry->format_spec)
-      free(entry->format_spec);
-    if (entry->file)
-      free(entry->file);
-    if (entry->func)
-      free(entry->func);
+    if (entry->type) free(entry->type);
+    if (entry->format_spec) free(entry->format_spec);
+    if (entry->file) free(entry->file);
+    if (entry->func) free(entry->func);
     free(entry);
   }
   rwlock_wrunlock(&g_named_registry.entries_lock);
@@ -361,8 +351,7 @@ const char *named_get_format_spec(uintptr_t key) {
 }
 
 const char *named_describe(uintptr_t key, const char *type_hint) {
-  if (!type_hint)
-    type_hint = "object";
+  if (!type_hint) type_hint = "object";
 
   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
 
@@ -380,8 +369,8 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
     const char *type = entry->type ? entry->type : type_hint;
     const char *name = entry->name ? entry->name : "unknown";
     if (entry->file && entry->func && entry->line > 0) {
-      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key, entry->file,
-               entry->line, entry->func);
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key,
+               entry->file, entry->line, entry->func);
     } else {
       snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, name, (ptrdiff_t)key);
     }
@@ -416,8 +405,7 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
     entries[count].key = e->key;
     const char *src = e->name ? e->name : "?";
     size_t src_len = strlen(src);
-    if (src_len >= MAX_NAME_LEN)
-      src_len = MAX_NAME_LEN - 1;
+    if (src_len >= MAX_NAME_LEN) src_len = MAX_NAME_LEN - 1;
     memcpy(entries[count].name, src, src_len);
     entries[count].name[src_len] = '\0';
     count++;
@@ -468,8 +456,7 @@ const char *named_register_fd(int fd, const char *name, const char *file, int li
 
   // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
-  if (!entry)
-    return "?";
+  if (!entry) return "?";
 
   uintptr_t key = encode_fd_key(fd);
   entry->key = key;
@@ -485,8 +472,7 @@ const char *named_register_fd(int fd, const char *name, const char *file, int li
 }
 
 const char *named_get_fd(int fd) {
-  if (fd < 0)
-    return NULL;
+  if (fd < 0) return NULL;
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
     return NULL;
@@ -502,8 +488,7 @@ const char *named_get_fd(int fd) {
 }
 
 const char *named_get_fd_format_spec(int fd) {
-  if (fd < 0)
-    return NULL;
+  if (fd < 0) return NULL;
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
     return NULL;
@@ -532,8 +517,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
 
   // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
-  if (!entry)
-    return "?";
+  if (!entry) return "?";
 
   uintptr_t key = encode_pkt_type_key(pkt_type);
   entry->key = key;
@@ -549,8 +533,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
 }
 
 const char *named_get_packet_type(int pkt_type) {
-  if (pkt_type < 0)
-    return NULL;
+  if (pkt_type < 0) return NULL;
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
     return NULL;
@@ -566,8 +549,7 @@ const char *named_get_packet_type(int pkt_type) {
 }
 
 const char *named_get_packet_type_format_spec(int pkt_type) {
-  if (pkt_type < 0)
-    return NULL;
+  if (pkt_type < 0) return NULL;
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
     return NULL;
@@ -585,3 +567,4 @@ const char *named_get_packet_type_format_spec(int pkt_type) {
 void named_registry_register_packet_types(void) {
   // No-op
 }
+

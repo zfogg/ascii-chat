@@ -158,8 +158,8 @@ static void *ping_thread_func(void *arg) {
 
   // Startup grace period: Allow connection initialization to complete before checking state
   // Prevents race condition where thread spawns before transport is fully configured
-  APP_CALLBACK_VOID(platform_pump_events);
-  platform_sleep_ms(100);
+      APP_CALLBACK_VOID(platform_pump_events);
+      platform_sleep_ms(100);
 
   while (!should_exit() && !server_connection_is_lost()) {
     // Check if connection is still active before sending

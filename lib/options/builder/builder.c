@@ -1630,8 +1630,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // For optional arguments, pass NULL to the parser
       opt_value = NULL;
     }
-  } else if (desc->type == OPTION_TYPE_BOOL && (desc->optional_arg || strcmp(desc->long_name, "splash-screen") == 0 ||
-                                                strcmp(desc->long_name, "status-screen") == 0)) {
+  } else if (desc->type == OPTION_TYPE_BOOL && (desc->optional_arg || strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
     // Boolean options with optional_arg support can accept value from --flag=value or --flag value
     if (long_opt_value) {
       // Value came from --name=value
@@ -1639,8 +1638,9 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value
       const char *next_arg = argv[argv_index + 1];
-      if (strcasecmp(next_arg, "true") == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 ||
-          strcasecmp(next_arg, "on") == 0 || strcasecmp(next_arg, "false") == 0 || strcasecmp(next_arg, "no") == 0 ||
+      if (strcasecmp(next_arg, "true") == 0 || strcasecmp(next_arg, "yes") == 0 ||
+          strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
+          strcasecmp(next_arg, "false") == 0 || strcasecmp(next_arg, "no") == 0 ||
           strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
         // Next argument is a boolean value, consume it
         opt_value = next_arg;
@@ -1864,8 +1864,8 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       if (error_message) {
         int asprintf_result;
         if (desc->env_var_name) {
-          asprintf_result = asprintf(error_message, "Required option --%s is not set (set %s env var or use --%s)",
-                                     desc->long_name, desc->env_var_name, desc->long_name);
+          asprintf_result = asprintf(error_message, "Required option --%s is not set (set %s env var or use --%s)", desc->long_name,
+                                     desc->env_var_name, desc->long_name);
         } else {
           asprintf_result = asprintf(error_message, "Required option --%s is not set", desc->long_name);
         }
@@ -1892,11 +1892,9 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
           if (dep->error_message) {
             *error_message = platform_strdup(dep->error_message);
           } else {
-            int asprintf_result =
-                asprintf(error_message, "Option --%s requires --%s to be set", dep->option_name, dep->depends_on);
+            int asprintf_result = asprintf(error_message, "Option --%s requires --%s to be set", dep->option_name, dep->depends_on);
             if (asprintf_result < 0) {
-              log_error("Failed to format error message for option dependency: --%s requires --%s", dep->option_name,
-                        dep->depends_on);
+              log_error("Failed to format error message for option dependency: --%s requires --%s", dep->option_name, dep->depends_on);
               *error_message = NULL;
             }
           }
@@ -1911,11 +1909,9 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
           if (dep->error_message) {
             *error_message = platform_strdup(dep->error_message);
           } else {
-            int asprintf_result =
-                asprintf(error_message, "Option --%s conflicts with --%s", dep->option_name, dep->depends_on);
+            int asprintf_result = asprintf(error_message, "Option --%s conflicts with --%s", dep->option_name, dep->depends_on);
             if (asprintf_result < 0) {
-              log_error("Failed to format error message for option conflict: --%s conflicts with --%s",
-                        dep->option_name, dep->depends_on);
+              log_error("Failed to format error message for option conflict: --%s conflicts with --%s", dep->option_name, dep->depends_on);
               *error_message = NULL;
             }
           }
@@ -1952,8 +1948,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
   const options_t *opts = (const options_t *)options_struct;
   if (opts->color && opts->color_mode == TERM_COLOR_NONE) {
     if (error_message) {
-      int asprintf_result =
-          asprintf(error_message, "Option --color cannot be used with --color-mode=none (conflicting color settings)");
+      int asprintf_result = asprintf(error_message, "Option --color cannot be used with --color-mode=none (conflicting color settings)");
       if (asprintf_result < 0) {
         log_error("Failed to format error message for color option conflict");
         *error_message = NULL;

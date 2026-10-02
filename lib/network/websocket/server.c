@@ -182,7 +182,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
     client_ctx->is_secure = lws_is_ssl(wsi); // Check if connection is TLS (wss://)
-    client_ctx->auth_required = false;       // Set by server handler if authentication is required
+    client_ctx->auth_required = false; // Set by server handler if authentication is required
 
     // Queue handler to thread pool (no pthread_create from callback context)
     // The handler_pool was created at server startup with pre-allocated workers
@@ -578,8 +578,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       yyjson_mut_obj_add_str(doc, root, "status", "ok");
       yyjson_mut_obj_add_str(doc, root, "version", ASCII_CHAT_VERSION_FULL);
       char proto_ver[16];
-      snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
-               PROTOCOL_VERSION_PATCH);
+      snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
       yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
 
       size_t json_len = 0;
@@ -594,8 +593,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       unsigned char *end = buf + sizeof(buf);
 
       if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
-          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, (const unsigned char *)"application/json", 16,
-                                       &p, end) ||
+          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                       (const unsigned char *)"application/json", 16, &p, end) ||
           lws_add_http_header_content_length(wsi, (lws_filepos_t)json_len, &p, end) ||
           lws_finalize_http_header(wsi, &p, end)) {
         free(json);
@@ -668,8 +667,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       unsigned char *end = buf + sizeof(buf);
 
       if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
-          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, (const unsigned char *)"application/json", 16,
-                                       &p, end) ||
+          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                       (const unsigned char *)"application/json", 16, &p, end) ||
           lws_add_http_header_content_length(wsi, (lws_filepos_t)json_len, &p, end) ||
           lws_finalize_http_header(wsi, &p, end)) {
         free(json);

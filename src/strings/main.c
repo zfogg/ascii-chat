@@ -25,40 +25,43 @@
 #define SESSION_STRING_BUFFER_SIZE 40
 #define ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)
 
+
 int main(int argc, char *argv[]) {
   long long count = 1;
   int dump_adjectives = 0;
   int dump_nouns = 0;
 
-  static struct option long_options[] = {{"count", required_argument, 0, 'n'},
-                                         {"dump-adjectives", no_argument, 0, 'a'},
-                                         {"dump-nouns", no_argument, 0, 'o'},
-                                         {"help", no_argument, 0, 'h'},
-                                         {0, 0, 0, 0}};
+  static struct option long_options[] = {
+    {"count", required_argument, 0, 'n'},
+    {"dump-adjectives", no_argument, 0, 'a'},
+    {"dump-nouns", no_argument, 0, 'o'},
+    {"help", no_argument, 0, 'h'},
+    {0, 0, 0, 0}
+  };
 
   int opt;
   while ((opt = getopt_long(argc, argv, "n:aoh", long_options, NULL)) != -1) {
     switch (opt) {
-    case 'n':
-      count = strtoll(optarg, NULL, 10);
-      break;
-    case 'a':
-      dump_adjectives = 1;
-      break;
-    case 'o':
-      dump_nouns = 1;
-      break;
-    case 'h':
-      printf("Usage: ascii-chat-strings [OPTIONS]\n");
-      printf("Generate memorable session strings (adjective-noun-noun format)\n");
-      printf("\nOptions:\n");
-      printf("  -n, --count COUNT        Generate COUNT session strings (default: 1)\n");
-      printf("  -a, --dump-adjectives    Dump adjectives list as JavaScript\n");
-      printf("  -o, --dump-nouns         Dump nouns list as JavaScript\n");
-      printf("  -h, --help               Show this help message\n");
-      return 0;
-    default:
-      return ERROR_USAGE;
+      case 'n':
+        count = strtoll(optarg, NULL, 10);
+        break;
+      case 'a':
+        dump_adjectives = 1;
+        break;
+      case 'o':
+        dump_nouns = 1;
+        break;
+      case 'h':
+        printf("Usage: ascii-chat-strings [OPTIONS]\n");
+        printf("Generate memorable session strings (adjective-noun-noun format)\n");
+        printf("\nOptions:\n");
+        printf("  -n, --count COUNT        Generate COUNT session strings (default: 1)\n");
+        printf("  -a, --dump-adjectives    Dump adjectives list as JavaScript\n");
+        printf("  -o, --dump-nouns         Dump nouns list as JavaScript\n");
+        printf("  -h, --help               Show this help message\n");
+        return 0;
+      default:
+        return ERROR_USAGE;
     }
   }
 
@@ -94,7 +97,10 @@ int main(int argc, char *argv[]) {
     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
 
-    printf("%s-%s-%s\n", adjectives[adj_idx], nouns[noun1_idx], nouns[noun2_idx]);
+    printf("%s-%s-%s\n",
+           adjectives[adj_idx],
+           nouns[noun1_idx],
+           nouns[noun2_idx]);
   }
 
   return 0;

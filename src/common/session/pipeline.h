@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "session/render.h" // for callback types
+#include "session/render.h"  // for callback types
 
 /* Forward declarations */
 typedef struct session_capture_ctx session_capture_ctx_t;
@@ -33,8 +33,10 @@ typedef struct session_pipeline_s session_pipeline_t;
  * @note The pipeline does NOT own capture or display — caller must keep them alive
  *       until session_pipeline_destroy() returns.
  */
-asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, session_display_ctx_t *display,
-                                          session_pipeline_t **out);
+asciichat_error_t session_pipeline_create(
+    session_capture_ctx_t *capture,
+    session_display_ctx_t *display,
+    session_pipeline_t **out);
 
 /**
  * Main thread loop: drives terminal output and keyboard handling.
@@ -52,8 +54,11 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
  * @note This function blocks until should_exit() returns true or capture ends.
  *       Signals capture/encode threads to stop before returning.
  */
-asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit,
-                                            session_keyboard_handler_fn keyboard_handler, void *user_data);
+asciichat_error_t session_pipeline_run_main(
+    session_pipeline_t *pipeline,
+    session_should_exit_fn should_exit,
+    session_keyboard_handler_fn keyboard_handler,
+    void *user_data);
 
 /**
  * Stop threads and free pipeline.

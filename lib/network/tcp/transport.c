@@ -56,11 +56,10 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
     }
 
     if (sent < 0) {
-      log_error("★ TCP_SEND_ALL: socket_send FAILED at offset %zu/%zu, errno=%d (%s)", total_sent, len, errno,
-                SAFE_STRERROR(errno));
+      log_error("★ TCP_SEND_ALL: socket_send FAILED at offset %zu/%zu, errno=%d (%s)", total_sent, len, errno, SAFE_STRERROR(errno));
       return SET_ERRNO_SYS(ERROR_NETWORK,
-                           "Socket send failed: %s (tried to send %zu bytes, %zu remaining, already sent %zu)",
-                           SAFE_STRERROR(errno), len, remaining, total_sent);
+                           "Socket send failed: %s (tried to send %zu bytes, %zu remaining, already sent %zu)", SAFE_STRERROR(errno), len,
+                           remaining, total_sent);
     }
     if (sent == 0) {
       log_error("★ TCP_SEND_ALL: socket closed at offset %zu/%zu", total_sent, len);
@@ -241,8 +240,8 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   packet_recv_result_t result =
       receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
-  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu", result,
-           result == PACKET_RECV_SUCCESS ? envelope.len : 0);
+  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",
+           result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {
     if (result == PACKET_RECV_EOF) {

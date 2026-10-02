@@ -187,6 +187,7 @@ void client_cleanup(void) {
   g_initialized = false;
   options_state_destroy();
   platform_destroy();
+
 }
 
 // ============================================================================
@@ -316,6 +317,7 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
+
   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
   // The raw packet pointer from JS cannot be passed directly because the crypto
   // handshake function calls buffer_pool_free() on the payload when done.
@@ -333,6 +335,7 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
 
   asciichat_error_t result = crypto_handshake_client_key_exchange(&g_crypto_handshake_ctx, &g_wasm_transport,
                                                                   packet_type, payload, payload_len);
+
 
   if (result != ASCIICHAT_OK) {
     g_connection_state = CONNECTION_STATE_ERROR;
@@ -367,6 +370,7 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
+
   // Allocate payload copy from buffer pool
   uint8_t *payload = NULL;
   if (payload_len > 0) {
@@ -379,8 +383,9 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
   }
 
   // Process crypto parameters
-  asciichat_error_t result =
-      crypto_handshake_set_parameters(&g_crypto_handshake_ctx, (const crypto_parameters_packet_t *)payload);
+  asciichat_error_t result = crypto_handshake_set_parameters(&g_crypto_handshake_ctx,
+                                                              (const crypto_parameters_packet_t *)payload);
+
 
   // Free payload
   if (payload) {
@@ -418,6 +423,7 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
+
   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
   uint8_t *payload = NULL;
   if (payload_len > 0) {
@@ -432,6 +438,7 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
   // Process auth challenge
   asciichat_error_t result = crypto_handshake_client_auth_response(&g_crypto_handshake_ctx, &g_wasm_transport,
                                                                    packet_type, payload, payload_len);
+
 
   if (result != ASCIICHAT_OK) {
     g_connection_state = CONNECTION_STATE_ERROR;
@@ -464,6 +471,7 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
+
   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
   uint8_t *payload = NULL;
   if (payload_len > 0) {
@@ -478,6 +486,7 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
   // Complete handshake (takes ownership of payload and will free it)
   asciichat_error_t result =
       crypto_handshake_client_complete(&g_crypto_handshake_ctx, &g_wasm_transport, packet_type, payload, payload_len);
+
 
   if (result != ASCIICHAT_OK) {
     g_connection_state = CONNECTION_STATE_ERROR;

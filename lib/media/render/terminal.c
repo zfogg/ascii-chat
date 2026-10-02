@@ -41,7 +41,7 @@ typedef struct {
   int pitch;           // Bytes per row
   int bitmap_left;     // Glyph positioning offsets
   int bitmap_top;
-  UT_hash_handle hh; // uthash handle
+  UT_hash_handle hh;   // uthash handle
 } glyph_cache_entry_t;
 
 /**
@@ -332,16 +332,16 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
     if (r->cell_h < min_acceptable || r->cell_h > max_acceptable) {
       // Loaded height is far from expected, apply correction
-      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (out of range [%d,%d], 2x width=%d)", r->cell_h,
-                corrected_h, min_acceptable, max_acceptable, r->cell_w);
+      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (out of range [%d,%d], 2x width=%d)",
+                r->cell_h, corrected_h, min_acceptable, max_acceptable, r->cell_w);
       r->cell_h = corrected_h;
     } else if (corrected_h != r->cell_h) {
       // Loaded height is close to expected, fine-tune by small amount only
       int delta = corrected_h - r->cell_h;
       if (delta > 4 || delta < -4) {
         // Only apply if difference is more than 4px
-        log_debug("ASPECT_RATIO: Fine-tuning cell_h from %d to %d (within acceptable range, 2x width=%d)", r->cell_h,
-                  corrected_h, r->cell_w);
+        log_debug("ASPECT_RATIO: Fine-tuning cell_h from %d to %d (within acceptable range, 2x width=%d)",
+                  r->cell_h, corrected_h, r->cell_w);
         r->cell_h = corrected_h;
       } else {
         log_debug("ASPECT_RATIO: Keeping cell_h=%d (close to target %d, delta=%d)", r->cell_h, corrected_h, delta);
@@ -524,8 +524,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           glyph_cache_entry_t *cache_entry = NULL;
           HASH_FIND_INT(r->glyph_cache, &char_to_render, cache_entry);
           if (cache_entry) {
-            blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top, fr,
-                       fg, fb, br, bg, bb);
+            blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top,
+                        fr, fg, fb, br, bg, bb);
             glyph_rendered_count++;
           }
         }

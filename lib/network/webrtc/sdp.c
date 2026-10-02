@@ -55,7 +55,8 @@ const char *sdp_renderer_name(int renderer_type) {
 
 asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
                                      const opus_config_t *audio_config, const terminal_format_params_t *format,
-                                     uint32_t video_codec_caps, uint32_t audio_codec_caps, sdp_session_t *offer_out) {
+                                     uint32_t video_codec_caps, uint32_t audio_codec_caps,
+                                     sdp_session_t *offer_out) {
   if (!capabilities || capability_count == 0 || !audio_config || !offer_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP offer parameters");
   }
@@ -182,8 +183,9 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
 
 asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
                                       size_t server_capability_count, const opus_config_t *audio_config,
-                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps,
-                                      uint32_t server_audio_codec_caps, sdp_session_t *answer_out) {
+                                      const terminal_format_params_t *server_format,
+                                      uint32_t server_video_codec_caps, uint32_t server_audio_codec_caps,
+                                      sdp_session_t *answer_out) {
   if (!offer || !server_capabilities || server_capability_count == 0 || !audio_config || !answer_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP answer parameters");
   }
@@ -202,8 +204,8 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
     memcpy(&answer_out->audio_config, audio_config, sizeof(opus_config_t));
     // Negotiate audio codec capabilities: intersection of client and server
     answer_out->codec_capabilities_audio = offer->codec_capabilities_audio & server_audio_codec_caps;
-    log_debug("SDP: Audio codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_audio,
-              server_audio_codec_caps, answer_out->codec_capabilities_audio);
+    log_debug("SDP: Audio codec negotiation - client=0x%x server=0x%x negotiated=0x%x",
+              offer->codec_capabilities_audio, server_audio_codec_caps, answer_out->codec_capabilities_audio);
   }
 
   // Answer video section: find best mutually-supported codec with capability negotiation
@@ -212,8 +214,8 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
   if (answer_out->has_video && offer->video_codecs && offer->video_codec_count > 0) {
     // Negotiate video codec capabilities: intersection of client and server
     answer_out->codec_capabilities_video = offer->codec_capabilities_video & server_video_codec_caps;
-    log_debug("SDP: Video codec negotiation - client=0x%x server=0x%x negotiated=0x%x", offer->codec_capabilities_video,
-              server_video_codec_caps, answer_out->codec_capabilities_video);
+    log_debug("SDP: Video codec negotiation - client=0x%x server=0x%x negotiated=0x%x",
+              offer->codec_capabilities_video, server_video_codec_caps, answer_out->codec_capabilities_video);
 
     // Find best terminal capability codec: iterate through server preferences and find first match in offer
     int selected_index = -1;
@@ -299,8 +301,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
     remaining -= written;
 
     // Negotiated audio codec capabilities (custom attribute)
-    written =
-        safe_snprintf(sdp, remaining, "a=codec-capabilities-audio:0x%x\r\n", answer_out->codec_capabilities_audio);
+    written = safe_snprintf(sdp, remaining, "a=codec-capabilities-audio:0x%x\r\n", answer_out->codec_capabilities_audio);
     sdp += written;
     remaining -= written;
   }
@@ -335,8 +336,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
     remaining -= written;
 
     // Negotiated video codec capabilities (custom attribute)
-    written =
-        safe_snprintf(sdp, remaining, "a=codec-capabilities-video:0x%x\r\n", answer_out->codec_capabilities_video);
+    written = safe_snprintf(sdp, remaining, "a=codec-capabilities-video:0x%x\r\n", answer_out->codec_capabilities_video);
     sdp += written;
     remaining -= written;
   }

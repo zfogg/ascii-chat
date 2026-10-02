@@ -88,12 +88,15 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
 
   // Call gpg --detach-sign
   // Use gpg with --detach-sign and --output for safe subprocess execution
-  const char *argv[] = {"gpg", "--local-user", escaped_key_id, "--detach-sign", "--output", sig_path, msg_path, NULL};
+  const char *argv[] = {"gpg", "--local-user", escaped_key_id, "--detach-sign",
+                        "--output", sig_path, msg_path, NULL};
 
   // Note: Don't log the full command as it may contain sensitive key material
   log_debug("Signing with GPG key 0x%s", escaped_key_id);
   int status = 0;
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv, NULL, 0); });
+  LOG_IO("gpg", {
+    status = platform_execute_subprocess("gpg", argv, NULL, 0);
+  });
   if (status != 0) {
     log_error("GPG signing failed (exit code %d)", status);
     goto cleanup;

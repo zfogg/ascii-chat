@@ -30,8 +30,8 @@ int mutex_init(mutex_t *mutex, const char *name) {
     // fflush(stderr);
     // Add a timeout mechanism to detect deadlocks
     // mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
-    mutex->name = name; // Just store the name directly without registration
-                        // log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
+    mutex->name = name;  // Just store the name directly without registration
+    // log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
 #ifndef NDEBUG
     mutex->last_lock_time_ns = 0;
     mutex->last_unlock_time_ns = 0;
