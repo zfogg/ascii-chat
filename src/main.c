@@ -871,6 +871,7 @@ int main(int argc, char *argv[]) {
   // Handle --help and --version (these are detected and flagged by options_init)
   // Terminal capabilities already initialized before options_init() at startup
   if (opts->help) {
+    log_set_terminal_output(true);
     print_usage(opts->detected_mode);
     fflush(NULL);
     _Exit(0);
