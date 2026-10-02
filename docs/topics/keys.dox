@@ -453,7 +453,7 @@
  * - `https_keys.h`: HTTPS key fetching from GitHub/GitLab
  *
  * **Support Modules**:
- * - `pem_utils.h`: PEM encoding/decoding utilities
+ * - `pem.h`: PEM encoding/decoding utilities
  * - `http_client.h`: BearSSL HTTPS client for key fetching
  *
  * @subsection keys_data_structures Data Structures

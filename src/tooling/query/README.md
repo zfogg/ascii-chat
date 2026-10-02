@@ -1,3 +1,5 @@
+\page custom_query_tool Query Tool (ascii-query-server)
+
 # Query Tool (ascii-query-server)
 
 Runtime variable inspection tool for ascii-chat debug builds.

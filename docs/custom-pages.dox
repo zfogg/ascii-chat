@@ -28,4 +28,9 @@
  * @subpage custom_query_api
  * @subpage custom_query_troubleshooting
  * @subpage custom_query_guide
+ * @subpage custom_crypto_module
+ * @subpage custom_video_webcam
+ * @subpage custom_session_module
+ * @subpage custom_query_tool
+ * @subpage ffmpeg_encoder_architecture
  */

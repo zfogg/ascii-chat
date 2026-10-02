@@ -1,3 +1,5 @@
+\page custom_session_module Session Module Documentation
+
 # Session Module Documentation
 
 ## Overview

@@ -1,3 +1,5 @@
+\page custom_crypto_module Crypto Module
+
 # Crypto Module - lib/crypto/
 
 End-to-end encrypted communication for ascii-chat using modern cryptography (X25519, XSalsa20-Poly1305, Ed25519).
@@ -27,8 +29,8 @@ Handshake Protocol
 
 ### Core Cryptography
 
-- **crypto.c/h** - Main interface (encryption, key exchange, HMAC, rekeying)
-- **pem_utils.c/h** - PEM/OpenSSH format parsing
+- **[crypto.c](lib_2crypto_2crypto_8c.html) / [crypto.h](include_2ascii-chat_2crypto_2crypto_8h.html)** - Main interface (encryption, key exchange, HMAC, rekeying)
+- **[pem.c](pem_8c.html) / [pem.h](pem_8h.html)** - PEM/OpenSSH format parsing
 - **sha1.c/h** - SHA-1 for fingerprinting
 - **regex.c/h** - Format detection
 

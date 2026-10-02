@@ -1,3 +1,5 @@
+\page custom_video_webcam Video Webcam Module
+
 # Video Webcam Module
 
 ## Overview

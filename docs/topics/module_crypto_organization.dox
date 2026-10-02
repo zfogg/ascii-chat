@@ -25,7 +25,7 @@
  * │   ├── crypto.c/h          - Core crypto operations (encryption, key exchange, HMAC)
  * │   ├── crypto.h            - Main public interface (1382 lines of documented functions)
  * │   ├── key_types.h         - Key type definitions (private_key_t, key_purpose_t)
- * │   ├── pem_utils.c/h       - PEM format parsing (OpenSSH, PKCS8)
+ * │   ├── pem.c/h             - PEM format parsing (OpenSSH, PKCS8)
  * │   ├── regex.c/h           - Regex utilities for key format detection
  * │   ├── sha1.c/h            - SHA-1 implementation (for key fingerprinting)
  * │   └── common.c/h          - Shared utilities
@@ -378,7 +378,7 @@
  * 1. Load identity key
  *    keys.c:1 Load from file/agent/gpg
  *           ├── Detect format (SSH/PEM/GPG)
- *           ├── Parse with pem_utils.c / ssh_keys.c / gpg/export.c
+ *           ├── Parse with pem.c / ssh_keys.c / gpg/export.c
  *           ├── Validate with keys_validation.c
  *           └── Store in memory
  *
