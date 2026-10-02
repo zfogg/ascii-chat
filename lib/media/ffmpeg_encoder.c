@@ -700,12 +700,15 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   // Normal file rendering is constant-frame-rate. Wall-clock capture timestamps
   // include scheduler jitter and can create gaps or duplicate PTS values, so use
-  // the encoded frame index for exact N / FPS duration.
-  if (!snapshot_mode || enc->estimated_frame_count > 0) {
+  // the encoded frame index for exact N / FPS duration. Snapshot mode is
+  // different: it intentionally captures for a wall-clock duration, and live
+  // sources may deliver fewer frames than the nominal FPS.
+  if (!snapshot_mode) {
     pts_from_timestamp = enc->frame_count;
   }
 
-  // In snapshot mode, distribute frames linearly across the actual duration
+  // For snapshot sources without an estimated frame count, distribute frames
+  // linearly across the actual duration once the capture duration is known.
   if (snapshot_mode && enc->estimated_frame_count == 0) {
     extern uint64_t g_snapshot_actual_duration_ms;
     extern uint64_t g_snapshot_last_capture_elapsed_ns;
