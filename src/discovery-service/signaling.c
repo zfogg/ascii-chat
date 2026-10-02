@@ -122,8 +122,8 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
   // Send packet through transport (not raw socket)
   log_info("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type,
            acds_data->participant_id[0], acds_data->participant_id[1]);
-  asciichat_error_t result = packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet,
-                                                       ctx->packet_len, 0);
+  asciichat_error_t result =
+      packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet, ctx->packet_len, 0);
   if (result == ASCIICHAT_OK) {
     ctx->sent_count++;
     log_info("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0],
@@ -264,7 +264,7 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
 }
 
 asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
-                                                   const acip_nat_quality_t *quality, size_t total_packet_len) {
+                                                  const acip_nat_quality_t *quality, size_t total_packet_len) {
   if (!db || !tcp_server || !quality) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or quality is NULL");
   }

@@ -159,8 +159,7 @@ Test(rcu_validation, microphone_sensitivity_valid) {
   cr_assert_eq(err, ASCIICHAT_OK, "Expected success for microphone_sensitivity=0.8");
 
   const options_t *opts = options_get();
-  cr_assert(fabs(opts->microphone_sensitivity - 0.8) < 0.001,
-            "Expected microphone_sensitivity to be 0.8");
+  cr_assert(fabs(opts->microphone_sensitivity - 0.8) < 0.001, "Expected microphone_sensitivity to be 0.8");
 }
 
 /**

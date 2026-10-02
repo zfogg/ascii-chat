@@ -20,12 +20,12 @@
  * after that, enabling concurrent access from multiple threads.
  */
 typedef struct pcre2_singleton {
-  lifecycle_t lc;                ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
-  atomic_t code;                 ///< Compiled regex (lazy init, atomic pointer as uint64_t)
-  pcre2_jit_stack *jit_stack;    ///< JIT stack for performance
-  char *pattern;                 ///< Pattern string (owned by singleton, dynamically allocated)
-  uint32_t flags;                ///< PCRE2 compile flags
-  struct pcre2_singleton *next;  ///< Next singleton in global registry
+  lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
+  atomic_t code;                ///< Compiled regex (lazy init, atomic pointer as uint64_t)
+  pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
+  char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
+  uint32_t flags;               ///< PCRE2 compile flags
+  struct pcre2_singleton *next; ///< Next singleton in global registry
 } pcre2_singleton_t;
 
 /* Global registry of all PCRE2 singletons for automatic cleanup */
@@ -115,7 +115,8 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   /* Try to win the compilation race using lifecycle_t */
   if (!lifecycle_init(&singleton->lc, "pcre2_pattern")) {
     /* Lost race - someone else is compiling or already compiled. Spin for their result. */
-    while ((pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code) == NULL && lifecycle_is_initialized(&singleton->lc)) {
+    while ((pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code) == NULL &&
+           lifecycle_is_initialized(&singleton->lc)) {
       /* Spin-wait for compiler to finish */
     }
     return (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code);

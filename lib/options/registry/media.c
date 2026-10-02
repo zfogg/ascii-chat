@@ -205,9 +205,7 @@ const registry_entry_t g_media_entries[] = {
      false,
      false,
      RENDER_FILE_MODES,
-     {.enum_values = g_render_theme_values,
-      .enum_descriptions = g_render_theme_descs,
-      .input_type = OPTION_INPUT_ENUM},
+     {.enum_values = g_render_theme_values, .enum_descriptions = g_render_theme_descs, .input_type = OPTION_INPUT_ENUM},
      NULL},
 
     {"render-font",

@@ -91,7 +91,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/debug/named.h>  // For NAMED_REGISTER_ATOMIC macro
+#include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
 

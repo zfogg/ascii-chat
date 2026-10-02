@@ -81,9 +81,8 @@ static void asan_error_report_callback(const char *report) {
  * The __attribute__((constructor)) attribute ensures this runs during
  * dynamic library initialization, before any user code executes.
  */
-__attribute__((constructor))
-static void init_asan_error_reporting(void) {
+__attribute__((constructor)) static void init_asan_error_reporting(void) {
   __asan_set_error_report_callback(asan_error_report_callback);
 }
 
-#endif  // HAS_ASAN
+#endif // HAS_ASAN

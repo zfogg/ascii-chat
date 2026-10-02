@@ -1303,8 +1303,7 @@ void *acds_websocket_client_handler(void *arg) {
 
   // Cleanup
   tcp_server_remove_client(server->tcp_server, synthetic_id);
-  log_debug("WebSocket client %s unregistered (total=%zu)", client_ip,
-            tcp_server_get_client_count(server->tcp_server));
+  log_debug("WebSocket client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(server->tcp_server));
 
   // Transport is owned by WebSocket server, don't destroy it here
 

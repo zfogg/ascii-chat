@@ -231,8 +231,7 @@ static void *handshake_client_thread(void *arg) {
     payload = NULL;
     if (recv_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
       return NULL;
-    if (crypto_handshake_client_complete(args->ctx, args->transport, pkt_type, payload, payload_len) !=
-        ASCIICHAT_OK) {
+    if (crypto_handshake_client_complete(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
       buffer_pool_free(NULL, payload, payload_len);
       return NULL;
     }
@@ -318,8 +317,7 @@ Test(crypto_handshake_integration, key_type_parsing) {
     public_key_t key;
     int parse_result = parse_public_key(test_cases[i].key_data, &key);
     if (parse_result == 0) {
-      cr_assert_eq(key.type, test_cases[i].expected_type, "Key type should match for: %s",
-                   test_cases[i].description);
+      cr_assert_eq(key.type, test_cases[i].expected_type, "Key type should match for: %s", test_cases[i].description);
     }
   }
 }
@@ -372,12 +370,12 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   size_t ciphertext_len, decrypted_len;
 
   cr_assert_eq(crypto_handshake_encrypt_packet(&server_ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext,
-                                                sizeof(ciphertext), &ciphertext_len),
+                                               sizeof(ciphertext), &ciphertext_len),
                0);
   cr_assert_gt(ciphertext_len, 0);
 
   cr_assert_eq(crypto_handshake_decrypt_packet(&client_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted),
-                                                &decrypted_len),
+                                               &decrypted_len),
                0);
   cr_assert_eq(decrypted_len, strlen(plaintext));
   cr_assert_eq(memcmp(decrypted, plaintext, strlen(plaintext)), 0);

@@ -42,8 +42,7 @@
  * Terminal cells are approximately twice as tall as they are wide, hence the
  * factor of two in the source crop ratio.
  */
-static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width,
-                               ssize_t viewport_height) {
+static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width, ssize_t viewport_height) {
   if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 ||
       viewport_height <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_resize_cover: invalid image or viewport dimensions");

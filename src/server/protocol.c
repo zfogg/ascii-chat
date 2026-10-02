@@ -163,7 +163,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   // This ensures only one thread proceeds to disconnect (the first one)
   bool already_requested = atomic_exchange_bool(&client->protocol_disconnect_requested, true);
   if (already_requested) {
-    return;  // Already disconnecting, don't do it again
+    return; // Already disconnecting, don't do it again
   }
 
   char reason[BUFFER_SIZE_SMALL] = {0};
@@ -744,8 +744,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
   // Validate codec capability for RGBA frames
   if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, VIDEO_CODEC_RGBA)) {
-    log_error("Client %s sent RGBA frame but does not support VIDEO_CODEC_RGBA (capabilities=0x%x)",
-              client->client_id, client->codec_capabilities_video);
+    log_error("Client %s sent RGBA frame but does not support VIDEO_CODEC_RGBA (capabilities=0x%x)", client->client_id,
+              client->codec_capabilities_video);
     disconnect_client_for_bad_data(client, "VIDEO_CODEC_RGBA not supported by client (capabilities=0x%x)",
                                    client->codec_capabilities_video);
     return;
@@ -939,8 +939,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 void handle_image_frame_h265_packet(client_info_t *client, const void *data, size_t len) {
   // Validate codec capability for H.265 frames
   if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, VIDEO_CODEC_H265)) {
-    log_error("Client %s sent H.265 frame but does not support VIDEO_CODEC_H265 (capabilities=0x%x)",
-              client->client_id, client->codec_capabilities_video);
+    log_error("Client %s sent H.265 frame but does not support VIDEO_CODEC_H265 (capabilities=0x%x)", client->client_id,
+              client->codec_capabilities_video);
     disconnect_client_for_bad_data(client, "VIDEO_CODEC_H265 not supported by client (capabilities=0x%x)",
                                    client->codec_capabilities_video);
     return;
@@ -1725,8 +1725,8 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   // Extract and store codec capabilities
   client->codec_capabilities_video = NET_TO_HOST_U32(caps->codec_capabilities_video);
   client->codec_capabilities_audio = NET_TO_HOST_U32(caps->codec_capabilities_audio);
-  log_info("Client %u codec capabilities: video=0x%x audio=0x%x", client->client_id,
-           client->codec_capabilities_video, client->codec_capabilities_audio);
+  log_info("Client %u codec capabilities: video=0x%x audio=0x%x", client->client_id, client->codec_capabilities_video,
+           client->codec_capabilities_audio);
 
   client->has_terminal_caps = true;
 

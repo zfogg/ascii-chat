@@ -1229,8 +1229,7 @@ static void *websocket_client_handler(void *arg) {
     SAFE_FREE(ctx);
     return NULL;
   }
-  handshake_start_result =
-      crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
+  handshake_start_result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
   if (handshake_start_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_server_start returned %d: %s", handshake_start_result,
               asciichat_error_string(handshake_start_result));
@@ -1467,10 +1466,8 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
     return;
   }
 
-  ui_status_gather(tcp, g_session_string,
-                   tcp->config.ipv4_address, tcp->config.ipv6_address,
-                   GET_OPTION(port), g_server_start_time, "Server",
-                   g_session_is_mdns_only, out_status);
+  ui_status_gather(tcp, g_session_string, tcp->config.ipv4_address, tcp->config.ipv6_address, GET_OPTION(port),
+                   g_server_start_time, "Server", g_session_is_mdns_only, out_status);
 }
 
 /* ============================================================================
@@ -1591,7 +1588,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
   // Update server context fields that depend on init results
   g_server_ctx.rate_limiter = g_rate_limiter;
   g_server_ctx.audio_mixer = g_audio_mixer;
-  g_server_ctx.h265_server = g_h265_server;  // Sync H.265 context created in this function
+  g_server_ctx.h265_server = g_h265_server; // Sync H.265 context created in this function
 
   // ACDS Session Creation: Register this server with discovery service
   // This also determines the session string for mDNS (if --acds is enabled)

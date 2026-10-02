@@ -285,9 +285,8 @@ char *image_print_color(const image_t *p, const char *palette) {
         ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
       } else {
         // Multi-byte UTF-8 character - write color code and full UTF-8 bytes directly
-        int written = SAFE_SNPRINTF((char *)&rle_ctx.buffer[rle_ctx.length],
-                                   rle_ctx.capacity - rle_ctx.length,
-                                   "\033[38;2;%d;%d;%dm", r, g, b);
+        int written = SAFE_SNPRINTF((char *)&rle_ctx.buffer[rle_ctx.length], rle_ctx.capacity - rle_ctx.length,
+                                    "\033[38;2;%d;%d;%dm", r, g, b);
         rle_ctx.length += written;
         // Write UTF-8 bytes
         for (int i = 0; i < char_info->byte_len && rle_ctx.length < rle_ctx.capacity; i++) {

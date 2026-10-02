@@ -29,19 +29,19 @@ static double g_mute_saved_volume = 1.0;
 
 /** Color filter names - must match color_filter_t enum exactly */
 static const char *COLOR_FILTER_NAMES[COLOR_FILTER_COUNT] = {
-    "None",      // COLOR_FILTER_NONE = 0
-    "Black",     // COLOR_FILTER_BLACK = 1
-    "White",     // COLOR_FILTER_WHITE = 2
-    "Green",     // COLOR_FILTER_GREEN = 3
-    "Magenta",   // COLOR_FILTER_MAGENTA = 4
-    "Fuchsia",   // COLOR_FILTER_FUCHSIA = 5
-    "Orange",    // COLOR_FILTER_ORANGE = 6
-    "Teal",      // COLOR_FILTER_TEAL = 7
-    "Cyan",      // COLOR_FILTER_CYAN = 8
-    "Pink",      // COLOR_FILTER_PINK = 9
-    "Red",       // COLOR_FILTER_RED = 10
-    "Yellow",    // COLOR_FILTER_YELLOW = 11
-    "Rainbow",   // COLOR_FILTER_RAINBOW = 12
+    "None",    // COLOR_FILTER_NONE = 0
+    "Black",   // COLOR_FILTER_BLACK = 1
+    "White",   // COLOR_FILTER_WHITE = 2
+    "Green",   // COLOR_FILTER_GREEN = 3
+    "Magenta", // COLOR_FILTER_MAGENTA = 4
+    "Fuchsia", // COLOR_FILTER_FUCHSIA = 5
+    "Orange",  // COLOR_FILTER_ORANGE = 6
+    "Teal",    // COLOR_FILTER_TEAL = 7
+    "Cyan",    // COLOR_FILTER_CYAN = 8
+    "Pink",    // COLOR_FILTER_PINK = 9
+    "Red",     // COLOR_FILTER_RED = 10
+    "Yellow",  // COLOR_FILTER_YELLOW = 11
+    "Rainbow", // COLOR_FILTER_RAINBOW = 12
 };
 
 /**

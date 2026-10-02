@@ -300,7 +300,6 @@ void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *o
   }
 }
 
-
 /**
  * @brief Check if terminal control sequences should be used for the given fd
  * @param fd File descriptor to check

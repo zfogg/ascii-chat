@@ -585,9 +585,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Importing GPG key into temporary homedir");
   const char *argv_import[] = {"gpg", "--homedir", homedir_path, "--batch", "--import", input_path, NULL};
   int status = 0;
-  LOG_IO("gpg", {
-    status = platform_execute_subprocess("gpg", argv_import, NULL, 0);
-  });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_import, NULL, 0); });
 
   // Clean up input file (no longer needed)
   platform_unlink(input_path);
@@ -603,9 +601,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Retrieving GPG key fingerprint");
   char fpr_output[4096];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
-  LOG_IO("gpg", {
-    status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output));
-  });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output)); });
 
   if (status != 0) {
     platform_unlink(output_path);
@@ -615,7 +611,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   }
 
   // Parse fingerprint from output: find line starting with "fpr" and extract field 10
-  char key_fpr[41] = {0};  // Ed25519 fingerprints are 40 hex chars
+  char key_fpr[41] = {0}; // Ed25519 fingerprints are 40 hex chars
   const char *line = fpr_output;
   while (*line) {
     if (strncmp(line, "fpr:", 4) == 0) {
@@ -629,7 +625,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
           if (field_count == 10) {
             // Found field 10, copy until next colon or newline
             size_t fpr_len = 0;
-            while (field_start[fpr_len] && field_start[fpr_len] != ':' && field_start[fpr_len] != '\n' && fpr_len < sizeof(key_fpr) - 1) {
+            while (field_start[fpr_len] && field_start[fpr_len] != ':' && field_start[fpr_len] != '\n' &&
+                   fpr_len < sizeof(key_fpr) - 1) {
               fpr_len++;
             }
             if (fpr_len > 0 && fpr_len < sizeof(key_fpr)) {
@@ -642,8 +639,10 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
       break;
     }
     // Skip to next line
-    while (*line && *line != '\n') line++;
-    if (*line == '\n') line++;
+    while (*line && *line != '\n')
+      line++;
+    if (*line == '\n')
+      line++;
   }
 
   if (!key_fpr[0]) {
@@ -658,13 +657,23 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   // Step 3: Export the secret key using the fingerprint with passphrase
   log_debug("Exporting decrypted GPG key");
-  const char *argv_export[] = {"gpg", "--homedir", homedir_path, "--batch", "--pinentry-mode", "loopback",
-                              "--passphrase", passphrase, "--armor", "--export-secret-keys",
-                              "--export-options", "export-minimal,no-export-attributes", "--output", output_path,
-                              key_fpr, NULL};
-  LOG_IO("gpg", {
-    status = platform_execute_subprocess("gpg", argv_export, NULL, 0);
-  });
+  const char *argv_export[] = {"gpg",
+                               "--homedir",
+                               homedir_path,
+                               "--batch",
+                               "--pinentry-mode",
+                               "loopback",
+                               "--passphrase",
+                               passphrase,
+                               "--armor",
+                               "--export-secret-keys",
+                               "--export-options",
+                               "export-minimal,no-export-attributes",
+                               "--output",
+                               output_path,
+                               key_fpr,
+                               NULL};
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_export, NULL, 0); });
 
   if (status != 0) {
     platform_unlink(output_path);

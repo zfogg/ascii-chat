@@ -64,8 +64,7 @@ static bool is_official_server(const char *acds_server) {
 
   // In debug builds, also trust localhost for testing (IPv4 and IPv6)
 #ifndef NDEBUG
-  if (strcmp(server_lower, "localhost") == 0 ||
-      strcmp(server_lower, "127.0.0.1") == 0 ||
+  if (strcmp(server_lower, "localhost") == 0 || strcmp(server_lower, "127.0.0.1") == 0 ||
       strcmp(server_lower, "::1") == 0) {
     return true;
   }
@@ -241,21 +240,20 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
-  const char *warning_msg =
-    "\n"
-    "⚠️  WARNING: ACDS SERVER KEY HAS CHANGED\n"
-    "═══════════════════════════════════════════════════════════════\n"
-    "Server: %s\n"
-    "\n"
-    "Old key (SHA256): %s\n"
-    "New key (SHA256): %s\n"
-    "\n"
-    "This could indicate:\n"
-    "  1. The server operator rotated their key\n"
-    "  2. A man-in-the-middle attack is in progress\n"
-    "\n"
-    "Verify the new key fingerprint with the server operator before accepting.\n"
-    "═══════════════════════════════════════════════════════════════\n";
+  const char *warning_msg = "\n"
+                            "⚠️  WARNING: ACDS SERVER KEY HAS CHANGED\n"
+                            "═══════════════════════════════════════════════════════════════\n"
+                            "Server: %s\n"
+                            "\n"
+                            "Old key (SHA256): %s\n"
+                            "New key (SHA256): %s\n"
+                            "\n"
+                            "This could indicate:\n"
+                            "  1. The server operator rotated their key\n"
+                            "  2. A man-in-the-middle attack is in progress\n"
+                            "\n"
+                            "Verify the new key fingerprint with the server operator before accepting.\n"
+                            "═══════════════════════════════════════════════════════════════\n";
 
   // Log to both stderr (via log_warn) and file log
   log_warn(warning_msg, acds_server, old_fingerprint, new_fingerprint);

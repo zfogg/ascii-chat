@@ -260,22 +260,27 @@ static void register_client_info_atomics(client_info_t *client) {
 
   // Child structures (buffers, queues) - register with client as parent for hierarchical naming
   if (client->incoming_video_buffer) {
-    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->incoming_video_buffer, "incoming_video_buffer", (uintptr_t)(const void *)(client));
+    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->incoming_video_buffer, "incoming_video_buffer",
+                                      (uintptr_t)(const void *)(client));
   }
   if (client->outgoing_video_buffer) {
-    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->outgoing_video_buffer, "outgoing_video_buffer", (uintptr_t)(const void *)(client));
+    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->outgoing_video_buffer, "outgoing_video_buffer",
+                                      (uintptr_t)(const void *)(client));
   }
   if (client->incoming_audio_buffer) {
-    NAMED_REGISTER_AUDIO_RINGBUF(client->incoming_audio_buffer, "incoming_audio_buffer", (uintptr_t)(const void *)(client));
+    NAMED_REGISTER_AUDIO_RINGBUF(client->incoming_audio_buffer, "incoming_audio_buffer",
+                                 (uintptr_t)(const void *)(client));
   }
   if (client->audio_queue) {
     NAMED_REGISTER_PACKET_QUEUE(client->audio_queue, "audio_queue", (uintptr_t)(const void *)(client));
   }
   if (client->received_packet_queue) {
-    NAMED_REGISTER_PACKET_QUEUE(client->received_packet_queue, "received_packet_queue", (uintptr_t)(const void *)(client));
+    NAMED_REGISTER_PACKET_QUEUE(client->received_packet_queue, "received_packet_queue",
+                                (uintptr_t)(const void *)(client));
   }
   // Crypto context is always present (embedded in client_info_t)
-  NAMED_REGISTER_CRYPTO_CONTEXT(&client->crypto_handshake_ctx, "crypto_handshake_ctx", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_CRYPTO_CONTEXT(&client->crypto_handshake_ctx, "crypto_handshake_ctx",
+                                (uintptr_t)(const void *)(client));
 
   // Video streaming state
   NAMED_REGISTER_ATOMIC(&client->is_sending_video, "is_sending_video", (uintptr_t)(const void *)(client));
@@ -286,17 +291,22 @@ static void register_client_info_atomics(client_info_t *client) {
   // Connection state
   NAMED_REGISTER_ATOMIC(&client->active, "active", (uintptr_t)(const void *)(client));
   NAMED_REGISTER_ATOMIC(&client->shutting_down, "shutting_down", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->protocol_disconnect_requested, "protocol_disconnect_requested", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->protocol_disconnect_requested, "protocol_disconnect_requested",
+                        (uintptr_t)(const void *)(client));
 
   // Thread management flags
   NAMED_REGISTER_ATOMIC(&client->dispatch_thread_running, "dispatch_thread_running", (uintptr_t)(const void *)(client));
   NAMED_REGISTER_ATOMIC(&client->send_thread_running, "send_thread_running", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->video_render_thread_running, "video_render_thread_running", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->audio_render_thread_running, "audio_render_thread_running", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->video_render_thread_running, "video_render_thread_running",
+                        (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->audio_render_thread_running, "audio_render_thread_running",
+                        (uintptr_t)(const void *)(client));
 
   // Frame source tracking
-  NAMED_REGISTER_ATOMIC(&client->last_rendered_grid_sources, "last_rendered_grid_sources_count", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->last_sent_grid_sources, "last_sent_grid_sources_count", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->last_rendered_grid_sources, "last_rendered_grid_sources_count",
+                        (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->last_sent_grid_sources, "last_sent_grid_sources_count",
+                        (uintptr_t)(const void *)(client));
   NAMED_REGISTER_ATOMIC(&client->frames_sent_count, "total_frames_sent_count", (uintptr_t)(const void *)(client));
 }
 
@@ -840,8 +850,8 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Register with audio mixer OUTSIDE lock
   // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
-  log_info("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p", (void *)g_audio_mixer,
-           (void *)client->incoming_audio_buffer);
+  log_info("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p",
+           (void *)g_audio_mixer, (void *)client->incoming_audio_buffer);
   if (g_audio_mixer && client->incoming_audio_buffer) {
     log_info("[TCP_DBG] MIXER_ADD_SOURCE_CALLING: client_id=%s", new_client_id);
     if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {

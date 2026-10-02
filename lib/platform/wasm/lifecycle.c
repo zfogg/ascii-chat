@@ -13,7 +13,8 @@
 
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
   (void)name;
-  if (!lc) return false;
+  if (!lc)
+    return false;
 
   // Only initialize if not already initialized (matches native CAS behavior)
   int expected = LIFECYCLE_UNINITIALIZED;
@@ -21,7 +22,8 @@ bool lifecycle_init(lifecycle_t *lc, const char *name) {
 }
 
 bool lifecycle_init_once(lifecycle_t *lc) {
-  if (!lc) return false;
+  if (!lc)
+    return false;
 
   // Try to transition from UNINITIALIZED to INITIALIZING
   int expected = LIFECYCLE_UNINITIALIZED;
@@ -29,17 +31,20 @@ bool lifecycle_init_once(lifecycle_t *lc) {
 }
 
 void lifecycle_init_commit(lifecycle_t *lc) {
-  if (!lc) return;
+  if (!lc)
+    return;
   atomic_store_int(&lc->state, LIFECYCLE_INITIALIZED);
 }
 
 void lifecycle_init_abort(lifecycle_t *lc) {
-  if (!lc) return;
+  if (!lc)
+    return;
   atomic_store_int(&lc->state, LIFECYCLE_UNINITIALIZED);
 }
 
 bool lifecycle_shutdown(lifecycle_t *lc) {
-  if (!lc) return false;
+  if (!lc)
+    return false;
   atomic_store_int(&lc->state, LIFECYCLE_UNINITIALIZED);
   return true;
 }

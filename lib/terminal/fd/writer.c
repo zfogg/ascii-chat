@@ -13,7 +13,7 @@
 #include <ascii-chat/platform/abstraction.h>
 
 typedef struct terminal_fd_writer_s {
-  FILE *fp;          // File pointer created from FD
+  FILE *fp; // File pointer created from FD
 } terminal_fd_writer_t;
 
 asciichat_error_t terminal_fd_writer_create(int fd, terminal_fd_writer_t **out) {

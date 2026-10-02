@@ -338,8 +338,8 @@ static asciichat_error_t gather_nat_quality(discovery_session_t *session, nat_qu
     log_debug("★ STARTING_NAT_DETECTION_THREAD: Starting background NAT detection");
     session->nat_detection_in_progress = true;
 
-    int thread_result = asciichat_thread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn,
-                                                 (void *)session);
+    int thread_result = asciichat_thread_create(&session->nat_detection_thread, "nat_detection",
+                                                nat_detection_thread_fn, (void *)session);
     if (thread_result == 0) {
       session->nat_detection_thread_started = true;
       log_debug("★ NAT_DETECTION_THREAD_STARTED: Background thread created successfully");
@@ -394,14 +394,15 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
   acip_nat_quality_t wire_quality;
   nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
 
-  log_info("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY, sizeof(wire_quality));
+  log_info("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY,
+           sizeof(wire_quality));
   // Send via ACDS
   asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
                                                             &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
-    log_info("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)", nat_compute_tier(&our_quality),
-             our_quality.upload_kbps);
+    log_info("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
+             nat_compute_tier(&our_quality), our_quality.upload_kbps);
   } else {
     log_error("★ SEND_NETWORK_QUALITY_FAILED: Failed with error %d", send_result);
   }
@@ -442,7 +443,8 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   log_info("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
   // Check if it's a NETWORK_QUALITY packet
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype, PACKET_TYPE_ACIP_NETWORK_QUALITY);
+    log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype,
+             PACKET_TYPE_ACIP_NETWORK_QUALITY);
     buffer_pool_free(NULL, alloc_buffer, 0);
     return ERROR_NETWORK_PROTOCOL;
   }
@@ -477,9 +479,8 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   const char *endpoint_input = session->acds_url[0] != '\0' ? session->acds_url : session->acds_address;
   uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
   connection_endpoint_t endpoint = {0};
-  asciichat_error_t endpoint_result =
-      connection_factory_open("discovery_acds", endpoint_input, endpoint_default_port, NULL, &session->acds_transport,
-                              &endpoint);
+  asciichat_error_t endpoint_result = connection_factory_open("discovery_acds", endpoint_input, endpoint_default_port,
+                                                              NULL, &session->acds_transport, &endpoint);
   if (endpoint_result != ASCIICHAT_OK) {
     set_error(session, endpoint_result, "Failed to connect to ACDS");
     return endpoint_result;
@@ -1495,7 +1496,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       size_t len = 0;
       void *alloc_buffer = NULL;
 
-      asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+      asciichat_error_t recv_result =
+          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
       if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
         acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
         log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);

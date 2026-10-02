@@ -93,13 +93,13 @@ void splash_log_clear(void) {
  * @brief Animation state for intro splash
  */
 static struct {
-  atomic_t is_running;                  // true while animation should continue
-  atomic_t should_stop;                 // set to true when splash should stop
-  atomic_t thread_created;              // true if animation thread was successfully created
-  int frame;                            // current animation frame
-  asciichat_thread_t anim_thread;       // animation thread handle
-  uint64_t start_time_ns;               // when splash was started (for minimum display time)
-  atomic_t intro_done_time_ns;          // when splash_intro_done() was called
+  atomic_t is_running;            // true while animation should continue
+  atomic_t should_stop;           // set to true when splash should stop
+  atomic_t thread_created;        // true if animation thread was successfully created
+  int frame;                      // current animation frame
+  asciichat_thread_t anim_thread; // animation thread handle
+  uint64_t start_time_ns;         // when splash was started (for minimum display time)
+  atomic_t intro_done_time_ns;    // when splash_intro_done() was called
 } g_splash_state = {.is_running = {0},
                     .should_stop = {0},
                     .thread_created = {0},
@@ -614,7 +614,8 @@ static void *splash_animation_thread(void *arg) {
   log_info(
       "[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d iterations in %.3f seconds (%.1f actual FPS). should_stop=%d, "
       "shutdown=%d",
-      iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop), shutdown_is_requested());
+      iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop),
+      shutdown_is_requested());
 
   // If shutdown was requested, clear the screen immediately to prevent splash from
   // appearing briefly during exit

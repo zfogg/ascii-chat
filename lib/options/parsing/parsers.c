@@ -12,13 +12,13 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/enums.h>     // For OPT_* enum constants
-#include <ascii-chat/options/strings.h>    // For fuzzy matching suggestions
-#include <ascii-chat/discovery/strings.h>  // For is_session_string() validation
-#include <ascii-chat/util/parsing.h>       // For parse_port() validation
-#include <ascii-chat/util/path.h>          // For path_validate_user_path()
-#include <ascii-chat/util/pcre2.h>         // For centralized PCRE2 singleton
-#include <ascii-chat/util/time.h>          // For SEC_PER_HOUR, SEC_PER_MIN
+#include <ascii-chat/options/enums.h>           // For OPT_* enum constants
+#include <ascii-chat/options/strings.h>         // For fuzzy matching suggestions
+#include <ascii-chat/discovery/strings.h>       // For is_session_string() validation
+#include <ascii-chat/util/parsing.h>            // For parse_port() validation
+#include <ascii-chat/util/path.h>               // For path_validate_user_path()
+#include <ascii-chat/util/pcre2.h>              // For centralized PCRE2 singleton
+#include <ascii-chat/util/time.h>               // For SEC_PER_HOUR, SEC_PER_MIN
 #include <ascii-chat/video/rgba/color_filter.h> // For color_filter_from_cli_name()
 #include <pcre2.h>
 
@@ -310,13 +310,15 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Foreground mode
-  if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 ||
+      strcmp(lower, "0") == 0) {
     *render_mode = RENDER_MODE_FOREGROUND;
     return true;
   }
 
   // Background mode
-  if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 || strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 ||
+      strcmp(lower, "1") == 0) {
     *render_mode = RENDER_MODE_BACKGROUND;
     return true;
   }

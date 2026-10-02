@@ -302,9 +302,8 @@ static void *pipeline_capture_thread(void *arg) {
       // Calculate elapsed time from first capture
       double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
       double snapshot_delay = GET_OPTION(snapshot_delay);
-      bool snapshot_complete = snapshot_uses_frame_target
-                                   ? snapshot_frames_captured >= snapshot_target_frames
-                                   : elapsed >= snapshot_delay;
+      bool snapshot_complete =
+          snapshot_uses_frame_target ? snapshot_frames_captured >= snapshot_target_frames : elapsed >= snapshot_delay;
 
       if (snapshot_complete) {
         log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
@@ -314,9 +313,8 @@ static void *pipeline_capture_thread(void *arg) {
         // Update with actual measured duration so encoder can scale frames accurately
         extern uint64_t g_snapshot_actual_duration_ms;
         extern uint64_t g_snapshot_last_capture_elapsed_ns;
-        uint64_t actual_ms = snapshot_uses_frame_target
-                                 ? (uint64_t)(snapshot_delay * 1000.0)
-                                 : (uint64_t)(elapsed * 1000.0);
+        uint64_t actual_ms =
+            snapshot_uses_frame_target ? (uint64_t)(snapshot_delay * 1000.0) : (uint64_t)(elapsed * 1000.0);
         g_snapshot_actual_duration_ms = actual_ms;
         uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
@@ -543,7 +541,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
         keyboard_handler(NULL, (int)key, user_data); // NULL capture ctx
       }
     }
-
   }
 
   log_info("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");

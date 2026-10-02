@@ -78,7 +78,7 @@ log_io_t log_io_start(void) {
 
 void log_io_stop(log_io_t capture, const char *prefix) {
   if (capture.saved_stdout_fd < 0 || capture.saved_stderr_fd < 0) {
-    return;  // Capture was not started successfully
+    return; // Capture was not started successfully
   }
 
   // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe

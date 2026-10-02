@@ -434,7 +434,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
     if (!first_frame_recorded) {
       first_frame_time_ns = time_get_ns();
-      g_snapshot_first_frame_time_ns = first_frame_time_ns;  // Also store globally for access from data_reception_thread
+      g_snapshot_first_frame_time_ns = first_frame_time_ns; // Also store globally for access from data_reception_thread
       log_info("[SNAPSHOT_INIT] SET g_snapshot_first_frame_time_ns=%llu first_frame_time_ns=%llu",
                (unsigned long long)g_snapshot_first_frame_time_ns, (unsigned long long)first_frame_time_ns);
       first_frame_recorded = true;
@@ -454,9 +454,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
       // Log every 0.5 seconds to debug timing
       static uint64_t last_debug_log_ns = 0;
-      if (current_time_ns - last_debug_log_ns > 500 * 1000 * 1000) {  // 500ms
-        log_info("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu",
-                 elapsed, snapshot_delay, (unsigned long long)first_frame_time_ns, (unsigned long long)current_time_ns);
+      if (current_time_ns - last_debug_log_ns > 500 * 1000 * 1000) { // 500ms
+        log_info("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
+                 snapshot_delay, (unsigned long long)first_frame_time_ns, (unsigned long long)current_time_ns);
         last_debug_log_ns = current_time_ns;
       }
 
@@ -1045,8 +1045,8 @@ static void *data_reception_thread_func(void *arg) {
     } else {
       // Handle receive/dispatch errors - ALWAYS exit on network errors
       // NOTE: Log to file even if terminal logging is disabled (important for debugging)
-      log_warn("[FRAME_RECV_LOOP] ⚠️  RECV_ERROR_BEFORE_SNAPSHOT_CHECK: acip_result=%d: %s (after %d packets received)", acip_result,
-                asciichat_error_string(acip_result), packet_count);
+      log_warn("[FRAME_RECV_LOOP] ⚠️  RECV_ERROR_BEFORE_SNAPSHOT_CHECK: acip_result=%d: %s (after %d packets received)",
+               acip_result, asciichat_error_string(acip_result), packet_count);
 
       // Before breaking due to error, check if snapshot_delay timer has fired in snapshot mode
       bool should_break_now = true;
@@ -1058,10 +1058,10 @@ static void *data_reception_thread_func(void *arg) {
         if (elapsed >= snapshot_delay) {
           char duration_str[32];
           time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-          log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_ERROR): Snapshot captured after %s! (target=%.3f)",
-                   duration_str, snapshot_delay);
+          log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_ERROR): Snapshot captured after %s! (target=%.3f)", duration_str,
+                   snapshot_delay);
           signal_exit();
-          should_break_now = false;  // Don't disconnect, let normal shutdown handle it
+          should_break_now = false; // Don't disconnect, let normal shutdown handle it
         }
       }
 
@@ -1086,7 +1086,8 @@ static void *data_reception_thread_func(void *arg) {
         }
 
         // Other errors - still disconnect to prevent infinite loop
-        log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting", packet_count + 1, packet_count);
+        log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting",
+                  packet_count + 1, packet_count);
         server_connection_lost();
         break;
       }
@@ -1178,8 +1179,7 @@ int protocol_start_connection() {
   // then wait for crypto to complete before sending CAPABILITIES/STREAM_START.
   // For TCP, crypto is already done synchronously before this function is called.
   acip_transport_t *init_transport = server_connection_get_transport();
-  bool is_websocket = init_transport &&
-                      acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
+  bool is_websocket = init_transport && acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
 
   if (is_websocket) {
     // WebSocket: start data reception thread FIRST to handle async crypto handshake.
@@ -1187,7 +1187,8 @@ int protocol_start_connection() {
     // asynchronously via ACIP callbacks in the data_reception thread.
     log_debug("[FRAME_RECV_INIT] WS: Starting data_reception for async crypto handshake");
     atomic_store_bool(&g_data_thread_exited, false);
-    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
+    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") !=
+        ASCIICHAT_OK) {
       log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
       LOG_ERRNO_IF_SET("Data reception thread creation failed");
       return -1;
@@ -1250,7 +1251,8 @@ int protocol_start_connection() {
   if (!is_websocket) {
     log_debug("[FRAME_RECV_INIT] TCP: Starting data reception thread");
     atomic_store_bool(&g_data_thread_exited, false);
-    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
+    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") !=
+        ASCIICHAT_OK) {
       log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
       LOG_ERRNO_IF_SET("Data reception thread creation failed");
       return -1;
