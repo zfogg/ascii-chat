@@ -14,13 +14,13 @@
 
 static _Thread_local bool g_lifecycle_log_in_progress = false;
 
-#define lifecycle_log_dev(...)                                                                           \
-  do {                                                                                                   \
-    if (!g_lifecycle_log_in_progress) {                                                                   \
-      g_lifecycle_log_in_progress = true;                                                                \
-      log_dev(__VA_ARGS__);                                                                              \
-      g_lifecycle_log_in_progress = false;                                                               \
-    }                                                                                                    \
+#define lifecycle_log_dev(...)                                                                                         \
+  do {                                                                                                                 \
+    if (!g_lifecycle_log_in_progress) {                                                                                \
+      g_lifecycle_log_in_progress = true;                                                                              \
+      log_dev(__VA_ARGS__);                                                                                            \
+      g_lifecycle_log_in_progress = false;                                                                             \
+    }                                                                                                                  \
   } while (0)
 
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
@@ -30,7 +30,8 @@ bool lifecycle_init(lifecycle_t *lc, const char *name) {
   }
   uint64_t expected = LIFECYCLE_UNINITIALIZED;
   if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZED)) {
-    lifecycle_log_dev("[lifecycle] init: %s already initialized (current state: %llu)", name ? name : "<unnamed>", expected);
+    lifecycle_log_dev("[lifecycle] init: %s already initialized (current state: %llu)", name ? name : "<unnamed>",
+                      expected);
     return false; // Already initialized or in INITIALIZING/DEAD state
   }
 

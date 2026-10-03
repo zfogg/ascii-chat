@@ -74,8 +74,8 @@ Test(update_checker, cached_current_release_does_not_report_update) {
 
   update_check_result_t expected = {0};
   snprintf(expected.latest_version, sizeof(expected.latest_version), "%s", ASCII_CHAT_VERSION_STRING);
-  snprintf(expected.release_url, sizeof(expected.release_url),
-           "https://github.com/zfogg/ascii-chat/releases/tag/%s", ASCII_CHAT_VERSION_STRING);
+  snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/%s",
+           ASCII_CHAT_VERSION_STRING);
   expected.last_check_time = time(NULL);
 
   cr_assert_eq(update_check_save_cache(&expected), ASCIICHAT_OK);
@@ -124,8 +124,7 @@ Test(update_checker, notification_contains_action_and_exact_release_source) {
   update_check_result_t result = {0};
   snprintf(result.current_version, sizeof(result.current_version), "v1.0.0");
   snprintf(result.latest_version, sizeof(result.latest_version), "v2.0.0");
-  snprintf(result.release_url, sizeof(result.release_url),
-           "https://github.com/zfogg/ascii-chat/releases/tag/v2.0.0");
+  snprintf(result.release_url, sizeof(result.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/v2.0.0");
 
   char notification[2048];
   update_check_format_notification(&result, notification, sizeof(notification));

@@ -333,8 +333,8 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     freopen(SERVER_LOG_PATH, "w", stderr);
     freopen(SERVER_LOG_PATH, "w", stdout);
     execlp("timeout", "timeout", "30", binary_path, "--log-level", "debug", "server", "0.0.0.0", "::", "--port",
-           "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1", "--discovery-service-port",
-           "27325", "--status-screen=false", NULL);
+           "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1",
+           "--discovery-service-port", "27325", "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 
@@ -369,10 +369,11 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
   // complete; give the peer several seconds to connect before taking the frame.
   // Route logs to a file so stdout remains available for the rendered frame.
   char client_cmd[512];
-  snprintf(client_cmd, sizeof(client_cmd),
-           "timeout 10 %s --log-file /tmp/client_test.log \"%s\" --snapshot --snapshot-delay 5 --test-pattern "
-           "--discovery-service 127.0.0.1 --discovery-service-port 27325 --prefer-webrtc > %s 2>/tmp/client_test_stderr.log",
-           binary_path, session_string, CLIENT_OUTPUT_PATH);
+  snprintf(
+      client_cmd, sizeof(client_cmd),
+      "timeout 10 %s --log-file /tmp/client_test.log \"%s\" --snapshot --snapshot-delay 5 --test-pattern "
+      "--discovery-service 127.0.0.1 --discovery-service-port 27325 --prefer-webrtc > %s 2>/tmp/client_test_stderr.log",
+      binary_path, session_string, CLIENT_OUTPUT_PATH);
 
   int client_result = system(client_cmd);
   log_debug("Client command exit status: %d", WEXITSTATUS(client_result));

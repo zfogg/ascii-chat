@@ -852,8 +852,7 @@ static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long
 
 asciichat_error_t options_init(int argc, char **argv) {
   log_debug("options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s", argc,
-            (argv && argc > 0 && argv[0]) ? argv[0] : "(null)",
-            (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
+            (argv && argc > 0 && argv[0]) ? argv[0] : "(null)", (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
   // This allows ALL logs (including from shared_init) to be filtered
   // Validate arguments (safety check for tests)

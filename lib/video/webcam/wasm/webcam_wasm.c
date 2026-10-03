@@ -83,29 +83,30 @@ EM_JS(int, js_webcam_read_frame, (uint8_t * rgba_buf, int width, int height), {
     if (!Module.webcamVideo || !Module.webcamStream || Module.webcamVideo.readyState < 2) {
       console.warn('[WASM Webcam] Video not ready');
       return 0;
-    }
+}
 
-    const canvas = Module.webcamCanvas;
-    const ctx = canvas.getContext('2d');
+const canvas = Module.webcamCanvas;
+const ctx = canvas.getContext('2d');
 
-    // Draw current video frame to canvas
-    ctx.drawImage(Module.webcamVideo, 0, 0, width, height);
+// Draw current video frame to canvas
+ctx.drawImage(Module.webcamVideo, 0, 0, width, height);
 
-    // Get pixel data as RGBA
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
+// Get pixel data as RGBA
+const imageData = ctx.getImageData(0, 0, width, height);
+const data = imageData.data;
 
-    // Copy into WASM heap (RGBA format, 4 bytes per pixel)
-    const byteOffset = rgba_buf;
-    for (let i = 0; i < data.length; i++) {
-      HEAPU8[byteOffset + i] = data[i];
-    }
+// Copy into WASM heap (RGBA format, 4 bytes per pixel)
+const byteOffset = rgba_buf;
+for (let i = 0; i < data.length; i++) {
+  HEAPU8[byteOffset + i] = data[i];
+}
 
-    return 1;
-  } catch (err) {
-    console.error('[WASM Webcam] Frame read failed:', err);
-    return 0;
-  }
+return 1;
+}
+catch(err) {
+  console.error('[WASM Webcam] Frame read failed:', err);
+  return 0;
+}
 });
 
 /**
@@ -116,23 +117,24 @@ EM_JS(void, js_webcam_cleanup, (), {
     if (Module.webcamStream) {
       Module.webcamStream.getTracks().forEach(track = > track.stop());
       Module.webcamStream = null;
-    }
-    if (Module.webcamVideo) {
-      Module.webcamVideo.srcObject = null;
-      if (Module.webcamVideo.parentNode) {
-        Module.webcamVideo.parentNode.removeChild(Module.webcamVideo);
-      }
-      Module.webcamVideo = null;
-    }
-    if (Module.webcamCanvas) {
-      if (Module.webcamCanvas.parentNode) {
-        Module.webcamCanvas.parentNode.removeChild(Module.webcamCanvas);
-      }
-      Module.webcamCanvas = null;
-    }
-  } catch (err) {
-    console.error('[WASM Webcam] Cleanup failed:', err);
+}
+if (Module.webcamVideo) {
+  Module.webcamVideo.srcObject = null;
+  if (Module.webcamVideo.parentNode) {
+    Module.webcamVideo.parentNode.removeChild(Module.webcamVideo);
   }
+  Module.webcamVideo = null;
+}
+if (Module.webcamCanvas) {
+  if (Module.webcamCanvas.parentNode) {
+    Module.webcamCanvas.parentNode.removeChild(Module.webcamCanvas);
+  }
+  Module.webcamCanvas = null;
+}
+}
+catch(err) {
+  console.error('[WASM Webcam] Cleanup failed:', err);
+}
 });
 
 /**
@@ -144,17 +146,18 @@ EM_JS(int, js_webcam_enumerate_devices, (), {
     return navigator.mediaDevices.enumerateDevices()
         .then(devices = >
                         {
-                          const videoDevices = devices.filter(d = > d.kind == = 'videoinput');
-                          return videoDevices.length;
+  const videoDevices = devices.filter(d = > d.kind == = 'videoinput');
+  return videoDevices.length;
                         })
         .catch(err = > {
-          console.error('[WASM Webcam] Enumeration failed:', err);
-          return 1; // Assume at least the default camera
+  console.error('[WASM Webcam] Enumeration failed:', err);
+  return 1; // Assume at least the default camera
         });
-  } catch (err) {
-    console.error('[WASM Webcam] Enumeration error:', err);
-    return 1;
-  }
+}
+catch(err) {
+  console.error('[WASM Webcam] Enumeration error:', err);
+  return 1;
+}
 });
 
 /* ============================================================================

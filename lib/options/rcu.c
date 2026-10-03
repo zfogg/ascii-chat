@@ -380,7 +380,8 @@ asciichat_error_t options_state_init(void) {
   }
 
   // Check if already initialized in this process using lifecycle
-  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid && atomic_ptr_load(&g_options) != NULL) {
+  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid &&
+      atomic_ptr_load(&g_options) != NULL) {
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
@@ -585,32 +586,31 @@ typedef struct {
   const char *option; ///< Registry option name (e.g., "color-mode")
 } field_option_map_t;
 
-static const field_option_map_t g_field_to_option[] = {
-    // INT fields
-    {"width", "width"},
-    {"height", "height"},
-    {"max_clients", "max-clients"},
-    {"compression_level", "compression-level"},
-    {"reconnect_attempts", "reconnect"},
-    {"microphone_index", "microphone-index"},
-    {"speakers_index", "speakers-index"},
-    {"discovery_port", "discovery-service-port"},
-    {"port", "port"},
-    {"fps", "fps"},
-    {"color_mode", "color-mode"},
-    {"color_filter", "color-filter"},
-    {"render_mode", "render-mode"},
-    {"log_level", "log-level"},
-    {"palette_type", "palette"},
-    // DOUBLE fields
-    {"snapshot_delay", "snapshot-delay"},
-    {"microphone_sensitivity", "microphone-volume"},
-    {"speakers_volume", "speakers-volume"},
-    // STRING fields with registry entries
-    {"address", "address"},
-    {"log_file", "log-file"},
-    {"password", "password"},
-    {NULL, NULL}};
+static const field_option_map_t g_field_to_option[] = {// INT fields
+                                                       {"width", "width"},
+                                                       {"height", "height"},
+                                                       {"max_clients", "max-clients"},
+                                                       {"compression_level", "compression-level"},
+                                                       {"reconnect_attempts", "reconnect"},
+                                                       {"microphone_index", "microphone-index"},
+                                                       {"speakers_index", "speakers-index"},
+                                                       {"discovery_port", "discovery-service-port"},
+                                                       {"port", "port"},
+                                                       {"fps", "fps"},
+                                                       {"color_mode", "color-mode"},
+                                                       {"color_filter", "color-filter"},
+                                                       {"render_mode", "render-mode"},
+                                                       {"log_level", "log-level"},
+                                                       {"palette_type", "palette"},
+                                                       // DOUBLE fields
+                                                       {"snapshot_delay", "snapshot-delay"},
+                                                       {"microphone_sensitivity", "microphone-volume"},
+                                                       {"speakers_volume", "speakers-volume"},
+                                                       // STRING fields with registry entries
+                                                       {"address", "address"},
+                                                       {"log_file", "log-file"},
+                                                       {"password", "password"},
+                                                       {NULL, NULL}};
 
 /**
  * @brief Validate an option value against registry metadata
@@ -663,8 +663,7 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
       float val = *(const float *)((const char *)new_opts + entry->offset);
       if (val < (float)min || val > (float)max) {
         log_error("Option '%s' value %f out of range [%d, %d]", opt_name, val, min, max);
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %f out of range [%d, %d]", opt_name, val, min,
-                         max);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %f out of range [%d, %d]", opt_name, val, min, max);
       }
     } else {
       int val = *(const int *)((const char *)new_opts + entry->offset);

@@ -998,7 +998,8 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_flag_values,
     // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"), true,
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"),
+    true,
     {
       // Test all flags were set
       cr_assert_eq(opts->audio_enabled, 1);

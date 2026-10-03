@@ -402,7 +402,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
                         "--discovery-service-port",
                         port_str,
                         "--prefer-webrtc", // Force WebRTC instead of direct TCP
-                        "--test-pattern", // Use test pattern instead of webcam
+                        "--test-pattern",  // Use test pattern instead of webcam
                         "--snapshot",
                         "--snapshot-delay",
                         "10", // Keep alive for 10s to allow WebRTC connection

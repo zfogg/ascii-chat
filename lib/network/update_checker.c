@@ -449,8 +449,8 @@ void update_check_format_notification(const update_check_result_t *result, char 
   // point to the exact GitHub release that was returned by the API.
   snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s. Release notes: %s", result->current_version,
            result->latest_version,
-           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ",
-           suggestion, result->release_url);
+           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion,
+           result->release_url);
 }
 
 asciichat_error_t update_check_startup(update_check_result_t *result) {

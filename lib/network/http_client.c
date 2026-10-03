@@ -129,8 +129,7 @@ static char *extract_http_body(const char *response, size_t response_len) {
     if (chunk_size == 0) {
       break;
     }
-    if (chunk_size > (unsigned long long)(end - cursor) ||
-        (size_t)chunk_size > body_len - decoded_len) {
+    if (chunk_size > (unsigned long long)(end - cursor) || (size_t)chunk_size > body_len - decoded_len) {
       log_error("Malformed chunked HTTP response: chunk exceeds response body");
       SAFE_FREE(body);
       return NULL;

@@ -43,9 +43,9 @@ static void setup_expired_key(void) {
   // Import the expired test key fixture
   // CTest runs from build directory, so we need to go up one level
   char cmd[1024];
-  const char *fixture_paths[] = {"../tests/fixtures/gpg/expired-test-key.asc", // From build dir (ctest)
+  const char *fixture_paths[] = {"../tests/fixtures/gpg/expired-test-key.asc",    // From build dir (ctest)
                                  "../../tests/fixtures/gpg/expired-test-key.asc", // From build/tests dir
-                                 "tests/fixtures/gpg/expired-test-key.asc",    // From repo root (direct run)
+                                 "tests/fixtures/gpg/expired-test-key.asc",       // From repo root (direct run)
                                  NULL};
 
   int result = -1;

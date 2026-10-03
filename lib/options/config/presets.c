@@ -365,7 +365,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_dependency_conflicts(b, "no-encrypt", "password",
                                            "Cannot use --no-encrypt with --password (password requires encryption)");
   options_builder_add_dependency_conflicts(
-      b, "no-encrypt", "client-keys", "Cannot use --no-encrypt with --client-keys (key validation requires encryption)");
+      b, "no-encrypt", "client-keys",
+      "Cannot use --no-encrypt with --client-keys (key validation requires encryption)");
   options_builder_add_dependency_conflicts(
       b, "no-encrypt", "server-key", "Cannot use --no-encrypt with --server-key (key validation requires encryption)");
 
