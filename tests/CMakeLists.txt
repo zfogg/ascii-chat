@@ -237,7 +237,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
             list(APPEND TEST_LDFLAGS "-L/usr/local/lib")
         endif()
-        list(APPEND TEST_LDFLAGS "-framework" "SystemConfiguration")
+        list(APPEND TEST_LDFLAGS "-framework SystemConfiguration")
         # Note: CRITERION_LIBRARIES is already added to TEST_LDFLAGS on line 87,
         # so we only add the library search directories here
     endif()
