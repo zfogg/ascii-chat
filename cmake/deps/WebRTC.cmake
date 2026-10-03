@@ -166,7 +166,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             -DASCIICHAT_SHARED_DEPS=${ASCIICHAT_SHARED_DEPS}
         )
 
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64|AARCH64")
+        if(ASCIICHAT_TARGET_ARM64 OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64|AARCH64")
             list(APPEND WEBRTC_CMAKE_ARGS "-DASCIICHAT_TARGET_ARM64=ON")
         else()
             list(APPEND WEBRTC_CMAKE_ARGS "-DASCIICHAT_TARGET_ARM64=OFF")
@@ -286,7 +286,8 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             # Use the host and vcpkg target architecture as additional signals so
             # x86 SIMD sources are never enabled for the ARM64 toolchain.
             set(_webrtc_windows_arm64 FALSE)
-            if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
+            if(ASCIICHAT_TARGET_ARM64
+                OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
                 OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
                 OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
                 set(_webrtc_windows_arm64 TRUE)
