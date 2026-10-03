@@ -237,6 +237,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
             list(APPEND TEST_LDFLAGS "-L/usr/local/lib")
         endif()
+        list(APPEND TEST_LDFLAGS "-framework" "SystemConfiguration")
         # Note: CRITERION_LIBRARIES is already added to TEST_LDFLAGS on line 87,
         # so we only add the library search directories here
     endif()
@@ -343,6 +344,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${_ascii_tests_library}
             ${TEST_LDFLAGS}
         )
+
+        if(USE_MIMALLOC)
+            if(TARGET mimalloc-static)
+                target_link_libraries(${test_exe_name} PRIVATE mimalloc-static)
+            elseif(MIMALLOC_LIBRARIES)
+                target_link_libraries(${test_exe_name} PRIVATE ${MIMALLOC_LIBRARIES})
+            endif()
+        endif()
 
         # Coverage builds need the profile runtime linked into test executables
         if(IS_COVERAGE_BUILD)
