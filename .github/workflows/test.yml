@@ -540,6 +540,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_C_FLAGS="${FLAGS}"
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
+            -DUSE_MUSL=OFF
+            -DASCIICHAT_SHARED_DEPS=ON
             # Skip hardening validation - coverage builds embed .gcda paths in binary
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )
@@ -663,6 +665,9 @@ jobs:
           # Use CMake build system with AddressSanitizer
           FLAGS="-std=c2x -fsanitize=address"
 
+          # The restored build cache may come from a static musl release build.
+          # Start from a clean configure so sanitizer builds use the host libc.
+          rm -rf build/
           cmake -B build --preset github \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_FLAGS="${FLAGS}"

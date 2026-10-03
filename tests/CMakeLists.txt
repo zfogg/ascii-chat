@@ -299,7 +299,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};${HOMEBREW_PREFIX}/lib;/usr/local/lib"
                 MACOSX_RPATH ON
             )
-        else()
+        elseif(TARGET ascii-chat-shared)
             set_target_properties(${test_exe_name} PROPERTIES
                 BUILD_RPATH "$<TARGET_FILE_DIR:ascii-chat-shared>;${CMAKE_BUILD_RPATH}"
             )
@@ -331,12 +331,16 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Link test dependencies via shared library + external dependencies
         # Ensure shared library is built first (not available on all platforms)
         if(TARGET ascii-chat-shared)
+            set(_ascii_tests_library ascii-chat-shared)
             add_dependencies(${test_exe_name} ascii-chat-shared)
+        else()
+            set(_ascii_tests_library ascii-chat-static)
+            add_dependencies(${test_exe_name} build-ascii-chat-static-lib)
         endif()
 
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
-            ascii-chat-shared
+            ${_ascii_tests_library}
             ${TEST_LDFLAGS}
         )
 
@@ -808,4 +812,3 @@ if(TARGET ascii-chat-shared)
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")
 endif()
-
