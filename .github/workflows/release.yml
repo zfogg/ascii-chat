@@ -688,6 +688,7 @@ jobs:
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DASCIICHAT_ENABLE_NSIS=OFF",
             "-DASCIICHAT_TARGET_ARM64=${{ matrix.arch == 'arm64' && 'ON' || 'OFF' }}",
+            "-DASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS=${{ matrix.arch == 'arm64' && 'ON' || 'OFF' }}",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args

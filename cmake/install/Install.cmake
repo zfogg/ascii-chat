@@ -576,13 +576,23 @@ elseif(BUILD_EXECUTABLES)
 endif()
 
 if(BUILD_EXECUTABLES)
-    add_custom_target(completions ALL
-        DEPENDS
-            "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-            "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
-            "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    )
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+        add_custom_target(completions
+            DEPENDS
+                "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+                "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+                "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
+                "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+        )
+    else()
+        add_custom_target(completions ALL
+            DEPENDS
+                "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+                "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+                "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
+                "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+        )
+    endif()
 endif()
 
 # Shell completions are generated silently as part of the build process

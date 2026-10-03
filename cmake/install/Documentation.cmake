@@ -85,11 +85,19 @@ if(BUILD_EXECUTABLES)
         )
     endif()
 
-    # Build man pages target (works for both Debug and Release)
-    add_custom_target(man1 ALL
-        DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        COMMENT "Man pages build complete"
-    )
+    # Build man pages as part of the default build unless a target platform
+    # cannot execute its freshly built binary during packaging.
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+        add_custom_target(man1
+            DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMENT "Man pages build complete"
+        )
+    else()
+        add_custom_target(man1 ALL
+            DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMENT "Man pages build complete"
+        )
+    endif()
 
     message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
 endif()
