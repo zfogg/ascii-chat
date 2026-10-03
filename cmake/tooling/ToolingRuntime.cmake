@@ -61,9 +61,9 @@ function(ascii_build_tooling_runtime)
     # Panic Report Utility (Optional)
     # =========================================================================
     # This utility reads panic instrumentation log files and summarizes them.
-    # Cross-platform: uses dirent.h on Unix, _findfirst/_findnext on Windows.
-    # Skip when shared library isn't available (musl builds, Linux Release non-musl)
-    if(TARGET ascii-chat-shared)
+    # The report utility is currently built on Unix, where the shared library
+    # is available for the analysis tool. Windows packaging does not include it.
+    if(TARGET ascii-chat-shared AND NOT WIN32)
         add_executable(ascii-panic-report
             ${TOOLING_PANIC_REPORT_SRCS}
         )
