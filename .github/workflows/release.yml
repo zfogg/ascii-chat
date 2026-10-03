@@ -512,7 +512,14 @@ jobs:
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          cmake --build build_release --target docs
+          if [ "${{ matrix.os }}" = "macos-15-intel" ]; then
+            # Homebrew's Intel Doxygen currently segfaults on this project.
+            # Documentation is still built for the other release platforms and
+            # the source tarball; skip only this unstable packaging step.
+            echo "Skipping Doxygen on macOS Intel because the runner binary crashes"
+          else
+            cmake --build build_release --target docs
+          fi
           cmake --build build_release --target package
 
       - name: Print ccache stats

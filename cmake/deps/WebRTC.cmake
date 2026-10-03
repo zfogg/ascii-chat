@@ -282,10 +282,19 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         # Visual Studio generator ignores CMAKE_C_COMPILER and uses cl.exe
         if(WIN32)
             list(PREPEND WEBRTC_CMAKE_ARGS -G Ninja)
+            # CMake can report the host architecture as AMD64 on Windows ARM64.
+            # Use the host and vcpkg target architecture as additional signals so
+            # x86 SIMD sources are never enabled for the ARM64 toolchain.
+            set(_webrtc_windows_arm64 FALSE)
+            if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
+                OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
+                OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+                set(_webrtc_windows_arm64 TRUE)
+            endif()
             # WebRTC's x86 implementation references its SSE2 routines even
             # when runtime dispatch selects the scalar path. x86-64 Windows
             # has SSE2 as a baseline, so always compile those support files.
-            if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            if(NOT _webrtc_windows_arm64)
                 list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_SSE2=")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSE2=ON")
             endif()
@@ -310,7 +319,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try
             # to use x86 SIMD intrinsics (-maes, -msse4.1) which fail on ARM64
             # NEON SIMD is still supported and enabled for ARM64
-            if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            if(_webrtc_windows_arm64)
                 list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_SYSTEM_PROCESSOR=ARM64")
                 # Disable x86 SIMD flags - filter out any previously added, then set OFF
                 list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_SSE2=")
