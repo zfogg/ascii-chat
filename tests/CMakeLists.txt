@@ -347,9 +347,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
         if(USE_MIMALLOC)
             if(TARGET mimalloc-static)
-                target_link_libraries(${test_exe_name} PRIVATE mimalloc-static)
+                target_link_libraries(${test_exe_name} mimalloc-static)
             elseif(MIMALLOC_LIBRARIES)
-                target_link_libraries(${test_exe_name} PRIVATE ${MIMALLOC_LIBRARIES})
+                target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
             endif()
         endif()
 
