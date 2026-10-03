@@ -254,7 +254,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
+          # Pin the x86_64 release runner to the same supported Ubuntu baseline
+          # as the ARM64 job. ubuntu-latest is moving to Ubuntu 26, whose
+          # toolchain/dependency set is not yet supported by the release build.
+          - runner: ubuntu-24.04
           - runner: ubuntu-24.04-arm
           #- runner: ubuntu-latest-arm64
 
