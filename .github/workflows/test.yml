@@ -186,7 +186,7 @@ jobs:
           ls -la build/bin/test_unit_crypto_common 2>/dev/null && build/bin/test_unit_crypto_common --help 2>&1 | head -5 || echo "test binary not found"
 
           # Run unit tests (filtered by label)
-          ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 0 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 2 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
