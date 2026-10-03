@@ -651,10 +651,18 @@ if(WIN32)
     # PowerShell completions - generated at build time
     # Standard location varies, but doc/completions is accessible
     # User can source from: $HOME\Documents\PowerShell\Completions\
-    install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-        DESTINATION doc/completions
-        COMPONENT Runtime
-    )
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+        install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+            DESTINATION doc/completions
+            COMPONENT Runtime
+            OPTIONAL
+        )
+    else()
+        install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+            DESTINATION doc/completions
+            COMPONENT Runtime
+        )
+    endif()
     message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}doc/completions/ascii-chat.ps1${ColorReset}")
 endif()
 
