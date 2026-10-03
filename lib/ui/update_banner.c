@@ -250,6 +250,13 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 
+  // Exact release source on GitHub.
+  {
+    char line[512];
+    snprintf(line, sizeof(line), "Release : %s", result.release_url);
+    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
+  }
+
   // Blank line
   append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "");
 

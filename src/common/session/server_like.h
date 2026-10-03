@@ -282,7 +282,7 @@ typedef struct session_server_like_config {
  * @param config Mode configuration (must not be NULL)
  * @return ASCIICHAT_OK on success, or first error from init or accept loop
  */
-asciichat_error_t session_server_like_run(const session_server_like_config_t *config);
+ASCIICHAT_API asciichat_error_t session_server_like_run(const session_server_like_config_t *config);
 
 /* ============================================================================
  * Accessors (for use by mode callbacks)
@@ -297,7 +297,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
  *
  * @return Pointer to TCP server (never NULL after step 4), or NULL if called before TCP init
  */
-tcp_server_t *session_server_like_get_tcp_server(void);
+ASCIICHAT_API tcp_server_t *session_server_like_get_tcp_server(void);
 
 /**
  * Get the mDNS context owned by server_like.
@@ -308,7 +308,7 @@ tcp_server_t *session_server_like_get_tcp_server(void);
  *
  * @return Pointer to mDNS context, or NULL if not initialized or disabled
  */
-asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
+ASCIICHAT_API asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
 
 /**
  * Get the UPnP context owned by server_like.
@@ -319,7 +319,7 @@ asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
  *
  * @return Pointer to UPnP context, or NULL if not initialized or disabled
  */
-nat_upnp_context_t *session_server_like_get_upnp_ctx(void);
+ASCIICHAT_API nat_upnp_context_t *session_server_like_get_upnp_ctx(void);
 
 /**
  * Get the WebSocket server instance owned by server_like.
@@ -334,7 +334,7 @@ nat_upnp_context_t *session_server_like_get_upnp_ctx(void);
  *
  * @return Pointer to WebSocket server, or NULL if not initialized or disabled
  */
-websocket_server_t *session_server_like_get_websocket_server(void);
+ASCIICHAT_API websocket_server_t *session_server_like_get_websocket_server(void);
 
 /* ============================================================================
  * Helpers (for use by mode callbacks)
@@ -353,8 +353,8 @@ websocket_server_t *session_server_like_get_websocket_server(void);
  * @param txt_count Number of TXT records
  * @return ASCIICHAT_OK on success, error if mDNS is not initialized
  */
-asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port,
-                                                     const char **txt, size_t txt_count);
+ASCIICHAT_API asciichat_error_t session_server_like_mdns_advertise(const char *name, const char *type, uint16_t port,
+                                                                   const char **txt, size_t txt_count);
 
 /**
  * Perform the server-side crypto handshake on a transport.
@@ -371,7 +371,8 @@ asciichat_error_t session_server_like_mdns_advertise(const char *name, const cha
  * @param transport ACIP transport for the client connection
  * @return ASCIICHAT_OK on success, error code on handshake failure
  */
-asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport);
+ASCIICHAT_API asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
+                                                              acip_transport_t *transport);
 
 /**
  * Check if a shutdown request was received during initialization.

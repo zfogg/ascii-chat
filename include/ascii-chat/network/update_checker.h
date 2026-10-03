@@ -67,10 +67,11 @@ asciichat_error_t update_check_perform(update_check_result_t *result);
  * @brief Load cached update check result
  *
  * Reads cache file from ~/.config/ascii-chat/last_update_check.
- * Cache format (3 lines):
+ * Cache format (4 lines):
  * - Line 1: Unix timestamp
  * - Line 2: Latest version tag (or empty if check failed)
  * - Line 3: Latest SHA (full 40 chars, or empty if check failed)
+ * - Line 4: Exact GitHub release URL
  *
  * @param[out] result Output structure with cached results
  * @return ASCIICHAT_OK if cache valid, error if missing/corrupt

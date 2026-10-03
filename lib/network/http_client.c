@@ -76,11 +76,78 @@ static char *extract_http_body(const char *response, size_t response_len) {
   body_start += 4; // Skip "\r\n\r\n"
 
   size_t body_len = response_len - (size_t)(body_start - response);
-  char *body;
-  body = SAFE_MALLOC(body_len + 1, char *);
-  memcpy(body, body_start, body_len);
-  body[body_len] = '\0';
+  const char *transfer_encoding = strstr(response, "Transfer-Encoding:");
+  bool is_chunked = transfer_encoding && strstr(transfer_encoding, "chunked") != NULL;
 
+  if (!is_chunked) {
+    char *body = SAFE_MALLOC(body_len + 1, char *);
+    memcpy(body, body_start, body_len);
+    body[body_len] = '\0';
+    return body;
+  }
+
+  // GitHub commonly uses HTTP/1.1 chunked transfer encoding. The bytes after
+  // the headers are then a sequence of `<hex-size>\\r\\n<data>\\r\\n` chunks,
+  // not the JSON document itself. Decode into a bounded buffer before handing
+  // the body to JSON parsers.
+  char *body = SAFE_MALLOC(body_len + 1, char *);
+  size_t decoded_len = 0;
+  const char *cursor = body_start;
+  const char *end = response + response_len;
+
+  while (cursor < end) {
+    const char *line_end = strstr(cursor, "\r\n");
+    if (!line_end || line_end >= end) {
+      log_error("Malformed chunked HTTP response: missing chunk size terminator");
+      SAFE_FREE(body);
+      return NULL;
+    }
+
+    char size_text[32];
+    size_t size_text_len = (size_t)(line_end - cursor);
+    const char *extension = memchr(cursor, ';', size_text_len);
+    if (extension) {
+      size_text_len = (size_t)(extension - cursor);
+    }
+    if (size_text_len == 0 || size_text_len >= sizeof(size_text)) {
+      log_error("Malformed chunked HTTP response: invalid chunk size");
+      SAFE_FREE(body);
+      return NULL;
+    }
+    memcpy(size_text, cursor, size_text_len);
+    size_text[size_text_len] = '\0';
+
+    char *size_end = NULL;
+    unsigned long long chunk_size = strtoull(size_text, &size_end, 16);
+    if (size_end == size_text || *size_end != '\0') {
+      log_error("Malformed chunked HTTP response: invalid chunk size '%s'", size_text);
+      SAFE_FREE(body);
+      return NULL;
+    }
+
+    cursor = line_end + 2;
+    if (chunk_size == 0) {
+      break;
+    }
+    if (chunk_size > (unsigned long long)(end - cursor) ||
+        (size_t)chunk_size > body_len - decoded_len) {
+      log_error("Malformed chunked HTTP response: chunk exceeds response body");
+      SAFE_FREE(body);
+      return NULL;
+    }
+
+    memcpy(body + decoded_len, cursor, (size_t)chunk_size);
+    decoded_len += (size_t)chunk_size;
+    cursor += (size_t)chunk_size;
+    if (cursor + 2 > end || cursor[0] != '\r' || cursor[1] != '\n') {
+      log_error("Malformed chunked HTTP response: missing chunk terminator");
+      SAFE_FREE(body);
+      return NULL;
+    }
+    cursor += 2;
+  }
+
+  body[decoded_len] = '\0';
   return body;
 }
 

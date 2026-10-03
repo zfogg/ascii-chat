@@ -38,6 +38,17 @@
 #define GITHUB_API_HOSTNAME "api.github.com"
 #define GITHUB_RELEASES_PATH "/repos/zfogg/ascii-chat/releases/latest"
 
+static void trim_line_ending(char *line) {
+  if (!line) {
+    return;
+  }
+
+  size_t len = strlen(line);
+  while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+    line[--len] = '\0';
+  }
+}
+
 /**
  * @brief Get cache file path
  * @return Allocated string with cache file path (caller must free)
@@ -48,6 +59,12 @@ static char *get_cache_file_path(void) {
   if (!config_dir) {
     log_error("Failed to get config directory for update check cache");
     return NULL;
+  }
+
+  // The config directory may not exist on a first run. Create it before any
+  // caller attempts to open the cache file for writing.
+  if (platform_mkdir_recursive(config_dir, 0700) != ASCIICHAT_OK) {
+    log_warn("Failed to create update check config directory: %s", config_dir);
   }
 
   // Build cache file path
@@ -100,23 +117,29 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
 
   // Read line 2: latest version (may be empty if check failed)
   if (fgets(line, sizeof(line), f)) {
-    // Remove newline
-    size_t len = strlen(line);
-    if (len > 0 && line[len - 1] == '\n') {
-      line[len - 1] = '\0';
-    }
+    trim_line_ending(line);
     SAFE_STRNCPY(result->latest_version, line, sizeof(result->latest_version));
   }
 
   // Read line 3: latest SHA (may be empty if check failed)
   if (fgets(line, sizeof(line), f)) {
-    // Remove newline
-    size_t len = strlen(line);
-    if (len > 0 && line[len - 1] == '\n') {
-      line[len - 1] = '\0';
-    }
+    trim_line_ending(line);
     SAFE_STRNCPY(result->latest_sha, line, sizeof(result->latest_sha));
   }
+
+  // Read line 4: release URL. This field is required in the current cache
+  // format; an older or partially-written cache must be refreshed.
+  if (!fgets(line, sizeof(line), f)) {
+    fclose(f);
+    // Treat a legacy cache exactly like a missing cache. Close the file before
+    // removing it so this also works on Windows, where open files cannot be
+    // deleted.
+    (void)remove(cache_path);
+    SAFE_FREE(cache_path);
+    return SET_ERRNO(ERROR_FORMAT, "Update cache format is obsolete");
+  }
+  trim_line_ending(line);
+  SAFE_STRNCPY(result->release_url, line, sizeof(result->release_url));
 
   fclose(f);
 
@@ -174,6 +197,10 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
 
   // Write SHA (may be empty if check failed)
   fprintf(f, "%s\n", result->latest_sha);
+
+  // Write the release URL so cached notifications retain the exact GitHub
+  // source returned by the API.
+  fprintf(f, "%s\n", result->release_url);
 
   fclose(f);
   SAFE_FREE(cache_path);
@@ -417,9 +444,13 @@ void update_check_format_notification(const update_check_result_t *result, char 
   char suggestion[512];
   update_check_get_upgrade_suggestion(method, result->latest_version, suggestion, sizeof(suggestion));
 
-  // Format: "Update available: v0.8.1 → v0.9.0. Run: brew upgrade ascii-chat"
-  snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s", result->current_version, result->latest_version,
-           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion);
+  // Keep the notification useful even when it is displayed in a log line:
+  // identify the versions, provide an actionable command or download URL, and
+  // point to the exact GitHub release that was returned by the API.
+  snprintf(buffer, buffer_size, "Update available: %s → %s. %s%s. Release notes: %s", result->current_version,
+           result->latest_version,
+           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ",
+           suggestion, result->release_url);
 }
 
 asciichat_error_t update_check_startup(update_check_result_t *result) {

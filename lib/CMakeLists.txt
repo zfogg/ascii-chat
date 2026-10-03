@@ -860,7 +860,10 @@ add_library(ascii-chat-shared SHARED
 
     # Windows: Explicitly set import library location for Windows
     if(WIN32)
-        if(CMAKE_C_COMPILER MATCHES "clang-cl")
+        # Both clang-cl and clang --target=...-windows-msvc produce MSVC
+        # compatible import libraries. The GNU-style clang driver used by the
+        # LLVM toolchain still needs the .lib name consumed by the executable.
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
         else()
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
@@ -913,6 +916,12 @@ add_library(ascii-chat-shared SHARED
         # Use the generated .def file for linking
         target_link_options(ascii-chat-shared PRIVATE
             "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
+        )
+        # The .def file is part of the link input. Track it explicitly so a
+        # changed object list or export set relinks the DLL and refreshes its
+        # import library before consumers link against it.
+        set_property(TARGET ascii-chat-shared APPEND PROPERTY LINK_DEPENDS
+            "${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
         )
     endif()
 
