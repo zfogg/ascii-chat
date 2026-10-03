@@ -95,6 +95,8 @@
 #include "../../asciichat_errno.h"
 #include "../../platform/socket.h"
 #include "../../network/acip/acds.h"
+#include "../../crypto/handshake/common.h"
+#include "../../network/acip/transport.h"
 
 // ============================================================================
 // ACDS Client Configuration
@@ -123,6 +125,8 @@ typedef struct {
   acds_client_config_t config;
   socket_t socket; ///< TCP socket to ACDS server
   bool connected;  ///< Connection status
+  acip_transport_t *transport; ///< Transport used for the initial crypto handshake
+  crypto_handshake_context_t handshake_ctx; ///< ACDS crypto handshake state
 } acds_client_t;
 
 // ============================================================================

@@ -694,7 +694,10 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   log_info("[TCP_DBG] AUDIO_QUEUE_START: Creating audio queue");
-  packet_queue_t *audio_queue = packet_queue_create_with_pools(500, 1000, false);
+  // Keep the per-client queue allocation independent. Registering a 1000-node
+  // pool for every client can block a second client while the first client's
+  // debug registrations are being retired during disconnect.
+  packet_queue_t *audio_queue = packet_queue_create(500);
   log_info("[TCP_DBG] AUDIO_QUEUE_DONE");
   if (!audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
@@ -1375,12 +1378,19 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
       // Store display name before clearing
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
-      // Save socket for tcp_server_stop_client_threads() before closing
+      // Save socket for tcp_server_stop_client_threads(). Keep the descriptor
+      // open until thread cleanup completes so the OS cannot reuse its fd for
+      // a new client while this client's cleanup is still in progress.
       mutex_lock(&client->client_state_mutex);
       client_socket = client->socket; // Save socket for thread cleanup
-      // NOTE: Do NOT call socket_shutdown() here - it sends FIN to peer and breaks the connection
-      // The threads will exit naturally when they check shutting_down/active flags or hit errors
       mutex_unlock(&client->client_state_mutex);
+
+      // Wake blocked receive/send operations without closing the descriptor.
+      // Closing here would allow a concurrently accepted client to reuse the
+      // same descriptor before the old client's worker threads finish.
+      if (client_socket != INVALID_SOCKET_VALUE) {
+        (void)socket_shutdown(client_socket, SHUT_RDWR);
+      }
 
       // Shutdown packet queues to unblock send thread
       if (client->audio_queue) {
@@ -2335,9 +2345,12 @@ void *client_send_thread_func(void *arg) {
 
     // Check if get_latest failed (buffer might have been destroyed)
     if (!frame) {
-      log_warn("⚠️  Send thread exiting: video_frame_get_latest returned NULL for client %s (buffer destroyed?)",
-               client->client_id);
-      break; // Exit thread if buffer is invalid
+      // The render thread may not have committed the first frame yet. Keep the
+      // sender alive and retry; a destroyed buffer is handled by the check
+      // immediately above.
+      log_dev_every(LOG_RATE_SLOW, "Send thread: no rendered frame yet for client %s", client->client_id);
+      platform_sleep_us(1 * US_PER_MS_INT);
+      continue;
     }
 
     // Check if it's time to send a video frame (60fps rate limiting)
@@ -3494,19 +3507,13 @@ static void acip_server_on_client_leave(void *client_ctx, void *app_ctx) {
 static void acip_server_on_stream_start(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  // ACIP layer provides stream_types in host byte order, but handle_stream_start_packet()
-  // expects network byte order (it does NET_TO_HOST_U32 internally)
-  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
-  handle_stream_start_packet(client, &stream_types_net, sizeof(stream_types_net));
+  handle_stream_start_packet(client, &stream_types, sizeof(stream_types));
 }
 
 static void acip_server_on_stream_stop(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  // ACIP layer provides stream_types in host byte order, but handle_stream_stop_packet()
-  // expects network byte order (it does NET_TO_HOST_U32 internally)
-  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
-  handle_stream_stop_packet(client, &stream_types_net, sizeof(stream_types_net));
+  handle_stream_stop_packet(client, &stream_types, sizeof(stream_types));
 }
 
 static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx) {

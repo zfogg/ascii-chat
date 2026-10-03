@@ -360,6 +360,14 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Cannot use both --encrypt and --no-encrypt
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "key",
+                                           "Cannot use --no-encrypt with --key (key requires encryption)");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "password",
+                                           "Cannot use --no-encrypt with --password (password requires encryption)");
+  options_builder_add_dependency_conflicts(
+      b, "no-encrypt", "client-keys", "Cannot use --no-encrypt with --client-keys (key validation requires encryption)");
+  options_builder_add_dependency_conflicts(
+      b, "no-encrypt", "server-key", "Cannot use --no-encrypt with --server-key (key validation requires encryption)");
 
   // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
   options_builder_add_dependency_conflicts(b, "no-auth", "key",

@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <sys/stat.h>
 
 /**
@@ -1076,6 +1077,13 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
 
   char *validated_config_path = NULL;
+  // An optional default config is allowed not to exist. Check this before the
+  // whitelist validator, which quite correctly rejects paths whose parent
+  // directory has not been created yet but should not turn that normal case
+  // into a configuration error.
+  if (!strict && access(config_path_expanded, F_OK) != 0 && errno == ENOENT) {
+    return ASCIICHAT_OK;
+  }
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
   if (validate_result != ASCIICHAT_OK) {
@@ -1298,6 +1306,14 @@ asciichat_error_t config_create_default(const char *config_path) {
   // Get all options from schema
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
+  {
+    const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+    if (unified_config) {
+      (void)config_schema_build_from_configs(&unified_config, 1);
+      options_config_destroy(unified_config);
+      metadata = config_schema_get_all(&metadata_count);
+    }
+  }
 
   // Build list of unique categories in order of first appearance
   const char *categories[16] = {0}; // Max expected categories

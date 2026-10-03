@@ -523,9 +523,8 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
 
-  uint32_t stream_type_net;
-  memcpy(&stream_type_net, data, sizeof(uint32_t));
-  uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
+  uint32_t stream_type;
+  memcpy(&stream_type, data, sizeof(uint32_t));
 
   // Validate at least one stream type flag is set
   const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
@@ -606,9 +605,8 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_STOP");
 
-  uint32_t stream_type_net;
-  memcpy(&stream_type_net, data, sizeof(uint32_t));
-  uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
+  uint32_t stream_type;
+  memcpy(&stream_type, data, sizeof(uint32_t));
 
   // Validate at least one stream type flag is set
   const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;

@@ -533,6 +533,16 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
+  // Port zero is useful to low-level socket APIs for ephemeral binding, but
+  // it is not a valid ascii-chat user-facing port and conflicts with the
+  // option registry's 1-65535 contract.
+  if (port_num == 0) {
+    if (error_msg) {
+      *error_msg = platform_strdup("Port must be between 1 and 65535");
+    }
+    return false;
+  }
+
   *port_value = (int)port_num;
   return true;
 }

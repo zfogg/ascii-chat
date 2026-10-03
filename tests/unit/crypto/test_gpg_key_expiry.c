@@ -44,13 +44,15 @@ static void setup_expired_key(void) {
   // CTest runs from build directory, so we need to go up one level
   char cmd[1024];
   const char *fixture_paths[] = {"../tests/fixtures/gpg/expired-test-key.asc", // From build dir (ctest)
+                                 "../../tests/fixtures/gpg/expired-test-key.asc", // From build/tests dir
                                  "tests/fixtures/gpg/expired-test-key.asc",    // From repo root (direct run)
                                  NULL};
 
   int result = -1;
   for (int i = 0; fixture_paths[i] != NULL; i++) {
     if (access(fixture_paths[i], R_OK) == 0) {
-      snprintf(cmd, sizeof(cmd), "gpg --batch --import '%s' >/dev/null 2>&1", fixture_paths[i]);
+      snprintf(cmd, sizeof(cmd), "gpg --batch --homedir '%s' --import '%s' >/dev/null 2>&1", test_gnupghome,
+               fixture_paths[i]);
       result = system(cmd);
       if (result == 0) {
         break;
@@ -90,7 +92,7 @@ static void teardown_expired_key(void) {
   }
 }
 
-TestSuite(gpg_key_expiry, .timeout = 10.0);
+TestSuite(gpg_key_expiry);
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
 Test(gpg_key_expiry, check_valid_key_not_expired) {

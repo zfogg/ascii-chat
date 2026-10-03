@@ -184,8 +184,11 @@ Test(test_consensus, destroy_twice) {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   session_consensus_destroy(consensus);
+  // The destroy API takes ownership of the pointer but cannot null the
+  // caller's copy. Do not pass the dangling pointer back to it.
+  consensus = NULL;
   session_consensus_destroy(consensus);
-  cr_assert(true, "Double destroy should be idempotent");
+  cr_assert(true, "Destroying a NULL consensus should be safe");
 }
 
 // =============================================================================

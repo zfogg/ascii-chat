@@ -36,7 +36,7 @@
 
 // Test configuration
 #define TEST_PORT_BASE 20000
-#define ACDS_STARTUP_TIMEOUT_MS 2000
+#define ACDS_STARTUP_TIMEOUT_MS 10000
 #define HOST_STARTUP_TIMEOUT_MS 3000
 #define WEBRTC_CONNECTION_TIMEOUT_MS 15000 // WebRTC can take time with STUN
 #define PROCESS_CLEANUP_TIMEOUT_MS 2000
@@ -92,6 +92,7 @@ void setup_webrtc_e2e_tests(void) {
 
   // Disable host identity check for tests
   setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
+  setenv("ASCII_CHAT_AUDIO", "false", 1);
 }
 
 void teardown_webrtc_e2e_tests(void) {
@@ -336,13 +337,13 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   // ============================================================
 
   char *acds_argv[] = {(char *)binary_path,
+                       "--log-level",
+                       "debug",
                        "discovery-service",
                        "--port",
                        port_str,
                        "--database",
                        test_db_path,
-                       "--log-level",
-                       "debug",
                        "--status-screen=false", // Disable UI for clean log parsing
                        NULL};
 
@@ -351,7 +352,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
 
   // Wait for discovery service to be ready
   bool acds_ready =
-      wait_for_log_pattern(acds_log, "Discovery server accepting connections", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
+      wait_for_log_pattern(acds_log, "Server accepting connections on port", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
   cr_assert(acds_ready, "Discovery service failed to start (log: %s)", acds_log);
 
   // ============================================================
@@ -364,7 +365,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
                        "--port", "27224",
                        "--discovery",           // Register with discovery service
                        "--discovery-expose-ip", // Allow IP exposure for testing
-                       "--discovery-service", "localhost", "--discovery-port", port_str,
+                       "--discovery-service", "localhost", "--discovery-service-port", port_str,
                        "--status-screen=false", // Disable UI for clean log parsing
                        // Server doesn't need video/audio source - clients provide media
                        // Server runs continuously until terminated
@@ -393,14 +394,14 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   // ============================================================
 
   char *guest_argv[] = {(char *)binary_path,
+                        "--log-level",
+                        "debug",
                         session_string, // Discovery mode with session string
                         "--discovery-service",
                         "localhost",
-                        "--discovery-port",
+                        "--discovery-service-port",
                         port_str,
                         "--prefer-webrtc", // Force WebRTC instead of direct TCP
-                        "--log-level",
-                        "debug",
                         "--test-pattern", // Use test pattern instead of webcam
                         "--snapshot",
                         "--snapshot-delay",

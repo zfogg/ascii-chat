@@ -380,7 +380,19 @@ grep_parse_result_t grep_parse_pattern(const char *input) {
     // Find the last forward slash to use as delimiter
     closing_slash = strrchr(input, '/');
 
-    if (closing_slash && closing_slash > input) {
+    const char *implicit_flags = closing_slash ? closing_slash + 1 : NULL;
+    bool implicit_flags_valid = closing_slash && closing_slash > input && *implicit_flags != '\0';
+    if (implicit_flags_valid) {
+      for (const char *flag = implicit_flags; *flag; flag++) {
+        if (!strchr("imsxgIF", *flag) && *flag != 'A' && *flag != 'B' && *flag != 'C' &&
+            !(*flag >= '0' && *flag <= '9')) {
+          implicit_flags_valid = false;
+          break;
+        }
+      }
+    }
+
+    if (implicit_flags_valid) {
       // There's at least one slash (not at the beginning)
       // Try to parse as pattern/flags format
       pattern_start = input;

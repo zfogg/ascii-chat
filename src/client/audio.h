@@ -114,6 +114,12 @@ int audio_client_init(void);
  */
 void audio_sender_init(void);
 
+/** Signal the asynchronous audio sender to stop before worker threads are joined. */
+void audio_sender_cleanup(void);
+
+/** Release asynchronous audio sender resources after its worker has been joined. */
+void audio_sender_finalize(void);
+
 /**
  * @brief Start audio capture thread
  *

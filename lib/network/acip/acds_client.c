@@ -16,8 +16,10 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/endian.h>
@@ -27,6 +29,69 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+
+static asciichat_error_t acds_client_handshake(acds_client_t *client) {
+  crypto_handshake_context_t *ctx = &client->handshake_ctx;
+  asciichat_error_t result = crypto_handshake_init("acds_client", ctx, false);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  protocol_version_packet_t version = {0};
+  version.protocol_version = HOST_TO_NET_U16(1);
+  version.protocol_revision = HOST_TO_NET_U16(0);
+  version.supports_encryption = 1;
+
+  result = packet_send_via_transport(client->transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send ACDS protocol version");
+  }
+
+  packet_type_t type;
+  void *payload = NULL;
+  void *alloc_buffer = NULL;
+  size_t payload_len = 0;
+
+  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
+  if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_PARAMETERS ||
+      payload_len != sizeof(crypto_parameters_packet_t)) {
+    buffer_pool_free(NULL, alloc_buffer, 0);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS crypto parameters response");
+  }
+  crypto_parameters_packet_t parameters;
+  memcpy(&parameters, payload, sizeof(parameters));
+  buffer_pool_free(NULL, alloc_buffer, 0);
+
+  result = crypto_handshake_set_parameters(ctx, &parameters);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  payload = NULL;
+  alloc_buffer = NULL;
+  payload_len = 0;
+  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
+  if (result != ASCIICHAT_OK) {
+    buffer_pool_free(NULL, alloc_buffer, 0);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to receive ACDS key exchange");
+  }
+  result = crypto_handshake_client_key_exchange(ctx, client->transport, type, payload, payload_len);
+  buffer_pool_free(NULL, alloc_buffer, 0);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  payload = NULL;
+  alloc_buffer = NULL;
+  payload_len = 0;
+  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
+  if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+    buffer_pool_free(NULL, alloc_buffer, 0);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS handshake completion response");
+  }
+  buffer_pool_free(NULL, alloc_buffer, 0);
+  return ASCIICHAT_OK;
+}
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -100,6 +165,24 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   if (pconn_result == ASCIICHAT_OK) {
     client->connected = true;
 
+    client->transport = acip_tcp_transport_create("acds_client_transport", client->socket, NULL);
+    if (!client->transport) {
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
+      client->connected = false;
+      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
+    }
+
+    asciichat_error_t handshake_result = acds_client_handshake(client);
+    if (handshake_result != ASCIICHAT_OK) {
+      acip_transport_destroy(client->transport);
+      client->transport = NULL;
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
+      client->connected = false;
+      return handshake_result;
+    }
+
     /* Register ACDS client with named registry */
     char acds_name[64];
     snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
@@ -118,6 +201,11 @@ void acds_client_disconnect(acds_client_t *client) {
   }
 
   if (client->socket != INVALID_SOCKET_VALUE) {
+    if (client->transport) {
+      acip_transport_destroy(client->transport);
+      client->transport = NULL;
+    }
+    crypto_handshake_destroy(&client->handshake_ctx);
     socket_close(client->socket);
     client->socket = INVALID_SOCKET_VALUE;
   }

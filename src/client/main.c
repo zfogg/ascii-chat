@@ -616,6 +616,14 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return ERROR_NETWORK;
   }
 
+  // A snapshot is complete once its first frame has been rendered. The peer
+  // may close the connection while the snapshot shutdown is propagating, but
+  // that is a successful snapshot rather than a reconnectable network error.
+  extern uint64_t g_snapshot_first_frame_time_ns;
+  if (GET_OPTION(snapshot_mode) && g_snapshot_first_frame_time_ns > 0 && should_exit()) {
+    return ASCIICHAT_OK;
+  }
+
   // Return error to signal reconnection needed (framework handles the retry)
   return ERROR_NETWORK;
 }

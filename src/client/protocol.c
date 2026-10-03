@@ -1310,7 +1310,12 @@ void protocol_stop_connection() {
   // In snapshot mode, data reception thread was never started, but capture thread may still be running
   // Always stop the capture thread to prevent use-after-free when transport is destroyed
   if (GET_OPTION(snapshot_mode)) {
-    log_debug("[PROTOCOL_STOP] Snapshot mode: flushing H.265 encoder before stopping capture thread");
+    log_debug("[PROTOCOL_STOP] Snapshot mode: stopping capture thread before flushing H.265 encoder");
+    // The capture thread owns the encoder while it is producing frames. Join it
+    // before flushing so shutdown cannot destroy encoder state underneath an
+    // in-flight encode operation.
+    capture_stop_thread();
+
     // Flush the encoder to output any buffered frames before exiting
     if (g_h265_encoder) {
       // Allocate buffer large enough for worst-case H.265 encoded frame
@@ -1330,8 +1335,6 @@ void protocol_stop_connection() {
       }
       SAFE_FREE(flush_buf);
     }
-    log_debug("[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning");
-    capture_stop_thread();
     return;
   }
 
@@ -1368,6 +1371,9 @@ void protocol_stop_connection() {
   capture_stop_thread();
   log_debug("[PROTOCOL_STOP] 10. capture_stop_thread() returned");
 
+  // Signal the audio sender while its queue synchronization objects are still valid.
+  audio_sender_cleanup();
+
   // Wait for data reception thread to exit gracefully
   log_debug("[PROTOCOL_STOP] 11. Waiting for data thread to exit");
   // Thread checks should_exit() every read cycle (typically <1-5ms), so timeout can be much shorter
@@ -1392,6 +1398,7 @@ void protocol_stop_connection() {
       LOG_ERRNO_IF_SET("Thread pool stop failed");
     }
   }
+  audio_sender_finalize();
   log_debug("[PROTOCOL_STOP] 14. thread_pool_stop_all() returned");
 
   g_data_thread_created = false;

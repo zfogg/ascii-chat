@@ -1262,8 +1262,9 @@ Test(config_create, creates_file_with_content) {
   FILE *f = fopen(config_path, "r");
   cr_assert_not_null(f, "Should be able to open created file");
 
-  char buffer[8192];
-  size_t bytes_read = fread(buffer, 1, sizeof(buffer) - 1, f);
+  char *buffer = SAFE_MALLOC((size_t)st.st_size + 1, char *);
+  cr_assert_not_null(buffer, "Should allocate enough space for the generated config");
+  size_t bytes_read = fread(buffer, 1, (size_t)st.st_size, f);
   buffer[bytes_read] = '\0';
   fclose(f);
 
@@ -1275,6 +1276,7 @@ Test(config_create, creates_file_with_content) {
   cr_assert(strstr(buffer, "[security]") != NULL, "Config should have [security] section");
   cr_assert(strstr(buffer, "[logging]") != NULL, "Config should have [logging] section");
   cr_assert(strstr(buffer, "ascii-chat") != NULL, "Config should mention ascii-chat");
+  SAFE_FREE(buffer);
 
   // Cleanup
   unlink(config_path);

@@ -68,6 +68,16 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
         return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
       }
     }
+
+    // receive_packet_secure() keeps the complete packet for the TCP transport,
+    // while ACIP handlers receive payload-only data. Normalize the envelope
+    // before dispatching so the TCP and WebSocket paths use the same shape.
+    if (envelope.data == envelope.allocated_buffer) {
+      const packet_header_t *header = (const packet_header_t *)envelope.allocated_buffer;
+      envelope.type = NET_TO_HOST_U16(header->type);
+      envelope.len = NET_TO_HOST_U32(header->length);
+      envelope.data = (uint8_t *)envelope.allocated_buffer + sizeof(packet_header_t);
+    }
   } else {
     // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
     void *packet_data = NULL;

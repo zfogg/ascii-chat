@@ -12,26 +12,37 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/atomic.h>
 
+static _Thread_local bool g_lifecycle_log_in_progress = false;
+
+#define lifecycle_log_dev(...)                                                                           \
+  do {                                                                                                   \
+    if (!g_lifecycle_log_in_progress) {                                                                   \
+      g_lifecycle_log_in_progress = true;                                                                \
+      log_dev(__VA_ARGS__);                                                                              \
+      g_lifecycle_log_in_progress = false;                                                               \
+    }                                                                                                    \
+  } while (0)
+
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
   if (lc == NULL) {
-    log_dev("[lifecycle] init: NULL lifecycle pointer");
+    lifecycle_log_dev("[lifecycle] init: NULL lifecycle pointer");
     return false;
   }
   uint64_t expected = LIFECYCLE_UNINITIALIZED;
   if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZED)) {
-    log_dev("[lifecycle] init: %s already initialized (current state: %llu)", name ? name : "<unnamed>", expected);
+    lifecycle_log_dev("[lifecycle] init: %s already initialized (current state: %llu)", name ? name : "<unnamed>", expected);
     return false; // Already initialized or in INITIALIZING/DEAD state
   }
 
   /* Winner: initialize sync primitive if configured */
   if (lc->sync_type == LIFECYCLE_SYNC_MUTEX && lc->sync.mutex != NULL) {
-    log_dev("[lifecycle] init: %s initializing mutex", name ? name : "<unnamed>");
+    lifecycle_log_dev("[lifecycle] init: %s initializing mutex", name ? name : "<unnamed>");
     mutex_init(lc->sync.mutex, name);
   } else if (lc->sync_type == LIFECYCLE_SYNC_RWLOCK && lc->sync.rwlock != NULL) {
-    log_dev("[lifecycle] init: %s initializing rwlock", name ? name : "<unnamed>");
+    lifecycle_log_dev("[lifecycle] init: %s initializing rwlock", name ? name : "<unnamed>");
     rwlock_init(lc->sync.rwlock, name);
   } else {
-    log_dev("[lifecycle] init: %s initialized (no sync primitive)", name ? name : "<unnamed>");
+    lifecycle_log_dev("[lifecycle] init: %s initialized (no sync primitive)", name ? name : "<unnamed>");
   }
 
   return true;
@@ -39,7 +50,7 @@ bool lifecycle_init(lifecycle_t *lc, const char *name) {
 
 bool lifecycle_init_once(lifecycle_t *lc) {
   if (lc == NULL) {
-    log_dev("[lifecycle] init_once: NULL lifecycle pointer");
+    lifecycle_log_dev("[lifecycle] init_once: NULL lifecycle pointer");
     return false;
   }
 
@@ -47,72 +58,72 @@ bool lifecycle_init_once(lifecycle_t *lc) {
   if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZING)) {
     // If already initialized, just return false (no work needed)
     if (expected == LIFECYCLE_INITIALIZED) {
-      log_dev("[lifecycle] init_once: already initialized");
+      lifecycle_log_dev("[lifecycle] init_once: already initialized");
       return false;
     }
 
     // If dead, never allow re-init
     if (expected == LIFECYCLE_DEAD) {
-      log_dev("[lifecycle] init_once: module is dead, no re-init allowed");
+      lifecycle_log_dev("[lifecycle] init_once: module is dead, no re-init allowed");
       return false;
     }
 
     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
     // Just return false to indicate this thread doesn't need to do init work
     if (expected == LIFECYCLE_INITIALIZING) {
-      log_dev("[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)");
+      lifecycle_log_dev("[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)");
       return false;
     }
 
     // Unexpected state
-    log_dev("[lifecycle] init_once: unexpected state: %d", expected);
+    lifecycle_log_dev("[lifecycle] init_once: unexpected state: %d", expected);
     return false;
   }
 
   // Winner: state is now LIFECYCLE_INITIALIZING
   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
-  log_dev("[lifecycle] init_once: won CAS, transitioned to INITIALIZING");
+  lifecycle_log_dev("[lifecycle] init_once: won CAS, transitioned to INITIALIZING");
   return true;
 }
 
 void lifecycle_init_commit(lifecycle_t *lc) {
   if (lc == NULL) {
-    log_dev("[lifecycle] init_commit: NULL lifecycle pointer");
+    lifecycle_log_dev("[lifecycle] init_commit: NULL lifecycle pointer");
     return;
   }
-  log_dev("[lifecycle] init_commit: transitioning INITIALIZING → INITIALIZED");
+  lifecycle_log_dev("[lifecycle] init_commit: transitioning INITIALIZING → INITIALIZED");
   atomic_store_u64(&lc->state, LIFECYCLE_INITIALIZED);
 }
 
 void lifecycle_init_abort(lifecycle_t *lc) {
   if (lc == NULL) {
-    log_dev("[lifecycle] init_abort: NULL lifecycle pointer");
+    lifecycle_log_dev("[lifecycle] init_abort: NULL lifecycle pointer");
     return;
   }
-  log_dev("[lifecycle] init_abort: transitioning INITIALIZING → UNINITIALIZED (retry allowed)");
+  lifecycle_log_dev("[lifecycle] init_abort: transitioning INITIALIZING → UNINITIALIZED (retry allowed)");
   atomic_store_u64(&lc->state, LIFECYCLE_UNINITIALIZED);
 }
 
 bool lifecycle_shutdown(lifecycle_t *lc) {
   if (lc == NULL) {
-    log_dev("[lifecycle] shutdown: NULL lifecycle pointer");
+    lifecycle_log_dev("[lifecycle] shutdown: NULL lifecycle pointer");
     return false;
   }
   uint64_t expected = LIFECYCLE_INITIALIZED;
   if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
-    log_dev("[lifecycle] shutdown: not in INITIALIZED state (current: %d)", expected);
+    lifecycle_log_dev("[lifecycle] shutdown: not in INITIALIZED state (current: %d)", expected);
     return false; // Not initialized or in unexpected state
   }
 
   /* Winner: destroy sync primitive if configured */
   if (lc->sync_type == LIFECYCLE_SYNC_MUTEX && lc->sync.mutex != NULL) {
-    log_dev("[lifecycle] shutdown: destroying mutex");
+    lifecycle_log_dev("[lifecycle] shutdown: destroying mutex");
     mutex_destroy(lc->sync.mutex);
   } else if (lc->sync_type == LIFECYCLE_SYNC_RWLOCK && lc->sync.rwlock != NULL) {
-    log_dev("[lifecycle] shutdown: destroying rwlock");
+    lifecycle_log_dev("[lifecycle] shutdown: destroying rwlock");
     rwlock_destroy(lc->sync.rwlock);
   } else {
-    log_dev("[lifecycle] shutdown: completed (no sync primitive)");
+    lifecycle_log_dev("[lifecycle] shutdown: completed (no sync primitive)");
   }
 
   return true;

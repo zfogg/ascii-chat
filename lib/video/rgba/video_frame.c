@@ -236,7 +236,7 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   }
 
   // Check if reader has consumed the previous frame
-  if (atomic_load_bool(&vfb->new_frame_available)) {
+  if (atomic_load_bool(&vfb->new_frame_available) && vfb->front_buffer->size > 0) {
     // Reader hasn't consumed yet - we're dropping a frame
     uint64_t drops = atomic_fetch_add_u64(&vfb->total_frames_dropped, 1) + 1;
     // Throttle drop logging - only log every 100 drops to avoid spam
@@ -268,6 +268,10 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   }
   if (!vfb->active) {
     SET_ERRNO(ERROR_INVALID_STATE, "vfb->active is not true");
+    return NULL;
+  }
+
+  if (!atomic_load_bool(&vfb->new_frame_available)) {
     return NULL;
   }
 
@@ -310,7 +314,7 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
   sfs->frame_a.data = SAFE_MALLOC(frame_size, void *);
   sfs->frame_b.data = SAFE_MALLOC(frame_size, void *);
 
-  atomic_store_u64(&sfs->current_frame, (uintptr_t)&sfs->frame_a);
+  atomic_store_u64(&sfs->current_frame, 0);
   atomic_store_bool(&sfs->use_frame_a, false); // Next write goes to frame_b
 
   return sfs;

@@ -484,6 +484,7 @@ typedef struct {
   int color;                    // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
   bool json;                    // JSON logging format - binary-level option
   bool log_format_console_only; // Apply log template only to console - binary-level option
+  bool no_check_update;         // Disable the startup update check
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -501,6 +502,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.color = opts->color;                                     // Save color setting (parsed in STAGE 1A)
   binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
   binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
+  binary.no_check_update = opts->no_check_update;
   return binary;
 }
 
@@ -518,6 +520,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->color = binary->color;                                     // Restore color setting (parsed in STAGE 1A)
   opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
   opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
+  opts->no_check_update = binary->no_check_update;
 }
 
 options_t options_t_new(void) {
@@ -848,7 +851,9 @@ static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long
 // ============================================================================
 
 asciichat_error_t options_init(int argc, char **argv) {
-  log_debug("options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s", argc, argv[0], argc > 1 ? argv[1] : "N/A");
+  log_debug("options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s", argc,
+            (argv && argc > 0 && argv[0]) ? argv[0] : "(null)",
+            (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
   // This allows ALL logs (including from shared_init) to be filtered
   // Validate arguments (safety check for tests)
@@ -1134,6 +1139,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // Create local options struct and initialize with defaults
   options_t opts = options_t_new(); // Initialize with all defaults
+  opts.no_check_update = no_check_update_flag_seen;
   opts.detected_mode = detected_mode;
   char *log_filename = options_get_log_filepath(detected_mode, opts);
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
@@ -1418,7 +1424,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip argument if needed
-        if ((takes_arg || (takes_optional_arg && argv[i + 1][0] != '-')) && i + 1 < mode_index) {
+        if (i + 1 < mode_index && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue;
@@ -1435,7 +1441,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Check if this is a binary-level option (shouldn't appear after mode)
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip binary-level option and its argument if needed
-        if ((takes_arg || (takes_optional_arg && argv[i + 1][0] != '-')) && i + 1 < argc) {
+        if (i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue; // Skip this option
@@ -1670,8 +1676,11 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Auto-enable encryption if key was provided
   if (opts.encrypt_key[0] != '\0') {
-    // Validate key file exists (skip for remote/virtual keys)
-    if (!is_remote_key_path(opts.encrypt_key)) {
+    // A key may be a local file, a remote reference, or inline key material.
+    // Only validate filesystem paths when the value is actually path-like;
+    // inline SSH/base64/password keys must not be rejected by stat().
+    bool key_is_inline = !path_looks_like_path(opts.encrypt_key);
+    if (!is_remote_key_path(opts.encrypt_key) && !key_is_inline) {
       struct stat st;
       if (stat(opts.encrypt_key, &st) != 0) {
         log_error("Key file not found: %s", opts.encrypt_key);

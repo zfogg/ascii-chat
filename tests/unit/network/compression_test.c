@@ -31,7 +31,7 @@ static asciichat_error_t test_send_ascii_frame_packet(socket_t sockfd, const cha
   }
   // Check for oversized frames (test uses 1024 in test mode)
   // In test environment, reject frames >= 1024; otherwise reject frames >= 1MB
-  size_t max_size = (getenv("TESTING") || getenv("CRITERION_TEST")) ? 1000 : 1000000;
+  size_t max_size = 1000000;
   if (frame_size >= max_size) {
     return ERROR_INVALID_PARAM;
   }
@@ -305,8 +305,7 @@ Test(compression, send_ascii_frame_packet_oversized_frame) {
   int sockfd = create_test_socket();
   cr_assert_geq(sockfd, 0);
 
-  // Use smaller frame size in test environment for faster testing
-  size_t test_size = (getenv("TESTING") || getenv("CRITERION_TEST")) ? 1024 : (1024 * 1024);
+  size_t test_size = 1024 * 1024;
   char *large_frame = SAFE_MALLOC(test_size, void *);
   cr_assert_not_null(large_frame);
   memset(large_frame, 'A', test_size);

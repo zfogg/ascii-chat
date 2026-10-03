@@ -392,15 +392,33 @@ void audio_sender_cleanup(void) {
     mutex_unlock(&g_audio_send_queue_mutex);
   }
 
-  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
+  // The worker is joined by thread_pool_stop_all() in protocol_stop_connection().
+  // Keep the queue synchronization objects alive until that join completes.
   if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
-    g_audio_sender_thread_created = false;
     log_debug("Audio sender thread will be joined by thread pool");
+  }
+}
+
+void audio_sender_finalize(void) {
+  if (!lifecycle_is_initialized(&g_audio_send_queue_lc)) {
+    return;
+  }
+
+  // thread_pool_stop_all() normally joins this worker. If the sender was
+  // blocked in transport I/O when the pool timeout elapsed, wait for the
+  // shutdown signal to be observed before destroying its queue mutex.
+  for (int i = 0; i < 200 && !atomic_load_bool(&g_audio_sender_exited); i++) {
+    platform_sleep_us(10 * US_PER_MS_INT);
+  }
+  if (!atomic_load_bool(&g_audio_sender_exited)) {
+    log_warn("Audio sender thread did not exit before queue cleanup");
+    return;
   }
 
   mutex_destroy(&g_audio_send_queue_mutex);
   cond_destroy(&g_audio_send_queue_cond);
   lifecycle_shutdown(&g_audio_send_queue_lc);
+  g_audio_sender_thread_created = false;
 }
 
 /* ============================================================================

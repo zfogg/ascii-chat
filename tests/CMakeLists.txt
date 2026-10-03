@@ -495,9 +495,30 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         )
 
         # Build Criterion command-line arguments
+        # Integration tests may launch several servers and clients in child
+        # processes.  Keep their Criterion cases serial within the executable;
+        # CTest's RUN_SERIAL property cannot prevent Criterion itself from
+        # running those cases concurrently.
+        set(_test_criterion_jobs ${CRITERION_JOBS})
+        if(test_category STREQUAL "integration" OR test_exe_name MATCHES "gpg")
+            set(_test_criterion_jobs 1)
+        endif()
+
+        set(_test_criterion_timeout ${CRITERION_TIMEOUT})
+        if(test_exe_name MATCHES "webrtc_frame_capture")
+            set(_test_criterion_timeout 60)
+        endif()
+
+        set(_test_ctest_timeout ${CTEST_TEST_TIMEOUT})
+        if(test_category STREQUAL "integration")
+            # Integration executables contain several serial process-level
+            # cases; the timeout applies to the complete executable.
+            set(_test_ctest_timeout 120)
+        endif()
+
         set(_criterion_args
-            --jobs ${CRITERION_JOBS}
-            --timeout ${CRITERION_TIMEOUT}
+            --jobs ${_test_criterion_jobs}
+            --timeout ${_test_criterion_timeout}
             --color=always
             --short-filename
         )
@@ -505,22 +526,46 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Add XML output for all builds (needed for CI test reporting)
         list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
 
-        # Add to CTest with Criterion flags
-        add_test(NAME ${test_exe_name}
-            COMMAND ${test_exe_name} ${_criterion_args}
-        )
-
-        # Set test properties
-        set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
-            TIMEOUT ${CTEST_TEST_TIMEOUT}
-            LABELS "${test_category}"
-        )
-
-        # Tests that spawn subprocesses (server/client) must run serially
-        # to avoid port conflicts and resource contention
         if(test_exe_name MATCHES "main_integration")
-            set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
+            # Each case launches independent server/client subprocesses. Run
+            # them in separate CTest processes so a prior case cannot retain
+            # child-process or socket state in the Criterion runner.
+            set(_main_integration_cases
+                client_main_help_flag
+                client_main_no_server
+                server_client_basic_connection
+                server_client_with_options
+                server_main_help_flag
+                server_main_invalid_port
+                server_main_starts_and_stops
+                server_multiple_clients_concurrent
+                server_multiple_clients_sequential
+                server_survives_client_crash
+            )
+            foreach(_case IN LISTS _main_integration_cases)
+                set(_case_test_name "${test_exe_name}_${_case}")
+                add_test(NAME ${_case_test_name}
+                    COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
+                )
+                set_tests_properties(${_case_test_name} PROPERTIES
+                    ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+                    TIMEOUT ${_test_ctest_timeout}
+                    LABELS "${test_category}"
+                    RUN_SERIAL TRUE
+                )
+            endforeach()
+        else()
+            # Add to CTest with Criterion flags
+            add_test(NAME ${test_exe_name}
+                COMMAND ${test_exe_name} ${_criterion_args}
+            )
+
+            # Set test properties
+            set_tests_properties(${test_exe_name} PROPERTIES
+                ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+                TIMEOUT ${_test_ctest_timeout}
+                LABELS "${test_category}"
+            )
         endif()
     endforeach()
 
@@ -574,20 +619,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     # Custom targets for different test modes (matches Makefile)
     # Use CTEST_PARALLEL_JOBS which is limited to prevent resource exhaustion
     add_custom_target(test_debug
-        DEPENDS tests
+        DEPENDS tests-criterion-build
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in debug mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     add_custom_target(test_release
-        DEPENDS tests
+        DEPENDS tests-criterion-build
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in release mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     # Overall test target
     add_custom_target(test_all
-        DEPENDS tests
+        DEPENDS tests-criterion-build
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running all tests (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
@@ -817,6 +862,17 @@ if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_test(NAME shared-lib-runtime
             COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            execute_process(
+                COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.asan-x86_64.so
+                OUTPUT_VARIABLE ASAN_RUNTIME_LIBRARY
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            if(EXISTS "${ASAN_RUNTIME_LIBRARY}")
+                set_tests_properties(shared-lib-runtime PROPERTIES
+                    ENVIRONMENT "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}")
+            endif()
+        endif()
     endif()
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")

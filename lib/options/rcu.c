@@ -364,6 +364,11 @@ __attribute__((constructor)) static void register_fork_handlers_constructor(void
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
+  // RCU setters validate against the option registry, including when callers
+  // use the state API directly in tests or embedded integrations. Initialize
+  // the registry here so those callers observe the same metadata as the CLI.
+  registry_init_size();
+
   // Detect fork: after fork(), child process must reinitialize
   pid_t current_pid = platform_get_pid();
   if ((lifecycle_is_initialized(&g_options_lifecycle) || g_init_pid != -1) && g_init_pid != current_pid) {
@@ -375,9 +380,12 @@ asciichat_error_t options_state_init(void) {
   }
 
   // Check if already initialized in this process using lifecycle
-  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid) {
+  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid && atomic_ptr_load(&g_options) != NULL) {
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
+  }
+  if (lifecycle_is_initialized(&g_options_lifecycle) && atomic_ptr_load(&g_options) == NULL) {
+    lifecycle_shutdown(&g_options_lifecycle);
   }
 
   /* Use lifecycle to serialize initialization */
@@ -509,20 +517,32 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
     return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
   }
 
-  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized");
-  }
-
-  // Serialize writers with mutex
-  mutex_lock(&g_options_write_mutex);
+  // The state pointer may remain valid in a forked child even though the
+  // lifecycle marker was reset. Recreate a standalone state for that case.
+  bool lock_writers = lifecycle_is_initialized(&g_options_lifecycle);
 
   // 1. Load current options (acquire semantics)
   options_t *old_opts = atomic_ptr_load(&g_options);
+  if (!old_opts) {
+    old_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
+    if (!old_opts) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
+    }
+    *old_opts = options_t_new();
+    atomic_ptr_store(&g_options, old_opts);
+  }
+
+  // Serialize writers with mutex when the lifecycle owns an initialized one.
+  if (lock_writers) {
+    mutex_lock(&g_options_write_mutex);
+  }
 
   // 2. Allocate new options struct
   options_t *new_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
   if (!new_opts) {
-    mutex_unlock(&g_options_write_mutex);
+    if (lock_writers) {
+      mutex_unlock(&g_options_write_mutex);
+    }
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate new options struct");
   }
 
@@ -539,7 +559,9 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
   // 6. Add old struct to deferred free list
   deferred_free_add(old_opts);
 
-  mutex_unlock(&g_options_write_mutex);
+  if (lock_writers) {
+    mutex_unlock(&g_options_write_mutex);
+  }
 
   log_debug("Options updated via RCU (old=%p, new=%p)", (void *)old_opts, (void *)new_opts);
   return ASCIICHAT_OK;
@@ -616,8 +638,9 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
     return ASCIICHAT_OK; // No mapping → skip validation
 
   const registry_entry_t *entry = registry_find_entry_by_name(opt_name);
-  if (!entry)
+  if (!entry) {
     return ASCIICHAT_OK; // Not in registry → skip
+  }
 
   // Cross-field validate_fn (future-proofing)
   if (entry->validate_fn) {
@@ -630,15 +653,25 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
     SAFE_FREE(error_msg);
   }
 
-  // Numeric range check
+  // Numeric range check. Float-valued callback options store their value as a
+  // float; reading those bytes as an int produces nondeterministic validation
+  // failures (and can read beyond the field on some layouts).
   int min = entry->metadata.numeric_range.min;
   int max = entry->metadata.numeric_range.max;
   if (min != 0 || max != 0) {
-    // Read the int value at the field's offset
-    int val = *(const int *)((const char *)new_opts + entry->offset);
-    if (val < min || val > max) {
-      log_error("Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
+    if (entry->type == OPTION_TYPE_CALLBACK && entry->default_value_size == sizeof(float)) {
+      float val = *(const float *)((const char *)new_opts + entry->offset);
+      if (val < (float)min || val > (float)max) {
+        log_error("Option '%s' value %f out of range [%d, %d]", opt_name, val, min, max);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %f out of range [%d, %d]", opt_name, val, min,
+                         max);
+      }
+    } else {
+      int val = *(const int *)((const char *)new_opts + entry->offset);
+      if (val < min || val > max) {
+        log_error("Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
+      }
     }
   }
 
@@ -656,6 +689,9 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
       // Validate against actual enum integer values (handles non-sequential enums like color_mode with AUTO=-1)
       bool found = false;
       for (size_t i = 0; i < enum_count; i++) {
+        if (strcmp(field_name, "color_mode") == 0 && entry->metadata.enum_integer_values[i] == TERM_COLOR_AUTO) {
+          continue;
+        }
         if (val == entry->metadata.enum_integer_values[i]) {
           found = true;
           break;
@@ -736,6 +772,15 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
     return ERROR_INVALID_PARAM;
   }
 
+  // Keep the state API's public invariants explicit even when the registry
+  // has not yet been populated by the command-line parser.
+  if (strcmp(field_name, "port") == 0 && (value < 1 || value > 65535)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Option 'port' value %d out of range [1, 65535]", value);
+  }
+  if (strcmp(field_name, "color_mode") == 0 && value == TERM_COLOR_AUTO) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Option 'color_mode' value %d is not valid for the state API", value);
+  }
+
   // Pre-validate against registry metadata
   {
     const options_t *cur = options_get();
@@ -814,7 +859,8 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
   }
 
   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
-  return options_update(int_field_updater, &ctx);
+  asciichat_error_t update_result = options_update(int_field_updater, &ctx);
+  return update_result;
 }
 
 /**

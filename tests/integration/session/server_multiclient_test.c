@@ -149,6 +149,7 @@ Test(server_multiclient, get_frame_stats) {
     video_frame_t *frame = video_frame_begin_write(vfb);
     frame->sequence_number = i + 1;
     video_frame_commit(vfb);
+    cr_assert_not_null(video_frame_get_latest(vfb), "Should consume committed frame %d", i + 1);
   }
 
   // Get stats

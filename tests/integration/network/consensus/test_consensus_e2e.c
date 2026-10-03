@@ -24,6 +24,7 @@
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
+#include <ascii-chat/tests/common.h>
 
 #define SERVER_PORT 29998
 #define MAX_CLIENTS 3
@@ -110,6 +111,7 @@ __attribute__((unused)) static int wait_for_pattern(process_t *proc, const char 
  * Start server process
  */
 static void start_server(void) {
+  setenv("ASCII_CHAT_AUDIO", "false", 1);
   // Create pipes for stdout and stderr
   pipe(server_proc.stdout_pipe);
   pipe(server_proc.stderr_pipe);
@@ -133,21 +135,9 @@ static void start_server(void) {
     dup2(server_proc.stdout_pipe[1], STDOUT_FILENO);
     dup2(server_proc.stderr_pipe[1], STDERR_FILENO);
 
-    // Get current working directory and construct path to binary
-    // When running from ctest, cwd is the build directory, so binary is at ./bin/ascii-chat
-    // When running from repo root, we need to look in build/bin/ascii-chat
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
-
-    char binary_path[1024];
-
-    // Try relative path first (when running from build directory)
-    if (access("./bin/ascii-chat", X_OK) == 0) {
-      snprintf(binary_path, sizeof(binary_path), "%s/bin/ascii-chat", cwd);
-    } else {
-      // Try absolute path (when running from repo root)
-      snprintf(binary_path, sizeof(binary_path), "%s/build/bin/ascii-chat", cwd);
-    }
+    const char *binary_path = test_get_binary_path();
 
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", SERVER_PORT);
@@ -161,8 +151,8 @@ static void start_server(void) {
       fclose(debug_file);
     }
 
-    execl(binary_path, "ascii-chat", "--log-level", "debug", "--verbose", "server", "--port", port_str, "--max-clients",
-          "4", (char *)NULL);
+    execl(binary_path, "ascii-chat", "--log-level", "debug", "server", "--port", port_str, "--max-clients", "4",
+          "--status-screen=false", "--no-encrypt", (char *)NULL);
 
     // If exec fails, write error to file and stderr
     int save_errno = errno;
@@ -222,12 +212,7 @@ static void start_client(int client_num) {
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
 
-    char binary_path[1024];
-    if (access("./bin/ascii-chat", X_OK) == 0) {
-      snprintf(binary_path, sizeof(binary_path), "%s/bin/ascii-chat", cwd);
-    } else {
-      snprintf(binary_path, sizeof(binary_path), "%s/build/bin/ascii-chat", cwd);
-    }
+    const char *binary_path = test_get_binary_path();
 
     char addr_str[32];
     snprintf(addr_str, sizeof(addr_str), "127.0.0.1:%d", SERVER_PORT);
@@ -241,8 +226,8 @@ static void start_client(int client_num) {
       fclose(debug_file);
     }
 
-    execl(binary_path, "ascii-chat", "--log-level", "debug", "--verbose", "client", addr_str, "--snapshot",
-          "--snapshot-delay", "2", (char *)NULL);
+    execl(binary_path, "ascii-chat", "--log-level", "debug", "client", addr_str, "--snapshot", "--snapshot-delay", "2",
+          "--status-screen=false", "--no-encrypt", (char *)NULL);
 
     // If exec fails
     int save_errno = errno;
@@ -265,22 +250,37 @@ static void start_client(int client_num) {
  * Cleanup processes
  */
 static void cleanup_processes(void) {
-  // Kill server
-  if (server_proc.pid > 0) {
-    kill(server_proc.pid, SIGTERM);
-    waitpid(server_proc.pid, NULL, 0);
-    close(server_proc.stdout_pipe[0]);
-    close(server_proc.stderr_pipe[0]);
+  process_t *processes[MAX_CLIENTS + 1] = {&server_proc};
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    processes[i + 1] = &client_procs[i];
   }
 
-  // Kill clients
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (client_procs[i].pid > 0) {
-      kill(client_procs[i].pid, SIGTERM);
-      waitpid(client_procs[i].pid, NULL, 0);
-      close(client_procs[i].stdout_pipe[0]);
-      close(client_procs[i].stderr_pipe[0]);
+  for (size_t i = 0; i < MAX_CLIENTS + 1; i++) {
+    process_t *proc = processes[i];
+    if (proc->pid <= 0) {
+      continue;
     }
+
+    kill(proc->pid, SIGTERM);
+    bool exited = false;
+    for (int attempt = 0; attempt < 20; attempt++) {
+      int status = 0;
+      pid_t result = waitpid(proc->pid, &status, WNOHANG);
+      if (result == proc->pid || (result < 0 && errno == ECHILD)) {
+        exited = true;
+        break;
+      }
+      usleep(100000);
+    }
+
+    if (!exited) {
+      kill(proc->pid, SIGKILL);
+      waitpid(proc->pid, NULL, 0);
+    }
+
+    close(proc->stdout_pipe[0]);
+    close(proc->stderr_pipe[0]);
+    proc->pid = -1;
   }
 }
 

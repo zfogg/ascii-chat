@@ -204,6 +204,13 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
   }
   (void)transport;
 
+  // ACDS sends PARTICIPANT_JOINED to every participant before relaying SDP/ICE.
+  // The generic client callback set does not expose this notification yet, but
+  // it must not terminate a live signaling receive loop.
+  if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+    return ASCIICHAT_OK;
+  }
+
   // O(1) dispatch via hash table lookup
   int idx = handler_hash_lookup(g_client_handler_hash, type);
   if (idx < 0) {

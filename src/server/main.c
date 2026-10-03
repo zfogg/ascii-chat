@@ -2069,6 +2069,7 @@ static void server_cleanup_fn(void *user_data) {
   if (g_h265_server) {
     h265_server_context_t *h265_to_destroy = g_h265_server;
     g_h265_server = NULL;
+    g_server_ctx.h265_server = NULL;
     h265_server_context_destroy(h265_to_destroy);
     log_debug("H.265 codec server context shut down");
   }
