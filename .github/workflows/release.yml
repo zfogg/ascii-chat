@@ -490,11 +490,13 @@ jobs:
           fi
           # Intel macOS: conservative build settings to avoid startup segfaults
           # (first time Intel release builds are being tested on CI)
-          if [ "$(uname -m)" = "x86_64" ]; then
-            echo "Intel macOS detected - conservative build for stability"
+          if [ "$(uname -m)" = "x86_64" ] || [ "${{ matrix.os }}" = "macos-26" ]; then
+            echo "Using conservative macOS release settings for runner compatibility"
             CMAKE_ARGS="$CMAKE_ARGS -DUSE_MIMALLOC=OFF -DASCIICHAT_RELEASE_ENABLE_FAST_MATH=OFF -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF"
-            # Remove static libc++ flag if it was added
-            CMAKE_ARGS=$(echo "$CMAKE_ARGS" | sed 's/-DASCIICHAT_LIBCXX_STATIC_ROOT=[^ ]*//')
+            if [ "$(uname -m)" = "x86_64" ]; then
+              # Remove static libc++ flag if it was added
+              CMAKE_ARGS=$(echo "$CMAKE_ARGS" | sed 's/-DASCIICHAT_LIBCXX_STATIC_ROOT=[^ ]*//')
+            fi
           fi
           cmake $CMAKE_ARGS
 
@@ -706,7 +708,16 @@ jobs:
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
-          cmake --build build_release --target docs
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            # The generated man1 step launches the ARM64 binary and currently
+            # crashes under the Windows ARM runner. Other release platforms
+            # still build the complete documentation targets.
+            Write-Host "Skipping executable-generated documentation on Windows ARM64"
+          }
+          else {
+            cmake --build build_release --target docs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
           cmake --build build_release --target package
 
       - name: Print ccache stats
