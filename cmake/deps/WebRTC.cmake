@@ -54,10 +54,21 @@ if(NOT webrtc_aec3_POPULATED)
 endif()
 
 # Apply patches BEFORE configuring (cached source may still need updated patch rules)
+set(_webrtc_patch_arm64 FALSE)
+if(ASCIICHAT_TARGET_ARM64
+    OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64|AARCH64"
+    OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64|AARCH64"
+    OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-"
+    OR "$ENV{VCPKG_TARGET_TRIPLET}" MATCHES "^arm64-"
+    OR "$ENV{VCPKG_DEFAULT_TRIPLET}" MATCHES "^arm64-"
+    OR CMAKE_C_COMPILER_TARGET MATCHES "aarch64|arm64")
+    set(_webrtc_patch_arm64 TRUE)
+endif()
 execute_process(
     COMMAND ${CMAKE_COMMAND}
         -DWEBRTC_AEC3_SOURCE_DIR=${webrtc_aec3_SOURCE_DIR}
         -DPATCH_SCRIPT_DIR=${CMAKE_SOURCE_DIR}/cmake/deps/patches
+        -DASCIICHAT_TARGET_ARM64=${_webrtc_patch_arm64}
         -P ${CMAKE_SOURCE_DIR}/cmake/deps/patches/patch-webrtc-aec3-cmake.cmake
     RESULT_VARIABLE PATCH_RESULT
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -133,6 +144,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v3"
             "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v4"
             "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v5"
+            "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v6"
         )
             if(EXISTS "${_patch_marker_to_clean}")
                 file(REMOVE "${_patch_marker_to_clean}")
