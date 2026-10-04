@@ -24,10 +24,10 @@ import {
   ConnectionState,
   isWasmReady as isClientWasmReady,
   PacketType,
-  getClientModule,
 } from "../wasm/client";
 import {
   getColorFilter,
+  initMirrorWasm,
   getColorMode,
   getDimensions,
   getFlipX,
@@ -68,8 +68,70 @@ import {
   useWebcamStream,
 } from "../hooks";
 import { buildCapabilitiesPacket } from "../network";
+import { buildStreamStartPacket } from "../network";
+import { AudioPipeline } from "../audio";
+import type { DiscoveryOptions } from "../network/WebRTCSession";
+// @ts-expect-error - Generated Emscripten factory has no types
+import MirrorModuleFactory from "../wasm/dist/mirror.js";
 
-export function ClientPage() {
+export function ClientPage({
+  discoveryMode = false,
+}: {
+  discoveryMode?: boolean;
+}) {
+  const params = new URLSearchParams(window.location.search);
+  const [sessionName, setSessionName] = useState(params.get("session") || "");
+  const [sessionPassword, setSessionPassword] = useState("");
+  const [signalingUrl, setSignalingUrl] = useState(
+    params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
+  );
+  const [iceUrls, setIceUrls] = useState(
+    "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302,turn:turn.ascii-chat.com:3478",
+  );
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [rendererReady, setRendererReady] = useState(false);
+  const [rendererError, setRendererError] = useState("");
+  useEffect(() => {
+    let active = true;
+    void initMirrorWasm(MirrorModuleFactory, {
+      locateFile: (path) => `/wasm/${path}`,
+    })
+      .then(() => {
+        if (active) setRendererReady(true);
+      })
+      .catch((error) => {
+        if (active) setRendererError(String(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const [micEnabled, setMicEnabled] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const audioRef = useRef<AudioPipeline | null>(null);
+  const discovery = useMemo<DiscoveryOptions | undefined>(
+    () =>
+      discoveryMode
+        ? {
+            sessionName: sessionName.trim(),
+            password: sessionPassword,
+            signalingUrl,
+            iceServers: iceUrls
+              .split(",")
+              .map((url) => url.trim())
+              .filter(Boolean)
+              .map((urls) => ({ urls })),
+          }
+        : undefined,
+    [discoveryMode, sessionName, sessionPassword, signalingUrl, iceUrls],
+  );
+  const onAudioPacket = useCallback((type: number, payload: Uint8Array) => {
+    try {
+      audioRef.current?.playPacket(type, payload);
+    } catch (error) {
+      console.error("Audio playback failed", error);
+    }
+  }, []);
   const rendererRef = useRef<AsciiRendererHandle>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -127,6 +189,8 @@ export function ClientPage() {
     connectToServer,
     handleDisconnect,
   } = useClientConnection({
+    ...(discovery ? { discovery } : {}),
+    onAudioPacket,
     serverUrl,
     terminalDimensions,
     settings,
@@ -204,6 +268,7 @@ export function ClientPage() {
 
   // Use webcam stream hook
   const { startWebcam, stopWebcam, isWebcamRunning } = useWebcamStream({
+    includeAudio: audioEnabled,
     clientRef,
     connectionState,
     settings,
@@ -215,6 +280,79 @@ export function ClientPage() {
     frameQueueRef,
     setError,
   });
+
+  const closeAudio = useCallback(() => {
+    audioRef.current?.close();
+    audioRef.current = null;
+    setAudioEnabled(false);
+    setMicEnabled(false);
+  }, []);
+  const disconnectMedia = useCallback(() => {
+    stopWebcam();
+    closeAudio();
+    handleDisconnect();
+  }, [stopWebcam, closeAudio, handleDisconnect]);
+  useEffect(() => {
+    if (
+      connectionState === ConnectionState.DISCONNECTED ||
+      connectionState === ConnectionState.ERROR
+    ) {
+      stopWebcam();
+      closeAudio();
+    }
+  }, [connectionState, stopWebcam, closeAudio]);
+  useEffect(
+    () => () => {
+      audioRef.current?.close();
+    },
+    [],
+  );
+  const enableAudio = async () => {
+    try {
+      if (!audioRef.current)
+        audioRef.current = new AudioPipeline({
+          onAudioData: (payload) => {
+            try {
+              clientRef.current?.sendPacket(
+                PacketType.AUDIO_OPUS_BATCH,
+                payload,
+              );
+            } catch (error) {
+              console.error("Audio send failed", error);
+            }
+          },
+        });
+      await audioRef.current.enablePlayback();
+      clientRef.current?.sendPacket(
+        PacketType.STREAM_START,
+        buildStreamStartPacket(true),
+      );
+      setAudioEnabled(true);
+      return true;
+    } catch (error) {
+      setError(String(error));
+      return false;
+    }
+  };
+  const toggleMicrophone = async () => {
+    if (micEnabled) {
+      audioRef.current?.stopCapture();
+      setMicEnabled(false);
+      return;
+    }
+    try {
+      if (!(await enableAudio())) return;
+      if (!audioRef.current) return;
+      clientRef.current?.sendPacket(
+        PacketType.STREAM_START,
+        buildStreamStartPacket(true),
+      );
+      await audioRef.current.startCapture();
+      setMicEnabled(true);
+    } catch (error) {
+      setError(String(error));
+    }
+  };
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
@@ -361,8 +499,14 @@ export function ClientPage() {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState]);
 
+  const webcamAutoStartedRef = useRef(false);
   useEffect(() => {
-    if (connectionState === ConnectionState.CONNECTED && !isWebcamRunning) {
+    if (connectionState !== ConnectionState.CONNECTED) {
+      webcamAutoStartedRef.current = false;
+      return;
+    }
+    if (!webcamAutoStartedRef.current) {
+      webcamAutoStartedRef.current = true;
       console.log("[Client] Connected and ready, auto-starting webcam...");
       void startWebcam();
     }
@@ -385,10 +529,117 @@ export function ClientPage() {
   return (
     <>
       <AsciiChatWebHead
-        title="Client - ascii-chat Web Client"
+        title={`${discoveryMode ? "Discovery" : "Client"} - ascii-chat Web Client`}
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
       />
+      {discoveryMode && (
+        <form
+          className="border-b border-terminal-8 p-4 flex flex-wrap gap-3 items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConnecting(true);
+            void connectToServer()
+              .catch(() => {})
+              .finally(() => setConnecting(false));
+          }}
+        >
+          <label className="flex flex-col gap-1">
+            Session name
+            <input
+              aria-label="Session name"
+              required
+              maxLength={47}
+              value={sessionName}
+              disabled={
+                connecting || connectionState === ConnectionState.CONNECTED
+              }
+              onChange={(event) => setSessionName(event.target.value)}
+              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+              placeholder="blue-mountain-tiger"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Session password
+            <input
+              aria-label="Session password"
+              type="password"
+              value={sessionPassword}
+              onChange={(event) => setSessionPassword(event.target.value)}
+              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+              autoComplete="off"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={
+              connecting || connectionState === ConnectionState.CONNECTED
+            }
+            className="border border-terminal-4 rounded px-3 py-2 disabled:opacity-50"
+          >
+            Join session
+          </button>
+          {(connecting || connectionState === ConnectionState.CONNECTED) && (
+            <button
+              type="button"
+              onClick={disconnectMedia}
+              className="border border-terminal-8 rounded px-3 py-2"
+            >
+              {connecting ? "Cancel" : "Disconnect"}
+            </button>
+          )}
+          <details className="w-full">
+            <summary>Connection settings</summary>
+            <div className="flex flex-col gap-2 mt-2">
+              <label>
+                Discovery service URL{" "}
+                <input
+                  aria-label="Discovery service URL"
+                  value={signalingUrl}
+                  onChange={(event) => setSignalingUrl(event.target.value)}
+                  className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                />
+              </label>
+              <label>
+                STUN/TURN URLs (comma-separated){" "}
+                <input
+                  aria-label="STUN/TURN URLs"
+                  value={iceUrls}
+                  onChange={(event) => setIceUrls(event.target.value)}
+                  className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                />
+              </label>
+            </div>
+          </details>
+          <p role="status" className="w-full text-sm">
+            {status}
+          </p>
+          {error && (
+            <p role="alert" className="w-full text-terminal-1">
+              {error}
+            </p>
+          )}
+        </form>
+      )}
+      {connectionState === ConnectionState.CONNECTED && (
+        <div className="flex gap-3 px-4 py-2">
+          <button
+            onClick={() => {
+              if (audioEnabled) closeAudio();
+              else void enableAudio();
+            }}
+            className="border border-terminal-8 rounded px-3 py-1"
+          >
+            {audioEnabled ? "Disable audio" : "Enable audio"}
+          </button>
+          <button
+            onClick={() => void toggleMicrophone()}
+            className="border border-terminal-8 rounded px-3 py-1"
+          >
+            {micEnabled ? "Mute microphone" : "Enable microphone"}
+          </button>
+        </div>
+      )}
       <PageLayout
         videoRef={videoRef}
         canvasRef={canvasRef}
@@ -402,7 +653,7 @@ export function ClientPage() {
         }
         controlBar={
           <PageControlBar
-            title="Client"
+            title={discoveryMode ? "Discovery" : "Client"}
             status={status}
             statusDotColor={getStatusDotColor()}
             dimensions={terminalDimensions}
@@ -415,7 +666,7 @@ export function ClientPage() {
                 : undefined
             }
             onStopWebcam={isWebcamRunning ? stopWebcam : undefined}
-            showConnectionButton={true}
+            showConnectionButton={!discoveryMode}
             onConnectionClick={() => setShowModal(true)}
             onSettingsClick={() => setShowSettings(!showSettings)}
             showSettingsButton={true}
@@ -426,25 +677,27 @@ export function ClientPage() {
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
             onFpsChange={setFps}
-            error={error}
+            error={error || rendererError}
             showFps={isWebcamRunning}
             connectionState={connectionState}
-            wasmModuleReady={!!getClientModule()}
+            wasmModuleReady={rendererReady}
           />
         }
         modal={
-          <ConnectionPanelModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            connectionState={connectionState}
-            status={status}
-            publicKey={publicKey}
-            serverUrl={serverUrl}
-            onServerUrlChange={setServerUrl}
-            onConnect={connectToServer}
-            onDisconnect={handleDisconnect}
-            isConnected={connectionState === ConnectionState.CONNECTED}
-          />
+          discoveryMode ? undefined : (
+            <ConnectionPanelModal
+              isOpen={showModal}
+              onClose={() => setShowModal(false)}
+              connectionState={connectionState}
+              status={status}
+              publicKey={publicKey}
+              serverUrl={serverUrl}
+              onServerUrlChange={setServerUrl}
+              onConnect={connectToServer}
+              onDisconnect={disconnectMedia}
+              isConnected={connectionState === ConnectionState.CONNECTED}
+            />
+          )
         }
       />
     </>

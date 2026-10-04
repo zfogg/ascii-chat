@@ -1,0 +1,20 @@
+import type { ConnectionState, ParsedPacket } from "../wasm/client";
+
+export interface PacketTransport {
+  send(packet: Uint8Array): void;
+  close(): void;
+  isConnected(): boolean;
+}
+
+export interface ClientSession {
+  connect(): Promise<void>;
+  disconnect(): void;
+  getPublicKey(): string | null;
+  getState(): ConnectionState;
+  sendPacket(type: number, payload: Uint8Array): void;
+  sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void;
+  onStateChange(callback: (state: ConnectionState) => void): void;
+  onPacketReceived(
+    callback: (packet: ParsedPacket, payload: Uint8Array) => void,
+  ): void;
+}

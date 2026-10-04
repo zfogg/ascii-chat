@@ -4,6 +4,7 @@
  */
 
 import { SocketBridge } from "./SocketBridge";
+import type { PacketTransport } from "./Transport";
 import {
   initClientWasm,
   cleanupClientWasm,
@@ -27,6 +28,8 @@ import {
 
 export interface ClientConnectionOptions {
   serverUrl: string;
+  applicationEncryption?: boolean;
+  discoveryHandshake?: boolean;
   width?: number;
   height?: number;
 }
@@ -38,7 +41,15 @@ export type PacketReceivedCallback = (
 ) => void;
 
 export class ClientConnection {
-  private socket: SocketBridge | null = null;
+  private socket: (PacketTransport & { connect(): Promise<void> }) | null =
+    null;
+  private transportState = ConnectionState.DISCONNECTED;
+  private get usesApplicationEncryption(): boolean {
+    return (
+      this.options.applicationEncryption ??
+      new URL(this.options.serverUrl).protocol !== "wss:"
+    );
+  }
   private clientPublicKey: string | null = null;
   private onStateChangeCallback: ConnectionStateChangeCallback | null = null;
   private onPacketCallback: PacketReceivedCallback | null = null;
@@ -64,6 +75,7 @@ export class ClientConnection {
     if (this.options.height !== undefined)
       initOptions.height = this.options.height;
     await initClientWasm(initOptions);
+    if (this.isUserDisconnecting) return;
     console.log("[ClientConnection] WASM init complete");
 
     // Register callback so WASM can send raw packets back through WebSocket
@@ -95,6 +107,7 @@ export class ClientConnection {
     this.clientPublicKey = await generateKeypair();
     console.log("[ClientConnection] Client public key:", this.clientPublicKey);
 
+    if (this.isUserDisconnecting) return;
     // Set server address for known_hosts verification
     const url = new URL(this.options.serverUrl);
     const serverHost = url.hostname;
@@ -126,6 +139,20 @@ export class ClientConnection {
         );
         console.log("[ClientConnection] WebSocket state:", state);
         if (state === "open") {
+          if (!this.usesApplicationEncryption) {
+            this.transportState = ConnectionState.CONNECTED;
+            this.wasEverConnected = true;
+            this.onStateChangeCallback?.(ConnectionState.CONNECTED);
+            return;
+          }
+          if (this.options.discoveryHandshake) {
+            const version = new Uint8Array(16);
+            new DataView(version.buffer).setUint16(0, 1, false);
+            version[4] = 1;
+            this.socket?.send(
+              serializePacket(PacketType.PROTOCOL_VERSION, version, 0),
+            );
+          }
           console.error(
             `[ClientConnection] *** State is OPEN, socketHasEverOpened=${this.socketHasEverOpened}`,
           );
@@ -229,6 +256,7 @@ export class ClientConnection {
           console.log("[ClientConnection] SocketBridge reconnecting...");
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === "closed") {
+          this.transportState = ConnectionState.DISCONNECTED;
           console.log("[ClientConnection] WebSocket closed");
           if (this.isUserDisconnecting) {
             console.log("[ClientConnection] User-initiated disconnect");
@@ -250,6 +278,7 @@ export class ClientConnection {
 
     console.log("[ClientConnection] Waiting for WebSocket to connect...");
     await this.socket.connect();
+    if (!this.usesApplicationEncryption) return;
     console.log("[ClientConnection] WebSocket connected!");
 
     // Wait for server to initiate handshake
@@ -371,7 +400,7 @@ export class ClientConnection {
       }
 
       // For non-handshake packets during handshake, log a warning
-      const state = getConnectionState();
+      const state = this.getState();
       if (state !== ConnectionState.CONNECTED) {
         // console.error(
         //   `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`,
@@ -483,7 +512,7 @@ export class ClientConnection {
     );
 
     try {
-      const state = getConnectionState();
+      const state = this.getState();
       console.log(
         `[ClientConnection] Current connection state: ${state} (${ConnectionState[state]})`,
       );
@@ -492,6 +521,10 @@ export class ClientConnection {
       );
 
       if (state === ConnectionState.CONNECTED) {
+        if (!this.usesApplicationEncryption) {
+          this.socket.send(serializePacket(packetType, payload, 0));
+          return;
+        }
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
         const t0 = performance.now();
@@ -622,7 +655,9 @@ export class ClientConnection {
    * Get current connection state
    */
   getState(): ConnectionState {
-    return getConnectionState();
+    return this.usesApplicationEncryption
+      ? getConnectionState()
+      : this.transportState;
   }
 
   /**
@@ -631,6 +666,7 @@ export class ClientConnection {
   disconnect(): void {
     console.log("[ClientConnection] Disconnecting...");
     this.isUserDisconnecting = true;
+    this.transportState = ConnectionState.DISCONNECTED;
 
     if (this.socket) {
       this.socket.close();

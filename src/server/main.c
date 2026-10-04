@@ -1180,6 +1180,16 @@ static void *websocket_client_handler(void *arg) {
   // Transport ownership transferred to client structure - don't destroy it here
   ctx->transport = NULL;
 
+  // TLS encrypts the transport; configured credentials still require authentication.
+  if (ctx->is_secure && GET_OPTION(password)[0] == '\0' && g_num_whitelisted_clients == 0) {
+    client->transport_encrypted = true;
+    if (start_webrtc_client_threads(server_ctx, client->client_id) != 0) {
+      remove_client(server_ctx, client->client_id);
+    }
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
   log_info("WebSocket client %s added successfully", client->client_id);
   log_debug("[WS_HANDLER] add_webrtc_client returned client_id=%s, transport ownership transferred", client->client_id);
 

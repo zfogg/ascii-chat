@@ -26,6 +26,7 @@
 #include "session/capture.h"
 #include "session/audio.h"
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/opus.h>
 
@@ -736,6 +737,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   p->transport = transport;
 
   if (transport) {
+    p->connected = acip_transport_is_connected(transport);
     log_info("WebRTC transport now active for participant");
   } else {
     log_info("WebRTC transport cleared, reverting to socket");

@@ -555,9 +555,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // test pattern used by headless WebRTC tests) as their outgoing stream.
   // Keep the network-only capture for ordinary client mode, but do not discard
   // an explicitly requested source before the discovery transport is active.
-  bool discovery_has_local_source = config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY &&
-                                    ((media_url_val && strlen(media_url_val) > 0) ||
-                                     (media_file_val && strlen(media_file_val) > 0) || GET_OPTION(test_pattern));
+  bool discovery_has_local_source = config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY;
   if (!stdin_render_mode && networked_mode && !discovery_has_local_source) {
     // Network mode: create minimal capture context without media source
     log_debug("Network mode detected - using network capture (no local media source)");

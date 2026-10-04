@@ -1125,6 +1125,33 @@ void *acds_client_handler(void *arg) {
 // WebSocket Client Handler
 // =============================================================================
 
+static asciichat_error_t acds_receive_websocket_packet(acip_transport_t *transport, void **buffer, size_t *length,
+                                                       void **allocation) {
+  asciichat_error_t result = acip_transport_recv(transport, buffer, length, allocation);
+  if (result != ASCIICHAT_OK || !transport->crypto_ctx) return result;
+  if (*length < sizeof(packet_header_t)) return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated encrypted discovery packet");
+  const packet_header_t *header = (const packet_header_t *)*buffer;
+  size_t ciphertext_len = NET_TO_HOST_U32(header->length);
+  if (NET_TO_HOST_U16(header->type) != PACKET_TYPE_ENCRYPTED ||
+      ciphertext_len != *length - sizeof(packet_header_t)) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Plain WebSocket discovery packets must be encrypted");
+  }
+  uint8_t *plaintext = buffer_pool_alloc(NULL, ciphertext_len);
+  if (!plaintext) return SET_ERRNO(ERROR_MEMORY, "Could not allocate decrypted discovery packet");
+  size_t plaintext_len = 0;
+  crypto_result_t decrypted = crypto_decrypt(transport->crypto_ctx, (const uint8_t *)*buffer + sizeof(*header),
+                                            ciphertext_len, plaintext, ciphertext_len, &plaintext_len);
+  if (decrypted != CRYPTO_OK || plaintext_len < sizeof(packet_header_t)) {
+    buffer_pool_free(NULL, plaintext, ciphertext_len);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt discovery packet");
+  }
+  if (*allocation) buffer_pool_free(NULL, *allocation, 0);
+  *buffer = plaintext;
+  *allocation = plaintext;
+  *length = plaintext_len;
+  return ASCIICHAT_OK;
+}
+
 void *acds_websocket_client_handler(void *arg) {
   websocket_client_context_t *ctx = (websocket_client_context_t *)arg;
   if (!ctx) {
@@ -1213,6 +1240,7 @@ void *acds_websocket_client_handler(void *arg) {
 
     client_data->handshake_complete = true;
     log_debug("Crypto handshake completed for WebSocket client %s", client_ip);
+    transport->crypto_ctx = &client_data->handshake_ctx.crypto_ctx;
   }
 
   // Main packet processing loop using transport recv
@@ -1221,7 +1249,7 @@ void *acds_websocket_client_handler(void *arg) {
     size_t recv_len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result = acip_transport_recv(transport, &recv_buffer, &recv_len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_websocket_packet(transport, &recv_buffer, &recv_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       // Check if this is a timeout or disconnect
       if (recv_result == ERROR_NETWORK_TIMEOUT) {

@@ -288,6 +288,15 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   return result;
 }
 
+const video_frame_t *video_frame_peek_latest(video_frame_buffer_t *vfb) {
+  if (!vfb || !vfb->active) return NULL;
+  mutex_lock(&vfb->swap_mutex);
+  const video_frame_t *frame = vfb->front_buffer;
+  const video_frame_t *result = frame && frame->size > 0 ? frame : NULL;
+  mutex_unlock(&vfb->swap_mutex);
+  return result;
+}
+
 void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats) {
   if (!vfb || !stats) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer or stats is NULL");

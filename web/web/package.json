@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "bash scripts/build.sh",
+    "build": "vp run type-check && vp run format:check && vp run lint && vp run wasm:build && vp run vite:build",
     "preview": "vp preview",
     "start:caddy": "caddy run --config /etc/caddy/Caddyfile",
     "vite:build": "vp build",
-    "type-check": "pnpm exec tsc --noEmit",
+    "type-check": "vp exec tsc --noEmit",
     "format": "vp fmt .",
     "format:check": "vp fmt --check .",
     "lint": "vp lint . --max-warnings 0",
@@ -16,12 +16,12 @@
     "test:unit": "vp test run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "wasm:build": "cd ../.. && cmake --build build --target mirror-web client-web",
+    "wasm:build": "node scripts/wasm-build.mjs",
     "wasm:build:mirror": "cd ../.. && cmake --build build --target mirror-web",
     "wasm:build:client": "cd ../.. && cmake --build build --target client-web",
     "wasm:watch": "nodemon --watch ../../../lib --watch ../../../src/web -e c,h --exec 'pnpm run wasm:build'",
     "wasm:clean": "rm -rf src/wasm/dist",
-    "prebuild": "cd ../.. && ls build 2>/dev/null 1>&2 || cmake --preset default -B build || true"
+    "prebuild": "node -e \"console.log('WASM must be configured before building; see README.md')\""
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",

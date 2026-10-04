@@ -22,6 +22,7 @@ export default defineConfig({
       "**/.venv/**",
       "**/.next/**",
       "**/dist/**",
+      "**/public/wasm/**",
       "**/build/**",
       "**/.git/**",
       "**/.vscode/**",
@@ -231,6 +232,6 @@ export default defineConfig({
   fmt: {
     printWidth: 80,
     sortPackageJson: false,
-    ignorePatterns: [],
+    ignorePatterns: ["**/public/wasm/**", "**/src/wasm/dist/**"],
   },
 });

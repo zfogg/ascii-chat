@@ -115,7 +115,7 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   log_console(LOG_INFO, msg);
 
   // Create config from options for server initialization
-  acds_config_t config;
+  acds_config_t config = {0};
   int port_num = GET_OPTION(port);
   if (port_num < 1 || port_num > 65535) {
     log_error("Invalid port: %d (must be 1-65535)", port_num);

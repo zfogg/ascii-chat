@@ -264,8 +264,10 @@ asciichat_error_t acip_send_client_join(acip_transport_t *transport, uint8_t cap
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
-  // Simple capability byte payload
-  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &capabilities, sizeof(capabilities), 0);
+  client_info_packet_t join = {0};
+  SAFE_STRNCPY(join.display_name, "ascii-chat", sizeof(join.display_name));
+  join.capabilities = HOST_TO_NET_U32(capabilities);
+  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join), 0);
 }
 
 asciichat_error_t acip_send_client_leave(acip_transport_t *transport) {

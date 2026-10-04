@@ -769,6 +769,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
   client->crypto_initialized = false;
+  client->transport_encrypted = false;
 
   client->pending_packet_type = 0;
   client->pending_packet_payload = NULL;
@@ -1139,6 +1140,7 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   // Set up WebRTC-specific fields
   client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
   client->is_tcp_client = false;         // WebRTC client - threads managed directly
+  client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
   client->transport = transport;         // Use provided transport
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
@@ -2134,8 +2136,8 @@ void *client_send_thread_func(void *arg) {
     if (audio_packet_count > 0) {
       // Protect crypto field access with mutex
       mutex_lock(&client->client_state_mutex);
-      bool crypto_ready = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
-                          crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+      bool crypto_ready = client->transport_encrypted || GET_OPTION(no_encrypt) ||
+                          (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
       // Audio packets cannot be sent until crypto handshake completes (protocol requirement)
@@ -2426,7 +2428,7 @@ void *client_send_thread_func(void *arg) {
 
       // Check if crypto handshake is complete before sending (prevents sending to unauthenticated clients)
       mutex_lock(&client->client_state_mutex);
-      bool crypto_ready = GET_OPTION(no_encrypt) ||
+      bool crypto_ready = client->transport_encrypted || GET_OPTION(no_encrypt) ||
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 

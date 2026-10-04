@@ -213,7 +213,7 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
 
   // Allocate data channel wrapper
-  webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
+  webrtc_data_channel_t *dc = SAFE_CALLOC(1, sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
   if (!dc) {
     log_error("Failed to allocate data channel wrapper");
     rtcDeleteDataChannel(dc_id);
@@ -346,7 +346,7 @@ static asciichat_error_t webrtc_ensure_initialized(void) {
   }
 
   // First initialization - call library initialization exactly once
-  rtcInitLogger(RTC_LOG_VERBOSE, rtc_log_callback);
+  rtcInitLogger(log_get_level() <= LOG_DEV ? RTC_LOG_VERBOSE : RTC_LOG_INFO, rtc_log_callback);
   rtcPreload();
 
   log_debug("WebRTC library initialized (libdatachannel)");
@@ -561,6 +561,16 @@ asciichat_error_t webrtc_set_remote_description(webrtc_peer_connection_t *pc, co
   int result = rtcSetRemoteDescription(pc->rtc_id, sdp, type);
   if (result != RTC_ERR_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to set remote SDP (rtc error %d)", result);
+  }
+
+  if (strcmp(type, "offer") == 0 && strstr(sdp, "\na=dcmap:0 label=\"acip\"") && !pc->dc) {
+    rtcDataChannelInit init = {0};
+    init.negotiated = true;
+    init.manualStream = true;
+    init.stream = 0;
+    int dc_id = rtcCreateDataChannelEx(pc->rtc_id, "acip", &init);
+    if (dc_id < 0) return SET_ERRNO(ERROR_NETWORK, "Failed to create negotiated ACIP channel");
+    on_datachannel_adapter(pc->rtc_id, dc_id, pc);
   }
 
   log_debug("Set remote SDP description (pc_id=%d, type=%s)", pc->rtc_id, type);

@@ -82,11 +82,11 @@ export const API_RELATIVE = {
 
 /**
  * Discovery service WebSocket connection URL
- * In dev: ws://localhost:27226 (local ACDS server)
+ * In dev: ws://localhost:27227 (local ACDS server)
  * In prod: wss://discovery-service.ascii-chat.com (production ACDS, default port 443)
  */
 export const DISCOVERY_SERVICE_URL = isDev
-  ? "ws://localhost:27226"
+  ? "ws://localhost:27227"
   : "wss://discovery-service.ascii-chat.com";
 
 /**

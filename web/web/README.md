@@ -9,7 +9,7 @@ compiled to WASM using Emscripten, enabling real-time video chat with ASCII rend
 
 ## Stack
 
-- **Bun** - JavaScript runtime and package manager
+- **Vite+ (`vp`)** - Package manager, build tools, linting and tests
 - **Vite** - Fast frontend build tool
 - **React** - UI framework
 - **Tailwind CSS** - Utility-first CSS
@@ -21,20 +21,20 @@ compiled to WASM using Emscripten, enabling real-time video chat with ASCII rend
 ### Setup
 
 ```bash
-bun install
+vp install
 ```
 
 ### Running Locally
 
 ```bash
-bun run dev
+vp dev
 # It will print the dev url then livereload and refresh the page as you hack
 ```
 
 ### Building
 
 ```bash
-bun run build
+vp run build
 ```
 
 Builds the application to `dist/` for production.
@@ -44,7 +44,7 @@ Builds the application to `dist/` for production.
 The WASM modules (mirror-web and client-web) are built automatically during the main build process:
 
 ```bash
-bun run wasm:build
+vp run wasm:build
 ```
 
 This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to WebAssembly modules and places them in
@@ -52,6 +52,40 @@ This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to 
 
 **Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS, `pacman -S emscripten` on Arch,
 etc).
+
+Configure the Emscripten CMake build before running this command. Set
+`ASCII_CHAT_WASM_BUILD_DIR` to its build directory; the default is `../../build`.
+The build compiles both modules and copies their JavaScript and WASM into
+`src/wasm/dist` and `public/wasm`. A SHA-256 manifest records artifacts and C
+sources. `ASCII_CHAT_WASM_USE_PREBUILT=1` explicitly uses verified prebuilt
+artifacts; a stale source hash fails the build.
+
+## Discovery and WebRTC
+
+Open `/discovery`, enter a native host's session name, and join. Connection
+settings allow a discovery WebSocket URL and STUN/TURN URLs. The client signs
+its ACDS join with an ephemeral identity, exchanges SDP and ICE candidates, and
+sends ACIP video and Opus audio over an ordered WebRTC data channel. Enable the
+microphone separately; disconnect stops camera and microphone tracks.
+
+Plain `ws://` connections use ascii-chat encryption by default. `wss://` uses
+TLS by default, and WebRTC uses DTLS. Transport encryption does not replace
+password or identity authentication. Sessions requiring a verified long-term
+browser identity are currently rejected with an explanatory error.
+
+Phone access requires HTTPS, WSS signaling, and COOP/COEP headers for shared
+WASM memory. Serve `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp`. Configure reachable STUN/TURN
+services and native host ICE settings. If TLS terminates at a proxy forwarding
+to a plain native WS listener, configure that trusted upstream consistently:
+the native listener otherwise expects the custom handshake. A direct native
+WSS listener automatically uses TLS-only for sessions without password/key
+requirements. Avoid caching fixed-name WASM files across deployments.
+
+The native integration test uses a running host and discovery service:
+`ASCII_CHAT_TEST_SESSION=<session> vp exec playwright test tests/e2e/webrtc-native.spec.ts`.
+Its local signaling endpoint is `ws://127.0.0.1:28227`; it tests frames,
+microphone controls, sustained connection and disconnect with fake media.
 
 ## Project Structure
 

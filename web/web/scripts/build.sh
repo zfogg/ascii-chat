@@ -5,18 +5,18 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "Type checking with TypeScript..."
-pnpm run type-check
+vp run type-check
 
 echo "Formatting check..."
-pnpm run format:check
+vp run format:check
 
 echo "Linting with eslint..."
-pnpm run lint
+vp run lint
 
 echo "Building WASM..."
-pnpm run wasm:build || echo 'WASM build skipped (emscripten not available)'
+vp run wasm:build
 
 echo "Building with vite..."
-pnpm run vite:build
+vp run vite:build
 
 echo "✓ Build complete"

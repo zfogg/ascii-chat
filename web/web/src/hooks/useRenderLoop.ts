@@ -1,4 +1,4 @@
-import { useCallback, useRef, MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, MutableRefObject } from "react";
 
 interface UseRenderLoopReturn {
   startRenderLoop: () => void;
@@ -15,6 +15,14 @@ export function useRenderLoop(
   onError?: (error: unknown) => void,
 ): UseRenderLoopReturn {
   const loopDebugRef = useRef({ count: 0, lastLog: 0, skipped: 0 });
+  const frameRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    },
+    [],
+  );
 
   const animationFrameRef = useCallback(
     (time: number) => {
@@ -33,8 +41,9 @@ export function useRenderLoop(
         }
 
         // Schedule next frame
-        requestAnimationFrame(animationFrameRef);
+        frameRef.current = requestAnimationFrame(animationFrameRef);
       } catch (error) {
+        frameRef.current = null;
         if (onError) {
           onError(error);
         } else {
@@ -46,8 +55,9 @@ export function useRenderLoop(
   );
 
   const startRenderLoop = useCallback(() => {
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     lastFrameTimeRef.current = performance.now();
-    requestAnimationFrame(animationFrameRef);
+    frameRef.current = requestAnimationFrame(animationFrameRef);
   }, [lastFrameTimeRef, animationFrameRef]);
 
   return { startRenderLoop };

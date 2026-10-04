@@ -14,6 +14,7 @@
 // EM_JS bridge: route to appropriate console method based on log level
 // level: 0=DEV, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL
 // Message contains the COMPLETE formatted log line with timestamp, level, thread, file:line, etc.
+// clang-format off
 EM_JS(void, js_console_log, (int level, const char *message), {
   const msg = UTF8ToString(message);
   const levelNames = [ 'DEV', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL' ];
@@ -22,7 +23,7 @@ EM_JS(void, js_console_log, (int level, const char *message), {
   // Debug: show message length to verify content is being passed
   const msgLen = msg.length;
   const hasTimestamp =
-      msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']') + 1] == = ' ';
+      msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']') + 1] === ' ';
   const debugInfo = `[WASM_MSG_LEN = ${msgLen}, HAS_TS = ${hasTimestamp}]`;
 
   // Route to appropriate console method
@@ -43,6 +44,7 @@ EM_JS(void, js_console_log, (int level, const char *message), {
     console.log(debugInfo, msg);
   }
 });
+// clang-format on
 
 // Platform hook called by logging system
 // This is called after each log message is formatted, before printing to stderr/stdout

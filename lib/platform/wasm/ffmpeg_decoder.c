@@ -38,7 +38,7 @@ struct ffmpeg_decoder_t {
  * @return 1 on success, 0 on failure
  */
 EM_JS(int, js_ffmpeg_init, (), {
-  if (typeof Module != = 'undefined' && Module.FFmpeg) {
+  if (typeof Module !== 'undefined' && Module.FFmpeg) {
     console.log('[WASM] ffmpeg.wasm already initialized');
     return 1;
   }
@@ -63,7 +63,7 @@ EM_JS(int, js_ffmpeg_decoder_create, (const char *path_cstr), {
   try {
     // This would be implemented by JavaScript ffmpeg.wasm wrapper
     // Returns a decoder ID for future operations
-    if (typeof Module.ffmpegDecoderCreate == = 'function') {
+    if (typeof Module.ffmpegDecoderCreate === 'function') {
       return Module.ffmpegDecoderCreate(path);
     }
     return 0;
@@ -82,7 +82,7 @@ EM_JS(void, js_ffmpeg_decoder_destroy, (int decoder_id), {
   }
 
   try {
-    if (typeof Module.ffmpegDecoderDestroy == = 'function') {
+    if (typeof Module.ffmpegDecoderDestroy === 'function') {
       Module.ffmpegDecoderDestroy(decoder_id);
     }
   } catch (err) {
@@ -100,7 +100,7 @@ EM_JS(int, js_ffmpeg_decoder_read_frame, (int decoder_id, uint8_t *out_rgba, int
   }
 
   try {
-    if (typeof Module.ffmpegDecoderReadFrame == = 'function') {
+    if (typeof Module.ffmpegDecoderReadFrame === 'function') {
       const rgba_data = Module.ffmpegDecoderReadFrame(decoder_id, width, height);
       if (rgba_data) {
         // Copy RGBA data to WASM heap
@@ -123,7 +123,7 @@ EM_JS(int, js_ffmpeg_decoder_read_frame, (int decoder_id, uint8_t *out_rgba, int
  */
 EM_JS(int, js_ffmpeg_decoder_at_end, (int decoder_id), {
   try {
-    if (typeof Module.ffmpegDecoderAtEnd == = 'function') {
+    if (typeof Module.ffmpegDecoderAtEnd === 'function') {
       return Module.ffmpegDecoderAtEnd(decoder_id) ? 1 : 0;
     }
   } catch (err) {
@@ -137,7 +137,7 @@ EM_JS(int, js_ffmpeg_decoder_at_end, (int decoder_id), {
  */
 EM_JS(int, js_ffmpeg_decoder_rewind, (int decoder_id), {
   try {
-    if (typeof Module.ffmpegDecoderRewind == = 'function') {
+    if (typeof Module.ffmpegDecoderRewind === 'function') {
       return Module.ffmpegDecoderRewind(decoder_id) ? 1 : 0;
     }
   } catch (err) {
@@ -151,7 +151,7 @@ EM_JS(int, js_ffmpeg_decoder_rewind, (int decoder_id), {
  */
 EM_JS(int, js_ffmpeg_decoder_has_audio, (int decoder_id), {
   try {
-    if (typeof Module.ffmpegDecoderHasAudio == = 'function') {
+    if (typeof Module.ffmpegDecoderHasAudio === 'function') {
       return Module.ffmpegDecoderHasAudio(decoder_id) ? 1 : 0;
     }
   } catch (err) {
@@ -165,7 +165,7 @@ EM_JS(int, js_ffmpeg_decoder_has_audio, (int decoder_id), {
  */
 EM_JS(double, js_ffmpeg_decoder_get_position, (int decoder_id), {
   try {
-    if (typeof Module.ffmpegDecoderGetPosition == = 'function') {
+    if (typeof Module.ffmpegDecoderGetPosition === 'function') {
       return Module.ffmpegDecoderGetPosition(decoder_id);
     }
   } catch (err) {

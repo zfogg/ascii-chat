@@ -43,6 +43,7 @@ static bool uuid_equals(const uint8_t a[16], const uint8_t b[16]) {
 typedef struct {
   const uint8_t *target_participant_id; ///< Participant to find
   socket_t found_socket;                ///< Socket if found
+  acip_transport_t *found_transport;    ///< Transport if found
   bool found;                           ///< Whether client was found
 } find_client_context_t;
 
@@ -64,6 +65,7 @@ static void find_participant_callback(socket_t socket, void *client_data, void *
   // Check if participant_id matches
   if (uuid_equals(acds_data->participant_id, ctx->target_participant_id)) {
     ctx->found_socket = socket;
+    ctx->found_transport = acds_data->transport;
     ctx->found = true;
   }
 }
@@ -170,8 +172,8 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
     }
 
     // Send SDP packet to recipient
-    int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len);
-    if (result != 0) {
+    asciichat_error_t result = packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len, 0);
+    if (result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send SDP packet to recipient");
     }
 
@@ -212,8 +214,8 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
     }
 
     // Send ICE packet to recipient
-    int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len);
-    if (result != 0) {
+    asciichat_error_t result = packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len, 0);
+    if (result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send ICE packet to recipient");
     }
 

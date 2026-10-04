@@ -40,6 +40,12 @@
 #include "session/render.h"
 #include "session/keyboard_handler.h"
 #include "session/client_like.h"
+#include "session/participant.h"
+#include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/app_callbacks.h>
+#include <ascii-chat/platform/terminal.h>
 
 #include <stdio.h>
 
@@ -47,6 +53,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -290,6 +297,72 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       return ASCIICHAT_OK;
     }
   } else {
+    session_participant_t *participant = discovery_session_get_participant(g_discovery);
+    acip_transport_t *transport = session_participant_get_transport(participant);
+    if (transport && acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC) {
+      result = acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR);
+      if (result != ASCIICHAT_OK) return result;
+      terminal_capabilities_t caps = detect_terminal_capabilities();
+      terminal_capabilities_packet_t packet = {0};
+      packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
+      packet.color_level = HOST_TO_NET_U32(caps.color_level);
+      packet.color_count = HOST_TO_NET_U32(caps.color_count);
+      packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
+      packet.width = HOST_TO_NET_U16(GET_OPTION(width) > 0 ? GET_OPTION(width) : 80);
+      packet.height = HOST_TO_NET_U16(GET_OPTION(height) > 0 ? GET_OPTION(height) : 24);
+      packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
+      packet.utf8_support = caps.utf8_support ? 1 : 0;
+      packet.desired_fps = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 15;
+      packet.wants_padding = caps.wants_padding ? 1 : 0;
+      packet.detection_reliable = caps.detection_reliable;
+      SAFE_STRNCPY(packet.term_type, caps.term_type, sizeof(packet.term_type));
+      SAFE_STRNCPY(packet.colorterm, caps.colorterm, sizeof(packet.colorterm));
+      result = acip_send_capabilities(transport, &packet, sizeof(packet));
+      if (result != ASCIICHAT_OK) return result;
+      result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO);
+      if (result != ASCIICHAT_OK) return result;
+      while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport)) {
+        image_t *frame = session_capture_read_frame(capture);
+        if (frame) {
+          image_t *processed = session_capture_process_for_transmission(capture, frame);
+          if (processed) {
+            result = acip_send_image_frame(transport, processed->pixels, processed->w, processed->h, 3);
+            image_destroy(processed);
+            if (result != ASCIICHAT_OK) return result;
+          }
+        }
+        // Drain host output so the ordered channel continues accepting media.
+        while (acip_transport_has_pending_data(transport)) {
+          packet_type_t type;
+          void *payload = NULL, *allocated = NULL;
+          size_t length = 0;
+          result = packet_receive_via_transport(transport, &type, &payload, &length, &allocated);
+          if (result == ASCIICHAT_OK && type == PACKET_TYPE_ASCII_FRAME && length >= sizeof(ascii_frame_packet_t)) {
+            ascii_frame_packet_t header;
+            memcpy(&header, payload, sizeof(header));
+            size_t size = NET_TO_HOST_U32(header.original_size);
+            if (NET_TO_HOST_U32(header.compressed_size) == 0 && size <= length - sizeof(header)) {
+              char *text = SAFE_MALLOC(size + 1, char *);
+              memcpy(text, (const uint8_t *)payload + sizeof(header), size);
+              text[size] = '\0';
+              session_display_render_frame(display, text);
+              log_debug_every(5 * NS_PER_SEC_INT, "Rendered WebRTC ASCII frame: %ux%u, %zu bytes",
+                              NET_TO_HOST_U32(header.width), NET_TO_HOST_U32(header.height), size);
+              SAFE_FREE(text);
+            }
+          } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {
+            result = packet_send_via_transport(transport, PACKET_TYPE_PONG, payload, length, 0);
+          }
+          if (allocated) buffer_pool_free(NULL, allocated, 0);
+          if (result != ASCIICHAT_OK) return result;
+        }
+        result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+        if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) return result;
+        APP_CALLBACK_VOID(platform_pump_events);
+        platform_sleep_ns(NS_PER_SEC_INT / (GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 15));
+      }
+      return ASCIICHAT_OK;
+    }
     // PARTICIPANT ROLE: Just wait for host connection
     // Don't use capture/display for participant discovery mode
     (void)capture; // Not used

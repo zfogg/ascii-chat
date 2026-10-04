@@ -54,6 +54,7 @@ struct webcam_context_t {
  * Assumes Module.webcamVideo and Module.webcamCanvas are already set up by JavaScript
  * (JavaScript must call getUserMedia and initialize these before WASM code starts)
  */
+// clang-format off
 EM_JS(int, js_webcam_init, (int width, int height), {
   // Check if Module.webcamVideo exists (should be set up by JavaScript)
   if (!Module.webcamVideo) {
@@ -74,12 +75,14 @@ EM_JS(int, js_webcam_init, (int width, int height), {
   console.log('[WASM Webcam] Initialized at ' + width + 'x' + height);
   return 1;
 });
+// clang-format on
 
 /**
  * Capture a single frame from the webcam via canvas.getImageData()
  * Copies RGBA data into the provided buffer
  * Returns 1 on success, 0 if stream not ready
  */
+// clang-format off
 EM_JS(int, js_webcam_read_frame, (uint8_t *rgba_buf, int width, int height), {
   try {
     if (!Module.webcamVideo || !Module.webcamStream || Module.webcamVideo.readyState < 2) {
@@ -109,14 +112,16 @@ EM_JS(int, js_webcam_read_frame, (uint8_t *rgba_buf, int width, int height), {
     return 0;
   }
 });
+// clang-format on
 
 /**
  * Stop the webcam stream and clean up resources
  */
+// clang-format off
 EM_JS(void, js_webcam_cleanup, (), {
   try {
     if (Module.webcamStream) {
-      Module.webcamStream.getTracks().forEach(track = > track.stop());
+      Module.webcamStream.getTracks().forEach(track => track.stop());
       Module.webcamStream = null;
     }
     if (Module.webcamVideo) {
@@ -136,20 +141,22 @@ EM_JS(void, js_webcam_cleanup, (), {
     console.error('[WASM Webcam] Cleanup failed:', err);
   }
 });
+// clang-format on
 
 /**
  * Enumerate available media devices
  * Returns count of video input devices (0, 1, or more)
  */
+// clang-format off
 EM_JS(int, js_webcam_enumerate_devices, (), {
   try {
     return navigator.mediaDevices.enumerateDevices()
-        .then(devices = >
+        .then(devices =>
                         {
-                          const videoDevices = devices.filter(d = > d.kind == = 'videoinput');
+                          const videoDevices = devices.filter(d => d.kind === 'videoinput');
                           return videoDevices.length;
                         })
-        .catch(err = > {
+        .catch(err => {
           console.error('[WASM Webcam] Enumeration failed:', err);
           return 1; // Assume at least the default camera
         });
@@ -158,6 +165,7 @@ EM_JS(int, js_webcam_enumerate_devices, (), {
     return 1;
   }
 });
+// clang-format on
 
 /* ============================================================================
  * Helper: RGBA to RGB24 Conversion
