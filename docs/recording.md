@@ -38,7 +38,8 @@ elapsed time, while video-file conversion retains the input's frame-rate timing.
 The recording regression tests include PCM mixing, microphone and file worker
 paths, independent playback/transmission queues, audio-only webcam selection,
 mixed encoded audio, encoder-tail flushing, and live frame timing. A separate
-two-client test checks both input tones in each output and A/V synchronization:
+mirror and two-client test checks the file tone in mirror output, both input tones
+in each call output, and A/V synchronization:
 
 ```sh
 python tests/integration/render_file_audio.py build/bin/ascii-chat

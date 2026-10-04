@@ -1,4 +1,4 @@
-"""Verify audible local and remote audio in a real two-client recording.
+"""Verify file audio in mirror mode and local/remote audio in a real call.
 
 Run: python tests/integration/render_file_audio.py build/bin/ascii-chat
 Requires ffmpeg/ffprobe; no camera, microphone, or speakers are required.
@@ -68,6 +68,12 @@ def main():
             return process
 
         try:
+            mirror = launch("mirror", "mirror", "--file", str(root / "440.mp4"), "--audio-source", "media",
+                            "--snapshot", "--snapshot-delay", "3", "--fps", "10", "--width", "40", "--height", "12",
+                            "--render-file", str(root / "mirror.mp4"))
+            mirror.wait(timeout=20)
+            assert mirror.returncode == 0, f"Mirror exited with status {mirror.returncode}"
+            verify(root / "mirror.mp4", (440,))
             server = launch("server", "server", "127.0.0.1", "--port", str(port), "--status-screen=false")
             deadline = time.monotonic() + 15
             while True:
@@ -92,7 +98,7 @@ def main():
                 assert client.returncode == 0, f"Client exited with status {client.returncode}"
             for frequency in (440, 880):
                 verify(root / f"call-{frequency}.mp4", (440, 880))
-            print("Both client recordings contain local and remote tones with synchronized audio/video.")
+            print("Mirror and both client recordings contain the expected tones with synchronized audio/video.")
         except Exception:
             for path in root.glob("*.log"):
                 for line in path.read_text(errors="replace").splitlines():
