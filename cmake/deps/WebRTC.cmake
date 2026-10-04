@@ -289,7 +289,10 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             if(ASCIICHAT_TARGET_ARM64
                 OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
                 OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64"
-                OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+                OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-"
+                OR "$ENV{VCPKG_TARGET_TRIPLET}" MATCHES "^arm64-"
+                OR "$ENV{VCPKG_DEFAULT_TRIPLET}" MATCHES "^arm64-"
+                OR CMAKE_C_COMPILER_TARGET MATCHES "aarch64|arm64")
                 set(_webrtc_windows_arm64 TRUE)
             endif()
             # WebRTC's x86 implementation references its SSE2 routines even

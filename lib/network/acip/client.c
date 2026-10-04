@@ -122,7 +122,8 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   }
 
   // Always free the allocated buffer (even if handler failed)
-  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer, envelope.allocated_size);
+  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer,
+            envelope.allocated_size);
   if (envelope.allocated_buffer) {
     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
   }

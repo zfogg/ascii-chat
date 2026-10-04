@@ -9,6 +9,8 @@
  * @ingroup media
  */
 
+// clang-format off
+
 #ifdef __EMSCRIPTEN__
 
 #include <emscripten.h>
@@ -65,8 +67,7 @@ EM_JS(int, js_ffmpeg_decoder_create, (const char *path_cstr), {
       return Module.ffmpegDecoderCreate(path);
     }
     return 0;
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] Decoder creation failed:', err);
     return 0;
   }
@@ -84,8 +85,7 @@ EM_JS(void, js_ffmpeg_decoder_destroy, (int decoder_id), {
     if (typeof Module.ffmpegDecoderDestroy == = 'function') {
       Module.ffmpegDecoderDestroy(decoder_id);
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] Decoder destruction failed:', err);
   }
 });
@@ -112,8 +112,7 @@ EM_JS(int, js_ffmpeg_decoder_read_frame, (int decoder_id, uint8_t *out_rgba, int
       }
     }
     return 0;
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] Frame read failed:', err);
     return 0;
   }
@@ -127,8 +126,7 @@ EM_JS(int, js_ffmpeg_decoder_at_end, (int decoder_id), {
     if (typeof Module.ffmpegDecoderAtEnd == = 'function') {
       return Module.ffmpegDecoderAtEnd(decoder_id) ? 1 : 0;
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] at_end check failed:', err);
   }
   return 1;
@@ -142,8 +140,7 @@ EM_JS(int, js_ffmpeg_decoder_rewind, (int decoder_id), {
     if (typeof Module.ffmpegDecoderRewind == = 'function') {
       return Module.ffmpegDecoderRewind(decoder_id) ? 1 : 0;
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] Rewind failed:', err);
   }
   return 0;
@@ -157,8 +154,7 @@ EM_JS(int, js_ffmpeg_decoder_has_audio, (int decoder_id), {
     if (typeof Module.ffmpegDecoderHasAudio == = 'function') {
       return Module.ffmpegDecoderHasAudio(decoder_id) ? 1 : 0;
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] has_audio check failed:', err);
   }
   return 0;
@@ -172,8 +168,7 @@ EM_JS(double, js_ffmpeg_decoder_get_position, (int decoder_id), {
     if (typeof Module.ffmpegDecoderGetPosition == = 'function') {
       return Module.ffmpegDecoderGetPosition(decoder_id);
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error('[WASM] get_position failed:', err);
   }
   return 0.0;
@@ -362,3 +357,5 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder) {
 }
 
 #endif // __EMSCRIPTEN__
+
+// clang-format on
