@@ -155,9 +155,9 @@ bool url_is_valid(const char *url) {
   }
 
   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                           0,                                                        /* options */
-                           match_data, NULL);                                        /* mcontext */
+  int rc = pcre2_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                       0,                                                        /* options */
+                       match_data, NULL);                                        /* mcontext */
 
   pcre2_match_data_free(match_data);
   return rc >= 0; /* rc >= 0 means successful match */
@@ -243,9 +243,9 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                           0,                                                        /* options */
-                           match_data, NULL);                                        /* mcontext */
+  int rc = pcre2_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                       0,                                                        /* options */
+                       match_data, NULL);                                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);

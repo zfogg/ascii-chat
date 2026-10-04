@@ -116,7 +116,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
     return false;
   }
 
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
+  int rc = pcre2_match(regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
   pcre2_match_data_free(match_data);
 
   if (rc < 0) {

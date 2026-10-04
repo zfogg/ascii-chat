@@ -281,7 +281,7 @@ asciichat_error_t parse_port(const char *str, uint16_t *out_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 0-65535)", str);
   }
 
-  int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, strlen(str), 0, 0, match_data, NULL);
+  int match_result = pcre2_match(regex, (PCRE2_SPTR8)str, strlen(str), 0, 0, match_data, NULL);
   pcre2_match_data_free(match_data);
 
   if (match_result < 0) {
