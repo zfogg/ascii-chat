@@ -51,7 +51,6 @@ include(${_cmake_dir}/deps/Libsodium.cmake)
 include(${_cmake_dir}/deps/PCRE2.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
-include(${_cmake_dir}/deps/Raylib.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
 
 # TOML (using tomlc17 from deps)
@@ -74,7 +73,6 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
-    ${RAYLIB_INCLUDE_DIRS}  # raylib
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
     ${PCRE2_INCLUDE_DIRS}  # pcre2
     ${OPUS_INCLUDE_DIRS}  # opus
@@ -262,7 +260,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/log/grep.c
     ${LIB_ROOT}/log/search.c
     ${LIB_ROOT}/log/io.c
-    ${LIB_ROOT}/log/raylib.c
     ${LIB_ROOT}/log/wasm.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
@@ -355,9 +352,6 @@ endif()
 if(TARGET zstd-wasm)
     add_dependencies(wasm-common zstd-wasm)
 endif()
-if(TARGET raylib-wasm)
-    add_dependencies(wasm-common raylib-wasm)
-endif()
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(wasm-common PRIVATE
@@ -371,22 +365,18 @@ target_compile_options(wasm-common PRIVATE -pthread)
 target_compile_options(wasm-common PRIVATE -Wno-error -Qunused-arguments)
 target_link_options(wasm-common PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth)
 
-# Add FreeType via Emscripten port, libvterm, and raylib support
+# Add FreeType support via the Emscripten port
 if(DEFINED EMSCRIPTEN)
     target_compile_options(wasm-common PRIVATE -sUSE_FREETYPE=1)
     target_link_options(wasm-common PRIVATE -sUSE_FREETYPE=1)
 endif()
 
 # Link dependencies using output variables from cmake/deps/*.cmake
-# These are set by Libsodium.cmake, PCRE2.cmake, Raylib.cmake, Libvterm.cmake, etc.
-if(RAYLIB_LINK_DIR)
-    target_link_options(wasm-common PRIVATE -L${RAYLIB_LINK_DIR})
-endif()
+# These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
 target_link_libraries(wasm-common PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
-    ${RAYLIB_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
 
@@ -396,7 +386,6 @@ target_include_directories(wasm-common PRIVATE
     ${OPUS_INCLUDE_DIRS}
     ${ZSTD_INCLUDE_DIRS}
     ${VTERM_INCLUDE_DIRS}
-    ${RAYLIB_INCLUDE_DIRS}
 )
 
 # NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
@@ -424,15 +413,11 @@ target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies with explicit library paths for wasm-ld
-if(RAYLIB_LINK_DIR)
-    target_link_options(mirror-web PRIVATE -L${RAYLIB_LINK_DIR})
-endif()
 
 target_link_libraries(mirror-web PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
-    ${RAYLIB_LIBRARIES}
 )
 
 # Apply sanitizers
@@ -473,9 +458,6 @@ target_link_options(client-web PRIVATE
 )
 
 # Add library search paths if needed
-if(RAYLIB_LINK_DIR)
-    target_link_options(client-web PRIVATE -L${RAYLIB_LINK_DIR})
-endif()
 
 # Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(client-web PRIVATE
@@ -483,7 +465,6 @@ target_include_directories(client-web PRIVATE
     ${PCRE2_INCLUDE_DIRS}
     ${OPUS_INCLUDE_DIRS}
     ${ZSTD_INCLUDE_DIRS}
-    ${RAYLIB_INCLUDE_DIRS}
 )
 
 # Link dependencies for client mode
@@ -492,7 +473,6 @@ target_link_libraries(client-web PRIVATE
     ${PCRE2_LIBRARIES}
     ${OPUS_LIBRARIES}
     ${VTERM_LDFLAGS}
-    ${RAYLIB_LIBRARIES}
 )
 
 # Apply sanitizers

@@ -22,7 +22,6 @@ set(CORE_SRCS
     ${LIB_DIR}/log/websocket.c
     ${LIB_DIR}/log/io.c
     ${LIB_DIR}/log/asan.c
-    ${LIB_DIR}/log/raylib.c
     # ui/
     ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/fps_counter.c

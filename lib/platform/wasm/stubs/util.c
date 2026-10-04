@@ -62,7 +62,7 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
 // Isatty stub
 int platform_isatty(int fd) {
   (void)fd;
-  return 1; // Always true for raylib+vterm terminal
+  return 1; // Always true for the browser terminal
 }
 
 // Error state management

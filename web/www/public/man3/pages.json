@@ -4266,12 +4266,6 @@
     "sourcePath": null
   },
   {
-    "name": "raylib.c",
-    "title": "raylib.c",
-    "file": "ascii-chat-raylib.c.html",
-    "sourcePath": "lib/log/raylib.c"
-  },
-  {
     "name": "rcu.c",
     "title": "rcu.c",
     "file": "ascii-chat-rcu.c.html",

@@ -1983,17 +1983,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   update_dimensions_for_full_height(&opts);
   js_log_options("AFTER_UPDATE_DIM");
 
-  // SKIP: verbose level adjustment - conflicts with raylib log level system
-  // TODO: Properly separate our log levels from raylib's
-  // if (opts.verbose_level > 0) {
-  //   log_level_t current_level = log_get_level();
-  //   int new_level = (int)current_level - (int)opts.verbose_level;
-  //   if (new_level < LOG_DEV) {
-  //     new_level = LOG_DEV;
-  //   }
-  //   log_set_level((log_level_t)new_level);
-  // }
-
   js_log_options("L11");
   js_log_options("L12");
   js_log_options("L13");
