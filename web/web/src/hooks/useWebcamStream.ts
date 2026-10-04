@@ -212,8 +212,16 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       connectionState === ConnectionState.CONNECTED &&
       webcamCaptureLoopRef.current
     ) {
+      const videoTrack = streamRef.current?.getVideoTracks()[0];
+      if (videoTrack) {
+        void videoTrack
+          .applyConstraints({ frameRate: { ideal: settings.targetFps } })
+          .catch((error) =>
+            console.warn("[Client] Unable to update webcam frame rate:", error),
+          );
+      }
       // Start timer to send frames at target FPS
-      const sendInterval = 1000 / Math.min(settings.targetFps, 15);
+      const sendInterval = 1000 / settings.targetFps;
       captureTimerRef.current = setInterval(() => {
         if (webcamCaptureLoopRef.current) {
           webcamCaptureLoopRef.current();
@@ -295,7 +303,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: w }, height: { ideal: h } },
+          video: {
+            width: { ideal: w },
+            height: { ideal: h },
+            frameRate: { ideal: settings.targetFps },
+          },
           audio: false,
         });
       } catch (err) {

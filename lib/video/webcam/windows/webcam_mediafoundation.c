@@ -243,6 +243,53 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
+  // Prefer the highest advertised capture rate, then the mode closest to 640x480.
+  IMFMediaType *bestType = NULL;
+  UINT32 bestNumerator = 0, bestDenominator = 1;
+  UINT64 bestDistance = UINT64_MAX;
+  for (DWORD index = 0;; index++) {
+    IMFMediaType *nativeType = NULL;
+    hr = IMFSourceReader_GetNativeMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &nativeType);
+    if (hr == MF_E_NO_MORE_TYPES) break;
+    if (FAILED(hr)) {
+      log_warn("Could not enumerate webcam format %lu: 0x%08x", (unsigned long)index, hr);
+      break;
+    }
+    UINT64 nativeSize = 0, nativeRate = 0;
+    if (SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_SIZE, &nativeSize)) &&
+        SUCCEEDED(IMFMediaType_GetUINT64(nativeType, &MF_MT_FRAME_RATE, &nativeRate))) {
+      UINT32 numerator = (UINT32)(nativeRate >> 32), denominator = (UINT32)nativeRate;
+      UINT64 width = nativeSize >> 32, height = (UINT32)nativeSize;
+      UINT64 pixels = width * height;
+      UINT64 distance = pixels > 640 * 480 ? pixels - 640 * 480 : 640 * 480 - pixels;
+      if (numerator && denominator) {
+        log_info("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width,
+                 (unsigned long long)height, (double)numerator / denominator);
+        UINT64 candidate = (UINT64)numerator * bestDenominator;
+        UINT64 best = (UINT64)bestNumerator * denominator;
+        if (candidate > best || (candidate == best && distance < bestDistance)) {
+          if (bestType) IMFMediaType_Release(bestType);
+          bestType = nativeType;
+          nativeType = NULL;
+          bestNumerator = numerator;
+          bestDenominator = denominator;
+          bestDistance = distance;
+        }
+      }
+    }
+    if (nativeType) IMFMediaType_Release(nativeType);
+  }
+  if (bestType) {
+    hr = IMFSourceReader_SetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, bestType);
+    IMFMediaType_Release(bestType);
+    if (FAILED(hr)) {
+      log_warn("Could not select fastest webcam mode: 0x%08x", hr);
+      bestNumerator = 0;
+    } else {
+      log_info("Selected webcam maximum capture rate: %.3f FPS", (double)bestNumerator / bestDenominator);
+    }
+  }
+
   // Request RGB32 output format (BGRA) at 640x480 resolution
   // Combined with MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, this enables
   // GPU-accelerated YUV->RGB conversion
@@ -251,6 +298,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   if (SUCCEEDED(hr)) {
     IMFMediaType_SetGUID(rgbType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
     IMFMediaType_SetGUID(rgbType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
+    if (bestNumerator) {
+      IMFMediaType_SetUINT64(rgbType, &MF_MT_FRAME_RATE, ((UINT64)bestNumerator << 32) | bestDenominator);
+    }
 
     // Request 640x480 resolution (we only need 480x270 max for ascii-chat)
     // This dramatically reduces pixel copy overhead (307,200 vs 8,294,400 pixels)
@@ -267,8 +317,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     if (SUCCEEDED(hr)) {
       log_info("Successfully requested RGB32 output format at 640x480");
     } else {
-      log_warn("Could not set RGB32 format: 0x%08x, will use native format", hr);
-      // Don't fail - just use whatever format the camera provides
+      log_warn("Could not configure RGB32 webcam output: 0x%08x", hr);
+      result = SET_ERRNO(ERROR_WEBCAM, "Could not configure RGB32 webcam output: 0x%08x", hr);
+      goto error;
     }
   }
 
@@ -282,6 +333,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       cam->width = (int)(frameSize >> 32);
       cam->height = (int)(frameSize & 0xFFFFFFFF);
       log_info("Media Foundation webcam opened: %dx%d", cam->width, cam->height);
+      UINT64 actualRate = 0;
+      if (SUCCEEDED(IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_RATE, &actualRate)) && (UINT32)actualRate) {
+        log_info("Negotiated webcam capture rate: %.3f FPS", (double)(actualRate >> 32) / (UINT32)actualRate);
+      }
     } else {
       // Default resolution if we can't get the actual size
       cam->width = 640;
