@@ -852,7 +852,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
         .encryption_enabled = false,
     };
     session->participant_ctx = session_participant_create(&pconfig);
-    if (!session->participant_ctx || session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
+    if (!session->participant_ctx ||
+        session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
     }

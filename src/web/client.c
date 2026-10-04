@@ -218,11 +218,13 @@ asciichat_error_t client_acds_join_request(const char *session, const char *pass
   memcpy(output + 145, &timestamp, sizeof(timestamp));
   uint8_t message[9 + 48];
   message[0] = (uint8_t)6004;
-  for (size_t i = 0; i < 8; ++i) message[1 + i] = (uint8_t)(timestamp >> (56 - i * 8));
+  for (size_t i = 0; i < 8; ++i)
+    message[1 + i] = (uint8_t)(timestamp >> (56 - i * 8));
   memcpy(message + 9, session, session_len);
   int result = crypto_sign_detached(output + 81, NULL, message, 9 + session_len, secret_key);
   sodium_memzero(secret_key, sizeof(secret_key));
-  if (result != 0) return SET_ERRNO(ERROR_CRYPTO, "Failed to sign discovery join");
+  if (result != 0)
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign discovery join");
   output[153] = password[0] != '\0';
   memcpy(output + 154, password, strlen(password));
   return ASCIICHAT_OK;

@@ -1141,7 +1141,7 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
   client->is_tcp_client = false;         // WebRTC client - threads managed directly
   client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
-  client->transport = transport;         // Use provided transport
+  client->transport = transport; // Use provided transport
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = 0; // WebRTC doesn't use port numbers

@@ -54,7 +54,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   }
 
   log_dev("★ PACKET_SEND_VIA_TRANSPORT START: type=%d (0x%04x), payload_len=%zu bytes, client_id=%u, transport=%p",
-           type, type, payload_len, client_id, (void *)transport);
+          type, type, payload_len, client_id, (void *)transport);
 
   // Build packet header
   packet_header_t header;
@@ -73,12 +73,12 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   }
 
   log_dev("★ PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u", header.magic, type, header.length,
-            header.client_id);
+          header.client_id);
 
   // Calculate total packet size
   size_t total_size = sizeof(header) + payload_len;
   log_dev("★ PACKET_SEND: Header=%zu bytes + Payload=%zu bytes = Total=%zu bytes", sizeof(header), payload_len,
-            total_size);
+          total_size);
 
   // Allocate buffer for complete packet
   uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
@@ -103,7 +103,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 
   if (result == ASCIICHAT_OK) {
     log_dev("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size, type,
-             client_id);
+            client_id);
   } else {
     log_error("★ PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes "
               "type=%d to client_id=%u",
@@ -256,7 +256,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
 
   log_dev("★ OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu", frame_count,
-           sizes_len, opus_len, total_size);
+          sizes_len, opus_len, total_size);
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
 

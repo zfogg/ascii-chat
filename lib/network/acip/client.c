@@ -142,7 +142,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
                                         uint32_t height, uint32_t pixel_format) {
   log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport,
-            pixel_data);
+          pixel_data);
 
   if (!transport || !pixel_data) {
     log_dev("★ ACIP_SEND_IMAGE_FRAME: Invalid params");

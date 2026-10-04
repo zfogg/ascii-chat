@@ -289,7 +289,8 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
 }
 
 const video_frame_t *video_frame_peek_latest(video_frame_buffer_t *vfb) {
-  if (!vfb || !vfb->active) return NULL;
+  if (!vfb || !vfb->active)
+    return NULL;
   mutex_lock(&vfb->swap_mutex);
   const video_frame_t *frame = vfb->front_buffer;
   const video_frame_t *result = frame && frame->size > 0 ? frame : NULL;
