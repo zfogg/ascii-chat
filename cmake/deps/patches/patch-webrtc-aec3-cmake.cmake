@@ -23,7 +23,7 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v4")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v5")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()
@@ -178,7 +178,13 @@ string(REPLACE
 )
 string(REPLACE
     "if(NOT ASCIICHAT_TARGET_ARM64)"
+    "if(ENABLE_SIMD_SSE2)"
+    AP_CMAKE_CONTENT
+    "${AP_CMAKE_CONTENT}"
+)
+string(REPLACE
     "if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\" AND NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\")"
+    "if(ENABLE_SIMD_SSE2)"
     AP_CMAKE_CONTENT
     "${AP_CMAKE_CONTENT}"
 )
