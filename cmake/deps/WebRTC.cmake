@@ -127,11 +127,15 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         )
 
         # Remove patch marker so patches are reapplied on next configure
-        set(_patch_marker_to_clean "${webrtc_aec3_SOURCE_DIR}/.patches_applied")
-        if(EXISTS "${_patch_marker_to_clean}")
-            file(REMOVE "${_patch_marker_to_clean}")
-            message(STATUS "Removed patch marker to reapply patches on rebuild")
-        endif()
+        foreach(_patch_marker_to_clean
+            "${webrtc_aec3_SOURCE_DIR}/.patches_applied"
+            "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v2"
+        )
+            if(EXISTS "${_patch_marker_to_clean}")
+                file(REMOVE "${_patch_marker_to_clean}")
+                message(STATUS "Removed patch marker to reapply patches on rebuild")
+            endif()
+        endforeach()
         file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
         # Prepare CMake args for WebRTC build
