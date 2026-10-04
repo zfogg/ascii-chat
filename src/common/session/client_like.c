@@ -581,54 +581,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
   // Skip audio for immediate snapshots
-  bool should_init_audio = true;
+  bool should_init_audio = GET_OPTION(audio_enabled);
   if (GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0) {
     should_init_audio = false;
     log_debug("Skipping audio initialization for immediate snapshot");
-  }
-
-  // Probe for audio
-  if (should_init_audio && capture_config.type == MEDIA_SOURCE_FILE && capture_config.path) {
-    media_source_t *audio_probe_source = session_capture_get_media_source(capture);
-    if (audio_probe_source && media_source_has_audio(audio_probe_source)) {
-      audio_available = true;
-
-      // Allocate and initialize audio context
-      audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
-      if (audio_ctx) {
-        *audio_ctx = (audio_context_t){0};
-        if (audio_init(audio_ctx) == ASCIICHAT_OK) {
-          // Link audio to media source
-          media_source_t *media_source = session_capture_get_media_source(capture);
-          audio_ctx->media_source = media_source;
-
-          if (media_source) {
-            media_source_set_audio_context(media_source, audio_ctx);
-          }
-
-          // Determine if microphone should be enabled
-          bool should_enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), audio_available);
-          audio_ctx->playback_only = !should_enable_mic;
-
-          // Disable jitter buffering for file playback
-          if (audio_ctx->playback_buffer) {
-            audio_ctx->playback_buffer->jitter_buffer_enabled = false;
-            atomic_store_bool(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
-          }
-
-          // Store in capture for keyboard handler access
-          session_capture_set_audio_context(capture, audio_ctx);
-
-          log_debug("Audio context initialized");
-        } else {
-          log_warn("Failed to initialize audio context");
-          audio_destroy(audio_ctx);
-          SAFE_FREE(audio_ctx);
-          audio_ctx = NULL;
-          audio_available = false;
-        }
-      }
-    }
   }
 
   // Pass stdin_reader to display if in stdin render mode
@@ -691,19 +647,25 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
+  }
 
-    // Set audio source for render-file encoding (after capture is created)
-    media_source_t *render_audio_source = session_capture_get_media_source(capture);
-    const char *render_file_path = GET_OPTION(render_file);
-    log_info("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu", render_audio_source,
-             render_file_path ? render_file_path : "(null)", render_file_path ? strlen(render_file_path) : 0);
-    if (render_audio_source && render_file_path && strlen(render_file_path) > 0) {
-      session_display_set_render_audio_source(display, render_audio_source);
-      log_info("Audio source set for render-file output");
-    } else {
-      log_warn("[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu",
-               render_audio_source, render_file_path ? render_file_path : "(null)",
-               render_file_path ? strlen(render_file_path) : 0);
+  if (should_init_audio && config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR) {
+    media_source_t *source = session_capture_get_media_source(capture);
+    bool file_audio = media_source_has_audio(source);
+    bool record_mic = render_file_opt && render_file_opt[0] && !file_audio;
+    if (file_audio || record_mic) {
+      audio_ctx = SAFE_CALLOC(1, sizeof(*audio_ctx), audio_context_t *);
+      if (audio_init(audio_ctx) == ASCIICHAT_OK) {
+        audio_available = true;
+        if (file_audio && GET_OPTION(audio_source) != AUDIO_SOURCE_MIC)
+          audio_ctx->capture_media_source = source;
+        audio_ctx->monitor_local_media = true;
+        audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_source), file_audio);
+        session_capture_set_audio_context(capture, audio_ctx);
+        media_source_set_audio_context(source, audio_ctx);
+      } else {
+        SAFE_FREE(audio_ctx);
+      }
     }
   }
 
@@ -718,6 +680,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_info("Audio playback started");
     } else {
       log_warn("Failed to start audio duplex");
+      session_capture_set_audio_context(capture, NULL);
+      media_source_set_audio_context(session_capture_get_media_source(capture), NULL);
       audio_destroy(audio_ctx);
       SAFE_FREE(audio_ctx);
       audio_ctx = NULL;
@@ -818,15 +782,11 @@ cleanup:
   g_current_config = NULL;
   g_render_should_exit = NULL;
 
-  // CRITICAL: Terminate PortAudio device resources FIRST
-  log_debug("Terminating PortAudio device resources");
-  audio_terminate_portaudio_final();
-
   // Stop audio thread before destroying audio context to prevent use-after-free
   // The audio worker thread may still be logging when we destroy the buffer
   APP_CALLBACK_VOID(audio_stop_thread);
 
-  // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
+  // Stop streams before releasing the local media source.
   if (audio_ctx) {
     audio_stop_duplex(audio_ctx);
     audio_destroy(audio_ctx);

@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/recording.h>
 /**
  * @file session/host.c
  * @brief 🏠 Server-side session hosting implementation
@@ -792,6 +793,8 @@ static void *host_render_thread(void *arg) {
           }
         }
         mutex_unlock(&host->clients_mutex);
+
+        audio_recording_submit(AUDIO_RECORDING_REMOTE, mixed_audio, 960, time_get_ns());
 
         // Encode to Opus
         uint8_t opus_buffer[1000];

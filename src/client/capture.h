@@ -341,3 +341,6 @@ bool capture_thread_exited();
  * @see capture_init "Initialize capture subsystem"
  */
 void capture_cleanup();
+
+/* Borrowed source; audio must stop before capture cleanup. */
+void *capture_get_media_source(void);

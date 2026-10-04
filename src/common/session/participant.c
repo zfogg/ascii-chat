@@ -611,6 +611,19 @@ asciichat_error_t session_participant_start_video_capture(session_participant_t 
         .target_fps = 60,
         .resize_for_network = true, // Optimize for bandwidth
     };
+    const char *file = GET_OPTION(media_file);
+    const char *url = GET_OPTION(media_url);
+    char webcam_index[32];
+    safe_snprintf(webcam_index, sizeof(webcam_index), "%u", GET_OPTION(webcam_index));
+    config.path = webcam_index;
+    if (url && url[0]) {
+      config.type = MEDIA_SOURCE_FILE;
+      config.path = url;
+    } else if (file && file[0]) {
+      config.type = strcmp(file, "-") == 0 ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+      config.path = config.type == MEDIA_SOURCE_STDIN ? NULL : file;
+    }
+    config.loop = GET_OPTION(media_loop);
     p->video_capture = session_capture_create(&config);
     if (!p->video_capture) {
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create video capture context");
@@ -671,6 +684,8 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create audio capture context");
     }
   }
+
+  session_audio_set_capture_source(p->audio_capture, session_capture_get_media_source(p->video_capture));
 
   // Start audio capture and playback
   asciichat_error_t err = session_audio_start_duplex(p->audio_capture);

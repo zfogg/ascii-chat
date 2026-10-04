@@ -480,3 +480,7 @@ void media_source_set_audio_context(media_source_t *source, void *audio_ctx);
 void media_source_set_exit_callback(media_source_t *source, bool (*should_exit_callback)(void *), void *user_data);
 
 /** @} */
+
+/* Audio-only sources retain file audio and select webcam video. Metadata probing does not open the camera. */
+bool media_source_uses_webcam(media_source_t *source);
+asciichat_error_t media_source_start_video(media_source_t *source);

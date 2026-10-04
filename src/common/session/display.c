@@ -303,10 +303,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
     if (render_err != ASCIICHAT_OK) {
       log_error("render-file: Initialization failed with error %d", render_err);
-    } else if (ctx->render_file && config->render_file_audio_source) {
-      render_file_set_audio_source(ctx->render_file, config->render_file_audio_source, NULL);
-    } else if (ctx->render_file && config->render_file_audio_capture_rb) {
-      render_file_set_audio_source(ctx->render_file, NULL, config->render_file_audio_capture_rb);
     }
   }
 
@@ -443,15 +439,6 @@ void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
   ctx->render_fps = fps;
   if (fps > 0) {
     log_debug("session_display_set_render_fps: Updated render FPS to %u (for correct video duration)", fps);
-  }
-}
-
-void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source) {
-  if (!ctx || !ctx->render_file)
-    return;
-  render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, audio_source, NULL);
-  if (audio_source) {
-    log_debug("session_display_set_render_audio_source: Audio source set for render-file encoding");
   }
 }
 
@@ -716,6 +703,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Write ASCII to terminal (main thread output path)
+  if (ctx && ctx->render_file) {
+    render_file_set_live_timing(ctx->render_file);
+    asciichat_error_t err = render_file_write_frame(ctx->render_file, frame_data, time_get_ns());
+    if (err != ASCIICHAT_OK)
+      log_warn_every(5 * NS_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
+  }
   session_display_write_ascii(ctx, frame_data);
 }
 
@@ -903,6 +896,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   if (rain_result) {
     SAFE_FREE(rain_result);
   }
+}
+
+void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
+  if (ctx && ctx->render_file)
+    render_file_set_live_timing(ctx->render_file);
 }
 
 void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {

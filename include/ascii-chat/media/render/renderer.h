@@ -58,15 +58,13 @@ typedef struct render_file_ctx_s render_file_ctx_t;
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
                                      render_file_ctx_t **out);
 
-// Set audio source for render-file output (optional).
-// Pass media_source for file/URL audio, or capture_rb for live microphone capture.
-// Either can be NULL (no audio).
-void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb);
-
 // Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
 // captured_ns is the wall-clock timestamp (in nanoseconds) when the frame was captured
 // for proper frame timing in the output video.
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns);
+
+/* Live sessions use capture timestamps; file conversion retains constant-frame-rate timing. */
+void render_file_set_live_timing(render_file_ctx_t *ctx);
 
 // Set actual wall-clock duration for snapshot mode (passes through to encoder).
 void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec);

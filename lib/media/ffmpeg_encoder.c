@@ -40,6 +40,8 @@ struct ffmpeg_encoder_s {
   AVPacket *pkt;
   int width_px;
   int height_px;
+  bool live_timing;
+  int64_t last_video_pts;
   int frame_count;
   int64_t video_pts;                 // Cumulative PTS for proper frame timestamps
   int fps;                           // Frames per second (for duration calculation)
@@ -698,13 +700,13 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   // the encoded frame index for exact N / FPS duration. Snapshot mode is
   // different: it intentionally captures for a wall-clock duration, and live
   // sources may deliver fewer frames than the nominal FPS.
-  if (!snapshot_mode) {
+  if (!snapshot_mode && !enc->live_timing) {
     pts_from_timestamp = enc->frame_count;
   }
 
   // For snapshot sources without an estimated frame count, distribute frames
   // linearly across the actual duration once the capture duration is known.
-  if (snapshot_mode && enc->estimated_frame_count == 0) {
+  if (snapshot_mode && !enc->live_timing && enc->estimated_frame_count == 0) {
     extern uint64_t g_snapshot_actual_duration_ms;
     extern uint64_t g_snapshot_last_capture_elapsed_ns;
     if (g_snapshot_actual_duration_ms > 0) {
@@ -734,6 +736,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   // Use timestamp-based (or scaled) PTS
   enc->frame_encoded->pts = pts_from_timestamp;
+  enc->last_video_pts = pts_from_timestamp;
   enc->video_pts += frame_duration;
 
   if (!snapshot_mode) {
@@ -909,7 +912,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   int64_t adjusted_packet_duration = 0;
   double snapshot_delay = GET_OPTION(snapshot_delay);
 
-  if (snapshot_mode && enc->frame_count > 0 && snapshot_delay > 0) {
+  if (snapshot_mode && !enc->live_timing && enc->frame_count > 0 && snapshot_delay > 0) {
     // Calculate output FPS that distributes frames across snapshot_delay seconds
     // output_fps = frame_count / snapshot_delay
     // packet_duration (in stream time_base) = stream_time_base.den / output_fps
@@ -980,7 +983,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   if (enc->stream && enc->frame_count > 0) {
     int64_t duration;
     bool snapshot_mode = GET_OPTION(snapshot_mode);
-    if (snapshot_mode) {
+    if (snapshot_mode && !enc->live_timing) {
       extern uint64_t g_snapshot_actual_duration_ms;
       double snapshot_delay = GET_OPTION(snapshot_delay);
       // Use actual capture elapsed time if available, otherwise use snapshot_delay
@@ -1016,7 +1019,8 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       // time_base = 1 / time_base.den seconds per unit
       // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
       // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
-      duration = (int64_t)enc->frame_count * enc->stream->time_base.den / enc->fps;
+      duration = (enc->live_timing ? enc->last_video_pts + 1 : (int64_t)enc->frame_count) * enc->stream->time_base.den /
+                 enc->fps;
       log_debug("ffmpeg_encoder_destroy: Normal mode - Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)",
                 (long long)duration, enc->frame_count, enc->fps, 1, enc->stream->time_base.den);
     }
@@ -1078,4 +1082,9 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   log_debug("ffmpeg_encoder_destroy: wrote %d frames", enc->frame_count);
   SAFE_FREE(enc);
   return ASCIICHAT_OK;
+}
+
+void ffmpeg_encoder_set_live_timing(ffmpeg_encoder_t *enc) {
+  if (enc)
+    enc->live_timing = true;
 }

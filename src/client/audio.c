@@ -72,6 +72,7 @@
  */
 
 #include "audio.h"
+#include "capture.h"
 #include <ascii-chat/audio/analysis.h>
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -1048,6 +1049,8 @@ int audio_client_init() {
   // ensuring proper timing synchronization (not from the decode path 50-100ms earlier)
   audio_set_pipeline(&g_audio_context, (void *)g_audio_pipeline);
 
+  g_audio_context.capture_media_source = capture_get_media_source();
+
   // Start full-duplex audio (simultaneous capture + playback for perfect AEC3 timing)
   if (audio_start_duplex(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to start full-duplex audio");
@@ -1273,10 +1276,6 @@ void audio_cleanup() {
   // Stop async sender thread (drains queue and exits)
   audio_sender_cleanup();
 
-  // Terminate PortAudio FIRST to properly free device resources before cleanup
-  // This must happen before audio_stop_duplex() and audio_destroy()
-  audio_terminate_portaudio_final();
-
   // Stop audio stream before destroying pipeline to prevent race condition.
   // PortAudio may invoke the callback one more time after we request stop.
   // We need to clear the pipeline pointer first so the callback can't access freed memory.
@@ -1287,6 +1286,7 @@ void audio_cleanup() {
   // Clear the pipeline pointer from audio context BEFORE destroying pipeline
   // This prevents any lingering PortAudio callbacks from trying to access freed memory
   audio_set_pipeline(&g_audio_context, NULL);
+  audio_terminate_portaudio_final();
 
   // Sleep to allow CoreAudio threads to finish executing callbacks.
   // On macOS, CoreAudio's internal threads may continue running after Pa_StopStream() returns.

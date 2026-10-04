@@ -103,11 +103,6 @@ typedef struct {
   /** @brief Defer render-file encoder creation until media timing is known */
   bool defer_render_file;
 
-  /** @brief Audio source for render-file output (media source for file/URL audio, borrowed) */
-  void *render_file_audio_source;
-
-  /** @brief Audio capture ring buffer for render-file output (live mic, borrowed) */
-  void *render_file_audio_capture_rb;
 } session_display_config_t;
 
 /* ============================================================================
@@ -301,6 +296,8 @@ uint32_t session_display_get_render_fps(session_display_ctx_t *ctx);
  */
 asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, uint32_t fps);
 
+void session_display_set_render_live_timing(session_display_ctx_t *ctx);
+
 /**
  * @brief Set the render FPS for file output encoding
  * @param ctx Display context
@@ -309,18 +306,6 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
  * @ingroup session
  */
 void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps);
-
-/**
- * @brief Set audio source for render-file output
- * @param ctx Display context (must not be NULL)
- * @param audio_source Media source for file/URL audio (borrowed), or NULL to clear
- *
- * Call this after creating the display to set the audio source for --render-file encoding.
- * The audio_source pointer is borrowed and must remain valid until the display is destroyed.
- *
- * @ingroup session
- */
-void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source);
 
 /**
  * @brief Check if the display has rendered its first frame

@@ -6,6 +6,7 @@
  */
 
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
@@ -93,12 +94,25 @@ void audio_terminate_portaudio_final(void) {
   }
 }
 
-// Worker thread batch size (in frames, not samples)
-// Reduced from 480 (10ms) to 128 (2.7ms) for lower latency and less jitter
-// Smaller batches mean more frequent processing, reducing audio gaps
-#define WORKER_BATCH_FRAMES 128
+// AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
+#define WORKER_BATCH_FRAMES 480
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 #define WORKER_TIMEOUT_MS 1 // Wake up every 1ms to keep up with 48kHz playback (was 3ms)
+
+static void audio_publish_local_capture(audio_context_t *ctx, float *samples, size_t count, bool use_media) {
+  uint64_t block_start = time_get_ns() - count * 1000000000ULL / 48000;
+  audio_recording_submit(AUDIO_RECORDING_MIC, samples, count, block_start);
+  if (use_media) {
+    float media[WORKER_BATCH_SAMPLES];
+    size_t read = media_source_read_audio(ctx->capture_media_source, media, count);
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, media, read, block_start);
+    for (size_t i = 0; i < read; i++)
+      samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i] + media[i]));
+    if (ctx->monitor_local_media)
+      audio_ring_buffer_write(ctx->playback_buffer, media, (int)read);
+  }
+  audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
+}
 
 /**
  * @brief Audio worker thread for heavy processing
@@ -154,6 +168,8 @@ static void *audio_worker_thread(void *arg) {
   static double max_capture_ns = 0;
   static double max_playback_ns = 0;
 
+  uint64_t media_start_ns = time_get_ns();
+  uint64_t media_samples = 0;
   while (true) {
     loop_count++;
     START_TIMER("worker_loop_iteration");
@@ -168,7 +184,7 @@ static void *audio_worker_thread(void *arg) {
       mutex_lock(&ctx->worker_mutex);
       START_TIMER("worker_cond_wait");
       wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
-      double wait_time_ns = STOP_TIMER("worker_cond_wait");
+      double wait_time_ns = fmax(0.0, STOP_TIMER("worker_cond_wait"));
       mutex_unlock(&ctx->worker_mutex);
 
       total_wait_ns += wait_time_ns;
@@ -221,13 +237,40 @@ static void *audio_worker_thread(void *arg) {
                render_available, playback_available, WORKER_BATCH_SAMPLES);
     }
 
-    if (wait_result != 0 && capture_available == 0 && playback_available == 0) {
+    if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source) {
       // Timeout with no data - continue waiting
       STOP_TIMER("worker_loop_iteration"); // Must stop before loop repeats
       continue;
     }
 
     process_count++;
+
+    bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
+    audio_source_t selection = GET_OPTION(audio_source);
+    bool use_media = has_media && selection != AUDIO_SOURCE_MIC;
+    bool use_mic = audio_should_enable_microphone(selection, has_media);
+    if (use_media && !use_mic) {
+      uint64_t now = time_get_ns();
+      uint64_t due = (now - media_start_ns) / 1000000ULL * 48;
+      float media[960];
+      while (media_samples < due) {
+        size_t count = due - media_samples > 960 ? 960 : (size_t)(due - media_samples);
+        size_t read = media_source_read_audio(ctx->capture_media_source, media, count);
+        if (read < count)
+          memset(media + read, 0, (count - read) * sizeof(float));
+        audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
+                               media_start_ns + media_samples * 1000000000ULL / 48000);
+        audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
+        if (ctx->monitor_local_media)
+          audio_ring_buffer_write(ctx->playback_buffer, media, (int)count);
+        media_samples += count;
+      }
+    }
+    if (!use_mic && capture_available > 0) {
+      size_t drain = capture_available > WORKER_BATCH_SAMPLES ? WORKER_BATCH_SAMPLES : capture_available;
+      audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, drain);
+      capture_available = 0;
+    }
 
     // STEP 1: Process capture path (mic → AEC3 → encoder)
     // Process capture samples if available (don't wait for full batch - reduces latency)
@@ -237,7 +280,7 @@ static void *audio_worker_thread(void *arg) {
     // the ring buffers and get processed next iteration - no zero-padding,
     // no data corruption, no skipped echo cancellation.
     const size_t AEC3_FRAME_SIZE = 480;
-    bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline;
+    bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline && (ctx->duplex_stream || ctx->output_stream);
 
     if (want_aec3) {
       // AEC3 path: process matched render+capture in 480-sample-aligned chunks
@@ -295,12 +338,12 @@ static void *audio_worker_thread(void *arg) {
           }
         }
 
-        audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
+        audio_publish_local_capture(ctx, ctx->worker_capture_batch, capture_read, use_media);
 
         log_debug_every(NS_PER_MS_INT, "Worker processed %zu samples (AEC3 applied, render=%zu)", capture_read,
                         render_read);
 
-        double capture_time_ns = STOP_TIMER("worker_capture_processing");
+        double capture_time_ns = fmax(0.0, STOP_TIMER("worker_capture_processing"));
         total_capture_ns += capture_time_ns;
         if (capture_time_ns > max_capture_ns)
           max_capture_ns = capture_time_ns;
@@ -337,13 +380,13 @@ static void *audio_worker_thread(void *arg) {
         }
 
         // Write processed capture to encoder buffer
-        audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
+        audio_publish_local_capture(ctx, ctx->worker_capture_batch, capture_read, use_media);
 
         log_debug_every(NS_PER_MS_INT, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
                         bypass_aec3_worker ? "BYPASSED" : "applied");
       }
 
-      double capture_time_ns = STOP_TIMER("worker_capture_processing");
+      double capture_time_ns = fmax(0.0, STOP_TIMER("worker_capture_processing"));
       total_capture_ns += capture_time_ns;
       if (capture_time_ns > max_capture_ns)
         max_capture_ns = capture_time_ns;
@@ -355,7 +398,7 @@ static void *audio_worker_thread(void *arg) {
     (void)playback_available; // Suppress unused variable warning if not used in this build
 
     // Log overall loop iteration time
-    double loop_time_ns = STOP_TIMER("worker_loop_iteration");
+    double loop_time_ns = fmax(0.0, STOP_TIMER("worker_loop_iteration"));
     static double total_loop_ns = 0;
     static double max_loop_ns = 0;
     total_loop_ns += loop_time_ns;
@@ -443,21 +486,11 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t total_samples_read_local = 0;
   static uint64_t underrun_count_local = 0;
 
-  // STEP 1: Read playback from media source (mirror mode) or network buffer
+  // The worker supplies local media and the receive path supplies remote audio.
   if (output) {
     size_t samples_read = 0;
 
-    // For mirror mode with media file: read audio directly from media source
-    // This bypasses buffering and provides audio at the exact sample rate PortAudio needs
-    if (ctx->media_source) {
-      samples_read = media_source_read_audio((void *)ctx->media_source, output, num_samples);
-
-      static uint64_t cb_count = 0;
-      cb_count++;
-      if (cb_count <= 5 || cb_count % 500 == 0) {
-        log_info("Callback #%lu: media_source path, read %zu samples", cb_count, samples_read);
-      }
-    } else if (ctx->playback_buffer) {
+    if (ctx->playback_buffer) {
       // Network mode: read from playback buffer with jitter buffering logic
       samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
 
@@ -469,7 +502,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     } else {
       static uint64_t null_count = 0;
       if (++null_count == 1) {
-        log_warn("Callback: BOTH media_source AND playback_buffer are NULL!");
+        log_warn("Callback: playback_buffer is NULL!");
       }
     }
 
@@ -479,12 +512,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // Fill remaining with silence if underrun
       SAFE_MEMSET(output + samples_read, (num_samples - samples_read) * sizeof(float), 0,
                   (num_samples - samples_read) * sizeof(float));
-      if (ctx->media_source) {
-        log_debug_every(5 * NS_PER_MS_INT, "Media playback: got %zu/%zu samples", samples_read, num_samples);
-      } else {
-        log_debug_every(NS_PER_MS_INT, "Network playback underrun: got %zu/%zu samples", samples_read, num_samples);
-        underrun_count_local++;
-      }
+      log_debug_every(NS_PER_MS_INT, "Audio playback underrun: got %zu/%zu samples", samples_read, num_samples);
     }
 
     // Apply speaker volume control
@@ -628,7 +656,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t output_cb_count = 0;
   output_cb_count++;
   if (output_cb_count == 1) {
-    log_warn("FIRST OUTPUT_CALLBACK! frames=%lu ctx->media_source=%p", framesPerBuffer, (void *)ctx->media_source);
+    log_debug("First output callback: frames=%lu", framesPerBuffer);
   }
 
   // Silence on shutdown
@@ -646,28 +674,14 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 1: Read audio source
   size_t samples_read = 0;
   if (output) {
-    if (ctx->media_source) {
-      // Mirror mode: read audio directly from media source
-      samples_read = media_source_read_audio((void *)ctx->media_source, output, num_samples);
-      if (output_cb_count <= 3) {
-        log_warn("OUTPUT_CB: media_source path, read %zu samples", samples_read);
-      }
-    } else if (ctx->processed_playback_rb) {
-      // Network mode: read from processed playback buffer (worker output)
-      samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
-      if (output_cb_count <= 3) {
-        log_warn("OUTPUT_CB: processed_playback_rb path, read %zu samples", samples_read);
-      }
-    } else if (ctx->playback_buffer) {
-      // Fallback: read from playback buffer if available
+    if (ctx->playback_buffer) {
       samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
       if (output_cb_count <= 3) {
         log_warn("OUTPUT_CB: playback_buffer path, read %zu samples", samples_read);
       }
     } else {
       if (output_cb_count <= 3) {
-        log_warn("OUTPUT_CB: NO BUFFERS! media_source=%p processed_rb=%p playback_buf=%p", (void *)ctx->media_source,
-                 (void *)ctx->processed_playback_rb, (void *)ctx->playback_buffer);
+        log_warn("Output callback has no playback buffer");
       }
     }
 
@@ -1292,6 +1306,9 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker playback batch buffer");
   }
 
+  ctx->capture_media_source = NULL;
+  ctx->monitor_local_media = false;
+
   // Initialize worker thread state (thread will be started in audio_start_duplex)
   ctx->worker_running = false;
   atomic_store_bool(&ctx->worker_should_stop, false);
@@ -1416,6 +1433,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (ctx->duplex_stream || ctx->input_stream || ctx->output_stream) {
     return ASCIICHAT_OK;
   }
+
+  bool media_audio = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
+  if (!audio_should_enable_microphone(GET_OPTION(audio_source), media_audio))
+    ctx->playback_only = true;
 
   // Setup input parameters (skip if playback-only mode)
   PaStreamParameters inputParams = {0};
@@ -1550,7 +1571,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
       // Always use output_callback for output streams (both output-only and duplex modes)
       // PortAudio will invoke the callback whenever it needs audio data
-      // The callback reads from media_source (mirror mode) or playback buffers (network mode)
+      // The callback reads PCM supplied to the shared playback buffer.
       PaStreamCallback *callback = output_callback;
 
       // Try preferred rate first
@@ -1874,6 +1895,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
     return ASCIICHAT_OK; // Silently discard
   }
 
+  audio_recording_submit(AUDIO_RECORDING_REMOTE, buffer, num_samples, time_get_ns());
   asciichat_error_t result = audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
 
   return result;

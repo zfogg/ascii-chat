@@ -256,6 +256,12 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
+  if (media_source_start_video(ctx->source) != ASCIICHAT_OK) {
+    media_source_destroy(ctx->source);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
   // Set up exit callback on media source for graceful shutdown during I/O
   // This allows Ctrl+C to abort blocking FFmpeg calls like YouTube HTTP requests
   if (config->should_exit_callback && ctx->source) {

@@ -34,6 +34,7 @@
 struct media_source_t {
   media_source_type_t type; ///< Type of media source (webcam, file, stdin, test)
   bool loop_enabled;        ///< Whether to loop playback (for files)
+  bool audio_only;          ///< File audio uses the selected webcam for video
   bool is_paused;           ///< Whether playback is paused
 
   // Webcam context (for WEBCAM and TEST types)
@@ -323,9 +324,11 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // Start prefetch thread for video frames (critical for HTTP performance)
+    // Start prefetch only when a video stream exists.
     // This thread continuously reads frames into a buffer so the render loop never blocks
-    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
+                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
+                                         : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
       // Don't fail on prefetch error - continue with frame skipping as fallback
@@ -365,7 +368,9 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     }
 
     // Start prefetch thread for stdin video frames
-    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
+                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
+                                         : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
       // Don't fail on prefetch error - continue with frame skipping as fallback
@@ -407,6 +412,11 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     mutex_destroy(&source->seek_access_mutex);
     SAFE_FREE(source);
     return NULL;
+  }
+
+  if ((type == MEDIA_SOURCE_FILE || type == MEDIA_SOURCE_STDIN) && !ffmpeg_decoder_has_video(source->video_decoder) &&
+      ffmpeg_decoder_has_audio(source->audio_decoder)) {
+    source->audio_only = true;
   }
 
   /* Register media source with named registry */
@@ -489,6 +499,23 @@ void media_source_destroy(media_source_t *source) {
  * Video Operations
  * ============================================================================ */
 
+asciichat_error_t media_source_start_video(media_source_t *source) {
+  if (!source)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing media source");
+  if (!source->audio_only || source->webcam_ctx)
+    return ASCIICHAT_OK;
+  source->webcam_index = GET_OPTION(webcam_index);
+  asciichat_error_t err = webcam_init_context(&source->webcam_ctx, source->webcam_index);
+  if (err != ASCIICHAT_OK)
+    return SET_ERRNO(err, "Audio-only media requires webcam %u", source->webcam_index);
+  log_info("Audio-only media: using webcam %u for video", source->webcam_index);
+  return ASCIICHAT_OK;
+}
+
+bool media_source_uses_webcam(media_source_t *source) {
+  return source && (source->type == MEDIA_SOURCE_WEBCAM || source->audio_only);
+}
+
 image_t *media_source_read_video(media_source_t *source) {
   if (!source) {
     return NULL;
@@ -503,6 +530,15 @@ image_t *media_source_read_video(media_source_t *source) {
   if (is_paused) {
     return NULL;
   }
+
+  if (source->audio_only && media_source_at_end(source))
+    return NULL;
+  if (source->audio_only && !source->webcam_ctx) {
+    if (media_source_start_video(source) != ASCIICHAT_OK)
+      return NULL;
+  }
+  if (source->webcam_ctx)
+    return webcam_read_context(source->webcam_ctx);
 
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
@@ -645,7 +681,7 @@ bool media_source_has_video(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    return source->video_decoder && ffmpeg_decoder_has_video(source->video_decoder);
+    return source->audio_only || (source->video_decoder && ffmpeg_decoder_has_video(source->video_decoder));
 
   default:
     return false;
@@ -795,6 +831,8 @@ bool media_source_at_end(media_source_t *source) {
     if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
       return false;
     }
+    if (source->audio_only)
+      return source->audio_decoder && ffmpeg_decoder_at_end(source->audio_decoder);
     return ffmpeg_decoder_at_end(source->video_decoder);
 
   default:
@@ -973,7 +1011,7 @@ double media_source_get_position(media_source_t *source) {
     if (!source->video_decoder) {
       return -1.0;
     }
-    return ffmpeg_decoder_get_position(source->video_decoder);
+    return ffmpeg_decoder_get_position(source->audio_only ? source->audio_decoder : source->video_decoder);
 
   default:
     return -1.0;
