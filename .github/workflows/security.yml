@@ -45,23 +45,13 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          build-mode: none
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
           os: ubuntu
-
-      - name: Build for analysis
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_FLAGS='-std=c2x' \
-            -DBUILD_TESTS=OFF \
-            -DBUILD_EXECUTABLES=OFF \
-            -DBUILD_WEB=OFF \
-            -DASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS=ON
-          cmake --build build --parallel 1
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
