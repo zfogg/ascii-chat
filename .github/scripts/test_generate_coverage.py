@@ -49,6 +49,28 @@ class CoverageReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
 
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config"), "Requires CMake, Ninja, Clang and OpenSSL development files")
+    def test_missing_cached_openssl_paths_are_rediscovered_and_link(self):
+        module = Path(__file__).resolve().parents[2] / "cmake/deps/OpenSSL.cmake"
+        (self.root / "main.c").write_text('#include <openssl/crypto.h>\nint main(void) { return OpenSSL_version_num() == 0; }\n')
+        (self.root / "CMakeLists.txt").write_text(
+            'cmake_minimum_required(VERSION 3.20)\nproject(fixture C)\n'
+            'set(ASCIICHAT_SHARED_DEPS ON)\n'
+            f'include("{module.as_posix()}")\n'
+            'add_executable(fixture main.c)\n'
+            'target_link_libraries(fixture OpenSSL::SSL OpenSSL::Crypto)\n'
+        )
+        build = self.root / "build"
+        (self.root / "missing/include").mkdir(parents=True)
+        subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                        f"-DCMAKE_C_COMPILER={shutil.which('clang')}",
+                        f"-DOPENSSL_ROOT_DIR={self.root / 'missing'}",
+                        f"-DOPENSSL_INCLUDE_DIR={self.root / 'missing/include'}",
+                        f"-DOPENSSL_CRYPTO_LIBRARY={self.root / 'missing/libcrypto.so'}",
+                        f"-DOPENSSL_SSL_LIBRARY={self.root / 'missing/libssl.so'}"], check=True)
+        subprocess.run(["cmake", "--build", str(build)], check=True)
+        subprocess.run([str(build / "fixture")], check=True)
+
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and importlib.util.find_spec("gcovr"), "Requires CMake, Ninja, Clang and gcovr")
     def test_release_path_mapping_preserves_coverage_source_lookup(self):
         module = Path(__file__).resolve().parents[2] / "cmake/compiler/SourcePaths.cmake"

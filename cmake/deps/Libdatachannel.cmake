@@ -517,7 +517,9 @@ if(NOT libdatachannel_POPULATED)
             # Pass musl-built OpenSSL paths to libdatachannel
             # OPENSSL_ROOT_DIR, OPENSSL_INCLUDE_DIR, etc. are set by MuslDependencies.cmake
             if(OPENSSL_ROOT_DIR)
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                if(OPENSSL_ROOT_DIR)
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                endif()
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
@@ -627,13 +629,14 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel Windows build: forcing Ninja generator")
         else()
             # Pass the exact OpenSSL headers and libraries selected by the parent build
-            if(OPENSSL_ROOT_DIR
-               AND OPENSSL_INCLUDE_DIR
+            if(OPENSSL_INCLUDE_DIR
                AND OPENSSL_SSL_LIBRARY
                AND OPENSSL_CRYPTO_LIBRARY
                AND EXISTS "${OPENSSL_SSL_LIBRARY}"
                AND EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                if(OPENSSL_ROOT_DIR)
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                endif()
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")

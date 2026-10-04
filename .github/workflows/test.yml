@@ -52,7 +52,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install gcovr
+      - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
 
   unit-tests:
