@@ -209,6 +209,15 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # Always use OBJECT libraries to eliminate duplication
     # (shared library and tests both link to the same object files, compiled once)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
+
+    # Musl builds expose libsodium headers through the generated dependency
+    # prefix. Every module includes common headers, which in turn include
+    # sodium.h, so the external project must finish installing its headers
+    # before any object-library source is compiled.
+    if(USE_MUSL AND DEFINED LIBSODIUM_BUILD_TARGET)
+        add_dependencies(${MODULE_NAME} ${LIBSODIUM_BUILD_TARGET})
+    endif()
+
     # OBJECT libraries need PIC for linking into shared libraries
     set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     # Always explicitly add -fPIC for non-Windows to ensure it's applied
