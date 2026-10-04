@@ -390,6 +390,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
+        # The fallback fixture calls PCRE2 directly to verify JIT code is absent.
+        if(test_exe_name STREQUAL "test_unit_util_regex_fallback")
+            target_include_directories(${test_exe_name} PRIVATE ${PCRE2_INCLUDE_DIRS})
+            target_link_libraries(${test_exe_name} ${PCRE2_LIBRARIES})
+        endif()
+
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
