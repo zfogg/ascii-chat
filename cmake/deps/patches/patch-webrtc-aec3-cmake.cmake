@@ -23,7 +23,7 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v6")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v7")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()
@@ -184,6 +184,8 @@ string(REPLACE
 )
 
 if(ASCIICHAT_TARGET_ARM64)
+    string(REPLACE "utility/ooura_fft_sse2.cc" "" AP_CMAKE_CONTENT "${AP_CMAKE_CONTENT}")
+    string(REPLACE "resampler/sinc_resampler_sse.cc" "" AP_CMAKE_CONTENT "${AP_CMAKE_CONTENT}")
     string(REGEX REPLACE
         "[ \t]*(utility/ooura_fft_sse2\\.cc|resampler/sinc_resampler_sse\\.cc)[ \t]*\\n"
         ""
