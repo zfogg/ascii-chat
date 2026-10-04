@@ -13,6 +13,10 @@ on:
       - "**/CMakeLists.txt"
       - "cmake/**"
       - ".github/workflows/test.yml"
+      - "codecov.yml"
+      - ".github/scripts/*coverage*.py"
+      - ".github/actions/generate-coverage/**"
+      - ".github/actions/publish-test-results/**"
   pull_request:
     branches: ["*"]
     paths:
@@ -24,6 +28,10 @@ on:
       - "**/CMakeLists.txt"
       - "cmake/**"
       - ".github/workflows/test.yml"
+      - "codecov.yml"
+      - ".github/scripts/*coverage*.py"
+      - ".github/actions/generate-coverage/**"
+      - ".github/actions/publish-test-results/**"
 
 permissions:
   contents: read
@@ -36,6 +44,17 @@ env:
   CXX: clang++
 
 jobs:
+  coverage-tools:
+    name: Coverage report regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install gcovr
+      - run: python .github/scripts/test_generate_coverage.py
+
   unit-tests:
     name: Unit Tests
     runs-on: ${{ matrix.os }}
@@ -167,6 +186,9 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
+      - name: Clear cached coverage counters
+        run: find build -name '*.gcda' -type f -delete
+
       - name: Build test suite
         run: |
           cmake --build build
@@ -201,85 +223,9 @@ jobs:
 
       - name: Generate coverage report (debug builds only)
         if: always() && matrix.build_type == 'debug'
-        run: |
-          # Generate coverage files for codecov (coverage builds create .gcda files)
-          echo "Looking for .gcda files to generate coverage from..."
-          find . -name "*.gcda" -type f | head -10
-
-          if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
-            echo "Found .gcda files, generating coverage..."
-
-            # Debug: Check .gcno files
-            echo "DEBUG: Checking .gcno files..."
-            echo "DEBUG: Count of .gcno files: $(find . -name "*.gcno" -type f | wc -l)"
-            echo "DEBUG: Sample .gcno files:"
-            find . -name "*.gcno" -type f | head -5
-
-            # Debug: Check .gcda files
-            echo "DEBUG: Count of .gcda files: $(find . -name "*.gcda" -type f | wc -l)"
-            echo "DEBUG: Sample .gcda files:"
-            find . -name "*.gcda" -type f | head -5
-
-            # Debug: Check if we have matching .gcno/.gcda pairs
-            echo "DEBUG: Checking for matching .gcno/.gcda pairs..."
-            for gcda in $(find . -name "*.gcda" -type f | head -3); do
-              gcno="${gcda%.gcda}.gcno"
-              echo "DEBUG: Checking pair: $gcda -> $gcno"
-              if [ -f "$gcno" ]; then
-                echo "DEBUG: ✅ Pair exists"
-                ls -la "$gcno" "$gcda"
-              else
-                echo "DEBUG: ❌ Missing .gcno file for $gcda"
-              fi
-            done
-
-            # Generate coverage using reusable action would go here, but we need inline for conditional
-            echo "DEBUG: Running coverage tool on .gcda files..."
-            # Use gcov on macOS, llvm-cov on Ubuntu
-            # Use -p to preserve path components and avoid overwriting files with same basename
-            if [ "${{ matrix.os-name }}" = "macos" ]; then
-              echo "DEBUG: Using gcov (macOS)"
-              find . -name "*.gcda" -exec gcov -p {} \;
-            else
-              echo "DEBUG: Using llvm-cov (Ubuntu)"
-              find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
-            fi
-            echo "DEBUG: Coverage command completed"
-
-            # Debug: Check where .gcov files were created
-            echo "DEBUG: Looking for .gcov files after coverage execution..."
-            echo "DEBUG: All .gcov files found:"
-            find . -name "*.gcov" -type f -exec ls -la {} \;
-            echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
-
-            # Convert absolute paths in .gcov files to relative paths for codecov
-            echo "Normalizing .gcov file paths for codecov..."
-            find . -name "*.gcov" -type f | while read gcov_file; do
-              # Extract the relative path from the absolute path in the file
-              # Replace absolute path with repo-relative path
-              sed -i "s|Source:.*/ascii-chat/|Source:|g" "$gcov_file"
-              sed -i "s|Graph:.*/ascii-chat/build/|Graph:build/|g" "$gcov_file"
-              sed -i "s|Data:.*/ascii-chat/build/|Data:build/|g" "$gcov_file"
-            done
-            echo "Paths normalized"
-
-            # Move all .gcov files to repo root for consistent behavior across platforms
-            echo "Moving .gcov files to repo root..."
-            echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-            find . -name "*.gcov" -type f -exec mv {} . \; || false
-            echo "DEBUG: Move command completed"
-
-            # Show what coverage files were generated
-            echo "Generated coverage files:"
-            echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-            find . -name "*.gcov" -type f | head -20
-
-            # Verify paths were normalized
-            echo "Verifying normalized paths:"
-            head -1 *.gcov 2>/dev/null | head -5
-          else
-            echo "No .gcda files found (this is expected for non-coverage builds)"
-          fi
+        uses: ./.github/actions/generate-coverage
+        with:
+          os-type: ${{ matrix.os-name }}
 
       - name: Save build caches
         if: always()
@@ -323,7 +269,7 @@ jobs:
           os-name: ${{ matrix.os-name }}
           build-type: ${{ matrix.build_type }}
           criterion-xml-dir: build/Testing/criterion-xml
-          coverage-files: "./*.gcov"
+          coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
 
@@ -427,9 +373,13 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
+      - name: Clear cached coverage counters
+        run: find build -name '*.gcda' -type f -delete
+
       - name: Build and run integration tests
         run: |
           cmake --build build
+          python3 tests/integration/render_file_audio.py build/bin/ascii-chat
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
@@ -468,7 +418,7 @@ jobs:
           test-type: integration
           os-name: ${{ matrix.os-name }}
           criterion-xml-dir: build/Testing/criterion-xml
-          coverage-files: "./*.gcov"
+          coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "true"
 
@@ -577,6 +527,9 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
+      - name: Clear cached coverage counters
+        run: find build -name '*.gcda' -type f -delete
+
       - name: Build performance tests
         run: |
           cmake --build build
@@ -624,7 +577,7 @@ jobs:
           test-type: performance
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           criterion-xml-dir: build/Testing/criterion-xml
-          coverage-files: "./*.gcov"
+          coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "true"
 

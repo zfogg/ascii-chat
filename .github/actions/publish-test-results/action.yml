@@ -16,9 +16,9 @@ inputs:
     required: false
     default: "build/Testing/criterion-xml"
   coverage-files:
-    description: "Coverage file pattern for Codecov"
+    description: "Merged coverage report for Codecov"
     required: false
-    default: "./*.gcov"
+    default: "build/coverage.xml"
   codecov-token:
     description: "Codecov token"
     required: true
@@ -189,25 +189,21 @@ runs:
       if: ${{ always() && inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "Checking for coverage files matching: ${{ inputs.coverage-files }}"
-        gcov_count=$(ls -1 *.gcov 2>/dev/null | wc -l || echo 0)
-        if [ "$gcov_count" -gt 0 ]; then
-          echo "Found $gcov_count coverage files"
-          echo "has_coverage=true" >> $GITHUB_OUTPUT
-        else
-          echo "No coverage files found matching pattern: ${{ inputs.coverage-files }}"
-          echo "has_coverage=false" >> $GITHUB_OUTPUT
-          echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
+        if [ ! -s "${{ inputs.coverage-files }}" ]; then
+          echo "Coverage report is missing: ${{ inputs.coverage-files }}"
+          exit 1
         fi
+        python3 -c 'import importlib.util, sys; spec = importlib.util.spec_from_file_location("coverage_report", ".github/scripts/generate-coverage.py"); module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.validate_report(sys.argv[1])' "${{ inputs.coverage-files }}"
+        echo "has_coverage=true" >> "$GITHUB_OUTPUT"
 
     # Upload coverage to Codecov (optional)
     - name: Upload Coverage to Codecov
       if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-files }}
-        directory: .
+        disable_search: true
         flags: |
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
@@ -216,5 +212,5 @@ runs:
           ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
               format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
-        fail_ci_if_error: false
+        fail_ci_if_error: true
         verbose: true

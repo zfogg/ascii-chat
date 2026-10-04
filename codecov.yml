@@ -7,11 +7,11 @@ codecov:
   branch: master
   # Reject reports older than 12 hours
   max_report_age: "12h"
-  # Enable notifications and integrations
+  # Wait for unit, integration, and performance coverage uploads
   notify:
     # Enable GitHub PR comments with coverage details
     require_ci_to_pass: false
-    after_n_builds: 1
+    after_n_builds: 5
 
 # Coverage configuration
 coverage:
@@ -57,14 +57,14 @@ coverage:
         target: 50%
         threshold: 2%
         paths:
-          - "lib/image2ascii/**/*"
+          - "lib/video/ascii/**/*"
 
       # Video processing pipeline
       video_processing:
         target: 50%
         threshold: 2%
         paths:
-          - "lib/image2ascii/image.*"
+          - "lib/video/rgba/**/*"
           - "lib/video/webcam/*"
           - "lib/video/webcam/**/*"
 
@@ -73,9 +73,9 @@ coverage:
         target: 50%
         threshold: 2%
         paths:
-          - "lib/audio.*"
-          - "lib/mixer.*"
-          - "lib/ringbuffer.*"
+          - "lib/audio/**/*"
+          - "lib/audio/mixer.*"
+          - "lib/audio/audio.*"
 
       # Network infrastructure
       network_infrastructure:
@@ -83,7 +83,7 @@ coverage:
         threshold: 2%
         paths:
           - "lib/network/**/*"
-          - "lib/packet_queue.*"
+          - "lib/network/packet/queue.*"
           - "lib/buffer_pool.*"
 
       # Security components (crypto is now a directory)
@@ -92,24 +92,24 @@ coverage:
         threshold: 2%
         paths:
           - "lib/crypto/**/*"
-          - "lib/crc32.*"
+          - "lib/network/crc32.*"
 
       # Terminal rendering and output
       terminal_rendering:
         target: 50%
         threshold: 2%
         paths:
-          - "lib/image2ascii/ansi_fast.*"
+          - "lib/video/terminal/**/*"
           - "lib/platform/**/terminal.*"
-          - "lib/platform/terminal.h"
-          - "lib/palette.*"
+          - "include/ascii-chat/platform/terminal.h"
+          - "lib/video/ascii/palette.*"
 
       # Video frame handling
       video_frames:
         target: 50%
         threshold: 2%
         paths:
-          - "lib/video_frame.*"
+          - "lib/video/rgba/video_frame.*"
 
       # Core utilities and error handling
       core_utilities:
@@ -118,7 +118,7 @@ coverage:
         paths:
           - "lib/asciichat_errno.*"
           - "lib/common.*"
-          - "lib/compression.*"
+          - "lib/network/compression.*"
           - "lib/util/**/*"
 
       # Debug utilities
@@ -176,7 +176,7 @@ coverage:
         paths:
           - "src/server/**/*"
           - "src/client/**/*"
-          - "lib/image2ascii/**/*"
+          - "lib/video/ascii/**/*"
           - "lib/network/**/*"
           - "lib/crypto/**/*"
         branches:
@@ -193,7 +193,7 @@ coverage:
         base: auto
         paths:
           - "lib/crypto/**/*"
-          - "lib/crc32.*"
+          - "lib/network/crc32.*"
         branches:
           - master
           - main
@@ -207,7 +207,9 @@ coverage:
         threshold: 10%
         base: auto
         paths:
-          - "lib/image2ascii/simd/**/*"
+          - "lib/video/ascii/avx2/**/*"
+          - "lib/video/ascii/neon/**/*"
+          - "lib/video/ascii/sve/**/*"
         branches:
           - master
           - main
@@ -250,7 +252,7 @@ component_management:
       - "src/**/*"
     # Flag regexes to include specific flag patterns
     flag_regexes:
-      - "ascii-chat-tests.*"
+      - "ascii-chat-(tests|integration|performance).*"
       - "coverage"
     statuses:
       - type: project
@@ -294,7 +296,7 @@ component_management:
     - component_id: ascii_engine
       name: "ASCII Art Engine"
       paths:
-        - "lib/image2ascii/**/*"
+        - "lib/video/ascii/**/*"
         - "tests/**/ascii*.c"
       statuses:
         - type: project
@@ -307,7 +309,9 @@ component_management:
     - component_id: simd_optimizations
       name: "SIMD Optimizations"
       paths:
-        - "lib/image2ascii/simd/**/*"
+        - "lib/video/ascii/avx2/**/*"
+        - "lib/video/ascii/neon/**/*"
+        - "lib/video/ascii/sve/**/*"
         - "tests/**/simd*.c"
       statuses:
         - type: project
@@ -321,7 +325,7 @@ component_management:
       name: "Network Protocol"
       paths:
         - "lib/network/**/*"
-        - "lib/packet_queue.*"
+        - "lib/network/packet/queue.*"
         - "tests/**/network*.c"
       statuses:
         - type: project
@@ -334,9 +338,9 @@ component_management:
     - component_id: audio_processing
       name: "Audio Processing"
       paths:
-        - "lib/audio.*"
-        - "lib/mixer.*"
-        - "lib/ringbuffer.*"
+        - "lib/audio/**/*"
+        - "lib/audio/mixer.*"
+        - "lib/audio/audio.*"
         - "tests/**/audio*.c"
       statuses:
         - type: project
@@ -349,7 +353,7 @@ component_management:
     - component_id: video_processing
       name: "Video Processing"
       paths:
-        - "lib/image2ascii/image.*"
+        - "lib/video/rgba/**/*"
         - "lib/video/webcam/*"
         - "lib/video/webcam/**/*"
       statuses:
@@ -362,7 +366,7 @@ component_management:
       name: "Security & Crypto"
       paths:
         - "lib/crypto/**/*"
-        - "lib/crc32.*"
+        - "lib/network/crc32.*"
         - "tests/**/crypto*.c"
       statuses:
         - type: project
@@ -376,8 +380,8 @@ component_management:
       name: "Data Structures"
       paths:
         - "lib/buffer_pool.*"
-        - "lib/packet_queue.*"
-        - "lib/ringbuffer.*"
+        - "lib/network/packet/queue.*"
+        - "lib/audio/audio.*"
         - "tests/**/buffer_pool*.c"
         - "tests/**/packet_queue*.c"
         - "tests/**/ringbuffer*.c"
@@ -392,9 +396,9 @@ component_management:
     - component_id: terminal_output
       name: "Terminal Output"
       paths:
-        - "lib/image2ascii/ansi_fast.*"
+        - "lib/video/terminal/**/*"
         - "lib/platform/**/terminal.*"
-        - "lib/palette.*"
+        - "lib/video/ascii/palette.*"
       statuses:
         - type: project
           target: 50%
@@ -404,9 +408,9 @@ component_management:
     - component_id: configuration
       name: "Configuration"
       paths:
-        - "lib/options.*"
-        - "lib/logging.*"
-        - "lib/config.*"
+        - "lib/options/**/*"
+        - "lib/log/**/*"
+        - "lib/options/config/**/*"
       statuses:
         - type: project
           target: 50%
@@ -416,7 +420,7 @@ component_management:
     - component_id: video_frames
       name: "Video Frames"
       paths:
-        - "lib/video_frame.*"
+        - "lib/video/rgba/video_frame.*"
       statuses:
         - type: project
           target: 50%
@@ -428,7 +432,7 @@ component_management:
       paths:
         - "lib/asciichat_errno.*"
         - "lib/common.*"
-        - "lib/compression.*"
+        - "lib/network/compression.*"
         - "lib/util/**/*"
       statuses:
         - type: project
@@ -492,9 +496,11 @@ component_management:
     - component_id: simd_all
       name: "All SIMD Code"
       paths:
-        - "lib/image2ascii/simd/**/*"
+        - "lib/video/ascii/avx2/**/*"
+        - "lib/video/ascii/neon/**/*"
+        - "lib/video/ascii/sve/**/*"
       flag_regexes:
-        - "ascii-chat-tests.*"
+        - "ascii-chat-(tests|integration|performance).*"
       statuses:
         - type: project
           target: 50%
@@ -510,7 +516,7 @@ component_management:
         - "lib/tests/**/*"
       flag_regexes:
         - "coverage"
-        - "ascii-chat-tests.*"
+        - "ascii-chat-(tests|integration|performance).*"
       statuses:
         - type: project
           target: 50%
@@ -532,10 +538,10 @@ component_management:
         - "lib/video/webcam/**/*"
         - "lib/platform/posix/**/*"
         - "lib/platform/windows/**/*"
-        - "lib/image2ascii/simd/neon.*"
-        - "lib/image2ascii/simd/sse*.*"
-        - "lib/image2ascii/simd/avx*.*"
-        - "lib/image2ascii/simd/sve.*"
+        - "lib/video/ascii/neon/**/*"
+        - "lib/video/ascii/ssse3/**/*"
+        - "lib/video/ascii/avx2/**/*"
+        - "lib/video/ascii/sve/**/*"
       statuses:
         - type: project
           target: 40%
@@ -647,6 +653,6 @@ profiling:
   critical_files_paths:
     - "src/server/**/*"
     - "src/client/**/*"
-    - "lib/image2ascii/**/*"
+    - "lib/video/ascii/**/*"
     - "lib/network/**/*"
     - "lib/crypto/**/*"
