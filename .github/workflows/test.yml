@@ -347,12 +347,14 @@ jobs:
             CLANGXX_BIN="clang++"
           fi
 
-          FLAGS="-std=c2x --coverage"
-
           cmake -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_FLAGS="${FLAGS}" \
+            -DASCIICHAT_ENABLE_COVERAGE=ON \
+            -DUSE_MUSL=OFF \
+            -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
+            -DASCIICHAT_SHARED_DEPS=ON \
+            -DCMAKE_C_FLAGS="-std=c2x" \
             -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Save configure cache (integration-tests)
@@ -490,14 +492,13 @@ jobs:
           fi
 
           echo "Configuring performance tests with Release optimization and coverage instrumentation..."
-          FLAGS="-std=c2x -O3 --coverage"
-
           cmake_args=(
             --preset github
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_C_FLAGS="${FLAGS}"
+            -DASCIICHAT_ENABLE_COVERAGE=ON
+            -DCMAKE_C_FLAGS="-std=c2x -O3"
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
             -DUSE_MUSL=OFF
             -DASCIICHAT_SHARED_DEPS=ON

@@ -187,11 +187,11 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
   ctx.playback_only = true;
   float mic[960];
   for (int i = 0; i < 960; i++)
-    mic[i] = 0.25f;
+    mic[i] = 0.25f * sinf(2.0f * 3.14159265f * 440.0f * i / 48000.0f);
   audio_recording_destroy(recording);
   cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
-  audio_recording_start(recording, time_get_ns());
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
+  audio_recording_start(recording, time_get_ns());
   cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960), ASCIICHAT_OK);
   platform_sleep_ns(100000000ULL);
   cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
@@ -200,7 +200,8 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
   float energy = 0;
   for (int i = 0; i < 8192; i++)
     energy += output[i] * output[i];
-  cr_assert_gt(energy, 1.0f);
+  cr_assert_gt(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity),
+               audio_ring_buffer_available_read(ctx.capture_buffer));
   cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
   audio_stop_duplex(&ctx);
   audio_destroy(&ctx);

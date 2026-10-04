@@ -18,6 +18,7 @@
 
 # Include CMake modules for compiler/linker flag checking
 include(CheckCCompilerFlag)
+include(${CMAKE_CURRENT_LIST_DIR}/SourcePaths.cmake)
 include(CheckLinkerFlag)
 include(CheckPIESupported)
 include(CheckCSourceRuns)
@@ -307,23 +308,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         endif()
     endif()
 
-    # Remove absolute file paths from binaries (__FILE__ macros and debug info)
-    # This prevents usernames and full paths from appearing in release binaries
-    # -ffile-prefix-map is equivalent to -fdebug-prefix-map + -fmacro-prefix-map
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        # Get source and build directories with normalized paths
-        get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
-        get_filename_component(BUILD_DIR "${CMAKE_BINARY_DIR}" ABSOLUTE)
-
-        # Map source directory to empty string (removes path prefix)
-        add_compile_options(-ffile-prefix-map=${SOURCE_DIR}/=)
-        # Map build directory to "build/" (for generated files)
-        add_compile_options(-ffile-prefix-map=${BUILD_DIR}/=build/)
-
-        # NOTE: On Windows with Clang, these flags may not fully work.
-        # We use the bash script "cmake/utils/remove_paths.sh" (via Git Bash)
-        # as a fallback to edit remaining paths in the release binary.
-    endif()
+    configure_source_path_flags()
 
     # When IPO/LTO is enabled we want to retain native code in the object files
     # so developer tooling (e.g. `otool`) still recognises them as regular

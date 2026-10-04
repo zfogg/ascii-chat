@@ -49,6 +49,36 @@ class CoverageReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
 
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and importlib.util.find_spec("gcovr"), "Requires CMake, Ninja, Clang and gcovr")
+    def test_release_path_mapping_preserves_coverage_source_lookup(self):
+        module = Path(__file__).resolve().parents[2] / "cmake/compiler/SourcePaths.cmake"
+        source = self.root / "lib/main.c"
+        source.parent.mkdir()
+        source.write_text('#include <stdio.h>\nint main(void) { puts(__FILE__); return 0; }\n')
+        (self.root / "CMakeLists.txt").write_text(
+            'cmake_minimum_required(VERSION 3.20)\nproject(fixture C)\n'
+            f'include("{module.as_posix()}")\nconfigure_source_path_flags()\n'
+            'add_executable(fixture lib/main.c)\n'
+            'if(ASCIICHAT_ENABLE_COVERAGE)\n'
+            'target_compile_options(fixture PRIVATE --coverage)\n'
+            'target_link_options(fixture PRIVATE --coverage)\nendif()\n'
+        )
+        for enabled in ("OFF", "ON"):
+            build = self.root / "build" / enabled
+            subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                            f"-DCMAKE_C_COMPILER={shutil.which('clang')}", "-DCMAKE_BUILD_TYPE=Release",
+                            f"-DASCIICHAT_ENABLE_COVERAGE={enabled}"], check=True)
+            subprocess.run(["cmake", "--build", str(build)], check=True)
+            output = subprocess.check_output([str(build / "fixture")], text=True).strip()
+            if enabled == "OFF":
+                self.assertEqual(output, "lib/main.c")
+            else:
+                self.assertEqual(output, str(source))
+                coverage_report.generate(self.root, build, self.report)
+                entry = ET.parse(self.report).find('.//class[@filename="lib/main.c"]')
+                self.assertIsNotNone(entry)
+                self.assertGreater(int(entry.find("lines/line").get("hits")), 0)
+
     @unittest.skipUnless(shutil.which("clang") and importlib.util.find_spec("gcovr"), "Requires Clang and gcovr")
     def test_real_counters_merge_without_losing_same_basename_sources(self):
         build = self.root / "build"

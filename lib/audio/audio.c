@@ -100,7 +100,9 @@ void audio_terminate_portaudio_final(void) {
 #define WORKER_TIMEOUT_MS 1 // Wake up every 1ms to keep up with 48kHz playback (was 3ms)
 
 static void audio_publish_local_capture(audio_context_t *ctx, float *samples, size_t count, bool use_media) {
-  uint64_t block_start = time_get_ns() - count * 1000000000ULL / 48000;
+  uint64_t now = time_get_ns();
+  uint64_t duration = count * 1000000000ULL / 48000;
+  uint64_t block_start = now > duration ? now - duration : 0;
   audio_recording_submit(AUDIO_RECORDING_MIC, samples, count, block_start);
   if (use_media) {
     float media[WORKER_BATCH_SAMPLES];
