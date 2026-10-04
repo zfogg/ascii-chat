@@ -23,7 +23,7 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v2")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v3")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()

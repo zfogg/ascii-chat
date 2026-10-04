@@ -130,6 +130,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         foreach(_patch_marker_to_clean
             "${webrtc_aec3_SOURCE_DIR}/.patches_applied"
             "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v2"
+            "${webrtc_aec3_SOURCE_DIR}/.patches_applied_v3"
         )
             if(EXISTS "${_patch_marker_to_clean}")
                 file(REMOVE "${_patch_marker_to_clean}")
