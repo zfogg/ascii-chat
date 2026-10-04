@@ -1,6 +1,15 @@
 name: "CodeQL config"
 queries:
   - uses: security-and-quality
+paths:
+  - lib
+  - src
+  - include
+paths-ignore:
+  - deps
+  - .deps-cache
+  - build
+  - web
 query-filters:
   - exclude:
       id: cpp/commented-out-code
