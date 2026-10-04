@@ -56,7 +56,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
-          cmake --build build
+          cmake --build build --parallel 2
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
