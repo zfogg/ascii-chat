@@ -277,11 +277,12 @@ elseif(WIN32)
         # Compile all source files with clang
         file(GLOB C_FILES "${VTERM_SOURCE_DIR}/src/*.c")
         set(OBJ_FILES "")
+        separate_arguments(VTERM_COMPILER_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
         foreach(src ${C_FILES})
             get_filename_component(name ${src} NAME_WE)
             set(obj "${VTERM_SOURCE_DIR}/${name}.obj")
             execute_process(
-                COMMAND "${CMAKE_C_COMPILER}" -O2 -w
+                COMMAND "${CMAKE_C_COMPILER}" ${VTERM_COMPILER_FLAGS} -O2 -w
                     -I "${VTERM_SOURCE_DIR}/include" -std=c99
                     -c "${src}" -o "${obj}"
                 RESULT_VARIABLE CC_RESULT
