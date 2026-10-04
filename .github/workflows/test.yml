@@ -1,6 +1,7 @@
 name: Test Suite
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, master]
     paths:
@@ -9,6 +10,7 @@ on:
       - "**.m"
       - "tests/**"
       - "CMakeLists.txt"
+      - "**/CMakeLists.txt"
       - "cmake/**"
       - ".github/workflows/test.yml"
   pull_request:
@@ -19,6 +21,7 @@ on:
       - "**.m"
       - "tests/**"
       - "CMakeLists.txt"
+      - "**/CMakeLists.txt"
       - "cmake/**"
       - ".github/workflows/test.yml"
 
