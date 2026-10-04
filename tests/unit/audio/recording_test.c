@@ -234,6 +234,23 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   platform_delete_temp_file(path);
 }
 
+Test(recording, session_audio_stops_worker_before_releasing_borrowed_media, .timeout = 10) {
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(source);
+  session_audio_ctx_t *ctx = session_audio_create(false);
+  cr_assert_not_null(ctx);
+  session_audio_set_capture_source(ctx, source);
+  cr_assert_eq(session_audio_start_duplex(ctx), ASCIICHAT_OK);
+  platform_sleep_ns(100000000ULL);
+  float samples[480];
+  cr_assert_gt(session_audio_read_captured(ctx, samples, 480), 0);
+  session_audio_destroy(ctx);
+  media_source_destroy(source);
+  platform_delete_temp_file(path);
+}
+
 Test(recording, rendered_video_contains_mixed_audio_and_flushes_the_tail, .timeout = 15) {
   char path[1024];
   int fd = -1;

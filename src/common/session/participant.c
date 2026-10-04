@@ -193,13 +193,13 @@ void session_participant_destroy(session_participant_t *p) {
   }
 
   // Clean up media capture contexts
-  if (p->video_capture) {
-    session_capture_destroy(p->video_capture);
-    p->video_capture = NULL;
-  }
   if (p->audio_capture) {
     session_audio_destroy(p->audio_capture);
     p->audio_capture = NULL;
+  }
+  if (p->video_capture) {
+    session_capture_destroy(p->video_capture);
+    p->video_capture = NULL;
   }
   if (p->opus_encoder) {
     opus_codec_destroy(p->opus_encoder);
@@ -707,6 +707,7 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
   if (asciichat_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     p->audio_capture_running = false;
+    session_audio_stop(p->audio_capture);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");
   }
 
