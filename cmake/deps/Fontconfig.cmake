@@ -236,14 +236,27 @@ if(USE_MUSL)
     # Download fontconfig if not already present
     if(NOT EXISTS "${FONTCONFIG_SOURCE_DIR}")
         message(STATUS "Downloading fontconfig...")
-        file(DOWNLOAD
-            "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz"
-            "${FONTCONFIG_TARBALL}"
-            SHOW_PROGRESS
-            STATUS download_status
-        )
-        list(GET download_status 0 download_result)
-        if(NOT download_result EQUAL 0)
+        set(FONTCONFIG_DOWNLOAD_URL "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz")
+        set(FONTCONFIG_DOWNLOAD_OK FALSE)
+        foreach(download_attempt RANGE 1 3)
+            file(DOWNLOAD
+                "${FONTCONFIG_DOWNLOAD_URL}"
+                "${FONTCONFIG_TARBALL}"
+                SHOW_PROGRESS
+                TIMEOUT 120
+                INACTIVITY_TIMEOUT 30
+                STATUS download_status
+            )
+            list(GET download_status 0 download_result)
+            if(download_result EQUAL 0)
+                set(FONTCONFIG_DOWNLOAD_OK TRUE)
+                break()
+            endif()
+            list(GET download_status 1 download_message)
+            message(WARNING "Fontconfig download attempt ${download_attempt}/3 failed: ${download_message}")
+            file(REMOVE "${FONTCONFIG_TARBALL}")
+        endforeach()
+        if(NOT FONTCONFIG_DOWNLOAD_OK)
             message(FATAL_ERROR "Failed to download fontconfig")
         endif()
 
