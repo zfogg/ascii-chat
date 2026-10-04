@@ -89,6 +89,7 @@ def main():
                     time.sleep(0.1)
             for client in clients:
                 client.wait(timeout=25)
+                assert client.returncode == 0, f"Client exited with status {client.returncode}"
             for frequency in (440, 880):
                 verify(root / f"call-{frequency}.mp4", (440, 880))
             print("Both client recordings contain local and remote tones with synchronized audio/video.")

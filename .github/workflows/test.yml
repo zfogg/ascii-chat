@@ -324,6 +324,10 @@ jobs:
           rm -rf build/bin/test_*
           rm -rf build/lib/*.a
 
+      - name: Clear stale integration executables and libraries
+        run: |
+          rm -f build/bin/test_* build/bin/ascii-chat build/lib/libasciichat*
+
       - name: Configure integration tests with coverage
         run: |
           echo "Configuring integration tests with coverage build..."
@@ -351,6 +355,8 @@ jobs:
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
             -DASCIICHAT_ENABLE_COVERAGE=ON \
+            -DBUILD_TESTS=ON \
+            -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
             -DUSE_MUSL=OFF \
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
             -DASCIICHAT_SHARED_DEPS=ON \
@@ -380,7 +386,7 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build
+          cmake --build build --target ascii-chat tests
           python3 tests/integration/render_file_audio.py build/bin/ascii-chat
 
           # Run integration tests via ctest preset
