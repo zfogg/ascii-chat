@@ -23,7 +23,7 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v7")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v8")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()
@@ -166,7 +166,13 @@ add_library(AudioProcess
 # an earlier version of this patch applied.
 string(REPLACE
     "if(ENABLE_SIMD_SSE2)"
-    "if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\" AND NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\")"
+    "if(NOT ASCIICHAT_TARGET_ARM64)"
+    AP_CMAKE_CONTENT
+    "${AP_CMAKE_CONTENT}"
+)
+string(REPLACE
+    "if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)"
+    "if(NOT ASCIICHAT_TARGET_ARM64)"
     AP_CMAKE_CONTENT
     "${AP_CMAKE_CONTENT}"
 )
@@ -176,13 +182,6 @@ string(REPLACE
     AP_CMAKE_CONTENT
     "${AP_CMAKE_CONTENT}"
 )
-string(REPLACE
-    "if(NOT ASCIICHAT_TARGET_ARM64)"
-    "if(ENABLE_SIMD_SSE2)"
-    AP_CMAKE_CONTENT
-    "${AP_CMAKE_CONTENT}"
-)
-
 if(ASCIICHAT_TARGET_ARM64)
     string(REPLACE "utility/ooura_fft_sse2.cc" "" AP_CMAKE_CONTENT "${AP_CMAKE_CONTENT}")
     string(REPLACE "resampler/sinc_resampler_sse.cc" "" AP_CMAKE_CONTENT "${AP_CMAKE_CONTENT}")
@@ -193,7 +192,7 @@ if(ASCIICHAT_TARGET_ARM64)
         "${AP_CMAKE_CONTENT}"
     )
     string(REPLACE
-        "if(ENABLE_SIMD_SSE2)"
+	    "if(ENABLE_SIMD_SSE2)"
         "if(FALSE)"
         AP_CMAKE_CONTENT
         "${AP_CMAKE_CONTENT}"
@@ -201,7 +200,7 @@ if(ASCIICHAT_TARGET_ARM64)
 endif()
 string(REPLACE
     "if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\" AND NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"ARM64|arm64|aarch64|AARCH64\")"
-    "if(ENABLE_SIMD_SSE2)"
+    "if(NOT ASCIICHAT_TARGET_ARM64)"
     AP_CMAKE_CONTENT
     "${AP_CMAKE_CONTENT}"
 )
