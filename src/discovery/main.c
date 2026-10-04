@@ -62,6 +62,56 @@
  * Global Discovery Session
  * ============================================================================ */
 
+typedef struct {
+  acip_transport_t *transport;
+  session_display_ctx_t *display;
+  atomic_t running;
+  asciichat_error_t result;
+} discovery_video_receiver_t;
+
+static void *discovery_video_receive_thread(void *user_data) {
+  discovery_video_receiver_t *ctx = user_data;
+  while (atomic_load_bool(&ctx->running) && !should_exit() && acip_transport_is_connected(ctx->transport)) {
+    asciichat_error_t result = ASCIICHAT_OK;
+    // Keep the newest display frame and bound receive work so capture cannot starve.
+    char *latest_text = NULL;
+    for (size_t received = 0; received < 128 && acip_transport_has_pending_data(ctx->transport); received++) {
+      packet_type_t type;
+      void *payload = NULL, *allocated = NULL;
+      size_t length = 0;
+      result = packet_receive_via_transport(ctx->transport, &type, &payload, &length, &allocated);
+      if (result == ASCIICHAT_OK && type == PACKET_TYPE_ASCII_FRAME && length >= sizeof(ascii_frame_packet_t)) {
+        ascii_frame_packet_t header;
+        memcpy(&header, payload, sizeof(header));
+        size_t size = NET_TO_HOST_U32(header.original_size);
+        if (NET_TO_HOST_U32(header.compressed_size) == 0 && size <= length - sizeof(header)) {
+          SAFE_FREE(latest_text);
+          latest_text = SAFE_MALLOC(size + 1, char *);
+          memcpy(latest_text, (const uint8_t *)payload + sizeof(header), size);
+          latest_text[size] = '\0';
+        }
+      } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {
+        result = packet_send_via_transport(ctx->transport, PACKET_TYPE_PONG, payload, length, 0);
+      }
+      if (allocated)
+        buffer_pool_free(NULL, allocated, 0);
+      if (result != ASCIICHAT_OK) {
+        SAFE_FREE(latest_text);
+        ctx->result = result;
+        atomic_store_bool(&ctx->running, false);
+        return NULL;
+      }
+    }
+    if (latest_text) {
+      session_display_render_frame(ctx->display, latest_text);
+      SAFE_FREE(latest_text);
+      latest_text = NULL;
+    }
+    platform_sleep_ns(NS_PER_MS_INT);
+  }
+  return NULL;
+}
+
 /** Global discovery session created in discovery_main() and used by discovery_run() */
 static discovery_session_t *g_discovery = NULL;
 
@@ -301,7 +351,8 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     acip_transport_t *transport = session_participant_get_transport(participant);
     if (transport && acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC) {
       result = acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR);
-      if (result != ASCIICHAT_OK) return result;
+      if (result != ASCIICHAT_OK)
+        return result;
       terminal_capabilities_t caps = detect_terminal_capabilities();
       terminal_capabilities_packet_t packet = {0};
       packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
@@ -318,49 +369,47 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       SAFE_STRNCPY(packet.term_type, caps.term_type, sizeof(packet.term_type));
       SAFE_STRNCPY(packet.colorterm, caps.colorterm, sizeof(packet.colorterm));
       result = acip_send_capabilities(transport, &packet, sizeof(packet));
-      if (result != ASCIICHAT_OK) return result;
+      if (result != ASCIICHAT_OK)
+        return result;
       result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO);
-      if (result != ASCIICHAT_OK) return result;
-      while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport)) {
+      if (result != ASCIICHAT_OK)
+        return result;
+      discovery_video_receiver_t receiver = {
+          .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
+      asciichat_thread_t receiver_thread;
+      atomic_store_bool(&receiver.running, true);
+      result = asciichat_thread_create(&receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
+                                       &receiver);
+      if (result != ASCIICHAT_OK)
+        return result;
+      while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
+             atomic_load_bool(&receiver.running)) {
+        uint64_t iteration_start = time_get_ns();
         image_t *frame = session_capture_read_frame(capture);
         if (frame) {
           image_t *processed = session_capture_process_for_transmission(capture, frame);
           if (processed) {
             result = acip_send_image_frame(transport, processed->pixels, processed->w, processed->h, 3);
             image_destroy(processed);
-            if (result != ASCIICHAT_OK) return result;
+            if (result != ASCIICHAT_OK)
+              break;
           }
-        }
-        // Drain host output so the ordered channel continues accepting media.
-        while (acip_transport_has_pending_data(transport)) {
-          packet_type_t type;
-          void *payload = NULL, *allocated = NULL;
-          size_t length = 0;
-          result = packet_receive_via_transport(transport, &type, &payload, &length, &allocated);
-          if (result == ASCIICHAT_OK && type == PACKET_TYPE_ASCII_FRAME && length >= sizeof(ascii_frame_packet_t)) {
-            ascii_frame_packet_t header;
-            memcpy(&header, payload, sizeof(header));
-            size_t size = NET_TO_HOST_U32(header.original_size);
-            if (NET_TO_HOST_U32(header.compressed_size) == 0 && size <= length - sizeof(header)) {
-              char *text = SAFE_MALLOC(size + 1, char *);
-              memcpy(text, (const uint8_t *)payload + sizeof(header), size);
-              text[size] = '\0';
-              session_display_render_frame(display, text);
-              log_debug_every(5 * NS_PER_SEC_INT, "Rendered WebRTC ASCII frame: %ux%u, %zu bytes",
-                              NET_TO_HOST_U32(header.width), NET_TO_HOST_U32(header.height), size);
-              SAFE_FREE(text);
-            }
-          } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {
-            result = packet_send_via_transport(transport, PACKET_TYPE_PONG, payload, length, 0);
-          }
-          if (allocated) buffer_pool_free(NULL, allocated, 0);
-          if (result != ASCIICHAT_OK) return result;
         }
         result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
-        if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) return result;
+        if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT)
+          break;
         APP_CALLBACK_VOID(platform_pump_events);
-        platform_sleep_ns(NS_PER_SEC_INT / (GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 15));
+        uint64_t interval = NS_PER_SEC_INT / (GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 30);
+        uint64_t elapsed = time_get_ns() - iteration_start;
+        if (elapsed < interval)
+          platform_sleep_ns(interval - elapsed);
       }
+      atomic_store_bool(&receiver.running, false);
+      asciichat_thread_join(&receiver_thread, NULL);
+      if (receiver.result != ASCIICHAT_OK)
+        return receiver.result;
+      if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT)
+        return result;
       return ASCIICHAT_OK;
     }
     // PARTICIPANT ROLE: Just wait for host connection

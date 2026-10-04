@@ -304,7 +304,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Initializing capture config");
   session_capture_config_t capture_config = {0};
-  capture_config.resize_for_network = false;
+  capture_config.resize_for_network = config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY;
   capture_config.should_exit_callback = capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
