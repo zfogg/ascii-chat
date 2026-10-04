@@ -33,10 +33,13 @@ void atomic_store_bool_impl(atomic_t *a, uint64_t value) {
   atomic_store((_Atomic(uint64_t) *)&a->impl, value);
 }
 
-bool atomic_cas_bool_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
+bool atomic_cas_bool_impl(atomic_t *a, bool *expected, bool new_value) {
   if (!a || !expected)
     return false;
-  return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+  uint64_t exp = (uint64_t)*expected;
+  bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &exp, (uint64_t)new_value);
+  *expected = (bool)exp;
+  return success;
 }
 
 // ============================================================================
@@ -101,12 +104,12 @@ bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
   return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
 }
 
-bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value) {
+bool atomic_cas_int_impl(atomic_t *a, int *expected, int new_value) {
   if (!a || !expected)
     return false;
-  uint64_t expected_u64 = (uint64_t)*expected;
-  bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)new_value);
-  *expected = (int64_t)expected_u64;
+  uint64_t expected_u64 = (uint64_t)(int64_t)*expected;
+  bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)(int64_t)new_value);
+  *expected = (int)(int32_t)expected_u64;
   return result;
 }
 
@@ -221,9 +224,7 @@ int atomic_fetch_sub_int(atomic_t *a, int delta) {
 bool atomic_cas_int(atomic_t *a, int *expected, int new_value) {
   if (!a || !expected)
     return false;
-  int64_t exp = (int64_t)*expected;
-  bool success = atomic_cas_int_impl(a, &exp, (int64_t)new_value);
-  *expected = (int)exp;
+  bool success = atomic_cas_int_impl(a, expected, new_value);
   atomic_on_cas(a, success);
   return success;
 }

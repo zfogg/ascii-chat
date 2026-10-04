@@ -21,6 +21,13 @@
 #include <string.h>
 #include <inttypes.h>
 
+// Hash table growth runs under entries_lock. Memory tracking looks up names
+// under the same lock, so registry metadata must use untracked allocations.
+#undef uthash_malloc
+#undef uthash_free
+#define uthash_malloc(sz) malloc(sz)
+#define uthash_free(ptr, sz) free(ptr)
+
 #define MAX_NAME_LEN 256
 #define DESCRIBE_BUFFER_SIZE 768
 
@@ -241,9 +248,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   // Only hold lock for the hash table operation
   log_dev("[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s", (void *)key, type);
   rwlock_wrlock(&g_named_registry.entries_lock);
-  log_dev("[NAMED_REGISTER_LOCK_2] ✅ Acquired entries_lock, adding hash entry");
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-  log_dev("[NAMED_REGISTER_LOCK_3] Hash entry added, releasing entries_lock");
   rwlock_wrunlock(&g_named_registry.entries_lock);
   log_dev("[NAMED_REGISTER_LOCK_4] ✅ Released entries_lock");
 

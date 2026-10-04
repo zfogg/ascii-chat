@@ -441,7 +441,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   char duration_str[32];
   time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
-  log_info("ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
+  log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -609,7 +609,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   char copy_duration_str[32];
   time_pretty((uint64_t)(copy_ms * 1e6), -1, copy_duration_str, sizeof(copy_duration_str));
-  log_info("Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
+  log_debug_every(5 * NS_PER_SEC_INT, "Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
 
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);

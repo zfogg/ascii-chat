@@ -213,7 +213,7 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
 
   // Allocate data channel wrapper
-  webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
+  webrtc_data_channel_t *dc = SAFE_CALLOC(1, sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
   if (!dc) {
     log_error("Failed to allocate data channel wrapper");
     rtcDeleteDataChannel(dc_id);
@@ -292,12 +292,12 @@ static void on_datachannel_message_adapter(int dc_id, const char *data, int size
   // Log at libdatachannel callback level (debug level for normal operation)
   if (size >= 20 && data) {
     const uint8_t *pkt = (const uint8_t *)data;
-    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+    log_dev("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
               "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
               dc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
               pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
   } else {
-    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d (no data or too small)", dc_id, size);
+    log_dev("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d (no data or too small)", dc_id, size);
   }
 
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
@@ -346,7 +346,7 @@ static asciichat_error_t webrtc_ensure_initialized(void) {
   }
 
   // First initialization - call library initialization exactly once
-  rtcInitLogger(RTC_LOG_VERBOSE, rtc_log_callback);
+  rtcInitLogger(log_get_level() <= LOG_DEV ? RTC_LOG_VERBOSE : RTC_LOG_INFO, rtc_log_callback);
   rtcPreload();
 
   log_debug("WebRTC library initialized (libdatachannel)");
@@ -563,6 +563,16 @@ asciichat_error_t webrtc_set_remote_description(webrtc_peer_connection_t *pc, co
     return SET_ERRNO(ERROR_NETWORK, "Failed to set remote SDP (rtc error %d)", result);
   }
 
+  if (strcmp(type, "offer") == 0 && strstr(sdp, "\na=dcmap:0 label=\"acip\"") && !pc->dc) {
+    rtcDataChannelInit init = {0};
+    init.negotiated = true;
+    init.manualStream = true;
+    init.stream = 0;
+    int dc_id = rtcCreateDataChannelEx(pc->rtc_id, "acip", &init);
+    if (dc_id < 0) return SET_ERRNO(ERROR_NETWORK, "Failed to create negotiated ACIP channel");
+    on_datachannel_adapter(pc->rtc_id, dc_id, pc);
+  }
+
   log_debug("Set remote SDP description (pc_id=%d, type=%s)", pc->rtc_id, type);
   return ASCIICHAT_OK;
 }
@@ -644,24 +654,24 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
   // Log packet details at network layer (debug level for normal operation)
   if (size >= 20) {
     const uint8_t *pkt = (const uint8_t *)data;
-    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+    log_dev("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
               "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
               dc->rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
               pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
   } else {
-    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)", dc->rtc_id, size);
+    log_dev("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)", dc->rtc_id, size);
   }
 
   int result = rtcSendMessage(dc->rtc_id, (const char *)data, (int)size);
 
-  log_debug("★ RTCSENDMESSAGE_AFTER: dc_id=%d, rtcSendMessage returned %d for size=%zu", dc->rtc_id, result, size);
+  log_dev("★ RTCSENDMESSAGE_AFTER: dc_id=%d, rtcSendMessage returned %d for size=%zu", dc->rtc_id, result, size);
 
   if (result < 0) {
     log_error("★ WEBRTC_DATACHANNEL_SEND: FAILED with error code %d", result);
     return SET_ERRNO(ERROR_NETWORK, "Failed to send data (rtc error %d)", result);
   }
 
-  log_debug("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
+  log_dev("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
   return ASCIICHAT_OK;
 }
 

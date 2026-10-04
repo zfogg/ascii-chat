@@ -360,6 +360,11 @@ void video_frame_commit(video_frame_buffer_t *vfb);
  */
 const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb);
 
+/** Return the latest committed frame without consuming the new-frame flag.
+ * The returned pointer has the same borrowed lifetime as video_frame_get_latest().
+ */
+const video_frame_t *video_frame_peek_latest(video_frame_buffer_t *vfb);
+
 /**
  * @brief Get frame statistics for quality monitoring
  * @param vfb Frame buffer manager (must not be NULL)

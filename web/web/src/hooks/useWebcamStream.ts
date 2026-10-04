@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
 import {
-  ClientConnection,
   H265Encoder,
   buildStreamStartPacket,
   buildImageFramePayload,
   buildImageFrameH265Payload,
 } from "../network";
+import type { ClientSession } from "../network/Transport";
 import type { SettingsConfig } from "../components";
 
 // Helper to compute simple frame hash
@@ -21,7 +21,7 @@ const computeFrameHash = (data: Uint8Array): number => {
 };
 
 interface UseWebcamStreamOptions {
-  clientRef: React.RefObject<ClientConnection | null>;
+  clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: SettingsConfig;
   captureFrame: () => {
@@ -35,6 +35,7 @@ interface UseWebcamStreamOptions {
   lastFrameTimeRef: React.MutableRefObject<number>;
   frameQueueRef: React.MutableRefObject<string[]>;
   setError: (error: string) => void;
+  includeAudio?: boolean;
 }
 
 export function useWebcamStream(options: UseWebcamStreamOptions) {
@@ -49,8 +50,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     lastFrameTimeRef,
     frameQueueRef,
     setError,
+    includeAudio = false,
   } = options;
 
+  const generationRef = useRef(0);
+  const startingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const h265EncoderRef = useRef<H265Encoder | null>(null);
   const webcamCaptureLoopRef = useRef<(() => void) | null>(null);
@@ -209,7 +213,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       webcamCaptureLoopRef.current
     ) {
       // Start timer to send frames at target FPS
-      const sendInterval = 1000 / settings.targetFps;
+      const sendInterval = 1000 / Math.min(settings.targetFps, 15);
       captureTimerRef.current = setInterval(() => {
         if (webcamCaptureLoopRef.current) {
           webcamCaptureLoopRef.current();
@@ -236,6 +240,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   }, [connectionState, settings.targetFps]);
 
   const startWebcam = useCallback(async () => {
+    if (startingRef.current || streamRef.current) return;
     console.log("[Client] startWebcam() called");
     console.log(
       `[DEBUG] videoRef.current=${!!videoRef.current}, canvasRef.current=${!!canvasRef.current}`,
@@ -260,11 +265,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     console.log("[Client] Passed all initial checks");
 
+    startingRef.current = true;
+    const generation = ++generationRef.current;
     try {
       // Send STREAM_START to notify server we're about to send video
       if (clientRef.current) {
         console.log("[Client] Sending STREAM_START before webcam...");
-        const streamPayload = buildStreamStartPacket(false);
+        const streamPayload = buildStreamStartPacket(includeAudio);
         // Send as unencrypted ACIP packet (like native client does)
         clientRef.current.sendUnencryptedAcipPacket(
           PacketType.STREAM_START,
@@ -324,6 +331,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         });
       });
 
+      if (
+        generation !== generationRef.current ||
+        clientRef.current?.getState() !== ConnectionState.CONNECTED
+      ) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       const video = videoRef.current!;
       console.log("[DEBUG] Before setting srcObject, video element:", {
@@ -435,7 +449,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           console.warn(
             "[Client] Metadata timeout - setting canvas dimensions from current video properties",
           );
-          if (videoRef.current && canvasRef.current) {
+          if (
+            generation === generationRef.current &&
+            !streamRef.current?.active &&
+            videoRef.current &&
+            canvasRef.current
+          ) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -491,6 +510,21 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
+      if (generation !== generationRef.current) return;
+      // Keep raw RGB fallback bounded for browsers without hardware HEVC.
+      const scale = Math.min(
+        1,
+        320 / canvasRef.current.width,
+        240 / canvasRef.current.height,
+      );
+      canvasRef.current.width = Math.max(
+        2,
+        Math.floor((canvasRef.current.width * scale) / 2) * 2,
+      );
+      canvasRef.current.height = Math.max(
+        2,
+        Math.floor((canvasRef.current.height * scale) / 2) * 2,
+      );
       setIsWebcamRunning(true);
       lastFrameTimeRef.current = performance.now();
       frameIntervalRef.current = 1000 / settings.targetFps;
@@ -540,10 +574,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       const errMsg = `Failed to start webcam: ${String(err)}`;
       console.error("[Client]", errMsg);
       console.error("[Client] Error:", err);
-      setError(errMsg);
+      if (generation === generationRef.current) setError(errMsg);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    } finally {
+      startingRef.current = false;
     }
   }, [
     connectionState,
+    includeAudio,
     settings.width,
     settings.height,
     settings.targetFps,
@@ -557,6 +596,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   ]);
 
   const stopWebcam = useCallback(() => {
+    generationRef.current++;
     // Stop timer (connection state change will also stop it)
     if (captureTimerRef.current) {
       clearInterval(captureTimerRef.current);

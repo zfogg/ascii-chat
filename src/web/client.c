@@ -4,6 +4,7 @@
  */
 
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -12,6 +13,7 @@
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)
+// clang-format off
 EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len), {
   if (!Module.sendPacketCallback) {
     console.error('[WASM] sendPacketCallback not registered - cannot send packet');
@@ -28,6 +30,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
   // Send as raw binary packet via WebSocket
   Module.sendPacketCallback(packetCopy);
 });
+// clang-format on
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
@@ -50,6 +53,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/magic.h>
 #include <opus.h>
+#include <sodium.h>
 
 // ============================================================================
 // WASM Transport Implementation
@@ -192,6 +196,37 @@ void client_cleanup(void) {
 // ============================================================================
 // Cryptography API
 // ============================================================================
+
+/** Build a signed ACDS join request without exporting the ephemeral signing key. */
+EMSCRIPTEN_KEEPALIVE
+asciichat_error_t client_acds_join_request(const char *session, const char *password, uint8_t *output) {
+  if (!session || !password || !output || strlen(session) == 0 || strlen(session) > 47 || strlen(password) > 127) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery session or password");
+  }
+  uint8_t public_key[crypto_sign_PUBLICKEYBYTES];
+  uint8_t secret_key[crypto_sign_SECRETKEYBYTES];
+  if (crypto_sign_keypair(public_key, secret_key) != 0) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to create discovery identity");
+  }
+  memset(output, 0, 282);
+  size_t session_len = strlen(session);
+  output[0] = (uint8_t)session_len;
+  memcpy(output + 1, session, session_len);
+  memcpy(output + 49, public_key, sizeof(public_key));
+  uint64_t timestamp = (uint64_t)emscripten_date_now();
+  // Packed ACDS structs use host (little-endian) fields; signatures use network order.
+  memcpy(output + 145, &timestamp, sizeof(timestamp));
+  uint8_t message[9 + 48];
+  message[0] = (uint8_t)6004;
+  for (size_t i = 0; i < 8; ++i) message[1 + i] = (uint8_t)(timestamp >> (56 - i * 8));
+  memcpy(message + 9, session, session_len);
+  int result = crypto_sign_detached(output + 81, NULL, message, 9 + session_len, secret_key);
+  sodium_memzero(secret_key, sizeof(secret_key));
+  if (result != 0) return SET_ERRNO(ERROR_CRYPTO, "Failed to sign discovery join");
+  output[153] = password[0] != '\0';
+  memcpy(output + 154, password, strlen(password));
+  return ASCIICHAT_OK;
+}
 
 /**
  * Generate client keypair for handshake
@@ -579,6 +614,11 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   uint32_t length = NET_TO_HOST_U32(header->length);
   uint32_t client_id = NET_TO_HOST_U32(header->client_id);
   uint32_t crc32 = NET_TO_HOST_U32(header->crc32);
+
+  if (length != packet_len - sizeof(packet_header_t) ||
+      (length > 0 && asciichat_crc32_sw(raw_packet + sizeof(packet_header_t), length) != crc32)) {
+    return NULL;
+  }
 
   // Build JSON response with packet metadata
   char *json = SAFE_MALLOC(1024, char *);

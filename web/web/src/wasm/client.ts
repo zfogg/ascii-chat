@@ -88,6 +88,33 @@ interface ClientModuleExports {
 }
 
 interface ClientModule {
+  HEAP16: Int16Array;
+  _client_acds_join_request(
+    session: number,
+    password: number,
+    output: number,
+  ): number;
+  _client_opus_encoder_init(
+    sampleRate: number,
+    channels: number,
+    bitrate: number,
+  ): number;
+  _client_opus_decoder_init(sampleRate: number, channels: number): number;
+  _client_opus_encode(
+    pcm: number,
+    frameSize: number,
+    output: number,
+    maxBytes: number,
+  ): number;
+  _client_opus_decode(
+    input: number,
+    bytes: number,
+    pcm: number,
+    frameSize: number,
+    fec: number,
+  ): number;
+  _client_opus_encoder_cleanup(): void;
+  _client_opus_decoder_cleanup(): void;
   HEAPU8: Uint8Array;
   HEAP32: Int32Array;
   UTF8ToString(ptr: number): string;
@@ -143,11 +170,11 @@ export enum ConnectionState {
 }
 
 export enum ColorMode {
-  AUTO = 0,
-  NONE = 1,
-  COLOR_16 = 2,
-  COLOR_256 = 3,
-  TRUECOLOR = 4,
+  AUTO = -1,
+  NONE = 0,
+  COLOR_16 = 1,
+  COLOR_256 = 2,
+  TRUECOLOR = 3,
 }
 
 export enum ColorFilter {
@@ -269,6 +296,7 @@ export function packetTypeName(type: number): string {
 import ClientModuleFactory from "./dist/client.js";
 
 let wasmModule: ClientModule | null = null;
+let moduleLoading: Promise<void> | null = null;
 
 /**
  * Read a little-endian int32 from WASM memory via HEAPU8.
@@ -305,9 +333,26 @@ export interface ParsedPacket {
  */
 export async function ensureWasmModuleLoaded(): Promise<void> {
   if (wasmModule) return;
+  if (moduleLoading) return moduleLoading;
+  moduleLoading = loadWasmModule();
+  try {
+    await moduleLoading;
+  } finally {
+    moduleLoading = null;
+  }
+}
+
+async function loadWasmModule(): Promise<void> {
+  if (!globalThis.crossOriginIsolated) {
+    throw new Error(
+      "WASM requires cross-origin isolation. Serve this page with COOP: same-origin and COEP: require-corp.",
+    );
+  }
 
   console.log("[WASM] Loading module for help text...");
   wasmModule = await ClientModuleFactory({
+    locateFile: (path: string) =>
+      new URL(`/wasm/${path}`, window.location.origin).href,
     getRandomValue: function () {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);

@@ -36,6 +36,8 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/util/endian.h>
 #include <string.h>
 
 /**
@@ -62,10 +64,13 @@ typedef struct {
   webrtc_peer_connection_t *peer_conn; ///< Peer connection (owned)
   webrtc_data_channel_t *data_channel; ///< Data channel (owned)
   ringbuffer_t *recv_queue;            ///< Receive message queue
+  uint8_t *partial;                  ///< Incomplete ACIP packet bytes
+  size_t partial_len;
   mutex_t queue_mutex;                 ///< Protect queue operations
   cond_t queue_cond;                   ///< Signal when messages arrive
   bool is_connected;                   ///< Connection state
   mutex_t state_mutex;                 ///< Protect state changes
+  mutex_t send_mutex;                  ///< Keep chunks from concurrent packets together
 } webrtc_transport_data_t;
 
 // =============================================================================
@@ -83,38 +88,45 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     return;
   }
 
-  // Allocate message buffer using buffer pool (will be freed by acip_client_receive_and_dispatch)
-  webrtc_recv_msg_t msg;
-  msg.data = buffer_pool_alloc(NULL, len);
-  if (!msg.data) {
+  // Ordered DataChannels may split a large ACIP packet across messages.
+  const size_t limit = 8 * 1024 * 1024;
+  mutex_lock(&wrtc->queue_mutex);
+  if (len > limit || wrtc->partial_len > limit - len) {
+    mutex_unlock(&wrtc->queue_mutex);
+    log_error("WebRTC receive buffer exceeded");
+    webrtc_datachannel_close(channel);
     return;
   }
-
-  // Copy data
-  memcpy(msg.data, data, len);
-  msg.len = len;
-
-  // Push to receive queue
-  mutex_lock(&wrtc->queue_mutex);
-
-  bool success = ringbuffer_write(wrtc->recv_queue, &msg);
-  if (!success) {
-    // Queue full - drop oldest message to make room
-    webrtc_recv_msg_t dropped_msg;
-    if (ringbuffer_read(wrtc->recv_queue, &dropped_msg)) {
-      buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
-    }
-
-    // Try again
-    success = ringbuffer_write(wrtc->recv_queue, &msg);
-    if (!success) {
-      buffer_pool_free(NULL, msg.data, len);
+  wrtc->partial = SAFE_REALLOC(wrtc->partial, wrtc->partial_len + len, uint8_t *);
+  memcpy(wrtc->partial + wrtc->partial_len, data, len);
+  wrtc->partial_len += len;
+  size_t offset = 0;
+  while (wrtc->partial_len - offset >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, wrtc->partial + offset, sizeof(header));
+    size_t payload_len = NET_TO_HOST_U32(header.length);
+    if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || payload_len > limit - sizeof(header)) {
       mutex_unlock(&wrtc->queue_mutex);
+      log_error("Invalid ACIP packet on WebRTC DataChannel");
+      webrtc_datachannel_close(channel);
       return;
     }
+    size_t packet_len = sizeof(header) + payload_len;
+    if (wrtc->partial_len - offset < packet_len) break;
+    webrtc_recv_msg_t msg = {.data = buffer_pool_alloc(NULL, packet_len), .len = packet_len};
+    if (!msg.data) break;
+    memcpy(msg.data, wrtc->partial + offset, packet_len);
+    if (!ringbuffer_write(wrtc->recv_queue, &msg)) {
+      buffer_pool_free(NULL, msg.data, msg.len);
+      mutex_unlock(&wrtc->queue_mutex);
+      log_error("WebRTC receive queue exceeded");
+      webrtc_datachannel_close(channel);
+      return;
+    }
+    offset += packet_len;
   }
-
-  // Signal waiting recv() call
+  wrtc->partial_len -= offset;
+  if (wrtc->partial_len) memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
 }
@@ -194,8 +206,16 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
     return SET_ERRNO(ERROR_NETWORK, "WebRTC transport not connected");
   }
 
-  // Send via DataChannel
-  asciichat_error_t result = webrtc_datachannel_send(wrtc->data_channel, data, len);
+  mutex_lock(&wrtc->send_mutex);
+  asciichat_error_t result = ASCIICHAT_OK;
+  for (size_t offset = 0; offset < len;) {
+    size_t chunk = len - offset;
+    if (chunk > 16384) chunk = 16384;
+    result = webrtc_datachannel_send(wrtc->data_channel, (const uint8_t *)data + offset, chunk);
+    if (result != ASCIICHAT_OK) break;
+    offset += chunk;
+  }
+  mutex_unlock(&wrtc->send_mutex);
 
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send on WebRTC DataChannel");
@@ -339,8 +359,13 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
     wrtc->recv_queue = NULL;
   }
 
+  SAFE_FREE(wrtc->partial);
+  wrtc->partial = NULL;
+  wrtc->partial_len = 0;
+
   // Destroy synchronization primitives
   mutex_destroy(&wrtc->state_mutex);
+  mutex_destroy(&wrtc->send_mutex);
   cond_destroy(&wrtc->queue_cond);
   mutex_destroy(&wrtc->queue_mutex);
 
@@ -351,6 +376,15 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
 // WebRTC Transport Method Table
 // =============================================================================
 
+static bool webrtc_has_pending_data(acip_transport_t *transport) {
+  if (!transport || !transport->impl_data) return false;
+  webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
+  mutex_lock(&wrtc->queue_mutex);
+  bool pending = !ringbuffer_is_empty(wrtc->recv_queue);
+  mutex_unlock(&wrtc->queue_mutex);
+  return pending;
+}
+
 static const acip_transport_methods_t webrtc_methods = {
     .send = webrtc_send,
     .recv = webrtc_recv,
@@ -358,6 +392,7 @@ static const acip_transport_methods_t webrtc_methods = {
     .get_type = webrtc_get_type,
     .get_socket = webrtc_get_socket,
     .is_connected = webrtc_is_connected,
+    .has_pending_data = webrtc_has_pending_data,
     .destroy_impl = webrtc_destroy_impl,
 };
 
@@ -380,7 +415,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
   }
 
   // Allocate WebRTC-specific data
-  webrtc_transport_data_t *wrtc_data = SAFE_MALLOC(sizeof(webrtc_transport_data_t), webrtc_transport_data_t *);
+  webrtc_transport_data_t *wrtc_data = SAFE_CALLOC(1, sizeof(webrtc_transport_data_t), webrtc_transport_data_t *);
   if (!wrtc_data) {
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebRTC transport data");
@@ -424,6 +459,17 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
     return NULL;
   }
 
+  if (mutex_init(&wrtc_data->send_mutex, "webrtc_send") != 0) {
+    mutex_destroy(&wrtc_data->state_mutex);
+    cond_destroy(&wrtc_data->queue_cond);
+    mutex_destroy(&wrtc_data->queue_mutex);
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize send mutex");
+    return NULL;
+  }
+
   // Initialize WebRTC data
   wrtc_data->peer_conn = peer_conn;
   wrtc_data->data_channel = data_channel;
@@ -440,6 +486,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
 
   asciichat_error_t result = webrtc_datachannel_set_callbacks(data_channel, &callbacks);
   if (result != ASCIICHAT_OK) {
+    mutex_destroy(&wrtc_data->send_mutex);
     mutex_destroy(&wrtc_data->state_mutex);
     cond_destroy(&wrtc_data->queue_cond);
     mutex_destroy(&wrtc_data->queue_mutex);

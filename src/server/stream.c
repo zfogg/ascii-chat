@@ -279,7 +279,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     // The double buffer ensures we always have the last valid frame
     if (snap->is_sending_video && snap->video_buffer) {
       // Get the latest frame (always available from double buffer)
-      const video_frame_t *frame = video_frame_get_latest(snap->video_buffer);
+      const video_frame_t *frame = video_frame_peek_latest(snap->video_buffer);
 
       if (!frame) {
         continue; // Skip to next snapshot

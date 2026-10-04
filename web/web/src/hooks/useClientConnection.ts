@@ -7,6 +7,8 @@ import {
   buildStreamStartPacket,
 } from "../network";
 import type { AsciiRendererHandle, SettingsConfig } from "../components";
+import type { ClientSession } from "../network/Transport";
+import { WebRTCSession, type DiscoveryOptions } from "../network/WebRTCSession";
 
 const STATE_NAMES: Record<number, string> = {
   [ConnectionState.DISCONNECTED]: "Disconnected",
@@ -27,6 +29,8 @@ const hashFrame = (content: string): string => {
 };
 
 interface UseClientConnectionOptions {
+  discovery?: DiscoveryOptions;
+  onAudioPacket?: (type: number, payload: Uint8Array) => void;
   serverUrl: string;
   terminalDimensions: { cols: number; rows: number };
   settings: SettingsConfig;
@@ -51,10 +55,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     receivedFrameCountRef,
     frameReceiptTimesRef,
     onWasmInitialized,
+    discovery,
+    onAudioPacket,
   } = options;
 
-  const clientRef = useRef<ClientConnection | null>(null);
-  const [status, setStatus] = useState<string>("Connecting...");
+  const clientRef = useRef<ClientSession | null>(null);
+  const [status, setStatus] = useState<string>("Disconnected");
   const [publicKey, setPublicKey] = useState<string>("");
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.DISCONNECTED,
@@ -98,11 +104,17 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           `[Client] Creating ClientConnection with dimensions: ${width}x${height}`,
         );
 
-        const conn = new ClientConnection({
-          serverUrl,
-          width,
-          height,
-        });
+        const conn: ClientSession = discovery
+          ? new WebRTCSession(
+              { ...discovery, onProgress: setStatus },
+              width,
+              height,
+            )
+          : new ClientConnection({
+              serverUrl,
+              width,
+              height,
+            });
 
         conn.onStateChange((state) => {
           const stateName = STATE_NAMES[state] || "Unknown";
@@ -177,7 +189,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               } catch (err) {
                 console.error("[Client] Failed to send setup packets:", err);
                 // Retry after 100ms if it failed
-                setTimeout(sendSetupPackets, 100);
+                setError(`Could not start media: ${String(err)}`);
               }
             };
             sendSetupPackets();
@@ -193,6 +205,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         });
 
         conn.onPacketReceived((parsed, decryptedPayload) => {
+          if (
+            parsed.type === PacketType.AUDIO_BATCH ||
+            parsed.type === PacketType.AUDIO_OPUS_BATCH
+          ) {
+            onAudioPacket?.(parsed.type, decryptedPayload);
+          }
           if (parsed.type === PacketType.ASCII_FRAME) {
             receivedFrameCountRef.current++;
             const now = performance.now();
@@ -239,6 +257,11 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               // Queue frame for the render loop to process at target FPS
               // This prevents frame accumulation when tab is hidden
               frameQueueRef.current.push(frame.ansiString);
+              if (frameQueueRef.current.length > 3)
+                frameQueueRef.current.splice(
+                  0,
+                  frameQueueRef.current.length - 3,
+                );
               console.log("ASCII_FRAME PACKET RECEIVED");
             } catch (err) {
               console.error("[Client] Failed to parse ASCII frame:", err);
@@ -247,9 +270,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         });
 
         console.log("[Client] Calling conn.connect()...");
+        clientRef.current = conn;
         await conn.connect();
         console.log("[Client] conn.connect() completed successfully");
 
+        if (clientRef.current !== conn) return;
+        if (clientRef.current !== conn) return;
         // Only mark WASM as initialized AFTER connection and WASM init complete
         setWasmInitialized(true);
         onWasmInitialized();
@@ -285,6 +311,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       receivedFrameCountRef,
       frameReceiptTimesRef,
       onWasmInitialized,
+      discovery,
+      onAudioPacket,
     ],
   );
 
@@ -309,7 +337,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   // This is a developer feature - disabled in production
   useEffect(() => {
     // Only auto-connect in development mode
-    if (import.meta.env["NODE_ENV"] === "production") {
+    if (discovery || import.meta.env.PROD) {
       return;
     }
 
@@ -350,7 +378,15 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [serverUrl, hasAutoConnected, connectToServer]);
+  }, [serverUrl, hasAutoConnected, connectToServer, discovery]);
+
+  useEffect(
+    () => () => {
+      clientRef.current?.disconnect();
+      clientRef.current = null;
+    },
+    [],
+  );
 
   return {
     clientRef,

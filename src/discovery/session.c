@@ -810,7 +810,6 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
   log_info("  Encryption: DTLS (automatic) + optional ACIP layer encryption");
 
   // Mark transport as ready
-  session->webrtc_transport_ready = true;
 
   if (session->session_type != SESSION_TYPE_WEBRTC) {
     log_warn("WebRTC transport ready but session type is not WebRTC!");
@@ -845,8 +844,20 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
       log_error("✗ Participant: Failed to set WebRTC transport: %d", result);
     }
   } else {
-    log_warn("transport_ready: No participant or host context available for transport switching");
+    session_participant_config_t pconfig = {
+        .address = session->host_address,
+        .port = session->host_port,
+        .enable_video = true,
+        .enable_audio = GET_OPTION(audio_enabled),
+        .encryption_enabled = false,
+    };
+    session->participant_ctx = session_participant_create(&pconfig);
+    if (!session->participant_ctx || session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
+      set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
+      return;
+    }
   }
+  session->webrtc_transport_ready = true;
 }
 
 /**

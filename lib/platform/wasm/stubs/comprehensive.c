@@ -61,7 +61,7 @@ ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
   return -1;
 }
 
-int socket_poll(struct pollfd *fds, unsigned long nfds, int64_t timeout_ns) {
+int socket_poll(struct pollfd *fds, nfds_t nfds, int64_t timeout_ns) {
   (void)fds;
   (void)nfds;
   (void)timeout_ns;

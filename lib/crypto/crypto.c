@@ -270,16 +270,7 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
 
   ctx->key_exchange_complete = true;
 
-  // Log keys for debugging crypto failures
-  char priv_hex[65], peer_hex[65], shared_hex[65];
-  for (int i = 0; i < 32; i++) {
-    snprintf(&priv_hex[i * 2], 3, "%02x", ctx->private_key[i]);
-    snprintf(&peer_hex[i * 2], 3, "%02x", peer_public_key[i]);
-    snprintf(&shared_hex[i * 2], 3, "%02x", ctx->shared_key[i]);
-  }
-  priv_hex[64] = peer_hex[64] = shared_hex[64] = '\0';
-
-  log_info("KEY_EXCHANGE_COMPLETE: privkey=%s peerkey=%s secret=%s", priv_hex, peer_hex, shared_hex);
+  log_debug("Key exchange complete");
   return CRYPTO_OK;
 }
 

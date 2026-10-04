@@ -158,10 +158,10 @@ void atomic_store_bool_impl(atomic_t *a, uint64_t value);
 bool atomic_cas_bool(atomic_t *a, bool *expected, bool new_value);
 #else
 #define atomic_cas_bool(a, expected, new_value) \
-    atomic_cas_bool_impl((a), (uint64_t *)(expected), (uint64_t)(new_value))
+    atomic_cas_bool_impl((a), (expected), (new_value))
 #endif
 
-bool atomic_cas_bool_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
+bool atomic_cas_bool_impl(atomic_t *a, bool *expected, bool new_value);
 
 /**
  * @brief Atomically exchange a boolean and return the old value
@@ -252,10 +252,10 @@ int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta);
 bool atomic_cas_int(atomic_t *a, int *expected, int new_value);
 #else
 #define atomic_cas_int(a, expected, new_value) \
-    atomic_cas_int_impl((a), (int64_t *)(expected), (int64_t)(new_value))
+    atomic_cas_int_impl((a), (expected), (new_value))
 #endif
 
-bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value);
+bool atomic_cas_int_impl(atomic_t *a, int *expected, int new_value);
 
 // ============================================================================
 // uint64_t Operations

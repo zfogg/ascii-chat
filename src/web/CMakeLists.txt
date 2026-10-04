@@ -548,6 +548,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _client_acds_join_request
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
     _term_renderer_feed
@@ -588,7 +589,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_MIRROR_CSV "${EXPORTED_FUNCTIONS_MIRROR}")
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIENT}")
 
-set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8")
+set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,HEAP16")
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
@@ -605,7 +606,6 @@ target_link_options(mirror-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
-    -sEMULATE_FUNCTION_POINTER_CASTS=1
     -msimd128
     -O3
     --no-entry
@@ -627,7 +627,6 @@ target_link_options(client-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
-    -sEMULATE_FUNCTION_POINTER_CASTS=1
     -msimd128
     -O3
     --no-entry

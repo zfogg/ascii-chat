@@ -55,7 +55,7 @@ export function mapColorModeToClient(mode: ColorMode): ClientColorMode {
     "256": ClientColorMode.COLOR_256,
     truecolor: ClientColorMode.TRUECOLOR,
   };
-  return mapping[mode] || ClientColorMode.AUTO;
+  return mapping[mode] ?? ClientColorMode.AUTO;
 }
 
 /**
