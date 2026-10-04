@@ -7,6 +7,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install coverage reporter
+      shell: bash
+      run: python -m pip install gcovr==8.6
     - name: Generate merged coverage report
       shell: bash
       run: python3 .github/scripts/generate-coverage.py
