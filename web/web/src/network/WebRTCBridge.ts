@@ -10,6 +10,7 @@ export class WebRTCBridge implements PacketTransport {
   }> = [];
   private queuedBytes = 0;
   private readonly limit = 8 * 1024 * 1024;
+  private readonly sendWindow = 262144;
   private closed = false;
 
   constructor(
@@ -19,7 +20,9 @@ export class WebRTCBridge implements PacketTransport {
     private maxMessageSize = 16384,
   ) {
     channel.binaryType = "arraybuffer";
-    channel.bufferedAmountLowThreshold = 65536;
+    // Resume queued writes halfway through the send window so frames and audio
+    // do not wait for the channel buffer to drain almost completely.
+    channel.bufferedAmountLowThreshold = this.sendWindow / 2;
     channel.onbufferedamountlow = () => this.flush();
     channel.onmessage = (event: MessageEvent<ArrayBuffer>) => {
       try {
@@ -68,16 +71,46 @@ export class WebRTCBridge implements PacketTransport {
     ) {
       throw new Error("WebRTC send buffer is full");
     }
-    this.queue.push({ packet, offset: 0, replaceable });
+    const entry = { packet, offset: 0, replaceable };
+    if (this.isAudioPacket(packet)) {
+      // ACIP packets must remain whole and ordered, but audio can pass a video
+      // frame that has not started yet. This prevents a waiting raw frame from
+      // delaying audio while preserving any packet already on the wire.
+      const nextUnsentFrame = this.queue.findIndex(
+        (queued) => queued.replaceable && queued.offset === 0,
+      );
+      if (nextUnsentFrame >= 0) this.queue.splice(nextUnsentFrame, 0, entry);
+      else this.queue.push(entry);
+    } else {
+      this.queue.push(entry);
+    }
     this.queuedBytes += packet.length;
     this.flush();
+  }
+
+  private isAudioPacket(packet: Uint8Array): boolean {
+    if (packet.length < 10) return false;
+    const type = new DataView(
+      packet.buffer,
+      packet.byteOffset,
+      packet.byteLength,
+    ).getUint16(8, false);
+    return type === 4000 || type === 4001;
   }
 
   private flush(): void {
     if (!this.isConnected()) return;
     try {
-      while (this.queue.length && this.channel.bufferedAmount < 262144) {
+      while (this.queue.length) {
         const entry = this.queue[0]!;
+        const highWaterMark = Math.max(this.sendWindow, entry.packet.length);
+        if (this.channel.bufferedAmount >= this.sendWindow) break;
+        if (
+          entry.replaceable &&
+          entry.offset === 0 &&
+          this.channel.bufferedAmount + entry.packet.length > highWaterMark
+        )
+          break;
         const chunkSize = Math.max(
           1,
           Math.min(16384, this.maxMessageSize || 16384),
@@ -90,6 +123,7 @@ export class WebRTCBridge implements PacketTransport {
         entry.offset += chunk.length;
         this.queuedBytes -= chunk.length;
         if (entry.offset === entry.packet.length) this.queue.shift();
+        if (this.channel.bufferedAmount >= this.sendWindow) break;
       }
     } catch (error) {
       this.onError(error instanceof Error ? error : new Error(String(error)));

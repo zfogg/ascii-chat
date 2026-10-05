@@ -165,7 +165,7 @@ endfunction()
 # and 2-3x faster than GNU ld / ld64.
 function(configure_lld_linker)
     if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-        if(ASCIICHAT_LLD_EXECUTABLE)
+        if(ASCIICHAT_LLD_EXECUTABLE AND EXISTS "${ASCIICHAT_LLD_EXECUTABLE}")
             execute_process(
                 COMMAND "${ASCIICHAT_LLD_EXECUTABLE}" --version
                 RESULT_VARIABLE LLD_CHECK_RESULT

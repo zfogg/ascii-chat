@@ -177,8 +177,9 @@ endif()
 message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")
 include(CheckIPOSupported)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # Musl builds disable LTO via -fno-lto compile options added earlier to prevent TPOFF32 errors
-    if(NOT USE_MUSL)
+    # Musl builds disable LTO to prevent TPOFF32 relocations. macOS also
+    # needs a working LLD linker for ThinLTO.
+    if(NOT USE_MUSL AND NOT (APPLE AND NOT EXISTS "${ASCIICHAT_LLD_EXECUTABLE}"))
         check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
         if(IPO_SUPPORTED)
             set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
@@ -189,7 +190,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
             message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
         endif()
     else()
-        set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "Disable IPO for musl builds" FORCE)
+        set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "Disable IPO when its linker is unavailable" FORCE)
     endif()
 endif()
 

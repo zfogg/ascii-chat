@@ -297,6 +297,8 @@ import ClientModuleFactory from "./dist/client.js";
 
 let wasmModule: ClientModule | null = null;
 let moduleLoading: Promise<void> | null = null;
+let clientInitialized = false;
+let clientInitialization: Promise<void> | null = null;
 
 /**
  * Read a little-endian int32 from WASM memory via HEAPU8.
@@ -381,6 +383,20 @@ async function loadWasmModule(): Promise<void> {
 export async function initClientWasm(
   options: ClientInitOptions = {},
 ): Promise<void> {
+  if (clientInitialized) return;
+  if (clientInitialization) return clientInitialization;
+
+  clientInitialization = initializeClientWasm(options);
+  try {
+    await clientInitialization;
+  } finally {
+    clientInitialization = null;
+  }
+}
+
+async function initializeClientWasm(
+  options: ClientInitOptions,
+): Promise<void> {
   // Ensure WASM module is loaded first (may already be loaded by ensureWasmModuleLoaded)
   await ensureWasmModuleLoaded();
 
@@ -425,6 +441,7 @@ export async function initClientWasm(
     if (result !== 0) {
       throw new Error("Failed to initialize client WASM module");
     }
+    clientInitialized = true;
     console.log("[Client WASM] Initialization complete!");
 
     // Initialize shared options module with option accessor
@@ -441,11 +458,16 @@ export async function initClientWasm(
 export function cleanupClientWasm(): void {
   console.error("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
-    console.error("[cleanupClientWasm] Calling _client_cleanup()...");
-    wasmModule._client_cleanup();
-    wasmModule = null;
+    if (clientInitialized) {
+      console.error("[cleanupClientWasm] Calling _client_cleanup()...");
+      wasmModule._client_cleanup();
+      clientInitialized = false;
+    }
+    // Keep the Emscripten module and its shared memory/pthread pool alive.
+    // Recreating it on every WebRTC reconnect leaks worker-backed memories
+    // until the browser can no longer allocate another WebAssembly.Memory.
     cleanupOptions();
-    console.error("[cleanupClientWasm] Cleanup complete, module set to null");
+    console.error("[cleanupClientWasm] Client state cleaned up; module retained");
   } else {
     console.error("[cleanupClientWasm] No module to cleanup");
   }

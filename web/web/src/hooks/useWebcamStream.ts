@@ -301,17 +301,44 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
+      const cameraIndexValue = new URLSearchParams(
+        window.location.search,
+      ).get("videoDeviceIndex");
+      const cameraIndex =
+        cameraIndexValue === null ? null : Number(cameraIndexValue);
+      let videoConstraints: MediaTrackConstraints = {
+        width: { ideal: w },
+        height: { ideal: h },
+        frameRate: { ideal: settings.targetFps },
+      };
+      if (cameraIndex !== null) {
+        if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
+          throw new Error("videoDeviceIndex must be a non-negative integer");
+        }
+        const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(
+          (device) => device.kind === "videoinput",
+        );
+        const camera = cameras[cameraIndex];
+        if (!camera?.deviceId) {
+          throw new Error(
+            `Camera index ${cameraIndex} is unavailable (${cameras.length} camera(s) found)`,
+          );
+        }
+        videoConstraints = {
+          ...videoConstraints,
+          deviceId: { exact: camera.deviceId },
+        };
+        console.log(`[Client] Selecting camera ${cameraIndex}: ${camera.label}`);
+      }
+
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: w },
-            height: { ideal: h },
-            frameRate: { ideal: settings.targetFps },
-          },
+          video: videoConstraints,
           audio: false,
         });
       } catch (err) {
+        if (cameraIndex !== null) throw err;
         console.error(
           "[Client] getUserMedia failed (trying fallback without constraints):",
           err,

@@ -366,6 +366,7 @@ export function useInitAsciiRenderer({
       // causes ResizeObserver to report larger container, creating even larger renderer
       // Use viewport height as the hard limit - content should fit in visible area
       const cappedHeight = Math.min(newHeight, window.innerHeight);
+      const oldRendererPtr = rendererPtrRef.current;
       if (cappedHeight < newHeight) {
         console.log("[handleContainerResize] Capping height to viewport:", {
           originalHeight: newHeight,
@@ -375,12 +376,6 @@ export function useInitAsciiRenderer({
       }
 
       try {
-        // Destroy old renderer
-        console.log("[handleContainerResize] DESTROYING old renderer", {
-          oldRendererPtr: rendererPtrRef.current,
-        });
-        moduleRef.current._term_renderer_destroy(rendererPtrRef.current);
-
         // TODO: Fix truecolor flash on resize with matrix mode enabled.
         // Even after reinitializing WASM with --matrix flag, the first frame
         // after resize renders in truecolor instead of matrix green. The renderer
@@ -418,7 +413,17 @@ export function useInitAsciiRenderer({
         rendererPtrRef.current = rendererPtr;
 
         console.log("[handleContainerResize] CALLING getRendererDimensions");
-        const dims = getRendererDimensions();
+        let dims: ReturnType<typeof getRendererDimensions>;
+        try {
+          dims = getRendererDimensions();
+          if (dims.pixelWidth <= 0 || dims.pixelHeight <= 0) {
+            throw new Error("replacement renderer has invalid pixel dimensions");
+          }
+        } catch (error) {
+          rendererPtrRef.current = oldRendererPtr;
+          moduleRef.current._term_renderer_destroy(rendererPtr);
+          throw error;
+        }
 
         if (dims.pixelHeight === 0) {
           console.error("[handleContainerResize] ERROR: pixelHeight=0!", dims);
@@ -430,6 +435,9 @@ export function useInitAsciiRenderer({
         });
         canvas.width = dims.pixelWidth;
         canvas.height = dims.pixelHeight;
+
+        // Keep the current renderer usable until its replacement is complete.
+        moduleRef.current._term_renderer_destroy(oldRendererPtr);
 
         // Debounce dimension updates to batch multiple resize events
         // Prevents render loop from restarting on every ResizeObserver fire

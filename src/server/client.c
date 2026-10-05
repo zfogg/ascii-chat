@@ -1668,7 +1668,9 @@ void *client_dispatch_thread(void *arg) {
   log_info("DISPATCH_THREAD: Started for client %s", client_id);
 
   uint64_t dispatch_loop_count = 0;
-  queued_packet_t *deferred_packet = NULL;
+  queued_packet_t *pending_packets[128] = {0};
+  size_t pending_count = 0;
+  size_t pending_index = 0;
 
   while (!atomic_load_bool(&g_should_exit) && atomic_load_bool(&client->dispatch_thread_running)) {
     dispatch_loop_count++;
@@ -1676,9 +1678,31 @@ void *client_dispatch_thread(void *arg) {
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
     uint64_t dequeue_start = time_get_ns();
     mutex_lock(&client->client_state_mutex);
-    queued_packet_t *queued_pkt =
-        deferred_packet ? deferred_packet : packet_queue_try_dequeue(client->received_packet_queue);
-    deferred_packet = NULL;
+    if (pending_index == pending_count) {
+      pending_count = 0;
+      pending_index = 0;
+      queued_packet_t *packet;
+      while (pending_count < 128 && (packet = packet_queue_try_dequeue(client->received_packet_queue))) {
+        pending_packets[pending_count++] = packet;
+      }
+      // Audio packets interleave with raw video. Coalesce snapshots across audio
+      // without crossing control or encoded-frame boundaries.
+      bool newer_image = false;
+      for (size_t i = pending_count; i > 0; i--) {
+        packet_type_t type = NET_TO_HOST_U16(pending_packets[i - 1]->header.type);
+        if (type == PACKET_TYPE_IMAGE_FRAME) {
+          if (newer_image) {
+            packet_queue_free_packet(pending_packets[i - 1]);
+            pending_packets[i - 1] = NULL;
+          }
+          newer_image = true;
+        } else if (type != PACKET_TYPE_AUDIO_BATCH && type != PACKET_TYPE_AUDIO_OPUS_BATCH) {
+          newer_image = false;
+        }
+      }
+    }
+    while (pending_index < pending_count && !pending_packets[pending_index]) pending_index++;
+    queued_packet_t *queued_pkt = pending_index < pending_count ? pending_packets[pending_index++] : NULL;
     uint64_t dequeue_end = time_get_ns();
 
     if (!queued_pkt) {
@@ -1691,21 +1715,6 @@ void *client_dispatch_thread(void *arg) {
       continue;
     }
     mutex_unlock(&client->client_state_mutex);
-
-    // Raw frames are independent snapshots. Process the newest consecutive
-    // snapshot after a stall, preserving control and encoded packet order.
-    for (size_t skipped = 0; skipped < 128 && NET_TO_HOST_U16(queued_pkt->header.type) == PACKET_TYPE_IMAGE_FRAME;
-         skipped++) {
-      queued_packet_t *next = packet_queue_try_dequeue(client->received_packet_queue);
-      if (!next)
-        break;
-      if (NET_TO_HOST_U16(next->header.type) != PACKET_TYPE_IMAGE_FRAME) {
-        deferred_packet = next;
-        break;
-      }
-      packet_queue_free_packet(queued_pkt);
-      queued_pkt = next;
-    }
 
     // Frame received! Log it immediately
     char dequeue_elapsed_str[32];
@@ -1827,7 +1836,9 @@ void *client_dispatch_thread(void *arg) {
     packet_queue_free_packet(queued_pkt);
   }
 
-  packet_queue_free_packet(deferred_packet);
+  while (pending_index < pending_count) {
+    packet_queue_free_packet(pending_packets[pending_index++]);
+  }
   log_info("DISPATCH_THREAD: Exiting for client %s", client_id);
   return NULL;
 }
@@ -2322,8 +2333,8 @@ void *client_send_thread_func(void *arg) {
 
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
       // If so, send CLEAR_CONSOLE before sending the new frame
-      int rendered_sources = atomic_load_bool(&client->last_rendered_grid_sources);
-      int sent_sources = atomic_load_bool(&client->last_sent_grid_sources);
+      int rendered_sources = (int)atomic_load_u64(&client->last_rendered_grid_sources);
+      int sent_sources = (int)atomic_load_u64(&client->last_sent_grid_sources);
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport

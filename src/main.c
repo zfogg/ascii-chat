@@ -770,7 +770,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Determine final log file path (use mode-specific default from options if available)
+  // Apply the parsed level after the early logger has initialized.
+  log_set_level(opts->log_level);
   // Determine output format early to decide on filename and logging strategy
   bool use_json_logging = GET_OPTION(json);
 

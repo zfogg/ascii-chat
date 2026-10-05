@@ -596,6 +596,12 @@ target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
 # Using src/common allows #include "session/display.h" style includes
 target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
 
+# Session server headers include the public WebSocket server API, which in turn
+# includes libwebsockets.h. Core needs its include path even though the
+# WebSocket implementation itself belongs to ascii-chat-network.
+target_include_directories(ascii-chat-core PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-core PRIVATE OpenSSL::SSL)
+
 # Link PCRE2 library (required)
 target_link_libraries(ascii-chat-core PRIVATE ${PCRE2_LIBRARIES})
 if(PCRE2_LIBRARY_DIRS)
@@ -981,9 +987,11 @@ add_library(ascii-chat-shared SHARED
             -fPIC
         )
         # Force TLS model in ThinLTO optimizer - pass via linker plugin
-        target_link_options(ascii-chat-shared PRIVATE
-            -Wl,-mllvm,-relocation-model=pic
-        )
+        if(ASCIICHAT_ENABLE_IPO)
+            target_link_options(ascii-chat-shared PRIVATE
+                -Wl,-mllvm,-relocation-model=pic
+            )
+        endif()
     endif()
 
     # Add dependencies from modules

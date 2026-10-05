@@ -52,24 +52,36 @@ it("keeps resize output blank until the server frame matches the new dimensions"
   const { result } = renderHook(() => useAsciiRendererHandle(params));
   const handle = result.current;
   handle.updateDimensions(80, 24);
-  ref.current!.writeFrame("old", { cols: 80, rows: 24 });
+  expect(ref.current!.writeFrame("old", { cols: 80, rows: 24 })).toBe(true);
   expect(draw).toHaveBeenCalledTimes(1);
 
   timeout.current = 1 as unknown as ReturnType<typeof setTimeout>;
-  ref.current!.writeFrame("during resize", { cols: 80, rows: 24 });
+  expect(
+    ref.current!.writeFrame("during resize", { cols: 80, rows: 24 }),
+  ).toBe(false);
   expect(draw).toHaveBeenCalledTimes(1);
   handle.updateDimensions(60, 20);
   timeout.current = null;
-  ref.current!.writeFrame("stale", { cols: 80, rows: 24 });
-  ref.current!.writeFrame("wrong rows", { cols: 60, rows: 24 });
+  expect(ref.current!.writeFrame("stale", { cols: 80, rows: 24 })).toBe(
+    false,
+  );
+  expect(ref.current!.writeFrame("wrong rows", { cols: 60, rows: 24 })).toBe(
+    false,
+  );
   expect(feed).toHaveBeenCalledTimes(1);
   expect(draw).toHaveBeenCalledTimes(1);
-  ref.current!.writeFrame("matching", { cols: 60, rows: 20 });
+  expect(
+    ref.current!.writeFrame("matching", { cols: 60, rows: 20 }),
+  ).toBe(true);
   expect(draw).toHaveBeenCalledTimes(2);
 
   handle.updateDimensions(100, 30);
-  ref.current!.writeFrame("stale after growing", { cols: 60, rows: 20 });
+  expect(
+    ref.current!.writeFrame("stale after growing", { cols: 60, rows: 20 }),
+  ).toBe(false);
   expect(draw).toHaveBeenCalledTimes(2);
-  ref.current!.writeFrame("matching again", { cols: 100, rows: 30 });
+  expect(
+    ref.current!.writeFrame("matching again", { cols: 100, rows: 30 }),
+  ).toBe(true);
   expect(draw).toHaveBeenCalledTimes(3);
 });

@@ -24,6 +24,8 @@
 #include FT_GLYPH_H
 #include <string.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <limits.h>
 
 // ============================================================================
 // Glyph Cache
@@ -35,7 +37,7 @@
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)
-  uint8_t *bitmap_buf; // Allocated bitmap data
+  uint8_t *bitmap_buf; // Normalized 8-bit alpha bitmap
   int width;           // Bitmap dimensions (in pixels)
   int rows;            // Bitmap height (in rows)
   int pitch;           // Bytes per row
@@ -97,7 +99,43 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   }
 
   FT_Bitmap *src_bitmap = &face->glyph->bitmap;
-  size_t bitmap_size = (size_t)src_bitmap->pitch * src_bitmap->rows;
+  if (!src_bitmap->buffer || src_bitmap->width == 0 || src_bitmap->rows == 0 || src_bitmap->width > INT_MAX ||
+      src_bitmap->rows > INT_MAX) {
+    return NULL;
+  }
+
+  // FreeType bitmaps may use packed mono/gray pixels and either pitch
+  // direction. Normalize them once so blit_glyph can safely read one alpha
+  // byte per pixel for every cached glyph.
+  int64_t signed_pitch = src_bitmap->pitch;
+  size_t source_pitch = (size_t)(signed_pitch < 0 ? -signed_pitch : signed_pitch);
+  size_t minimum_source_pitch = 0;
+  switch (src_bitmap->pixel_mode) {
+  case FT_PIXEL_MODE_MONO:
+    minimum_source_pitch = ((size_t)src_bitmap->width + 7) / 8;
+    break;
+  case FT_PIXEL_MODE_GRAY2:
+    minimum_source_pitch = ((size_t)src_bitmap->width + 3) / 4;
+    break;
+  case FT_PIXEL_MODE_GRAY4:
+    minimum_source_pitch = ((size_t)src_bitmap->width + 1) / 2;
+    break;
+  case FT_PIXEL_MODE_GRAY:
+    minimum_source_pitch = src_bitmap->width;
+    break;
+  case FT_PIXEL_MODE_BGRA:
+    minimum_source_pitch = (size_t)src_bitmap->width * 4;
+    break;
+  default:
+    return NULL;
+  }
+  if (source_pitch == 0 || source_pitch < minimum_source_pitch ||
+      src_bitmap->rows > SIZE_MAX / source_pitch ||
+      src_bitmap->rows > SIZE_MAX / (size_t)src_bitmap->width) {
+    return NULL;
+  }
+
+  size_t bitmap_size = (size_t)src_bitmap->width * src_bitmap->rows;
 
   // Create and populate cache entry
   entry = SAFE_MALLOC(sizeof(glyph_cache_entry_t), glyph_cache_entry_t *);
@@ -112,10 +150,37 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
     return NULL;
   }
 
-  memcpy(entry->bitmap_buf, src_bitmap->buffer, bitmap_size);
+  for (unsigned row = 0; row < src_bitmap->rows; row++) {
+    unsigned source_row = signed_pitch < 0 ? src_bitmap->rows - row - 1 : row;
+    const uint8_t *source = src_bitmap->buffer + (size_t)source_row * source_pitch;
+    uint8_t *destination = entry->bitmap_buf + (size_t)row * src_bitmap->width;
+    for (unsigned col = 0; col < src_bitmap->width; col++) {
+      switch (src_bitmap->pixel_mode) {
+      case FT_PIXEL_MODE_MONO:
+        destination[col] = (source[col / 8] & (0x80U >> (col % 8))) ? 255 : 0;
+        break;
+      case FT_PIXEL_MODE_GRAY2:
+        destination[col] = (uint8_t)(((source[col / 4] >> (6 - (col % 4) * 2)) & 0x03U) * 85U);
+        break;
+      case FT_PIXEL_MODE_GRAY4:
+        destination[col] = (uint8_t)(((source[col / 2] >> (col % 2 == 0 ? 4 : 0)) & 0x0fU) * 17U);
+        break;
+      case FT_PIXEL_MODE_GRAY:
+        destination[col] = src_bitmap->num_grays > 1 && src_bitmap->num_grays != 256
+                               ? (uint8_t)((source[col] * 255U) / (src_bitmap->num_grays - 1))
+                               : source[col];
+        break;
+      case FT_PIXEL_MODE_BGRA:
+        destination[col] = source[col * 4 + 3];
+        break;
+      default:
+        break;
+      }
+    }
+  }
   entry->width = src_bitmap->width;
   entry->rows = src_bitmap->rows;
-  entry->pitch = src_bitmap->pitch;
+  entry->pitch = (int)src_bitmap->width;
   entry->bitmap_left = face->glyph->bitmap_left;
   entry->bitmap_top = face->glyph->bitmap_top;
 
@@ -413,7 +478,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
 
   // Reset scrolling region and cursor position to prevent vertical shifts
-  static const char reset_sequence[] = "\033[2J\033[H\033[r";
+  static const char reset_sequence[] = "\033[2J\033[H\033[r\033[?7l";
   vterm_input_write(r->vt, reset_sequence, sizeof(reset_sequence) - 1);
 
   // Count newlines to determine CRLF conversion size
@@ -432,13 +497,20 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   }
 
   size_t fixed_pos = 0;
+  int frame_row = 0;
   for (size_t i = 0; i < len; i++) {
+    // A video frame is a fixed grid, not a scrolling terminal transcript.
+    // A trailing newline on the bottom row must not scroll the whole image.
+    if (ansi_frame[i] == '\n' && frame_row >= r->rows - 1) {
+      continue;
+    }
     fixed_frame[fixed_pos++] = ansi_frame[i];
     if (ansi_frame[i] == '\n' && (i == 0 || ansi_frame[i - 1] != '\r')) {
       // Insert carriage return before LF if not already preceded by CR
       fixed_frame[fixed_pos - 1] = '\r';
       fixed_frame[fixed_pos++] = '\n';
     }
+    if (ansi_frame[i] == '\n') frame_row++;
   }
 
   vterm_input_write(r->vt, fixed_frame, fixed_pos);

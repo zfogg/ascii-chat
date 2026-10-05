@@ -202,6 +202,7 @@ typedef struct {
   bool webrtc_connection_initiated;         ///< True when we've called webrtc_peer_manager_connect()
   int webrtc_retry_attempt;                 ///< Current retry attempt number (0 = initial, 1+ = retries)
   uint64_t webrtc_last_attempt_time_ms;     ///< Timestamp of last connection attempt (monotonic time)
+  uint64_t webrtc_disconnected_since_ms;      ///< Start of a transient peer disconnection
 
   // WebRTC ICE servers (for STUN/TURN support)
   // These must be stored in the session to keep memory valid for peer manager lifetime

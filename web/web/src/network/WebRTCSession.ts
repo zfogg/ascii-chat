@@ -80,6 +80,7 @@ export class WebRTCSession implements ClientSession {
   private rejectConnect: ((error: Error) => void) | null = null;
   private resolveConnect: (() => void) | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private disconnectedTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingIce: RTCIceCandidateInit[] = [];
   private signalingQueue = Promise.resolve();
   private closed = false;
@@ -207,17 +208,25 @@ export class WebRTCSession implements ClientSession {
       };
       this.peer.onconnectionstatechange = () => {
         if (this.closed || !this.peer) return;
-        if (
-          this.peer.connectionState === "failed" ||
-          this.peer.connectionState === "closed"
-        )
+        if (this.peer.connectionState === "failed" || this.peer.connectionState === "closed") {
           this.fail(
             new Error(
               "WebRTC connection failed. Check STUN/TURN settings and reconnect.",
             ),
           );
-        else if (this.peer.connectionState === "disconnected")
+        } else if (this.peer.connectionState === "disconnected") {
           this.options.onProgress?.("WebRTC connection interrupted");
+          if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+          this.disconnectedTimer = setTimeout(() => {
+            this.disconnectedTimer = null;
+            if (!this.closed && this.peer?.connectionState === "disconnected")
+              this.fail(new Error("WebRTC connectivity was lost; reconnecting."));
+          }, 5000);
+        } else if (this.peer.connectionState === "connected") {
+          if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+          this.disconnectedTimer = null;
+          this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
+        }
       };
       const channel = this.peer.createDataChannel("acip", {
         ordered: true,
@@ -333,6 +342,8 @@ export class WebRTCSession implements ClientSession {
   }
   private fail(error: unknown): void {
     if (this.closed) return;
+    if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
     const failure = error instanceof Error ? error : new Error(String(error));
     this.rejectConnect?.(failure);
     this.rejectConnect = null;
@@ -369,6 +380,8 @@ export class WebRTCSession implements ClientSession {
   disconnect(): void {
     if (this.closed) return;
     this.closed = true;
+    if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
     this.clearTimer();
     this.rejectConnect?.(new Error("Connection cancelled"));
     this.rejectConnect = null;

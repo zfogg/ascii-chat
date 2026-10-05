@@ -48,6 +48,58 @@ Test(audio, multiple_init_cleanup_cycles) {
   }
 }
 
+Test(audio, discard_pending_audio_on_consumer_read) {
+  buffer_pool_init_global();
+  audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
+  cr_assert_not_null(rb);
+
+  float queued[4] = {0.25f, -0.25f, 0.5f, -0.5f};
+  float readback[4] = {0};
+  cr_assert_eq(audio_ring_buffer_write(rb, queued, 4), ASCIICHAT_OK);
+
+  audio_ring_buffer_discard_pending(rb);
+  cr_assert_eq(audio_ring_buffer_read(rb, readback, 4), 0);
+
+  cr_assert_eq(audio_ring_buffer_write(rb, queued, 4), ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_read(rb, readback, 4), 4);
+  for (size_t i = 0; i < 4; i++) {
+    cr_assert_float_eq(readback[i], queued[i], 0.0001f);
+  }
+  audio_ring_buffer_destroy(rb);
+}
+
+Test(audio, flush_playback_buffers_discards_queued_audio) {
+  buffer_pool_init_global();
+  audio_context_t ctx = {0};
+  ctx.initialized = true;
+  ctx.playback_buffer = audio_ring_buffer_create();
+  ctx.processed_playback_rb = audio_ring_buffer_create();
+  ctx.render_buffer = audio_ring_buffer_create();
+  ctx.raw_render_rb = audio_ring_buffer_create();
+  cr_assert_not_null(ctx.playback_buffer);
+  cr_assert_not_null(ctx.processed_playback_rb);
+  cr_assert_not_null(ctx.render_buffer);
+  cr_assert_not_null(ctx.raw_render_rb);
+
+  const float queued[] = {0.25f, -0.25f, 0.5f, -0.5f};
+  float readback[sizeof(queued) / sizeof(queued[0])] = {0};
+  cr_assert_eq(audio_ring_buffer_write(ctx.playback_buffer, queued, 4), ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_write(ctx.processed_playback_rb, queued, 4), ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_write(ctx.render_buffer, queued, 4), ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_write(ctx.raw_render_rb, queued, 4), ASCIICHAT_OK);
+
+  audio_flush_playback_buffers(&ctx);
+
+  cr_assert_eq(audio_ring_buffer_read(ctx.playback_buffer, readback, 4), 0);
+  cr_assert_eq(audio_ring_buffer_read(ctx.processed_playback_rb, readback, 4), 0);
+  cr_assert_eq(audio_ring_buffer_read(ctx.render_buffer, readback, 4), 0);
+  cr_assert_eq(audio_ring_buffer_read(ctx.raw_render_rb, readback, 4), 0);
+  audio_ring_buffer_destroy(ctx.playback_buffer);
+  audio_ring_buffer_destroy(ctx.processed_playback_rb);
+  audio_ring_buffer_destroy(ctx.render_buffer);
+  audio_ring_buffer_destroy(ctx.raw_render_rb);
+}
+
 // =============================================================================
 // Parameterized Tests for Audio Ring Buffer Operations
 // =============================================================================

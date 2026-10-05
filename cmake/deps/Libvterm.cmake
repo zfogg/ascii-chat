@@ -134,7 +134,7 @@ if(DEFINED EMSCRIPTEN)
         get_filename_component(name ${src} NAME_WE)
         set(obj "${libvterm_wasm_SOURCE_DIR}/${name}.o")
         execute_process(
-            COMMAND emcc -O3 -fPIC -Wno-error
+        COMMAND ${CMAKE_C_COMPILER} -O3 -fPIC -Wno-error
                 -I${libvterm_wasm_SOURCE_DIR}/include -std=c99
                 -msimd128
                 -c ${src} -o ${obj}
@@ -148,7 +148,7 @@ if(DEFINED EMSCRIPTEN)
 
     # Create static archive using emar
     execute_process(
-        COMMAND emar rcs "${libvterm_wasm_SOURCE_DIR}/libvterm.a" ${OBJ_FILES}
+        COMMAND ${CMAKE_AR} rcs "${libvterm_wasm_SOURCE_DIR}/libvterm.a" ${OBJ_FILES}
         RESULT_VARIABLE AR_RESULT
     )
     if(NOT AR_RESULT EQUAL 0)

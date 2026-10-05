@@ -20,7 +20,7 @@
  *
  * MEMORY OWNERSHIP:
  * =================
- * - Transport OWNS peer_conn and data_channel (closes on destroy)
+ * - Peer manager owns peer_conn and data_channel; transport borrows them
  * - Receive queue owns buffered message data
  * - recv() allocates message buffer, caller must free
  *
@@ -48,6 +48,12 @@
  */
 #define WEBRTC_RECV_QUEUE_SIZE 512
 
+// Keep only a short video backlog on the ordered DataChannel. Once the send
+// queue grows beyond this point, newer ASCII snapshots supersede the queued
+// ones; dropping a snapshot is preferable to delaying audio and control
+// packets or exhausting memory while the peer is congested.
+#define WEBRTC_VIDEO_BUFFERED_HIGH_WATER_BYTES (256 * 1024)
+
 /**
  * @brief Receive queue element (variable-length message)
  */
@@ -60,14 +66,16 @@ typedef struct {
  * @brief WebRTC transport implementation data
  */
 typedef struct {
-  webrtc_peer_connection_t *peer_conn; ///< Peer connection (owned)
-  webrtc_data_channel_t *data_channel; ///< Data channel (owned)
+  webrtc_peer_connection_t *peer_conn; ///< Borrowed peer connection
+  webrtc_data_channel_t *data_channel; ///< Borrowed data channel
   ringbuffer_t *recv_queue;            ///< Receive message queue
   uint8_t *partial;                    ///< Incomplete ACIP packet bytes
   size_t partial_len;
+  size_t partial_capacity;
   mutex_t queue_mutex; ///< Protect queue operations
   cond_t queue_cond;   ///< Signal when messages arrive
   bool is_connected;   ///< Connection state
+  bool close_requested; ///< Whether this transport has closed its borrowed peer handles
   mutex_t state_mutex; ///< Protect state changes
   mutex_t send_mutex;  ///< Keep chunks from concurrent packets together
 } webrtc_transport_data_t;
@@ -126,7 +134,18 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     webrtc_datachannel_close(channel);
     return;
   }
-  wrtc->partial = SAFE_REALLOC(wrtc->partial, wrtc->partial_len + len, uint8_t *);
+  size_t required = wrtc->partial_len + len;
+  if (required > wrtc->partial_capacity) {
+    size_t capacity = wrtc->partial_capacity ? wrtc->partial_capacity : 16384;
+    while (capacity < required) {
+      capacity *= 2;
+    }
+    if (capacity > limit) {
+      capacity = limit;
+    }
+    wrtc->partial = SAFE_REALLOC(wrtc->partial, capacity, uint8_t *);
+    wrtc->partial_capacity = capacity;
+  }
   memcpy(wrtc->partial + wrtc->partial_len, data, len);
   wrtc->partial_len += len;
   size_t offset = 0;
@@ -164,7 +183,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     offset += packet_len;
   }
   wrtc->partial_len -= offset;
-  if (wrtc->partial_len)
+  if (offset && wrtc->partial_len)
     memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
@@ -234,18 +253,52 @@ static void webrtc_on_close(webrtc_data_channel_t *channel, void *user_data) {
 // WebRTC Transport Methods
 // =============================================================================
 
+static bool webrtc_transport_is_connected_impl(webrtc_transport_data_t *wrtc) {
+  if (!wrtc) {
+    return false;
+  }
+
+  mutex_lock(&wrtc->state_mutex);
+  bool connected = wrtc->is_connected && !wrtc->close_requested;
+  mutex_unlock(&wrtc->state_mutex);
+  if (!connected || !wrtc->peer_conn || !wrtc->data_channel || !webrtc_datachannel_is_open(wrtc->data_channel)) {
+    return false;
+  }
+
+  webrtc_state_t state = webrtc_get_state(wrtc->peer_conn);
+  return state == WEBRTC_STATE_CONNECTED || state == WEBRTC_STATE_DISCONNECTED;
+}
+
 static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *data, size_t len) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
 
-  mutex_lock(&wrtc->state_mutex);
-  bool connected = wrtc->is_connected;
-  mutex_unlock(&wrtc->state_mutex);
-
-  if (!connected) {
+  if (!webrtc_transport_is_connected_impl(wrtc)) {
     return SET_ERRNO(ERROR_NETWORK, "WebRTC transport not connected");
   }
 
   mutex_lock(&wrtc->send_mutex);
+  if (len >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, data, sizeof(header));
+    if (NET_TO_HOST_U64(header.magic) == PACKET_MAGIC &&
+        NET_TO_HOST_U16(header.type) == PACKET_TYPE_ASCII_FRAME) {
+      size_t buffered_amount = 0;
+      asciichat_error_t buffered_result =
+          webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_amount);
+      if (buffered_result == ASCIICHAT_OK) {
+        if (buffered_amount > WEBRTC_VIDEO_BUFFERED_HIGH_WATER_BYTES) {
+          log_warn_every(US_PER_SEC_INT,
+                        "WebRTC video backlog is %zu bytes; dropping stale ASCII frame to preserve live media",
+                        buffered_amount);
+          mutex_unlock(&wrtc->send_mutex);
+          return ASCIICHAT_OK;
+        }
+      } else {
+        CLEAR_ERRNO();
+      }
+    }
+  }
+
   asciichat_error_t result = ASCIICHAT_OK;
   for (size_t offset = 0; offset < len;) {
     size_t chunk = len - offset;
@@ -273,11 +326,7 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
 
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(wrtc->recv_queue)) {
-    mutex_lock(&wrtc->state_mutex);
-    bool connected = wrtc->is_connected;
-    mutex_unlock(&wrtc->state_mutex);
-
-    if (!connected) {
+    if (!webrtc_transport_is_connected_impl(wrtc)) {
       mutex_unlock(&wrtc->queue_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
     }
@@ -307,12 +356,12 @@ static asciichat_error_t webrtc_close(acip_transport_t *transport) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
 
   mutex_lock(&wrtc->state_mutex);
-
-  if (!wrtc->is_connected) {
+  if (wrtc->close_requested) {
     mutex_unlock(&wrtc->state_mutex);
     return ASCIICHAT_OK; // Already closed
   }
 
+  wrtc->close_requested = true;
   wrtc->is_connected = false;
   mutex_unlock(&wrtc->state_mutex);
 
@@ -345,12 +394,7 @@ static socket_t webrtc_get_socket(acip_transport_t *transport) {
 
 static bool webrtc_is_connected(acip_transport_t *transport) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
-
-  mutex_lock(&wrtc->state_mutex);
-  bool connected = wrtc->is_connected;
-  mutex_unlock(&wrtc->state_mutex);
-
-  return connected;
+  return webrtc_transport_is_connected_impl(wrtc);
 }
 
 // =============================================================================
@@ -361,8 +405,8 @@ static bool webrtc_is_connected(acip_transport_t *transport) {
  * @brief Destroy WebRTC transport and free all resources
  *
  * This is called by the generic acip_transport_destroy() after calling close().
- * Frees WebRTC-specific resources including peer connection, data channel,
- * receive queue, and synchronization primitives.
+ * Frees transport-owned buffers and synchronization primitives. The peer
+ * manager owns the peer connection and DataChannel wrappers.
  *
  * @param transport Transport to destroy (impl_data will be freed by caller)
  */
@@ -372,17 +416,6 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
   }
 
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
-
-  // Destroy peer connection and data channel
-  if (wrtc->data_channel) {
-    webrtc_datachannel_destroy(wrtc->data_channel);
-    wrtc->data_channel = NULL;
-  }
-
-  if (wrtc->peer_conn) {
-    webrtc_peer_connection_destroy(wrtc->peer_conn);
-    wrtc->peer_conn = NULL;
-  }
 
   // Clear receive queue and free buffered messages
   if (wrtc->recv_queue) {
@@ -404,6 +437,7 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
   SAFE_FREE(wrtc->partial);
   wrtc->partial = NULL;
   wrtc->partial_len = 0;
+  wrtc->partial_capacity = 0;
 
   // Destroy synchronization primitives
   mutex_destroy(&wrtc->state_mutex);

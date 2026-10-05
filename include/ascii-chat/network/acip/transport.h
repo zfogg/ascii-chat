@@ -392,8 +392,8 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
  * @param crypto_ctx Optional crypto context (may be NULL)
  * @return Transport instance or NULL on error
  *
- * @note Transport takes ownership of peer_conn and data_channel
- * @note destroy() will close the peer connection and data channel
+ * @note The peer manager retains ownership of peer_conn and data_channel
+ * @note destroy() closes the peer connection and data channel but does not free their wrappers
  */
 struct webrtc_peer_connection;
 struct webrtc_data_channel;

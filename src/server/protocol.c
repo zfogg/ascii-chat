@@ -118,6 +118,18 @@
 
 #include "main.h"
 #include "protocol.h"
+
+static bool decoded_audio_is_silent(const float *samples, size_t count) {
+  if (!samples || count == 0) {
+    return false;
+  }
+  for (size_t i = 0; i < count; i++) {
+    if (samples[i] > 0.001f || samples[i] < -0.001f) {
+      return false;
+    }
+  }
+  return true;
+}
 #include "client.h"
 #include "session/h265/server.h"
 #include <ascii-chat/app_callbacks.h>
@@ -1272,6 +1284,9 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 #endif
 
   if (client->incoming_audio_buffer) {
+    if (decoded_audio_is_silent(samples, total_samples)) {
+      audio_ring_buffer_discard_pending(client->incoming_audio_buffer);
+    }
     asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
     if (write_result != ASCIICHAT_OK) {
       log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
@@ -1350,7 +1365,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
-  static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
+  // Each client receive thread decodes independently. Sharing this scratch
+  // buffer lets concurrent clients overwrite one another's PCM before it is
+  // written to their source rings.
+  static _Thread_local float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 
   size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
   float *decoded_samples;
@@ -1426,7 +1444,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
                   total_decoded);
 
   // DEBUG: Log sample values to detect all-zero issue
-  static int server_decode_count = 0;
+  static _Thread_local int server_decode_count = 0;
   server_decode_count++;
   if (total_decoded > 0 && (server_decode_count <= 10 || server_decode_count % 100 == 0)) {
     float peak = 0.0f, rms = 0.0f;
@@ -1447,6 +1465,9 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Note: audio_ring_buffer_write returns error code, not sample count
   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
   if (client->incoming_audio_buffer && total_decoded > 0) {
+    if (decoded_audio_is_silent(decoded_samples, (size_t)total_decoded)) {
+      audio_ring_buffer_discard_pending(client->incoming_audio_buffer);
+    }
     asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
     if (result != ASCIICHAT_OK) {
       log_error("Client %u: Failed to write decoded audio to buffer: %d", client->client_id, result);

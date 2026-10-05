@@ -126,6 +126,7 @@ typedef void (*webrtc_datachannel_error_callback_t)(webrtc_data_channel_t *dc, c
  * @brief WebRTC configuration
  */
 typedef struct {
+  const char *bind_address; ///< Optional local interface address for ICE sockets
   stun_server_t *stun_servers; ///< Array of STUN servers
   size_t stun_count;           ///< Number of STUN servers
   turn_server_t *turn_servers; ///< Array of TURN servers
@@ -288,6 +289,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
  * Sends binary data over the DataChannel. Returns error if channel is not open.
  */
 asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8_t *data, size_t size);
+asciichat_error_t webrtc_datachannel_get_buffered_amount(webrtc_data_channel_t *dc, size_t *amount);
 
 /**
  * @brief Check if DataChannel is open and ready

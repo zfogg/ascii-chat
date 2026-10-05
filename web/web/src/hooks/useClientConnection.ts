@@ -32,6 +32,7 @@ const hashFrame = (content: string): string => {
 interface UseClientConnectionOptions {
   discovery?: DiscoveryOptions;
   onAudioPacket?: (type: number, payload: Uint8Array) => void;
+  onConnectionStateChange?: (state: ConnectionState) => void;
   serverUrl: string;
   terminalDimensions: { cols: number; rows: number };
   settings: SettingsConfig;
@@ -58,6 +59,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     onWasmInitialized,
     discovery,
     onAudioPacket,
+    onConnectionStateChange,
   } = options;
 
   const clientRef = useRef<ClientSession | null>(null);
@@ -75,6 +77,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const hasBeenConnectedRef = useRef(false);
+  const lastReceivedFrameAtRef = useRef(0);
 
   const connectToServer = useCallback(
     async (options?: { showErrors?: boolean }) => {
@@ -118,6 +122,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
             });
 
         conn.onStateChange((state) => {
+          onConnectionStateChange?.(state);
           const stateName = STATE_NAMES[state] || "Unknown";
           console.log(`[Client] State change: ${state} (${stateName})`);
 
@@ -125,6 +130,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           setStatus(stateName);
 
           if (state === ConnectionState.CONNECTED) {
+            hasBeenConnectedRef.current = true;
+            reconnectAttemptRef.current = 0;
+            lastReceivedFrameAtRef.current = performance.now();
             console.log(
               "[Client] CONNECTED state reached, attempting to send CLIENT_CAPABILITIES and STREAM_START",
             );
@@ -198,7 +206,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
           if (state === ConnectionState.ERROR) {
             console.error("[Client] Connection error state reached");
-            if (showErrors) {
+            if (showErrors && (!discovery || !hasBeenConnectedRef.current)) {
               setError("Connection error");
               setShowModal(true);
             }
@@ -215,7 +223,14 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           if (parsed.type === PacketType.ASCII_FRAME) {
             receivedFrameCountRef.current++;
             const now = performance.now();
+            lastReceivedFrameAtRef.current = now;
             frameReceiptTimesRef.current.push(now);
+            if (frameReceiptTimesRef.current.length > 10) {
+              frameReceiptTimesRef.current.splice(
+                0,
+                frameReceiptTimesRef.current.length - 10,
+              );
+            }
 
             // Update test metrics immediately (for E2E test frame counting)
             // Use unique frame count instead of packet count for accurate server frame measurement
@@ -227,24 +242,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 .length,
               frameHashes: uniqueReceivedFramesRef.current,
             };
-
-            // Log unique frame arrival rate every time we see a new unique frame
-            const uniqueCount = Object.keys(
-              uniqueReceivedFramesRef.current,
-            ).length;
-            if (uniqueCount > 0 && uniqueCount % 1 === 0) {
-              const recentTimes = frameReceiptTimesRef.current.slice(-10);
-              if (recentTimes.length > 1) {
-                const timeDiff =
-                  recentTimes[recentTimes.length - 1]! - recentTimes[0]!;
-                const packetsPerSecond = (9 / timeDiff) * 1000; // 9 intervals over 10 packets
-                console.log(
-                  `[Client] Frame arrival: ${packetsPerSecond.toFixed(
-                    1,
-                  )} packets/sec (${uniqueCount} unique frames, ${receivedFrameCountRef.current} total packets)`,
-                );
-              }
-            }
 
             try {
               const frame = parseAsciiFrame(decryptedPayload);
@@ -263,7 +260,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   0,
                   frameQueueRef.current.length - 3,
                 );
-              console.log("ASCII_FRAME PACKET RECEIVED");
             } catch (err) {
               console.error("[Client] Failed to parse ASCII frame:", err);
             }
@@ -314,8 +310,67 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       onWasmInitialized,
       discovery,
       onAudioPacket,
+      onConnectionStateChange,
     ],
   );
+  const connectToServerRef = useRef(connectToServer);
+  connectToServerRef.current = connectToServer;
+
+  // Discovery sessions should recover automatically when a peer connection
+  // fails. Keep user-initiated disconnects manual; only retry sessions that
+  // reached CONNECTED at least once.
+  useEffect(() => {
+    if (
+      !discovery ||
+      connectionState !== ConnectionState.ERROR ||
+      !hasBeenConnectedRef.current
+    )
+      return;
+
+    let cancelled = false;
+    const attemptReconnect = () => {
+      if (cancelled || !hasBeenConnectedRef.current) return;
+      reconnectAttemptRef.current++;
+      const delayMs = Math.min(5000, 500 * reconnectAttemptRef.current);
+      setStatus(`Connection lost; reconnecting in ${(delayMs / 1000).toFixed(1)}s`);
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        void connectToServerRef.current({ showErrors: false }).catch((error) => {
+          console.warn("[Client] Discovery reconnect failed:", error);
+          attemptReconnect();
+        });
+      }, delayMs);
+    };
+    attemptReconnect();
+
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
+  }, [connectionState, discovery]);
+
+  // WebRTC can leave a DataChannel open after media delivery has stopped. A
+  // stalled frame stream is a broken session even if the connection badge is
+  // still green, so feed it into the same reconnect path.
+  useEffect(() => {
+    if (!discovery || connectionState !== ConnectionState.CONNECTED) return;
+
+    const watchdog = setInterval(() => {
+      const lastFrameAt = lastReceivedFrameAtRef.current;
+      if (lastFrameAt && performance.now() - lastFrameAt > 12000) {
+        console.warn(
+          "[Client] No ASCII frames received for 12s; reconnecting discovery session",
+        );
+        onConnectionStateChange?.(ConnectionState.ERROR);
+        setStatus("Video stream stalled; reconnecting");
+        setConnectionState(ConnectionState.ERROR);
+      }
+    }, 1000);
+
+    return () => clearInterval(watchdog);
+  }, [connectionState, discovery, onConnectionStateChange]);
 
   const handleDisconnect = useCallback(() => {
     console.log("[Client] handleDisconnect() called");

@@ -207,6 +207,11 @@ void session_participant_destroy(session_participant_t *p) {
     p->opus_encoder = NULL;
   }
 
+  if (p->transport) {
+    acip_transport_destroy(p->transport);
+    p->transport = NULL;
+  }
+
   // Close socket if open
   if (p->socket != INVALID_SOCKET_VALUE) {
     socket_close(p->socket);

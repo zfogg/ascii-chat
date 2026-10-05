@@ -71,14 +71,15 @@ typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, c
                                                   void *user_data);
 
 /**
- * @brief Callback when ICE gathering times out for a peer
+ * @brief Callback when ICE candidate gathering is unusually slow
  * @param participant_id Remote participant UUID (16 bytes)
  * @param timeout_ms Configured timeout in milliseconds
  * @param elapsed_ms Actual elapsed time in milliseconds
  * @param user_data User context pointer
  *
- * Called when a peer connection's ICE gathering exceeds the configured timeout.
- * The peer connection will be closed after this callback returns.
+ * Called once when a peer connection's ICE gathering exceeds the configured
+ * timeout. Trickle ICE may still connect the peer, so this callback does not
+ * imply that the peer connection will be closed.
  */
 typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[16], uint32_t timeout_ms,
                                                     uint64_t elapsed_ms, void *user_data);
@@ -88,6 +89,7 @@ typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id
  */
 typedef struct {
   webrtc_peer_role_t role;                                  ///< Session role (creator or joiner)
+  const char *bind_address;                                 ///< Optional local interface address for ICE sockets
   stun_server_t *stun_servers;                              ///< STUN servers for ICE
   size_t stun_count;                                        ///< Number of STUN servers
   turn_server_t *turn_servers;                              ///< TURN servers for relay
@@ -216,22 +218,26 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
 asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[16],
                                               const uint8_t participant_id[16]);
 
+/** Return the current state for a participant's peer connection. */
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[16],
+                                   webrtc_state_t *state_out);
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
+                                                   const uint8_t participant_id[16]);
+
 // ============================================================================
 // Connection Health Monitoring
 // ============================================================================
 
 /**
- * @brief Remove failed connections and connections whose ICE gathering timed out
+ * @brief Report slow ICE gathering and remove failed connections
  * @param manager Peer manager
  * @param timeout_ms Timeout threshold in milliseconds
- * @return Number of failed or timed-out peer connections removed
+ * @return Number of failed or closed peer connections removed
  *
  * Iterates through all active peer connections and checks if ICE gathering
  * has exceeded the specified timeout or the connection has failed or closed.
- * For each affected connection:
- * - Calls on_gathering_timeout for gathering timeouts (if configured)
- * - Closes the peer connection
- * - Removes it from the manager
+ * Slow gathering is reported once but left active because trickle ICE may
+ * still establish the connection. Failed or closed connections are removed.
  *
  * This should be called periodically (e.g., every 100ms) during connection
  * establishment to detect and handle gathering failures.

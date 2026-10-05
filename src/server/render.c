@@ -562,7 +562,7 @@ void *client_video_render_thread(void *arg) {
       log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
       // Send thread will compare this with last sent count to detect grid changes
-      atomic_store_bool(&client->last_rendered_grid_sources, sources_count);
+      atomic_store_u64(&client->last_rendered_grid_sources, (uint64_t)sources_count);
 
       // Use double-buffer system which has its own internal swap_mutex
       // No external locking needed - the double-buffer is thread-safe by design

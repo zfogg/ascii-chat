@@ -20,6 +20,7 @@ void backtrace_capture(backtrace_t *bt) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace");
     return;
   }
+  bt->tried_symbolize = false;
   bt->count = platform_backtrace(bt->ptrs, 32);
 }
 
@@ -52,6 +53,7 @@ void backtrace_t_free(backtrace_t *bt) {
     platform_backtrace_symbols_destroy(bt->symbols);
     bt->symbols = NULL;
   }
+  bt->tried_symbolize = false;
 }
 
 void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,

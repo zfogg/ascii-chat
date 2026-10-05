@@ -337,7 +337,10 @@ static void *websocket_service_thread(void *arg) {
  * of events like connection, message arrival, closure, etc.
  */
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
-  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
+  websocket_transport_data_t *ws_data = wsi ? lws_get_opaque_user_data(wsi) : NULL;
+  if (!ws_data) {
+    ws_data = (websocket_transport_data_t *)user;
+  }
 
   // Log all callback reasons for TLS investigation
   static uint64_t callback_count = 0;
@@ -1591,6 +1594,15 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
           NULL,   // User pointer (set from connect_info.userdata)
           524288  // TX packet size
       },
+      {
+          "acip", // Application subprotocol selected by the ACIP WebSocket client
+          websocket_callback,
+          0,
+          524288,
+          0,
+          NULL,
+          524288
+      },
       {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
   };
 
@@ -1668,7 +1680,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection =
       use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
-  connect_info.userdata = ws_data;
+  connect_info.opaque_user_data = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");
   ws_data->wsi = lws_client_connect_via_info(&connect_info);

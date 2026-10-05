@@ -19,6 +19,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/atomic.h>
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -36,9 +37,9 @@
 struct webrtc_peer_connection {
   int rtc_id;                               ///< libdatachannel peer connection ID
   webrtc_config_t config;                   ///< Configuration with callbacks
-  webrtc_state_t state;                     ///< Current connection state
-  webrtc_gathering_state_t gathering_state; ///< Current ICE gathering state
-  uint64_t gathering_start_time_ms;         ///< When gathering started (platform_get_time_ms)
+  atomic_t state;                     ///< Current connection state
+  atomic_t gathering_state;           ///< Current ICE gathering state
+  atomic_t gathering_start_time_ms;   ///< When gathering started (platform_get_time_ms)
   webrtc_data_channel_t *dc;                ///< Primary data channel (if created/received)
 };
 
@@ -51,7 +52,7 @@ struct webrtc_peer_connection {
 struct webrtc_data_channel {
   int rtc_id;                   ///< libdatachannel data channel ID
   webrtc_peer_connection_t *pc; ///< Parent peer connection
-  bool is_open;                 ///< Channel open state
+  atomic_t is_open;             ///< Channel open state
 
   // Per-channel callbacks (set via webrtc_datachannel_set_callbacks)
   void (*user_on_open)(webrtc_data_channel_t *dc, void *user_data);                     ///< Open callback
@@ -137,7 +138,7 @@ static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) 
     break;
   }
 
-  pc->state = new_state;
+  atomic_store_u64(&pc->state, (uint64_t)new_state);
 
   if (pc->config.on_state_change) {
     pc->config.on_state_change(pc, new_state, pc->config.user_data);
@@ -159,15 +160,17 @@ static void on_gathering_state_change_adapter(int pc_id, rtcGatheringState state
   case RTC_GATHERING_INPROGRESS:
     new_state = WEBRTC_GATHERING_GATHERING;
     // Record start time when gathering begins
-    if (pc->gathering_state != WEBRTC_GATHERING_GATHERING) {
-      pc->gathering_start_time_ms = platform_get_monotonic_time_us() / 1000;
-      log_debug("ICE gathering started at %llu ms", (unsigned long long)pc->gathering_start_time_ms);
+    if (atomic_load_u64(&pc->gathering_state) != WEBRTC_GATHERING_GATHERING) {
+      uint64_t start_time_ms = platform_get_monotonic_time_us() / 1000;
+      atomic_store_u64(&pc->gathering_start_time_ms, start_time_ms);
+      log_debug("ICE gathering started at %llu ms", (unsigned long long)start_time_ms);
     }
     break;
   case RTC_GATHERING_COMPLETE:
     new_state = WEBRTC_GATHERING_COMPLETE;
-    if (pc->gathering_start_time_ms > 0) {
-      uint64_t duration = (platform_get_monotonic_time_us() / 1000) - pc->gathering_start_time_ms;
+    uint64_t gathering_start_time_ms = atomic_load_u64(&pc->gathering_start_time_ms);
+    if (gathering_start_time_ms > 0) {
+      uint64_t duration = (platform_get_monotonic_time_us() / 1000) - gathering_start_time_ms;
       log_info("ICE gathering completed in %llu ms", (unsigned long long)duration);
     }
     break;
@@ -176,7 +179,7 @@ static void on_gathering_state_change_adapter(int pc_id, rtcGatheringState state
     break;
   }
 
-  pc->gathering_state = new_state;
+  atomic_store_u64(&pc->gathering_state, (uint64_t)new_state);
 
   if (pc->config.on_gathering_state_change) {
     pc->config.on_gathering_state_change(pc, new_state, pc->config.user_data);
@@ -227,7 +230,7 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
 
   dc->rtc_id = dc_id;
   dc->pc = pc;
-  dc->is_open = false;
+  atomic_store_bool(&dc->is_open, false);
   log_debug("Initialized DataChannel wrapper: dc=%p, is_open=false", (void *)dc);
 
   // Store in peer connection
@@ -258,7 +261,7 @@ static void on_datachannel_open_adapter(int dc_id, void *user_data) {
     return;
   }
 
-  dc->is_open = true;
+  atomic_store_bool(&dc->is_open, true);
   log_info("DataChannel opened (id=%d, dc=%p), set is_open=true", dc_id, (void *)dc);
 
   // Check per-channel callback first, then fall back to peer connection callback
@@ -281,7 +284,7 @@ static void on_datachannel_closed_adapter(int dc_id, void *user_data) {
     return;
   }
 
-  dc->is_open = false;
+  atomic_store_bool(&dc->is_open, false);
   log_info("DataChannel closed (id=%d, dc=%p), set is_open=false", dc_id, (void *)dc);
 
   // Check per-channel callback first
@@ -427,13 +430,13 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   }
 
   // Allocate peer connection wrapper
-  webrtc_peer_connection_t *pc = SAFE_MALLOC(sizeof(webrtc_peer_connection_t), webrtc_peer_connection_t *);
+  webrtc_peer_connection_t *pc = SAFE_CALLOC(1, sizeof(webrtc_peer_connection_t), webrtc_peer_connection_t *);
   if (!pc) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer connection");
   }
 
   pc->config = *config; // Copy config
-  pc->state = WEBRTC_STATE_NEW;
+  atomic_store_u64(&pc->state, WEBRTC_STATE_NEW);
   pc->dc = NULL;
 
   // Build ICE server list for libdatachannel
@@ -483,9 +486,13 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   // Create libdatachannel configuration
   rtcConfiguration rtc_config;
   memset(&rtc_config, 0, sizeof(rtc_config));
+  rtc_config.bindAddress = config->bind_address;
   rtc_config.iceServers = ice_servers;
   rtc_config.iceServersCount = (int)ice_count;
   rtc_config.iceTransportPolicy = config->relay_only ? RTC_TRANSPORT_POLICY_RELAY : RTC_TRANSPORT_POLICY_ALL;
+  if (rtc_config.bindAddress && rtc_config.bindAddress[0]) {
+    log_info("Binding WebRTC ICE sockets to %s", rtc_config.bindAddress);
+  }
 
   // Create peer connection
   int pc_id = rtcCreatePeerConnection(&rtc_config);
@@ -504,8 +511,8 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   pc->rtc_id = pc_id;
 
   // Initialize gathering state
-  pc->gathering_state = WEBRTC_GATHERING_NEW;
-  pc->gathering_start_time_ms = 0;
+  atomic_store_u64(&pc->gathering_state, WEBRTC_GATHERING_NEW);
+  atomic_store_u64(&pc->gathering_start_time_ms, 0);
 
   // Set up callbacks
   rtcSetUserPointer(pc_id, pc);
@@ -549,7 +556,7 @@ webrtc_state_t webrtc_get_state(webrtc_peer_connection_t *pc) {
     log_warn("Peer connection is NULL");
     return WEBRTC_STATE_CLOSED;
   }
-  return pc->state;
+  return (webrtc_state_t)atomic_load_u64(&pc->state);
 }
 
 webrtc_gathering_state_t webrtc_get_gathering_state(webrtc_peer_connection_t *pc) {
@@ -557,7 +564,7 @@ webrtc_gathering_state_t webrtc_get_gathering_state(webrtc_peer_connection_t *pc
     log_warn("Peer connection is NULL");
     return WEBRTC_GATHERING_NEW;
   }
-  return pc->gathering_state;
+  return (webrtc_gathering_state_t)atomic_load_u64(&pc->gathering_state);
 }
 
 bool webrtc_is_gathering_timed_out(webrtc_peer_connection_t *pc, uint32_t timeout_ms) {
@@ -566,21 +573,21 @@ bool webrtc_is_gathering_timed_out(webrtc_peer_connection_t *pc, uint32_t timeou
   }
 
   // Only check timeout if we're actively gathering
-  if (pc->gathering_state != WEBRTC_GATHERING_GATHERING) {
+  if (atomic_load_u64(&pc->gathering_state) != WEBRTC_GATHERING_GATHERING) {
     return false;
   }
 
   // If gathering hasn't started yet (start_time == 0), no timeout
-  if (pc->gathering_start_time_ms == 0) {
+  uint64_t gathering_start_time_ms = atomic_load_u64(&pc->gathering_start_time_ms);
+  if (gathering_start_time_ms == 0) {
     return false;
   }
 
   // Check if elapsed time exceeds timeout
   uint64_t current_time_ms = platform_get_monotonic_time_us() / 1000;
-  uint64_t elapsed_ms = current_time_ms - pc->gathering_start_time_ms;
+  uint64_t elapsed_ms = current_time_ms - gathering_start_time_ms;
 
   if (elapsed_ms > timeout_ms) {
-    log_warn("ICE gathering timeout: %llu ms elapsed (timeout: %u ms)", (unsigned long long)elapsed_ms, timeout_ms);
     return true;
   }
 
@@ -677,7 +684,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
   }
 
   // Allocate wrapper
-  webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
+  webrtc_data_channel_t *dc = SAFE_CALLOC(1, sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
   if (!dc) {
     rtcDeleteDataChannel(dc_id);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate data channel wrapper");
@@ -685,7 +692,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
 
   dc->rtc_id = dc_id;
   dc->pc = pc;
-  dc->is_open = false;
+  atomic_store_bool(&dc->is_open, false);
 
   // Set up callbacks
   rtcSetUserPointer(dc_id, dc);
@@ -703,12 +710,22 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t webrtc_datachannel_get_buffered_amount(webrtc_data_channel_t *dc, size_t *amount) {
+  if (!dc || dc->rtc_id < 0 || !amount)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel and amount are required");
+  int result = rtcGetBufferedAmount(dc->rtc_id);
+  if (result < 0)
+    return SET_ERRNO(ERROR_NETWORK, "Failed to query DataChannel buffered amount");
+  *amount = (size_t)result;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8_t *data, size_t size) {
-  if (!dc || !data) {
+  if (!dc || dc->rtc_id < 0 || !data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  if (!dc->is_open) {
+  if (!atomic_load_bool(&dc->is_open)) {
     log_error("★ WEBRTC_DATACHANNEL_SEND: Channel not open! size=%zu, dc->rtc_id=%d", size, dc ? dc->rtc_id : -1);
     return SET_ERRNO(ERROR_NETWORK, "DataChannel not open");
   }
@@ -742,7 +759,7 @@ bool webrtc_datachannel_is_open(webrtc_data_channel_t *dc) {
     SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return false;
   }
-  return dc->is_open;
+  return dc->rtc_id >= 0 && atomic_load_bool(&dc->is_open);
 }
 
 void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open) {
@@ -750,11 +767,11 @@ void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open) 
     SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return;
   }
-  dc->is_open = is_open;
+  atomic_store_bool(&dc->is_open, is_open);
 }
 
 const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {
-  if (!dc) {
+  if (!dc || dc->rtc_id < 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return NULL;
   }
@@ -773,14 +790,18 @@ void webrtc_close_datachannel(webrtc_data_channel_t *dc) {
     SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return;
   }
+  if (dc->rtc_id < 0) {
+    atomic_store_bool(&dc->is_open, false);
+    return;
+  }
 
-  // Save the ID before freeing (dc might be partially freed already)
+  // Save the ID before deleting the native channel.
   int dc_id = dc->rtc_id;
 
   rtcDeleteDataChannel(dc_id);
   log_debug("Closed DataChannel (dc_id=%d)", dc_id);
-
-  SAFE_FREE(dc);
+  dc->rtc_id = -1;
+  atomic_store_bool(&dc->is_open, false);
 }
 
 // =============================================================================
@@ -835,9 +856,9 @@ void webrtc_datachannel_destroy(webrtc_data_channel_t *dc) {
     return;
   }
 
-  // Close if still open, then free
+  // Close if still open, then free the wrapper.
   webrtc_close_datachannel(dc);
-  // Note: webrtc_close_datachannel already calls SAFE_FREE(dc), so we're done
+  SAFE_FREE(dc);
 }
 
 // =============================================================================

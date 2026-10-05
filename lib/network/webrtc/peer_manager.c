@@ -29,9 +29,17 @@ typedef struct {
   webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
   webrtc_data_channel_t *dc;           ///< WebRTC data channel
   bool is_connected;                   ///< DataChannel opened
+  bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;
+
+typedef struct pending_ice_candidate {
+  uint8_t participant_id[16];
+  char *candidate;
+  char *mid;
+  struct pending_ice_candidate *next;
+} pending_ice_candidate_t;
 
 /**
  * @brief WebRTC peer manager structure
@@ -42,7 +50,73 @@ typedef struct webrtc_peer_manager {
   webrtc_signaling_callbacks_t signaling; ///< Signaling callbacks
   peer_entry_t *peers;                    ///< Hash table of peer connections
   mutex_t peers_mutex;                    ///< Protect peers hash table
+  mutex_t signaling_mutex;                ///< Serialize SDP and ICE updates for each peer
+  pending_ice_candidate_t *pending_ice;   ///< ICE delivered before the peer's remote SDP
+  size_t pending_ice_count;
 } webrtc_peer_manager_t;
+
+#define MAX_PENDING_ICE_CANDIDATES 64
+
+static void free_pending_ice_candidate(pending_ice_candidate_t *candidate) {
+  if (!candidate) {
+    return;
+  }
+  SAFE_FREE(candidate->candidate);
+  SAFE_FREE(candidate->mid);
+  SAFE_FREE(candidate);
+}
+
+static asciichat_error_t queue_pending_ice_candidate(webrtc_peer_manager_t *manager, const uint8_t participant_id[16],
+                                                     const char *candidate, const char *mid) {
+  if (manager->pending_ice_count >= MAX_PENDING_ICE_CANDIDATES) {
+    return SET_ERRNO(ERROR_NETWORK, "Too many ICE candidates arrived before remote SDP");
+  }
+
+  pending_ice_candidate_t *pending = SAFE_CALLOC(1, sizeof(*pending), pending_ice_candidate_t *);
+  if (!pending) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to queue early ICE candidate");
+  }
+  memcpy(pending->participant_id, participant_id, sizeof(pending->participant_id));
+  SAFE_STRDUP(pending->candidate, candidate);
+  SAFE_STRDUP(pending->mid, mid);
+  if (!pending->candidate || !pending->mid) {
+    free_pending_ice_candidate(pending);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to copy early ICE candidate");
+  }
+
+  pending_ice_candidate_t **tail = &manager->pending_ice;
+  while (*tail) {
+    tail = &(*tail)->next;
+  }
+  *tail = pending;
+  manager->pending_ice_count++;
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t apply_pending_ice_candidates(webrtc_peer_manager_t *manager, peer_entry_t *peer) {
+  asciichat_error_t first_error = ASCIICHAT_OK;
+  pending_ice_candidate_t **link = &manager->pending_ice;
+  while (*link) {
+    pending_ice_candidate_t *pending = *link;
+    if (memcmp(pending->participant_id, peer->participant_id, sizeof(peer->participant_id)) != 0) {
+      link = &pending->next;
+      continue;
+    }
+
+    asciichat_error_t result = webrtc_add_remote_candidate(peer->pc, pending->candidate, pending->mid);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to apply queued ICE candidate after remote SDP: %s", asciichat_error_string(result));
+      if (first_error == ASCIICHAT_OK) {
+        first_error = result;
+      }
+    }
+
+    *link = pending->next;
+    manager->pending_ice_count--;
+    free_pending_ice_candidate(pending);
+  }
+  return first_error;
+}
 
 // =============================================================================
 // Helper Functions
@@ -255,10 +329,12 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
+  peer->gathering_timeout_reported = false;
   peer->manager = manager;
 
   // Create WebRTC configuration
   webrtc_config_t webrtc_config = {
+      .bind_address = manager->config.bind_address,
       .stun_servers = manager->config.stun_servers,
       .stun_count = manager->config.stun_count,
       .turn_servers = manager->config.turn_servers,
@@ -348,10 +424,17 @@ asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t 
   memcpy(&manager->signaling, signaling_callbacks, sizeof(*signaling_callbacks));
   manager->role = config->role;
   manager->peers = NULL;
+  manager->pending_ice = NULL;
+  manager->pending_ice_count = 0;
 
   if (mutex_init(&manager->peers_mutex, "peers") != 0) {
     SAFE_FREE(manager);
     return SET_ERRNO(ERROR_INTERNAL, "Failed to initialize peers mutex");
+  }
+  if (mutex_init(&manager->signaling_mutex, "webrtc_signaling") != 0) {
+    mutex_destroy(&manager->peers_mutex);
+    SAFE_FREE(manager);
+    return SET_ERRNO(ERROR_INTERNAL, "Failed to initialize WebRTC signaling mutex");
   }
 
   log_info("Created WebRTC peer manager (role: %s)", manager->role == WEBRTC_ROLE_CREATOR ? "creator" : "joiner");
@@ -365,6 +448,7 @@ void webrtc_peer_manager_destroy(webrtc_peer_manager_t *manager) {
     return;
   }
 
+  mutex_lock(&manager->signaling_mutex);
   mutex_lock(&manager->peers_mutex);
 
   // Close all peer connections
@@ -374,6 +458,14 @@ void webrtc_peer_manager_destroy(webrtc_peer_manager_t *manager) {
   }
 
   mutex_unlock(&manager->peers_mutex);
+  pending_ice_candidate_t *pending = manager->pending_ice;
+  while (pending) {
+    pending_ice_candidate_t *next = pending->next;
+    free_pending_ice_candidate(pending);
+    pending = next;
+  }
+  mutex_unlock(&manager->signaling_mutex);
+  mutex_destroy(&manager->signaling_mutex);
   mutex_destroy(&manager->peers_mutex);
 
   SAFE_FREE(manager);
@@ -391,8 +483,16 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
   uint16_t sdp_len = NET_TO_HOST_U16(sdp->sdp_len);
 
+  // ACDS can deliver ICE immediately after SDP. Keep both operations ordered
+  // until libdatachannel has installed the remote description and ICE transport.
+  mutex_lock(&manager->signaling_mutex);
+
   // Allocate null-terminated buffer for SDP string (libdatachannel requires C string)
   char *sdp_str = SAFE_MALLOC(sdp_len + 1, char *);
+  if (!sdp_str) {
+    mutex_unlock(&manager->signaling_mutex);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate remote SDP buffer");
+  }
   memcpy(sdp_str, sdp_data, sdp_len);
   sdp_str[sdp_len] = '\0'; // Null-terminate
 
@@ -419,10 +519,26 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     }
   }
 
+  // A discovery client may retry with a new offer after ICE fails. Keep the
+  // participant ID stable across attempts, so discard a dead creator-side peer
+  // before creating the replacement connection. Reusing a failed peer leaves
+  // the retry without a new local SDP answer.
+  if (sdp->sdp_type == 0 && manager->role == WEBRTC_ROLE_CREATOR) {
+    peer_entry_t *existing = find_peer_locked(manager, sdp->sender_id);
+    if (existing && existing->pc) {
+      webrtc_state_t state = webrtc_get_state(existing->pc);
+      if (state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED) {
+        log_warn("Replacing failed WebRTC peer for retrying participant");
+        remove_peer_locked(manager, existing);
+      }
+    }
+  }
+
   asciichat_error_t result = create_peer_connection_locked(manager, sdp->session_id, sdp->sender_id, &peer);
   if (result != ASCIICHAT_OK) {
     mutex_unlock(&manager->peers_mutex);
     SAFE_FREE(sdp_str);
+    mutex_unlock(&manager->signaling_mutex);
     return SET_ERRNO(result, "Failed to create peer connection for SDP");
   }
 
@@ -433,7 +549,14 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   SAFE_FREE(sdp_str); // Free after use
 
   if (result != ASCIICHAT_OK) {
+    mutex_unlock(&manager->signaling_mutex);
     return SET_ERRNO(result, "Failed to set remote SDP");
+  }
+
+  result = apply_pending_ice_candidates(manager, peer);
+  if (result != ASCIICHAT_OK) {
+    mutex_unlock(&manager->signaling_mutex);
+    return SET_ERRNO(result, "Failed to apply ICE candidates queued before remote SDP");
   }
 
   // If this is an offer and we're the creator, generate answer automatically
@@ -442,6 +565,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     log_debug("Offer received, answer will be generated automatically");
   }
 
+  mutex_unlock(&manager->signaling_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -473,14 +597,21 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
     log_debug("    [%04x] %-48s %s", i, hex, ascii);
   }
 
+  // Do not pass a candidate to libdatachannel until a preceding SDP packet has
+  // finished installing the remote ICE transport.
+  mutex_lock(&manager->signaling_mutex);
   mutex_lock(&manager->peers_mutex);
 
   // Find peer connection
   peer_entry_t *peer = find_peer_locked(manager, ice->sender_id);
   if (!peer) {
     mutex_unlock(&manager->peers_mutex);
-    log_warn("ICE candidate for unknown peer, ignoring");
-    return ASCIICHAT_OK;
+    asciichat_error_t result = queue_pending_ice_candidate(manager, ice->sender_id, candidate, mid);
+    mutex_unlock(&manager->signaling_mutex);
+    if (result == ASCIICHAT_OK) {
+      log_debug("Queued ICE candidate received before its SDP");
+    }
+    return result;
   }
 
   mutex_unlock(&manager->peers_mutex);
@@ -488,9 +619,11 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
   // Add remote ICE candidate
   asciichat_error_t result = webrtc_add_remote_candidate(peer->pc, candidate, mid);
   if (result != ASCIICHAT_OK) {
+    mutex_unlock(&manager->signaling_mutex);
     return SET_ERRNO(result, "Failed to add remote ICE candidate");
   }
 
+  mutex_unlock(&manager->signaling_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -529,6 +662,41 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
   return ASCIICHAT_OK;
 }
 
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[16],
+                                   webrtc_state_t *state_out) {
+  if (!manager || !participant_id || !state_out) {
+    return false;
+  }
+
+  mutex_lock(&manager->peers_mutex);
+  peer_entry_t *peer = find_peer_locked(manager, participant_id);
+  bool found = peer && peer->pc;
+  if (found) {
+    *state_out = webrtc_get_state(peer->pc);
+  }
+  mutex_unlock(&manager->peers_mutex);
+  return found;
+}
+
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
+                                                   const uint8_t participant_id[16]) {
+  if (!manager || !participant_id) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Peer manager and participant ID are required");
+  }
+
+  // SDP and ICE handlers retain peer pointers after releasing peers_mutex.
+  // Serialize removal with those handlers before freeing the peer wrappers.
+  mutex_lock(&manager->signaling_mutex);
+  mutex_lock(&manager->peers_mutex);
+  peer_entry_t *peer = find_peer_locked(manager, participant_id);
+  if (peer) {
+    remove_peer_locked(manager, peer);
+  }
+  mutex_unlock(&manager->peers_mutex);
+  mutex_unlock(&manager->signaling_mutex);
+  return ASCIICHAT_OK;
+}
+
 int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager, uint32_t timeout_ms) {
   if (!manager) {
     return 0;
@@ -537,6 +705,7 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
   int timeout_count = 0;
   peer_entry_t *peer = NULL, *tmp = NULL;
 
+  mutex_lock(&manager->signaling_mutex);
   mutex_lock(&manager->peers_mutex);
 
   // Iterate through all peers and check for gathering timeout
@@ -545,10 +714,19 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
       continue;
     }
 
-    // Failed connections need recovery even after candidate gathering completed.
+    // Trickle ICE can connect before gathering completes. Report a slow gather,
+    // but keep the peer alive until libdatachannel reports a failed connection.
     webrtc_state_t connection_state = webrtc_get_state(peer->pc);
     bool gathering_timed_out = webrtc_is_gathering_timed_out(peer->pc, timeout_ms);
-    if (connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED || gathering_timed_out) {
+    if (gathering_timed_out && !peer->gathering_timeout_reported) {
+      peer->gathering_timeout_reported = true;
+      if (manager->config.on_gathering_timeout) {
+        manager->config.on_gathering_timeout(peer->participant_id, timeout_ms, timeout_ms, manager->config.user_data);
+      }
+      log_warn("ICE gathering exceeded %ums; keeping peer alive while trickle ICE continues", timeout_ms);
+    }
+
+    if (connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED) {
       webrtc_gathering_state_t state = webrtc_get_gathering_state(peer->pc);
 
       log_error("WebRTC negotiation failed for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, "
@@ -556,12 +734,7 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
                 peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3],
                 timeout_ms, state, connection_state);
 
-      // Call timeout callback if configured
-      if (gathering_timed_out && manager->config.on_gathering_timeout) {
-        manager->config.on_gathering_timeout(peer->participant_id, timeout_ms, timeout_ms, manager->config.user_data);
-      }
-
-      // Remove and close the timed-out peer connection
+      // Remove and close peers whose ICE connection has actually failed.
       remove_peer_locked(manager, peer);
       timeout_count++;
 
@@ -570,6 +743,7 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
   }
 
   mutex_unlock(&manager->peers_mutex);
+  mutex_unlock(&manager->signaling_mutex);
 
   return timeout_count;
 }

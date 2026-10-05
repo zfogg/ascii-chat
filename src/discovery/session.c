@@ -66,6 +66,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;
   session->webrtc_last_attempt_time_ms = 0;
+  session->webrtc_disconnected_since_ms = 0;
   session->stun_servers = NULL;
   session->stun_count = 0;
   session->turn_servers = NULL;
@@ -761,22 +762,20 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
  * @brief Callback when ICE gathering times out for a peer
  *
  * This callback is invoked when a peer connection's ICE gathering exceeds
- * the configured timeout. This typically indicates that STUN/TURN servers
- * are unreachable or the network configuration prevents ICE candidate gathering.
+ * the configured timeout. Trickle ICE can still establish a connection using
+ * candidates gathered so far, so this is diagnostic rather than fatal.
  */
 static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uint32_t timeout_ms, uint64_t elapsed_ms,
                                            void *user_data) {
   (void)user_data; // Session context not needed for logging
 
-  log_warn("Peer connection failed to gather ICE candidates");
+  log_warn("ICE candidate gathering is slower than expected; continuing trickle ICE");
   log_debug("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0],
             participant_id[1], participant_id[2], participant_id[3], participant_id[4], participant_id[5],
             participant_id[6], participant_id[7], participant_id[8], participant_id[9], participant_id[10],
             participant_id[11], participant_id[12], participant_id[13], participant_id[14], participant_id[15]);
-  log_error("  Timeout: %u ms", timeout_ms);
-  log_error("  Elapsed: %llu ms", (unsigned long long)elapsed_ms);
-  log_error("===========================================");
-  log_warn("Possible causes: STUN/TURN servers unreachable, firewall blocking UDP, network issues");
+  log_warn("  Gathering timeout: %u ms (elapsed: %llu ms)", timeout_ms, (unsigned long long)elapsed_ms);
+  log_debug("Possible causes include unreachable STUN/TURN servers or network filtering");
 }
 
 /**
@@ -859,6 +858,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     }
   }
   session->webrtc_transport_ready = true;
+  session->webrtc_disconnected_since_ms = 0;
+  session->webrtc_retry_attempt = 0;
 }
 
 /**
@@ -1011,6 +1012,10 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   // Create peer manager configuration
   webrtc_peer_manager_config_t pm_config = {
       .role = role,
+      .bind_address = session->is_host && GET_OPTION(address) && GET_OPTION(address)[0] &&
+                              strcmp(GET_OPTION(address), "0.0.0.0") != 0
+                          ? GET_OPTION(address)
+                          : NULL,
       .stun_servers = session->stun_servers,
       .stun_count = session->stun_count,
       .turn_servers = session->turn_servers,
@@ -1222,6 +1227,15 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
+  if (joined->session_type == SESSION_TYPE_WEBRTC) {
+    // WebRTC signaling addresses peers by participant ID, so a private server
+    // address must not send the client through TCP/NAT host election. The
+    // session initiator is the host for server-created sessions and is already
+    // available even when IP details are withheld.
+    const uint8_t *host_id = joined->host_established ? joined->host_id : joined->initiator_id;
+    memcpy(session->host_id, host_id, sizeof(session->host_id));
+    session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
+  }
   if (GET_OPTION(webrtc_relay_only) && joined->session_type != SESSION_TYPE_WEBRTC) {
     buffer_pool_free(NULL, alloc_buffer, 0);
     return SET_ERRNO(ERROR_INVALID_STATE, "Relay only requires a WebRTC session");
@@ -1256,6 +1270,21 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
     log_info("join_session: Transitioned to CONNECTING_HOST - participant_ctx=%p (returning ASCIICHAT_OK)",
              session->participant_ctx);
+    return ASCIICHAT_OK;
+  }
+
+  // WebRTC peers connect through ACDS signaling and never need the host's IP
+  // address. Use the host participant ID returned above when the address is
+  // intentionally hidden.
+  if (joined->session_type == SESSION_TYPE_WEBRTC && session->host_id[0]) {
+    if (session->is_host) {
+      log_info("WebRTC participant is the session host; starting host transport");
+      set_state(session, DISCOVERY_STATE_STARTING_HOST);
+    } else {
+      log_info("WebRTC host identified by participant ID; connecting without revealing its IP");
+      set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+    }
+    buffer_pool_free(NULL, alloc_buffer, 0);
     return ASCIICHAT_OK;
   }
 
@@ -1465,7 +1494,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   // Media traffic uses a separate transport; keep the signaling connection alive.
   if (session->acds_transport && acip_transport_is_connected(session->acds_transport)) {
     uint64_t now_ns = time_get_ns();
-    if (now_ns - session->last_acds_keepalive_ns >= 20 * NS_PER_SEC_INT) {
+    if (now_ns - session->last_acds_keepalive_ns >= 5 * NS_PER_SEC_INT) {
       asciichat_error_t ping_result = acip_send_ping(session->acds_transport);
       if (ping_result != ASCIICHAT_OK)
         return ping_result;
@@ -1952,6 +1981,49 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         // Dispatch to appropriate handler
         handle_acds_webrtc_packet(session, type, data, len);
         buffer_pool_free(NULL, alloc_buffer, 0);
+      }
+    }
+
+    if (session->session_type == SESSION_TYPE_WEBRTC && !session->is_host && session->peer_manager) {
+      webrtc_state_t peer_state = WEBRTC_STATE_CLOSED;
+      bool peer_found = webrtc_peer_manager_get_state(session->peer_manager, session->host_id, &peer_state);
+      uint64_t now_ms = session_get_current_time_ms();
+      bool disconnected_too_long = false;
+
+      if (peer_found && peer_state == WEBRTC_STATE_DISCONNECTED) {
+        if (session->webrtc_disconnected_since_ms == 0) {
+          session->webrtc_disconnected_since_ms = now_ms;
+        } else {
+          disconnected_too_long = now_ms - session->webrtc_disconnected_since_ms >= 5000;
+        }
+      } else {
+        session->webrtc_disconnected_since_ms = 0;
+      }
+
+      bool peer_failed = !peer_found || peer_state == WEBRTC_STATE_FAILED || peer_state == WEBRTC_STATE_CLOSED;
+      if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
+        int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+        if (session->webrtc_retry_attempt >= max_attempts) {
+          set_error(session, ERROR_NETWORK, "WebRTC peer remained disconnected after retry attempts");
+          return ERROR_NETWORK;
+        }
+
+        log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
+        if (session->participant_ctx) {
+          acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
+          session_participant_set_transport(session->participant_ctx, NULL);
+          acip_transport_destroy(transport);
+        }
+
+        // The transport has now closed its borrowed peer objects. The manager
+        // can release the failed peer before creating the next offer.
+        webrtc_peer_manager_remove_peer(session->peer_manager, session->host_id);
+        session->webrtc_transport_ready = false;
+        session->webrtc_connection_initiated = false;
+        session->webrtc_disconnected_since_ms = 0;
+        session->webrtc_retry_attempt++;
+        set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+        break;
       }
     }
 

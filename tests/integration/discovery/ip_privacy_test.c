@@ -120,7 +120,7 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   // Create session WITHOUT password and WITHOUT expose_ip_publicly
   acip_session_create_t create_req;
   memset(&create_req, 0, sizeof(create_req));
-  create_req.session_type = SESSION_TYPE_DIRECT_TCP;
+  create_req.session_type = SESSION_TYPE_WEBRTC;
   create_req.capabilities = 0x03;
   create_req.max_participants = 4;
   create_req.has_password = 0;       // No password
@@ -147,7 +147,7 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   // Verify IP is WITHHELD (security control active)
   cr_assert_eq(join_resp.server_address[0], '\0', "Server address should be withheld without password or opt-in");
   cr_assert_eq(join_resp.server_port, 0, "Server port should be zero");
-  cr_assert_eq(join_resp.session_type, 0, "Session type should be zero");
+  cr_assert_eq(join_resp.session_type, SESSION_TYPE_WEBRTC, "Session type should be available without revealing IP");
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -299,10 +299,10 @@ Test(acds_ip_privacy, webrtc_session_ip_privacy) {
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
-  // Verify IP is WITHHELD (WebRTC sessions follow same privacy rules)
+  // Verify IP is withheld while clients can still identify WebRTC transport.
   cr_assert_eq(join_resp.server_address[0], '\0', "WebRTC session IP should be withheld without password or opt-in");
   cr_assert_eq(join_resp.server_port, 0, "Server port should be zero");
-  cr_assert_eq(join_resp.session_type, 0, "Session type should be zero");
+  cr_assert_eq(join_resp.session_type, SESSION_TYPE_WEBRTC, "WebRTC transport type should be available");
 
   // TURN credentials should also NOT be generated (IP not revealed)
   cr_assert_eq(join_resp.turn_username[0], '\0', "TURN username should be empty");

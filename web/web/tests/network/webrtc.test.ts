@@ -24,6 +24,11 @@ function packet(length: number) {
   new DataView(bytes.buffer).setUint32(10, length, false);
   return bytes;
 }
+function packetOfType(type: number, length: number) {
+  const bytes = packet(length);
+  new DataView(bytes.buffer).setUint16(8, type, false);
+  return bytes;
+}
 
 describe("Discovery connection settings", () => {
   const options: DiscoveryOptions = {
@@ -178,6 +183,44 @@ describe("WebRTC ACIP framing", () => {
       first.slice(8192),
       newest,
     ]);
+  });
+  it("keeps a full raw frame together and replaces it while backpressured", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", { value: 100000, writable: true });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
+    const stale = packet(230424);
+    const newest = packet(230424);
+
+    bridge.send(stale, true);
+    expect(dc.send).not.toHaveBeenCalled();
+    bridge.send(newest, true);
+    expect(dc.send).not.toHaveBeenCalled();
+
+    Object.defineProperty(dc, "bufferedAmount", { value: 0 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    const sent = vi.mocked(dc.send).mock.calls.map((call) => call[0]);
+    expect(sent[0]).toEqual(newest.slice(0, 16384));
+    expect(sent[sent.length - 1]).toEqual(
+      newest.slice(Math.floor(newest.length / 16384) * 16384),
+    );
+    expect(sent).not.toContain(stale);
+  });
+  it("sends queued audio before a replaceable frame that has not started", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", { value: 100000, writable: true });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
+    const frame = packet(230424);
+    const audio = packetOfType(4001, 150);
+
+    bridge.send(frame, true);
+    bridge.send(audio);
+    expect(vi.mocked(dc.send).mock.calls[0]?.[0]).toEqual(audio);
+
+    Object.defineProperty(dc, "bufferedAmount", { value: 0 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    expect(vi.mocked(dc.send).mock.calls[1]?.[0]).toEqual(
+      frame.slice(0, 16384),
+    );
   });
   it("reassembles split headers and coalesced packets", () => {
     const dc = channel(),

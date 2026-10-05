@@ -2,11 +2,13 @@ import {
   type ForwardedRef,
   type RefObject,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
 } from "react";
 import type { AsciiRendererHandle } from "./types";
 import type { MirrorModule } from "../../wasm/mirror";
+import { startGridStabilityProbe } from "./gridStabilityProbe";
 
 interface UseAsciiRendererHandleParams {
   ref: ForwardedRef<AsciiRendererHandle>;
@@ -40,12 +42,39 @@ export function useAsciiRendererHandle({
   onDimensionsChange,
   onRecreateRenderer,
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
-  const frameCountForLoggingRef = useRef(0);
   const firstRenderDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
-  const fpsUpdateTimeRef = useRef<number | null>(performance.now());
-  const frameCountRef = useRef(0);
+  const changedFrameTimesRef = useRef<number[]>([]);
+  const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showFps) {
+      changedFrameTimesRef.current = [];
+      lastReportedFpsRef.current = null;
+      return;
+    }
+
+    const updateFps = () => {
+      const now = performance.now();
+      const cutoff = now - 1000;
+      while (
+        changedFrameTimesRef.current.length > 0 &&
+        changedFrameTimesRef.current[0]! < cutoff
+      ) {
+        changedFrameTimesRef.current.shift();
+      }
+      const fps = changedFrameTimesRef.current.length;
+      if (lastReportedFpsRef.current === fps) return;
+      lastReportedFpsRef.current = fps;
+      if (fpsDisplayRef.current) fpsDisplayRef.current.textContent = String(fps);
+      onFpsChange?.(fps);
+    };
+
+    updateFps();
+    const timer = window.setInterval(updateFps, 250);
+    return () => window.clearInterval(timer);
+  }, [showFps, onFpsChange]);
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
@@ -58,21 +87,27 @@ export function useAsciiRendererHandle({
   useImperativeHandle(
     ref,
     () => ({
-      writeFrame(ansiString: string, dimensions?: { cols: number; rows: number }) {
+      writeFrame(
+        ansiString: string,
+        dimensions?: { cols: number; rows: number },
+      ): boolean {
         if (!moduleRef.current || !setupDoneRef.current) {
-          return;
+          return false;
         }
 
         // Skip rendering during resize debounce to avoid dimension mismatches
         if (resizeTimeoutRef.current) {
-          return;
+          return false;
         }
         // The debounce ends before the server has necessarily adopted the new
         // size. Keep the cleared canvas blank until a matching frame arrives.
-        if (dimensions && (dimensions.cols !== dimensionsRef.current.cols ||
-            dimensions.rows !== dimensionsRef.current.rows)) return;
-
-        frameCountForLoggingRef.current++;
+        if (
+          dimensions &&
+          (dimensions.cols !== dimensionsRef.current.cols ||
+            dimensions.rows !== dimensionsRef.current.rows)
+        ) {
+          return false;
+        }
 
         try {
           // Encode string to UTF-8 bytes
@@ -148,6 +183,13 @@ export function useAsciiRendererHandle({
                 const ctx = canvas.getContext("2d");
                 if (ctx) {
                   ctx.putImageData(imageData, 0, 0);
+                  if (
+                    new URLSearchParams(window.location.search).get(
+                      "verifyGrid",
+                    ) === "1"
+                  ) {
+                    startGridStabilityProbe(canvas);
+                  }
                 } else {
                   throw new Error("[AsciiRenderer] Canvas context not found");
                 }
@@ -166,7 +208,7 @@ export function useAsciiRendererHandle({
               "[AsciiRenderer] Failed to display framebuffer:",
               displayErr,
             );
-            return;
+            return false;
           }
 
           // Mark first render as done so resize can proceed
@@ -175,25 +217,14 @@ export function useAsciiRendererHandle({
           }
         } catch (err) {
           console.error("[AsciiRenderer] writeFrame error:", err);
-          return;
+          return false;
         }
 
-        // Update FPS counter
-        if (showFps && fpsUpdateTimeRef.current !== null) {
-          frameCountRef.current++;
+        if (showFps) {
           const now = performance.now();
-          const elapsed = now - fpsUpdateTimeRef.current;
-
-          if (elapsed >= 1000) {
-            const fps = Math.round(frameCountRef.current / (elapsed / 1000));
-            if (fpsDisplayRef.current) {
-              fpsDisplayRef.current.textContent = fps.toString();
-            }
-            onFpsChange?.(fps);
-            frameCountRef.current = 0;
-            fpsUpdateTimeRef.current = now;
-          }
+          changedFrameTimesRef.current.push(now);
         }
+        return true;
       },
 
       getDimensions() {
@@ -220,7 +251,6 @@ export function useAsciiRendererHandle({
     }),
     [
       showFps,
-      onFpsChange,
       onRecreateRenderer,
       moduleRef,
       setupDoneRef,

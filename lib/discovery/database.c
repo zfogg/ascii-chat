@@ -628,6 +628,9 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   }
   // peer_count = current_participants (excluding self) that need to negotiate
   resp->peer_count = session->current_participants; // Will be incremented after this returns
+  // The transport type is not private server-address data. WebRTC clients need
+  // it to choose the signaling path even while the server IP remains hidden.
+  resp->session_type = session->session_type;
 
   log_debug("SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x..., "
             "initiator=%02x%02x..., host_established=%d, peer_count=%d",
@@ -644,8 +647,6 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   if (reveal_ip) {
     SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
     resp->server_port = session->server_port;
-    resp->session_type = session->session_type;
-
     // Generate TURN credentials for WebRTC sessions
     if (session->session_type == SESSION_TYPE_WEBRTC && config->turn_secret[0] != '\0') {
       turn_credentials_t turn_creds;

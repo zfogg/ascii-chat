@@ -220,6 +220,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
         } else {
           log_info("Playing");
         }
+        void *audio_ctx = session_capture_get_audio_context(capture);
+        if (audio_ctx) {
+          audio_flush_playback_buffers((audio_context_t *)audio_ctx);
+        }
       }
     }
     break;

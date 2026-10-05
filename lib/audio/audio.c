@@ -964,6 +964,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
   atomic_store_u64(&rb->write_index, 0);
   atomic_store_u64(&rb->read_index, 0);
+  atomic_store_bool(&rb->discard_pending, false);
   // For capture buffers (jitter_buffer_enabled=false), mark as already filled to bypass jitter logic
   // For playback buffers (jitter_buffer_enabled=true), start unfilled to wait for threshold
   atomic_store_bool(&rb->jitter_buffer_filled, !jitter_buffer_enabled);
@@ -1049,6 +1050,12 @@ void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
   // Clear the actual data to zeros to prevent any stale audio
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
   mutex_unlock(&rb->mutex);
+}
+
+void audio_ring_buffer_discard_pending(audio_ring_buffer_t *rb) {
+  if (rb) {
+    atomic_store_bool(&rb->discard_pending, true);
+  }
 }
 
 asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
@@ -1138,6 +1145,15 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   if (!rb || !data || samples <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: rb=%p, data=%p, samples=%d", rb, data, samples);
     return 0; // Return 0 samples read on error
+  }
+
+  // Keep read_index consumer-owned while letting a producer request a flush.
+  if (atomic_exchange_bool(&rb->discard_pending, false)) {
+    unsigned int write_idx = atomic_load_u64(&rb->write_index);
+    atomic_store_u64(&rb->read_index, write_idx);
+    rb->last_sample = 0.0f;
+    atomic_store_u64(&rb->crossfade_samples_remaining, 0);
+    return 0;
   }
 
   // LOCK-FREE: Load indices with proper memory ordering

@@ -1,5 +1,8 @@
 export interface AsciiRendererHandle {
-  writeFrame(ansiString: string, dimensions?: { cols: number; rows: number }): void;
+  writeFrame(
+    ansiString: string,
+    dimensions?: { cols: number; rows: number },
+  ): boolean;
   getDimensions(): { cols: number; rows: number };
   clear(): void;
   recreateRenderer(): void;

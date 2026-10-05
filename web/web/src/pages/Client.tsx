@@ -118,6 +118,13 @@ export function ClientPage({
   const [micEnabled, setMicEnabled] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const audioRef = useRef<AudioPipeline | null>(null);
+  const audioStreamStartedRef = useRef(false);
+  const onConnectionStateChange = useCallback((state: ConnectionState) => {
+    if (state !== ConnectionState.CONNECTED) {
+      audioStreamStartedRef.current = false;
+      audioRef.current?.stopCapture();
+    }
+  }, []);
   const [audioLevels, setAudioLevels] = useState({
     microphone: 0,
     playback: 0,
@@ -185,6 +192,8 @@ export function ClientPage({
   const frameQueueRef = useRef<AsciiFrame[]>([]);
 
   const renderLoopStartTimeRef = useRef<number>(0);
+  const changingFrameCountRef = useRef(0);
+  const lastRenderedFrameContentRef = useRef<string | null>(null);
 
   const renderCallCountRef = useRef(0);
   const frameHashesRef = useRef<Record<string, number>>({});
@@ -220,6 +229,7 @@ export function ClientPage({
   } = useClientConnection({
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
+    onConnectionStateChange,
     serverUrl,
     terminalDimensions,
     settings,
@@ -233,6 +243,34 @@ export function ClientPage({
       // WASM initialized callback
     },
   });
+
+  // Report the rate of actual visual changes, not RAF callbacks or received
+  // packets. This drops to zero when a connected session stops animating.
+  useEffect(() => {
+    if (connectionState !== ConnectionState.CONNECTED) {
+      setFps(undefined);
+      lastRenderedFrameContentRef.current = null;
+      return;
+    }
+
+    setFps(0);
+    let previousFrameCount = changingFrameCountRef.current;
+    let previousTime = performance.now();
+    const intervalId = window.setInterval(() => {
+      const now = performance.now();
+      const currentFrameCount = changingFrameCountRef.current;
+      const elapsedSeconds = (now - previousTime) / 1000;
+      setFps(
+        elapsedSeconds > 0
+          ? Math.round((currentFrameCount - previousFrameCount) / elapsedSeconds)
+          : 0,
+      );
+      previousFrameCount = currentFrameCount;
+      previousTime = now;
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [connectionState]);
 
   const optionsManager = useMemo(() => {
     if (!wasmInitialized || !isClientWasmReady()) return null;
@@ -317,19 +355,29 @@ export function ClientPage({
     setMicEnabled(false);
   }, []);
   const disconnectMedia = useCallback(() => {
+    // Audio callbacks can survive briefly while AudioContext.close() drains.
+    // Stop them from sending into a DataChannel that disconnect() just closed.
+    audioStreamStartedRef.current = false;
     stopWebcam();
     closeAudio();
     handleDisconnect();
   }, [stopWebcam, closeAudio, handleDisconnect]);
   useEffect(() => {
-    if (
-      connectionState === ConnectionState.DISCONNECTED ||
-      connectionState === ConnectionState.ERROR
-    ) {
+    if (connectionState === ConnectionState.DISCONNECTED) {
       stopWebcam();
       closeAudio();
+      setMicEnabled(false);
+    } else if (connectionState === ConnectionState.ERROR) {
+      stopWebcam();
+      // Keep the user-activated AudioContext alive during automatic discovery
+      // reconnects, but stop sending microphone packets until the new server
+      // connection has accepted STREAM_START.
+      // Otherwise AUDIO_OPUS_BATCH can overtake STREAM_START and the server
+      // disconnects the peer for sending audio before enabling the stream.
+      if (discovery) audioRef.current?.stopCapture();
+      else closeAudio();
     }
-  }, [connectionState, stopWebcam, closeAudio]);
+  }, [connectionState, stopWebcam, closeAudio, discovery]);
   useEffect(
     () => () => {
       audioRef.current?.close();
@@ -342,6 +390,7 @@ export function ClientPage({
         audioRef.current = new AudioPipeline({
           onLevels: setAudioLevels,
           onAudioData: (payload) => {
+            if (!audioStreamStartedRef.current) return;
             try {
               clientRef.current?.sendPacket(
                 PacketType.AUDIO_OPUS_BATCH,
@@ -353,10 +402,10 @@ export function ClientPage({
           },
         });
       await audioRef.current.enablePlayback();
-      clientRef.current?.sendPacket(
-        PacketType.STREAM_START,
-        buildStreamStartPacket(true),
-      );
+      const client = clientRef.current;
+      if (!client) throw new Error("Connect before starting the audio stream");
+      client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
+      audioStreamStartedRef.current = true;
       setAudioEnabled(true);
       return true;
     } catch (error) {
@@ -373,10 +422,10 @@ export function ClientPage({
     try {
       if (!(await enableAudio())) return;
       if (!audioRef.current) return;
-      clientRef.current?.sendPacket(
-        PacketType.STREAM_START,
-        buildStreamStartPacket(true),
-      );
+      const client = clientRef.current;
+      if (!client) throw new Error("Connect before resuming the audio stream");
+      client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
+      audioStreamStartedRef.current = true;
       await audioRef.current.startCapture();
       setMicEnabled(true);
     } catch (error) {
@@ -427,7 +476,7 @@ export function ClientPage({
   });
 
   const renderFrame = useCallback(
-    (deltaMs: number) => {
+    (_deltaMs: number) => {
       renderCallCountRef.current++;
 
       if (frameQueueRef.current.length === 0 || !rendererRef.current) {
@@ -451,33 +500,30 @@ export function ClientPage({
           renderLoopStartTimeRef.current = performance.now();
         }
 
-        const MAX_DRAIN = 4;
-        const framesToDrain = Math.min(
-          Math.floor(deltaMs / frameIntervalRef.current),
-          MAX_DRAIN,
-        );
-
-        // Drop stale frames (skip all but the newest)
-        for (let i = 0; i < framesToDrain - 1; i++) {
-          frameQueueRef.current.shift();
-        }
-
-        // Render the newest frame
-        const frame = frameQueueRef.current.shift();
+        // Display the latest snapshot instead of replaying a backlog.
+        const frame = frameQueueRef.current.pop();
+        frameQueueRef.current.length = 0;
         if (frame) {
           const frameContent = frame.ansiString;
           const frameHash = hashFrame(frameContent);
+          const drewFrame = rendererRef.current.writeFrame(frameContent, {
+            cols: frame.header.width,
+            rows: frame.header.height,
+          });
+          if (!drewFrame) {
+            renderNoOpCountRef.current++;
+            return;
+          }
+          if (lastRenderedFrameContentRef.current !== frameContent) {
+            changingFrameCountRef.current++;
+            lastRenderedFrameContentRef.current = frameContent;
+          }
           // Track if this is a new unique frame we haven't seen before
           if (!frameHashesRef.current[frameHash]) {
             cumulativeUniqueFramesRef.current++;
           }
           frameHashesRef.current[frameHash] =
             (frameHashesRef.current[frameHash] || 0) + 1;
-
-          rendererRef.current.writeFrame(frameContent, {
-            cols: frame.header.width,
-            rows: frame.header.height,
-          });
 
           frameCountRef.current++;
           diagnosticFrameCountRef.current++;
@@ -497,7 +543,7 @@ export function ClientPage({
         }
       }
     },
-    [frameIntervalRef],
+    [],
   );
 
   const { startRenderLoop } = useRenderLoop(
@@ -533,6 +579,28 @@ export function ClientPage({
     // Note: startRenderLoop is NOT in deps array to avoid circular dependency issues
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState]);
+
+  useEffect(() => {
+    if (
+      !discovery ||
+      !audioEnabled ||
+      connectionState !== ConnectionState.CONNECTED
+    )
+      return;
+    try {
+      const client = clientRef.current;
+      if (!client) return;
+      client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
+      audioStreamStartedRef.current = true;
+      if (micEnabled) {
+        void audioRef.current?.startCapture().catch((error) => {
+          console.error("[Client] Could not resume microphone after reconnect:", error);
+        });
+      }
+    } catch (error) {
+      console.warn("[Client] Could not resume audio stream after reconnect:", error);
+    }
+  }, [audioEnabled, connectionState, discovery, clientRef, micEnabled]);
 
   const webcamAutoStartedRef = useRef(false);
   useEffect(() => {
@@ -843,7 +911,7 @@ export function ClientPage({
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
             onFpsChange={setFps}
-            error={error || rendererError}
+            error={discoveryMode ? rendererError : error || rendererError}
             showFps={isWebcamRunning}
             connectionState={connectionState}
             wasmModuleReady={rendererReady}
