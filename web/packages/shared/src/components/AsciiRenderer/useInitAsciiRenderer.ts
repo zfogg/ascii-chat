@@ -207,12 +207,12 @@ export function useInitAsciiRenderer({
         // BUT: cap container dimensions to prevent cascading resize loops
         const maxContainerHeight = 2000;
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
-        const estimatedCols = Math.max(80, Math.floor(containerWidth / 10));
+        const estimatedCols = Math.max(1, Math.floor(containerWidth / 10));
 
         // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
         const pixelsPerRow = isMatrixMode ? 32 : 20;
         const estimatedRows = Math.max(
-          24,
+          1,
           Math.floor(effectiveHeight / pixelsPerRow),
         );
 
@@ -471,9 +471,9 @@ export function useInitAsciiRenderer({
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
               const recoveryIsMatrixMode = getMatrixRain();
               const recoveryPixelsPerRow = recoveryIsMatrixMode ? 32 : 20;
-              const recoveryCols = Math.max(80, Math.floor(recoveryWidth / 10));
+              const recoveryCols = Math.max(1, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
-                24,
+                1,
                 Math.floor(recoveryHeight / recoveryPixelsPerRow),
               );
 

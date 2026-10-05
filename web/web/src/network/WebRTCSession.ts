@@ -316,7 +316,10 @@ export class WebRTCSession implements ClientSession {
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
     // DTLS provides encryption; ACIP media packets carry no custom encryption wrapper.
-    this.bridge.send(serializePacket(type, payload, 0));
+    this.bridge.send(
+      serializePacket(type, payload, 0),
+      type === PacketType.IMAGE_FRAME,
+    );
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
     this.sendPacket(type, payload);

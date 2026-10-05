@@ -8,6 +8,7 @@ import {
 } from "../network";
 import type { AsciiRendererHandle, SettingsConfig } from "../components";
 import type { ClientSession } from "../network/Transport";
+import type { AsciiFrame } from "../network/AsciiFrameParser";
 import { WebRTCSession, type DiscoveryOptions } from "../network/WebRTCSession";
 
 const STATE_NAMES: Record<number, string> = {
@@ -35,7 +36,7 @@ interface UseClientConnectionOptions {
   terminalDimensions: { cols: number; rows: number };
   settings: SettingsConfig;
   rendererRef: React.RefObject<AsciiRendererHandle | null>;
-  frameQueueRef: React.MutableRefObject<string[]>;
+  frameQueueRef: React.MutableRefObject<AsciiFrame[]>;
   uniqueReceivedFramesRef: React.MutableRefObject<Record<string, number>>;
   frameCountRef: React.MutableRefObject<number>;
   receivedFrameCountRef: React.MutableRefObject<number>;
@@ -256,7 +257,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
               // Queue frame for the render loop to process at target FPS
               // This prevents frame accumulation when tab is hidden
-              frameQueueRef.current.push(frame.ansiString);
+              frameQueueRef.current.push(frame);
               if (frameQueueRef.current.length > 3)
                 frameQueueRef.current.splice(
                   0,

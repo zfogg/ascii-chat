@@ -397,16 +397,8 @@ void *client_video_render_thread(void *arg) {
   fps_t video_fps_tracker = {0};
   fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
 
-  // Adaptive sleep for frame rate limiting
-  adaptive_sleep_state_t sleep_state = {0};
-  adaptive_sleep_config_t config = {
-      .baseline_sleep_ns = (uint64_t)(NS_PER_SEC_INT / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
-      .min_speed_multiplier = 1.0,                                  // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,                                  // Constant rate (no speedup)
-      .speedup_rate = 0.0,                                          // No adaptive behavior (constant FPS)
-      .slowdown_rate = 0.0                                          // No adaptive behavior (constant FPS)
-  };
-  adaptive_sleep_init(&sleep_state, &config);
+  const uint64_t frame_interval_ns = NS_PER_SEC_INT / client_fps;
+  uint64_t next_frame_ns = time_get_ns() + frame_interval_ns;
 
   log_info("Video render loop STARTING for client %u", thread_client_id);
 
@@ -434,13 +426,19 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    // Frame rate limiting using adaptive sleep system
-    // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
+    // Processing consumes part of the frame interval. Sleep only until the
+    // scheduled deadline, and skip missed deadlines without a catch-up burst.
     uint64_t iter_start_ns = time_get_ns();
-    START_TIMER("render_adaptive_sleep");
-    adaptive_sleep_do(&sleep_state, 0, 0);
-    STOP_TIMER_AND_LOG(dev, 0, "render_adaptive_sleep", "adaptive_sleep completed");
+    START_TIMER("render_frame_sleep");
+    if (iter_start_ns < next_frame_ns) {
+      platform_sleep_ns(next_frame_ns - iter_start_ns);
+    }
+    STOP_TIMER_AND_LOG(dev, 0, "render_frame_sleep", "frame deadline sleep completed");
     uint64_t after_sleep_ns = time_get_ns();
+    uint64_t elapsed_intervals = after_sleep_ns >= next_frame_ns
+                                     ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1
+                                     : 1;
+    next_frame_ns += elapsed_intervals * frame_interval_ns;
 
     // Capture timestamp for FPS tracking and frame timestamps
     uint64_t current_time_ns = time_get_ns();
@@ -578,9 +576,11 @@ void *client_video_render_thread(void *arg) {
           if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
+            write_frame->width = width_snapshot;
+            write_frame->height = height_snapshot;
             write_frame->capture_timestamp_ns = current_time_ns;
 
-            // Always commit frame at configured FPS rate (adaptive_sleep_do enforces timing).
+            // Commit at the configured cadence enforced by the frame deadline.
             // Never skip frames based on content changes.
             {
               uint64_t commit_start_ns = time_get_ns();

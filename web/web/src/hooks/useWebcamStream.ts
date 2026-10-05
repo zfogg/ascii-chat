@@ -7,6 +7,7 @@ import {
   buildImageFrameH265Payload,
 } from "../network";
 import type { ClientSession } from "../network/Transport";
+import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { SettingsConfig } from "../components";
 
 // Helper to compute simple frame hash
@@ -33,7 +34,7 @@ interface UseWebcamStreamOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   frameIntervalRef: React.MutableRefObject<number>;
   lastFrameTimeRef: React.MutableRefObject<number>;
-  frameQueueRef: React.MutableRefObject<string[]>;
+  frameQueueRef: React.MutableRefObject<AsciiFrame[]>;
   setError: (error: string) => void;
   includeAudio?: boolean;
 }
