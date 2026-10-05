@@ -109,6 +109,12 @@ def main():
                 verify(root / f"call-{frequency}.mp4", (440, 880))
             print("Mirror and both client recordings contain the expected tones with synchronized audio/video.")
         except Exception:
+            if sys.platform == "darwin":
+                for process in processes:
+                    if process.poll() is None:
+                        trace = subprocess.run(["sample", str(process.pid), "1", "1"],
+                                               capture_output=True, text=True, timeout=15)
+                        print(trace.stdout, file=sys.stderr)
             for path in root.glob("*.log"):
                 for line in path.read_text(errors="replace").splitlines():
                     if any(word in line for word in ("ERROR", "FATAL", "Connected", "SNAPSHOT", "handshake")):
