@@ -15,6 +15,10 @@ typedef enum {
 
 #define AUDIO_VISUALIZATION_SAMPLE_RATE 48000
 
+#define AUDIO_VISUALIZATION_COLOR_STANDARD 0
+#define AUDIO_VISUALIZATION_COLOR_DARKER 1
+#define AUDIO_VISUALIZATION_COLOR_BRIGHTER 2
+
 /* Publish mono float PCM without taking ownership of the caller's buffer. */
 void audio_visualization_submit(audio_visualization_source_t source, const float *samples, size_t count);
 
@@ -22,9 +26,9 @@ void audio_visualization_submit(audio_visualization_source_t source, const float
 void audio_visualization_read(audio_visualization_source_t source, float *samples, size_t count);
 
 /* Build a terminal-ready waveform frame. The caller owns the returned buffer. */
-char *audio_visualization_render_waveform(unsigned int width, unsigned int height,
-                                          audio_visualization_source_t source, bool use_color);
+char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
+                                          bool use_color, int color_mode);
 
 /* Build a terminal-ready scrolling frequency display. The caller owns the returned buffer. */
 char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color);
+                                     bool use_color, int color_mode);

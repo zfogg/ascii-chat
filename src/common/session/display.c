@@ -698,6 +698,8 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
   bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  int color_mode =
+      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   bool has_media = GET_OPTION(media_file)[0] != '\0' || GET_OPTION(media_url)[0] != '\0';
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
@@ -708,8 +710,8 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   else if (selected_audio == AUDIO_SOURCE_REMOTE)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
   if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, visual_source, use_color);
-  return audio_visualization_render_waveform(width, height, visual_source, use_color);
+    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode);
+  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode);
 }
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {

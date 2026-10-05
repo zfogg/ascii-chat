@@ -3,7 +3,6 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/terminal.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -54,11 +53,17 @@ static void visualization_color_for_frequency(float centroid_hz, unsigned char *
   *blue = stops[stop_count - 1].blue;
 }
 
-static void visualization_color_for_level(float frequency_hz, float level, bool dark_background,
-                                          unsigned char *red, unsigned char *green, unsigned char *blue) {
+static void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red,
+                                          unsigned char *green, unsigned char *blue) {
   visualization_color_for_frequency(frequency_hz, red, green, blue);
-  float brightness = dark_background ? 0.62f + 0.38f * level : 0.24f + 0.76f * level;
-  float white_mix = dark_background ? 0.10f : 0.0f;
+  float brightness = 0.5f + 0.5f * level;
+  float white_mix = 0.0f;
+  if (color_mode == AUDIO_VISUALIZATION_COLOR_DARKER) {
+    brightness = 0.24f + 0.76f * level;
+  } else if (color_mode == AUDIO_VISUALIZATION_COLOR_BRIGHTER) {
+    brightness = 0.62f + 0.38f * level;
+    white_mix = 0.10f;
+  }
   *red = (unsigned char)lrintf(fminf(255.0f, *red * brightness + 255.0f * white_mix));
   *green = (unsigned char)lrintf(fminf(255.0f, *green * brightness + 255.0f * white_mix));
   *blue = (unsigned char)lrintf(fminf(255.0f, *blue * brightness + 255.0f * white_mix));
@@ -139,7 +144,7 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
 }
 
 char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                          bool use_color) {
+                                          bool use_color, int color_mode) {
   if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
@@ -150,7 +155,6 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
   if (!samples)
     return NULL;
   audio_visualization_read(source, samples, sample_count);
-  bool dark_background = terminal_has_dark_background();
 
   /* Reserve the first row for a quiet source label; the remaining grid is the waveform. */
   const unsigned int grid_height = height - 1;
@@ -180,7 +184,7 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
       float centroid = waveform_spectral_centroid(samples, sample_count, bucket_center);
       /* A gentle square-root scale keeps speech visible without flattening loud peaks. */
       float level = sqrtf(fminf(peak, 1.0f));
-      visualization_color_for_level(centroid, level, dark_background, &palette[x][0], &palette[x][1], &palette[x][2]);
+      visualization_color_for_level(centroid, level, color_mode, &palette[x][0], &palette[x][1], &palette[x][2]);
       unsigned int amplitude = (unsigned int)lrintf(level * (float)half_height);
       if (amplitude > half_height)
         amplitude = half_height;
@@ -263,7 +267,7 @@ static void visualization_fft(float *real, float *imaginary) {
 }
 
 char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color) {
+                                     bool use_color, int color_mode) {
   if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
@@ -272,7 +276,6 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   if (!samples)
     return NULL;
   audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
-  bool dark_background = terminal_has_dark_background();
   size_t cell_count = (size_t)width * (height - 1);
   char *cells = SAFE_MALLOC(cell_count, char *);
   unsigned char *colors = SAFE_MALLOC(cell_count * 3, unsigned char *);
@@ -326,7 +329,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       size_t cell = (size_t)(row + 1) * width + x;
       cells[cell] = levels[level];
       float band_hz = sqrtf(low_hz * high_hz);
-      visualization_color_for_level(band_hz, intensity, dark_background, &colors[cell * 3], &colors[cell * 3 + 1],
+      visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
                                     &colors[cell * 3 + 2]);
     }
   }
