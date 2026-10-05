@@ -33,8 +33,12 @@ export function useRenderLoop(
 
         debug.count++;
 
-        if (elapsed >= interval) {
-          lastFrameTimeRef.current = time;
+        // Allow for RAF timestamp rounding and retain the scheduled cadence.
+        // Resetting to the current time loses fractional intervals and skips
+        // refreshes when the display rate is close to the target rate.
+        if (elapsed + 1 >= interval) {
+          const intervals = Math.max(1, Math.floor((elapsed + 1) / interval));
+          lastFrameTimeRef.current += intervals * interval;
           renderFrame(elapsed);
         } else {
           debug.skipped++;

@@ -2323,8 +2323,13 @@ void *client_send_thread_func(void *arg) {
       }
     }
 
-    // Always consume frames from the buffer to prevent accumulation
-    // Rate-limit the actual sending, but always mark frames as consumed
+    // Leave the newest frame available until the send deadline. Consuming it
+    // before pacing is ready discards frames when render and send clocks drift.
+    uint64_t pacing_time_us = time_ns_to_us(time_get_ns());
+    if (pacing_time_us - last_video_send_time < video_send_interval_us) {
+      platform_sleep_us(1 * US_PER_MS_INT);
+      continue;
+    }
     uint64_t video_check_ns = time_get_ns();
     if (!client->outgoing_video_buffer) {
       // Buffer has been destroyed (client is shutting down).
@@ -2335,7 +2340,7 @@ void *client_send_thread_func(void *arg) {
     }
 
     // Get latest frame from double buffer (lock-free operation)
-    // This marks the frame as consumed even if we don't send it yet
+    // Consume only once the sender is ready to transmit.
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
     uint64_t frame_get_ns = time_get_ns();
     char frame_get_elapsed_str[32];
@@ -2503,7 +2508,9 @@ void *client_send_thread_func(void *arg) {
       log_info("🎬 FRAME_SENT: client_id=%s frame_num=%lu size=%zu", client->client_id, frame_count, frame_size);
 
       sent_something = true;
-      last_video_send_time = current_time_us;
+      last_video_send_time = last_video_send_time == 0
+                                 ? current_time_us
+                                 : current_time_us - (current_time_us - last_video_send_time) % video_send_interval_us;
 
       uint64_t frame_end_ns = time_get_ns();
       uint64_t frame_time_us = time_ns_to_us(time_elapsed_ns(frame_start_ns, frame_end_ns));

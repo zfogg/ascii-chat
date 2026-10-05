@@ -162,6 +162,7 @@ export function useAsciiRendererHandle({
               "[AsciiRenderer] Failed to display framebuffer:",
               displayErr,
             );
+            return;
           }
 
           // Mark first render as done so resize can proceed
@@ -170,6 +171,7 @@ export function useAsciiRendererHandle({
           }
         } catch (err) {
           console.error("[AsciiRenderer] writeFrame error:", err);
+          return;
         }
 
         // Update FPS counter
