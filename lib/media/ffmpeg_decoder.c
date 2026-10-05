@@ -1411,7 +1411,9 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     av_packet_unref(decoder->packet);
 
     if (ret < 0) {
-      log_warn("Error sending audio packet to decoder");
+      char error_message[AV_ERROR_MAX_STRING_SIZE];
+      av_strerror(ret, error_message, sizeof(error_message));
+      log_warn("Error sending audio packet to decoder: %s", error_message);
       continue;
     }
 

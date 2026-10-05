@@ -4,6 +4,8 @@ Run: python tests/integration/render_file_audio.py build/bin/ascii-chat
 Requires ffmpeg/ffprobe; no camera, microphone, or speakers are required.
 """
 
+import functools
+import http.server
 import json
 import math
 import os
@@ -15,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 
 
 def run(*args):
@@ -49,13 +52,18 @@ def main():
     env = dict(os.environ, LSAN_OPTIONS="detect_leaks=0", ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1", ASCII_CHAT_QUESTION_PROMPT_RESPONSE="y;y;y;y")
     with tempfile.TemporaryDirectory(prefix="ascii-recording-") as directory:
         root = Path(directory)
+        # The HTTP fixture serves sequential bytes; faststart avoids requiring range requests.
         for frequency in (440, 880):
             run("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
                 "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "12",
-                "-c:v", "libx264", "-c:a", "aac", str(root / f"{frequency}.mp4"))
+                "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
+        media_server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        media_thread = threading.Thread(target=media_server.serve_forever, daemon=True)
+        media_thread.start()
         processes = []
         handles = []
 
@@ -85,8 +93,9 @@ def main():
                 time.sleep(0.1)
             clients = []
             for frequency in (440, 880):
+                media_args = ("--url", f"http://127.0.0.1:{media_server.server_port}/{frequency}.mp4") if frequency == 440 else ("--file", str(root / f"{frequency}.mp4"))
                 clients.append(launch(str(frequency), "client", "127.0.0.1", "--port", str(port),
-                                      "--file", str(root / f"{frequency}.mp4"), "--render-file", str(root / f"call-{frequency}.mp4"),
+                                      *media_args, "--render-file", str(root / f"call-{frequency}.mp4"),
                                       "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", "6"))
                 deadline = time.monotonic() + 10
                 while not (root / f"{frequency}.log").exists() or "Connected" not in (root / f"{frequency}.log").read_text(errors="replace"):
@@ -117,6 +126,9 @@ def main():
                         process.wait()
             for handle in handles:
                 handle.close()
+            media_server.shutdown()
+            media_server.server_close()
+            media_thread.join()
 
 
 if __name__ == "__main__":

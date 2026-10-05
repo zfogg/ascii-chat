@@ -12,7 +12,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/util/time.h>       // For START_TIMER/STOP_TIMER macros
+#include <ascii-chat/util/time.h>       // For monotonic timing
 #include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer_pool.h>
@@ -174,7 +174,7 @@ static void *audio_worker_thread(void *arg) {
   uint64_t media_samples = 0;
   while (true) {
     loop_count++;
-    START_TIMER("worker_loop_iteration");
+    uint64_t loop_start_ns = time_get_ns();
 
     // For output-only mode, don't wait for signal - just write continuously
     // For duplex/input modes, wait for signal from callback
@@ -184,9 +184,9 @@ static void *audio_worker_thread(void *arg) {
     if (!is_output_only) {
       // Wait for signal from callback or timeout
       mutex_lock(&ctx->worker_mutex);
-      START_TIMER("worker_cond_wait");
+      uint64_t wait_start_ns = time_get_ns();
       wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
-      double wait_time_ns = fmax(0.0, STOP_TIMER("worker_cond_wait"));
+      double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
       mutex_unlock(&ctx->worker_mutex);
 
       total_wait_ns += wait_time_ns;
@@ -241,7 +241,6 @@ static void *audio_worker_thread(void *arg) {
 
     if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source) {
       // Timeout with no data - continue waiting
-      STOP_TIMER("worker_loop_iteration"); // Must stop before loop repeats
       continue;
     }
 
@@ -294,7 +293,7 @@ static void *audio_worker_thread(void *arg) {
         aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
 
       if (aligned > 0) {
-        START_TIMER("worker_capture_processing");
+        uint64_t capture_start_ns = time_get_ns();
 
         size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, aligned);
         size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, aligned);
@@ -345,14 +344,14 @@ static void *audio_worker_thread(void *arg) {
         log_debug_every(NS_PER_MS_INT, "Worker processed %zu samples (AEC3 applied, render=%zu)", capture_read,
                         render_read);
 
-        double capture_time_ns = fmax(0.0, STOP_TIMER("worker_capture_processing"));
+        double capture_time_ns = (double)time_elapsed_ns(capture_start_ns, time_get_ns());
         total_capture_ns += capture_time_ns;
         if (capture_time_ns > max_capture_ns)
           max_capture_ns = capture_time_ns;
       }
     } else if (capture_available >= 64) {
       // No AEC3 (bypassed or no pipeline): process capture directly
-      START_TIMER("worker_capture_processing");
+      uint64_t capture_start_ns = time_get_ns();
 
       size_t samples_to_process = (capture_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : capture_available;
       size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, samples_to_process);
@@ -388,7 +387,7 @@ static void *audio_worker_thread(void *arg) {
                         bypass_aec3_worker ? "BYPASSED" : "applied");
       }
 
-      double capture_time_ns = fmax(0.0, STOP_TIMER("worker_capture_processing"));
+      double capture_time_ns = (double)time_elapsed_ns(capture_start_ns, time_get_ns());
       total_capture_ns += capture_time_ns;
       if (capture_time_ns > max_capture_ns)
         max_capture_ns = capture_time_ns;
@@ -400,7 +399,7 @@ static void *audio_worker_thread(void *arg) {
     (void)playback_available; // Suppress unused variable warning if not used in this build
 
     // Log overall loop iteration time
-    double loop_time_ns = fmax(0.0, STOP_TIMER("worker_loop_iteration"));
+    double loop_time_ns = (double)time_elapsed_ns(loop_start_ns, time_get_ns());
     static double total_loop_ns = 0;
     static double max_loop_ns = 0;
     total_loop_ns += loop_time_ns;
@@ -444,7 +443,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     log_warn("!!! DUPLEX_CALLBACK INVOKED FOR FIRST TIME !!!");
   }
 
-  START_TIMER("duplex_callback");
+  uint64_t callback_start_ns = time_get_ns();
 
   static uint64_t total_callbacks = 0;
   total_callbacks++;
@@ -470,7 +469,6 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (output) {
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
-    STOP_TIMER("duplex_callback");
     return paContinue;
   }
 
@@ -562,7 +560,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   cond_signal(&ctx->worker_cond);
 
   // Log callback timing and playback stats periodically
-  double callback_time_ns = STOP_TIMER("duplex_callback");
+  double callback_time_ns = (double)time_elapsed_ns(callback_start_ns, time_get_ns());
   static double total_callback_ns = 0;
   static double max_callback_ns = 0;
   static uint64_t callback_count = 0;

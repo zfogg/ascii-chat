@@ -435,9 +435,8 @@ void *client_video_render_thread(void *arg) {
     }
     STOP_TIMER_AND_LOG(dev, 0, "render_frame_sleep", "frame deadline sleep completed");
     uint64_t after_sleep_ns = time_get_ns();
-    uint64_t elapsed_intervals = after_sleep_ns >= next_frame_ns
-                                     ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1
-                                     : 1;
+    uint64_t elapsed_intervals =
+        after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
     next_frame_ns += elapsed_intervals * frame_interval_ns;
 
     // Capture timestamp for FPS tracking and frame timestamps

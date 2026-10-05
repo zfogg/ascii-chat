@@ -36,7 +36,7 @@ const char *test_get_binary_path(void) {
 
   // Try BUILD_DIR first if set
   if (build_dir) {
-    safe_snprintf(binary_path, sizeof(binary_path), "./%s/bin/ascii-chat", build_dir);
+    safe_snprintf(binary_path, sizeof(binary_path), "%s/bin/ascii-chat", build_dir);
     if (access(binary_path, X_OK) == 0) {
       initialized = true;
       return binary_path;

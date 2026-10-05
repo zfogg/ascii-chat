@@ -1676,8 +1676,8 @@ void *client_dispatch_thread(void *arg) {
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
     uint64_t dequeue_start = time_get_ns();
     mutex_lock(&client->client_state_mutex);
-    queued_packet_t *queued_pkt = deferred_packet ? deferred_packet
-                                                : packet_queue_try_dequeue(client->received_packet_queue);
+    queued_packet_t *queued_pkt =
+        deferred_packet ? deferred_packet : packet_queue_try_dequeue(client->received_packet_queue);
     deferred_packet = NULL;
     uint64_t dequeue_end = time_get_ns();
 
@@ -1697,7 +1697,8 @@ void *client_dispatch_thread(void *arg) {
     for (size_t skipped = 0; skipped < 128 && NET_TO_HOST_U16(queued_pkt->header.type) == PACKET_TYPE_IMAGE_FRAME;
          skipped++) {
       queued_packet_t *next = packet_queue_try_dequeue(client->received_packet_queue);
-      if (!next) break;
+      if (!next)
+        break;
       if (NET_TO_HOST_U16(next->header.type) != PACKET_TYPE_IMAGE_FRAME) {
         deferred_packet = next;
         break;
@@ -2023,7 +2024,8 @@ void *client_receive_thread(void *arg) {
       mutex_lock(&client->client_state_mutex);
       int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
                                                 client_id_hash, false);
-      if (enqueue_result >= 0) cond_signal(&client->dispatch_queue_cond);
+      if (enqueue_result >= 0)
+        cond_signal(&client->dispatch_queue_cond);
       mutex_unlock(&client->client_state_mutex);
 
       if (enqueue_result < 0) {

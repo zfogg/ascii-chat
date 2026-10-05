@@ -385,6 +385,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
         uint64_t iteration_start = time_get_ns();
+        if (snapshot_mode && g_snapshot_first_frame_rendered_ns > 0 &&
+            time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_rendered_ns, iteration_start)) >=
+                GET_OPTION(snapshot_delay)) {
+          signal_exit();
+          break;
+        }
         image_t *frame = session_capture_read_frame(capture);
         if (frame) {
           image_t *processed = session_capture_process_for_transmission(capture, frame);

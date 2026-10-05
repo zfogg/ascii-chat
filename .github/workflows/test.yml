@@ -387,7 +387,12 @@ jobs:
       - name: Build and run integration tests
         run: |
           cmake --build build --target ascii-chat tests-criterion-build
+          if [ "${{ matrix.os-name }}" = "macos" ]; then
+            export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
+          fi
           python3 tests/integration/render_file_audio.py build/bin/ascii-chat
+
+          set -o pipefail
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
