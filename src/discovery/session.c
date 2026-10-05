@@ -1431,6 +1431,16 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
+  // Media traffic uses a separate transport; keep the signaling connection alive.
+  if (session->acds_transport && acip_transport_is_connected(session->acds_transport)) {
+    uint64_t now_ns = time_get_ns();
+    if (now_ns - session->last_acds_keepalive_ns >= 20 * NS_PER_SEC_INT) {
+      asciichat_error_t ping_result = acip_send_ping(session->acds_transport);
+      if (ping_result != ASCIICHAT_OK)
+        return ping_result;
+      session->last_acds_keepalive_ns = now_ns;
+    }
+  }
   // Handle state-specific processing
   switch (session->state) {
   case DISCOVERY_STATE_WAITING_PEER: {
