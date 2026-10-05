@@ -542,7 +542,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
     // Set session type (only for first key)
     if (key_idx == 0) {
-      if (opts && opts->prefer_webrtc) {
+      if (opts && (opts->prefer_webrtc || opts->webrtc_relay_only)) {
         log_info("DISCOVERY: WebRTC preferred, using SESSION_TYPE_WEBRTC");
         create_msg.session_type = SESSION_TYPE_WEBRTC;
       } else {
@@ -877,6 +877,26 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     return SET_ERRNO(ERROR_NETWORK, "Failed to initialize WebRTC library");
   }
 
+  const char *custom_username = GET_OPTION(turn_username);
+  const char *custom_credential = GET_OPTION(turn_credential);
+  bool custom_turn = custom_username[0] || custom_credential[0];
+  if (custom_turn && (!custom_username[0] || !custom_credential[0])) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Provide both --turn-username and --turn-credential");
+  }
+  const char *turn_username = custom_turn ? custom_username : session->turn_username;
+  const char *turn_credential = custom_turn ? custom_credential : session->turn_password;
+  if (custom_turn && (strlen(turn_username) >= sizeof(session->turn_username) ||
+      strlen(turn_credential) >= sizeof(session->turn_password))) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
+  }
+  if (custom_turn) {
+    SAFE_STRNCPY(session->turn_username, custom_username, sizeof(session->turn_username));
+    SAFE_STRNCPY(session->turn_password, custom_credential, sizeof(session->turn_password));
+  }
+  if (GET_OPTION(webrtc_relay_only) && (GET_OPTION(webrtc_disable_turn) || GET_OPTION(no_webrtc))) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "--webrtc-relay-only conflicts with disabled TURN or WebRTC");
+  }
+
   // Set up STUN servers (unless --webrtc-skip-stun is set)
   if (GET_OPTION(webrtc_skip_stun)) {
     log_info("Skipping STUN (--webrtc-skip-stun) - will use TURN relay only");
@@ -908,7 +928,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     log_info("TURN disabled (--webrtc-disable-turn) - will use direct P2P + STUN only");
     session->turn_servers = NULL;
     session->turn_count = 0;
-  } else if (session->turn_username[0] != '\0' && session->turn_password[0] != '\0') {
+  } else if (turn_username[0] != '\0' && turn_credential[0] != '\0') {
     // Parse TURN servers from options and apply ACDS credentials to each
     const char *turn_servers_str = GET_OPTION(turn_servers);
     if (!turn_servers_str || turn_servers_str[0] == '\0') {
@@ -947,14 +967,16 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
         SAFE_STRNCPY(session->turn_servers[session->turn_count].url, token,
                      sizeof(session->turn_servers[session->turn_count].url));
 
-        // Apply ACDS-provided credentials to this TURN server
-        session->turn_servers[session->turn_count].username_len = strlen(session->turn_username);
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].username, session->turn_username,
+        // Keep wire-compatible summaries; the peer manager receives full credentials separately.
+        SAFE_STRNCPY(session->turn_servers[session->turn_count].username, turn_username,
                      sizeof(session->turn_servers[session->turn_count].username));
+        session->turn_servers[session->turn_count].username_len =
+            (uint8_t)strlen(session->turn_servers[session->turn_count].username);
 
-        session->turn_servers[session->turn_count].credential_len = strlen(session->turn_password);
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].credential, session->turn_password,
+        SAFE_STRNCPY(session->turn_servers[session->turn_count].credential, turn_credential,
                      sizeof(session->turn_servers[session->turn_count].credential));
+        session->turn_servers[session->turn_count].credential_len =
+            (uint8_t)strlen(session->turn_servers[session->turn_count].credential);
 
         session->turn_count++;
       } else if (len > 0) {
@@ -965,7 +987,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     }
 
     if (session->turn_count > 0) {
-      log_info("Configured %d TURN server(s) with ACDS credentials for symmetric NAT relay", session->turn_count);
+      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count, custom_turn ? "custom" : "ACDS");
     } else {
       log_warn("No valid TURN servers configured");
       SAFE_FREE(session->turn_servers);
@@ -991,6 +1013,9 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       .stun_count = session->stun_count,
       .turn_servers = session->turn_servers,
       .turn_count = session->turn_count,
+      .relay_only = GET_OPTION(webrtc_relay_only),
+      .turn_username = session->turn_username,
+      .turn_credential = session->turn_password,
       .on_transport_ready = discovery_on_transport_ready,
       .on_gathering_timeout = discovery_on_gathering_timeout,
       .user_data = session,
@@ -1195,6 +1220,10 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
+  if (GET_OPTION(webrtc_relay_only) && joined->session_type != SESSION_TYPE_WEBRTC) {
+    buffer_pool_free(NULL, alloc_buffer, 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Relay only requires a WebRTC session");
+  }
   if (joined->session_type == 1) { // SESSION_TYPE_WEBRTC
     SAFE_STRNCPY(session->turn_username, joined->turn_username, sizeof(session->turn_username));
     SAFE_STRNCPY(session->turn_password, joined->turn_password, sizeof(session->turn_password));
@@ -1700,8 +1729,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
               set_error(session, reinit_result, "Failed to re-initialize WebRTC for retry");
 
               // If --prefer-webrtc is set, this is a fatal error
-              if (GET_OPTION(prefer_webrtc)) {
-                log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+              if (GET_OPTION(prefer_webrtc) || GET_OPTION(webrtc_relay_only)) {
+                log_fatal("WebRTC connection failed and direct fallback is disabled");
                 set_state(session, DISCOVERY_STATE_FAILED);
                 return ERROR_NETWORK_TIMEOUT;
               }
@@ -1726,8 +1755,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
             set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
 
             // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
-            if (GET_OPTION(prefer_webrtc)) {
-              log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+            if (GET_OPTION(prefer_webrtc) || GET_OPTION(webrtc_relay_only)) {
+              log_fatal("WebRTC connection failed and direct fallback is disabled");
               set_state(session, DISCOVERY_STATE_FAILED);
               return ERROR_NETWORK_TIMEOUT;
             }
@@ -1934,8 +1963,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
         // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
         const options_t *opts = options_get();
-        if (opts && opts->prefer_webrtc) {
-          log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+        if (opts && (opts->prefer_webrtc || opts->webrtc_relay_only)) {
+          log_fatal("WebRTC connection failed and direct fallback is disabled");
           set_state(session, DISCOVERY_STATE_FAILED);
           session->error = ERROR_NETWORK;
           return ERROR_NETWORK;

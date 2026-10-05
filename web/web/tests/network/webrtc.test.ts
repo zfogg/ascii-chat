@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vite-plus/test";
 import { WebRTCBridge } from "../../src/network/WebRTCBridge";
 import {
+  discoveryRTCConfiguration,
+  type DiscoveryOptions,
+} from "../../src/network/WebRTCSession";
+import {
   lookupRequest,
   parseJoined,
   parseSignal,
@@ -20,6 +24,117 @@ function packet(length: number) {
   new DataView(bytes.buffer).setUint32(10, length, false);
   return bytes;
 }
+
+describe("Discovery connection settings", () => {
+  const options: DiscoveryOptions = {
+    sessionName: "blue-mountain-tiger",
+    password: "",
+    signalingUrl: "ws://localhost:27225",
+    iceServers: [{ urls: ["stun:localhost:3478", "turn:localhost:3478"] }],
+  };
+  const joined = {
+    turnUsername: "discovery-user",
+    turnPassword: "discovery-password",
+  };
+
+  it("defaults to automatic routing and discovery credentials", () => {
+    expect(discoveryRTCConfiguration(options, joined)).toEqual({
+      iceTransportPolicy: "all",
+      iceServers: [
+        { urls: "stun:localhost:3478" },
+        {
+          urls: "turn:localhost:3478",
+          username: joined.turnUsername,
+          credential: joined.turnPassword,
+        },
+      ],
+    });
+  });
+  it("uses custom credentials and enforces relay-only routing", () => {
+    const config = discoveryRTCConfiguration(
+      {
+        ...options,
+        iceTransportPolicy: "relay",
+        turnUsername: "custom",
+        turnCredential: "p:@%/",
+      },
+      joined,
+    );
+    expect(config.iceTransportPolicy).toBe("relay");
+    expect(config.iceServers?.[1]).toEqual({
+      urls: "turn:localhost:3478",
+      username: "custom",
+      credential: "p:@%/",
+    });
+  });
+  it("rejects incomplete overrides instead of mixing credential sources", () => {
+    expect(() =>
+      discoveryRTCConfiguration({ ...options, turnUsername: "custom" }, joined),
+    ).toThrow("both TURN");
+    expect(() =>
+      discoveryRTCConfiguration(
+        { ...options, turnCredential: "custom" },
+        joined,
+      ),
+    ).toThrow("both TURN");
+  });
+  it("keeps STUN when TURN lacks credentials and fails clearly for relay only", () => {
+    const empty = { turnUsername: "", turnPassword: "" };
+    expect(discoveryRTCConfiguration(options, empty).iceServers).toEqual([
+      { urls: "stun:localhost:3478" },
+    ]);
+    expect(() =>
+      discoveryRTCConfiguration(
+        { ...options, iceTransportPolicy: "relay" },
+        empty,
+      ),
+    ).toThrow("Relay only requires");
+    expect(() =>
+      discoveryRTCConfiguration(
+        {
+          ...options,
+          iceServers: [{ urls: "stun:localhost:3478" }],
+          iceTransportPolicy: "relay",
+        },
+        joined,
+      ),
+    ).toThrow("Relay only requires");
+  });
+  it("preserves per-server credentials ahead of discovery credentials", () => {
+    const config = discoveryRTCConfiguration(
+      {
+        ...options,
+        iceServers: [
+          {
+            urls: "turns:private:5349?transport=tcp",
+            username: "private",
+            credential: "private-password",
+          },
+        ],
+      },
+      joined,
+    );
+    expect(config.iceServers?.[0]).toEqual({
+      urls: "turns:private:5349?transport=tcp",
+      username: "private",
+      credential: "private-password",
+    });
+  });
+  it("does not combine an incomplete per-server override with discovery credentials", () => {
+    const config = discoveryRTCConfiguration(
+      {
+        ...options,
+        iceServers: [{ urls: "turn:localhost:3478", username: "incomplete" }],
+      },
+      joined,
+    );
+    expect(config.iceServers?.[0]).toEqual({
+      urls: "turn:localhost:3478",
+      username: joined.turnUsername,
+      credential: joined.turnPassword,
+    });
+  });
+});
 
 describe("WebRTC ACIP framing", () => {
   it("replaces stale unsent raw video while preserving control packets", () => {

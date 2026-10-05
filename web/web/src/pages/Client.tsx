@@ -53,6 +53,7 @@ import {
   PageLayout,
 } from "../components";
 import type { AsciiRendererHandle, SettingsConfig } from "../components";
+import { HelpLabel } from "../components/HelpLabel";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import {
   AsciiChatMode,
@@ -83,6 +84,11 @@ export function ClientPage({
   const params = new URLSearchParams(window.location.search);
   const [sessionName, setSessionName] = useState(params.get("session") || "");
   const [sessionPassword, setSessionPassword] = useState("");
+  const [connectionRoute, setConnectionRoute] = useState<"all" | "relay">(
+    "all",
+  );
+  const [turnUsername, setTurnUsername] = useState("");
+  const [turnCredential, setTurnCredential] = useState("");
   const [signalingUrl, setSignalingUrl] = useState(
     params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
   );
@@ -125,6 +131,9 @@ export function ClientPage({
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
+            iceTransportPolicy: connectionRoute,
+            turnUsername,
+            turnCredential,
             iceServers: iceUrls
               .split(",")
               .map((url) => url.trim())
@@ -132,7 +141,16 @@ export function ClientPage({
               .map((urls) => ({ urls })),
           }
         : undefined,
-    [discoveryMode, sessionName, sessionPassword, signalingUrl, iceUrls],
+    [
+      discoveryMode,
+      sessionName,
+      sessionPassword,
+      signalingUrl,
+      iceUrls,
+      connectionRoute,
+      turnUsername,
+      turnCredential,
+    ],
   );
   const onAudioPacket = useCallback((type: number, payload: Uint8Array) => {
     try {
@@ -559,7 +577,16 @@ export function ClientPage({
               .finally(() => setConnecting(false));
           }}
         >
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+            Discovery service URL
+            <input
+              aria-label="Discovery service URL"
+              value={signalingUrl}
+              onChange={(event) => setSignalingUrl(event.target.value)}
+              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+            />
+          </label>
+          <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
             Session name
             <input
               aria-label="Session name"
@@ -570,18 +597,18 @@ export function ClientPage({
                 connecting || connectionState === ConnectionState.CONNECTED
               }
               onChange={(event) => setSessionName(event.target.value)}
-              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
               placeholder="blue-mountain-tiger"
             />
           </label>
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
             Session password
             <input
               aria-label="Session password"
               type="password"
               value={sessionPassword}
               onChange={(event) => setSessionPassword(event.target.value)}
-              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+              className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
               autoComplete="off"
             />
           </label>
@@ -606,17 +633,30 @@ export function ClientPage({
           <details className="w-full">
             <summary>Connection settings</summary>
             <div className="flex flex-col gap-2 mt-2">
-              <label>
-                Discovery service URL{" "}
-                <input
-                  aria-label="Discovery service URL"
-                  value={signalingUrl}
-                  onChange={(event) => setSignalingUrl(event.target.value)}
-                  className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
-                />
+              <label className="flex flex-col gap-1 w-56 max-w-full">
+                Connection route
+                <select
+                  aria-label="Connection route"
+                  value={connectionRoute}
+                  disabled={
+                    connecting || connectionState === ConnectionState.CONNECTED
+                  }
+                  onChange={(event) =>
+                    setConnectionRoute(event.target.value as "all" | "relay")
+                  }
+                  className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+                >
+                  <option value="all">Automatic</option>
+                  <option value="relay">Relay only</option>
+                </select>
               </label>
               <label>
-                STUN/TURN URLs (comma-separated){" "}
+                <HelpLabel
+                  label="STUN/TURN URLs (comma-separated)"
+                  text={
+                    'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
+                  }
+                />
                 <input
                   aria-label="STUN/TURN URLs"
                   value={iceUrls}
@@ -624,11 +664,49 @@ export function ClientPage({
                   className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
                 />
               </label>
+              <fieldset
+                disabled={
+                  connecting || connectionState === ConnectionState.CONNECTED
+                }
+              >
+                <legend>
+                  <HelpLabel
+                    label="TURN credentials"
+                    text="Leave both blank to use credentials from the discovery service. To override them, provide both a TURN username and password."
+                  />
+                </legend>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                    TURN username
+                    <input
+                      aria-label="TURN username"
+                      value={turnUsername}
+                      maxLength={127}
+                      required={!!turnCredential}
+                      onChange={(event) => setTurnUsername(event.target.value)}
+                      autoComplete="off"
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                    TURN password
+                    <input
+                      aria-label="TURN password"
+                      type="password"
+                      value={turnCredential}
+                      maxLength={127}
+                      required={!!turnUsername}
+                      onChange={(event) =>
+                        setTurnCredential(event.target.value)
+                      }
+                      autoComplete="off"
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                    />
+                  </label>
+                </div>
+              </fieldset>
             </div>
           </details>
-          <p role="status" className="w-full text-sm">
-            {status}
-          </p>
           {error && (
             <p role="alert" className="w-full text-terminal-1">
               {error}

@@ -1854,13 +1854,46 @@ static asciichat_error_t server_init_fn(void *user_data) {
               }
             }
 
+            static turn_server_t turn_servers[4];
+            static char turn_auth_username[128];
+            static char turn_auth_credential[128];
+            size_t turn_count = 0;
+            const char *turn_username = GET_OPTION(turn_username);
+            const char *turn_credential = GET_OPTION(turn_credential);
+            SAFE_STRNCPY(turn_auth_username, turn_username, sizeof(turn_auth_username));
+            SAFE_STRNCPY(turn_auth_credential, turn_credential, sizeof(turn_auth_credential));
+            if (turn_username[0] && turn_credential[0]) {
+              char urls[OPTIONS_BUFF_SIZE];
+              SAFE_STRNCPY(urls, GET_OPTION(turn_servers), sizeof(urls));
+              char *saveptr = NULL;
+              char *url = platform_strtok_r(urls, ",", &saveptr);
+              while (url && turn_count < 4) {
+                while (*url == ' ' || *url == '\t') url++;
+                size_t len = strlen(url);
+                while (len && (url[len - 1] == ' ' || url[len - 1] == '\t')) url[--len] = '\0';
+                if (len && len < sizeof(turn_servers[0].url)) {
+                  turn_server_t *turn = &turn_servers[turn_count++];
+                  SAFE_STRNCPY(turn->url, url, sizeof(turn->url));
+                  SAFE_STRNCPY(turn->username, turn_username, sizeof(turn->username));
+                  SAFE_STRNCPY(turn->credential, turn_credential, sizeof(turn->credential));
+                  turn->url_len = (uint8_t)len;
+                  turn->username_len = (uint8_t)strlen(turn->username);
+                  turn->credential_len = (uint8_t)strlen(turn->credential);
+                }
+                url = platform_strtok_r(NULL, ",", &saveptr);
+              }
+            }
+
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {
                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                 .stun_servers = stun_servers,
                 .stun_count = stun_count,
-                .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
-                .turn_count = 0,
+                .turn_servers = turn_servers,
+                .turn_count = turn_count,
+                .relay_only = GET_OPTION(webrtc_relay_only),
+                .turn_username = turn_auth_username,
+                .turn_credential = turn_auth_credential,
                 .on_transport_ready = on_webrtc_transport_ready,
                 .user_data = &g_server_ctx,
                 .crypto_ctx = NULL // WebRTC handles crypto internally

@@ -24,7 +24,46 @@ export interface DiscoveryOptions {
   password: string;
   signalingUrl: string;
   iceServers: RTCIceServer[];
+  iceTransportPolicy?: RTCIceTransportPolicy;
+  turnUsername?: string;
+  turnCredential?: string;
   onProgress?: (stage: string) => void;
+}
+
+export function discoveryRTCConfiguration(
+  options: DiscoveryOptions,
+  joined: Pick<JoinedSession, "turnUsername" | "turnPassword">,
+): RTCConfiguration {
+  if (!!options.turnUsername !== !!options.turnCredential)
+    throw new Error(
+      "Provide both TURN username and password, or leave both blank.",
+    );
+  const iceServers = options.iceServers.flatMap((server) => {
+    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+    return urls.flatMap((url): RTCIceServer[] => {
+      if (!/^turns?:/i.test(url)) return [{ urls: url }];
+      const credentials = options.turnUsername
+        ? { username: options.turnUsername, credential: options.turnCredential }
+        : server.username && server.credential
+          ? { username: server.username, credential: server.credential }
+          : { username: joined.turnUsername, credential: joined.turnPassword };
+      const { username, credential } = credentials;
+      return username && credential
+        ? [{ urls: url, username, credential }]
+        : [];
+    });
+  });
+  if (
+    options.iceTransportPolicy === "relay" &&
+    !iceServers.some((server) => /^turns?:/i.test(String(server.urls)))
+  )
+    throw new Error(
+      "Relay only requires a TURN server and credentials. Configure them or choose Automatic.",
+    );
+  return {
+    iceServers,
+    iceTransportPolicy: options.iceTransportPolicy || "all",
+  };
 }
 
 /** Signaling stays on ACDS; all media travels on the peer's DTLS DataChannel. */
@@ -60,6 +99,10 @@ export class WebRTCSession implements ClientSession {
   }
 
   async connect(): Promise<void> {
+    if (!!this.options.turnUsername !== !!this.options.turnCredential)
+      throw new Error(
+        "Provide both TURN username and password, or leave both blank.",
+      );
     lookupRequest(this.options.sessionName);
     this.setState(ConnectionState.CONNECTING);
     this.options.onProgress?.("Connecting to discovery service");
@@ -143,24 +186,9 @@ export class WebRTCSession implements ClientSession {
     } else if (type === AcdsType.JOINED) {
       this.joined = parseJoined(payload);
       this.options.onProgress?.("Negotiating WebRTC connection");
-      const iceServers = this.options.iceServers.flatMap((server) => {
-        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-        const requiresCredentials = urls.some((url) => /^turns?:/.test(url));
-        if (
-          requiresCredentials &&
-          !this.joined?.turnUsername &&
-          (!server.username || !server.credential)
-        )
-          return [];
-        return requiresCredentials && this.joined?.turnUsername
-          ? {
-              ...server,
-              username: this.joined.turnUsername,
-              credential: this.joined.turnPassword,
-            }
-          : server;
-      });
-      this.peer = new RTCPeerConnection({ iceServers });
+      this.peer = new RTCPeerConnection(
+        discoveryRTCConfiguration(this.options, this.joined),
+      );
       this.peer.onicecandidate = (event) => {
         if (!event.candidate || !this.joined || this.closed) return;
         try {

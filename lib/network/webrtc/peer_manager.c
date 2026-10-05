@@ -263,6 +263,9 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
       .stun_count = manager->config.stun_count,
       .turn_servers = manager->config.turn_servers,
       .turn_count = manager->config.turn_count,
+      .relay_only = manager->config.relay_only,
+      .turn_username = manager->config.turn_username,
+      .turn_credential = manager->config.turn_credential,
       .on_state_change = on_state_change,
       .on_local_description = on_local_description,
       .on_local_candidate = on_local_candidate,
@@ -326,9 +329,13 @@ asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t 
   if (!config || !signaling_callbacks || !manager_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
+  *manager_out = NULL;
 
   if (!signaling_callbacks->send_sdp || !signaling_callbacks->send_ice) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Signaling callbacks required");
+  }
+  if (config->relay_only && config->turn_count == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires a TURN server with credentials");
   }
 
   // Allocate manager

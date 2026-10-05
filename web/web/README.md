@@ -63,7 +63,24 @@ artifacts; a stale source hash fails the build.
 ## Discovery and WebRTC
 
 Open `/discovery`, enter a native host's session name, and join. Connection
-settings allow a discovery WebSocket URL and STUN/TURN URLs. The client signs
+settings include STUN/TURN URLs, Connection route (Automatic or Relay only),
+and optional TURN username/password overrides. The discovery WebSocket URL is
+shown beside the session name. Leave both TURN credential fields blank to use
+credentials supplied by discovery; custom credentials take precedence. Relay
+only requires an authenticated TURN server and prohibits direct ICE paths.
+
+Native discovery supports the same settings through `--webrtc-relay-only`,
+`--turn-servers`, `--turn-username`, and `--turn-credential`, with corresponding
+`ASCII_CHAT_*` environment variables and config fields. Omit
+`--webrtc-relay-only` for automatic routing. Relay-only discovery never falls
+back to TCP. Native servers support TURN overrides and relay-only mode when
+started with `--discovery`; direct TCP client mode cannot use relay-only routing.
+Credentials default to empty in both debug and release builds; native overrides
+must supply both values, each at most 127 UTF-8 bytes. TURN authentication does
+not change the session password. Credentials are kept out of browser URLs and
+browser persistent storage.
+
+The client signs
 its ACDS join with an ephemeral identity, exchanges SDP and ICE candidates, and
 sends ACIP video and Opus audio over an ordered WebRTC data channel. Enable the
 microphone separately; disconnect stops camera and microphone tracks.

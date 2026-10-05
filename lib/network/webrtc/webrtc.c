@@ -383,13 +383,47 @@ void webrtc_destroy(void) {
 // Peer Connection Management
 // ============================================================================
 
+// libdatachannel's C API accepts TURN credentials as URL userinfo.
+static void encode_turn_userinfo(const char *value, char *encoded, size_t size) {
+  static const char hex[] = "0123456789ABCDEF";
+  size_t out = 0;
+  for (size_t i = 0; value[i] && out + 3 < size; i++) {
+    unsigned char c = (unsigned char)value[i];
+    encoded[out++] = '%';
+    encoded[out++] = hex[c >> 4];
+    encoded[out++] = hex[c & 15];
+  }
+  encoded[out] = '\0';
+}
+
 asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, webrtc_peer_connection_t **pc_out) {
   if (!config || !pc_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid config or output parameter");
   }
+  *pc_out = NULL;
+  if ((config->stun_count && !config->stun_servers) || (config->turn_count && !config->turn_servers)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "ICE server counts require server arrays");
+  }
+  if ((config->turn_username != NULL) != (config->turn_credential != NULL)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "TURN overrides require both username and credential");
+  }
 
   if (!lifecycle_is_initialized(&g_webrtc_lc)) {
     return SET_ERRNO(ERROR_INIT, "WebRTC library not initialized");
+  }
+  if (config->relay_only && config->turn_count == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires a TURN server with credentials");
+  }
+  for (size_t i = 0; i < config->turn_count; i++) {
+    const turn_server_t *server = &config->turn_servers[i];
+    const char *username = config->turn_username ? config->turn_username : server->username;
+    const char *credential = config->turn_credential ? config->turn_credential : server->credential;
+    if (!username[0] || !credential[0] || strlen(username) > 127 || strlen(credential) > 127) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "TURN server requires both username and credential");
+    }
+    if (strncmp(server->url, "turn:", 5) != 0 && strncmp(server->url, "turns:", 6) != 0) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "TURN server URL must start with turn: or turns:");
+    }
   }
 
   // Allocate peer connection wrapper
@@ -405,6 +439,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   // Build ICE server list for libdatachannel
   const char **ice_servers = NULL;
   size_t ice_count = 0;
+  char *turn_urls = NULL;
 
   if (config->stun_count > 0 || config->turn_count > 0) {
     ice_count = config->stun_count + config->turn_count;
@@ -420,8 +455,28 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     }
 
     // Add TURN servers
+    if (config->turn_count > 0) {
+      turn_urls = SAFE_CALLOC(config->turn_count, 1024, char *);
+      if (!turn_urls) {
+        SAFE_FREE(ice_servers);
+        SAFE_FREE(pc);
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate authenticated TURN URLs");
+      }
+    }
     for (size_t i = 0; i < config->turn_count; i++) {
-      ice_servers[config->stun_count + i] = config->turn_servers[i].url;
+      const turn_server_t *server = &config->turn_servers[i];
+      char username[128 * 3];
+      char credential[128 * 3];
+      encode_turn_userinfo(config->turn_username ? config->turn_username : server->username, username,
+                           sizeof(username));
+      encode_turn_userinfo(config->turn_credential ? config->turn_credential : server->credential, credential,
+                           sizeof(credential));
+      const char *address = strchr(server->url, ':') + 1;
+      while (*address == '/')
+        address++;
+      SAFE_SNPRINTF(turn_urls + i * 1024, 1024, "%.*s%s:%s@%s", (int)(strchr(server->url, ':') - server->url + 1),
+                    server->url, username, credential, address);
+      ice_servers[config->stun_count + i] = turn_urls + i * 1024;
     }
   }
 
@@ -430,10 +485,11 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   memset(&rtc_config, 0, sizeof(rtc_config));
   rtc_config.iceServers = ice_servers;
   rtc_config.iceServersCount = (int)ice_count;
-  rtc_config.iceTransportPolicy = RTC_TRANSPORT_POLICY_ALL;
+  rtc_config.iceTransportPolicy = config->relay_only ? RTC_TRANSPORT_POLICY_RELAY : RTC_TRANSPORT_POLICY_ALL;
 
   // Create peer connection
   int pc_id = rtcCreatePeerConnection(&rtc_config);
+  SAFE_FREE(turn_urls);
 
   // Free ICE server list (libdatachannel makes a copy)
   if (ice_servers) {
