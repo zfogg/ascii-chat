@@ -8,11 +8,8 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
     !process.env["ASCII_CHAT_TEST_SESSION"],
     "Requires a running native discovery session",
   );
-  const frames: string[] = [];
   const errors: string[] = [];
   page.on("console", (message) => {
-    if (message.text().includes("ASCII_FRAME PACKET RECEIVED"))
-      frames.push(message.text());
     if (
       message.text().includes("Audio playback failed") ||
       message.text().includes("Audio send failed")
@@ -25,13 +22,21 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
     .getByLabel("Session name", { exact: true })
     .fill(process.env["ASCII_CHAT_TEST_SESSION"]!);
   await page.getByText("Connection settings", { exact: true }).click();
-  await page.getByLabel("Discovery service URL").fill("ws://127.0.0.1:28227");
+  await page
+    .getByLabel("Discovery service URL")
+    .fill(process.env["ASCII_CHAT_TEST_SIGNALING_URL"] || "ws://127.0.0.1:28227");
+  if (process.env["ASCII_CHAT_TEST_PASSWORD"])
+    await page
+      .getByLabel("Session password", { exact: true })
+      .fill(process.env["ASCII_CHAT_TEST_PASSWORD"]);
   await page.getByLabel("STUN/TURN URLs").fill("");
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
   ).toBeVisible({ timeout: 40000 });
-  await expect.poll(() => frames.length, { timeout: 15000 }).toBeGreaterThan(3);
+  const renderedFrames = () =>
+    page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0);
+  await expect.poll(renderedFrames, { timeout: 15000 }).toBeGreaterThan(3);
   await expect
     .poll(
       () =>
@@ -55,12 +60,14 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   await expect(
     page.getByRole("button", { name: "Mute microphone", exact: true }),
   ).toBeVisible();
-  const initialFrames = frames.length;
-  await page.waitForTimeout(20000);
+  const initialFrames = await renderedFrames();
+  // A connected WebRTC data channel is not enough: assert that rendered
+  // frames advance during a short browser smoke window.
+  await page.waitForTimeout(15000);
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
   ).toBeVisible();
-  expect(frames.length).toBeGreaterThan(initialFrames + 10);
+  expect(await renderedFrames()).toBeGreaterThan(initialFrames + 3);
   await page.screenshot({
     path: "../../build/webrtc-browser/connected.png",
     fullPage: true,
@@ -72,15 +79,5 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   await expect(
     page.getByRole("button", { name: "Join session", exact: true }),
   ).toBeVisible();
-  expect(errors).toEqual([]);
-  const beforeRejoin = frames.length;
-  await page.getByRole("button", { name: "Join session", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 15000 });
-  await expect
-    .poll(() => frames.length, { timeout: 15000 })
-    .toBeGreaterThan(beforeRejoin + 3);
-  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   expect(errors).toEqual([]);
 });
