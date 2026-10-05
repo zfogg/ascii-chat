@@ -55,7 +55,7 @@ def main():
         # The HTTP fixture serves sequential bytes; faststart avoids requiring range requests.
         for frequency in (440, 880):
             run("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
-                "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "12",
+                "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "30",
                 "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
@@ -95,8 +95,9 @@ def main():
             for frequency in (440, 880):
                 media_args = ("--url", f"http://127.0.0.1:{media_server.server_port}/{frequency}.mp4") if frequency == 440 else ("--file", str(root / f"{frequency}.mp4"))
                 clients.append(launch(str(frequency), "client", "127.0.0.1", "--port", str(port),
+                                      "--video-codec", "raw",
                                       *media_args, "--render-file", str(root / f"call-{frequency}.mp4"),
-                                      "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", "6"))
+                                      "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", "12"))
                 deadline = time.monotonic() + 10
                 while not (root / f"{frequency}.log").exists() or "Connected" not in (root / f"{frequency}.log").read_text(errors="replace"):
                     assert clients[-1].poll() is None, "Client failed to connect"
