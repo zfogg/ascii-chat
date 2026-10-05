@@ -780,6 +780,11 @@ cleanup:
   g_current_config = NULL;
   g_render_should_exit = NULL;
 
+#ifndef NDEBUG
+  // Join the registry inspector before freeing the session's synchronization objects.
+  debug_sync_cleanup_thread();
+#endif
+
   // Stop audio thread before destroying audio context to prevent use-after-free
   // The audio worker thread may still be logging when we destroy the buffer
   APP_CALLBACK_VOID(audio_stop_thread);
@@ -844,11 +849,6 @@ cleanup:
     // During shutdown, don't interact with splash - let animation thread exit naturally
     // and don't wait for it (prevents blocking on signals)
   }
-
-  // Stop debug sync thread before destroying log buffer to prevent use-after-free
-  log_debug("[CLEANUP] About to call debug_sync_cleanup_thread()");
-  debug_sync_cleanup_thread();
-  log_debug("[CLEANUP] debug_sync_cleanup_thread() returned");
 
   // Disable keepawake (re-allow OS to sleep)
   log_debug("[CLEANUP] Disabling keepawake");
