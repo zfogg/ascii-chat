@@ -2,6 +2,7 @@
 
 set(AUDIO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/recording.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mixer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/wav_writer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/opus.c

@@ -17,9 +17,28 @@
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+static const char *network_test_options = "--socket-timeout 1 --retries 0 --extractor-retries 0";
+
+static void setup_network_timeouts(void) {
+  options_state_init();
+  options_t options = *options_get();
+  SAFE_STRNCPY(options.yt_dlp_options, network_test_options, sizeof(options.yt_dlp_options));
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+}
+
+static asciichat_error_t extract_with_test_timeouts(const char *url, const char *options, char *output, size_t size) {
+  char flags[1024];
+  safe_snprintf(flags, sizeof(flags), "%s %s", network_test_options, options ? options : "");
+  return yt_dlp_extract_stream_url(url, flags, output, size);
+}
+
+#define yt_dlp_extract_stream_url extract_with_test_timeouts
 
 /* ============================================================================
  * Test Utilities
@@ -47,7 +66,7 @@ __attribute__((unused)) static bool can_reach_url(const char *url) {
  * Direct Stream Detection Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(stream_resolution_e2e);
+TestSuite(stream_resolution_e2e, .init = setup_network_timeouts);
 
 Test(stream_resolution_e2e, detect_mp4_direct_stream) {
   // MP4 files should be detected as direct streams

@@ -34,16 +34,22 @@ static void js_terminal_write(const char *data, int len) {
 
 void terminal_get_default_foreground_color(int theme, uint8_t *r, uint8_t *g, uint8_t *b) {
   uint8_t value = theme == 1 ? TERMINAL_COLOR_THEME_LIGHT_FG_R : TERMINAL_COLOR_THEME_DARK_FG_R;
-  if (r) *r = value;
-  if (g) *g = value;
-  if (b) *b = value;
+  if (r)
+    *r = value;
+  if (g)
+    *g = value;
+  if (b)
+    *b = value;
 }
 
 void terminal_get_default_background_color(int theme, uint8_t *r, uint8_t *g, uint8_t *b) {
   uint8_t value = theme == 1 ? TERMINAL_COLOR_THEME_LIGHT_BG_R : TERMINAL_COLOR_THEME_DARK_BG_R;
-  if (r) *r = value;
-  if (g) *g = value;
-  if (b) *b = value;
+  if (r)
+    *r = value;
+  if (g)
+    *g = value;
+  if (b)
+    *b = value;
 }
 
 int platform_get_terminal_size(int *cols, int *rows) {

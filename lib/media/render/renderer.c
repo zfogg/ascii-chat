@@ -5,8 +5,6 @@
  */
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
-#include <ascii-chat/media/source.h>
-#include <ascii-chat/audio/audio.h>
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
@@ -14,13 +12,19 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
+#include <ascii-chat/audio/recording.h>
 
 struct render_file_ctx_s {
   terminal_renderer_t *renderer;
   ffmpeg_encoder_t *encoder;
-  media_source_t *audio_media_source;    // for --file/--url audio
-  audio_ring_buffer_t *audio_capture_rb; // for live mic capture
-  uint32_t audio_sample_rate;            // 48000 Hz
+  audio_recording_t *recording;
+  uint64_t frames_written;
+  uint64_t audio_samples_written;
+  uint64_t first_frame_ns;
+  uint64_t last_frame_index;
+  uint64_t audio_target;
+  bool live_timing;
+  uint32_t audio_sample_rate; // 48000 Hz
   int fps;
   float *audio_read_buf; // Temporary buffer for reading audio samples
   int audio_buf_size;    // Size of audio_read_buf
@@ -114,9 +118,15 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   // Use 8192 to comfortably handle snapshot reads without excessive overhead
   ctx->audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
   ctx->audio_read_buf = SAFE_MALLOC(ctx->audio_buf_size * sizeof(float), float *);
-  ctx->audio_media_source = NULL;
-  ctx->audio_capture_rb = NULL;
 
+  err = audio_recording_create(&ctx->recording);
+  if (err != ASCIICHAT_OK) {
+    ffmpeg_encoder_destroy(ctx->encoder);
+    term_renderer_destroy(ctx->renderer);
+    SAFE_FREE(ctx->audio_read_buf);
+    SAFE_FREE(ctx);
+    return err;
+  }
   log_info("renderer: initialized encoder for %s", output_path);
 
   // Register render file context for debugging
@@ -126,24 +136,15 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   return ASCIICHAT_OK;
 }
 
-void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb) {
-  if (!ctx)
-    return;
-  ctx->audio_media_source = (media_source_t *)audio_media_source;
-  ctx->audio_capture_rb = (audio_ring_buffer_t *)audio_capture_rb;
-  log_debug("render_file_set_audio_source: media_source=%p, capture_rb=%p", audio_media_source, audio_capture_rb);
+void render_file_set_live_timing(render_file_ctx_t *ctx) {
+  if (ctx) {
+    ctx->live_timing = true;
+    ffmpeg_encoder_set_live_timing(ctx->encoder);
+  }
 }
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
-  // Write to debug file directly to bypass logging system
-#if !defined(NDEBUG) && !defined(_WIN32)
-  FILE *dbg = fopen("/tmp/render-debug.txt", "a");
-  if (dbg) {
-    fprintf(dbg, "[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n", (void *)ctx,
-            ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
-    fclose(dbg);
-  }
-#endif
+
   log_info("render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
 
   if (!ctx) {
@@ -157,6 +158,13 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   }
 
   size_t frame_len = strlen(ansi_frame);
+  uint64_t frame_index = ctx->frames_written;
+  if (ctx->live_timing && ctx->frames_written > 0) {
+    uint64_t elapsed = captured_ns > ctx->first_frame_ns ? captured_ns - ctx->first_frame_ns : 0;
+    frame_index = elapsed / 1000000000ULL * ctx->fps + elapsed % 1000000000ULL * ctx->fps / 1000000000ULL;
+    if (frame_index <= ctx->last_frame_index)
+      return ASCIICHAT_OK;
+  }
   log_info("render_file_write_frame: processing frame (len=%zu)", frame_len);
   if (frame_len > 0) {
     log_info("  first 100 chars: %.100s", ansi_frame);
@@ -204,112 +212,26 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
   SAFE_FREE(pixels_copy);
 
-  // Write synchronized audio for this frame if available
-  // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
-  if (ctx && ctx->audio_read_buf && ctx->encoder) {
-    // Detect if we're in snapshot mode
-    bool snapshot_mode = GET_OPTION(snapshot_mode);
-    double snapshot_delay = GET_OPTION(snapshot_delay);
-
-    int samples_per_frame;
-
-    // Track frame timing for dynamic FPS calculation in snapshot mode
-    static uint64_t first_frame_ns = 0;
-    static int log_once = 0;
-
-    if (first_frame_ns == 0) {
-      first_frame_ns = captured_ns;
+  if (err == ASCIICHAT_OK) {
+    if (ctx->frames_written == 0) {
+      ctx->first_frame_ns = captured_ns;
+      audio_recording_start(ctx->recording, captured_ns);
     }
-
-    if (snapshot_mode && snapshot_delay > 0) {
-      // In snapshot mode, write samples based on actual elapsed wall-clock time
-      // This will be overridden by the time-based calculation below
-      samples_per_frame = (int)(ctx->audio_sample_rate / 60.0);
-
-      // Ensure minimum to avoid rounding to 0
-      if (samples_per_frame < 100) {
-        samples_per_frame = 100;
-      }
-
-    } else {
-      samples_per_frame = ctx->audio_sample_rate / (ctx->fps > 0 ? ctx->fps : 60);
-      if (!log_once++) {
-        log_info("[AUDIO_CALC] Normal mode: samples_per_frame=%d", samples_per_frame);
-      }
-    }
-
-    if (samples_per_frame > ctx->audio_buf_size) {
-      samples_per_frame = ctx->audio_buf_size;
-      if (!log_once++) {
-        log_warn("[AUDIO_CALC] samples_per_frame clamped to buffer size %d", ctx->audio_buf_size);
-      }
-    }
-    if (samples_per_frame <= 0) {
-      samples_per_frame = 800; // Fallback minimum
-    }
-
-    int samples_read = 0;
-    static int audio_eof_reached = 0;
-    static int total_audio_samples_written = 0;
-
-    // In snapshot mode, write samples based on elapsed wall-clock time to match snapshot_delay exactly
-    int actual_samples_per_frame = samples_per_frame;
-    if (snapshot_mode && snapshot_delay > 0) {
-      uint64_t elapsed_ns = captured_ns - first_frame_ns;
-      double elapsed_sec = (double)elapsed_ns / 1e9;
-      double target_fraction = elapsed_sec / snapshot_delay;
-      target_fraction = (target_fraction > 1.0) ? 1.0 : target_fraction; // Cap at 100%
-
-      int total_target_samples = (int)(ctx->audio_sample_rate * snapshot_delay);
-      int expected_samples_at_this_point = (int)(target_fraction * total_target_samples);
-
-      // Calculate how many samples to write for THIS frame
-      actual_samples_per_frame = expected_samples_at_this_point - total_audio_samples_written;
-
-      // Never write more than the buffer allows
-      if (actual_samples_per_frame > ctx->audio_buf_size) {
-        actual_samples_per_frame = ctx->audio_buf_size;
-      }
-      // Never write negative or zero (shouldn't happen, but safety check)
-      if (actual_samples_per_frame <= 0) {
-        actual_samples_per_frame = 0;
-      }
-    }
-
-    // Read from whichever audio source is available (prefer media source, fallback to capture)
-    if (!audio_eof_reached && ctx->audio_media_source) {
-      // Read from media source (file/URL audio) - try to get samples
-      samples_read = media_source_read_audio(ctx->audio_media_source, ctx->audio_read_buf, actual_samples_per_frame);
-
-      if (samples_read <= 0) {
-        // EOF reached or error - no more audio samples available from source
-        audio_eof_reached = 1;
-        samples_read = 0;
-      }
-    } else if (!audio_eof_reached && ctx->audio_capture_rb) {
-      // Read from ring buffer (live mic capture)
-      samples_read = audio_ring_buffer_read(ctx->audio_capture_rb, ctx->audio_read_buf, actual_samples_per_frame);
-      if (samples_read < 0) {
-        samples_read = 0; // On error, write silence
-        audio_eof_reached = 1;
-      } else if (samples_read == 0) {
-        audio_eof_reached = 1;
-      }
-      log_debug("render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)",
-                actual_samples_per_frame, samples_read);
-    }
-
-    // Write audio: either from source or silence to fill remaining time
-    if (samples_read > 0) {
-      // We got samples from the source - write them
-      ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, samples_read);
-      total_audio_samples_written += samples_read;
-    } else if (actual_samples_per_frame > 0) {
-      // No samples available (EOF reached or not available) - write silence to maintain sync
-      // This ensures audio track duration matches video track duration
-      memset(ctx->audio_read_buf, 0, actual_samples_per_frame * sizeof(float));
-      ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, actual_samples_per_frame);
-      total_audio_samples_written += actual_samples_per_frame;
+    ctx->frames_written++;
+    ctx->last_frame_index = frame_index;
+    uint64_t target = (ctx->live_timing ? frame_index + 1 : ctx->frames_written) * ctx->audio_sample_rate / ctx->fps;
+    ctx->audio_target = target;
+    /* Keep 100 ms pending so audio callbacks can deliver samples before encoding. */
+    uint64_t ready = target > 4800 ? target - 4800 : 0;
+    while (ctx->audio_samples_written < ready) {
+      int count = (int)((ready - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size
+                            ? (uint64_t)ctx->audio_buf_size
+                            : ready - ctx->audio_samples_written);
+      audio_recording_read(ctx->recording, ctx->audio_read_buf, count);
+      err = ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, count);
+      if (err != ASCIICHAT_OK)
+        break;
+      ctx->audio_samples_written += count;
     }
   }
 
@@ -325,7 +247,22 @@ void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double act
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;
-  asciichat_error_t err = ffmpeg_encoder_destroy(ctx->encoder);
+  uint64_t target = ctx->audio_target;
+  asciichat_error_t err = ASCIICHAT_OK;
+  while (ctx->audio_samples_written < target) {
+    int count = (int)((target - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size
+                          ? (uint64_t)ctx->audio_buf_size
+                          : target - ctx->audio_samples_written);
+    audio_recording_read(ctx->recording, ctx->audio_read_buf, count);
+    err = ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, count);
+    if (err != ASCIICHAT_OK)
+      break;
+    ctx->audio_samples_written += count;
+  }
+  audio_recording_destroy(ctx->recording);
+  asciichat_error_t close_err = ffmpeg_encoder_destroy(ctx->encoder);
+  if (err == ASCIICHAT_OK)
+    err = close_err;
   term_renderer_destroy(ctx->renderer);
   SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);

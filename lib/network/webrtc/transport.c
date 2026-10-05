@@ -63,13 +63,13 @@ typedef struct {
   webrtc_peer_connection_t *peer_conn; ///< Peer connection (owned)
   webrtc_data_channel_t *data_channel; ///< Data channel (owned)
   ringbuffer_t *recv_queue;            ///< Receive message queue
-  uint8_t *partial;                  ///< Incomplete ACIP packet bytes
+  uint8_t *partial;                    ///< Incomplete ACIP packet bytes
   size_t partial_len;
-  mutex_t queue_mutex;                 ///< Protect queue operations
-  cond_t queue_cond;                   ///< Signal when messages arrive
-  bool is_connected;                   ///< Connection state
-  mutex_t state_mutex;                 ///< Protect state changes
-  mutex_t send_mutex;                  ///< Keep chunks from concurrent packets together
+  mutex_t queue_mutex; ///< Protect queue operations
+  cond_t queue_cond;   ///< Signal when messages arrive
+  bool is_connected;   ///< Connection state
+  mutex_t state_mutex; ///< Protect state changes
+  mutex_t send_mutex;  ///< Keep chunks from concurrent packets together
 } webrtc_transport_data_t;
 
 // =============================================================================
@@ -141,9 +141,11 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       return;
     }
     size_t packet_len = sizeof(header) + payload_len;
-    if (wrtc->partial_len - offset < packet_len) break;
+    if (wrtc->partial_len - offset < packet_len)
+      break;
     webrtc_recv_msg_t msg = {.data = buffer_pool_alloc(NULL, packet_len), .len = packet_len};
-    if (!msg.data) break;
+    if (!msg.data)
+      break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
     if (ringbuffer_is_full(wrtc->recv_queue))
       discard_stale_media(wrtc);
@@ -162,7 +164,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     offset += packet_len;
   }
   wrtc->partial_len -= offset;
-  if (wrtc->partial_len) memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
+  if (wrtc->partial_len)
+    memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
 }
@@ -246,9 +249,11 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   asciichat_error_t result = ASCIICHAT_OK;
   for (size_t offset = 0; offset < len;) {
     size_t chunk = len - offset;
-    if (chunk > 16384) chunk = 16384;
+    if (chunk > 16384)
+      chunk = 16384;
     result = webrtc_datachannel_send(wrtc->data_channel, (const uint8_t *)data + offset, chunk);
-    if (result != ASCIICHAT_OK) break;
+    if (result != ASCIICHAT_OK)
+      break;
     offset += chunk;
   }
   mutex_unlock(&wrtc->send_mutex);
@@ -414,7 +419,8 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
 // =============================================================================
 
 static bool webrtc_has_pending_data(acip_transport_t *transport) {
-  if (!transport || !transport->impl_data) return false;
+  if (!transport || !transport->impl_data)
+    return false;
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
   mutex_lock(&wrtc->queue_mutex);
   bool pending = !ringbuffer_is_empty(wrtc->recv_queue);

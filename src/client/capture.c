@@ -551,3 +551,7 @@ void capture_cleanup() {
     g_capture_capture_ctx = NULL;
   }
 }
+
+void *capture_get_media_source(void) {
+  return session_capture_get_media_source(g_capture_capture_ctx);
+}

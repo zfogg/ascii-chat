@@ -154,19 +154,20 @@ typedef struct {
   float *worker_playback_batch; ///< Pre-allocated buffer for batch playback processing
 
   // State flags
-  bool initialized;           ///< True if context has been initialized
-  bool running;               ///< True if duplex stream is active
-  bool separate_streams;      ///< True if using separate input/output streams
-  bool playback_only;         ///< True for playback-only mode (mirror), skip microphone capture
-  atomic_t shutting_down;     ///< True when shutdown started - callback outputs silence
-  mutex_t state_mutex;        ///< Mutex protecting context state
+  bool initialized;       ///< True if context has been initialized
+  bool running;           ///< True if duplex stream is active
+  bool separate_streams;  ///< True if using separate input/output streams
+  bool playback_only;     ///< True for playback-only mode (mirror), skip microphone capture
+  atomic_t shutting_down; ///< True when shutdown started - callback outputs silence
+  mutex_t state_mutex;    ///< Mutex protecting context state
 
   // Audio pipeline and device info
-  void *audio_pipeline;      ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
-  void *media_source;        ///< Media source for direct audio reading in mirror mode (opaque pointer)
-  double sample_rate;        ///< Actual sample rate of streams (48kHz)
-  double input_device_rate;  ///< Native sample rate of input device
-  double output_device_rate; ///< Native sample rate of output device
+  void *audio_pipeline;       ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  bool monitor_local_media;   ///< Play local file audio in solo sessions
+  void *capture_media_source; ///< Borrowed local media audio; configure before starting duplex
+  double sample_rate;         ///< Actual sample rate of streams (48kHz)
+  double input_device_rate;   ///< Native sample rate of input device
+  double output_device_rate;  ///< Native sample rate of output device
 } audio_context_t;
 
 /* ============================================================================

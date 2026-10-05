@@ -249,8 +249,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   UINT64 bestDistance = UINT64_MAX;
   for (DWORD index = 0;; index++) {
     IMFMediaType *nativeType = NULL;
-    hr = IMFSourceReader_GetNativeMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &nativeType);
-    if (hr == MF_E_NO_MORE_TYPES) break;
+    hr =
+        IMFSourceReader_GetNativeMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &nativeType);
+    if (hr == MF_E_NO_MORE_TYPES)
+      break;
     if (FAILED(hr)) {
       log_warn("Could not enumerate webcam format %lu: 0x%08x", (unsigned long)index, hr);
       break;
@@ -263,12 +265,13 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       UINT64 pixels = width * height;
       UINT64 distance = pixels > 640 * 480 ? pixels - 640 * 480 : 640 * 480 - pixels;
       if (numerator && denominator) {
-        log_info("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width,
-                 (unsigned long long)height, (double)numerator / denominator);
+        log_info("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width, (unsigned long long)height,
+                 (double)numerator / denominator);
         UINT64 candidate = (UINT64)numerator * bestDenominator;
         UINT64 best = (UINT64)bestNumerator * denominator;
         if (candidate > best || (candidate == best && distance < bestDistance)) {
-          if (bestType) IMFMediaType_Release(bestType);
+          if (bestType)
+            IMFMediaType_Release(bestType);
           bestType = nativeType;
           nativeType = NULL;
           bestNumerator = numerator;
@@ -277,7 +280,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
         }
       }
     }
-    if (nativeType) IMFMediaType_Release(nativeType);
+    if (nativeType)
+      IMFMediaType_Release(nativeType);
   }
   if (bestType) {
     hr = IMFSourceReader_SetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, bestType);
@@ -496,7 +500,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   char duration_str[32];
   time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
-  log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
+  log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr,
+                  flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {

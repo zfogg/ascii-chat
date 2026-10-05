@@ -23,7 +23,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
     os-name: ubuntu # Required: ubuntu or macos
     build-type: debug # Optional: debug or release (for unit tests)
     junit-file: junit.xml # Optional: path to JUnit XML (default: junit.xml)
-    coverage-files: "./*.gcov" # Optional: coverage file pattern (default: ./*.gcov)
+    coverage-files: "build/coverage.xml" # Optional: coverage file pattern (default: build/coverage.xml)
     codecov-token: ${{ secrets.CODECOV_TOKEN }} # Required: Codecov token
     upload-coverage: "true" # Optional: whether to upload coverage (default: false)
 ```
@@ -36,7 +36,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 | `os-name`         | Operating system name (ubuntu, macos)         | Yes      | -           |
 | `build-type`      | Build type (debug, release)                   | No       | ''          |
 | `junit-file`      | Path to JUnit XML file                        | No       | 'junit.xml' |
-| `coverage-files`  | Coverage file pattern for Codecov             | No       | './\*.gcov' |
+| `coverage-files`  | Merged coverage report for Codecov             | No       | 'build/coverage.xml' |
 | `codecov-token`   | Codecov token                                 | Yes      | -           |
 | `upload-coverage` | Whether to upload coverage to Codecov         | No       | 'false'     |
 

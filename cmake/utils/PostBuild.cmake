@@ -132,7 +132,12 @@ function(copy_windows_dlls TARGET_NAME)
                 endif()
             endif()
             if(EXISTS "${FFMPEG_DLL_DIR}")
-                set(FFMPEG_DLLS avformat-61.dll avcodec-61.dll swresample-5.dll swscale-8.dll avutil-59.dll)
+                file(GLOB FFMPEG_DLL_PATHS "${FFMPEG_DLL_DIR}/av*.dll" "${FFMPEG_DLL_DIR}/sw*.dll")
+                set(FFMPEG_DLLS "")
+                foreach(FFMPEG_DLL_PATH IN LISTS FFMPEG_DLL_PATHS)
+                    get_filename_component(FFMPEG_DLL_NAME "${FFMPEG_DLL_PATH}" NAME)
+                    list(APPEND FFMPEG_DLLS "${FFMPEG_DLL_NAME}")
+                endforeach()
                 copy_dlls_post_build(
                     TARGET ${TARGET_NAME}
                     NAMES ${FFMPEG_DLLS}

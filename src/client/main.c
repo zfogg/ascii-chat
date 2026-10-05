@@ -272,6 +272,7 @@ static void shutdown_client() {
 
   // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
   log_debug("[SHUTDOWN] 12. About to cleanup capture");
+  audio_cleanup();
   capture_cleanup();
 
   // Cleanup H.265 encoder
@@ -287,8 +288,6 @@ static void shutdown_client() {
     audio_analysis_print_report();
     audio_analysis_destroy();
   }
-
-  audio_cleanup();
 
   // Cleanup display and terminal state
   // WORKAROUND: Skip cleanup during shutdown to avoid hanging
@@ -372,8 +371,8 @@ static int initialize_client_systems(void) {
     }
   }
 
-  // Initialize audio if enabled (skip in snapshot mode - no server connection needed)
-  if (GET_OPTION(audio_enabled) && !GET_OPTION(snapshot_mode)) {
+  // Timed recordings capture call audio; immediate snapshots need only one frame.
+  if (GET_OPTION(audio_enabled) && (!GET_OPTION(snapshot_mode) || GET_OPTION(snapshot_delay) > 0)) {
     if (audio_client_init() != 0) {
       log_warn("Failed to initialize audio system");
       // Continue without audio instead of crashing (e.g., ARM systems with audio device incompatibility)

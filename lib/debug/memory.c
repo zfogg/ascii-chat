@@ -366,11 +366,6 @@ static bool ensure_mutex_initialized(void) {
     return true;
   }
 
-  if (lifecycle_is_initialized(&g_mem.lifecycle)) {
-    atomic_store_bool(&g_debug_mem_initialized, true);
-    return true;
-  }
-
   return false;
 }
 

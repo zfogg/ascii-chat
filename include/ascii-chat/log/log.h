@@ -32,9 +32,15 @@
 #define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0}
 #else
 // In debug mode, atomic_t has debug fields that need initialization
-#define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0, .last_store_time_ns = (uint64_t)0, .last_load_time_ns = (uint64_t)0, \
-                                      .store_count = (uint64_t)0, .load_count = (uint64_t)0, .cas_count = (uint64_t)0, \
-                                      .cas_success_count = (uint64_t)0, .fetch_count = (uint64_t)0}
+#define LOG_ATOMIC_UINT64_INIT(val)                                                                                    \
+  {.impl = (uint64_t)0,                                                                                                \
+   .last_store_time_ns = (uint64_t)0,                                                                                  \
+   .last_load_time_ns = (uint64_t)0,                                                                                   \
+   .store_count = (uint64_t)0,                                                                                         \
+   .load_count = (uint64_t)0,                                                                                          \
+   .cas_count = (uint64_t)0,                                                                                           \
+   .cas_success_count = (uint64_t)0,                                                                                   \
+   .fetch_count = (uint64_t)0}
 #endif
 #include <stdbool.h>
 #include <stdint.h>
@@ -510,8 +516,11 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  *
  * @ingroup logging
  */
-#define log_only(bitmask, level, ...) \
-    ({ if ((bitmask) & LOG_BIT(level)) log_as(level, __VA_ARGS__); })
+#define log_only(bitmask, level, ...)                                                                                  \
+  ({                                                                                                                   \
+    if ((bitmask) & LOG_BIT(level))                                                                                    \
+      log_as(level, __VA_ARGS__);                                                                                      \
+  })
 
 /**
  * @brief Log a DEV message (most verbose, development only)
@@ -660,7 +669,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                         \
     uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
-    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                      \
+    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                 \
     if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
       if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                   \
         log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                   \
@@ -672,7 +681,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_every_last_time = LOG_ATOMIC_UINT64_INIT(0);                                         \
     uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
-    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                      \
+    uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                 \
     if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
       if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                   \
         log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                    \
@@ -728,9 +737,9 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #define log_nth(log_level, n, fmt, ...)                                                                                \
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
-    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                           \
+    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                      \
     uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
-    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                      \
+    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                 \
     if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
     }                                                                                                                  \
@@ -739,9 +748,9 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #define log_nth(log_level, n, fmt, ...)                                                                                \
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
-    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                           \
+    uint64_t _log_nth_count = atomic_load_u64(&_log_nth_counter);                                                      \
     uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
-    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                      \
+    atomic_store_u64(&_log_nth_counter, _log_nth_new);                                                                 \
     if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
     }                                                                                                                  \
@@ -769,9 +778,9 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #define log_once(log_level, fmt, ...)                                                                                  \
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
-    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                         \
+    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                    \
     if (_log_once_count == 0) {                                                                                        \
-      atomic_store_u64(&_log_once_counter, 1);                                              \
+      atomic_store_u64(&_log_once_counter, 1);                                                                         \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
     }                                                                                                                  \
   } while (0)
@@ -779,9 +788,9 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #define log_once(log_level, fmt, ...)                                                                                  \
   do {                                                                                                                 \
     static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
-    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                         \
+    uint64_t _log_once_count = atomic_load_u64(&_log_once_counter);                                                    \
     if (_log_once_count == 0) {                                                                                        \
-      atomic_store_u64(&_log_once_counter, 1);                                              \
+      atomic_store_u64(&_log_once_counter, 1);                                                                         \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
     }                                                                                                                  \
   } while (0)

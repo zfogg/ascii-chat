@@ -90,13 +90,14 @@ if(NOT TARGET ascii-chat::static)
         pkg_check_modules(_FREETYPE QUIET IMPORTED_TARGET freetype2)
         pkg_check_modules(_MINIUPNPC QUIET IMPORTED_TARGET miniupnpc)
         pkg_check_modules(_FONTCONFIG QUIET IMPORTED_TARGET fontconfig)
+        pkg_check_modules(_VTERM REQUIRED IMPORTED_TARGET vterm)
 
         # Add all found libraries to INTERFACE_LINK_LIBRARIES
         foreach(_dep
             _LIBSODIUM _ZSTD _PORTAUDIO _OPUS _PCRE2 _SQLITE3 _LWS
             _MIMALLOC
             _FFMPEG_FORMAT _FFMPEG_CODEC _FFMPEG_UTIL _FFMPEG_SWSCALE _FFMPEG_SWRESAMPLE
-            _OPENSSL _FREETYPE _MINIUPNPC _FONTCONFIG
+            _OPENSSL _FREETYPE _MINIUPNPC _FONTCONFIG _VTERM
         )
             if(${_dep}_FOUND)
                 set_property(TARGET ascii-chat::static APPEND PROPERTY
@@ -112,10 +113,11 @@ if(NOT TARGET ascii-chat::static)
         find_library(_PCRE2_LIB pcre2-8 REQUIRED)
         find_library(_SQLITE3_LIB sqlite3 REQUIRED)
         find_library(_LWS_LIB websockets REQUIRED)
+        find_library(_VTERM_LIB vterm REQUIRED)
 
         set_property(TARGET ascii-chat::static APPEND PROPERTY
             INTERFACE_LINK_LIBRARIES ${_LIBSODIUM_LIB} ${_ZSTD_LIB} ${_PORTAUDIO_LIB}
-                ${_OPUS_LIB} ${_PCRE2_LIB} ${_SQLITE3_LIB} ${_LWS_LIB}
+                ${_OPUS_LIB} ${_PCRE2_LIB} ${_SQLITE3_LIB} ${_LWS_LIB} ${_VTERM_LIB}
         )
 
         # Optional: mimalloc (only if ascii-chat was built with it)

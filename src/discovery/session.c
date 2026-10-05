@@ -852,7 +852,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
         .encryption_enabled = false,
     };
     session->participant_ctx = session_participant_create(&pconfig);
-    if (!session->participant_ctx || session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
+    if (!session->participant_ctx ||
+        session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
     }
@@ -886,7 +887,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   const char *turn_username = custom_turn ? custom_username : session->turn_username;
   const char *turn_credential = custom_turn ? custom_credential : session->turn_password;
   if (custom_turn && (strlen(turn_username) >= sizeof(session->turn_username) ||
-      strlen(turn_credential) >= sizeof(session->turn_password))) {
+                      strlen(turn_credential) >= sizeof(session->turn_password))) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
   }
   if (custom_turn) {
@@ -987,7 +988,8 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     }
 
     if (session->turn_count > 0) {
-      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count, custom_turn ? "custom" : "ACDS");
+      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count,
+               custom_turn ? "custom" : "ACDS");
     } else {
       log_warn("No valid TURN servers configured");
       SAFE_FREE(session->turn_servers);
@@ -1702,8 +1704,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
         if (timed_out_count > 0) {
-          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
-                    timeout_ms);
+          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout",
+                    timed_out_count, timeout_ms);
 
           // Check if we have retries remaining
           int max_attempts = GET_OPTION(webrtc_reconnect_attempts);

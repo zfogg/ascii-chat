@@ -390,6 +390,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
+        # The regex fixtures call PCRE2 directly to prepare and inspect native patterns.
+        if(test_exe_name MATCHES "^test_unit_util_regex_(fallback|match)$")
+            target_include_directories(${test_exe_name} PRIVATE ${PCRE2_INCLUDE_DIRS})
+            target_link_libraries(${test_exe_name} ${PCRE2_LIBRARIES})
+        endif()
+
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
@@ -516,6 +522,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             set(_test_ctest_timeout 120)
         endif()
 
+        if(test_exe_name MATCHES "stream_resolution_e2e")
+            # This suite runs many serial network cases with bounded per-request timeouts.
+            set(_test_ctest_timeout 600)
+        endif()
+
         set(_criterion_args
             --jobs ${_test_criterion_jobs}
             --timeout ${_test_criterion_timeout}
@@ -548,7 +559,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
                 )
                 set_tests_properties(${_case_test_name} PROPERTIES
-                    ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+                    ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
                     LABELS "${test_category}"
                     RUN_SERIAL TRUE
@@ -562,10 +573,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
             # Set test properties
             set_tests_properties(${test_exe_name} PROPERTIES
-                ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+                ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
                 LABELS "${test_category}"
             )
+            if(test_category STREQUAL "integration")
+                # Process fixtures share listening ports and temporary resources.
+                set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
+            endif()
         endif()
     endforeach()
 

@@ -202,12 +202,7 @@ size_t session_audio_read_captured(session_audio_ctx_t *ctx, float *buffer, size
     return 0;
   }
 
-  asciichat_error_t result = audio_read_samples(&ctx->audio_ctx, buffer, (int)num_samples);
-  if (result != ASCIICHAT_OK) {
-    return 0;
-  }
-
-  return num_samples;
+  return audio_ring_buffer_read(ctx->audio_ctx.capture_buffer, buffer, num_samples);
 }
 
 asciichat_error_t session_audio_write_playback(session_audio_ctx_t *ctx, const float *buffer, size_t num_samples) {
@@ -357,4 +352,9 @@ size_t session_audio_mix_excluding(session_audio_ctx_t *ctx, uint32_t exclude_id
   }
 
   return num_samples;
+}
+
+void session_audio_set_capture_source(session_audio_ctx_t *ctx, void *source) {
+  if (ctx && !ctx->running)
+    ctx->audio_ctx.capture_media_source = source;
 }

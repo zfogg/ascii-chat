@@ -24,7 +24,7 @@ Test(mixer, independent_listener_audio_and_self_exclusion) {
   for (int i = 0; i < 3; i++) {
     buffers[i] = audio_ring_buffer_create_for_capture();
     cr_assert_not_null(buffers[i]);
-    cr_assert_gte(mixer_add_source(mixer, ids[i], buffers[i]), 0);
+    cr_assert_geq(mixer_add_source(mixer, ids[i], buffers[i]), 0);
   }
   cr_assert_eq(audio_ring_buffer_write(buffers[0], input, 480), ASCIICHAT_OK);
   cr_assert_eq(mixer_process_excluding_source(mixer, first, 480, fnv1a_hash_string(ids[1])), 480);

@@ -273,11 +273,17 @@ Test(acds_webrtc_turn, credentials_unique_per_join) {
   cr_assert_neq(join_resp1.turn_username[0], '\0', "First join should have TURN username");
   cr_assert_neq(join_resp2.turn_username[0], '\0', "Second join should have TURN username");
 
-  // Verify credentials are identical (same session string, generated at approximately same time)
-  cr_assert_str_eq(join_resp1.turn_username, join_resp2.turn_username,
-                   "TURN usernames should be identical for same session");
-  cr_assert_str_eq(join_resp1.turn_password, join_resp2.turn_password,
-                   "TURN passwords should be identical (same username + secret)");
+  // Each join uses its own expiry timestamp, so joins crossing a second may differ.
+  const char *session1 = strchr(join_resp1.turn_username, ':');
+  const char *session2 = strchr(join_resp2.turn_username, ':');
+  cr_assert_not_null(session1);
+  cr_assert_not_null(session2);
+  cr_assert_str_eq(session1 + 1, create_resp.session_string);
+  cr_assert_str_eq(session2 + 1, create_resp.session_string);
+  if (strcmp(join_resp1.turn_username, join_resp2.turn_username) == 0)
+    cr_assert_str_eq(join_resp1.turn_password, join_resp2.turn_password);
+  else
+    cr_assert_str_neq(join_resp1.turn_password, join_resp2.turn_password);
 
   database_close(db);
   cleanup_test_db(db_path);

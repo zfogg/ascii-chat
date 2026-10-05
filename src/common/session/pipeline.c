@@ -213,7 +213,8 @@ static void *pipeline_capture_thread(void *arg) {
   media_source_t *capture_source = session_capture_get_media_source(pipeline->capture);
   media_source_type_t capture_source_type = media_source_get_type(capture_source);
   bool snapshot_uses_frame_target =
-      capture_source_type == MEDIA_SOURCE_FILE || capture_source_type == MEDIA_SOURCE_STDIN;
+      (capture_source_type == MEDIA_SOURCE_FILE || capture_source_type == MEDIA_SOURCE_STDIN) &&
+      !media_source_uses_webcam(capture_source);
   if (snapshot_mode) {
     // Initialize duration estimate BEFORE encoding frames so PTS scaling works from frame 1
     extern uint64_t g_snapshot_actual_duration_ms;
@@ -432,6 +433,8 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   // We store a flag to know whether to enqueue frames for encoding
   double render_fps = session_display_get_render_fps(display);
   bool has_file = session_display_has_render_file(display);
+  if (media_source_uses_webcam(session_capture_get_media_source(capture)))
+    session_display_set_render_live_timing(display);
 
   // Enable encode thread if render_file is available
   // Note: has_file can be true even if render_file creation failed (ctx->render_file exists)

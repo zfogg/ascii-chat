@@ -426,8 +426,27 @@ if(NOT libdatachannel_POPULATED)
     endif()
     file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}")
 
+    # Bind the cached objects to the OpenSSL headers and libraries used by this build.
+    set(_libdatachannel_openssl_stamp "${LIBDATACHANNEL_BUILD_DIR}/openssl-binding.sha256")
+    set(_libdatachannel_openssl_signature "${OPENSSL_INCLUDE_DIR};${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
+    foreach(_openssl_input "${OPENSSL_INCLUDE_DIR}/openssl/opensslv.h" "${OPENSSL_CRYPTO_LIBRARY}")
+        if(EXISTS "${_openssl_input}")
+            file(SHA256 "${_openssl_input}" _openssl_hash)
+            string(APPEND _libdatachannel_openssl_signature ";${_openssl_hash}")
+        endif()
+    endforeach()
+    string(SHA256 _libdatachannel_openssl_signature "${_libdatachannel_openssl_signature}")
+    set(_libdatachannel_cached_signature "")
+    if(EXISTS "${_libdatachannel_openssl_stamp}")
+        file(READ "${_libdatachannel_openssl_stamp}" _libdatachannel_cached_signature)
+    endif()
+
     # Check if cached build exists
     set(LIBDATACHANNEL_NEEDS_REBUILD FALSE)
+    if(NOT _libdatachannel_cached_signature STREQUAL _libdatachannel_openssl_signature)
+        set(LIBDATACHANNEL_NEEDS_REBUILD TRUE)
+        message(STATUS "libdatachannel OpenSSL binding changed, rebuilding cached objects")
+    endif()
     if(NOT EXISTS "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}")
         set(LIBDATACHANNEL_NEEDS_REBUILD TRUE)
         message(STATUS "libdatachannel library not found, will build from source")
@@ -498,7 +517,9 @@ if(NOT libdatachannel_POPULATED)
             # Pass musl-built OpenSSL paths to libdatachannel
             # OPENSSL_ROOT_DIR, OPENSSL_INCLUDE_DIR, etc. are set by MuslDependencies.cmake
             if(OPENSSL_ROOT_DIR)
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                if(OPENSSL_ROOT_DIR)
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                endif()
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
@@ -607,19 +628,19 @@ if(NOT libdatachannel_POPULATED)
 
             message(STATUS "libdatachannel Windows build: forcing Ninja generator")
         else()
-            # For non-Windows builds, pass custom OpenSSL 3.4.0 if available
-            if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-               AND OPENSSL_ROOT_DIR
-               AND OPENSSL_INCLUDE_DIR
+            # Pass the exact OpenSSL headers and libraries selected by the parent build
+            if(OPENSSL_INCLUDE_DIR
                AND OPENSSL_SSL_LIBRARY
                AND OPENSSL_CRYPTO_LIBRARY
                AND EXISTS "${OPENSSL_SSL_LIBRARY}"
                AND EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                if(OPENSSL_ROOT_DIR)
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                endif()
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
-                message(STATUS "libdatachannel will use custom OpenSSL 3.4.0 from ${OPENSSL_ROOT_DIR}")
+                message(STATUS "libdatachannel will use configured OpenSSL from ${OPENSSL_ROOT_DIR}")
             elseif(OPENSSL_ROOT_DIR)
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
             endif()
@@ -682,6 +703,7 @@ if(NOT libdatachannel_POPULATED)
         message(STATUS "${BoldGreen}libdatachannel${ColorReset} library found in cache: ${BoldCyan}${LIBDATACHANNEL_BUILD_DIR}/lib${ColorReset}")
     endif()
 
+    file(WRITE "${_libdatachannel_openssl_stamp}" "${_libdatachannel_openssl_signature}")
 endif()
 
     # Import pre-built library as INTERFACE library (source-built version)

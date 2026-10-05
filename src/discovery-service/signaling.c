@@ -172,7 +172,8 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
     }
 
     // Send SDP packet to recipient
-    asciichat_error_t result = packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len, 0);
+    asciichat_error_t result =
+        packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len, 0);
     if (result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send SDP packet to recipient");
     }
@@ -214,7 +215,8 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
     }
 
     // Send ICE packet to recipient
-    asciichat_error_t result = packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len, 0);
+    asciichat_error_t result =
+        packet_send_via_transport(ctx.found_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len, 0);
     if (result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send ICE packet to recipient");
     }

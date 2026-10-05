@@ -1,5 +1,5 @@
 name: "Generate Coverage Report"
-description: "Generate gcov coverage files from .gcda files and move them to repo root"
+description: "Merge Clang execution counters into a validated Cobertura report"
 inputs:
   os-type:
     description: "Operating system type (macos or ubuntu)"
@@ -7,39 +7,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Generate coverage files
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install coverage reporter
       shell: bash
-      run: |
-        # Generate coverage files for codecov
-        echo "DEBUG: Running coverage tool on .gcda files..."
-        # Use gcov on macOS, llvm-cov on Ubuntu
-        # Use -p to preserve path components and avoid overwriting files with same basename
-        if [ "${{ inputs.os-type }}" = "macos" ]; then
-          echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov -p {} \;
-        else
-          echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
-        fi
-        echo "DEBUG: Coverage command completed"
-
-        # Debug: Check where .gcov files were created
-        echo "DEBUG: Looking for .gcov files after coverage execution..."
-        echo "DEBUG: All .gcov files found:"
-        find . -name "*.gcov" -type f -exec ls -la {} \;
-        echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
-
-        # Move all .gcov files to repo root for consistent behavior across platforms
-        echo "Moving .gcov files to repo root..."
-        echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        find . -name "*.gcov" -type f -exec mv {} . \;
-        echo "DEBUG: Move command completed"
-
-        echo "Generated coverage files:"
-        gcov_count=$(ls -1 *.gcov 2>/dev/null | wc -l || echo 0)
-        echo "DEBUG: After move - .gcov files in root: $gcov_count"
-        if [ "$gcov_count" -gt 0 ]; then
-          ls -1 *.gcov 2>/dev/null | head -20 || true
-        else
-          echo "No .gcov files in root directory"
-        fi
+      run: python -m pip install gcovr==8.6
+    - name: Generate merged coverage report
+      shell: bash
+      run: python3 .github/scripts/generate-coverage.py

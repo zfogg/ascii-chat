@@ -1479,6 +1479,10 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
     ${SQLITE3_LIBRARIES}
+    webrtc_audio_processing
+    ${FREETYPE_LIBRARIES}
+    ${FONTCONFIG_LINK_LIBRARIES}
+    ${VTERM_LDFLAGS}
     libdatachannel
     OpenSSL::Crypto
 )

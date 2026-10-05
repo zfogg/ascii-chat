@@ -108,7 +108,8 @@ bool atomic_cas_int_impl(atomic_t *a, int *expected, int new_value) {
   if (!a || !expected)
     return false;
   uint64_t expected_u64 = (uint64_t)(int64_t)*expected;
-  bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)(int64_t)new_value);
+  bool result =
+      atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)(int64_t)new_value);
   *expected = (int)(int32_t)expected_u64;
   return result;
 }
