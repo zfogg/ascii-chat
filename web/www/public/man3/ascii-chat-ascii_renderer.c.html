@@ -30,8 +30,7 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ascii_renderer.c - WASM ASCII renderer using libvterm, FreeType,
-    and raylib.</p>
+<p class="Pp">ascii_renderer.c - WASM ASCII renderer using libvterm and FreeType.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -86,17 +85,16 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">WASM ASCII renderer using libvterm, FreeType, and raylib.</p>
+<p class="Pp">WASM ASCII renderer using libvterm and FreeType.</p>
 <p class="Pp">This module provides real-time ASCII art rendering for the web
     client. It uses:</p>
 <ul class="Bl-bullet">
   <li>libvterm for ANSI escape code parsing and terminal emulation</li>
   <li>FreeType for glyph rasterization (using embedded DejaVu Sans Mono)</li>
-  <li>raylib for single-texture WebGL rendering</li>
+  <li>Canvas 2D for displaying the framebuffer</li>
 </ul>
 <p class="Pp">The render pipeline: ANSI string &#x2192; libvterm cell grid
-    &#x2192; FreeType glyphs &#x2192; RGB framebuffer &#x2192; raylib texture
-    &#x2192; single WebGL draw call</p>
+    &#x2192; FreeType glyphs &#x2192; RGBA framebuffer &#x2192; Canvas 2D putImageData()</p>
 <p class="Pp">Definition in file <b>ascii_renderer.c</b>.</p>
 </section>
 <section class="Sh">
@@ -257,8 +255,7 @@
 183 
 184   renderer.vts = vterm_obtain_screen(renderer.vt);
 185 
-186   /* Initialize raylib window on first render (lazy init)
-187    * This avoids blocking on InitWindow during initialization */
+186   /* Renderer dimensions are initialized before displaying frames. */
 188 
 189 }</pre>
 <pre></pre>
@@ -357,10 +354,7 @@
 277     }
 278   }
 279 
-280   /* Note: In WASM, texture update would happen here but raylib
-281    * requires a window context which isn't available in browser.
-282    * The framebuffer is maintained for potential future use.
-283    * The actual rendering on screen happens via xterm.js on the JS side. */
+280   /* JavaScript displays the framebuffer using Canvas 2D. */
 284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
