@@ -122,6 +122,14 @@ def main():
                         print(trace.stderr, file=sys.stderr)
                         if trace_path.exists():
                             print(trace_path.read_text(errors="replace"), file=sys.stderr)
+                        else:
+                            debugger = "/opt/homebrew/opt/llvm/bin/lldb"
+                            if not Path(debugger).exists():
+                                debugger = "/usr/bin/lldb"
+                            backtrace = subprocess.run([debugger, "--batch", "--attach-pid", str(process.pid),
+                                                        "-o", "thread backtrace all", "-o", "detach", "-o", "quit"],
+                                                       capture_output=True, text=True, timeout=20)
+                            print(backtrace.stdout + backtrace.stderr, file=sys.stderr)
             for path in root.glob("*.log"):
                 for line in path.read_text(errors="replace").splitlines():
                     if any(word in line for word in ("ERROR", "FATAL", "Connected", "SNAPSHOT", "handshake")):
