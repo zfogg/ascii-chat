@@ -587,31 +587,31 @@ typedef struct {
   const char *option; ///< Registry option name (e.g., "color-mode")
 } field_option_map_t;
 
-static const field_option_map_t g_field_to_option[] = { // INT fields
-    {"width", "width"},
-    {"height", "height"},
-    {"max_clients", "max-clients"},
-    {"compression_level", "compression-level"},
-    {"reconnect_attempts", "reconnect"},
-    {"microphone_index", "microphone-index"},
-    {"speakers_index", "speakers-index"},
-    {"discovery_port", "discovery-service-port"},
-    {"port", "port"},
-    {"fps", "fps"},
-    {"color_mode", "color-mode"},
-    {"color_filter", "color-filter"},
-    {"render_mode", "render-mode"},
-    {"log_level", "log-level"},
-    {"palette_type", "palette"},
-    // DOUBLE fields
-    {"snapshot_delay", "snapshot-delay"},
-    {"microphone_sensitivity", "microphone-volume"},
-    {"speakers_volume", "speakers-volume"},
-    // STRING fields with registry entries
-    {"address", "address"},
-    {"log_file", "log-file"},
-    {"password", "password"},
-    {NULL, NULL}};
+static const field_option_map_t g_field_to_option[] = {// INT fields
+                                                       {"width", "width"},
+                                                       {"height", "height"},
+                                                       {"max_clients", "max-clients"},
+                                                       {"compression_level", "compression-level"},
+                                                       {"reconnect_attempts", "reconnect"},
+                                                       {"microphone_index", "microphone-index"},
+                                                       {"speakers_index", "speakers-index"},
+                                                       {"discovery_port", "discovery-service-port"},
+                                                       {"port", "port"},
+                                                       {"fps", "fps"},
+                                                       {"color_mode", "color-mode"},
+                                                       {"color_filter", "color-filter"},
+                                                       {"render_mode", "render-mode"},
+                                                       {"log_level", "log-level"},
+                                                       {"palette_type", "palette"},
+                                                       // DOUBLE fields
+                                                       {"snapshot_delay", "snapshot-delay"},
+                                                       {"microphone_sensitivity", "microphone-volume"},
+                                                       {"speakers_volume", "speakers-volume"},
+                                                       // STRING fields with registry entries
+                                                       {"address", "address"},
+                                                       {"log_file", "log-file"},
+                                                       {"password", "password"},
+                                                       {NULL, NULL}};
 
 /**
  * @brief Validate an option value against registry metadata

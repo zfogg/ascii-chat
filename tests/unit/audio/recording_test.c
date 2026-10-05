@@ -3,6 +3,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/atomic.h>
 #include <math.h>
+#include <limits.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -328,6 +329,39 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   wait_for_captured_samples(&ctx, 960);
   float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Recorded file audio must contain the tone, not only a silent track");
+  cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
+  audio_destroy(&ctx);
+  media_source_destroy(source);
+  platform_delete_temp_file(path);
+}
+
+Test(recording, media_audio_recording_runs_without_input_or_output_devices, .timeout = 10) {
+  options_t options = *options_get();
+  options.audio_source = AUDIO_SOURCE_MEDIA;
+  options.speakers_index = INT_MAX;
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(source);
+  audio_context_t ctx = {0};
+  cr_assert_eq(audio_init(&ctx), ASCIICHAT_OK);
+  ctx.capture_media_source = source;
+  ctx.playback_only = true;
+  audio_recording_destroy(recording);
+  cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
+  cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
+  cr_assert_null(ctx.duplex_stream);
+  cr_assert_null(ctx.input_stream);
+  cr_assert_null(ctx.output_stream);
+
+  uint64_t started = time_get_ns();
+  audio_recording_start(recording, started);
+  wait_for_captured_samples(&ctx, 960);
+  cr_assert_gt(recorded_energy_since(started), 1.0f,
+               "Media audio should be recorded when no PortAudio input or output stream is available");
+
   cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
   audio_destroy(&ctx);
   media_source_destroy(source);

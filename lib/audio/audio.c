@@ -1421,13 +1421,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
 
-  // Initialize PortAudio here, when we actually need to open streams
-  // This defers Pa_Initialize() until necessary, avoiding premature ALSA allocation
-  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
-  if (pa_result != ASCIICHAT_OK) {
-    return pa_result;
-  }
-
   // Check if already running (without holding lock during blocking operations)
   // Do this check first before acquiring any locks
   if (ctx->duplex_stream || ctx->input_stream || ctx->output_stream) {
@@ -1437,6 +1430,20 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   bool media_audio = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
   if (!audio_should_enable_microphone(GET_OPTION(audio_source), media_audio))
     ctx->playback_only = true;
+  bool media_only = media_audio && ctx->playback_only;
+
+  // Media-only recording can run through the software worker without an audio
+  // device. Initialize PortAudio opportunistically so monitoring still works
+  // when a speaker is available.
+  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+  if (pa_result != ASCIICHAT_OK && !media_only)
+    return pa_result;
+
+  if (pa_result != ASCIICHAT_OK) {
+    ctx->sample_rate = AUDIO_SAMPLE_RATE;
+    log_warn("PortAudio unavailable; continuing media-only audio without an audio device");
+    goto start_worker;
+  }
 
   // Setup input parameters (skip if playback-only mode)
   PaStreamParameters inputParams = {0};
@@ -1678,7 +1685,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
 
     // Check if we got at least one stream working
-    if (!input_ok && !output_ok) {
+    if (!input_ok && !output_ok && !media_only) {
       // Neither stream works - fail completely
       audio_ring_buffer_destroy(ctx->render_buffer);
       ctx->render_buffer = NULL;
@@ -1739,6 +1746,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     ctx->separate_streams = false;
     log_info("Full-duplex stream started (single callback, perfect AEC3 timing)");
   }
+start_worker:
 
   audio_set_realtime_priority();
 
