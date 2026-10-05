@@ -135,7 +135,7 @@ typedef enum {
  *
  * @note Pixel array must be allocated (by image_new() or image_new_from_pool()).
  * @note Image structure and pixels array can be freed separately if needed.
- * @note Compatible with webcam capture functions (webcam_read()).
+ * @note Compatible with webcam capture functions (webcam_read_context()).
  * @note alloc_method tracks allocation source for correct deallocation.
  *
  * @ingroup video
@@ -196,6 +196,14 @@ typedef struct {
  * Image Allocation and Management Functions
  * @{
  */
+
+/**
+ * @brief Render animated color bars and grid lines into an existing image.
+ * @param image Destination image; its allocation remains owned by the caller.
+ * @param frame_counter Per-source animation counter, advanced after each frame.
+ * @return ASCIICHAT_OK on success, or ERROR_INVALID_PARAM for invalid arguments.
+ */
+asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_counter);
 
 /**
  * @brief Create a new image with standard allocation

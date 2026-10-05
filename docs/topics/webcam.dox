@@ -264,56 +264,18 @@
  * ascii-chat provides a unified C API across all platforms:
  *
  * @code{.c}
- * typedef struct webcam_context webcam_context_t;
- *
- * // Initialize webcam
- * webcam_context_t *webcam_init(int device_index, int width, int height, int fps);
- *
- * // Start capture
- * asciichat_error_t webcam_start(webcam_context_t *ctx);
- *
- * // Capture frame (blocking)
- * asciichat_error_t webcam_capture_frame(webcam_context_t *ctx,
- *                                          uint8_t **rgb_data,
- *                                          size_t *data_len);
- *
- * // Stop capture
- * asciichat_error_t webcam_stop(webcam_context_t *ctx);
- *
- * // Cleanup
- * void webcam_destroy(webcam_context_t *ctx);
- *
- * // List available devices
- * char** webcam_list_devices(int *count);
- * @endcode
- *
- * Usage example:
- * @code{.c}
- * // Initialize webcam (first device, 1920x1080 @ 30fps)
- * webcam_context_t *webcam = webcam_init(0, 1920, 1080, 30);
- * if (!webcam) {
- *     log_error("Failed to initialize webcam");
- *     return ERROR_WEBCAM_INIT;
+ * webcam_context_t *ctx = NULL;
+ * asciichat_error_t result = webcam_init_context(&ctx, 0);
+ * if (result != ASCIICHAT_OK) {
+ *     return result;
  * }
- *
- * // Start capture
- * webcam_start(webcam);
- *
- * // Capture loop
  * while (running) {
- *     uint8_t *rgb_frame;
- *     size_t frame_len;
- *
- *     asciichat_error_t err = webcam_capture_frame(webcam, &rgb_frame, &frame_len);
- *     if (err == ASCIICHAT_OK) {
- *         // Process frame...
- *         process_frame(rgb_frame, 1920, 1080);
+ *     image_t *frame = webcam_read_context(ctx);
+ *     if (frame) {
+ *         process_frame(frame->pixels, frame->w, frame->h);
  *     }
  * }
- *
- * // Cleanup
- * webcam_stop(webcam);
- * webcam_destroy(webcam);
+ * webcam_cleanup_context(ctx);
  * @endcode
  *
  * @section webcam_hardware Hardware Detection

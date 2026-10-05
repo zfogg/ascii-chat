@@ -333,36 +333,6 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
   return ASCIICHAT_OK;
 }
 
-// Global webcam context for the simplified interface
-static webcam_context_t *g_webcam_ctx = NULL;
-
-asciichat_error_t webcam_init(unsigned short int webcam_index) {
-  if (g_webcam_ctx) {
-    return ASCIICHAT_OK; // Already initialized
-  }
-  return webcam_init_context(&g_webcam_ctx, webcam_index);
-}
-
-image_t *webcam_read(void) {
-  if (!g_webcam_ctx) {
-    return NULL;
-  }
-  return webcam_read_context(g_webcam_ctx);
-}
-
-void webcam_destroy(void) {
-  if (g_webcam_ctx) {
-    webcam_cleanup_context(g_webcam_ctx);
-    g_webcam_ctx = NULL;
-  }
-}
-
-void webcam_flush(void) {
-  if (g_webcam_ctx) {
-    webcam_flush_context(g_webcam_ctx);
-  }
-}
-
 void webcam_print_init_error_help(asciichat_error_t error_code) {
   (void)error_code;
   log_error("Webcam initialization failed. Check that:");

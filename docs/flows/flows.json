@@ -98,7 +98,7 @@
             { "path": "lib/media/source.c", "fn": "url_has_ffmpeg_native_extension()", "line": 72, "note": "Detects .mp4, .mkv, .m3u8, rtsp:// etc." },
             { "path": "lib/media/yt_dlp.c", "fn": "yt_dlp_extract_url()", "line": 1, "note": "Runs yt-dlp subprocess, caches result 30s" },
             { "path": "lib/media/ffmpeg_decoder.c", "fn": "ffmpeg_decoder_create()", "line": 1, "note": "Opens AVFormatContext; AVIO buffer for stdin" },
-            { "path": "lib/video/webcam/webcam.c", "fn": "webcam_init()", "line": 1, "note": "V4L2 on Linux, AVFoundation on macOS" }
+            { "path": "lib/video/webcam/webcam.c", "fn": "webcam_init_context()", "line": 1, "note": "V4L2 on Linux, AVFoundation on macOS" }
           ]
         },
         {

@@ -512,7 +512,7 @@ const FLOWS = {
         description: 'Live webcam capture. V4L2 on Linux, AVFoundation on macOS. Frame captured as YUV, converted to RGBA via SwsContext.',
         files: [
           { path:'lib/video/webcam/webcam.c', fn:'webcam_capture_frame()', note:'V4L2 ioctl VIDIOC_DQBUF → YUV → RGBA' },
-          { path:'lib/video/webcam/webcam.c', fn:'webcam_init()', note:'Opens /dev/videoN, sets format, requests buffers' },
+          { path:'lib/video/webcam/webcam.c', fn:'webcam_init_context()', note:'Opens /dev/videoN, sets format, requests buffers' },
         ]},
       { id: 'input_file', x:40, y:165, w:120, h:48, color:'media', label:'File / URL', sublabel:'--file / --url',
         description: 'Local files (.mp4/.mkv/gif/…) or HTTP/HTTPS/RTSP streams opened directly by FFmpeg. Smart resolver: tries FFmpeg-native extension first, then yt-dlp subprocess for YouTube/Twitch/etc.',

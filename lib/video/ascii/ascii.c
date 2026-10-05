@@ -79,12 +79,6 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
   }
 }
 
-asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
-  log_info("Initializing ASCII reader with webcam index %u", webcam_index);
-  webcam_init(webcam_index);
-  return ASCIICHAT_OK;
-}
-
 asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // Validate file descriptor
   if (fd < 0) {
@@ -455,11 +449,6 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
     }
   }
   log_debug("ASCII writer destroyed");
-}
-
-void ascii_read_destroy(void) {
-  webcam_destroy();
-  log_debug("ASCII reader destroyed");
 }
 
 /*

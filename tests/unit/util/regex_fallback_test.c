@@ -7,14 +7,26 @@
 #include <ascii-chat/options/options.h>
 
 /* Simulate systems where executable JIT memory is unavailable. */
-int pcre2_jit_compile(pcre2_code *code, uint32_t options) {
+static int pcre2_jit_compile_fallback(pcre2_code *code, uint32_t options) {
   (void)code;
   (void)options;
   return PCRE2_ERROR_JIT_BADOPTION;
 }
 
+#ifdef __APPLE__
+/* Mach-O shared-library calls need explicit interposition from the test executable. */
+extern int pcre2_jit_compile(pcre2_code *code, uint32_t options);
+__attribute__((used, section("__DATA,__interpose"))) static const struct {
+  int (*replacement)(pcre2_code *, uint32_t);
+  int (*replacee)(pcre2_code *, uint32_t);
+} pcre2_jit_interpose = {pcre2_jit_compile_fallback, pcre2_jit_compile};
+#else
+int pcre2_jit_compile(pcre2_code *code, uint32_t options) {
+  return pcre2_jit_compile_fallback(code, options);
+}
+#endif
+
 static void setup(void) {
-#ifndef __APPLE__
   pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("^fallback-probe$", 0);
   cr_assert_not_null(singleton);
   pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
@@ -22,7 +34,6 @@ static void setup(void) {
   size_t jit_size = 1;
   cr_assert_eq(pcre2_pattern_info(code, PCRE2_INFO_JITSIZE, &jit_size), 0);
   cr_assert_eq(jit_size, 0, "The fixture must exercise interpreted regex matching");
-#endif
 }
 
 TestSuite(regex_fallback, .init = setup);

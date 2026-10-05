@@ -115,7 +115,8 @@
  * int main(int argc, char **argv) {
  *     // ... initialization ...
  *
- *     asciichat_error_t err_code = webcam_init(device_id, test_pattern);
+ *     webcam_context_t *ctx = NULL;
+ *     asciichat_error_t err_code = webcam_init_context(&ctx, device_id);
  *     if (err_code != ASCIICHAT_OK) {
  *         fprintf(stderr, "Webcam error: %s\n", asciichat_error_string(err));
  *         return err_code;

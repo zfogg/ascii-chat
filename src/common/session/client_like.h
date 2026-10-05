@@ -321,7 +321,7 @@ terminal_fd_reader_t *session_client_like_get_stdin_reader(void);
  *   3. audio_stop_duplex() + audio_destroy() + SAFE_FREE
  *   4. session_display_destroy()
  *   5. session_capture_destroy()
- *   6. webcam_destroy() - Free cached webcam images and test patterns
+ *   6. media_source_destroy() - Free capture buffers and source state
  *   7. session_log_buffer_destroy()
  *   8. platform_disable_keepawake()
  *   9. Print '\n' to STDOUT_FILENO if print_newline_on_tty_exit && TTY
