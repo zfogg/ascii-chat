@@ -266,6 +266,7 @@ typedef enum {
  * - AUDIO_SOURCE_MICROPHONE: Capture from microphone only
  * - AUDIO_SOURCE_MEDIA: Playback media audio only (no microphone)
  * - AUDIO_SOURCE_BOTH: Both microphone and media audio simultaneously
+ * - AUDIO_SOURCE_REMOTE: Received network audio only; local capture is disabled
  *
  * @ingroup options
  */
@@ -277,7 +278,9 @@ typedef enum {
   /** Media audio only (no microphone) */
   AUDIO_SOURCE_MEDIA = 2,
   /** Both microphone and media audio */
-  AUDIO_SOURCE_BOTH = 3
+  AUDIO_SOURCE_BOTH = 3,
+  /** Received network audio (visualization only; no local audio is transmitted) */
+  AUDIO_SOURCE_REMOTE = 4
 } audio_source_t;
 
 /**
@@ -786,6 +789,7 @@ static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
 static const double default_snapshot_delay_value = OPT_SNAPSHOT_DELAY_DEFAULT;
 static const bool default_matrix_rain_value = OPT_MATRIX_RAIN_DEFAULT;
+static const bool default_waveform_value = false;
 static const bool default_fps_counter_value = OPT_FPS_COUNTER_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
@@ -1043,7 +1047,8 @@ typedef struct options_state {
   // Audio Configuration
   // ============================================================================
   bool audio_enabled;           ///< Enable audio streaming
-  audio_source_t audio_source;  ///< Audio source selection (auto/mic/media/both)
+  audio_source_t audio_source;  ///< Audio source selection (auto/mic/media/both/remote)
+  bool waveform; ///< Replace the video image with a live audio waveform
   int microphone_index;         ///< Microphone device index (-1 = default)
   int speakers_index;           ///< Speakers device index (-1 = default)
   float microphone_sensitivity; ///< Microphone volume multiplier (0.0-1.0, default 1.0)

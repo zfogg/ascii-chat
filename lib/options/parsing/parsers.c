@@ -141,7 +141,6 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   }
   return false;
 }
-
 // NOTE: is_session_string() is now imported from lib/discovery/strings.h
 // and provides enhanced validation against actual wordlists via hashtable lookup.
 // See that module for the full implementation.
@@ -1195,8 +1194,13 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
     return true;
   }
 
+  if (strcmp(lower, OPT_AUDIO_SOURCE_REMOTE) == 0) {
+    *audio_source = AUDIO_SOURCE_REMOTE;
+    return true;
+  }
+
   if (error_msg) {
-    *error_msg = platform_strdup("Audio source must be 'auto', 'mic', 'media', or 'both'");
+    *error_msg = platform_strdup("Audio source must be 'auto', 'mic', 'media', 'both', or 'remote'");
   }
   return false;
 }

@@ -141,6 +141,10 @@ project(${PROJECT_NAME_FULL}
     LANGUAGES ${PROJECT_LANGUAGES}
 )
 
+# This codebase has no C++ module units. Avoid scheduling module dependency
+# scans for ordinary C++ sources, which fail on the Windows Clang toolchain.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
 
 # =============================================================================
 # Post-project() Config (code that must be run after project())

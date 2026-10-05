@@ -49,6 +49,19 @@ function(configure_llvm_pre_project)
     set(LLVM_ROOT_PREFIX "")
     set(LLVM_CONFIG_EXECUTABLE "${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
 
+    # clang.exe defaults to the GNU Windows target on Windows hosts. The
+    # project links against the MSVC CRT and Windows SDK, so select the MSVC
+    # target before project() runs compiler checks and generates build rules.
+    if(WIN32 AND NOT CMAKE_C_COMPILER_TARGET)
+        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
+            set(_asciichat_windows_target "aarch64-pc-windows-msvc")
+        else()
+            set(_asciichat_windows_target "x86_64-pc-windows-msvc")
+        endif()
+        set(CMAKE_C_COMPILER_TARGET "${_asciichat_windows_target}" CACHE STRING "Windows Clang target")
+        set(CMAKE_CXX_COMPILER_TARGET "${_asciichat_windows_target}" CACHE STRING "Windows Clang C++ target")
+    endif()
+
     if(LLVM_CONFIG_EXECUTABLE)
         # Get LLVM root directory from llvm-config (Unix/macOS/Windows)
         execute_process(
