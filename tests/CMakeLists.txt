@@ -577,6 +577,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 TIMEOUT ${_test_ctest_timeout}
                 LABELS "${test_category}"
             )
+            if(test_category STREQUAL "integration")
+                # Process fixtures share listening ports and temporary resources.
+                set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
+            endif()
         endif()
     endforeach()
 
