@@ -6,6 +6,7 @@
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/memory.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/media/render/renderer.h>
@@ -181,6 +182,24 @@ Test(recording, audio_only_file_selects_webcam_without_opening_it_during_probe) 
   platform_delete_temp_file(path);
 }
 
+static void wait_for_captured_samples(audio_context_t *ctx, size_t count) {
+  uint64_t deadline = time_get_ns() + 2000000000ULL;
+  while (audio_ring_buffer_available_read(ctx->capture_buffer) < count && time_get_ns() < deadline)
+    platform_sleep_ns(10000000ULL);
+  cr_assert_geq(audio_ring_buffer_available_read(ctx->capture_buffer), count);
+}
+
+static float recorded_energy_since(uint64_t started) {
+  size_t count = (size_t)((time_get_ns() - started) * 48000 / 1000000000ULL) + 960;
+  float *output = SAFE_CALLOC(count, sizeof(float), float *);
+  audio_recording_read(recording, output, count);
+  float energy = 0;
+  for (size_t i = 0; i < count; i++)
+    energy += output[i] * output[i];
+  SAFE_FREE(output);
+  return energy;
+}
+
 Test(recording, microphone_worker_copies_audio_without_draining_transmission, .timeout = 10) {
   audio_context_t ctx = {0};
   cr_assert_eq(audio_init(&ctx), ASCIICHAT_OK);
@@ -191,15 +210,11 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
   audio_recording_destroy(recording);
   cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
-  audio_recording_start(recording, time_get_ns());
+  uint64_t started = time_get_ns();
+  audio_recording_start(recording, started);
   cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960), ASCIICHAT_OK);
-  platform_sleep_ns(100000000ULL);
-  cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
-  float output[8192];
-  audio_recording_read(recording, output, 8192);
-  float energy = 0;
-  for (int i = 0; i < 8192; i++)
-    energy += output[i] * output[i];
+  wait_for_captured_samples(&ctx, 960);
+  float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity),
                audio_ring_buffer_available_read(ctx.capture_buffer));
   cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
@@ -220,14 +235,10 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   audio_recording_destroy(recording);
   cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
-  audio_recording_start(recording, time_get_ns());
-  platform_sleep_ns(250000000ULL);
-  cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
-  float output[8192];
-  audio_recording_read(recording, output, 8192);
-  float energy = 0;
-  for (int i = 0; i < 8192; i++)
-    energy += output[i] * output[i];
+  uint64_t started = time_get_ns();
+  audio_recording_start(recording, started);
+  wait_for_captured_samples(&ctx, 960);
+  float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Recorded file audio must contain the tone, not only a silent track");
   cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
   audio_destroy(&ctx);
@@ -244,9 +255,15 @@ Test(recording, session_audio_stops_worker_before_releasing_borrowed_media, .tim
   cr_assert_not_null(ctx);
   session_audio_set_capture_source(ctx, source);
   cr_assert_eq(session_audio_start_duplex(ctx), ASCIICHAT_OK);
-  platform_sleep_ns(100000000ULL);
   float samples[480];
-  cr_assert_gt(session_audio_read_captured(ctx, samples, 480), 0);
+  uint64_t deadline = time_get_ns() + 2000000000ULL;
+  size_t count = 0;
+  while (count == 0 && time_get_ns() < deadline) {
+    count = session_audio_read_captured(ctx, samples, 480);
+    if (count == 0)
+      platform_sleep_ns(10000000ULL);
+  }
+  cr_assert_gt(count, 0);
   session_audio_destroy(ctx);
   media_source_destroy(source);
   platform_delete_temp_file(path);
@@ -311,7 +328,7 @@ Test(recording, both_source_mixes_microphone_and_file_in_the_same_outgoing_block
     mic[i] = 0.2f;
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
   cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960), ASCIICHAT_OK);
-  platform_sleep_ns(100000000ULL);
+  wait_for_captured_samples(&ctx, 960);
   cr_assert_eq(audio_ring_buffer_available_read(ctx.capture_buffer), 960);
   float outgoing[960];
   cr_assert_eq(audio_ring_buffer_read(ctx.capture_buffer, outgoing, 960), 960);
