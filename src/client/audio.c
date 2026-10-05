@@ -1049,24 +1049,8 @@ int audio_client_init() {
   // ensuring proper timing synchronization (not from the decode path 50-100ms earlier)
   audio_set_pipeline(&g_audio_context, (void *)g_audio_pipeline);
 
-  g_audio_context.capture_media_source = capture_get_media_source();
-
-  // Start full-duplex audio (simultaneous capture + playback for perfect AEC3 timing)
-  if (audio_start_duplex(&g_audio_context) != ASCIICHAT_OK) {
-    log_error("Failed to start full-duplex audio");
-    client_audio_pipeline_destroy(g_audio_pipeline);
-    g_audio_pipeline = NULL;
-    audio_destroy(&g_audio_context);
-    // Clean up WAV writer if it was opened
-    if (g_wav_playback_received) {
-      wav_writer_close(g_wav_playback_received);
-      g_wav_playback_received = NULL;
-    }
-    return -1;
-  }
-
-  // Note: audio_sender_init() is now called from protocol_start_connection()
-  // after connection succeeds, to prevent deadlock if connection fails
+  // Audio streams start from protocol_start_connection() after the network
+  // connection succeeds, so local media playback does not advance while dialing.
 
   return 0;
 }

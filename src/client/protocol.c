@@ -1267,6 +1267,17 @@ int protocol_start_connection() {
   }
   log_debug("Webcam capture thread started successfully");
 
+  // Start local media audio only after the connection succeeds. Starting the
+  // worker during client initialization would consume file audio while dialing.
+  audio_context_t *audio_context = audio_get_context();
+  if (audio_context && audio_context->initialized) {
+    audio_context->capture_media_source = capture_get_media_source();
+    if (audio_start_duplex(audio_context) != ASCIICHAT_OK) {
+      log_error("Failed to start full-duplex audio");
+      return -1;
+    }
+  }
+
   // Initialize audio sender thread BEFORE starting audio capture
   // This ensures sender is ready when capture thread starts queueing packets
   // Must happen after connection succeeds to prevent deadlock if connection fails
