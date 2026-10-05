@@ -1388,6 +1388,13 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
   // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
   mutex_lock(&decoder->read_frame_mutex);
 
+  // A decoded packet can exceed a callback's requested block. Drain its
+  // resampled output before reading another packet or declaring end of input.
+  uint8_t *buffered_output = (uint8_t *)(buffer + samples_written);
+  int buffered_samples = swr_convert(decoder->swr_ctx, &buffered_output, (int)(num_samples - samples_written), NULL, 0);
+  if (buffered_samples > 0)
+    samples_written += (size_t)buffered_samples;
+
   while (samples_written < num_samples) {
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
     if (ret < 0) {

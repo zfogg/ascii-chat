@@ -169,6 +169,25 @@ Test(recording, file_source_can_be_read_destroyed_and_reopened_repeatedly) {
   platform_delete_temp_file(path);
 }
 
+Test(recording, small_audio_blocks_preserve_every_decoded_sample_until_end) {
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(source);
+  float samples[288];
+  size_t total = 0;
+  while (!media_source_at_end(source)) {
+    size_t count = media_source_read_audio(source, samples, 288);
+    total += count;
+    cr_assert_leq(total, 48000);
+    if (total < 48000)
+      cr_assert_not(media_source_at_end(source), "Buffered audio must finish before webcam capture stops");
+  }
+  cr_assert_eq(total, 48000, "One second of PCM must retain all samples with hardware-sized callbacks");
+  media_source_destroy(source);
+  platform_delete_temp_file(path);
+}
+
 Test(recording, audio_only_file_selects_webcam_without_opening_it_during_probe) {
   webcam_starts = 0;
   char path[1024];
