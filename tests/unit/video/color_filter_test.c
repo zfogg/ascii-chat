@@ -96,18 +96,14 @@ Test(color_filter, colorize_white_on_color) {
   // Create a small test image: 2x2 pixels
   uint8_t pixels[2 * 2 * 3] = {
       // Row 1: black pixel, white pixel
-      0,
-      0,
+      0, 0,
       0, // Black (should become dark color)
-      255,
-      255,
+      255, 255,
       255, // White (should become bright color)
       // Row 2: mid-gray pixel, dark-gray pixel
-      128,
-      128,
+      128, 128,
       128, // Mid-gray (should become medium color)
-      64,
-      64,
+      64, 64,
       64, // Dark-gray (should become dim color)
   };
 

@@ -829,10 +829,9 @@ typedef struct {
   char description[64];
 } ascii_size_test_case_t;
 
-static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD buffer overflow
-                                                    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},
-                                                    {8, 8, "8x8 image"},     {16, 16, "16x16 image"},
-                                                    {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
+static ascii_size_test_case_t ascii_size_cases[] = { // Skip 1x1 - causes SIMD buffer overflow
+    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},     {8, 8, "8x8 image"},
+    {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
 ParameterizedTestParameters(ascii, size_tests) {
   size_t nb_cases = sizeof(ascii_size_cases) / sizeof(ascii_size_cases[0]);
