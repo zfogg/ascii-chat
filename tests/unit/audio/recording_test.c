@@ -525,3 +525,67 @@ Test(recording, live_recording_uses_elapsed_time_instead_of_received_frame_count
   ffmpeg_decoder_destroy(decoder);
   platform_delete_temp_file(path);
 }
+
+Test(recording, file_pause_gap_keeps_audio_and_video_timelines_aligned, .timeout = 15) {
+  char path[1024];
+  int fd = -1;
+  cr_assert_eq(platform_create_temp_file(path, sizeof(path), "recording-pause", &fd), 0);
+  if (fd >= 0)
+    platform_close(fd);
+  audio_recording_destroy(recording);
+  recording = NULL;
+
+  render_file_ctx_t *render = NULL;
+  cr_assert_eq(render_file_create(path, 8, 4, 10, 0, &render), ASCIICHAT_OK);
+  render_file_set_live_timing(render);
+  const char *frame = "\033[Hhello\nworld\nhello\nworld";
+  float tone[4800], silence[4800] = {0};
+  for (int i = 0; i < 4800; i++)
+    tone[i] = 0.2f * sinf((float)i * 0.057595865f);
+
+  cr_assert_eq(render_file_write_frame(render, frame, epoch), ASCIICHAT_OK);
+  for (int i = 0; i < 10; i++) {
+    uint64_t timestamp = epoch + (uint64_t)i * 100000000ULL;
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800, timestamp);
+    cr_assert_eq(render_file_write_frame(render, frame, timestamp + 100000000ULL), ASCIICHAT_OK);
+  }
+
+  /* Paused playback submits silence while video frames stop arriving. */
+  for (int i = 10; i < 20; i++)
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, silence, 4800, epoch + (uint64_t)i * 100000000ULL);
+  for (int i = 20; i < 30; i++) {
+    uint64_t timestamp = epoch + (uint64_t)i * 100000000ULL;
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800, timestamp);
+    cr_assert_eq(render_file_write_frame(render, frame, timestamp + 100000000ULL), ASCIICHAT_OK);
+  }
+
+  cr_assert_eq(render_file_destroy(render), ASCIICHAT_OK);
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  cr_assert_not_null(decoder);
+  cr_assert(ffmpeg_decoder_has_video(decoder));
+  cr_assert(ffmpeg_decoder_has_audio(decoder));
+  cr_assert_float_eq(ffmpeg_decoder_get_duration(decoder), 3.1, 0.05);
+
+  float samples[12000];
+  size_t count;
+  float rms[3] = {0};
+  const size_t window_starts[3] = {12000, 60000, 108000};
+  float window[3] = {0};
+  size_t total = 0;
+  while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 12000)) > 0) {
+    for (size_t i = 0; i < count; i++, total++) {
+      for (size_t window_index = 0; window_index < 3; window_index++) {
+        if (total >= window_starts[window_index] && total < window_starts[window_index] + 24000)
+          window[window_index] += samples[i] * samples[i];
+      }
+    }
+  }
+  cr_assert_geq(total, 148000);
+  for (size_t i = 0; i < 3; i++)
+    rms[i] = sqrtf(window[i] / 24000.0f);
+  cr_assert_gt(rms[0], 0.03f, "Audio before pause must be present");
+  cr_assert_lt(rms[1], 0.01f, "Paused interval must be silent");
+  cr_assert_gt(rms[2], 0.03f, "Audio must resume after the paused interval");
+  ffmpeg_decoder_destroy(decoder);
+  platform_delete_temp_file(path);
+}

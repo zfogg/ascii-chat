@@ -433,7 +433,8 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   // We store a flag to know whether to enqueue frames for encoding
   double render_fps = session_display_get_render_fps(display);
   bool has_file = session_display_has_render_file(display);
-  if (media_source_uses_webcam(session_capture_get_media_source(capture)))
+  media_source_t *source = session_capture_get_media_source(capture);
+  if (media_source_uses_webcam(source) || media_source_get_type(source) == MEDIA_SOURCE_FILE)
     session_display_set_render_live_timing(display);
 
   // Enable encode thread if render_file is available
@@ -491,6 +492,16 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     uint64_t pop_time_ns = time_get_ns();
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
 
+    // Pause stops frame production, so keep polling the keyboard on queue
+    // timeouts or there would be no way to resume playback.
+    if (keyboard_handler) {
+      keyboard_key_t key = keyboard_read_nonblocking();
+      if (key != KEY_NONE) {
+        log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
+        keyboard_handler(pipeline->capture, (int)key, user_data);
+      }
+    }
+
     if (!frame)
       continue; // timeout, check should_exit again
 
@@ -534,15 +545,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     } else {
       free_frame(frame);
       frame = NULL;
-    }
-
-    // Keyboard polling
-    if (keyboard_handler) {
-      keyboard_key_t key = keyboard_read_nonblocking();
-      if (key != KEY_NONE) {
-        log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
-        keyboard_handler(NULL, (int)key, user_data); // NULL capture ctx
-      }
     }
   }
 
