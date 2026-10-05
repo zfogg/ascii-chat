@@ -342,12 +342,12 @@ void debug_memory_ensure_init(void) {
   /* Use lifecycle_init_once() for proper thread-safe initialization */
   if (lifecycle_init_once(&g_mem.lifecycle)) {
     /* This thread won the race; do the actual initialization */
-    if (mutex_init(&g_mem.mutex, "debug_memory") == 0) {
-      atomic_store_bool(&g_debug_mem_initialized, true);
-      lifecycle_init_commit(&g_mem.lifecycle);
-    } else {
+    if (mutex_init(&g_mem.mutex, "debug_memory") != 0) {
       lifecycle_init_abort(&g_mem.lifecycle);
+      return;
     }
+    atomic_store_bool(&g_debug_mem_initialized, true);
+    lifecycle_init_commit(&g_mem.lifecycle);
   } else {
     /* Another thread is initializing or already initialized;
      * spin briefly to wait for initialization to complete */
