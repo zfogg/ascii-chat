@@ -12,9 +12,74 @@
 #define MAX_TERMINAL_WIDTH 512
 #define MAX_TERMINAL_HEIGHT 256
 
+typedef struct {
+  float frequency;
+  unsigned char red;
+  unsigned char green;
+  unsigned char blue;
+} waveform_color_stop_t;
+
 static float history[AUDIO_VISUALIZATION_SOURCE_COUNT][VISUALIZATION_HISTORY];
 static size_t write_position[AUDIO_VISUALIZATION_SOURCE_COUNT];
 static static_mutex_t history_mutex = STATIC_MUTEX_INIT;
+
+static void waveform_color_for_centroid(float centroid_hz, unsigned char *red, unsigned char *green,
+                                        unsigned char *blue) {
+  static const waveform_color_stop_t stops[] = {
+      {45.0f, 255, 72, 176},    {100.0f, 255, 54, 106},    {220.0f, 255, 104, 72},  {350.0f, 190, 86, 220},
+      {700.0f, 74, 112, 255},   {1400.0f, 55, 190, 255},   {2800.0f, 55, 226, 180}, {5200.0f, 150, 244, 92},
+      {10000.0f, 255, 224, 76}, {18000.0f, 255, 246, 150},
+  };
+  const size_t stop_count = sizeof(stops) / sizeof(stops[0]);
+  if (centroid_hz <= stops[0].frequency) {
+    *red = stops[0].red;
+    *green = stops[0].green;
+    *blue = stops[0].blue;
+    return;
+  }
+  for (size_t i = 1; i < stop_count; i++) {
+    if (centroid_hz <= stops[i].frequency) {
+      float low = logf(stops[i - 1].frequency);
+      float high = logf(stops[i].frequency);
+      float amount = (logf(centroid_hz) - low) / (high - low);
+      *red = (unsigned char)lrintf((float)stops[i - 1].red + amount * ((float)stops[i].red - stops[i - 1].red));
+      *green = (unsigned char)lrintf((float)stops[i - 1].green + amount * ((float)stops[i].green - stops[i - 1].green));
+      *blue = (unsigned char)lrintf((float)stops[i - 1].blue + amount * ((float)stops[i].blue - stops[i - 1].blue));
+      return;
+    }
+  }
+  *red = stops[stop_count - 1].red;
+  *green = stops[stop_count - 1].green;
+  *blue = stops[stop_count - 1].blue;
+}
+
+static float waveform_spectral_centroid(const float *samples, size_t sample_count, size_t center) {
+  static const float frequencies[] = {55.0f, 110.0f, 220.0f, 440.0f, 880.0f, 1760.0f, 3520.0f, 7040.0f, 14080.0f};
+  const size_t window_size = 1024;
+  const size_t half_window = window_size / 2;
+  size_t start = center > half_window ? center - half_window : 0;
+  if (start + window_size > sample_count)
+    start = sample_count - window_size;
+
+  float weighted_log_frequency = 0.0f;
+  float total_weight = 0.0f;
+  for (size_t frequency_index = 0; frequency_index < sizeof(frequencies) / sizeof(frequencies[0]); frequency_index++) {
+    float coefficient = 2.0f * cosf(6.28318530718f * frequencies[frequency_index] / AUDIO_VISUALIZATION_SAMPLE_RATE);
+    float q1 = 0.0f, q2 = 0.0f;
+    for (size_t i = 0; i < window_size; i++) {
+      float position = (float)i / (float)(window_size - 1);
+      float taper = 1.0f - fabsf(2.0f * position - 1.0f);
+      float q0 = coefficient * q1 - q2 + samples[start + i] * taper;
+      q2 = q1;
+      q1 = q0;
+    }
+    float power = fmaxf(q1 * q1 + q2 * q2 - coefficient * q1 * q2, 0.0f);
+    float magnitude = sqrtf(power);
+    weighted_log_frequency += magnitude * logf(frequencies[frequency_index]);
+    total_weight += magnitude;
+  }
+  return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;
+}
 
 void audio_visualization_submit(audio_visualization_source_t source, const float *samples, size_t count) {
   if (!GET_OPTION(waveform) || !samples || source < AUDIO_VISUALIZATION_SOURCE_MIC ||
@@ -62,13 +127,14 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
 }
 
-char *audio_visualization_render_waveform(unsigned int width, unsigned int height,
-                                          audio_visualization_source_t source, bool use_color) {
+char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
+                                          bool use_color) {
   if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
 
-  size_t sample_count = (size_t)width * 12;
+  /* Keep a fixed one-second view so new audio enters on the right smoothly. */
+  const size_t sample_count = VISUALIZATION_HISTORY;
   float *samples = SAFE_MALLOC(sample_count * sizeof(float), float *);
   if (!samples)
     return NULL;
@@ -85,21 +151,44 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     return NULL;
   }
   memset(cells, ' ', cell_count);
-  for (unsigned int x = 0; x < width; x++)
-    cells[(size_t)center * width + x] = '-';
+  unsigned char palette[MAX_TERMINAL_WIDTH][3] = {{0}};
 
-  for (unsigned int x = 0; x < width; x++) {
-    size_t begin = (size_t)x * sample_count / width;
-    size_t end = (size_t)(x + 1) * sample_count / width;
-    float low = 0.0f, high = 0.0f;
-    for (size_t i = begin; i < end; i++) {
-      low = fminf(low, samples[i]);
-      high = fmaxf(high, samples[i]);
+  float peak = 0.0f;
+  size_t x = 0;
+
+  for (size_t i = 0; i < sample_count; i++) {
+    float sample = samples[i];
+    peak = fmaxf(peak, fabsf(sample));
+
+    size_t next_bucket = ((i + 1) * width) / sample_count;
+    if (next_bucket != x || i + 1 == sample_count) {
+      size_t begin = x * sample_count / width;
+      size_t end = (x + 1) * sample_count / width;
+      size_t bucket_center = begin + (end - begin) / 2;
+      float centroid = waveform_spectral_centroid(samples, sample_count, bucket_center);
+      unsigned char red, green, blue;
+      waveform_color_for_centroid(centroid, &red, &green, &blue);
+
+      /* A gentle square-root scale keeps speech visible without flattening loud peaks. */
+      float level = sqrtf(fminf(peak, 1.0f));
+      float brightness = 0.5f + 0.5f * level;
+      palette[x][0] = (unsigned char)lrintf((float)red * brightness);
+      palette[x][1] = (unsigned char)lrintf((float)green * brightness);
+      palette[x][2] = (unsigned char)lrintf((float)blue * brightness);
+      unsigned int amplitude = (unsigned int)lrintf(level * (float)half_height);
+      if (amplitude > half_height)
+        amplitude = half_height;
+      unsigned int top = center - amplitude;
+      unsigned int bottom = center + amplitude;
+      for (unsigned int y = top; y <= bottom; y++) {
+        char ch = (y == top || y == bottom) ? '+' : '#';
+        cells[(size_t)y * width + x] = ch;
+      }
+
+      /* Advance to the next time slice in the left-to-right history. */
+      peak = 0.0f;
+      x = next_bucket;
     }
-    unsigned int top = center - (unsigned int)lrintf(high * (float)half_height);
-    unsigned int bottom = center - (unsigned int)lrintf(low * (float)half_height);
-    for (unsigned int y = top; y <= bottom; y++)
-      cells[(size_t)y * width + x] = '#';
   }
 
   static const char *source_names[] = {"MICROPHONE", "MEDIA", "REMOTE", "MIC + MEDIA", "ALL INPUTS"};
@@ -111,22 +200,12 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     return NULL;
   }
   size_t used = (size_t)snprintf(frame, capacity, "AUDIO WAVEFORM  |  %s\n", source_names[source]);
-  static const unsigned char colors[][3] = {{65, 145, 255}, {65, 220, 190}, {180, 230, 80}, {255, 215, 70},
-                                             {255, 105, 80}, {255, 90, 175}};
   for (unsigned int y = 0; y < grid_height; y++) {
     for (unsigned int x = 0; x < width; x++) {
       char ch = cells[(size_t)y * width + x];
-      if (use_color && ch == '#') {
-        size_t begin = (size_t)x * sample_count / width;
-        size_t end = (size_t)(x + 1) * sample_count / width;
-        float peak = 0.0f;
-        for (size_t i = begin; i < end; i++)
-          peak = fmaxf(peak, fabsf(samples[i]));
-        size_t color = (size_t)(peak * 5.99f);
-        if (color > 5)
-          color = 5;
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um#\033[0m",
-                                 colors[color][0], colors[color][1], colors[color][2]);
+      if (use_color && ch != ' ') {
+        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um%c\033[0m", palette[x][0],
+                                 palette[x][1], palette[x][2], ch);
       } else {
         frame[used++] = ch;
       }
