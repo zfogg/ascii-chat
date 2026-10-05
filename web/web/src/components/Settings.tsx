@@ -1,6 +1,7 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { getOptionHelp, AsciiChatMode } from "../utils";
 import { Tooltip } from "./Tooltip";
+import { LOCKED_SETTINGS_HELP } from "./lockedSettings";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type ColorFilter =
@@ -51,11 +52,13 @@ export function Settings({
   mode,
 }: SettingsProps) {
   const updateConfig = (updates: Partial<SettingsConfig>) => {
-    onChange({ ...config, ...updates });
+    if (!disabled) onChange({ ...config, ...updates });
   };
 
   return (
-    <div className="border-b border-terminal-8 bg-terminal-0 overflow-visible">
+    <div
+      className={`border-b border-terminal-8 bg-terminal-0 overflow-visible ${disabled ? "settings-locked" : ""}`}
+    >
       <div className="px-4 py-3 overflow-visible">
         <Heading
           level={3}
@@ -65,7 +68,11 @@ export function Settings({
         </Heading>
         <div className="flex flex-wrap gap-3">
           {/* Width Field */}
-          <Tooltip text={getOptionHelp(mode, "width")}>
+          <Tooltip
+            text={
+              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "width")
+            }
+          >
             <div className="flex-1 min-w-[100px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Width
@@ -85,7 +92,11 @@ export function Settings({
           </Tooltip>
 
           {/* Height Field */}
-          <Tooltip text={getOptionHelp(mode, "height")}>
+          <Tooltip
+            text={
+              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "height")
+            }
+          >
             <div className="flex-1 min-w-[100px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Height
@@ -107,7 +118,9 @@ export function Settings({
           </Tooltip>
 
           {/* Frame Rate */}
-          <Tooltip text={getOptionHelp(mode, "fps")}>
+          <Tooltip
+            text={disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "fps")}
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Frame Rate: {config.targetFps} FPS
@@ -134,7 +147,13 @@ export function Settings({
           </Tooltip>
 
           {/* Color Mode */}
-          <Tooltip text={getOptionHelp(mode, "color-mode")}>
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : getOptionHelp(mode, "color-mode")
+            }
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Color Mode
@@ -157,7 +176,13 @@ export function Settings({
           </Tooltip>
 
           {/* Color Filter */}
-          <Tooltip text={getOptionHelp(mode, "color-filter")}>
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : getOptionHelp(mode, "color-filter")
+            }
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Color Filter
@@ -188,7 +213,11 @@ export function Settings({
           </Tooltip>
 
           {/* Palette */}
-          <Tooltip text={getOptionHelp(mode, "palette")}>
+          <Tooltip
+            text={
+              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
+            }
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Palette
@@ -212,7 +241,11 @@ export function Settings({
           </Tooltip>
 
           {/* Matrix Rain Effect */}
-          <Tooltip text={getOptionHelp(mode, "matrix")}>
+          <Tooltip
+            text={
+              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "matrix")
+            }
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Effects
@@ -232,7 +265,11 @@ export function Settings({
           </Tooltip>
 
           {/* Webcam Flip */}
-          <Tooltip text={getOptionHelp(mode, "flip-x")}>
+          <Tooltip
+            text={
+              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")
+            }
+          >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Webcam
@@ -253,7 +290,11 @@ export function Settings({
 
           {/* Custom Palette Characters (shown when palette is custom) */}
           {config.palette === "custom" && (
-            <Tooltip text={getOptionHelp(mode, "palette")}>
+            <Tooltip
+              text={
+                disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
+              }
+            >
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-xs font-medium text-terminal-8 mb-1">
                   Custom Characters (dark → bright)

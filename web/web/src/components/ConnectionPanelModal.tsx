@@ -1,5 +1,7 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ConnectionState } from "../wasm/client";
+import { Tooltip } from "./Tooltip";
+import { LOCKED_SETTINGS_HELP } from "./lockedSettings";
 
 export interface ConnectionPanelModalProps {
   isOpen: boolean;
@@ -48,6 +50,10 @@ export function ConnectionPanelModal({
   onDisconnect,
   isConnected,
 }: ConnectionPanelModalProps) {
+  const settingsDisabled =
+    isConnected ||
+    connectionState === ConnectionState.CONNECTING ||
+    connectionState === ConnectionState.HANDSHAKE;
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       {/* Backdrop */}
@@ -89,33 +95,37 @@ export function ConnectionPanelModal({
             </div>
 
             {/* Server URL */}
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
-                Server URL
-              </label>
-              <input
-                type="text"
-                value={serverUrl}
-                onChange={(e) => onServerUrlChange(e.target.value)}
-                placeholder="ws://localhost:27226"
-                disabled={isConnected}
-                className="w-full px-3 py-2 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg font-mono focus:outline-none focus:border-terminal-4 disabled:opacity-50"
-              />
-            </div>
+            <Tooltip text={settingsDisabled ? LOCKED_SETTINGS_HELP : undefined}>
+              <div
+                className={`mb-4 ${settingsDisabled ? "settings-locked" : ""}`}
+              >
+                <label className="block text-xs font-medium text-terminal-8 mb-1">
+                  Server URL
+                </label>
+                <input
+                  type="text"
+                  value={serverUrl}
+                  onChange={(e) => onServerUrlChange(e.target.value)}
+                  placeholder="ws://localhost:27226"
+                  disabled={settingsDisabled}
+                  className="w-full px-3 py-2 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg font-mono focus:outline-none focus:border-terminal-4 disabled:opacity-50"
+                />
+              </div>
+            </Tooltip>
 
             {/* Connect / Disconnect */}
             <div className="mb-4">
               {!isConnected ? (
                 <button
                   onClick={onConnect}
-                  className="w-full px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 text-sm font-medium"
                 >
                   Connect
                 </button>
               ) : (
                 <button
                   onClick={onDisconnect}
-                  className="w-full px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm font-medium"
                 >
                   Disconnect
                 </button>

@@ -4,9 +4,14 @@ import { createPortal } from "react-dom";
 interface TooltipProps {
   text?: string | undefined;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function Tooltip({ text, children }: TooltipProps) {
+export function Tooltip({
+  text,
+  children,
+  className = "flex-1",
+}: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +77,7 @@ export function Tooltip({ text, children }: TooltipProps) {
   const tooltip = isVisible && (
     <div
       className="pointer-events-none z-50 whitespace-normal rounded bg-gray-800 p-2 text-xs text-white shadow-lg transition-opacity duration-200 visible opacity-100"
+      role="tooltip"
       style={tooltipStyle}
     >
       {text}
@@ -82,7 +88,7 @@ export function Tooltip({ text, children }: TooltipProps) {
     <>
       <div
         ref={containerRef}
-        className="flex-1"
+        className={className}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onMouseMove={handleMouseMove}

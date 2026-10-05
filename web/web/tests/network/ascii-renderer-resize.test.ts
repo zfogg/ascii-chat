@@ -1,16 +1,12 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
+import { cleanup, renderHook } from "@testing-library/react";
 import { useAsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle";
 import type { AsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/types";
 
-vi.mock("react", () => ({
-  useRef: (current: unknown) => ({ current }),
-  useCallback: (callback: unknown) => callback,
-  useImperativeHandle: (ref: { current: unknown }, factory: () => unknown) => {
-    ref.current = factory();
-  },
-}));
-
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 it("keeps resize output blank until the server frame matches the new dimensions", () => {
   vi.stubGlobal(
@@ -53,7 +49,8 @@ it("keeps resize output blank until the server frame matches the new dimensions"
     onFpsChange: fps,
     onDimensionsChange: undefined,
   } as unknown as Parameters<typeof useAsciiRendererHandle>[0];
-  const handle = useAsciiRendererHandle(params);
+  const { result } = renderHook(() => useAsciiRendererHandle(params));
+  const handle = result.current;
   handle.updateDimensions(80, 24);
   ref.current!.writeFrame("old", { cols: 80, rows: 24 });
   expect(draw).toHaveBeenCalledTimes(1);

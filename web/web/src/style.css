@@ -81,3 +81,16 @@
 .bg-terminal-green {
   @apply bg-terminal-green;
 }
+
+/* Let wrappers receive hover events even over disabled browser controls. */
+.settings-locked :is(input, select, button):disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-locked label,
+.settings-locked:has(> :disabled),
+.settings-locked div:has(> :disabled) {
+  cursor: not-allowed;
+}
