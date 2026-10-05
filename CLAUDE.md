@@ -120,14 +120,6 @@ ascii-chat binary has four primary modes:
 5. **discovery** - The mode that connects via session string via a discovery-service instance. ascii-chat binary runs as
    this mode by default when you don't pass a mode as a first positional argument.
 
-## Issue Tracking
-
-Use 'bd' for task tracking. It's a useful tool for tracking issues as you attempt to investigate and fix bugs.
-
-`bd --help`
-
-https://github.com/steveyegge/beads
-
 ## Gastown
 
 If you are the gastown mayor, use the `gt` binary.
