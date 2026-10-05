@@ -14,7 +14,7 @@ and has many little features and options.
 
 The client functions by simply printing text and terminal escape codes to your
 terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
-OpenBox, in a Putty SSH session, in iTerm and Kitty.app on macOS, and
+OpenBox, in a PuTTY SSH session, in iTerm and Kitty.app on macOS, and
 theoretically everywhere else terminals run. You just need a webcam.
 
 ascii-chat even works in an initial unix login shell. You know, the shell that
