@@ -521,45 +521,8 @@ image_t *media_source_read_video(media_source_t *source) {
       }
     }
 
-    // Generate animated color bars that shift based on frame counter
-    unsigned int animation_phase = source->test_frame_counter / 2;
-    source->test_frame_counter += 5; // Speed up animation by a factor of five.
-
-    for (int y = 0; y < source->test_pattern_frame->h; y++) {
-      for (int x = 0; x < source->test_pattern_frame->w; x++) {
-        rgb_pixel_t *pixel = &source->test_pattern_frame->pixels[y * source->test_pattern_frame->w + x];
-
-        // Animated color bars that shift based on frame counter
-        int animated_x = (x + animation_phase) % source->test_pattern_frame->w;
-        int grid_x = animated_x / 40;
-
-        // Base pattern: color bars that animate horizontally
-        switch (grid_x % 3) {
-        case 0: // Red
-          pixel->r = 255;
-          pixel->g = 0;
-          pixel->b = 0;
-          break;
-        case 1: // Green
-          pixel->r = 0;
-          pixel->g = 255;
-          pixel->b = 0;
-          break;
-        case 2: // Blue
-        default:
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 255;
-          break;
-        }
-
-        // Add animated grid lines
-        if (animated_x % 40 == 0 || y % 30 == 0) {
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 0;
-        }
-      }
+    if (image_render_test_pattern(source->test_pattern_frame, &source->test_frame_counter) != ASCIICHAT_OK) {
+      return NULL;
     }
 
     return source->test_pattern_frame;

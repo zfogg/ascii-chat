@@ -198,6 +198,14 @@ typedef struct {
  */
 
 /**
+ * @brief Render animated color bars and grid lines into an existing image.
+ * @param image Destination image; its allocation remains owned by the caller.
+ * @param frame_counter Per-source animation counter, advanced after each frame.
+ * @return ASCIICHAT_OK on success, or ERROR_INVALID_PARAM for invalid arguments.
+ */
+asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_counter);
+
+/**
  * @brief Create a new image with standard allocation
  * @param width Image width in pixels (must be > 0 and <= IMAGE_MAX_WIDTH)
  * @param height Image height in pixels (must be > 0 and <= IMAGE_MAX_HEIGHT)

@@ -75,46 +75,8 @@ image_t *webcam_read(void) {
       }
     }
 
-    // Generate animated test pattern each frame
-    // Animation is based on frame counter, respects FPS setting
-    unsigned int animation_phase = frame_counter / 2;
-    frame_counter += 5; // Speed up animation by a factor of five.
-
-    for (int y = 0; y < cached_webcam_frame->h; y++) {
-      for (int x = 0; x < cached_webcam_frame->w; x++) {
-        rgb_pixel_t *pixel = &cached_webcam_frame->pixels[y * cached_webcam_frame->w + x];
-
-        // Animated color bars that shift based on frame counter
-        int animated_x = (x + animation_phase) % cached_webcam_frame->w;
-        int grid_x = animated_x / 40;
-
-        // Base pattern: color bars that animate horizontally
-        switch (grid_x % 3) {
-        case 0: // Red
-          pixel->r = 255;
-          pixel->g = 0;
-          pixel->b = 0;
-          break;
-        case 1: // Green
-          pixel->r = 0;
-          pixel->g = 255;
-          pixel->b = 0;
-          break;
-        case 2: // Blue
-        default:
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 255;
-          break;
-        }
-
-        // Add animated grid lines
-        if (animated_x % 40 == 0 || y % 30 == 0) {
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 0;
-        }
-      }
+    if (image_render_test_pattern(cached_webcam_frame, &frame_counter) != ASCIICHAT_OK) {
+      return NULL;
     }
 
     return cached_webcam_frame;
