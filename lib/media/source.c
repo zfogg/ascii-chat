@@ -492,10 +492,63 @@ void media_source_destroy(media_source_t *source) {
  * Video Operations
  * ============================================================================ */
 
+static image_t *read_test_pattern(media_source_t *source) {
+  // Generate animated test pattern in-place (animated color bars)
+  if (!source->test_pattern_frame) {
+    source->test_pattern_frame = image_new(320, 240);
+    if (!source->test_pattern_frame) {
+      return NULL;
+    }
+  }
+
+  // Generate animated color bars that shift based on frame counter
+  unsigned int animation_phase = source->test_frame_counter / 2; // Slow down animation
+  source->test_frame_counter++;
+
+  for (int y = 0; y < source->test_pattern_frame->h; y++) {
+    for (int x = 0; x < source->test_pattern_frame->w; x++) {
+      rgb_pixel_t *pixel = &source->test_pattern_frame->pixels[y * source->test_pattern_frame->w + x];
+
+      // Animated color bars that shift based on frame counter
+      int animated_x = (x + animation_phase) % source->test_pattern_frame->w;
+      int grid_x = animated_x / 40;
+
+      // Base pattern: color bars that animate horizontally
+      switch (grid_x % 3) {
+      case 0: // Red
+        pixel->r = 255;
+        pixel->g = 0;
+        pixel->b = 0;
+        break;
+      case 1: // Green
+        pixel->r = 0;
+        pixel->g = 255;
+        pixel->b = 0;
+        break;
+      case 2: // Blue
+      default:
+        pixel->r = 0;
+        pixel->g = 0;
+        pixel->b = 255;
+        break;
+      }
+
+      // Add animated grid lines
+      if (animated_x % 40 == 0 || y % 30 == 0) {
+        pixel->r = 0;
+        pixel->g = 0;
+        pixel->b = 0;
+      }
+    }
+  }
+
+  return source->test_pattern_frame;
+}
+
 asciichat_error_t media_source_start_video(media_source_t *source) {
   if (!source)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing media source");
-  if (!source->audio_only || source->webcam_ctx)
+  if (!source->audio_only || source->webcam_ctx || GET_OPTION(test_pattern))
     return ASCIICHAT_OK;
   source->webcam_index = GET_OPTION(webcam_index);
   asciichat_error_t err = webcam_init_context(&source->webcam_ctx, source->webcam_index);
@@ -506,7 +559,7 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
 }
 
 bool media_source_uses_webcam(media_source_t *source) {
-  return source && (source->type == MEDIA_SOURCE_WEBCAM || source->audio_only);
+  return source && (source->type == MEDIA_SOURCE_WEBCAM || (source->audio_only && !GET_OPTION(test_pattern)));
 }
 
 image_t *media_source_read_video(media_source_t *source) {
@@ -526,6 +579,8 @@ image_t *media_source_read_video(media_source_t *source) {
 
   if (source->audio_only && media_source_at_end(source))
     return NULL;
+  if (source->audio_only && GET_OPTION(test_pattern))
+    return read_test_pattern(source);
   if (source->audio_only && !source->webcam_ctx) {
     if (media_source_start_video(source) != ASCIICHAT_OK)
       return NULL;
@@ -542,56 +597,7 @@ image_t *media_source_read_video(media_source_t *source) {
     return NULL;
 
   case MEDIA_SOURCE_TEST: {
-    // Generate animated test pattern in-place (animated color bars)
-    if (!source->test_pattern_frame) {
-      source->test_pattern_frame = image_new(320, 240);
-      if (!source->test_pattern_frame) {
-        return NULL;
-      }
-    }
-
-    // Generate animated color bars that shift based on frame counter
-    unsigned int animation_phase = source->test_frame_counter / 2; // Slow down animation
-    source->test_frame_counter++;
-
-    for (int y = 0; y < source->test_pattern_frame->h; y++) {
-      for (int x = 0; x < source->test_pattern_frame->w; x++) {
-        rgb_pixel_t *pixel = &source->test_pattern_frame->pixels[y * source->test_pattern_frame->w + x];
-
-        // Animated color bars that shift based on frame counter
-        int animated_x = (x + animation_phase) % source->test_pattern_frame->w;
-        int grid_x = animated_x / 40;
-
-        // Base pattern: color bars that animate horizontally
-        switch (grid_x % 3) {
-        case 0: // Red
-          pixel->r = 255;
-          pixel->g = 0;
-          pixel->b = 0;
-          break;
-        case 1: // Green
-          pixel->r = 0;
-          pixel->g = 255;
-          pixel->b = 0;
-          break;
-        case 2: // Blue
-        default:
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 255;
-          break;
-        }
-
-        // Add animated grid lines
-        if (animated_x % 40 == 0 || y % 30 == 0) {
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 0;
-        }
-      }
-    }
-
-    return source->test_pattern_frame;
+    return read_test_pattern(source);
   }
 
   case MEDIA_SOURCE_FILE:
@@ -734,13 +740,13 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
     static double last_audio_pos = 0;
     if (audio_pos_after_read >= 0 && last_audio_pos >= 0 && audio_pos_after_read < last_audio_pos) {
-      log_warn("AUDIO POSITION WENT BACKWARD: %.2f → %.2f (LOOPING!)", last_audio_pos, audio_pos_after_read);
+      log_warn("AUDIO POSITION WENT BACKWARD: %.2f Ã¢â€ â€™ %.2f (LOOPING!)", last_audio_pos, audio_pos_after_read);
     }
     if (audio_pos_after_read >= 0) {
       last_audio_pos = audio_pos_after_read;
     }
 
-    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f → %.2f", samples_read, audio_pos_before_read,
+    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read, audio_pos_before_read,
                    audio_pos_after_read);
 
     // Handle EOF with loop
@@ -932,7 +938,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after, timestamp_sec,
+      log_info("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after, timestamp_sec,
                video_seek_str);
     }
   }
@@ -953,7 +959,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       log_warn("Audio seek to %.2f failed: error code %d (took %s)", timestamp_sec, audio_err, audio_seek_str);
       result = audio_err;
     } else {
-      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
+      log_info("Audio SEEK COMPLETE: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
                timestamp_sec, audio_seek_str);
     }
   }

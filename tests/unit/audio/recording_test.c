@@ -247,6 +247,29 @@ Test(recording, audio_only_file_selects_webcam_without_opening_it_during_probe) 
   platform_delete_temp_file(path);
 }
 
+Test(recording, audio_only_file_uses_test_pattern_without_opening_webcam) {
+  webcam_starts = 0;
+  options_t options = *options_get();
+  options.test_pattern = true;
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(source);
+  cr_assert_not(media_source_uses_webcam(source));
+  cr_assert_eq(media_source_start_video(source), ASCIICHAT_OK);
+  image_t *frame = media_source_read_video(source);
+  cr_assert_not_null(frame);
+  cr_assert_eq(frame->w, 320);
+  cr_assert_eq(frame->h, 240);
+  cr_assert_eq(webcam_starts, 0);
+  float samples[960];
+  cr_assert_gt(media_source_read_audio(source, samples, 960), 0);
+  cr_assert_gt(media_source_get_position(source), 0);
+  media_source_destroy(source);
+  platform_delete_temp_file(path);
+}
+
 static void wait_for_captured_samples(audio_context_t *ctx, size_t count) {
   uint64_t deadline = time_get_ns() + 2000000000ULL;
   while (audio_ring_buffer_available_read(ctx->capture_buffer) < count && time_get_ns() < deadline)
