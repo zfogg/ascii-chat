@@ -77,8 +77,8 @@ image_t *webcam_read(void) {
 
     // Generate animated test pattern each frame
     // Animation is based on frame counter, respects FPS setting
-    unsigned int animation_phase = frame_counter / 2; // Slow down animation
-    frame_counter++;
+    unsigned int animation_phase = frame_counter / 2;
+    frame_counter += 5; // Speed up animation by a factor of five.
 
     for (int y = 0; y < cached_webcam_frame->h; y++) {
       for (int x = 0; x < cached_webcam_frame->w; x++) {

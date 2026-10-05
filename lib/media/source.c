@@ -522,8 +522,8 @@ image_t *media_source_read_video(media_source_t *source) {
     }
 
     // Generate animated color bars that shift based on frame counter
-    unsigned int animation_phase = source->test_frame_counter / 2; // Slow down animation
-    source->test_frame_counter++;
+    unsigned int animation_phase = source->test_frame_counter / 2;
+    source->test_frame_counter += 5; // Speed up animation by a factor of five.
 
     for (int y = 0; y < source->test_pattern_frame->h; y++) {
       for (int x = 0; x < source->test_pattern_frame->w; x++) {
