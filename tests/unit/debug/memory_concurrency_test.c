@@ -31,7 +31,6 @@ static void *allocate_concurrently(void *argument) {
 Test(memory_concurrency, allocation_tracking_is_serialized_across_threads, .timeout = 30) {
   allocation_worker_t workers[8];
   asciichat_thread_t threads[8];
-  debug_memory_ensure_init();
   for (int i = 0; i < 8; i++) {
     workers[i] = (allocation_worker_t){.value = (unsigned char)(i + 1)};
     cr_assert_eq(asciichat_thread_create(&threads[i], "allocation-regression", allocate_concurrently, &workers[i]), 0);
