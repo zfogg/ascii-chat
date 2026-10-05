@@ -103,7 +103,10 @@ def main():
                     assert time.monotonic() < deadline, "Client never connected"
                     time.sleep(0.1)
             for client in clients:
-                client.wait(timeout=25)
+                try:
+                    client.wait(timeout=25)
+                except subprocess.TimeoutExpired as error:
+                    raise AssertionError("Snapshot call must stop and join its audio sender before exiting") from error
                 assert client.returncode == 0, f"Client exited with status {client.returncode}"
             for frequency in (440, 880):
                 verify(root / f"call-{frequency}.mp4", (440, 880))
