@@ -49,6 +49,32 @@ class CoverageReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
 
+    @unittest.skipUnless(shutil.which("cmake"), "Requires CMake")
+    def test_windows_ffmpeg_copy_uses_installed_dll_versions(self):
+        repository = Path(__file__).resolve().parents[2]
+        dll_dir = self.root / "deps" / "ffmpeg-current" / "bin"
+        dll_dir.mkdir(parents=True)
+        names = {"avcodec-62.dll", "avformat-62.dll", "avutil-60.dll", "swresample-6.dll", "swscale-9.dll"}
+        for name in names:
+            (dll_dir / name).write_text(name)
+        script = self.root / "copy.cmake"
+        script.write_text(
+            f'set(CMAKE_SOURCE_DIR "{repository.as_posix()}")\n'
+            f'set(ASCIICHAT_DEPS_CACHE_DIR "{(self.root / "deps").as_posix()}")\n'
+            'set(WIN32 TRUE)\nunset(ENV{VCPKG_ROOT})\n'
+            'include("${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake")\n'
+            'include("${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake")\n'
+            'function(copy_dlls_post_build)\n'
+            '  cmake_parse_arguments(ARG "" "TARGET;SOURCE_DIR;COMMENT" "NAMES" ${ARGN})\n'
+            '  foreach(name IN LISTS ARG_NAMES)\n'
+            f'    file(COPY "${{ARG_SOURCE_DIR}}/${{name}}" DESTINATION "{(self.root / "staged").as_posix()}")\n'
+            '  endforeach()\nendfunction()\ncopy_windows_dlls(fixture)\n'
+        )
+        subprocess.run(["cmake", "-P", str(script)], check=True, capture_output=True)
+        self.assertEqual({item.name for item in (self.root / "staged").iterdir()}, names)
+        for name in names:
+            self.assertEqual((self.root / "staged" / name).read_text(), name)
+
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
     def test_fresh_configuration_retains_test_flags_when_cached_compiler_changes(self):
         (self.root / "CMakeLists.txt").write_text(

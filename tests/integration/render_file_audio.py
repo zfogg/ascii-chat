@@ -56,7 +56,7 @@ def main():
         for frequency in (440, 880):
             run("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
                 "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "12",
-                "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
+                "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
@@ -142,7 +142,10 @@ def main():
         finally:
             for process in processes:
                 if process.poll() is None:
-                    process.send_signal(signal.SIGINT)
+                    if os.name == "nt":
+                        process.terminate()
+                    else:
+                        process.send_signal(signal.SIGINT)
                     try:
                         process.wait(timeout=10)
                     except subprocess.TimeoutExpired:

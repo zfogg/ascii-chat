@@ -156,6 +156,19 @@ static void create_audio_fixture(char *path, size_t size) {
   wav_writer_close(writer);
 }
 
+Test(recording, file_source_can_be_read_destroyed_and_reopened_repeatedly) {
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  for (int iteration = 0; iteration < 8; iteration++) {
+    media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+    cr_assert_not_null(source);
+    float samples[960];
+    cr_assert_gt(media_source_read_audio(source, samples, 960), 0);
+    media_source_destroy(source);
+  }
+  platform_delete_temp_file(path);
+}
+
 Test(recording, audio_only_file_selects_webcam_without_opening_it_during_probe) {
   webcam_starts = 0;
   char path[1024];

@@ -471,15 +471,8 @@ void media_source_destroy(media_source_t *source) {
     source->audio_decoder = NULL;
   }
 
-  if (source->file_path) {
-    free(source->file_path);
-    source->file_path = NULL;
-  }
-
-  if (source->original_youtube_url) {
-    free(source->original_youtube_url);
-    source->original_youtube_url = NULL;
-  }
+  SAFE_FREE(source->file_path);
+  SAFE_FREE(source->original_youtube_url);
 
   // Clean up test pattern frame
   if (source->test_pattern_frame) {
