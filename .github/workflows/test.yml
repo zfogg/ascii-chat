@@ -351,7 +351,7 @@ jobs:
             CLANGXX_BIN="clang++"
           fi
 
-          cmake -B build --preset github --debug-output \
+          cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
             -DASCIICHAT_ENABLE_COVERAGE=ON \

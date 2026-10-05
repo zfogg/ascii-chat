@@ -49,6 +49,28 @@ class CoverageReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
 
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
+    def test_fresh_configuration_retains_test_flags_when_cached_compiler_changes(self):
+        (self.root / "CMakeLists.txt").write_text(
+            'cmake_minimum_required(VERSION 3.24)\nproject(fixture C)\n'
+            'option(BUILD_TESTS "Build tests" OFF)\n'
+            'file(WRITE "${CMAKE_BINARY_DIR}/settings.txt" "${BUILD_TESTS};${CMAKE_BUILD_TYPE}")\n'
+        )
+        build = self.root / "build"
+        clang = shutil.which("clang")
+        cached_compiler = self.root / "cached-clang"
+        cached_compiler.symlink_to(clang)
+        subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                        f"-DCMAKE_C_COMPILER={cached_compiler}", "-DCMAKE_BUILD_TYPE=Release",
+                        "-DBUILD_TESTS=OFF"], check=True)
+        preserved = build / "preserved-build-output"
+        preserved.write_text("keep")
+        subprocess.run(["cmake", "--fresh", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                        f"-DCMAKE_C_COMPILER={clang}", "-DCMAKE_BUILD_TYPE=Debug",
+                        "-DBUILD_TESTS=ON"], check=True)
+        self.assertEqual((build / "settings.txt").read_text(), "ON;Debug")
+        self.assertEqual(preserved.read_text(), "keep")
+
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config"), "Requires CMake, Ninja, Clang and OpenSSL development files")
     def test_missing_cached_openssl_paths_are_rediscovered_and_link(self):
         module = Path(__file__).resolve().parents[2] / "cmake/deps/OpenSSL.cmake"

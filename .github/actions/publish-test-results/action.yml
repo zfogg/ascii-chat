@@ -170,11 +170,24 @@ runs:
           echo "No XML files found to convert"
         fi
 
+    - name: Set up Codecov Python runtime
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install pinned Codecov CLI from PyPI
+      id: codecov-cli
+      shell: bash
+      run: |
+        python3 -m pip install --disable-pip-version-check codecov-cli==11.3.1
+        echo "binary=$(command -v codecovcli)" >> "$GITHUB_OUTPUT"
+
     # Upload test results to Codecov
     - name: Upload Test Results to Codecov
       if: always()
       uses: codecov/test-results-action@v1
       with:
+        binary: ${{ steps.codecov-cli.outputs.binary }}
         files: ${{ inputs.criterion-xml-dir }}/*.xml
         flags: |
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
@@ -201,6 +214,7 @@ runs:
       if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
       uses: codecov/codecov-action@v5
       with:
+        binary: ${{ steps.codecov-cli.outputs.binary }}
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-files }}
         disable_search: true
