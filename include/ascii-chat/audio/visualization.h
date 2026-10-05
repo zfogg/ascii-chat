@@ -24,3 +24,7 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
 /* Build a terminal-ready waveform frame. The caller owns the returned buffer. */
 char *audio_visualization_render_waveform(unsigned int width, unsigned int height,
                                           audio_visualization_source_t source, bool use_color);
+
+/* Build a terminal-ready scrolling frequency display. The caller owns the returned buffer. */
+char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
+                                     bool use_color);
