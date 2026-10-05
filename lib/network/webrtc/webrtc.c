@@ -101,7 +101,6 @@ static void on_datachannel_message_adapter(int dc_id, const char *data, int size
 static void on_datachannel_error_adapter(int dc_id, const char *error, void *user_data);
 
 static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) {
-  (void)pc_id; // Unused - we get peer connection from user_data
   webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
   if (!pc)
     return;
@@ -117,6 +116,12 @@ static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) 
     break;
   case RTC_CONNECTED:
     new_state = WEBRTC_STATE_CONNECTED;
+    char local_candidate[512], remote_candidate[512];
+    if (rtcGetSelectedCandidatePair(pc_id, local_candidate, sizeof(local_candidate), remote_candidate,
+                                    sizeof(remote_candidate)) >= 0) {
+      log_info("WebRTC selected local candidate: %s", local_candidate);
+      log_info("WebRTC selected remote candidate: %s", remote_candidate);
+    }
     break;
   case RTC_DISCONNECTED:
     new_state = WEBRTC_STATE_DISCONNECTED;

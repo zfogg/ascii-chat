@@ -29,7 +29,18 @@
 typedef struct {
   mutex_stack_entry_t stack[MUTEX_STACK_MAX_DEPTH];
   int depth;
+  atomic_t guard;
 } thread_lock_stack_t;
+
+static void stack_lock(thread_lock_stack_t *stack) {
+  int expected = 0;
+  while (!atomic_cas_int(&stack->guard, &expected, 1))
+    expected = 0;
+}
+
+static void stack_unlock(thread_lock_stack_t *stack) {
+  atomic_store_int(&stack->guard, 0);
+}
 
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
@@ -40,6 +51,17 @@ typedef struct {
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
 static atomic_t g_thread_registry_count = {0};
+static atomic_t g_registry_guard = {0};
+
+static void registry_lock(void) {
+  int expected = 0;
+  while (!atomic_cas_int(&g_registry_guard, &expected, 1))
+    expected = 0;
+}
+
+static void registry_unlock(void) {
+  atomic_store_int(&g_registry_guard, 0);
+}
 
 // Thread-local storage key for per-thread lock stack
 // Destructor automatically frees memory when thread exits
@@ -81,6 +103,7 @@ static void tls_mutex_stack_destructor(void *arg) {
   // This happens if: (1) thread is in registry AND (2) registry entry matches this stack
   bool already_freed_by_cleanup = false;
   thread_id_t current_thread = asciichat_thread_self();
+  registry_lock();
   int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
@@ -103,6 +126,7 @@ static void tls_mutex_stack_destructor(void *arg) {
     // This avoids recursive mutex allocation during destructor execution
     free(arg);
   }
+  registry_unlock();
 }
 
 /**
@@ -202,8 +226,10 @@ static void register_thread_if_needed(void) {
   }
 
   // Write thread data to claimed slot (release semantics for visibility)
+  registry_lock();
   g_thread_registry[slot].thread_id = current_thread;
   g_thread_registry[slot].stack = local_stack;
+  registry_unlock();
 
   // Memory barrier to ensure writes are visible to other threads
   // Memory ordering is implicit in atomic operations
@@ -219,47 +245,65 @@ static void register_thread_if_needed(void) {
 
 void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
   thread_lock_stack_t *stack = get_thread_local_stack();
-  if (!stack || stack->depth >= MUTEX_STACK_MAX_DEPTH) {
+  if (!stack) {
     return;
   }
 
   // Register this thread in the global registry on first mutex use
   register_thread_if_needed();
 
+  stack_lock(stack);
+  if (stack->depth >= MUTEX_STACK_MAX_DEPTH) {
+    stack_unlock(stack);
+    return;
+  }
   stack->stack[stack->depth].mutex_key = mutex_key;
   stack->stack[stack->depth].mutex_name = mutex_name;
   stack->stack[stack->depth].state = MUTEX_STACK_STATE_PENDING;
   stack->stack[stack->depth].timestamp_ns = time_get_ns();
   stack->depth++;
+  stack_unlock(stack);
 }
 
 void mutex_stack_mark_locked(uintptr_t mutex_key) {
   thread_lock_stack_t *stack = get_thread_local_stack();
-  if (!stack || stack->depth == 0) {
+  if (!stack) {
     return;
   }
 
   // Mark the top of the stack as locked
+  stack_lock(stack);
+  if (stack->depth == 0) {
+    stack_unlock(stack);
+    return;
+  }
   int top = stack->depth - 1;
   if (stack->stack[top].mutex_key == mutex_key) {
     stack->stack[top].state = MUTEX_STACK_STATE_LOCKED;
     stack->stack[top].timestamp_ns = time_get_ns();
   }
+  stack_unlock(stack);
 
   // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
 
 void mutex_stack_pop(uintptr_t mutex_key) {
   thread_lock_stack_t *stack = get_thread_local_stack();
-  if (!stack || stack->depth == 0) {
+  if (!stack) {
     return;
   }
 
   // Validate top matches
+  stack_lock(stack);
+  if (stack->depth == 0) {
+    stack_unlock(stack);
+    return;
+  }
   int top = stack->depth - 1;
   if (stack->stack[top].mutex_key == mutex_key) {
     stack->depth--;
   }
+  stack_unlock(stack);
 
   // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
@@ -272,9 +316,12 @@ int mutex_stack_get_current(mutex_stack_entry_t *out_entries, int max_entries) {
     return 0;
   }
 
-  int count = (stack->depth < max_entries) ? stack->depth : max_entries;
+  stack_lock(stack);
+  int depth = stack->depth;
+  int count = (depth < max_entries) ? depth : max_entries;
   memcpy(out_entries, stack->stack, count * sizeof(mutex_stack_entry_t));
-  return stack->depth; // Return actual depth even if truncated
+  stack_unlock(stack);
+  return depth; // Return actual depth even if truncated
 }
 
 // ============================================================================
@@ -293,8 +340,8 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
 
   // Allocate arrays for threads in the registry
   // Note: SAFE_MALLOC takes bytes as first parameter, not count
-  *out_stacks = SAFE_MALLOC(thread_count * sizeof(mutex_stack_entry_t *), mutex_stack_entry_t **);
-  *out_stack_counts = SAFE_MALLOC(thread_count * sizeof(int), int *);
+  *out_stacks = SAFE_CALLOC(thread_count, sizeof(mutex_stack_entry_t *), mutex_stack_entry_t **);
+  *out_stack_counts = SAFE_CALLOC(thread_count, sizeof(int), int *);
 
   if (!*out_stacks || !*out_stack_counts) {
     SAFE_FREE(*out_stacks);
@@ -305,7 +352,6 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
   // Copy each thread's stack from the registry
   // Note: the thread count can change concurrently, so we re-read it in the loop
   // to avoid accessing out-of-bounds memory if threads exit during iteration
-  int actual_count = 0;
   for (int i = 0; i < thread_count; i++) {
     // Re-check thread count in case registry shrank
     int current_registry_count = atomic_load_int(&g_thread_registry_count);
@@ -313,34 +359,22 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
       break;
     }
 
+    // Allocate before locking because tracked allocation updates the lock stack.
+    (*out_stacks)[i] = SAFE_MALLOC(MUTEX_STACK_MAX_DEPTH * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
+    (*out_stack_counts)[i] = 0;
+    registry_lock();
     thread_lock_stack_t *src = g_thread_registry[i].stack;
-    if (!src) {
-      // Stack not yet initialized for this thread, skip it
-      (*out_stack_counts)[i] = 0;
-      (*out_stacks)[i] = NULL;
-      continue;
+    if (src) {
+      stack_lock(src);
+      int depth = src->depth;
+      (*out_stack_counts)[i] = depth;
+      memcpy((*out_stacks)[i], src->stack, depth * sizeof(mutex_stack_entry_t));
+      stack_unlock(src);
     }
-
-    // Defensively get depth - it could change or be freed by another thread
-    int depth = 0;
-    if (src && src->depth >= 0 && src->depth < MUTEX_STACK_MAX_DEPTH) {
-      depth = src->depth;
-    }
-
-    (*out_stack_counts)[i] = depth;
-
-    if (depth > 0) {
-      (*out_stacks)[i] = SAFE_MALLOC(depth * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
-      if ((*out_stacks)[i]) {
-        memcpy((*out_stacks)[i], src->stack, depth * sizeof(mutex_stack_entry_t));
-        actual_count++;
-      }
-    } else {
-      (*out_stacks)[i] = NULL;
-    }
+    registry_unlock();
   }
 
-  *out_thread_count = actual_count;
+  *out_thread_count = thread_count;
   return 0;
 }
 
@@ -395,9 +429,9 @@ static uintptr_t thread_waiting_for_mutex(thread_lock_stack_t *stack) {
 /**
  * @brief Find which thread holds a given mutex (-1 if none)
  */
-static int find_thread_holding_mutex(int thread_count, uintptr_t mutex_key) {
+static int find_thread_holding_mutex(thread_lock_stack_t *snapshots, int thread_count, uintptr_t mutex_key) {
   for (int i = 0; i < thread_count; i++) {
-    thread_lock_stack_t *stack = g_thread_registry[i].stack;
+    thread_lock_stack_t *stack = &snapshots[i];
     if (thread_holds_mutex(stack, mutex_key)) {
       return i;
     }
@@ -411,7 +445,8 @@ static int find_thread_holding_mutex(int thread_count, uintptr_t mutex_key) {
  * Fills cycle_path with indices of threads in the cycle (if found)
  */
 #define MAX_CYCLE_LEN 64
-static int detect_cycle_dfs(int thread_count, int start_thread, int *cycle_path, int *cycle_len) {
+static int detect_cycle_dfs(thread_lock_stack_t *snapshots, int thread_count, int start_thread, int *cycle_path,
+                            int *cycle_len) {
   int visited[MAX_THREADS];
   int path[MAX_CYCLE_LEN];
   int path_len = 0;
@@ -444,7 +479,7 @@ static int detect_cycle_dfs(int thread_count, int start_thread, int *cycle_path,
     path[path_len++] = current;
 
     // Find next thread in the waits-for graph
-    thread_lock_stack_t *stack = g_thread_registry[current].stack;
+    thread_lock_stack_t *stack = &snapshots[current];
     uintptr_t waiting_for = thread_waiting_for_mutex(stack);
 
     if (waiting_for == 0) {
@@ -452,7 +487,7 @@ static int detect_cycle_dfs(int thread_count, int start_thread, int *cycle_path,
     }
 
     // Find who holds the mutex we're waiting for
-    current = find_thread_holding_mutex(thread_count, waiting_for);
+    current = find_thread_holding_mutex(snapshots, thread_count, waiting_for);
   }
 
   *cycle_len = 0;
@@ -530,9 +565,17 @@ void mutex_stack_detect_deadlocks(void) {
     return;
   }
 
+  // Analyze copies instead of stacks changing concurrently on other threads.
+  thread_lock_stack_t *snapshots = SAFE_CALLOC(thread_count, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
+  for (int i = 0; i < thread_count; i++) {
+    snapshots[i].depth = stack_counts[i];
+    if (stack_counts[i] > 0)
+      memcpy(snapshots[i].stack, all_stacks[i], stack_counts[i] * sizeof(mutex_stack_entry_t));
+  }
+
   // Check each thread for deadlock conditions
   for (int i = 0; i < thread_count; i++) {
-    thread_lock_stack_t *stack_a = g_thread_registry[i].stack;
+    thread_lock_stack_t *stack_a = &snapshots[i];
     uintptr_t waiting_for = thread_waiting_for_mutex(stack_a);
 
     if (waiting_for == 0)
@@ -552,7 +595,7 @@ void mutex_stack_detect_deadlocks(void) {
     // Multi-thread circular wait: use DFS to detect cycles
     int cycle_path[MAX_CYCLE_LEN];
     int cycle_len = 0;
-    int cycle_start = detect_cycle_dfs(thread_count, i, cycle_path, &cycle_len);
+    int cycle_start = detect_cycle_dfs(snapshots, thread_count, i, cycle_path, &cycle_len);
 
     if (cycle_start >= 0 && cycle_len > 1) {
       // Collect mutexes involved in this deadlock
@@ -560,7 +603,7 @@ void mutex_stack_detect_deadlocks(void) {
       int mutex_count = 0;
       for (int k = 0; k < cycle_len && mutex_count < MAX_CYCLE_MUTEXES; k++) {
         int thread_idx = cycle_path[k];
-        thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
+        thread_lock_stack_t *stack = &snapshots[thread_idx];
         uintptr_t waiting_for = thread_waiting_for_mutex(stack);
         if (waiting_for != 0) {
           cycle_mutexes[mutex_count++] = waiting_for;
@@ -590,7 +633,7 @@ void mutex_stack_detect_deadlocks(void) {
         int thread_idx = cycle_path[k];
         int next_thread_idx = cycle_path[(k + 1) % cycle_len];
 
-        thread_lock_stack_t *current_stack = g_thread_registry[thread_idx].stack;
+        thread_lock_stack_t *current_stack = &snapshots[thread_idx];
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
         char thread_name[256], mutex_name[256], held_by_name[256];
@@ -609,6 +652,7 @@ void mutex_stack_detect_deadlocks(void) {
     }
   }
 
+  SAFE_FREE(snapshots);
   mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
 }
 
@@ -727,6 +771,7 @@ void mutex_stack_cleanup_current_thread(void) {
 
   // Update registry if this thread is registered
   thread_id_t current_thread = asciichat_thread_self();
+  registry_lock();
   int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
@@ -737,6 +782,7 @@ void mutex_stack_cleanup_current_thread(void) {
 
   // Free the stack (raw free to match raw malloc above)
   free(stack);
+  registry_unlock();
 }
 
 void mutex_stack_cleanup(void) {
