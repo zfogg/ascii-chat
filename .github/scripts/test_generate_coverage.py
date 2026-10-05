@@ -84,7 +84,7 @@ class CoverageReportTests(unittest.TestCase):
         )
         build = self.root / "build"
         clang = shutil.which("clang")
-        cached_compiler = self.root / "cached-clang"
+        cached_compiler = self.root / Path(clang).name
         cached_compiler.symlink_to(clang)
         subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
                         f"-DCMAKE_C_COMPILER={cached_compiler}", "-DCMAKE_BUILD_TYPE=Release",
