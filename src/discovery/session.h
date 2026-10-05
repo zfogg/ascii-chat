@@ -159,6 +159,7 @@ typedef struct {
 
   // ACDS connection
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  uint64_t last_acds_keepalive_ns; ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;
   char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)

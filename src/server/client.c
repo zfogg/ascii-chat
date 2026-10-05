@@ -2018,22 +2018,20 @@ void *client_receive_thread(void *arg) {
 
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
-      // copy_data=false because we want to transfer ownership to the queue
+      // The queue copies the packet; release the transport buffer afterward.
       uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
       // Pair queue publication and notification with the dispatch wait lock.
       mutex_lock(&client->client_state_mutex);
       int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
-                                                client_id_hash, false);
+                                                client_id_hash, true);
       if (enqueue_result >= 0)
         cond_signal(&client->dispatch_queue_cond);
       mutex_unlock(&client->client_state_mutex);
+      buffer_pool_free(NULL, allocated_buffer, packet_len);
 
       if (enqueue_result < 0) {
         log_error("🔴 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
                   client->client_id);
-        if (allocated_buffer) {
-          buffer_pool_free(NULL, allocated_buffer, packet_len);
-        }
       } else {
         log_info("✅ RECV_THREAD[%s]: Successfully queued packet (type=%d, len=%zu)", client->client_id, pkt_type,
                  packet_len);
