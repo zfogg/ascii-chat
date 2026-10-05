@@ -572,7 +572,7 @@ void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb);
  * @ingroup audio
  */
 void audio_ring_buffer_clear(audio_ring_buffer_t *rb);
-void audio_ring_buffer_discard_pending(audio_ring_buffer_t *rb);
+ASCIICHAT_API void audio_ring_buffer_discard_pending(audio_ring_buffer_t *rb);
 
 /**
  * @brief Write audio samples to ring buffer

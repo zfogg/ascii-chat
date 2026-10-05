@@ -694,10 +694,12 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 /* Forward declaration for FPS overlay rendering */
 void session_display_render_fps_overlay(session_display_ctx_t *ctx);
 
-static char *session_display_create_waveform_frame(session_display_ctx_t *ctx) {
+static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
   bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  int color_mode =
+      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   bool has_media = GET_OPTION(media_file)[0] != '\0' || GET_OPTION(media_url)[0] != '\0';
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
@@ -707,7 +709,9 @@ static char *session_display_create_waveform_frame(session_display_ctx_t *ctx) {
     visual_source = AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX;
   else if (selected_audio == AUDIO_SOURCE_REMOTE)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
-  return audio_visualization_render_waveform(width, height, visual_source, use_color);
+  if (GET_OPTION(fft))
+    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode);
+  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode);
 }
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
@@ -720,12 +724,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Write the selected visualization to the render file as well as the terminal.
-  char *waveform_frame = NULL;
+  char *visualization_frame = NULL;
   const char *render_frame = frame_data;
-  if (GET_OPTION(waveform)) {
-    waveform_frame = session_display_create_waveform_frame(ctx);
-    if (waveform_frame)
-      render_frame = waveform_frame;
+  if (GET_OPTION(waveform) || GET_OPTION(fft)) {
+    visualization_frame = session_display_create_visualization_frame(ctx);
+    if (visualization_frame)
+      render_frame = visualization_frame;
   }
 
   // Write ASCII to terminal (main thread output path)
@@ -735,7 +739,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     if (err != ASCIICHAT_OK)
       log_warn_every(5 * NS_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
   }
-  SAFE_FREE(waveform_frame);
+  SAFE_FREE(visualization_frame);
   session_display_write_ascii(ctx, frame_data);
 }
 
@@ -761,38 +765,23 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     return;
   }
 
-  bool waveform_enabled = GET_OPTION(waveform);
-  char *waveform_frame = NULL;
-  if (waveform_enabled) {
-    unsigned int width = terminal_get_effective_width();
-    unsigned int height = terminal_get_effective_height();
-    bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-    audio_source_t selected_audio = GET_OPTION(audio_source);
-    bool has_media = GET_OPTION(media_file)[0] != '\0' || GET_OPTION(media_url)[0] != '\0';
-    audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
-    if (selected_audio == AUDIO_SOURCE_MEDIA || (selected_audio == AUDIO_SOURCE_AUTO && has_media))
-      visual_source = AUDIO_VISUALIZATION_SOURCE_MEDIA;
-    else if (selected_audio == AUDIO_SOURCE_BOTH)
-      visual_source = AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX;
-    else if (selected_audio == AUDIO_SOURCE_REMOTE)
-      visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
-    waveform_frame = audio_visualization_render_waveform(width, height, visual_source, use_color);
-    if (waveform_frame)
-      ascii = waveform_frame;
-  }
+  bool visualization_enabled = GET_OPTION(waveform) || GET_OPTION(fft);
+  char *visualization_frame = visualization_enabled ? session_display_create_visualization_frame(ctx) : NULL;
+  if (visualization_frame)
+    ascii = visualization_frame;
 
   // Calculate frame length
   size_t frame_len = strnlen(ascii, 1024 * 1024); // Max 1MB frame
   if (frame_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is empty");
-    SAFE_FREE(waveform_frame);
+    SAFE_FREE(visualization_frame);
     return;
   }
 
   // Apply digital rain effect if enabled
   char *display_frame = (char *)ascii;
   char *rain_result = NULL;
-  if (ctx->digital_rain && !waveform_enabled) {
+  if (ctx->digital_rain && !visualization_enabled) {
     uint64_t t_rain_start = time_get_ns();
     uint64_t current_time_ns = t_rain_start;
     float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
@@ -944,7 +933,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   if (rain_result) {
     SAFE_FREE(rain_result);
   }
-  SAFE_FREE(waveform_frame);
+  SAFE_FREE(visualization_frame);
 }
 
 void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
@@ -983,16 +972,16 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
   }
 
   // Write the same selected visualization used by the terminal to the render-file encoder.
-  char *waveform_frame = NULL;
+  char *visualization_frame = NULL;
   const char *render_frame = ascii;
-  if (GET_OPTION(waveform)) {
-    waveform_frame = session_display_create_waveform_frame(ctx);
-    if (waveform_frame)
-      render_frame = waveform_frame;
+  if (GET_OPTION(waveform) || GET_OPTION(fft)) {
+    visualization_frame = session_display_create_visualization_frame(ctx);
+    if (visualization_frame)
+      render_frame = visualization_frame;
   }
 
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, render_frame, captured_ns);
-  SAFE_FREE(waveform_frame);
+  SAFE_FREE(visualization_frame);
   if (fe != ASCIICHAT_OK) {
     log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }

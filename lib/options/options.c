@@ -582,6 +582,7 @@ options_t options_t_new(void) {
   opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
   opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
   opts.waveform = false;
+  opts.fft = false;
   opts.flip_x = OPT_FLIP_X_DEFAULT;
   opts.flip_y = OPT_FLIP_Y_DEFAULT;
 
