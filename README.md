@@ -192,6 +192,22 @@ man build/share/man/man5/ascii-chat.5     # File formats
 - [ascii-chat.com/man1](https://ascii-chat.com/man1)
 - [ascii-chat.com/man5](https://ascii-chat.com/man5)
 
+### Audio visualizations
+
+Use `--waveform` to view the selected audio as a live, volume-shaped waveform, or
+`--fft` to view a scrolling frequency display. The displays replace the video
+image, follow the source selected by `--audio-source`, and adapt their colors to
+dark and light terminal backgrounds. Choose one visualization at a time.
+
+```bash
+# Inspect the audio track in a local video
+ascii-chat mirror --file music.mp4 --audio-source media --waveform
+ascii-chat mirror --file music.mp4 --audio-source media --fft
+
+# Inspect received call audio
+ascii-chat client --audio-source remote --fft
+```
+
 **Shell Completions:**
 
 Tab completion is available for Bash, Fish, Zsh, and PowerShell. Completions are auto-generated from the options registry at build time.

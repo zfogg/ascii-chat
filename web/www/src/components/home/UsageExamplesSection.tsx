@@ -208,6 +208,28 @@ ascii-chat ${sessionStrings[6]} --url 'https://www.twitch.tv/ludwig'`}
         <div>
           <Heading
             level={3}
+            className="text-xl font-semibold text-pink-300 mb-3"
+          >
+            Inspect audio with a waveform or frequency display
+          </Heading>
+          <p className="text-gray-300 mb-3">
+            Both visualizations follow <code>--audio-source</code> and replace
+            the video image. The waveform follows signal level; the FFT view
+            shows frequency over time.
+          </p>
+          <CodeBlock language="bash">
+            {`# View the audio track from a media file
+ascii-chat mirror --file music.mp4 --audio-source media --waveform
+ascii-chat mirror --file music.mp4 --audio-source media --fft
+
+# Inspect received audio during a call
+ascii-chat client --audio-source remote --fft`}
+          </CodeBlock>
+        </div>
+
+        <div>
+          <Heading
+            level={3}
             className="text-xl font-semibold text-teal-300 mb-3"
           >
             Convert video to ASCII and preview

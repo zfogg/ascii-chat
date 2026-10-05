@@ -85,6 +85,24 @@
 </dl>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="AUDIO_VISUALIZATIONS"><a class="permalink" href="#AUDIO_VISUALIZATIONS">AUDIO
+  VISUALIZATIONS</a></h1>
+<p class="Pp">Use <b>--waveform</b> to view the selected audio as a live
+    waveform whose height follows the signal level, or <b>--fft</b> to view a
+    scrolling frequency display. Both replace the video image and follow the
+    source selected by <b>--audio-source</b>. The colors adapt to dark and light
+    terminal backgrounds. Choose one visualization at a time.</p>
+<p class="Pp">For example, inspect a local video's audio track with:</p>
+<p class="Pp"></p>
+<pre>ascii-chat mirror --file music.mp4 --audio-source media --fft
+</pre>
+<p class="Pp">To inspect received audio during a call, use:</p>
+<p class="Pp"></p>
+<pre>ascii-chat client --audio-source remote --waveform
+</pre>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="POSITIONAL_ARGUMENTS"><a class="permalink" href="#POSITIONAL_ARGUMENTS">POSITIONAL
   ARGUMENTS</a></h1>
 <dl class="Bl-tag">
@@ -95,10 +113,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-mercenary-success-spin
-marine-revenge-puck
-nauseous-tray-mama
-immoral-inferior-bagel</pre>
+astral-individual-colony
+fleet-man-interpreter
+stricken-brazilian-interference
+elementary-gambler-match</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -182,18 +200,19 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat benevolent-ali-alley</b></dt>
+  <dt><b>ascii-chat mundane-reminder-civilian</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat marvellous-blaze-spacecraft --file video.mp4</b></dt>
+  <dt><b>ascii-chat courageous-farrier-pike --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat mutant-curse-rodeo --url
+  <dt><b>ascii-chat singsong-creativity-sailor --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat chilly-tolerance-piano -f -</b></dt>
+  <dt><b>ascii-chat incomparable-supernatural-update -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat custom-plug-sorority --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat charcoal-suspicion-contact --palette-chars '@%#*+=-:.
+    '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat variable-pinch-slice --discovery-service
+  <dt><b>ascii-chat polish-curry-shield --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
   <dt><b>ascii-chat discovery-service</b></dt>
@@ -206,15 +225,15 @@ https://example.com/stream.m3u8</pre>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat client --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
   <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat client --snapshot</b></dt>
+  <dt><b>ascii-chat mirror --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
@@ -308,9 +327,8 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
-  <dd>Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or
-      %TEMP%scii-chat; filenames: server.log, client.log, mirror.log, acds.log,
-      discovery.log). (mode: global)</dd>
+  <dd>Set FILE as path for log file (default: current directory; filenames:
+      server.log, client.log, mirror.log, acds.log, discovery.log).</dd>
   <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
     <i>VALUE</i></b></a></dt>
   <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
@@ -418,6 +436,15 @@ https://example.com/stream.m3u8</pre>
 <section class="Ss">
 <h2 class="Ss" id="DISPLAY"><a class="permalink" href="#DISPLAY">DISPLAY</a></h2>
 <dl class="Bl-tag">
+  <dt id="waveform"><a class="permalink" href="#waveform"><b>--waveform
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Replace the video image with a live waveform of the source selected by
+      --audio-source. (default: false) (modes: default, client, mirror)</dd>
+  <dt id="fft"><a class="permalink" href="#fft"><b>--fft
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Replace the video image with a live scrolling frequency display for the
+      source selected by --audio-source. (default: false) (modes: default,
+      client, mirror)</dd>
   <dt id="color-filter"><a class="permalink" href="#color-filter"><b>--color-filter
     <i>VALUE</i></b></a></dt>
   <dd>Apply a monochromatic color tint to grayscale video. Values: none, black,
@@ -527,8 +554,12 @@ https://example.com/stream.m3u8</pre>
   <dd>Alias for --speakers-volume. (modes: default, client, mirror)</dd>
   <dt id="audio-source"><a class="permalink" href="#audio-source"><b>--audio-source
     <i>VALUE</i></b></a></dt>
-  <dd>Select which audio sources to use: auto (smart), mic, media, or both.
-      (modes: default, client, mirror)</dd>
+  <dd>Select which audio source to use: auto, mic, media, both, or remote
+      (received network audio only). (modes: default, client, mirror)</dd>
+  <dt id="audio-analysis"><a class="permalink" href="#audio-analysis"><b>--audio-analysis
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable audio analysis (debug). (default: false) (modes: default,
+    client)</dd>
   <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable speakers output. (default: false) (modes: default, client)</dd>
@@ -588,25 +619,23 @@ https://example.com/stream.m3u8</pre>
   <dt id="render-file"><a class="permalink" href="#render-file"><b>--render-file
     <i>PATH</i></b></a></dt>
   <dd>Render ASCII frames to stdout or video/image file. Use '-' for stdout;
-      extension determines format: .mp4, .mov, .webm, .avi, .gif, .png, .jpg
-      (macOS and Linux only). (modes: default, client, mirror)</dd>
+      extension determines format: .mp4, .mov, .webm, .avi, .gif, .png, .jpg.
+      (modes: default, client, mirror)</dd>
   <dt id="render-theme"><a class="permalink" href="#render-theme"><b>--render-theme
     <i>THEME</i></b></a></dt>
-  <dd>Terminal color scheme for rendered output: dark, light, auto. (macOS and
-      Linux only). (modes: default, client, mirror)</dd>
+  <dd>Terminal color scheme for rendered output: dark, light, auto. (modes:
+      default, client, mirror)</dd>
   <dt id="render-font"><a class="permalink" href="#render-font"><b>--render-font
     <i>FONT</i></b></a></dt>
   <dd>Font for render-file output: bundled names (matrix or default), system
-      font names, or absolute .ttf/.otf path. Default: matrix (Matrix
-      Resurrected font). Falls back to default (DejaVu Sans Mono) if
-      unavailable. Examples: matrix, default, JetBrains Mono, Nerd Font Mono,
-      /path/to/font.ttf. (macOS and Linux only). (modes: default, client,
-      mirror)</dd>
+      font names, or absolute .ttf/.otf path. Default: default (bundled DejaVu
+      Sans Mono). Examples: matrix, default, JetBrains Mono, Nerd Font Mono,
+      /path/to/font.ttf. (modes: default, client, mirror)</dd>
   <dt id="render-font-size"><a class="permalink" href="#render-font-size"><b>--render-font-size
     <i>SIZE</i></b></a></dt>
   <dd>Font size in points for render-file output (default: 12.0, must be &gt; 0,
-      fractional sizes supported e.g. 10.5). (macOS and Linux only). (default:
-      12.00) (modes: default, client, mirror)</dd>
+      fractional sizes supported e.g. 10.5). (default: 12.00) (modes: default,
+      client, mirror)</dd>
 </dl>
 </section>
 <section class="Ss">
@@ -662,8 +691,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Disable compression. (default: false) (modes: default, client,
     server)</dd>
   <dt><b>--discovery-service <i>STRING</i></b></dt>
-  <dd>Discovery service endpoint (IP address or hostname). (default:
-      discovery-service.ascii-chat.com) (modes: default, client, server)</dd>
+  <dd>Discovery service endpoint (IP address or hostname). (default: localhost)
+      (modes: default, client, server)</dd>
   <dt id="discovery-service-port"><a class="permalink" href="#discovery-service-port"><b>--discovery-service-port
     <i>INTEGER</i></b></a></dt>
   <dd>Discovery service port (1-65535). (default: 27225) (modes: default,
@@ -692,6 +721,10 @@ https://example.com/stream.m3u8</pre>
     <i>BOOLEAN</i></b></a></dt>
   <dd>Try WebRTC before direct TCP. (default: false) (modes: default,
     client)</dd>
+  <dt id="webrtc-relay-only"><a class="permalink" href="#webrtc-relay-only"><b>--webrtc-relay-only
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Require TURN relay for WebRTC connections (no direct connection or TCP
+      fallback). (default: false) (modes: default, client, server)</dd>
   <dt id="webrtc-skip-stun"><a class="permalink" href="#webrtc-skip-stun"><b>--webrtc-skip-stun
     <i>BOOLEAN</i></b></a></dt>
   <dd>Skip WebRTC+STUN stage, go straight to TURN relay. (default: false)
@@ -802,6 +835,25 @@ https://example.com/stream.m3u8</pre>
   <dt id="database"><a class="permalink" href="#database"><b>--database
     <i>STRING</i></b></a></dt>
   <dd>Path to SQLite database for discovery session storage. (modes:
+      discovery-service)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="DEBUG"><a class="permalink" href="#DEBUG">DEBUG</a></h2>
+<dl class="Bl-tag">
+  <dt id="sync-state"><a class="permalink" href="#sync-state"><b>--sync-state
+    <i>TIME</i></b></a></dt>
+  <dd>Print synchronization primitive state with optional time offset (debug
+      builds only). (default: 0.00) (modes: global, client, server, mirror,
+      discovery-service)</dd>
+  <dt id="backtrace"><a class="permalink" href="#backtrace"><b>--backtrace
+    <i>TIME</i></b></a></dt>
+  <dd>Print backtrace with optional time offset (debug builds only). (default:
+      0.00) (modes: global, client, server, mirror, discovery-service)</dd>
+  <dt id="memory-report"><a class="permalink" href="#memory-report"><b>--memory-report
+    <i>TIME</i></b></a></dt>
+  <dd>Print memory report periodically at specified interval in seconds (debug
+      builds only). (default: 0.00) (modes: global, client, server, mirror,
       discovery-service)
     <p class="Pp"></p>
     <p class="Pp"></p>
@@ -1148,6 +1200,8 @@ https://example.com/stream.m3u8</pre>
       (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
   <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
   <dd>See: <b>--audio</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_ANALYSIS"><a class="permalink" href="#ASCII_CHAT_AUDIO_ANALYSIS"><b>ASCII_CHAT_AUDIO_ANALYSIS</b></a></dt>
+  <dd>See: <b>--audio-analysis</b></dd>
   <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
   <dd>See: <b>--audio-source</b></dd>
   <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
@@ -1182,6 +1236,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--encode-audio</b></dd>
   <dt id="ASCII_CHAT_ENCRYPT"><a class="permalink" href="#ASCII_CHAT_ENCRYPT"><b>ASCII_CHAT_ENCRYPT</b></a></dt>
   <dd>See: <b>--encrypt</b></dd>
+  <dt id="ASCII_CHAT_FFT"><a class="permalink" href="#ASCII_CHAT_FFT"><b>ASCII_CHAT_FFT</b></a></dt>
+  <dd>See: <b>--fft</b></dd>
   <dt id="ASCII_CHAT_FILE"><a class="permalink" href="#ASCII_CHAT_FILE"><b>ASCII_CHAT_FILE</b></a></dt>
   <dd>See: <b>--file</b></dd>
   <dt id="ASCII_CHAT_FLIP_X"><a class="permalink" href="#ASCII_CHAT_FLIP_X"><b>ASCII_CHAT_FLIP_X</b></a></dt>
@@ -1324,6 +1380,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--video-codec</b></dd>
   <dt id="ASCII_CHAT_VOLUME"><a class="permalink" href="#ASCII_CHAT_VOLUME"><b>ASCII_CHAT_VOLUME</b></a></dt>
   <dd>See: <b>--volume</b></dd>
+  <dt id="ASCII_CHAT_WAVEFORM"><a class="permalink" href="#ASCII_CHAT_WAVEFORM"><b>ASCII_CHAT_WAVEFORM</b></a></dt>
+  <dd>See: <b>--waveform</b></dd>
   <dt id="ASCII_CHAT_WEBCAM_INDEX"><a class="permalink" href="#ASCII_CHAT_WEBCAM_INDEX"><b>ASCII_CHAT_WEBCAM_INDEX</b></a></dt>
   <dd>See: <b>--webcam-index</b></dd>
   <dt id="ASCII_CHAT_WEBRTC"><a class="permalink" href="#ASCII_CHAT_WEBRTC"><b>ASCII_CHAT_WEBRTC</b></a></dt>
@@ -1334,6 +1392,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--webrtc-ice-timeout</b></dd>
   <dt id="ASCII_CHAT_WEBRTC_RECONNECT_ATTEMPTS"><a class="permalink" href="#ASCII_CHAT_WEBRTC_RECONNECT_ATTEMPTS"><b>ASCII_CHAT_WEBRTC_RECONNECT_ATTEMPTS</b></a></dt>
   <dd>See: <b>--webrtc-reconnect-attempts</b></dd>
+  <dt id="ASCII_CHAT_WEBRTC_RELAY_ONLY"><a class="permalink" href="#ASCII_CHAT_WEBRTC_RELAY_ONLY"><b>ASCII_CHAT_WEBRTC_RELAY_ONLY</b></a></dt>
+  <dd>See: <b>--webrtc-relay-only</b></dd>
   <dt id="ASCII_CHAT_WEBRTC_SKIP_HOST"><a class="permalink" href="#ASCII_CHAT_WEBRTC_SKIP_HOST"><b>ASCII_CHAT_WEBRTC_SKIP_HOST</b></a></dt>
   <dd>See: <b>--webrtc-skip-host</b></dd>
   <dt id="ASCII_CHAT_WEBRTC_SKIP_STUN"><a class="permalink" href="#ASCII_CHAT_WEBRTC_SKIP_STUN"><b>ASCII_CHAT_WEBRTC_SKIP_STUN</b></a></dt>
@@ -1525,8 +1585,8 @@ https://example.com/stream.m3u8</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">2026-04-04</td>
-    <td class="foot-os">ascii-chat 0.11.2</td>
+    <td class="foot-date">2026-10-03</td>
+    <td class="foot-os">ascii-chat 0.11.33</td>
   </tr>
 </table>
 </body>

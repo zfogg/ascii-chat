@@ -72,6 +72,27 @@ strings instead of IP addresses. See the SECURITY section for
 notes on the official instance and its keys.
 .\" MANUAL-END: MODES
 
+.\" MANUAL-START: AUDIO VISUALIZATIONS
+.SH AUDIO VISUALIZATIONS
+Use \fB\-\-waveform\fR to view the selected audio as a live waveform whose
+height follows the signal level, or \fB\-\-fft\fR to view a scrolling
+frequency display. Both replace the video image and follow the source selected
+by \fB\-\-audio-source\fR. The colors adapt to dark and light terminal
+backgrounds. Choose one visualization at a time.
+.PP
+For example, inspect a local video's audio track with:
+.PP
+.EX
+ascii-chat mirror --file music.mp4 --audio-source media --fft
+.EE
+.PP
+To inspect received audio during a call, use:
+.PP
+.EX
+ascii-chat client --audio-source remote --waveform
+.EE
+.\" MANUAL-END: AUDIO VISUALIZATIONS
+
 .\" AUTO-START: POSITIONAL ARGUMENTS
 .\" This section is auto-generated. Manual edits will be lost.
 .SH POSITIONAL ARGUMENTS
