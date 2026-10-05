@@ -703,13 +703,35 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     return;
   }
 
+  // Write the selected visualization to the render file as well as the terminal.
+  char *waveform_frame = NULL;
+  const char *render_frame = frame_data;
+  if (GET_OPTION(waveform)) {
+    unsigned int width = terminal_get_effective_width();
+    unsigned int height = terminal_get_effective_height();
+    bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+    audio_source_t selected_audio = GET_OPTION(audio_source);
+    bool has_media = GET_OPTION(media_file)[0] != '\0' || GET_OPTION(media_url)[0] != '\0';
+    audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+    if (selected_audio == AUDIO_SOURCE_MEDIA || (selected_audio == AUDIO_SOURCE_AUTO && has_media))
+      visual_source = AUDIO_VISUALIZATION_SOURCE_MEDIA;
+    else if (selected_audio == AUDIO_SOURCE_BOTH)
+      visual_source = AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX;
+    else if (selected_audio == AUDIO_SOURCE_REMOTE)
+      visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
+    waveform_frame = audio_visualization_render_waveform(width, height, visual_source, use_color);
+    if (waveform_frame)
+      render_frame = waveform_frame;
+  }
+
   // Write ASCII to terminal (main thread output path)
   if (ctx && ctx->render_file) {
     render_file_set_live_timing(ctx->render_file);
-    asciichat_error_t err = render_file_write_frame(ctx->render_file, frame_data, time_get_ns());
+    asciichat_error_t err = render_file_write_frame(ctx->render_file, render_frame, time_get_ns());
     if (err != ASCIICHAT_OK)
       log_warn_every(5 * NS_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
   }
+  SAFE_FREE(waveform_frame);
   session_display_write_ascii(ctx, frame_data);
 }
 
