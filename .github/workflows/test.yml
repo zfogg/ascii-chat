@@ -386,7 +386,7 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build --target ascii-chat tests
+          cmake --build build --target ascii-chat tests-criterion-build
           python3 tests/integration/render_file_audio.py build/bin/ascii-chat
 
           # Run integration tests via ctest preset
