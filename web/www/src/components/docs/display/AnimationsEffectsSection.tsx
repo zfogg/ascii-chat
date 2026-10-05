@@ -1,6 +1,6 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
-import { MirrorDemoWidget } from "../../demo";
+import { AudioVisualizationDemo, MirrorDemoWidget } from "../../demo";
 import type { DemoOption } from "../../demo";
 import { ColorFilter } from "@ascii-chat/shared/wasm";
 
@@ -64,6 +64,20 @@ export default function AnimationsEffectsSection() {
       </div>
       <div className="mt-8">
         <MirrorDemoWidget demoOptions={MATRIX_OPTIONS} />
+      </div>
+      <div className="docs-subsection-spacing mt-10">
+        <Heading level={3} className="heading-3 text-emerald-300 mb-3">
+          Live Audio Displays
+        </Heading>
+        <p className="docs-paragraph">
+          The waveform traces the audio signal over time, while the FFT display
+          shows how energy is distributed across frequencies. Both follow the
+          selected <code>--audio-source</code> in the native client.
+        </p>
+        <CodeBlock language="bash">
+          {"# Show the selected audio source as a flowing waveform\nascii-chat mirror --file music.mp4 --audio-source media --waveform\n\n# Inspect the source's frequency spectrum\nascii-chat mirror --file music.mp4 --audio-source media --fft"}
+        </CodeBlock>
+        <AudioVisualizationDemo />
       </div>
     </section>
   );
