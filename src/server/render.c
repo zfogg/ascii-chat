@@ -1060,8 +1060,10 @@ void *client_audio_render_thread(void *arg) {
     // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
     audio_deadline += 10 * NS_PER_MS_INT;
     uint64_t now = time_get_ns();
-    if (audio_deadline > now) platform_sleep_ns(audio_deadline - now);
-    else if (now - audio_deadline > 100 * NS_PER_MS_INT) audio_deadline = now;
+    if (audio_deadline > now)
+      platform_sleep_ns(audio_deadline - now);
+    else if (now - audio_deadline > 100 * NS_PER_MS_INT)
+      audio_deadline = now;
   }
 
 #ifdef DEBUG_THREADS
