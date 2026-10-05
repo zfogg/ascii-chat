@@ -1674,7 +1674,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
         if (timed_out_count > 0) {
-          log_error("ICE gathering timeout: %d peer(s) failed to gather candidates within %dms", timed_out_count,
+          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
                     timeout_ms);
 
           // Check if we have retries remaining
@@ -1753,6 +1753,10 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           // Dispatch to appropriate handler
           handle_acds_webrtc_packet(session, type, data, len);
           buffer_pool_free(NULL, alloc_buffer, 0);
+        } else if (!acip_transport_is_connected(session->acds_transport)) {
+          set_error(session, recv_result, "Discovery signaling connection closed during WebRTC negotiation");
+          set_state(session, DISCOVERY_STATE_FAILED);
+          return recv_result;
         } else {
           log_debug("Failed to receive ACDS packet: %d", recv_result);
         }

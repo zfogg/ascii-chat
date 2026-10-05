@@ -43,9 +43,8 @@
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
  *
- * Power of 2 for ringbuffer optimization. 512 messages provides adequate buffering
- * for large video frames (921KB each) with WebRTC DataChannel fragmentation.
- * At 30 FPS: 512 / 30 = ~17 seconds of buffering for burst traffic and processing delays.
+ * Power of 2 for ringbuffer optimization. Completed ACIP packets are queued here.
+ * On overflow, retain control packets and recent media so the connection can recover.
  */
 #define WEBRTC_RECV_QUEUE_SIZE 512
 
@@ -76,6 +75,36 @@ typedef struct {
 // =============================================================================
 // DataChannel Callbacks
 // =============================================================================
+
+static bool queued_message_is_media(const webrtc_recv_msg_t *msg) {
+  if (msg->len < sizeof(packet_header_t))
+    return false;
+  packet_header_t header;
+  memcpy(&header, msg->data, sizeof(header));
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  return type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_AUDIO_BATCH ||
+         type == PACKET_TYPE_AUDIO_OPUS_BATCH;
+}
+
+static void discard_stale_media(webrtc_transport_data_t *wrtc) {
+  webrtc_recv_msg_t queued[WEBRTC_RECV_QUEUE_SIZE];
+  size_t count = 0, media_count = 0;
+  while (count < WEBRTC_RECV_QUEUE_SIZE && ringbuffer_read(wrtc->recv_queue, &queued[count])) {
+    if (queued_message_is_media(&queued[count]))
+      media_count++;
+    count++;
+  }
+  size_t to_discard = media_count > 24 ? media_count - 24 : (media_count > 0 ? 1 : 0);
+  for (size_t i = 0; i < count; i++) {
+    if (to_discard && queued_message_is_media(&queued[i])) {
+      buffer_pool_free(NULL, queued[i].data, queued[i].len);
+      to_discard--;
+    } else {
+      ringbuffer_write(wrtc->recv_queue, &queued[i]);
+    }
+  }
+  log_warn_every(US_PER_SEC_INT, "WebRTC receive backlog: discarded stale media, retained control packets");
+}
 
 /**
  * @brief DataChannel message callback - push to receive queue
@@ -118,8 +147,15 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
+    if (ringbuffer_is_full(wrtc->recv_queue))
+      discard_stale_media(wrtc);
     if (!ringbuffer_write(wrtc->recv_queue, &msg)) {
+      bool media = queued_message_is_media(&msg);
       buffer_pool_free(NULL, msg.data, msg.len);
+      if (media) {
+        offset += packet_len;
+        continue;
+      }
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC receive queue exceeded");
       webrtc_datachannel_close(channel);
@@ -355,7 +391,8 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
     webrtc_recv_msg_t msg;
     while (ringbuffer_read(wrtc->recv_queue, &msg)) {
       if (msg.data) {
-        SAFE_FREE(msg.data);
+        buffer_pool_free(NULL, msg.data, msg.len);
+        msg.data = NULL;
       }
     }
 

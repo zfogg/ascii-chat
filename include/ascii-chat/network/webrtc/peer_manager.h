@@ -218,14 +218,15 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
 // ============================================================================
 
 /**
- * @brief Check all peer connections for ICE gathering timeouts
+ * @brief Remove failed connections and connections whose ICE gathering timed out
  * @param manager Peer manager
  * @param timeout_ms Timeout threshold in milliseconds
- * @return Number of peer connections that timed out and were closed
+ * @return Number of failed or timed-out peer connections removed
  *
  * Iterates through all active peer connections and checks if ICE gathering
- * has exceeded the specified timeout. For each timed-out connection:
- * - Calls on_gathering_timeout callback (if configured)
+ * has exceeded the specified timeout or the connection has failed or closed.
+ * For each affected connection:
+ * - Calls on_gathering_timeout for gathering timeouts (if configured)
  * - Closes the peer connection
  * - Removes it from the manager
  *
