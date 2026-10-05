@@ -112,9 +112,12 @@ def main():
             if sys.platform == "darwin":
                 for process in processes:
                     if process.poll() is None:
-                        trace = subprocess.run(["sample", str(process.pid), "1", "1"],
+                        trace_path = root / f"{process.pid}.sample"
+                        trace = subprocess.run(["sample", str(process.pid), "1", "1", "-file", str(trace_path)],
                                                capture_output=True, text=True, timeout=15)
-                        print(trace.stdout, file=sys.stderr)
+                        print(trace.stderr, file=sys.stderr)
+                        if trace_path.exists():
+                            print(trace_path.read_text(errors="replace"), file=sys.stderr)
             for path in root.glob("*.log"):
                 for line in path.read_text(errors="replace").splitlines():
                     if any(word in line for word in ("ERROR", "FATAL", "Connected", "SNAPSHOT", "handshake")):
