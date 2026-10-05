@@ -110,6 +110,14 @@ export function ClientPage({
   const [micEnabled, setMicEnabled] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const audioRef = useRef<AudioPipeline | null>(null);
+  const [audioLevels, setAudioLevels] = useState({
+    microphone: 0,
+    playback: 0,
+    sent: 0,
+    played: 0,
+    playedSamples: 0,
+    underruns: 0,
+  });
   const discovery = useMemo<DiscoveryOptions | undefined>(
     () =>
       discoveryMode
@@ -312,6 +320,7 @@ export function ClientPage({
     try {
       if (!audioRef.current)
         audioRef.current = new AudioPipeline({
+          onLevels: setAudioLevels,
           onAudioData: (payload) => {
             try {
               clientRef.current?.sendPacket(
@@ -644,6 +653,19 @@ export function ClientPage({
           >
             {micEnabled ? "Mute microphone" : "Enable microphone"}
           </button>
+          {audioEnabled && (
+            <output
+              data-testid="audio-levels"
+              data-sent={audioLevels.sent}
+              data-played={audioLevels.played}
+              data-played-samples={audioLevels.playedSamples}
+              data-underruns={audioLevels.underruns}
+              className="self-center text-sm text-terminal-8"
+            >
+              Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+              {Math.round(audioLevels.playback * 100)}%
+            </output>
+          )}
         </div>
       )}
       <PageLayout
