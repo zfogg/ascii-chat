@@ -1674,8 +1674,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
         if (timed_out_count > 0) {
-          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
-                    timeout_ms);
+          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout",
+                    timed_out_count, timeout_ms);
 
           // Check if we have retries remaining
           int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
