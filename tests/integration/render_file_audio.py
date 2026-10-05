@@ -109,12 +109,16 @@ def main():
                 verify(root / f"call-{frequency}.mp4", (440, 880))
             print("Mirror and both client recordings contain the expected tones with synchronized audio/video.")
         except Exception:
+            print(f"Recording diagnostic platform={sys.platform}, processes={[(p.pid, p.poll()) for p in processes]}",
+                  file=sys.stderr)
             if sys.platform == "darwin":
                 for process in processes:
                     if process.poll() is None:
                         trace_path = root / f"{process.pid}.sample"
                         trace = subprocess.run(["sample", str(process.pid), "1", "1", "-file", str(trace_path)],
                                                capture_output=True, text=True, timeout=15)
+                        print(f"sample pid={process.pid}: status={trace.returncode}, report={trace_path.exists()}",
+                              file=sys.stderr)
                         print(trace.stderr, file=sys.stderr)
                         if trace_path.exists():
                             print(trace_path.read_text(errors="replace"), file=sys.stderr)
