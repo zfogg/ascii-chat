@@ -332,6 +332,8 @@ typedef struct {
 
   /** @brief Array of pointers to client audio ring buffers */
   audio_ring_buffer_t **source_buffers;
+  // Each listener owns its unread samples from each remote source.
+  struct mixer_listener_buffer *listener_buffers[MIXER_MAX_SOURCES][MIXER_MAX_SOURCES];
   /** @brief Array of client ID strings (one per source slot) */
   const char **source_ids;
   /** @brief Array of active flags (true if source is active) */

@@ -1608,7 +1608,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   }
 
   void *field = (char *)options_struct + desc->offset;
-  const char *opt_value = NULL;
+  const char *opt_value = long_opt_value;
 
   // Get option value if needed
   if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {

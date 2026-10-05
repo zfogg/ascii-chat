@@ -435,9 +435,8 @@ void *client_video_render_thread(void *arg) {
     }
     STOP_TIMER_AND_LOG(dev, 0, "render_frame_sleep", "frame deadline sleep completed");
     uint64_t after_sleep_ns = time_get_ns();
-    uint64_t elapsed_intervals = after_sleep_ns >= next_frame_ns
-                                     ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1
-                                     : 1;
+    uint64_t elapsed_intervals =
+        after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
     next_frame_ns += elapsed_intervals * frame_interval_ns;
 
     // Capture timestamp for FPS tracking and frame timestamps
@@ -810,22 +809,12 @@ void *client_audio_render_thread(void *arg) {
   fps_t audio_fps_tracker = {0};
   fps_init(&audio_fps_tracker, AUDIO_RENDER_FPS, "SERVER AUDIO");
 
-  // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
-  adaptive_sleep_state_t audio_sleep_state = {0};
-  adaptive_sleep_config_t audio_config = {
-      .baseline_sleep_ns = 10 * NS_PER_MS_INT, // 10ms = 100 FPS (480 samples @ 48kHz)
-      .min_speed_multiplier = 1.0,             // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,             // Constant rate (no speedup)
-      .speedup_rate = 0.0,                     // No adaptive behavior (constant rate)
-      .slowdown_rate = 0.0                     // No adaptive behavior (constant rate)
-  };
-  adaptive_sleep_init(&audio_sleep_state, &audio_config);
-
   // Per-thread counters (NOT static - each thread instance gets its own)
   int backpressure_check_counter = 0;
   int server_audio_frame_count = 0;
 
   bool should_continue = true;
+  uint64_t audio_deadline = time_get_ns();
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
@@ -888,44 +877,8 @@ void *client_audio_render_thread(void *arg) {
     }
 
     int samples_mixed = 0;
-    if (GET_OPTION(no_audio_mixer)) {
-      // Disable mixer.h processing: simple mixing without ducking/compression/etc
-      // Just add audio from all sources except this client, no processing
-      SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));
-
-      if (g_audio_mixer) {
-        int max_samples_in_frame = 0;
-        // Simple mixing: just add all sources except current client
-        for (int i = 0; i < g_audio_mixer->max_sources; i++) {
-          if (g_audio_mixer->source_ids[i] && strcmp(g_audio_mixer->source_ids[i], client_id_snapshot) != 0 &&
-              g_audio_mixer->source_buffers[i]) {
-            // Read from this source and add to mix buffer
-            float temp_buffer[960]; // Max adaptive read size
-            int samples_read =
-                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, samples_to_read);
-
-            // Track the maximum samples we got from any source
-            if (samples_read > max_samples_in_frame) {
-              max_samples_in_frame = samples_read;
-            }
-
-            // Add to mix buffer
-            for (int j = 0; j < samples_read; j++) {
-              mix_buffer[j] += temp_buffer[j];
-            }
-          }
-        }
-        samples_mixed = max_samples_in_frame; // Only count samples we actually read
-      }
-
-      log_debug_every(LOG_RATE_DEFAULT,
-                      "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u", samples_mixed,
-                      client_id_snapshot);
-    } else {
-      // Use adaptive sample count in normal mixer mode
-      uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
-      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
-    }
+    uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
+    samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
 
     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%s", "Mixer for client %s: took",
                              client_id_snapshot);
@@ -1105,7 +1058,10 @@ void *client_audio_render_thread(void *arg) {
     // Audio mixing rate limiting using adaptive sleep system
     // Target: 10ms intervals (100 FPS) for 480 samples @ 48kHz
     // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
-    adaptive_sleep_do(&audio_sleep_state, 0, 0);
+    audio_deadline += 10 * NS_PER_MS_INT;
+    uint64_t now = time_get_ns();
+    if (audio_deadline > now) platform_sleep_ns(audio_deadline - now);
+    else if (now - audio_deadline > 100 * NS_PER_MS_INT) audio_deadline = now;
   }
 
 #ifdef DEBUG_THREADS

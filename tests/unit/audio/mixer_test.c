@@ -11,6 +11,35 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/fnv1a.h>
+
+Test(mixer, independent_listener_audio_and_self_exclusion) {
+  mixer_t *mixer = mixer_create(3, 48000);
+  cr_assert_not_null(mixer);
+  float input[480], first[480], second[480], self[480];
+  for (int i = 0; i < 480; i++)
+    input[i] = 0.1f;
+  audio_ring_buffer_t *buffers[3];
+  const char *ids[] = {"speaker", "listener-one", "listener-two"};
+  for (int i = 0; i < 3; i++) {
+    buffers[i] = audio_ring_buffer_create_for_capture();
+    cr_assert_not_null(buffers[i]);
+    cr_assert_gte(mixer_add_source(mixer, ids[i], buffers[i]), 0);
+  }
+  cr_assert_eq(audio_ring_buffer_write(buffers[0], input, 480), ASCIICHAT_OK);
+  cr_assert_eq(mixer_process_excluding_source(mixer, first, 480, fnv1a_hash_string(ids[1])), 480);
+  cr_assert_eq(mixer_process_excluding_source(mixer, second, 480, fnv1a_hash_string(ids[2])), 480);
+  cr_assert_eq(mixer_process_excluding_source(mixer, self, 480, fnv1a_hash_string(ids[0])), 480);
+  for (int i = 0; i < 480; i++) {
+    cr_assert_gt(first[i], 0.05f, "First listener must receive the source");
+    cr_assert_gt(second[i], 0.05f, "Second listener must receive the same source");
+    cr_assert_float_eq(first[i], second[i], 0.01f);
+    cr_assert_float_eq(self[i], 0.0f, 0.00001f, "Sender must not hear itself");
+  }
+  mixer_destroy(mixer);
+  for (int i = 0; i < 3; i++)
+    audio_ring_buffer_destroy(buffers[i]);
+}
 
 // Custom init function
 void mixer_test_init(void) {}

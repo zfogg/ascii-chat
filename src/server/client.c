@@ -1141,7 +1141,7 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
   client->is_tcp_client = false;         // WebRTC client - threads managed directly
   client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
-  client->transport = transport;         // Use provided transport
+  client->transport = transport; // Use provided transport
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = 0; // WebRTC doesn't use port numbers
@@ -1676,8 +1676,8 @@ void *client_dispatch_thread(void *arg) {
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
     uint64_t dequeue_start = time_get_ns();
     mutex_lock(&client->client_state_mutex);
-    queued_packet_t *queued_pkt = deferred_packet ? deferred_packet
-                                                : packet_queue_try_dequeue(client->received_packet_queue);
+    queued_packet_t *queued_pkt =
+        deferred_packet ? deferred_packet : packet_queue_try_dequeue(client->received_packet_queue);
     deferred_packet = NULL;
     uint64_t dequeue_end = time_get_ns();
 
@@ -1697,7 +1697,8 @@ void *client_dispatch_thread(void *arg) {
     for (size_t skipped = 0; skipped < 128 && NET_TO_HOST_U16(queued_pkt->header.type) == PACKET_TYPE_IMAGE_FRAME;
          skipped++) {
       queued_packet_t *next = packet_queue_try_dequeue(client->received_packet_queue);
-      if (!next) break;
+      if (!next)
+        break;
       if (NET_TO_HOST_U16(next->header.type) != PACKET_TYPE_IMAGE_FRAME) {
         deferred_packet = next;
         break;
@@ -2023,7 +2024,8 @@ void *client_receive_thread(void *arg) {
       mutex_lock(&client->client_state_mutex);
       int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
                                                 client_id_hash, false);
-      if (enqueue_result >= 0) cond_signal(&client->dispatch_queue_cond);
+      if (enqueue_result >= 0)
+        cond_signal(&client->dispatch_queue_cond);
       mutex_unlock(&client->client_state_mutex);
 
       if (enqueue_result < 0) {
@@ -2176,99 +2178,22 @@ void *client_send_thread_func(void *arg) {
 
       // Only send audio if packets survived crypto check (count > 0 after potential drop)
       if (audio_packet_count > 0) {
-        if (audio_packet_count == 1) {
-          // Single packet - send directly for low latency using ACIP transport
-          packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
-
-          // Get transport reference while holding mutex briefly (prevents deadlock on TCP buffer full)
-          mutex_lock(&client->send_mutex);
-          if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-            mutex_unlock(&client->send_mutex);
-            log_warn("BREAK_AUDIO_SINGLE: client_id=%s shutting_down=%d transport=%p", client->client_id,
-                     atomic_load_bool(&client->shutting_down), (void *)client->transport);
-            break; // Client is shutting down, exit thread
-          }
-          acip_transport_t *transport = client->transport;
-          mutex_unlock(&client->send_mutex);
-
-          // Network I/O happens OUTSIDE the mutex
-          uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
-          result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
-                                             client_id_hash);
-          if (result != ASCIICHAT_OK) {
-            log_error("AUDIO SEND FAIL: client=%s, len=%zu, result=%d", client->client_id, audio_packets[0]->data_len,
-                      result);
-          }
+        // Queue entries already contain complete ACIP payloads. Send each unchanged;
+        // wrapping an Opus batch again makes its header part of the encoded audio.
+        mutex_lock(&client->send_mutex);
+        acip_transport_t *transport = client->transport;
+        bool stopping = atomic_load_bool(&client->shutting_down) || !transport;
+        mutex_unlock(&client->send_mutex);
+        if (stopping) {
+          result = ERROR_NETWORK;
         } else {
-          // Multiple packets - batch them together and send via transport (works for all client types)
-          packet_type_t first_pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
-
-          // Get transport reference
-          mutex_lock(&client->send_mutex);
-          if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-            mutex_unlock(&client->send_mutex);
-            log_warn("BREAK_AUDIO_BATCH: client_id=%s shutting_down=%d transport=%p", client->client_id,
-                     atomic_load_bool(&client->shutting_down), (void *)client->transport);
-            result = ERROR_NETWORK;
-          } else {
-            acip_transport_t *transport = client->transport;
-            mutex_unlock(&client->send_mutex);
-
-            if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS_BATCH) {
-              // Opus packets - batch and send via transport
-              size_t total_opus_size = 0;
-              for (int i = 0; i < audio_packet_count; i++) {
-                total_opus_size += audio_packets[i]->data_len;
-              }
-
-              uint8_t *batched_opus = SAFE_MALLOC(total_opus_size, uint8_t *);
-              uint16_t *frame_sizes = SAFE_MALLOC((size_t)audio_packet_count * sizeof(uint16_t), uint16_t *);
-
-              if (batched_opus && frame_sizes) {
-                size_t offset = 0;
-                for (int i = 0; i < audio_packet_count; i++) {
-                  frame_sizes[i] = (uint16_t)audio_packets[i]->data_len;
-                  memcpy(batched_opus + offset, audio_packets[i]->data, audio_packets[i]->data_len);
-                  offset += audio_packets[i]->data_len;
-                }
-                result = acip_send_audio_opus_batch(transport, batched_opus, total_opus_size, frame_sizes,
-                                                    (uint32_t)audio_packet_count, AUDIO_SAMPLE_RATE, 20);
-                if (result != ASCIICHAT_OK) {
-                  log_error("AUDIO SEND FAIL (opus batch): client=%u, frames=%d, total_size=%zu, result=%d",
-                            client->client_id, audio_packet_count, total_opus_size, result);
-                }
-              } else {
-                log_error("Failed to allocate buffer for Opus batch");
-                result = ERROR_MEMORY;
-              }
-              SAFE_FREE(batched_opus);
-              SAFE_FREE(frame_sizes);
-            } else {
-              // Raw float audio - batch and send via transport
-              size_t total_samples = 0;
-              for (int i = 0; i < audio_packet_count; i++) {
-                total_samples += audio_packets[i]->data_len / sizeof(float);
-              }
-
-              float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
-              if (batched_audio) {
-                size_t offset = 0;
-                for (int i = 0; i < audio_packet_count; i++) {
-                  size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
-                  memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
-                  offset += packet_samples;
-                }
-                result = acip_send_audio_batch(transport, batched_audio, (uint32_t)total_samples, AUDIO_SAMPLE_RATE);
-                if (result != ASCIICHAT_OK) {
-                  log_error("AUDIO SEND FAIL (raw batch): client=%u, packets=%d, samples=%zu, result=%d",
-                            client->client_id, audio_packet_count, total_samples, result);
-                }
-              } else {
-                log_error("Failed to allocate buffer for audio batch");
-                result = ERROR_MEMORY;
-              }
-              SAFE_FREE(batched_audio);
-            }
+          uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
+          for (int i = 0; i < audio_packet_count; i++) {
+            packet_type_t type = (packet_type_t)NET_TO_HOST_U16(audio_packets[i]->header.type);
+            result = packet_send_via_transport(transport, type, audio_packets[i]->data, audio_packets[i]->data_len,
+                                               client_id_hash);
+            if (result != ASCIICHAT_OK)
+              break;
           }
         }
       } // End of if (audio_packet_count > 0)

@@ -3,6 +3,14 @@ import { getClientModule, PacketType } from "../wasm/client";
 
 export interface AudioPipelineOptions {
   onAudioData?: (payload: Uint8Array) => void;
+  onLevels?: (levels: {
+    microphone: number;
+    playback: number;
+    sent: number;
+    played: number;
+    playedSamples: number;
+    underruns: number;
+  }) => void;
 }
 
 /** Mono 48 kHz audio using the native ACIP Opus batch format. */
@@ -13,15 +21,61 @@ export class AudioPipeline {
   private processor: ScriptProcessorNode | null = null;
   private gain: GainNode | null = null;
   private codec: OpusEncoder | null = null;
+  private playback: AudioWorkletNode | null = null;
+  private playbackInit: Promise<void> | null = null;
   private pending: number[] = [];
   private playAt = 0;
   private sources = new Set<AudioBufferSourceNode>();
   private generation = 0;
+  private sent = 0;
+  private played = 0;
+  private playedSamples = 0;
+  private underruns = 0;
+  private microphoneLevel = 0;
+  private playbackLevel = 0;
+  private lastLevelUpdate = 0;
+
+  private reportLevels(): void {
+    const now = performance.now();
+    if (now - this.lastLevelUpdate < 500) return;
+    this.lastLevelUpdate = now;
+    this.options.onLevels?.({
+      microphone: this.microphoneLevel,
+      playback: this.playbackLevel,
+      sent: this.sent,
+      played: this.played,
+      playedSamples: this.playedSamples,
+      underruns: this.underruns,
+    });
+  }
 
   constructor(private options: AudioPipelineOptions = {}) {}
   async enablePlayback(): Promise<void> {
     if (!this.context) this.context = new AudioContext({ sampleRate: 48000 });
     await this.context.resume();
+    if (this.context.audioWorklet && !this.playbackInit) {
+      const context = this.context;
+      this.playbackInit = context.audioWorklet
+        .addModule(new URL("./playback-worklet.js", import.meta.url))
+        .then(() => {
+          if (this.context !== context) return;
+          this.playback = new AudioWorkletNode(
+            context,
+            "ascii-chat-pcm-playback",
+            {
+              numberOfInputs: 0,
+              numberOfOutputs: 1,
+              outputChannelCount: [2],
+            },
+          );
+          this.playback.port.onmessage = ({ data }) => {
+            this.underruns = data.underruns;
+            this.reportLevels();
+          };
+          this.playback.connect(context.destination);
+        });
+    }
+    await this.playbackInit;
     if (!this.codec) {
       const module = getClientModule();
       if (!module) throw new Error("Connect before enabling audio");
@@ -38,6 +92,7 @@ export class AudioPipeline {
         sampleRate: 48000,
         echoCancellation: true,
         noiseSuppression: true,
+        autoGainControl: true,
       },
       video: false,
     });
@@ -51,8 +106,11 @@ export class AudioPipeline {
     this.gain = this.context.createGain();
     this.gain.gain.value = 0;
     this.processor.onaudioprocess = (event) => {
-      for (const sample of event.inputBuffer.getChannelData(0))
-        this.pending.push(sample);
+      const input = event.inputBuffer.getChannelData(0);
+      this.microphoneLevel = Math.sqrt(
+        input.reduce((sum, value) => sum + value * value, 0) / input.length,
+      );
+      for (const sample of input) this.pending.push(sample);
       while (this.pending.length >= 960 && this.codec) {
         const frame = this.pending.splice(0, 960);
         const pcm = Int16Array.from(frame, (sample) =>
@@ -69,7 +127,9 @@ export class AudioPipeline {
         view.setUint16(16, opus.length, false);
         payload.set(opus, 18);
         this.options.onAudioData?.(payload);
+        this.sent++;
       }
+      this.reportLevels();
     };
     this.source.connect(this.processor);
     this.processor.connect(this.gain);
@@ -139,6 +199,18 @@ export class AudioPipeline {
     channels: number,
   ): void {
     const context = this.context!;
+    if (this.playback && sampleRate === context.sampleRate) {
+      this.playbackLevel = Math.sqrt(
+        samples.reduce((sum, value) => sum + value * value, 0) / samples.length,
+      );
+      this.played++;
+      this.playedSamples += samples.length / channels;
+      this.playback.port.postMessage({ samples, channels, rate: sampleRate }, [
+        samples.buffer,
+      ]);
+      this.reportLevels();
+      return;
+    }
     if (this.playAt > context.currentTime + 0.3) return;
     const buffer = context.createBuffer(
       channels,
@@ -158,9 +230,19 @@ export class AudioPipeline {
       this.sources.delete(source);
       source.disconnect();
     };
-    this.playAt = Math.max(context.currentTime + 0.01, this.playAt);
+    if (this.playAt > 0 && this.playAt < context.currentTime) this.underruns++;
+    // Buffer two Opus frames at startup/recovery; steady playback preserves
+    // adjacent sample deadlines instead of adding a gap to every packet.
+    if (this.playAt < context.currentTime + 0.005)
+      this.playAt = context.currentTime + 0.04;
     source.start(this.playAt);
     this.playAt += buffer.duration;
+    this.played++;
+    this.playedSamples += samples.length / channels;
+    this.playbackLevel = Math.sqrt(
+      samples.reduce((sum, value) => sum + value * value, 0) / samples.length,
+    );
+    this.reportLevels();
   }
   stopCapture(): void {
     this.generation++;
@@ -179,6 +261,10 @@ export class AudioPipeline {
     this.stopCapture();
     for (const source of this.sources) source.stop();
     this.sources.clear();
+    this.playback?.disconnect();
+    this.playback?.port.close();
+    this.playback = null;
+    this.playbackInit = null;
     this.codec?.cleanup();
     this.codec = null;
     void this.context?.close();

@@ -94,9 +94,8 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // Worker thread batch size (in frames, not samples)
-// Reduced from 480 (10ms) to 128 (2.7ms) for lower latency and less jitter
-// Smaller batches mean more frequent processing, reducing audio gaps
-#define WORKER_BATCH_FRAMES 128
+// AEC3 processes complete 10 ms frames at 48 kHz.
+#define WORKER_BATCH_FRAMES 480
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 #define WORKER_TIMEOUT_MS 1 // Wake up every 1ms to keep up with 48kHz playback (was 3ms)
 

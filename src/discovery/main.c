@@ -57,6 +57,8 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/client_pipeline.h>
 
 /* ============================================================================
  * Global Discovery Session
@@ -67,7 +69,95 @@ typedef struct {
   session_display_ctx_t *display;
   atomic_t running;
   asciichat_error_t result;
+  audio_context_t *audio;
+  client_audio_pipeline_t *audio_pipeline;
 } discovery_video_receiver_t;
+
+static void *discovery_audio_send_thread(void *user_data) {
+  discovery_video_receiver_t *ctx = user_data;
+  float samples[960];
+  uint8_t encoded[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
+  while (atomic_load_bool(&ctx->running) && !should_exit()) {
+    if (audio_ring_buffer_available_read(ctx->audio->capture_buffer) < 960) {
+      platform_sleep_ns(NS_PER_MS_INT);
+      continue;
+    }
+    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, 960) != 960)
+      continue;
+    int size = client_audio_pipeline_capture(ctx->audio_pipeline, samples, 960, encoded, sizeof(encoded));
+    if (size <= 0)
+      continue;
+    uint16_t frame_size = (uint16_t)size;
+    asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1, 48000, 20);
+    if (result != ASCIICHAT_OK) {
+      log_warn("Discovery audio send failed: %d", result);
+      atomic_store_bool(&ctx->running, false);
+      break;
+    }
+  }
+  return NULL;
+}
+
+static asciichat_error_t discovery_audio_play_packet(discovery_video_receiver_t *ctx, packet_type_t type,
+                                                     const void *payload, size_t length) {
+  if (!ctx->audio)
+    return ASCIICHAT_OK;
+  if (length < 16)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Truncated discovery audio packet");
+  float samples[5760];
+  if (type == PACKET_TYPE_AUDIO_BATCH) {
+    audio_batch_packet_t header;
+    memcpy(&header, payload, sizeof(header));
+    if (header.sample_rate != AUDIO_SAMPLE_RATE || header.channels != 1 ||
+        header.total_samples != (length - sizeof(header)) / sizeof(float) ||
+        (length - sizeof(header)) % sizeof(float) != 0)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery PCM audio batch");
+    size_t offset = 0;
+    while (offset < header.total_samples) {
+      size_t count = header.total_samples - offset;
+      if (count > 5760)
+        count = 5760;
+      memcpy(samples, (const uint8_t *)payload + sizeof(header) + offset * sizeof(float), count * sizeof(float));
+      asciichat_error_t result = audio_write_samples(ctx->audio, samples, (int)count);
+      if (result != ASCIICHAT_OK)
+        return result;
+      offset += count;
+    }
+  } else if (type == PACKET_TYPE_AUDIO_OPUS_BATCH) {
+    const uint8_t *bytes = payload;
+    uint32_t rate_net, duration_net;
+    memcpy(&rate_net, bytes, 4);
+    memcpy(&duration_net, bytes + 4, 4);
+    if (NET_TO_HOST_U32(rate_net) != AUDIO_SAMPLE_RATE || NET_TO_HOST_U32(duration_net) < 1 ||
+        NET_TO_HOST_U32(duration_net) > 120)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery Opus audio format");
+    uint32_t count_net;
+    memcpy(&count_net, bytes + 8, 4);
+    size_t count = NET_TO_HOST_U32(count_net);
+    if (count > (length - 16) / 2)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery Opus batch");
+    size_t offset = 16 + count * 2;
+    for (size_t i = 0; i < count; i++) {
+      uint16_t size_net;
+      memcpy(&size_net, bytes + 16 + i * 2, 2);
+      size_t size = NET_TO_HOST_U16(size_net);
+      if (!size || size > length - offset)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Truncated discovery Opus frame");
+      int decoded = client_audio_pipeline_playback(ctx->audio_pipeline, bytes + offset, (int)size, samples, 5760);
+      if (decoded < 0)
+        return SET_ERRNO(ERROR_AUDIO, "Failed to decode discovery Opus frame");
+      if (decoded > 0) {
+        asciichat_error_t result = audio_write_samples(ctx->audio, samples, decoded);
+        if (result != ASCIICHAT_OK)
+          return result;
+      }
+      offset += size;
+    }
+    if (offset != length)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery Opus batch length");
+  }
+  return ASCIICHAT_OK;
+}
 
 static void *discovery_video_receive_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
@@ -92,6 +182,8 @@ static void *discovery_video_receive_thread(void *user_data) {
         }
       } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {
         result = packet_send_via_transport(ctx->transport, PACKET_TYPE_PONG, payload, length, 0);
+      } else if (result == ASCIICHAT_OK && (type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS_BATCH)) {
+        result = discovery_audio_play_packet(ctx, type, payload, length);
       }
       if (allocated)
         buffer_pool_free(NULL, allocated, 0);
@@ -350,7 +442,10 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     session_participant_t *participant = discovery_session_get_participant(g_discovery);
     acip_transport_t *transport = session_participant_get_transport(participant);
     if (transport && acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC) {
-      result = acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR);
+      bool enable_audio = GET_OPTION(audio_enabled);
+      log_info("Discovery WebRTC audio: %s", enable_audio ? "enabled" : "disabled");
+      result =
+          acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR | (enable_audio ? CLIENT_CAP_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
       terminal_capabilities_t caps = detect_terminal_capabilities();
@@ -371,17 +466,51 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       result = acip_send_capabilities(transport, &packet, sizeof(packet));
       if (result != ASCIICHAT_OK)
         return result;
-      result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO);
+      result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO | (enable_audio ? STREAM_TYPE_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
       discovery_video_receiver_t receiver = {
           .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
+      audio_context_t audio = {0};
+      if (enable_audio) {
+        result = audio_init(&audio);
+        if (result != ASCIICHAT_OK)
+          return result;
+        client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+        config.flags.jitter_buffer = false;
+        receiver.audio_pipeline = client_audio_pipeline_create(&config);
+        if (!receiver.audio_pipeline) {
+          audio_destroy(&audio);
+          return SET_ERRNO(ERROR_AUDIO, "Failed to create discovery audio pipeline");
+        }
+        audio_set_pipeline(&audio, receiver.audio_pipeline);
+        receiver.audio = &audio;
+        result = audio_start_duplex(&audio);
+        if (result != ASCIICHAT_OK) {
+          audio_destroy(&audio);
+          client_audio_pipeline_destroy(receiver.audio_pipeline);
+          return result;
+        }
+      }
       asciichat_thread_t receiver_thread;
+      asciichat_thread_t audio_thread;
+      bool audio_thread_started = false;
       atomic_store_bool(&receiver.running, true);
       result = asciichat_thread_create(&receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
                                        &receiver);
-      if (result != ASCIICHAT_OK)
+      if (result != ASCIICHAT_OK) {
+        if (enable_audio) {
+          audio_destroy(&audio);
+          client_audio_pipeline_destroy(receiver.audio_pipeline);
+        }
         return result;
+      }
+      if (enable_audio) {
+        result = asciichat_thread_create(&audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
+        audio_thread_started = result == ASCIICHAT_OK;
+        if (!audio_thread_started)
+          atomic_store_bool(&receiver.running, false);
+      }
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
         uint64_t iteration_start = time_get_ns();
@@ -406,6 +535,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       }
       atomic_store_bool(&receiver.running, false);
       asciichat_thread_join(&receiver_thread, NULL);
+      if (audio_thread_started)
+        asciichat_thread_join(&audio_thread, NULL);
+      if (enable_audio) {
+        audio_destroy(&audio);
+        client_audio_pipeline_destroy(receiver.audio_pipeline);
+      }
       if (receiver.result != ASCIICHAT_OK)
         return receiver.result;
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT)

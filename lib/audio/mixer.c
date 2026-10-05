@@ -15,6 +15,49 @@
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
+#include <ascii-chat/util/fnv1a.h>
+#include <ascii-chat/options/options.h>
+
+#define MIXER_LISTENER_SAMPLES 8192
+typedef struct mixer_listener_buffer {
+  float samples[MIXER_LISTENER_SAMPLES];
+  size_t read;
+  size_t count;
+} mixer_listener_buffer_t;
+
+// Called with the source write lock. Drain each input once and fan it out to
+// independent listener queues so one recipient cannot consume another's audio.
+static void mixer_distribute_samples(mixer_t *mixer) {
+  float samples[960];
+  for (int source = 0; source < mixer->max_sources; source++) {
+    if (!mixer->source_ids[source] || !mixer->source_buffers[source])
+      continue;
+    while (audio_ring_buffer_available_read(mixer->source_buffers[source]) > 0) {
+      size_t count = audio_ring_buffer_read(mixer->source_buffers[source], samples, 960);
+      if (!count)
+        break;
+      for (int listener = 0; listener < mixer->max_sources; listener++) {
+        if (listener == source || !mixer->source_ids[listener])
+          continue;
+        mixer_listener_buffer_t *queue = mixer->listener_buffers[listener][source];
+        if (!queue) {
+          queue = SAFE_CALLOC(1, sizeof(*queue), mixer_listener_buffer_t *);
+          if (!queue)
+            continue;
+          mixer->listener_buffers[listener][source] = queue;
+        }
+        if (queue->count + count > MIXER_LISTENER_SAMPLES) {
+          size_t discard = queue->count + count - MIXER_LISTENER_SAMPLES;
+          queue->read = (queue->read + discard) % MIXER_LISTENER_SAMPLES;
+          queue->count -= discard;
+        }
+        for (size_t i = 0; i < count; i++)
+          queue->samples[(queue->read + queue->count + i) % MIXER_LISTENER_SAMPLES] = samples[i];
+        queue->count += count;
+      }
+    }
+  }
+}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -238,6 +281,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->num_sources = 0;
   mixer->max_sources = max_sources;
   mixer->sample_rate = sample_rate;
+  memset(mixer->listener_buffers, 0, sizeof(mixer->listener_buffers));
 
   // Allocate source management arrays with overflow checking
   size_t buffers_size = 0;
@@ -362,6 +406,8 @@ void mixer_destroy(mixer_t *mixer) {
 
   // Free all allocated client_id strings before freeing the array itself
   for (int i = 0; i < mixer->max_sources; i++) {
+    for (int j = 0; j < mixer->max_sources; j++)
+      SAFE_FREE(mixer->listener_buffers[i][j]);
     if (mixer->source_ids[i] != NULL) {
       SAFE_FREE(mixer->source_ids[i]);
     }
@@ -437,6 +483,11 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
 
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] != NULL && strcmp(mixer->source_ids[i], client_id) == 0) {
+      for (int j = 0; j < mixer->max_sources; j++) {
+        SAFE_FREE(mixer->listener_buffers[i][j]);
+        if (j != i)
+          SAFE_FREE(mixer->listener_buffers[j][i]);
+      }
       mixer->source_buffers[i] = NULL;
       // Free the allocated client_id string
       SAFE_FREE(mixer->source_ids[i]);
@@ -643,15 +694,22 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   START_TIMER("mixer_total");
 #endif
 
-  // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
-  // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
-  rwlock_rdlock(&mixer->source_lock);
+  // Serialize sample distribution and mutable ducking/compressor state.
+  rwlock_wrlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
-  // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer_hash_get_slot(mixer, exclude_client_id);
+  // Source IDs are strings; match the complete ID hash used by the caller.
+  uint8_t exclude_index = MIXER_HASH_INVALID;
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] && fnv1a_hash_string(mixer->source_ids[i]) == exclude_client_id) {
+      exclude_index = (uint8_t)i;
+      break;
+    }
+  }
+  if (exclude_index != MIXER_HASH_INVALID)
+    mixer_distribute_samples(mixer);
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Validate exclude_index before using in bitshift
@@ -680,7 +738,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Fast check: any sources to mix?
   if (active_mask == 0) {
-    rwlock_rdunlock(&mixer->source_lock);
+    rwlock_wrunlock(&mixer->source_lock);
 #ifndef NDEBUG
     STOP_TIMER("mixer_total");
 #endif
@@ -710,8 +768,20 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       // Verify source is valid (defensive programming)
       if (i < mixer->max_sources && mixer->source_ids[i] != 0 && mixer->source_buffers[i]) {
         // Read samples from this source's ring buffer
-        size_t samples_read_size =
-            audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        size_t samples_read_size = 0;
+        if (valid_exclude) {
+          mixer_listener_buffer_t *queue = mixer->listener_buffers[exclude_index][i];
+          if (queue && queue->count >= (size_t)frame_size) {
+            samples_read_size = (size_t)frame_size;
+            for (int s = 0; s < frame_size; s++)
+              source_samples[source_count][s] = queue->samples[(queue->read + s) % MIXER_LISTENER_SAMPLES];
+            queue->read = (queue->read + samples_read_size) % MIXER_LISTENER_SAMPLES;
+            queue->count -= samples_read_size;
+          }
+        } else {
+          samples_read_size =
+              audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        }
         int samples_read = (int)samples_read_size;
 
         // Accept partial frames - pad with silence if needed
@@ -749,6 +819,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
       log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str,
                      source_count);
+    }
+
+    if (GET_OPTION(no_audio_mixer)) {
+      for (int sample = 0; sample < frame_size; sample++) {
+        for (int source = 0; source < source_count; source++)
+          output[frame_start + sample] += source_samples[source][sample];
+      }
+      continue;
     }
 
     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
@@ -830,7 +908,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     }
   }
 
-  rwlock_rdunlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 
 #ifndef NDEBUG
   STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "mixer_total", "Mixer took");
