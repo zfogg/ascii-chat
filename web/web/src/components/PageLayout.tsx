@@ -5,6 +5,7 @@ interface PageLayoutProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   showSettings: boolean;
   settingsPanel?: React.ReactNode;
+  topPanel?: React.ReactNode;
   controlBar: React.ReactNode;
   renderer: React.ReactNode;
   modal?: React.ReactNode;
@@ -15,6 +16,7 @@ export function PageLayout({
   canvasRef,
   showSettings,
   settingsPanel,
+  topPanel,
   controlBar,
   renderer,
   modal,
@@ -46,8 +48,19 @@ export function PageLayout({
       {/* Settings Panel */}
       {showSettings && settingsPanel}
 
-      {/* Control bar */}
-      {controlBar}
+      {/* Each Discovery panel owns the same outer spacing. */}
+      {topPanel ? (
+        <>
+          <div className="px-4 py-4 border-b border-terminal-8">
+            {topPanel}
+          </div>
+          <div className="px-4 py-4 border-b border-terminal-8">
+            {controlBar}
+          </div>
+        </>
+      ) : (
+        controlBar
+      )}
 
       {/* ASCII output fills remaining space */}
       {renderer}

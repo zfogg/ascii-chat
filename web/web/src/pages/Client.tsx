@@ -577,9 +577,54 @@ export function ClientPage({
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
       />
-      {discoveryMode && (
+      {!discoveryMode && connectionState === ConnectionState.CONNECTED && (
+        <div className="flex gap-3 px-4 py-2">
+          <button
+            onClick={() => {
+              if (audioEnabled) closeAudio();
+              else void enableAudio();
+            }}
+            className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+          >
+            {audioEnabled ? "Disable speakers" : "Enable speakers"}
+          </button>
+          <button
+            onClick={() => void toggleMicrophone()}
+            className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+          >
+            {micEnabled ? "Mute microphone" : "Enable microphone"}
+          </button>
+          {audioEnabled && (
+            <output
+              data-testid="audio-levels"
+              data-sent={audioLevels.sent}
+              data-played={audioLevels.played}
+              data-played-samples={audioLevels.playedSamples}
+              data-underruns={audioLevels.underruns}
+              className="self-center text-sm text-terminal-8"
+            >
+              Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+              {Math.round(audioLevels.playback * 100)}%
+            </output>
+          )}
+        </div>
+      )}
+      <PageLayout
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        showSettings={showSettings}
+        settingsPanel={
+          <Settings
+            config={settings}
+            disabled={settingsDisabled}
+            onChange={setSettings}
+            mode={AsciiChatMode.CLIENT}
+          />
+        }
+        topPanel={discoveryMode && (
+        <div className="flex flex-col">
         <form
-          className={`border-b border-terminal-8 p-4 flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
+          className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
           onSubmit={(event) => {
             event.preventDefault();
             setConnecting(true);
@@ -632,7 +677,7 @@ export function ClientPage({
           <button
             type="submit"
             disabled={settingsDisabled}
-            className="border border-green-700 bg-green-700 text-white enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:opacity-50"
+            className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Join session
           </button>
@@ -640,146 +685,137 @@ export function ClientPage({
             <button
               type="button"
               onClick={disconnectMedia}
-              className="border border-red-700 bg-red-700 text-white hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
+              className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
             >
               {connecting ? "Cancel" : "Disconnect"}
             </button>
           )}
-          <details className="w-full">
-            <summary>Connection settings</summary>
-            <div className="flex flex-col gap-2 mt-2">
-              <Tooltip text={disabledSettingsHelp} className="contents">
-                <label className="flex flex-col gap-1 w-56 max-w-full">
-                  Connection route
-                  <select
-                    aria-label="Connection route"
-                    value={connectionRoute}
-                    disabled={settingsDisabled}
-                    onChange={(event) =>
-                      setConnectionRoute(event.target.value as "all" | "relay")
-                    }
-                    className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
-                  >
-                    <option value="all">Automatic</option>
-                    <option value="relay">Relay only</option>
-                  </select>
-                </label>
-              </Tooltip>
-              <Tooltip text={disabledSettingsHelp} className="contents">
-                <label>
-                  <HelpLabel
-                    label="STUN/TURN URLs (comma-separated)"
-                    text={
-                      'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
-                    }
-                  />
-                  <input
-                    aria-label="STUN/TURN URLs"
-                    disabled={settingsDisabled}
-                    value={iceUrls}
-                    onChange={(event) => setIceUrls(event.target.value)}
-                    className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
-                  />
-                </label>
-              </Tooltip>
-              <fieldset disabled={settingsDisabled}>
-                <legend>
-                  <HelpLabel
-                    label="TURN credentials"
-                    text="Leave both blank to use credentials from the discovery service. To override them, provide both a TURN username and password."
-                  />
-                </legend>
-                <div className="flex flex-wrap gap-3 mt-2">
-                  <Tooltip text={disabledSettingsHelp} className="contents">
-                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                      TURN username
-                      <input
-                        aria-label="TURN username"
-                        disabled={settingsDisabled}
-                        value={turnUsername}
-                        maxLength={127}
-                        required={!!turnCredential}
-                        onChange={(event) =>
-                          setTurnUsername(event.target.value)
-                        }
-                        autoComplete="off"
-                        className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                      />
-                    </label>
-                  </Tooltip>
-                  <Tooltip text={disabledSettingsHelp} className="contents">
-                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                      TURN password
-                      <input
-                        aria-label="TURN password"
-                        disabled={settingsDisabled}
-                        type="password"
-                        value={turnCredential}
-                        maxLength={127}
-                        required={!!turnUsername}
-                        onChange={(event) =>
-                          setTurnCredential(event.target.value)
-                        }
-                        autoComplete="off"
-                        className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                      />
-                    </label>
-                  </Tooltip>
-                </div>
-              </fieldset>
-            </div>
-          </details>
+          <div className="flex items-center gap-3 w-full min-w-0">
+            <details className="flex-shrink-0">
+              <summary className="cursor-pointer">Connection settings</summary>
+              <div className="flex flex-col gap-2 mt-2">
+                <Tooltip text={disabledSettingsHelp} className="contents">
+                  <label className="flex flex-col gap-1 w-56 max-w-full">
+                    Connection route
+                    <select
+                      aria-label="Connection route"
+                      value={connectionRoute}
+                      disabled={settingsDisabled}
+                      onChange={(event) =>
+                        setConnectionRoute(event.target.value as "all" | "relay")
+                      }
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+                    >
+                      <option value="all">Automatic</option>
+                      <option value="relay">Relay only</option>
+                    </select>
+                  </label>
+                </Tooltip>
+                <Tooltip text={disabledSettingsHelp} className="contents">
+                  <label>
+                    <HelpLabel
+                      label="STUN/TURN URLs (comma-separated)"
+                      text={
+                        'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
+                      }
+                    />
+                    <input
+                      aria-label="STUN/TURN URLs"
+                      disabled={settingsDisabled}
+                      value={iceUrls}
+                      onChange={(event) => setIceUrls(event.target.value)}
+                      className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                    />
+                  </label>
+                </Tooltip>
+                <fieldset disabled={settingsDisabled}>
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        <HelpLabel
+                          label="TURN username"
+                          text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                        />
+                        <input
+                          aria-label="TURN username"
+                          disabled={settingsDisabled}
+                          value={turnUsername}
+                          maxLength={127}
+                          required={!!turnCredential}
+                          onChange={(event) =>
+                            setTurnUsername(event.target.value)
+                          }
+                          autoComplete="off"
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                        />
+                      </label>
+                    </Tooltip>
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        <HelpLabel
+                          label="TURN password"
+                          text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                        />
+                        <input
+                          aria-label="TURN password"
+                          disabled={settingsDisabled}
+                          type="password"
+                          value={turnCredential}
+                          maxLength={127}
+                          required={!!turnUsername}
+                          onChange={(event) =>
+                            setTurnCredential(event.target.value)
+                          }
+                          autoComplete="off"
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                        />
+                      </label>
+                    </Tooltip>
+                  </div>
+                </fieldset>
+              </div>
+            </details>
+          </div>
           {error && (
-            <p role="alert" className="w-full text-terminal-1">
+            <p role="alert" title={error} className="w-full text-terminal-1">
               {error}
             </p>
           )}
         </form>
-      )}
-      {connectionState === ConnectionState.CONNECTED && (
-        <div className="flex gap-3 px-4 py-2">
-          <button
-            onClick={() => {
-              if (audioEnabled) closeAudio();
-              else void enableAudio();
-            }}
-            className="border border-terminal-8 rounded px-3 py-1"
-          >
-            {audioEnabled ? "Disable audio" : "Enable audio"}
-          </button>
-          <button
-            onClick={() => void toggleMicrophone()}
-            className="border border-terminal-8 rounded px-3 py-1"
-          >
-            {micEnabled ? "Mute microphone" : "Enable microphone"}
-          </button>
-          {audioEnabled && (
-            <output
-              data-testid="audio-levels"
-              data-sent={audioLevels.sent}
-              data-played={audioLevels.played}
-              data-played-samples={audioLevels.playedSamples}
-              data-underruns={audioLevels.underruns}
-              className="self-center text-sm text-terminal-8"
+        {connectionState === ConnectionState.CONNECTED && (
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={() => {
+                if (audioEnabled) closeAudio();
+                else void enableAudio();
+              }}
+              className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
             >
-              Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
-              {Math.round(audioLevels.playback * 100)}%
-            </output>
-          )}
+              {audioEnabled ? "Disable speakers" : "Enable speakers"}
+            </button>
+            <button
+              onClick={() => void toggleMicrophone()}
+              className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+            >
+              {micEnabled ? "Mute microphone" : "Enable microphone"}
+            </button>
+            {audioEnabled && (
+              <output
+                data-testid="audio-levels"
+                data-sent={audioLevels.sent}
+                data-played={audioLevels.played}
+                data-played-samples={audioLevels.playedSamples}
+                data-underruns={audioLevels.underruns}
+                className="self-center text-sm text-terminal-8"
+              >
+                Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+                {Math.round(audioLevels.playback * 100)}%
+              </output>
+            )}
+          </div>
+        )}
         </div>
       )}
-      <PageLayout
-        videoRef={videoRef}
-        canvasRef={canvasRef}
-        showSettings={showSettings}
-        settingsPanel={
-          <Settings
-            config={settings}
-            disabled={settingsDisabled}
-            onChange={setSettings}
-            mode={AsciiChatMode.CLIENT}
-          />
-        }
         controlBar={
           <PageControlBar
             title={discoveryMode ? "Discovery" : "Client"}
@@ -799,6 +835,7 @@ export function ClientPage({
             onConnectionClick={() => setShowModal(true)}
             onSettingsClick={() => setShowSettings(!showSettings)}
             showSettingsButton={true}
+            compactVerticalSpacing={discoveryMode}
           />
         }
         renderer={

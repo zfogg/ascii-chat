@@ -18,6 +18,7 @@ interface PageControlBarProps {
   onConnectionClick?: (() => void) | undefined;
   onSettingsClick?: (() => void) | undefined;
   showSettingsButton?: boolean | undefined;
+  compactVerticalSpacing?: boolean | undefined;
 }
 
 export function PageControlBar({
@@ -37,6 +38,7 @@ export function PageControlBar({
   onConnectionClick,
   onSettingsClick,
   showSettingsButton = true,
+  compactVerticalSpacing = false,
 }: PageControlBarProps) {
   const getFpsColor = () => {
     if (fps === undefined || fps === null) return "text-terminal-8";
@@ -70,7 +72,9 @@ export function PageControlBar({
   };
 
   return (
-    <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
+    <div
+      className={`${compactVerticalSpacing ? "px-0 py-0 border-0" : "px-4 py-3 border-b border-terminal-8"} flex-shrink-0`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {statusDotColor && (
