@@ -189,7 +189,7 @@ runs:
       with:
         binary: ${{ steps.codecov-cli.outputs.binary }}
         files: ${{ inputs.criterion-xml-dir }}/*.xml
-        flags: |
+        flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
               format('ascii-chat-performance-{0}', inputs.os-name) }}
@@ -221,11 +221,11 @@ runs:
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-files }}
         disable_search: true
-        flags: |
+        flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
               format('ascii-chat-performance-{0}', inputs.os-name) }}
-        name: |
+        name: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
               format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
