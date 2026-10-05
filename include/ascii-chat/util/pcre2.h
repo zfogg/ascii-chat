@@ -186,3 +186,10 @@ const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int 
  */
 bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject,
                                          unsigned long *out_value);
+
+/**
+ * Match with the JIT fast path, using the interpreter when JIT is unavailable.
+ * Returns the native PCRE2 capture count or negative PCRE2 error code.
+ */
+int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
+                          uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context);

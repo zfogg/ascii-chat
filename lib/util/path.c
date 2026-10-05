@@ -138,7 +138,7 @@ static const char *normalize_path(const char *path) {
 
       while (offset <= remaining_len) {
         /* Find next separator */
-        int rc = pcre2_match(separator_regex, (PCRE2_SPTR8)pos, remaining_len, offset, 0, sep_match, NULL);
+        int rc = asciichat_pcre2_match(separator_regex, (PCRE2_SPTR8)pos, remaining_len, offset, 0, sep_match, NULL);
         PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(sep_match);
         PCRE2_SIZE sep_start, sep_end;
 
@@ -163,7 +163,8 @@ static const char *normalize_path(const char *path) {
           temp_component[component_len] = '\0';
 
           /* Check if component matches dot pattern (^\.\.*$) */
-          int is_dot = pcre2_match(dot_regex, (PCRE2_SPTR8)temp_component, component_len, 0, 0, dot_match, NULL);
+          int is_dot =
+              asciichat_pcre2_match(dot_regex, (PCRE2_SPTR8)temp_component, component_len, 0, 0, dot_match, NULL);
 
           if (is_dot >= 0) {
             /* It's ".", "..", or "..." */

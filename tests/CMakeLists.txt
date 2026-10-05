@@ -390,8 +390,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
-        # The fallback fixture calls PCRE2 directly to verify JIT code is absent.
-        if(test_exe_name STREQUAL "test_unit_util_regex_fallback")
+        # The regex fixtures call PCRE2 directly to prepare and inspect native patterns.
+        if(test_exe_name MATCHES "^test_unit_util_regex_(fallback|match)$")
             target_include_directories(${test_exe_name} PRIVATE ${PCRE2_INCLUDE_DIRS})
             target_link_libraries(${test_exe_name} ${PCRE2_LIBRARIES})
         endif()

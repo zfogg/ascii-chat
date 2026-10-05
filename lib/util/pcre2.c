@@ -392,3 +392,11 @@ bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group
   *out_value = value;
   return true;
 }
+
+int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
+                          uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context) {
+  int result = pcre2_jit_match(code, subject, length, startoffset, options, match_data, context);
+  if (result == PCRE2_ERROR_JIT_BADOPTION || result == PCRE2_ERROR_JIT_STACKLIMIT)
+    return pcre2_match(code, subject, length, startoffset, options | PCRE2_NO_JIT, match_data, context);
+  return result;
+}
