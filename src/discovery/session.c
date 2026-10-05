@@ -887,7 +887,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   const char *turn_username = custom_turn ? custom_username : session->turn_username;
   const char *turn_credential = custom_turn ? custom_credential : session->turn_password;
   if (custom_turn && (strlen(turn_username) >= sizeof(session->turn_username) ||
-      strlen(turn_credential) >= sizeof(session->turn_password))) {
+                      strlen(turn_credential) >= sizeof(session->turn_password))) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
   }
   if (custom_turn) {
@@ -988,7 +988,8 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     }
 
     if (session->turn_count > 0) {
-      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count, custom_turn ? "custom" : "ACDS");
+      log_info("Configured %zu TURN server(s) with %s credentials", session->turn_count,
+               custom_turn ? "custom" : "ACDS");
     } else {
       log_warn("No valid TURN servers configured");
       SAFE_FREE(session->turn_servers);

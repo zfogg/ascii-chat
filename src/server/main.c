@@ -1868,9 +1868,11 @@ static asciichat_error_t server_init_fn(void *user_data) {
               char *saveptr = NULL;
               char *url = platform_strtok_r(urls, ",", &saveptr);
               while (url && turn_count < 4) {
-                while (*url == ' ' || *url == '\t') url++;
+                while (*url == ' ' || *url == '\t')
+                  url++;
                 size_t len = strlen(url);
-                while (len && (url[len - 1] == ' ' || url[len - 1] == '\t')) url[--len] = '\0';
+                while (len && (url[len - 1] == ' ' || url[len - 1] == '\t'))
+                  url[--len] = '\0';
                 if (len && len < sizeof(turn_servers[0].url)) {
                   turn_server_t *turn = &turn_servers[turn_count++];
                   SAFE_STRNCPY(turn->url, url, sizeof(turn->url));

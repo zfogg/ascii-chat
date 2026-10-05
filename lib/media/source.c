@@ -704,8 +704,8 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
       last_audio_pos = audio_pos_after_read;
     }
 
-    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read, audio_pos_before_read,
-                   audio_pos_after_read);
+    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read,
+                   audio_pos_before_read, audio_pos_after_read);
 
     // Handle EOF with loop
     if (samples_read == 0 && ffmpeg_decoder_at_end(source->audio_decoder)) {
@@ -896,8 +896,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after, timestamp_sec,
-               video_seek_str);
+      log_info("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
+               timestamp_sec, video_seek_str);
     }
   }
 
