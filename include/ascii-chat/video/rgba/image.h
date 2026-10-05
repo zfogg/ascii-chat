@@ -135,7 +135,7 @@ typedef enum {
  *
  * @note Pixel array must be allocated (by image_new() or image_new_from_pool()).
  * @note Image structure and pixels array can be freed separately if needed.
- * @note Compatible with webcam capture functions (webcam_read()).
+ * @note Compatible with webcam capture functions (webcam_read_context()).
  * @note alloc_method tracks allocation source for correct deallocation.
  *
  * @ingroup video

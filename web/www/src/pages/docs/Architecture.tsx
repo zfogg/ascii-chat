@@ -333,7 +333,7 @@ const FLOWS: Record<string, Flow> = {
           },
           {
             path: "lib/video/webcam/webcam.c",
-            fn: "webcam_init()",
+            fn: "webcam_init_context()",
             note: "Opens /dev/videoN, sets format, requests buffers",
           },
         ],

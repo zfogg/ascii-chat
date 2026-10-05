@@ -37,7 +37,6 @@
  * ARCHITECTURE:
  * =============
  * The webcam system uses a context-based architecture:
- * - Global context for simple single-webcam scenarios
  * - Per-context management for multi-webcam support
  * - Automatic format detection and conversion
  * - Frame rate management and throttling
@@ -50,9 +49,7 @@
  * - Format negotiation with webcam hardware
  * - Frame rate configuration
  *
- * @note The global webcam interface (webcam_init, webcam_read) provides
- *       simple single-webcam access. Use context-based functions for
- *       advanced multi-webcam scenarios.
+ * @note Use context-based functions to manage each webcam independently.
  * @note Webcam frames are returned as image_t structures compatible
  *       with the video conversion pipeline.
  * @note Error codes include specific diagnostics for webcam issues
@@ -82,12 +79,12 @@
  * Contains information about an available webcam device. Used by device
  * enumeration functions to return a list of available devices.
  *
- * @note Device index corresponds to the device_index parameter in webcam_init().
+ * @note Device index corresponds to the device_index parameter in webcam_init_context().
  *
  * @ingroup webcam
  */
 typedef struct {
-  unsigned int index;                ///< Device index (use with webcam_init)
+  unsigned int index;                ///< Device index (use with webcam_init_context)
   char name[WEBCAM_DEVICE_NAME_MAX]; ///< Human-readable device name
 } webcam_device_info_t;
 
@@ -152,69 +149,6 @@ void webcam_free_device_list(webcam_device_info_t *devices);
  */
 typedef struct webcam_context_t webcam_context_t;
 
-/**
- * @brief Initialize global webcam interface
- * @param webcam_index Webcam device index (0 for default device)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Initializes the global webcam interface for simple single-webcam access.
- * Opens the specified webcam device and prepares it for frame capture.
- * This is a convenience wrapper around webcam_init_context() for simple
- * single-webcam scenarios.
- *
- * @note This function initializes global webcam state.
- * @note Use webcam_read() to capture frames after initialization.
- * @note Must call webcam_destroy() when done.
- * @note Use webcam_init_context() for advanced multi-webcam scenarios.
- *
- * @warning On failure, use webcam_print_init_error_help() for diagnostics.
- *
- * @ingroup webcam
- */
-asciichat_error_t webcam_init(unsigned short int webcam_index);
-
-/**
- * @brief Capture a frame from global webcam
- * @return Pointer to captured image, or NULL on error
- *
- * Captures a single video frame from the global webcam interface.
- * Returns an image_t structure containing the frame data in RGB format.
- * The image is automatically converted from native webcam format to RGB.
- *
- * @note Returns NULL on error (device disconnected, I/O error, etc.).
- * @note Image structure is allocated internally and must NOT be freed by caller.
- * @note Subsequent calls reuse the same buffer (frame overwrites previous frame).
- * @note Frame rate is limited by webcam hardware and format negotiation.
- *
- * @note For context-based operations, use webcam_read_context() instead.
- *
- * @ingroup webcam
- */
-image_t *webcam_read(void);
-
-/**
- * @brief Clean up global webcam interface
- *
- * Cleans up the global webcam interface and releases resources.
- * Closes the webcam device and frees all associated memory.
- *
- * @note Safe to call multiple times (no-op after first call).
- * @note After cleanup, webcam_read() will fail until webcam_init() is called again.
- *
- * @ingroup webcam
- */
-void webcam_destroy(void);
-
-/**
- * @brief Flush/interrupt any pending webcam read operations
- *
- * Cancels any blocking ReadSample operations. Call this before stopping
- * the capture thread to allow it to exit cleanly.
- *
- * @ingroup webcam
- */
-void webcam_flush(void);
-
 /* ============================================================================
  * Error Handling Helpers
  * @{
@@ -222,7 +156,7 @@ void webcam_flush(void);
 
 /**
  * @brief Print helpful error diagnostics for webcam initialization failures
- * @param error_code Error code from webcam_init() or webcam_init_context()
+ * @param error_code Error code from webcam_init_context()
  *
  * Prints human-readable error diagnostics to help diagnose webcam
  * initialization failures. Includes platform-specific troubleshooting

@@ -313,7 +313,10 @@
  * frame->timestamp = get_timestamp_usec();
  *
  * // Fill with webcam data
- * webcam_read(frame->data, frame->data_size);
+ * image_t *captured = webcam_read_context(webcam);
+ * if (captured) {
+ *     memcpy(frame->data, captured->pixels, frame->data_size);
+ * }
  *
  * // Process and send
  * process_and_send_frame(frame);

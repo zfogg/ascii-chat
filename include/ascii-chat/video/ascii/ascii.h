@@ -91,25 +91,6 @@ extern char ascii_palette[];
  */
 
 /**
- * @brief Initialize ASCII read subsystem (e.g., webcam)
- * @param webcam_index Webcam device index (0 for default device)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Initializes the ASCII read subsystem for image capture. Opens
- * webcam device and prepares it for frame capture. This is a
- * convenience wrapper around webcam initialization.
- *
- * @note This function initializes webcam capture for ASCII conversion.
- * @note Must call ascii_read_destroy() when done.
- * @note Use webcam_read() to capture frames after initialization.
- *
- * @warning On failure, use webcam_print_init_error_help() for diagnostics.
- *
- * @ingroup video
- */
-asciichat_error_t ascii_read_init(unsigned short int webcam_index);
-
-/**
  * @brief Initialize ASCII write subsystem
  * @param fd File descriptor to write to (must be valid file descriptor)
  * @param reset_terminal Whether to reset terminal on initialization (true to reset, false to preserve state)
@@ -260,20 +241,6 @@ asciichat_error_t ascii_write(const char *frame);
  * Subsystem Cleanup Functions
  * @{
  */
-
-/**
- * @brief Destroy ASCII read subsystem
- *
- * Cleans up the ASCII read subsystem and releases resources. Closes
- * webcam device and frees associated memory. Should be called when
- * done with image capture.
- *
- * @note Safe to call multiple times (no-op after first call).
- * @note After cleanup, webcam capture will fail until re-initialized.
- *
- * @ingroup video
- */
-void ascii_read_destroy(void);
 
 /**
  * @brief Destroy ASCII write subsystem

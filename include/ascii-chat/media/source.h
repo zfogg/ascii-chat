@@ -122,7 +122,7 @@ typedef struct media_source_t media_source_t;
  * - MEDIA_SOURCE_WEBCAM: Device index as string (e.g., "0") or NULL for default
  * - MEDIA_SOURCE_TEST: Ignored (use NULL)
  *
- * @note For WEBCAM type, delegates to webcam_init()
+ * @note For WEBCAM type, delegates to webcam_init_context()
  * @note For FILE/STDIN types, uses FFmpeg decoder
  * @note Call media_source_destroy() to cleanup
  *
@@ -136,7 +136,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path);
  *
  * Cleans up media source and releases all resources. Safe to call with NULL.
  *
- * @note For WEBCAM type, calls webcam_destroy()
+ * @note For WEBCAM type, calls webcam_cleanup_context()
  * @note For FILE/STDIN types, closes FFmpeg decoder
  *
  * @ingroup media
@@ -164,7 +164,7 @@ void media_source_destroy(media_source_t *source);
  * - Do NOT free the returned frame
  * - Frame is valid until next call or source destruction
  *
- * @note For WEBCAM type, calls webcam_read()
+ * @note For WEBCAM type, calls webcam_read_context()
  * @note For FILE/STDIN types, decodes next video frame via FFmpeg
  * @note Frame timing is handled by caller (capture thread)
  *

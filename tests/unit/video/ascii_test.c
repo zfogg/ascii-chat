@@ -684,28 +684,6 @@ Test(ascii, ascii_write_empty_data) {
  * ASCII Initialization Tests
  * ============================================================================ */
 
-Test(ascii, ascii_read_init_basic) {
-  // In CI, Docker, or WSL environments, use test pattern mode (no real webcam available)
-  bool use_test_pattern = test_is_in_headless_environment();
-
-  // Enable test pattern mode if needed
-  if (use_test_pattern) {
-    test_set_test_pattern(true);
-  }
-
-  asciichat_error_t result = ascii_read_init(0);
-
-  // Should succeed with test pattern or real webcam
-  cr_assert_eq(result, ASCIICHAT_OK, "ascii_read_init should succeed with test pattern or webcam");
-
-  ascii_read_destroy();
-
-  // Restore test pattern setting
-  if (use_test_pattern) {
-    test_set_test_pattern(false);
-  }
-}
-
 Test(ascii, ascii_write_init_basic) {
   // Test with stdout
   bool reset_terminal = getenv("CI") != NULL;

@@ -68,23 +68,15 @@ lib/video/webcam/
 
 ### Webcam Capture (`webcam.h`)
 
-**High-Level Interface (Backwards Compatible):**
-
-```c
-int webcam_init(unsigned short int webcam_index);
-image_t *webcam_read(void);
-void webcam_cleanup(void);
-```
-
 **Platform-Specific Interface:**
 
 ```c
 typedef struct webcam_context_t webcam_context_t;  // Opaque handle
 
-int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index);
+asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index);
 void webcam_cleanup_context(webcam_context_t *ctx);
 image_t *webcam_read_context(webcam_context_t *ctx);
-int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
+asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 ```
 
 ## Platform-Specific Features
@@ -142,16 +134,16 @@ int main() {
 
     // Capture frames
     for (int i = 0; i < 100; i++) {
-        image_t *frame = webcam_read();
+        image_t *frame = webcam_read_context(ctx);
         if (frame) {
             printf("Captured frame: %dx%d\n", frame->width, frame->height);
             // Process frame...
-            image_free(frame);
+            // Frame buffer is owned by ctx.
         }
     }
 
     // Cleanup
-    webcam_cleanup();
+    webcam_cleanup_context(ctx);
     return 0;
 }
 ```
@@ -265,7 +257,7 @@ The webcam subsystem provides detailed platform-specific error messages:
 When migrating code to use the OS abstraction:
 
 1. **Replace OpenCV calls:**
-   - `cv::VideoCapture` → `webcam_init()` / `webcam_read()`
+   - `cv::VideoCapture` → `webcam_init_context()` / `webcam_read_context()`
    - Direct V4L2 calls → `webcam_*` functions
 
 2. **Replace webcam platform calls:**
