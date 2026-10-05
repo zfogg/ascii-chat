@@ -87,7 +87,7 @@ asciichat_error_t acds_string_init(void);
  * - Not contain consecutive hyphens
  *
  * This function validates against the cached wordlists populated by acds_string_init().
- * Set errno via SET_ERRNO() on failure for detailed error context.
+ * Non-session inputs return false without setting an error. Internal failures set errno.
  */
 bool is_session_string(const char *str);
 

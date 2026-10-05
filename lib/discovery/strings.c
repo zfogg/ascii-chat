@@ -250,7 +250,6 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
 
 bool is_session_string(const char *str) {
   if (!str || str[0] == '\0') {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL or empty");
     return false;
   }
 
@@ -258,13 +257,11 @@ bool is_session_string(const char *str) {
 
   // Check length bounds (min 4, max defined by SESSION_STRING_MAX_LEN)
   if (len < 4 || len > SESSION_STRING_MAX_LEN) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string length %zu outside valid range 4-%d", len, SESSION_STRING_MAX_LEN);
     return false;
   }
 
   // Session strings must be ASCII-only (homograph attack prevention)
   if (!utf8_is_ascii_only(str)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string contains non-ASCII characters");
     return false;
   }
 
@@ -288,8 +285,9 @@ bool is_session_string(const char *str) {
   pcre2_match_data_free(match_data);
 
   if (match_result < 0) {
-    // Format validation failed
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string format does not match pattern");
+    if (match_result != PCRE2_ERROR_NOMATCH) {
+      SET_ERRNO(ERROR_INTERNAL, "Session string PCRE2 matching failed: %d", match_result);
+    }
     return false;
   }
 
@@ -297,13 +295,11 @@ bool is_session_string(const char *str) {
   // Format is guaranteed to be: word-word-word where each word is 2-12 lowercase letters
   const char *hyphen1 = strchr(str, '-');
   if (!hyphen1) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string missing first hyphen");
     return false;
   }
 
   const char *hyphen2 = strchr(hyphen1 + 1, '-');
   if (!hyphen2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string missing second hyphen");
     return false;
   }
 
@@ -313,7 +309,6 @@ bool is_session_string(const char *str) {
   size_t noun2_len = len - (hyphen2 - str) - 1;
 
   if (adj_len >= 32 || noun1_len >= 32 || noun2_len >= 32) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string word length out of bounds");
     return false;
   }
 
@@ -335,7 +330,6 @@ bool is_session_string(const char *str) {
   word_cache_entry_t *adj_entry = NULL;
   HASH_FIND_STR(g_adjectives_cache, adj, adj_entry);
   if (!adj_entry) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string first word '%s' is not a valid adjective", adj);
     return false;
   }
 
@@ -343,14 +337,12 @@ bool is_session_string(const char *str) {
   word_cache_entry_t *noun_entry1 = NULL;
   HASH_FIND_STR(g_nouns_cache, noun1, noun_entry1);
   if (!noun_entry1) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string second word '%s' is not a valid noun", noun1);
     return false;
   }
 
   word_cache_entry_t *noun_entry2 = NULL;
   HASH_FIND_STR(g_nouns_cache, noun2, noun_entry2);
   if (!noun_entry2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string third word '%s' is not a valid noun", noun2);
     return false;
   }
 

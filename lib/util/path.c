@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/platform/system.h>
@@ -1001,10 +1002,13 @@ static bool is_existing_ascii_chat_log(const char *path) {
 
   // Read first line and check for ascii-chat log signature
   if (fgets(buffer, sizeof(buffer), f) != NULL) {
+    char plain[sizeof(buffer)];
+    strip_ansi_codes(buffer, plain, sizeof(plain));
+
     // ascii-chat logs start with timestamps like: [HH:MM:SS.microseconds] [LEVEL]
     // Pattern: [digit][digit]:[digit][digit]:[digit][digit].[digits]
-    if (buffer[0] == '[' && isdigit((unsigned char)buffer[1]) && isdigit((unsigned char)buffer[2]) &&
-        buffer[3] == ':') {
+    if (plain[0] == '[' && isdigit((unsigned char)plain[1]) && isdigit((unsigned char)plain[2]) &&
+        plain[3] == ':') {
       is_ascii_chat_log = true;
     }
   }
