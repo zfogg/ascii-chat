@@ -345,6 +345,36 @@ Test(recording, both_source_mixes_microphone_and_file_in_the_same_outgoing_block
   platform_delete_temp_file(path);
 }
 
+Test(recording, file_snapshot_ignores_capture_startup_delay, .timeout = 15) {
+  options_t options = *options_get();
+  options.snapshot_mode = true;
+  options.snapshot_delay = 3;
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+  extern uint64_t g_snapshot_actual_duration_ms;
+  extern uint64_t g_snapshot_last_capture_elapsed_ns;
+  g_snapshot_actual_duration_ms = 5700;
+  g_snapshot_last_capture_elapsed_ns = 2900000000ULL;
+  char path[1024];
+  int fd = -1;
+  cr_assert_eq(platform_create_temp_file(path, sizeof(path), "recording-snapshot", &fd), 0);
+  if (fd >= 0)
+    platform_close(fd);
+  audio_recording_destroy(recording);
+  recording = NULL;
+  render_file_ctx_t *render = NULL;
+  cr_assert_eq(render_file_create(path, 8, 4, 10, 0, &render), ASCIICHAT_OK);
+  for (int i = 0; i < 30; i++)
+    cr_assert_eq(render_file_write_frame(render, "hello", epoch + (uint64_t)i * 100000000ULL), ASCIICHAT_OK);
+  cr_assert_eq(render_file_destroy(render), ASCIICHAT_OK);
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  cr_assert_not_null(decoder);
+  cr_assert_float_eq(ffmpeg_decoder_get_duration(decoder), 3.0, 0.03);
+  ffmpeg_decoder_destroy(decoder);
+  platform_delete_temp_file(path);
+  g_snapshot_actual_duration_ms = 0;
+  g_snapshot_last_capture_elapsed_ns = 0;
+}
+
 Test(recording, live_recording_uses_elapsed_time_instead_of_received_frame_count, .timeout = 15) {
   char path[1024];
   int fd = -1;

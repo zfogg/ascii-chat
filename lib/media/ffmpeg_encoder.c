@@ -697,16 +697,16 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   // Normal file rendering is constant-frame-rate. Wall-clock capture timestamps
   // include scheduler jitter and can create gaps or duplicate PTS values, so use
-  // the encoded frame index for exact N / FPS duration. Snapshot mode is
-  // different: it intentionally captures for a wall-clock duration, and live
-  // sources may deliver fewer frames than the nominal FPS.
-  if (!snapshot_mode && !enc->live_timing) {
+  // the encoded frame index for exact N / FPS duration. File snapshots with
+  // audio use this same timeline, excluding capture initialization delays.
+  // Live sources preserve wall-clock gaps between received frames.
+  if ((!snapshot_mode || enc->has_audio_stream) && !enc->live_timing) {
     pts_from_timestamp = enc->frame_count;
   }
 
   // For snapshot sources without an estimated frame count, distribute frames
   // linearly across the actual duration once the capture duration is known.
-  if (snapshot_mode && !enc->live_timing && enc->estimated_frame_count == 0) {
+  if (snapshot_mode && !enc->has_audio_stream && !enc->live_timing && enc->estimated_frame_count == 0) {
     extern uint64_t g_snapshot_actual_duration_ms;
     extern uint64_t g_snapshot_last_capture_elapsed_ns;
     if (g_snapshot_actual_duration_ms > 0) {
@@ -777,7 +777,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     // In snapshot mode, apply adjusted duration if snapshot_actual_duration is set
     // This happens when we get the actual duration from the capture thread
     bool is_snapshot_mode = GET_OPTION(snapshot_mode);
-    if (is_snapshot_mode && enc->snapshot_actual_duration > 0 && enc->frame_count > 0) {
+    if (is_snapshot_mode && !enc->has_audio_stream && enc->snapshot_actual_duration > 0 && enc->frame_count > 0) {
       int64_t adjusted_dur = (int64_t)((enc->snapshot_actual_duration * enc->stream->time_base.den) / enc->frame_count);
       // Only apply if it's significantly different from the default
       if (adjusted_dur > enc->pkt->duration * 2) {
@@ -912,7 +912,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   int64_t adjusted_packet_duration = 0;
   double snapshot_delay = GET_OPTION(snapshot_delay);
 
-  if (snapshot_mode && !enc->live_timing && enc->frame_count > 0 && snapshot_delay > 0) {
+  if (snapshot_mode && !enc->has_audio_stream && !enc->live_timing && enc->frame_count > 0 && snapshot_delay > 0) {
     // Calculate output FPS that distributes frames across snapshot_delay seconds
     // output_fps = frame_count / snapshot_delay
     // packet_duration (in stream time_base) = stream_time_base.den / output_fps
@@ -983,7 +983,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   if (enc->stream && enc->frame_count > 0) {
     int64_t duration;
     bool snapshot_mode = GET_OPTION(snapshot_mode);
-    if (snapshot_mode && !enc->live_timing) {
+    if (snapshot_mode && !enc->has_audio_stream && !enc->live_timing) {
       extern uint64_t g_snapshot_actual_duration_ms;
       double snapshot_delay = GET_OPTION(snapshot_delay);
       // Use actual capture elapsed time if available, otherwise use snapshot_delay
