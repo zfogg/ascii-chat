@@ -214,6 +214,9 @@ runs:
       if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
       uses: codecov/codecov-action@v5
       with:
+        # The supported legacy endpoint has a valid certificate and accepts the same report.
+        url: https://codecov.io
+        use_legacy_upload_endpoint: true
         binary: ${{ steps.codecov-cli.outputs.binary }}
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-files }}
