@@ -219,8 +219,8 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   ctx.playback_only = true;
   audio_recording_destroy(recording);
   cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
-  audio_recording_start(recording, time_get_ns());
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
+  audio_recording_start(recording, time_get_ns());
   platform_sleep_ns(250000000ULL);
   cr_assert_gt(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
   float output[8192];
