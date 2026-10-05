@@ -455,12 +455,16 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
 
   if (result == 0) {
     // Connected immediately
+    if (socket_set_blocking(sockfd) != 0) {
+      return false;
+    }
     return true;
   }
 
   // Check if connection is in progress (expected for non-blocking sockets)
   int error = socket_get_last_error();
   if (!socket_is_in_progress_error(error) && !socket_is_would_block_error(error)) {
+    log_warn("TCP connection could not start (socket error %d)", error);
     return false;
   }
 
@@ -477,6 +481,8 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
 
   if (result <= 0) {
+    log_warn("TCP connection wait failed (result %d, socket error %d)", result,
+             result == 0 ? 0 : socket_get_last_error());
     return false; // Timeout or error
   }
 
@@ -493,6 +499,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   }
 
   if (error_code != 0) {
+    log_warn("TCP connection failed (socket error %d)", error_code);
     return false;
   }
 

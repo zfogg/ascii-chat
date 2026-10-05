@@ -10,5 +10,9 @@
     <!-- Optional: Request camera access -->
     <key>NSCameraUsageDescription</key>
     <string>This app needs access to the camera to capture video frames.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>ascii-chat uses your microphone for voice chat.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>ascii-chat connects to video and voice chat peers on your local network.</string>
 </dict>
 </plist>

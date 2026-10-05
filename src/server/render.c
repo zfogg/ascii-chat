@@ -358,7 +358,7 @@ void *client_video_render_thread(void *arg) {
 
   // Wait for client to send terminal capabilities before rendering
   // Without capabilities, convert_composite_to_ascii() will fail
-  int timeout_ms = 5000; // 5 second timeout
+  int timeout_ms = 5000;
   int waited_ms = 0;
   while (!client->has_terminal_caps && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     if (waited_ms == 0) {
@@ -368,8 +368,8 @@ void *client_video_render_thread(void *arg) {
     platform_sleep_ms(10);
     waited_ms += 10;
     if (waited_ms >= timeout_ms) {
-      log_warn("Timeout waiting for terminal capabilities from client %u (waited %dms)", thread_client_id, waited_ms);
-      return NULL; // Exit thread if capabilities never arrive
+      log_debug("Still waiting for terminal capabilities from client %s", thread_client_id);
+      waited_ms = 0;
     }
   }
   if (client->has_terminal_caps) {

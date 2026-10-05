@@ -95,11 +95,7 @@
  *
  * @ingroup network
  */
-#ifdef NDEBUG
 #define CONNECT_TIMEOUT 3
-#else
-#define CONNECT_TIMEOUT 1
-#endif
 
 /**
  * @brief Send timeout in seconds (5 seconds)

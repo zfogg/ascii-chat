@@ -246,6 +246,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   if (result != PACKET_RECV_SUCCESS) {
     if (result == PACKET_RECV_EOF) {
+      tcp->is_connected = false;
       log_warn("[TCP_RECV_STATE] ⚠️  RECV_EOF: Connection closed by remote (sockfd=%d)", tcp->sockfd);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed");
     } else if (result == PACKET_RECV_SECURITY_VIOLATION) {

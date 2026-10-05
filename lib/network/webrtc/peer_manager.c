@@ -538,16 +538,19 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
       continue;
     }
 
-    // Check if this peer's ICE gathering has timed out
-    if (webrtc_is_gathering_timed_out(peer->pc, timeout_ms)) {
+    // Failed connections need recovery even after candidate gathering completed.
+    webrtc_state_t connection_state = webrtc_get_state(peer->pc);
+    bool gathering_timed_out = webrtc_is_gathering_timed_out(peer->pc, timeout_ms);
+    if (connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED || gathering_timed_out) {
       webrtc_gathering_state_t state = webrtc_get_gathering_state(peer->pc);
 
-      log_error("ICE gathering timeout for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, state=%d)",
+      log_error("WebRTC negotiation failed for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, "
+                "gathering=%d, connection=%d)",
                 peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3],
-                timeout_ms, state);
+                timeout_ms, state, connection_state);
 
       // Call timeout callback if configured
-      if (manager->config.on_gathering_timeout) {
+      if (gathering_timed_out && manager->config.on_gathering_timeout) {
         manager->config.on_gathering_timeout(peer->participant_id, timeout_ms, timeout_ms, manager->config.user_data);
       }
 
