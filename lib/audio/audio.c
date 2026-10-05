@@ -363,8 +363,7 @@ static void *audio_worker_thread(void *arg) {
           audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, drain);
         }
 
-        // TODO: Add optional resampling here if input device rate != 48kHz
-        // For now, assume 48kHz (most common for professional audio)
+        // Capture samples are normalized to AUDIO_SAMPLE_RATE by the input callback.
 
         // Apply microphone sensitivity (volume control)
         float mic_sensitivity = GET_OPTION(microphone_sensitivity);
@@ -635,7 +634,8 @@ void resample_linear(const float *src, size_t src_samples, float *dst, size_t ds
  * - Signal worker (~0.1ms)
  * TOTAL: ~1.1ms ✓
  *
- * Resampling (if needed) is handled by worker thread, not here.
+ * Native-rate playback is converted to the device rate here with fixed-size,
+ * stateful interpolation; no allocation or locking is performed.
  */
 static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
@@ -674,8 +674,33 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 1: Read audio source
   size_t samples_read = 0;
   if (output) {
+    const bool resample_output = ctx->output_device_rate > 0.0 && ctx->output_device_rate != AUDIO_SAMPLE_RATE;
+    float source[AUDIO_FRAMES_PER_BUFFER * 8];
+    float *source_output = resample_output ? source : output;
+    size_t source_capacity = resample_output ? sizeof(source) / sizeof(source[0]) : num_samples;
+
+    if (resample_output && framesPerBuffer > AUDIO_FRAMES_PER_BUFFER) {
+      log_warn_every(LOG_RATE_FAST, "Output callback block too large to resample safely (%lu frames)", framesPerBuffer);
+      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+      cond_signal(&ctx->worker_cond);
+      return paContinue;
+    }
+
+    size_t source_request = num_samples;
+    if (resample_output) {
+      double step = (double)AUDIO_SAMPLE_RATE / ctx->output_device_rate;
+      double last_position = ctx->output_resample_phase + (double)(num_samples - 1) * step;
+      source_request = (last_position < 0.0) ? 1 : (size_t)floor(last_position) + 2;
+      if (source_request > source_capacity) {
+        log_warn_every(LOG_RATE_FAST, "Output resample request exceeds callback buffer (%zu samples)", source_request);
+        SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+        cond_signal(&ctx->worker_cond);
+        return paContinue;
+      }
+    }
+
     if (ctx->playback_buffer) {
-      samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+      samples_read = audio_ring_buffer_read(ctx->playback_buffer, source_output, source_request);
       if (output_cb_count <= 3) {
         log_warn("OUTPUT_CB: playback_buffer path, read %zu samples", samples_read);
       }
@@ -685,8 +710,60 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
     }
 
+    if (resample_output) {
+      float render_volume = GET_OPTION(speakers_volume);
+      if (render_volume < 0.0f) {
+        render_volume = 0.0f;
+      } else if (render_volume > 1.0f) {
+        render_volume = 1.0f;
+      }
+      if (render_volume != 1.0f) {
+        for (size_t i = 0; i < samples_read; i++) {
+          source[i] *= render_volume;
+        }
+      }
+
+      // Keep the AEC render reference in the pipeline's 48 kHz domain.
+      if (ctx->render_buffer && samples_read > 0) {
+        audio_ring_buffer_write(ctx->render_buffer, source, (int)samples_read);
+      }
+
+      double step = (double)AUDIO_SAMPLE_RATE / ctx->output_device_rate;
+      size_t generated = 0;
+      for (; generated < num_samples; generated++) {
+        double position = ctx->output_resample_phase + (double)generated * step;
+        float first;
+        float second;
+        double fraction;
+        if (position < 0.0) {
+          if (!ctx->output_resample_has_previous || samples_read == 0) {
+            break;
+          }
+          first = ctx->output_resample_previous;
+          second = source[0];
+          fraction = position + 1.0;
+        } else {
+          size_t index = (size_t)position;
+          if (index + 1 >= samples_read) {
+            break;
+          }
+          first = source[index];
+          second = source[index + 1];
+          fraction = position - (double)index;
+        }
+        output[generated] = (float)((1.0 - fraction) * first + fraction * second);
+      }
+
+      if (samples_read > 0) {
+        ctx->output_resample_phase += (double)generated * step - (double)samples_read;
+        ctx->output_resample_previous = source[samples_read - 1];
+        ctx->output_resample_has_previous = true;
+      }
+      samples_read = generated;
+    }
+
     // Apply speaker volume control
-    if (samples_read > 0) {
+    if (samples_read > 0 && !resample_output) {
       float speaker_volume = GET_OPTION(speakers_volume);
       // Clamp to valid range [0.0, 1.0]
       if (speaker_volume < 0.0f) {
@@ -711,7 +788,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     }
 
     // STEP 2: Copy to render buffer for input callback (AEC3 reference)
-    if (ctx->render_buffer && samples_read > 0) {
+    if (!resample_output && ctx->render_buffer && samples_read > 0) {
       audio_ring_buffer_write(ctx->render_buffer, output, (int)samples_read);
     }
   }
@@ -726,15 +803,63 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
  * Separate input callback - handles capture only (separate streams mode).
  *
  * NEW ARCHITECTURE (Real-Time Safe):
- * - Copy raw mic → worker (~0.5ms)
+ * - Convert native-rate mic to 48 kHz and copy to worker (~0.5ms)
  * - Read render reference from render_buffer (~0.5ms)
  * - Copy render → worker (~0.5ms)
  * - Signal worker (~0.1ms)
  * TOTAL: ~1.6ms ✓
  *
  * AEC3 processing (with render reference) is handled by worker thread.
- * No alloca, no static buffers, no resampling, no sqrt() - all in worker.
+ * Resampling uses bounded stack buffers and persistent per-context phase state.
  */
+static size_t resample_capture_block(audio_context_t *ctx, const float *input, size_t input_samples, float *output,
+                                     size_t output_capacity) {
+  if (!ctx || !input || !output || input_samples == 0 || ctx->input_device_rate <= 0.0) {
+    return 0;
+  }
+
+  const double step = ctx->input_device_rate / AUDIO_SAMPLE_RATE;
+  double position = ctx->input_resample_phase;
+  size_t produced = 0;
+
+  // The previous block's last sample is the sample immediately before input[0].
+  // Retaining position and that sample avoids restarting interpolation at each
+  // PortAudio callback boundary and preserves the long-term sample-rate ratio.
+  while (position < (double)input_samples) {
+    float first;
+    float second;
+    double fraction;
+    if (position < 0.0) {
+      if (!ctx->input_resample_has_previous) {
+        position += step;
+        continue;
+      }
+      first = ctx->input_resample_previous;
+      second = input[0];
+      fraction = position + 1.0;
+    } else {
+      size_t index = (size_t)position;
+      if (index + 1 >= input_samples) {
+        break; // Keep the endpoint for interpolation with the next callback.
+      }
+      first = input[index];
+      second = input[index + 1];
+      fraction = position - (double)index;
+    }
+
+    if (produced == output_capacity) {
+      return 0;
+    }
+    output[produced++] = (float)((1.0 - fraction) * first + fraction * second);
+    position += step;
+  }
+
+  ctx->input_resample_phase = position - (double)input_samples;
+  ctx->input_resample_previous = input[input_samples - 1];
+  ctx->input_resample_has_previous = true;
+  return produced;
+}
+
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
   (void)outputBuffer;
@@ -781,7 +906,26 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   // STEP 1: Copy raw mic samples → worker for AEC3 processing
   // Skip microphone capture in playback-only mode (mirror)
   if (!ctx->playback_only && input && ctx->raw_capture_rb) {
-    audio_ring_buffer_write(ctx->raw_capture_rb, input, (int)num_samples);
+    const float *capture = input;
+    size_t capture_samples = num_samples;
+    float normalized[AUDIO_FRAMES_PER_BUFFER * 8];
+    if (ctx->input_device_rate > 0.0 && ctx->input_device_rate != AUDIO_SAMPLE_RATE) {
+      // PortAudio delivers frames at the native stream rate. Convert them to
+      // the pipeline's fixed 48 kHz clock before AEC3/Opus.
+      size_t output_samples = resample_capture_block(ctx, input, num_samples, normalized,
+                                                     sizeof(normalized) / sizeof(normalized[0]));
+      if (output_samples == 0) {
+        log_warn_every(LOG_RATE_FAST, "Input callback block too large to resample safely (%zu samples)", num_samples);
+        cond_signal(&ctx->worker_cond);
+        return paContinue;
+      }
+      capture = normalized;
+      capture_samples = output_samples;
+    }
+    audio_ring_buffer_write(ctx->raw_capture_rb, capture, (int)capture_samples);
+
+    // Keep the render reference in the same 48 kHz sample domain as capture.
+    num_samples = capture_samples;
   }
 
   // STEP 2: Read render reference from render_buffer and copy to worker
@@ -791,7 +935,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
     size_t render_available = audio_ring_buffer_available_read(ctx->render_buffer);
     if (render_available >= num_samples) {
       // Read exactly what we need
-      float render_temp[AUDIO_BUFFER_SIZE]; // Stack allocation OK - fixed small size
+      float render_temp[AUDIO_FRAMES_PER_BUFFER * 8]; // Allows the converted 48 kHz callback block.
       size_t render_read = audio_ring_buffer_read(ctx->render_buffer, render_temp, num_samples);
       if (render_read > 0) {
         audio_ring_buffer_write(ctx->raw_render_rb, render_temp, (int)render_read);
@@ -1516,9 +1660,13 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     log_debug("  Output: None (input-only mode - will send audio to server)");
   }
 
-  // Check if sample rates differ - ALSA full-duplex doesn't handle this well
-  // If no input or no output, always use separate streams
-  bool rates_differ = has_input && has_output && (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate);
+  // Keep both device streams native and convert in the callbacks whenever a
+  // device does not run at the pipeline rate. A single 48 kHz duplex stream is
+  // used only when both devices natively support that rate.
+  bool rates_differ = has_input && has_output &&
+                      (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate ||
+                       inputInfo->defaultSampleRate != AUDIO_SAMPLE_RATE ||
+                       outputInfo->defaultSampleRate != AUDIO_SAMPLE_RATE);
   bool try_separate = rates_differ || !has_input || !has_output;
   PaError err = paNoError;
 
@@ -1544,12 +1692,11 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   if (try_separate) {
-    // Fall back to separate streams (needed when sample rates differ or input-only/playback-only mode)
+    // Use separate streams for non-48 kHz devices and single-direction modes.
     if (has_output && has_input) {
-      log_info("Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)",
+      log_info("Using separate native-rate input/output streams (%.0f Hz in, %.0f Hz out)",
                inputInfo->defaultSampleRate, outputInfo->defaultSampleRate);
-      log_info("  Will resample: buffer at %.0f Hz → output at %.0f Hz", (double)AUDIO_SAMPLE_RATE,
-               outputInfo->defaultSampleRate);
+      log_info("  Converting between device rates and the %.0f Hz audio pipeline", (double)AUDIO_SAMPLE_RATE);
     } else if (has_output) {
       log_debug("Using output-only mode (playback-only for mirror/media)");
     } else if (has_input) {
@@ -1569,12 +1716,15 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     bool output_ok = false;
     double actual_output_rate = 0;
     if (has_output) {
-      // Try to use AUDIO_SAMPLE_RATE (48kHz) first for best quality and duplex compatibility
-      // Fall back to native rate if 48kHz not supported
-      double preferred_rate = AUDIO_SAMPLE_RATE;
+      // Use the device's native rate first so conversion stays explicit and stateful.
       double native_rate = outputInfo->defaultSampleRate;
+      if (native_rate <= 0.0) {
+        native_rate = AUDIO_SAMPLE_RATE;
+      }
+      double preferred_rate = native_rate;
+      double fallback_rate = (preferred_rate == AUDIO_SAMPLE_RATE) ? native_rate : AUDIO_SAMPLE_RATE;
 
-      log_debug("Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)", preferred_rate, native_rate);
+      log_debug("Attempting output at native rate %.0f Hz (fallback %.0f Hz)", preferred_rate, fallback_rate);
 
       // Always use output_callback for output streams (both output-only and duplex modes)
       // PortAudio will invoke the callback whenever it needs audio data
@@ -1590,10 +1740,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       if (err == paNoError) {
         actual_output_rate = preferred_rate;
         output_ok = true;
-        log_info("✓ Output opened at preferred rate: %.0f Hz (matches input - optimal!)", preferred_rate);
+        log_info("Output stream opened at %.0f Hz", preferred_rate);
       } else {
-        log_warn("Failed to open output at %.0f Hz: %s, trying native rate %.0f Hz", preferred_rate,
-                 Pa_GetErrorText(err), native_rate);
+        log_warn("Failed to open output at %.0f Hz: %s, trying %.0f Hz", preferred_rate, Pa_GetErrorText(err),
+                 fallback_rate);
 
         // If first Pa_OpenStream call left a partial stream, clean it up before retrying
         if (ctx->output_stream) {
@@ -1602,18 +1752,18 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
           ctx->output_stream = NULL;
         }
 
-        // Fall back to native rate (still using blocking mode for output-only)
+        // Try the other endpoint rate if the native rate is unavailable.
         LOG_IO("portaudio", {
-          err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                              callback, ctx);
+          err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, fallback_rate, AUDIO_FRAMES_PER_BUFFER,
+                              paClipOff, callback, ctx);
         });
 
         if (err == paNoError) {
-          actual_output_rate = native_rate;
+          actual_output_rate = fallback_rate;
           output_ok = true;
-          log_info("✓ Output opened at native rate: %.0f Hz (will need resampling)", native_rate);
+          log_info("Output stream opened at fallback rate %.0f Hz", fallback_rate);
         } else {
-          log_warn("Failed to open output stream at native rate: %s", Pa_GetErrorText(err));
+          log_warn("Failed to open output stream at fallback rate %.0f Hz: %s", fallback_rate, Pa_GetErrorText(err));
           // Clean up if fallback also failed
           if (ctx->output_stream) {
             log_debug("Closing partially-opened output stream from failed native rate");
@@ -1626,6 +1776,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       // Store actual output rate for resampling
       if (output_ok) {
         ctx->output_device_rate = actual_output_rate;
+        ctx->output_resample_phase = 0.0;
+        ctx->output_resample_previous = 0.0f;
+        ctx->output_resample_has_previous = false;
         if (actual_output_rate != AUDIO_SAMPLE_RATE) {
           log_warn("⚠️  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used",
                    actual_output_rate, (double)AUDIO_SAMPLE_RATE);
@@ -1636,14 +1789,24 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     // Open input stream only if we have input (skip for playback-only mode)
     bool input_ok = !has_input; // If no input, mark as OK (skip)
     if (has_input) {
-      // Use pipeline sample rate (AUDIO_SAMPLE_RATE)
-      // In input-only mode, we don't need to match output device rate
-      double input_stream_rate = AUDIO_SAMPLE_RATE;
+      // Open at the device's native rate. The separate input callback converts
+      // to AUDIO_SAMPLE_RATE before samples enter the shared processing path.
+      double input_stream_rate = inputInfo->defaultSampleRate;
+      if (input_stream_rate <= 0.0) {
+        input_stream_rate = AUDIO_SAMPLE_RATE;
+      }
       LOG_IO("portaudio", {
         err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER,
                             paClipOff, input_callback, ctx);
       });
       input_ok = (err == paNoError);
+      if (input_ok) {
+        ctx->input_device_rate = input_stream_rate;
+        ctx->input_resample_phase = 0.0;
+        ctx->input_resample_previous = 0.0f;
+        ctx->input_resample_has_previous = false;
+        log_info("Input stream opened at native rate %.0f Hz", input_stream_rate);
+      }
 
       // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
       if (!input_ok) {

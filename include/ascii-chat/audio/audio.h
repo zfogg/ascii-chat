@@ -105,12 +105,13 @@
  *
  * WORKER THREAD ARCHITECTURE:
  * The audio system now uses a dedicated worker thread to move ALL heavy
- * processing (AEC3, resampling, RMS calculations) out of the real-time
+ * processing (AEC3 and RMS calculations) out of the real-time
  * PortAudio callbacks. This ensures callbacks complete in <2ms (was 50-80ms).
  *
  * Architecture:
  * - PortAudio Callback (Real-Time, <2ms): Lock-free ring buffer copies only
- * - Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters, resampling)
+ * - Audio callbacks: Bounded stateful sample-rate conversion when device rates differ
+ * - Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters)
  *
  * Ring Buffers:
  * - raw_capture_rb: Callback → Worker (raw mic samples)
@@ -141,7 +142,7 @@ typedef struct {
   audio_ring_buffer_t *playback_buffer; ///< OLD: Network → Worker (will become network_playback_rb)
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
 
-  // Worker thread for heavy processing (AEC3, resampling, filters)
+  // Worker thread for heavy processing (AEC3, filters)
   asciichat_thread_t worker_thread; ///< Worker thread for audio processing
   mutex_t worker_mutex;             ///< Mutex protecting worker state
   cond_t worker_cond;               ///< Condition variable for worker signaling
@@ -168,6 +169,12 @@ typedef struct {
   double sample_rate;         ///< Actual sample rate of streams (48kHz)
   double input_device_rate;   ///< Native sample rate of input device
   double output_device_rate;  ///< Native sample rate of output device
+  double input_resample_phase; ///< Source position carried between native-rate input blocks
+  float input_resample_previous; ///< Last input sample used at a block boundary
+  bool input_resample_has_previous; ///< Whether a prior input block has been processed
+  double output_resample_phase; ///< 48 kHz source position carried between output callbacks
+  float output_resample_previous; ///< Last source sample used at an output boundary
+  bool output_resample_has_previous; ///< Whether a prior output block has been processed
 } audio_context_t;
 
 /* ============================================================================
