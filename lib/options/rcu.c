@@ -214,6 +214,7 @@ static const options_t g_default_options = (options_t){
     // ========================================================================
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
     .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
+    .waveform = false,
     .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
     .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
     .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
@@ -955,6 +956,8 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->status_screen = ctx->value;
   else if (strcmp(ctx->field_name, "matrix_rain") == 0)
     opts->matrix_rain = ctx->value;
+  else if (strcmp(ctx->field_name, "waveform") == 0)
+    opts->waveform = ctx->value;
   else if (strcmp(ctx->field_name, "fps_counter") == 0)
     opts->fps_counter = ctx->value;
 }
@@ -986,7 +989,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
       strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0 &&
       strcmp(field_name, "splash_screen") != 0 && strcmp(field_name, "status_screen") != 0 &&
-      strcmp(field_name, "matrix_rain") != 0 && strcmp(field_name, "fps_counter") != 0) {
+      strcmp(field_name, "matrix_rain") != 0 && strcmp(field_name, "fps_counter") != 0 &&
+      strcmp(field_name, "waveform") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }
@@ -1009,6 +1013,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       cur_value = cur->test_pattern;
     else if (strcmp(field_name, "matrix_rain") == 0)
       cur_value = cur->matrix_rain;
+    else if (strcmp(field_name, "waveform") == 0)
+      cur_value = cur->waveform;
     else if (strcmp(field_name, "fps_counter") == 0)
       cur_value = cur->fps_counter;
     else if (strcmp(field_name, "splash_screen") == 0)
@@ -1105,6 +1111,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       temp.status_screen = value;
     else if (strcmp(field_name, "matrix_rain") == 0)
       temp.matrix_rain = value;
+    else if (strcmp(field_name, "waveform") == 0)
+      temp.waveform = value;
     else if (strcmp(field_name, "fps_counter") == 0)
       temp.fps_counter = value;
 

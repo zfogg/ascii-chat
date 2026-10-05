@@ -402,6 +402,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Display & Screen Conflicts
   // ============================================================================
+  options_builder_add_dependency_conflicts(b, "waveform", "matrix",
+                                           "Option --waveform cannot be used with --matrix");
 
   // ============================================================================
   // Requirements (dependencies that must be satisfied)

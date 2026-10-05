@@ -798,6 +798,14 @@ add_library(ascii-chat-shared SHARED
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
+    if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
+        # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
+        # generated import-library path to the .lib path passed to lld-link.
+        set_target_properties(ascii-chat-shared PROPERTIES
+            IMPORT_PREFIX ""
+            IMPORT_SUFFIX ".lib"
+        )
+    endif()
     if(WIN32 AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # GNU-style Clang embeds the DLL name in the import library. Keep the
         # runtime DLL name aligned with that embedded name on Windows.

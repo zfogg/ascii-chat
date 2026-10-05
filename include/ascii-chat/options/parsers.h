@@ -305,7 +305,7 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg);
 
 /**
  * @brief Parse audio source option (--audio-source)
- * @param arg String argument (e.g., "auto", "mic", "media", "both")
+ * @param arg String argument (e.g., "auto", "mic", "media", "both", "remote")
  * @param dest Destination pointer (audio_source_t*)
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
@@ -317,5 +317,6 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg);
  * - "mic" - Microphone only (AUDIO_SOURCE_MIC)
  * - "media" - Media only (AUDIO_SOURCE_MEDIA)
  * - "both" - Both microphone and media (AUDIO_SOURCE_BOTH)
+ * - "remote" - Received network audio only (AUDIO_SOURCE_REMOTE)
  */
 bool parse_audio_source(const char *arg, void *dest, char **error_msg);

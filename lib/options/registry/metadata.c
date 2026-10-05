@@ -152,11 +152,13 @@ const char *g_render_theme_descs[] = {"Dark background (black), light text", "Li
 // ============================================================================
 
 const char *g_audio_source_values[] = {OPT_AUDIO_SOURCE_AUTO, OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA,
-                                       OPT_AUDIO_SOURCE_BOTH, NULL};
-const int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH};
+                                       OPT_AUDIO_SOURCE_BOTH, OPT_AUDIO_SOURCE_REMOTE, NULL};
+const int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH,
+                                      AUDIO_SOURCE_REMOTE};
 const char *g_audio_source_descs[] = {"Smart selection (media-only when playing files, mic-only otherwise)",
                                       "Microphone only (no media audio)", "Media audio only (no microphone)",
-                                      "Both microphone and media audio simultaneously", NULL};
+                                      "Both microphone and media audio simultaneously",
+                                      "Received network audio only; disables local microphone and media capture", NULL};
 
 // ============================================================================
 // Log Format Output Type Metadata (--log-format flag values)

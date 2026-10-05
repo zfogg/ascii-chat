@@ -125,6 +125,7 @@ bool options_is_enum_option(const char *option_name);
 #define OPT_AUDIO_SOURCE_MIC   "mic"
 #define OPT_AUDIO_SOURCE_MEDIA "media"
 #define OPT_AUDIO_SOURCE_BOTH  "both"
+#define OPT_AUDIO_SOURCE_REMOTE "remote"
 
 #ifdef __cplusplus
 }

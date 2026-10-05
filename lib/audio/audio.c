@@ -6,6 +6,7 @@
  */
 
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/visualization.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/util/endian.h>
@@ -104,10 +105,12 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
   uint64_t duration = count * 1000000000ULL / 48000;
   uint64_t block_start = now > duration ? now - duration : 0;
   audio_recording_submit(AUDIO_RECORDING_MIC, samples, count, block_start);
+  audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, count);
   if (use_media) {
     float media[WORKER_BATCH_SAMPLES];
     size_t read = media_source_read_audio(ctx->capture_media_source, media, count);
     audio_recording_submit(AUDIO_RECORDING_MEDIA, media, read, block_start);
+    audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, read);
     for (size_t i = 0; i < read; i++)
       samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i] + media[i]));
     if (ctx->monitor_local_media)
@@ -248,7 +251,8 @@ static void *audio_worker_thread(void *arg) {
 
     bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
     audio_source_t selection = GET_OPTION(audio_source);
-    bool use_media = has_media && selection != AUDIO_SOURCE_MIC;
+    bool use_media = has_media && (selection == AUDIO_SOURCE_AUTO || selection == AUDIO_SOURCE_MEDIA ||
+                                   selection == AUDIO_SOURCE_BOTH);
     bool use_mic = audio_should_enable_microphone(selection, has_media);
     if (use_media && !use_mic) {
       uint64_t now = time_get_ns();
@@ -261,6 +265,7 @@ static void *audio_worker_thread(void *arg) {
           memset(media + read, 0, (count - read) * sizeof(float));
         audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
                                media_start_ns + media_samples * 1000000000ULL / 48000);
+        audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, count);
         audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
         if (ctx->monitor_local_media)
           audio_ring_buffer_write(ctx->playback_buffer, media, (int)count);
@@ -2067,6 +2072,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
   }
 
   audio_recording_submit(AUDIO_RECORDING_REMOTE, buffer, num_samples, time_get_ns());
+  audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_REMOTE, buffer, (size_t)num_samples);
   asciichat_error_t result = audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
 
   return result;
@@ -2297,6 +2303,9 @@ bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio)
 
   case AUDIO_SOURCE_BOTH:
     return true;
+
+  case AUDIO_SOURCE_REMOTE:
+    return false;
 
   default:
     return !has_media_audio;

@@ -152,7 +152,7 @@ const registry_entry_t g_audio_entries[] = {
      offsetof(options_t, audio_source),
      &default_audio_source_value,
      sizeof(audio_source_t),
-     "Select which audio sources to use: auto (smart), mic, media, or both.",
+     "Select which audio source to use: auto, mic, media, both, or remote (received network audio only).",
      "AUDIO",
      NULL,
      false,

@@ -832,7 +832,7 @@ void audio_flush_playback_buffers(audio_context_t *ctx);
  * @brief Determine if microphone should be enabled based on audio source setting and media state
  *
  * Smart helper function for determining microphone input availability based on:
- * - User's --audio-source preference (auto, microphone, media, both)
+ * - User's --audio-source preference (auto, microphone, media, both, remote)
  * - Whether media audio is currently being played (--file or --url)
  *
  * @param source Audio source preference from --audio-source option
@@ -845,6 +845,7 @@ void audio_flush_playback_buffers(audio_context_t *ctx);
  * - AUDIO_SOURCE_MICROPHONE: Always enable microphone (ignore media state)
  * - AUDIO_SOURCE_MEDIA: Never enable microphone (media-only)
  * - AUDIO_SOURCE_BOTH: Always enable microphone (allow simultaneous capture)
+ * - AUDIO_SOURCE_REMOTE: Disable microphone and local media capture
  *
  * Usage:
  * @code

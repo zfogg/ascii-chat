@@ -19,6 +19,24 @@
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
 const registry_entry_t g_display_entries[] = {
+    {"waveform",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, waveform),
+     &default_waveform_value,
+     sizeof(bool),
+     "Replace the video image with a live waveform of the source selected by --audio-source.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_WAVEFORM",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
     // DISPLAY GROUP (client, mirror, discovery)
     {"color-filter",
      '\0',
