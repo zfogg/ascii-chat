@@ -188,6 +188,39 @@ Test(recording, small_audio_blocks_preserve_every_decoded_sample_until_end) {
   platform_delete_temp_file(path);
 }
 
+Test(recording, small_audio_blocks_preserve_resampled_duration_and_tone) {
+  char path[1024];
+  int fd = -1;
+  cr_assert_eq(platform_create_temp_file(path, sizeof(path), "recording-resampled", &fd), 0);
+  if (fd >= 0)
+    platform_close(fd);
+  wav_writer_t *writer = wav_writer_open(path, 44100, 1);
+  cr_assert_not_null(writer);
+  float tone[44100];
+  for (int i = 0; i < 44100; i++)
+    tone[i] = 0.25f * sinf((float)i * (float)(2.0 * M_PI * 440.0 / 44100.0));
+  cr_assert_eq(wav_writer_write(writer, tone, 44100), 0);
+  wav_writer_close(writer);
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  cr_assert_not_null(decoder);
+  float samples[288];
+  size_t total = 0, count;
+  double real = 0, imag = 0;
+  while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 288)) > 0) {
+    for (size_t i = 0; i < count; i++) {
+      double phase = 2.0 * M_PI * 440.0 * (double)(total + i) / 48000.0;
+      real += samples[i] * cos(phase);
+      imag += samples[i] * sin(phase);
+    }
+    total += count;
+    cr_assert_leq(total, 48100);
+  }
+  cr_assert_eq(total, 48000);
+  cr_assert_gt(2.0 * hypot(real, imag) / (double)total, 0.24);
+  ffmpeg_decoder_destroy(decoder);
+  platform_delete_temp_file(path);
+}
+
 Test(recording, audio_only_file_selects_webcam_without_opening_it_during_probe) {
   webcam_starts = 0;
   char path[1024];

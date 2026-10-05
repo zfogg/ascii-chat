@@ -1378,6 +1378,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     decoder->audio_buffer_offset -= to_copy;
 
     if (samples_written >= num_samples) {
+      decoder->audio_samples_read += samples_written;
       return samples_written;
     }
   }
@@ -1387,13 +1388,6 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
 
   // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
   mutex_lock(&decoder->read_frame_mutex);
-
-  // A decoded packet can exceed a callback's requested block. Drain its
-  // resampled output before reading another packet or declaring end of input.
-  uint8_t *buffered_output = (uint8_t *)(buffer + samples_written);
-  int buffered_samples = swr_convert(decoder->swr_ctx, &buffered_output, (int)(num_samples - samples_written), NULL, 0);
-  if (buffered_samples > 0)
-    samples_written += (size_t)buffered_samples;
 
   while (samples_written < num_samples) {
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
@@ -1439,16 +1433,22 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       decoder->last_audio_pts =
           get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->audio_stream_idx]->time_base);
 
-      // Resample to target format
-      float *out_buf = buffer + samples_written;
-      int out_samples = (int)(num_samples - samples_written);
-
-      uint8_t *out_ptr = (uint8_t *)out_buf;
-      int converted = swr_convert(decoder->swr_ctx, &out_ptr, out_samples, (const uint8_t **)decoder->frame->data,
-                                  decoder->frame->nb_samples);
+      // Resample the complete frame and retain output beyond this callback's
+      // requested block. Flushing the resampler between packets would insert
+      // padding into inputs whose sample rate differs from the output rate.
+      uint8_t *out_ptr = (uint8_t *)decoder->audio_buffer;
+      int converted = swr_convert(decoder->swr_ctx, &out_ptr, (int)decoder->audio_buffer_size,
+                                  (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
 
       if (converted > 0) {
-        samples_written += (size_t)converted;
+        size_t available = (size_t)converted;
+        size_t remaining = num_samples - samples_written;
+        size_t to_copy = available < remaining ? available : remaining;
+        memcpy(buffer + samples_written, decoder->audio_buffer, to_copy * sizeof(float));
+        samples_written += to_copy;
+        decoder->audio_buffer_offset = available - to_copy;
+        if (decoder->audio_buffer_offset > 0)
+          memmove(decoder->audio_buffer, decoder->audio_buffer + to_copy, decoder->audio_buffer_offset * sizeof(float));
       }
 
       if (samples_written >= num_samples) {
@@ -1463,7 +1463,7 @@ audio_read_done:
 
   // Flush resampler buffer if we haven't filled the full request
   // The resampler may have buffered samples that need to be output
-  if (samples_written < num_samples) {
+  if (samples_written < num_samples && decoder->eof_reached) {
     int remaining_space = (int)(num_samples - samples_written);
     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
     int flushed = swr_convert(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
