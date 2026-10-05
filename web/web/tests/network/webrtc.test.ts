@@ -22,6 +22,48 @@ function packet(length: number) {
 }
 
 describe("WebRTC ACIP framing", () => {
+  it("replaces stale unsent raw video while preserving control packets", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", {
+      value: 300000,
+      writable: true,
+    });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
+    const oldFrame = packet(100),
+      control = packet(12),
+      newest = packet(200);
+    bridge.send(oldFrame, true);
+    bridge.send(control);
+    bridge.send(newest, true);
+    Object.defineProperty(dc, "bufferedAmount", { value: 0 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    expect(vi.mocked(dc.send).mock.calls.map((call) => call[0])).toEqual([
+      control,
+      newest,
+    ]);
+  });
+  it("finishes a partially sent frame before transmitting the newest frame", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", { value: 0, writable: true });
+    vi.mocked(dc.send).mockImplementation(() => {
+      Object.defineProperty(dc, "bufferedAmount", { value: 300000 });
+    });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn(), 8192);
+    const first = packet(12000),
+      stale = packet(100),
+      newest = packet(200);
+    bridge.send(first, true);
+    bridge.send(stale, true);
+    bridge.send(newest, true);
+    vi.mocked(dc.send).mockImplementation(() => {});
+    Object.defineProperty(dc, "bufferedAmount", { value: 0 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    expect(vi.mocked(dc.send).mock.calls.map((call) => call[0])).toEqual([
+      first.slice(0, 8192),
+      first.slice(8192),
+      newest,
+    ]);
+  });
   it("reassembles split headers and coalesced packets", () => {
     const dc = channel(),
       received = vi.fn(),

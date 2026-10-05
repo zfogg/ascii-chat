@@ -3,7 +3,11 @@ import type { PacketTransport } from "./Transport";
 /** ACIP uses the same byte stream framing on native DataChannels and WebSockets. */
 export class WebRTCBridge implements PacketTransport {
   private pending = new Uint8Array(0);
-  private queue: Uint8Array[] = [];
+  private queue: Array<{
+    packet: Uint8Array;
+    offset: number;
+    replaceable: boolean;
+  }> = [];
   private queuedBytes = 0;
   private readonly limit = 8 * 1024 * 1024;
   private closed = false;
@@ -45,24 +49,27 @@ export class WebRTCBridge implements PacketTransport {
       this.onError(new Error("WebRTC DataChannel failed"));
   }
 
-  send(packet: Uint8Array): void {
+  send(packet: Uint8Array, replaceable = false): void {
     if (!this.isConnected()) throw new Error("WebRTC DataChannel is not open");
+    if (replaceable) {
+      // Only whole, unsent raw frames can be replaced. A partially transmitted
+      // ACIP packet must finish to preserve framing, and control packets stay.
+      this.queue = this.queue.filter((entry) => {
+        if (entry.replaceable && entry.offset === 0) {
+          this.queuedBytes -= entry.packet.length;
+          return false;
+        }
+        return true;
+      });
+    }
     if (
       this.queuedBytes + this.channel.bufferedAmount + packet.length >
       this.limit
     ) {
       throw new Error("WebRTC send buffer is full");
     }
-    // Small messages work with native SCTP implementations and negotiated browser limits.
-    const chunkSize = Math.max(
-      1,
-      Math.min(16384, this.maxMessageSize || 16384),
-    );
-    for (let offset = 0; offset < packet.length; offset += chunkSize) {
-      const chunk = packet.slice(offset, offset + chunkSize);
-      this.queue.push(chunk);
-      this.queuedBytes += chunk.length;
-    }
+    this.queue.push({ packet, offset: 0, replaceable });
+    this.queuedBytes += packet.length;
     this.flush();
   }
 
@@ -70,9 +77,19 @@ export class WebRTCBridge implements PacketTransport {
     if (!this.isConnected()) return;
     try {
       while (this.queue.length && this.channel.bufferedAmount < 262144) {
-        const chunk = this.queue.shift()!;
+        const entry = this.queue[0]!;
+        const chunkSize = Math.max(
+          1,
+          Math.min(16384, this.maxMessageSize || 16384),
+        );
+        const chunk = entry.packet.slice(
+          entry.offset,
+          entry.offset + chunkSize,
+        );
+        this.channel.send(chunk);
+        entry.offset += chunk.length;
         this.queuedBytes -= chunk.length;
-        this.channel.send(new Uint8Array(chunk));
+        if (entry.offset === entry.packet.length) this.queue.shift();
       }
     } catch (error) {
       this.onError(error instanceof Error ? error : new Error(String(error)));

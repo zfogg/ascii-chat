@@ -1668,13 +1668,17 @@ void *client_dispatch_thread(void *arg) {
   log_info("DISPATCH_THREAD: Started for client %s", client_id);
 
   uint64_t dispatch_loop_count = 0;
+  queued_packet_t *deferred_packet = NULL;
 
   while (!atomic_load_bool(&g_should_exit) && atomic_load_bool(&client->dispatch_thread_running)) {
     dispatch_loop_count++;
     // Try to dequeue next packet (non-blocking)
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
     uint64_t dequeue_start = time_get_ns();
-    queued_packet_t *queued_pkt = packet_queue_try_dequeue(client->received_packet_queue);
+    mutex_lock(&client->client_state_mutex);
+    queued_packet_t *queued_pkt = deferred_packet ? deferred_packet
+                                                : packet_queue_try_dequeue(client->received_packet_queue);
+    deferred_packet = NULL;
     uint64_t dequeue_end = time_get_ns();
 
     if (!queued_pkt) {
@@ -1682,10 +1686,24 @@ void *client_dispatch_thread(void *arg) {
       // Use 100ms timeout to handle cases where signal is missed due to race conditions
       log_dev_every(5 * US_PER_MS_INT, "🔄 DISPATCH_LOOP[%llu]: Queue empty after %.1fμs, waiting for signal",
                     (unsigned long long)dispatch_loop_count, (dequeue_end - dequeue_start) / 1000.0);
-      mutex_lock(&client->client_state_mutex);
       cond_timedwait(&client->dispatch_queue_cond, &client->client_state_mutex, 100 * 1000 * 1000); // 100ms timeout
       mutex_unlock(&client->client_state_mutex);
       continue;
+    }
+    mutex_unlock(&client->client_state_mutex);
+
+    // Raw frames are independent snapshots. Process the newest consecutive
+    // snapshot after a stall, preserving control and encoded packet order.
+    for (size_t skipped = 0; skipped < 128 && NET_TO_HOST_U16(queued_pkt->header.type) == PACKET_TYPE_IMAGE_FRAME;
+         skipped++) {
+      queued_packet_t *next = packet_queue_try_dequeue(client->received_packet_queue);
+      if (!next) break;
+      if (NET_TO_HOST_U16(next->header.type) != PACKET_TYPE_IMAGE_FRAME) {
+        deferred_packet = next;
+        break;
+      }
+      packet_queue_free_packet(queued_pkt);
+      queued_pkt = next;
     }
 
     // Frame received! Log it immediately
@@ -1808,6 +1826,7 @@ void *client_dispatch_thread(void *arg) {
     packet_queue_free_packet(queued_pkt);
   }
 
+  packet_queue_free_packet(deferred_packet);
   log_info("DISPATCH_THREAD: Exiting for client %s", client_id);
   return NULL;
 }
@@ -2000,8 +2019,12 @@ void *client_receive_thread(void *arg) {
       // The entire buffer (allocated_buffer) contains the full packet
       // copy_data=false because we want to transfer ownership to the queue
       uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
+      // Pair queue publication and notification with the dispatch wait lock.
+      mutex_lock(&client->client_state_mutex);
       int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
                                                 client_id_hash, false);
+      if (enqueue_result >= 0) cond_signal(&client->dispatch_queue_cond);
+      mutex_unlock(&client->client_state_mutex);
 
       if (enqueue_result < 0) {
         log_error("🔴 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
@@ -2012,8 +2035,6 @@ void *client_receive_thread(void *arg) {
       } else {
         log_info("✅ RECV_THREAD[%s]: Successfully queued packet (type=%d, len=%zu)", client->client_id, pkt_type,
                  packet_len);
-        // Signal dispatch thread to wake up and process the newly queued packet
-        cond_signal(&client->dispatch_queue_cond);
       }
     }
   }
@@ -2424,8 +2445,8 @@ void *client_send_thread_func(void *arg) {
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
       size_t frame_size = frame->size;                    // Size snapshot - prevent race condition with render thread
-      uint32_t width = client->width;
-      uint32_t height = client->height;
+      uint32_t width = frame->width;
+      uint32_t height = frame->height;
       uint64_t step1_ns = time_get_ns();
       uint64_t step2_ns = time_get_ns();
       uint64_t step3_ns = time_get_ns();

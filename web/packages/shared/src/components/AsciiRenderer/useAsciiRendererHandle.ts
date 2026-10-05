@@ -58,7 +58,7 @@ export function useAsciiRendererHandle({
   useImperativeHandle(
     ref,
     () => ({
-      writeFrame(ansiString: string) {
+      writeFrame(ansiString: string, dimensions?: { cols: number; rows: number }) {
         if (!moduleRef.current || !setupDoneRef.current) {
           return;
         }
@@ -67,6 +67,10 @@ export function useAsciiRendererHandle({
         if (resizeTimeoutRef.current) {
           return;
         }
+        // The debounce ends before the server has necessarily adopted the new
+        // size. Keep the cleared canvas blank until a matching frame arrives.
+        if (dimensions && (dimensions.cols !== dimensionsRef.current.cols ||
+            dimensions.rows !== dimensionsRef.current.rows)) return;
 
         frameCountForLoggingRef.current++;
 

@@ -576,6 +576,8 @@ void *client_video_render_thread(void *arg) {
           if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
+            write_frame->width = width_snapshot;
+            write_frame->height = height_snapshot;
             write_frame->capture_timestamp_ns = current_time_ns;
 
             // Commit at the configured cadence enforced by the frame deadline.

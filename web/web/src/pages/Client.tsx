@@ -53,6 +53,7 @@ import {
   PageLayout,
 } from "../components";
 import type { AsciiRendererHandle, SettingsConfig } from "../components";
+import type { AsciiFrame } from "../network/AsciiFrameParser";
 import {
   AsciiChatMode,
   mapColorModeToClient,
@@ -153,7 +154,7 @@ export function ClientPage({
   const [settings, setSettings] = useState<SettingsConfig>(DEFAULT_SETTINGS);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
-  const frameQueueRef = useRef<string[]>([]);
+  const frameQueueRef = useRef<AsciiFrame[]>([]);
 
   const renderLoopStartTimeRef = useRef<number>(0);
 
@@ -356,6 +357,7 @@ export function ClientPage({
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
+      frameQueueRef.current = [];
       setTerminalDimensions(dims);
 
       // Tell WASM about new dimensions (for proper ASCII rendering)
@@ -432,8 +434,9 @@ export function ClientPage({
         }
 
         // Render the newest frame
-        const frameContent = frameQueueRef.current.shift();
-        if (frameContent) {
+        const frame = frameQueueRef.current.shift();
+        if (frame) {
+          const frameContent = frame.ansiString;
           const frameHash = hashFrame(frameContent);
           // Track if this is a new unique frame we haven't seen before
           if (!frameHashesRef.current[frameHash]) {
@@ -442,7 +445,10 @@ export function ClientPage({
           frameHashesRef.current[frameHash] =
             (frameHashesRef.current[frameHash] || 0) + 1;
 
-          rendererRef.current.writeFrame(frameContent);
+          rendererRef.current.writeFrame(frameContent, {
+            cols: frame.header.width,
+            rows: frame.header.height,
+          });
 
           frameCountRef.current++;
           diagnosticFrameCountRef.current++;

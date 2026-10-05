@@ -37,6 +37,7 @@ export class H265Encoder {
         height,
         bitrate,
         framerate: fps,
+        latencyMode: "realtime",
       });
       console.timeEnd("[H265Encoder] H.265 isConfigSupported");
       console.log("[H265Encoder] H.265 support:", h265Support.supported);
@@ -86,6 +87,7 @@ export class H265Encoder {
       bitrate,
       framerate: fps,
       hardwareAcceleration: "prefer-hardware",
+      latencyMode: "realtime",
     });
     this.isOpen = true;
     console.log(
@@ -95,6 +97,9 @@ export class H265Encoder {
 
   encode(frame: VideoFrame, forceKeyframe: boolean = false): void {
     if (!this.encoder || !this.isOpen) return;
+    // Keep capture live when the encoder cannot keep up. Encoded output must
+    // remain ordered because delta frames depend on earlier frames.
+    if (this.encoder.encodeQueueSize >= 2) return;
 
     try {
       if (forceKeyframe) {
