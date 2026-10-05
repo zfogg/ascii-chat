@@ -92,6 +92,9 @@ typedef struct {
   size_t stun_count;                                        ///< Number of STUN servers
   turn_server_t *turn_servers;                              ///< TURN servers for relay
   size_t turn_count;                                        ///< Number of TURN servers
+  bool relay_only;                                          ///< Restrict ICE to TURN relay candidates
+  const char *turn_username;                                ///< Optional TURN credential override
+  const char *turn_credential;                              ///< Optional TURN credential override
   webrtc_transport_ready_callback_t on_transport_ready;     ///< Called when DataChannel ready
   webrtc_gathering_timeout_callback_t on_gathering_timeout; ///< Called when ICE gathering times out
   void *user_data;                                          ///< Passed to callbacks

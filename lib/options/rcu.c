@@ -136,6 +136,7 @@ static const options_t g_default_options = (options_t){
     .prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT,
     .no_webrtc = OPT_NO_WEBRTC_DEFAULT,
     .webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT,
+    .webrtc_relay_only = false,
     .webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT,
     .webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT,
     .webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT,
@@ -924,6 +925,8 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->no_webrtc = ctx->value;
   else if (strcmp(ctx->field_name, "webrtc_skip_stun") == 0)
     opts->webrtc_skip_stun = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc_relay_only") == 0)
+    opts->webrtc_relay_only = ctx->value;
   else if (strcmp(ctx->field_name, "webrtc_disable_turn") == 0)
     opts->webrtc_disable_turn = ctx->value;
   else if (strcmp(ctx->field_name, "enable_upnp") == 0)
@@ -976,6 +979,7 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "webrtc") != 0 && strcmp(field_name, "lan_discovery") != 0 &&
       strcmp(field_name, "no_mdns_advertise") != 0 && strcmp(field_name, "prefer_webrtc") != 0 &&
       strcmp(field_name, "no_webrtc") != 0 && strcmp(field_name, "webrtc_skip_stun") != 0 &&
+      strcmp(field_name, "webrtc_relay_only") != 0 &&
       strcmp(field_name, "webrtc_disable_turn") != 0 && strcmp(field_name, "enable_upnp") != 0 &&
       strcmp(field_name, "require_server_identity") != 0 && strcmp(field_name, "require_client_identity") != 0 &&
       strcmp(field_name, "require_server_verify") != 0 && strcmp(field_name, "require_client_verify") != 0 &&
@@ -1072,6 +1076,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       temp.no_webrtc = value;
     else if (strcmp(field_name, "webrtc_skip_stun") == 0)
       temp.webrtc_skip_stun = value;
+    else if (strcmp(field_name, "webrtc_relay_only") == 0)
+      temp.webrtc_relay_only = value;
     else if (strcmp(field_name, "webrtc_disable_turn") == 0)
       temp.webrtc_disable_turn = value;
     else if (strcmp(field_name, "enable_upnp") == 0)

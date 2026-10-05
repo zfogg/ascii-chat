@@ -723,6 +723,22 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
   char *error_message = NULL;
   // Cast opaque config pointer to actual type
   const options_config_t *config_typed = (const options_config_t *)config;
+  const options_t *options = (const options_t *)opts;
+  if (options->webrtc_relay_only && options->detected_mode == MODE_CLIENT) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires discovery mode; connect using a session name");
+  }
+  if (options->webrtc_relay_only && options->detected_mode == MODE_SERVER && !options->discovery) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Server relay only requires --discovery");
+  }
+  if (options->webrtc_relay_only && (options->no_webrtc || options->webrtc_disable_turn)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "--webrtc-relay-only conflicts with --no-webrtc or --webrtc-disable-turn");
+  }
+  if ((options->turn_username[0] != '\0') != (options->turn_credential[0] != '\0')) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Provide both --turn-username and --turn-credential, or leave both blank");
+  }
+  if (strlen(options->turn_username) > 127 || strlen(options->turn_credential) > 127) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
+  }
   asciichat_error_t result = options_config_validate(config_typed, opts, &error_message);
   if (result != ASCIICHAT_OK) {
     if (error_message) {

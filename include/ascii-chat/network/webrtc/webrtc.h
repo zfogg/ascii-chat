@@ -130,6 +130,9 @@ typedef struct {
   size_t stun_count;           ///< Number of STUN servers
   turn_server_t *turn_servers; ///< Array of TURN servers
   size_t turn_count;           ///< Number of TURN servers
+  bool relay_only;             ///< Restrict ICE to TURN relay candidates
+  const char *turn_username;   ///< Optional credential override, including full ACDS usernames
+  const char *turn_credential; ///< Optional credential override
 
   // Callbacks
   webrtc_state_callback_t on_state_change;

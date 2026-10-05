@@ -672,27 +672,11 @@ typedef enum {
 /** @brief Default WebRTC reconnection attempts (3 = try initial + 3 retries) */
 #define OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT 3
 
-/** @brief Default TURN server username
- *
- * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
- *       In debug builds, provides test credentials for testing without ACDS
- */
-#ifdef NDEBUG
+/** @brief Default TURN username (empty = use ACDS credentials) */
 #define OPT_TURN_USERNAME_DEFAULT ""
-#else
-#define OPT_TURN_USERNAME_DEFAULT "ascii"
-#endif
 
-/** @brief Default TURN server credential
- *
- * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
- *       In debug builds, provides test credentials for testing without ACDS
- */
-#ifdef NDEBUG
+/** @brief Default TURN credential (empty = use ACDS credentials) */
 #define OPT_TURN_CREDENTIAL_DEFAULT ""
-#else
-#define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
-#endif
 
 // ============================================================================
 // AUDIO CATEGORY - Audio capture, playback and processing options
@@ -819,6 +803,7 @@ static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
 static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
 static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
 static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+static const bool default_webrtc_relay_only_value = false;
 static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
 static const bool default_webrtc_skip_host_value = OPT_WEBRTC_SKIP_HOST_DEFAULT;
 
@@ -1125,6 +1110,7 @@ typedef struct options_state {
   bool prefer_webrtc;            ///< --prefer-webrtc: Try WebRTC before Direct TCP
   bool no_webrtc;                ///< --no-webrtc: Disable WebRTC, use Direct TCP only
   bool webrtc_skip_stun;         ///< --webrtc-skip-stun: Skip Stage 2 (STUN), go to TURN
+  bool webrtc_relay_only;        ///< --webrtc-relay-only: Require TURN relay candidates
   bool webrtc_disable_turn;      ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
   bool webrtc_skip_host;         ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
   int webrtc_ice_timeout_ms;     ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)

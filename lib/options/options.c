@@ -638,6 +638,7 @@ options_t options_t_new(void) {
   opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
   opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
   opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+  opts.webrtc_relay_only = false;
   opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
   opts.webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT;
   opts.webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
