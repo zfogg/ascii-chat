@@ -637,6 +637,23 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
   const stopWebcam = useCallback(() => {
     generationRef.current++;
+    // A stopped browser capture must also stop being a server-side video
+    // source. Otherwise the server keeps compositing its last (often black)
+    // frame over the remaining participants until the connection closes.
+    if (
+      isWebcamRunning &&
+      connectionState === ConnectionState.CONNECTED &&
+      clientRef.current
+    ) {
+      try {
+        clientRef.current.sendUnencryptedAcipPacket(
+          PacketType.STREAM_STOP,
+          buildStreamStartPacket(false),
+        );
+      } catch (error) {
+        console.debug("[Client] STREAM_STOP skipped while closing capture:", error);
+      }
+    }
     // Stop timer (connection state change will also stop it)
     if (captureTimerRef.current) {
       clearInterval(captureTimerRef.current);
@@ -660,7 +677,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     frameQueueRef.current = [];
     setIsWebcamRunning(false);
-  }, [videoRef, frameQueueRef]);
+  }, [
+    clientRef,
+    connectionState,
+    frameQueueRef,
+    isWebcamRunning,
+    videoRef,
+  ]);
 
   return {
     startWebcam,

@@ -417,6 +417,14 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
 
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
 
+  // acip_transport_destroy() only invokes close() for transports that still
+  // report connected. A WebRTC peer can enter DISCONNECTED before destruction,
+  // leaving this transport's callbacks registered on the DataChannel. Deleting
+  // the channel here is the libdatachannel synchronization point: it waits for
+  // scheduled callbacks and prevents new ones before this callback userdata,
+  // queue, and mutexes are released.
+  (void)webrtc_close(transport);
+
   // Clear receive queue and free buffered messages
   if (wrtc->recv_queue) {
     mutex_lock(&wrtc->queue_mutex);

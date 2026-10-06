@@ -791,14 +791,15 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
     return;
   }
 
-  log_debug("Received WebRTC ICE candidate from participant %.8s...", (const char *)ice->sender_id);
+  log_debug("Received WebRTC ICE candidate from participant %02x%02x%02x%02x...", ice->sender_id[0],
+            ice->sender_id[1], ice->sender_id[2], ice->sender_id[3]);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_ice(g_webrtc_peer_manager, ice);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to handle remote ICE candidate from participant %.8s...: %s", (const char *)ice->sender_id,
-              asciichat_error_string(result));
+    log_error("Failed to handle remote ICE candidate from participant %02x%02x%02x%02x...: %s", ice->sender_id[0],
+              ice->sender_id[1], ice->sender_id[2], ice->sender_id[3], asciichat_error_string(result));
   }
 }
 
