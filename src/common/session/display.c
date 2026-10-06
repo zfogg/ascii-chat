@@ -710,8 +710,10 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   else if (selected_audio == AUDIO_SOURCE_REMOTE)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
   if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode);
-  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode);
+    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
+                                          GET_OPTION(flip_y));
+  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
+                                             GET_OPTION(flip_y));
 }
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
