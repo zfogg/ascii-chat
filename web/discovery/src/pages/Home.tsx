@@ -13,6 +13,7 @@ import {
   HeroHeader,
   PublicKeysSection,
   SecuritySection,
+  ServerStatusSection,
   SelfHostingSection,
   UsageExamplesWrapper,
 } from "../components/home";
@@ -74,6 +75,8 @@ function Home() {
           sessionStrings={sessionStrings}
           handleLinkClick={handleLinkClick}
         />
+
+        <ServerStatusSection />
 
         <PublicKeysSection
           sshKey={sshKey}
