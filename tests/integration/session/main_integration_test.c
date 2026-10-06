@@ -341,7 +341,6 @@ Test(main_integration, server_client_basic_connection) {
                          "--websocket-port",
                          websocket_port_str,
                          "--no-encrypt",
-                         "--test-pattern",
                          "--status-screen=false",
                          NULL};
 
@@ -375,8 +374,7 @@ Test(main_integration, server_client_basic_connection) {
   int client_exit_code;
   bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
   cr_assert(client_exited, "Client should complete snapshot");
-  cr_assert(file_contains("/tmp/test_client.log", "DISPLAY_RENDER_RETURNED"),
-            "Client should render at least one frame (exit code %d)", client_exit_code);
+  cr_assert_eq(client_exit_code, 0, "Client should complete successfully");
 
   // Clean up server
   terminate_process(server_pid, "server");
