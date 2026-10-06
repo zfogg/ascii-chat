@@ -46,7 +46,7 @@ export default function AboutSection({
         🏗️ Official ACDS Infrastructure
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg">
-        The official ACDS deployment consists of three components:
+        The official ACDS deployment consists of four components:
       </p>
       <ul className="leading-relaxed ml-0 pl-4 space-y-2">
         <li>
@@ -57,12 +57,8 @@ export default function AboutSection({
           ) - Serves public keys over HTTPS
         </li>
         <li>
-          <strong>ACDS server (TCP):</strong>{" "}
+          <strong>ACDS server (WebRTC signaling):</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.TCP}</code>
-        </li>
-        <li>
-          <strong>ACDS server (WebSocket):</strong>{" "}
-          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.WSS}</code>
         </li>
         <li>
           <strong>Default STUN servers:</strong>{" "}
