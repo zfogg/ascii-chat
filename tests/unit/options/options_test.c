@@ -74,42 +74,43 @@ static void restore_options(const options_backup_t *backup) {
   // will properly clean up when the program exits.
 }
 
-// Helper function to test options_init (no fork needed since options_init returns error codes)
+// Run parser cases in a child because some usage paths terminate the process.
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
 
-  // ALWAYS make a copy of argv to prevent options_init() from modifying the original array.
-  // This is critical because options_init() might modify argv strings during parsing
-  // (e.g., temporarily replacing '=' with '\0' for equals-sign syntax parsing),
-  // and we need to prevent that from affecting the original test data.
-  char **argv_copy = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
-  if (!argv_copy) {
-    return ERROR_MEMORY;
+  pid_t pid = fork();
+  if (pid < 0) {
+    return ERROR_THREAD;
   }
 
-  // Copy all argv pointers and ensure NULL termination
-  for (int i = 0; i < argc; i++) {
-    argv_copy[i] = argv[i];
+  if (pid == 0) {
+    char **argv_copy = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
+    if (!argv_copy) {
+      _exit(ERROR_MEMORY);
+    }
+    for (int i = 0; i < argc; i++) {
+      size_t length = strlen(argv[i]) + 1;
+      argv_copy[i] = SAFE_MALLOC(length, char *);
+      if (!argv_copy[i]) {
+        _exit(ERROR_MEMORY);
+      }
+      memcpy(argv_copy[i], argv[i], length);
+    }
+
+    optind = 1;
+    opterr = 1;
+    optopt = 0;
+
+    asciichat_error_t result = options_init(argc, argv_copy);
+    int exit_code = (result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result;
+    _exit(exit_code);
   }
-  argv_copy[argc] = NULL;
 
-  // Reset getopt state before calling options_init
-  optind = 1;
-  opterr = 1;
-  optopt = 0;
-
-  // Call options_init with the copied argv
-  asciichat_error_t result = options_init(argc, argv_copy);
-
-  // Free the copied argv
-  SAFE_FREE(argv_copy);
-
-  // Return appropriate code based on return value
-  // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
-  if (result != ASCIICHAT_OK) {
-    return (result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result;
+  int status = 0;
+  if (waitpid(pid, &status, 0) < 0 || !WIFEXITED(status)) {
+    return ERROR_INVALID_STATE;
   }
-  return 0;
+  return WEXITSTATUS(status);
 }
 
 /* ============================================================================
