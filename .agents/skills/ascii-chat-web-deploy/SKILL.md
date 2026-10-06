@@ -36,6 +36,15 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
 - `web/web` is a Vite single-page app. Its `vercel.json` rewrite is required so direct client routes do not receive Vercel's 404 page. Keep the rewrite when modifying deployment configuration.
 - `web/discovery` requires the `SSH_PUBLIC_KEY` and `GPG_PUBLIC_KEY` Vercel environment variables. Its Vercel build command must generate those key files, run `pnpm run vite:build`, and copy `dist/index.html` to `dist/404.html`. Avoid the full `pnpm run build` in Vercel: its formatter can inspect Vercel-generated `.vercel` files and fail the build.
+- `web/discovery` endpoint configuration is shared by the page and its status functions. Set these Vercel Production environment variables when hosting it elsewhere; omit any of them to use the bundled official defaults:
+
+  | Variable | Format | Current default |
+  | --- | --- | --- |
+  | `DISCOVERY_STATUS_WEBRTC_SERVERS` | Comma-separated `ws://` or `wss://` URLs; bare `host:port` defaults to `wss` except port 80, which defaults to `ws`. | `wss://discovery-service.ascii-chat.com:443` |
+  | `DISCOVERY_STATUS_STUN_SERVERS` | Comma-separated `host:port` values. Whitespace around commas is ignored. | `stun.ascii-chat.com:3478,stun.l.google.com:19302` |
+  | `DISCOVERY_STATUS_TURN_SERVERS` | Comma-separated `host:port` values. Whitespace around commas is ignored. | `turn.ascii-chat.com:3478` |
+
+  The Vite build exposes these non-secret values to the frontend, and the Vercel functions use the same values at runtime. Set all three before production deployment when overriding defaults. `DISCOVERY_STATUS_TURN_USERNAME` and `DISCOVERY_STATUS_TURN_PASSWORD` remain server-only credentials for authenticated TURN probes.
 - `web/discovery/api/session-strings.ts` is a same-origin Vercel Function. It uses the C-derived word lists and Web Crypto rejection sampling; do not replace it with a downloaded native binary or cache its responses.
 - `web/www/api/session-strings.ts` uses the same shared generator. The main homepage fetches this same-origin function, so keep it deployed whenever changing session-string presentation.
 - For a local web build, use pnpm. If the isolated worktree has no dependencies, report that limitation rather than installing unrelated dependencies into the user's checkout.

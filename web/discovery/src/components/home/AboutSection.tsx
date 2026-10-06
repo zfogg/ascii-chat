@@ -1,5 +1,24 @@
 import { Heading, Link } from "@ascii-chat/shared/components";
-import { SITES, ACDS_ENDPOINTS } from "@ascii-chat/shared/utils";
+import { SITES } from "@ascii-chat/shared/utils";
+import {
+  configuredServerTargets,
+  serverTargetUrl,
+} from "../../config/serverEndpoints";
+
+const configuredEndpoints = {
+  webrtc: configuredServerTargets(
+    "webrtc",
+    import.meta.env.VITE_DISCOVERY_STATUS_WEBRTC_SERVERS,
+  ),
+  stun: configuredServerTargets(
+    "stun",
+    import.meta.env.VITE_DISCOVERY_STATUS_STUN_SERVERS,
+  ),
+  turn: configuredServerTargets(
+    "turn",
+    import.meta.env.VITE_DISCOVERY_STATUS_TURN_SERVERS,
+  ),
+};
 
 export default function AboutSection({
   sessionStrings,
@@ -58,18 +77,26 @@ export default function AboutSection({
         </li>
         <li>
           <strong>ACDS server (WebRTC signaling):</strong>{" "}
-          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.TCP}</code>
+          <code className="bg-gray-800 px-1 rounded">
+            {configuredEndpoints.webrtc
+              .map((target) => serverTargetUrl("webrtc", target))
+              .join(",")}
+          </code>
         </li>
         <li>
           <strong>Default STUN servers:</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">
-            {ACDS_ENDPOINTS.STUN.join(",")}
+            {configuredEndpoints.stun
+              .map((target) => serverTargetUrl("stun", target))
+              .join(",")}
           </code>
         </li>
         <li>
           <strong>Default TURN server:</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">
-            {ACDS_ENDPOINTS.TURN}
+            {configuredEndpoints.turn
+              .map((target) => serverTargetUrl("turn", target))
+              .join(",")}
           </code>
         </li>
       </ul>
