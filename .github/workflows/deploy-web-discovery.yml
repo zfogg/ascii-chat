@@ -1,0 +1,44 @@
+name: Deploy discovery site
+
+on:
+  push:
+    branches:
+      - deploy-web-discovery
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy discovery.ascii-chat.com
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Link the existing Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: >-
+          pnpm dlx vercel@latest link --yes
+          --project ascii-chat-discovery
+          --scope joopal-hackers-projects
+          --token "$VERCEL_TOKEN"
+
+      - name: Deploy production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: >-
+          pnpm dlx vercel@latest deploy --prod --yes
+          --scope joopal-hackers-projects
+          --token "$VERCEL_TOKEN"
