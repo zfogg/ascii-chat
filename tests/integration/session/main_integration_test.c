@@ -139,23 +139,6 @@ static bool wait_for_process_exit(pid_t pid, int timeout_ms, int *exit_code) {
   return false; // Timeout
 }
 
-static bool file_contains(const char *path, const char *needle) {
-  FILE *file = fopen(path, "r");
-  if (!file)
-    return false;
-
-  char line[1024];
-  bool found = false;
-  while (fgets(line, sizeof(line), file)) {
-    if (strstr(line, needle)) {
-      found = true;
-      break;
-    }
-  }
-  fclose(file);
-  return found;
-}
-
 static void terminate_process(pid_t pid, const char *name) {
   UNUSED(name);
   if (pid <= 0)
