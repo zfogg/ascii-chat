@@ -15,16 +15,26 @@ type CheckResult = {
 type Service = {
   label: string;
   endpoint: string;
+  protocol: "webrtc" | "stun" | "turn";
 };
 
 const SERVICES: Service[] = [
-  { label: "WebRTC", endpoint: "/api/status/webrtc" },
-  { label: "STUN", endpoint: "/api/status/stun" },
-  { label: "coturn / TURN", endpoint: "/api/status/turn" },
+  { label: "WebRTC", endpoint: "/api/status/webrtc", protocol: "webrtc" },
+  { label: "STUN", endpoint: "/api/status/stun", protocol: "stun" },
+  { label: "coturn / TURN", endpoint: "/api/status/turn", protocol: "turn" },
 ];
 
-const formatServers = (servers: Server[] | undefined) =>
-  servers?.map(({ host, port }) => `${host}:${port}`).join(", ") || "Checking…";
+const formatServers = (
+  protocol: Service["protocol"],
+  servers: Server[] | undefined,
+) =>
+  servers
+    ?.map(({ host, port }) => {
+      if (protocol === "webrtc")
+        return `${port === 80 ? "ws" : "wss"}://${host}:${port}`;
+      return `${protocol}:${host}:${port}`;
+    })
+    .join(", ") || "Checking…";
 
 export default function ServerStatusSection() {
   const [checks, setChecks] = useState<Record<string, CheckResult>>({});
@@ -73,10 +83,13 @@ export default function ServerStatusSection() {
               <th scope="col" className="px-4 py-3 font-semibold">
                 Status
               </th>
+              <th scope="col" className="px-4 py-3 font-semibold">
+                Endpoints checked
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {SERVICES.map(({ label, endpoint }) => {
+            {SERVICES.map(({ label, endpoint, protocol }) => {
               const check = checks[endpoint];
               const isUp = check?.up === true;
               const isKnownDown = check !== undefined && !isUp;
@@ -84,9 +97,6 @@ export default function ServerStatusSection() {
                 <tr key={endpoint}>
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-100">{label}</div>
-                    <div className="mt-1 font-mono text-xs text-gray-400">
-                      {formatServers(check?.servers)}
-                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span
@@ -103,6 +113,9 @@ export default function ServerStatusSection() {
                     >
                       {isUp ? "✅ Up" : isKnownDown ? "❌ Down" : "… Checking"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                    {formatServers(protocol, check?.servers)}
                   </td>
                 </tr>
               );
