@@ -256,6 +256,11 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime) {
 void asciichat_instr_runtime_global_destroy(void) {
   if (lifecycle_shutdown(&g_runtime_lc)) {
     g_disable_write = true;
+    asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+    if (runtime != NULL) {
+      ascii_tls_set(g_runtime_key, NULL);
+      asciichat_instr_runtime_destroy(runtime);
+    }
     ascii_tls_key_delete(g_runtime_key);
     g_ticks_initialized = false;
     g_start_ns = 0;
