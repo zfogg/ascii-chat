@@ -1,7 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import net from "node:net";
+import {
+  classes,
+  createTurnClient,
+  Message,
+  methods,
+  StunProtocol,
+} from "werift-ice";
 
-const CONNECT_TIMEOUT_MS = 3_000;
+const PROBE_TIMEOUT_MS = 3_000;
+const STUN_RETRANSMISSIONS = 2;
 
 type ServerTarget = {
   host: string;
@@ -75,27 +82,30 @@ function configuredWebRtcServers(): ServerTarget[] {
   });
 }
 
-export function checkTcpServer({
+async function checkStunServer({
   host,
   port,
 }: ServerTarget): Promise<ServerResult> {
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    const socket = net.createConnection({ host, port });
-    let settled = false;
+  const startedAt = Date.now();
+  const protocol = new StunProtocol();
 
-    const finish = (up: boolean) => {
-      if (settled) return;
-      settled = true;
-      socket.destroy();
-      resolve({ host, port, up, latencyMs: Date.now() - startedAt });
-    };
-
-    socket.setTimeout(CONNECT_TIMEOUT_MS);
-    socket.once("connect", () => finish(true));
-    socket.once("timeout", () => finish(false));
-    socket.once("error", () => finish(false));
-  });
+  try {
+    await protocol.connectionMade(true);
+    await protocol.request(
+      new Message(methods.BINDING, classes.REQUEST),
+      [host, port],
+      undefined,
+      {
+        retransmissions: STUN_RETRANSMISSIONS,
+        responseTimeout: PROBE_TIMEOUT_MS / (STUN_RETRANSMISSIONS + 1),
+      },
+    );
+    return { host, port, up: true, latencyMs: Date.now() - startedAt };
+  } catch {
+    return { host, port, up: false, latencyMs: Date.now() - startedAt };
+  } finally {
+    await protocol.close();
+  }
 }
 
 function checkWebSocket({
@@ -118,15 +128,46 @@ function checkWebSocket({
       resolve({ host, port, up, latencyMs: Date.now() - startedAt });
     };
 
-    const timeout = setTimeout(() => finish(false), CONNECT_TIMEOUT_MS);
+    const timeout = setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
     socket.addEventListener("open", () => finish(true), { once: true });
     socket.addEventListener("error", () => finish(false), { once: true });
   });
 }
 
+async function checkTurnServer({
+  host,
+  port,
+}: ServerTarget): Promise<ServerResult> {
+  const startedAt = Date.now();
+  const username = process.env.DISCOVERY_STATUS_TURN_USERNAME;
+  const password = process.env.DISCOVERY_STATUS_TURN_PASSWORD;
+
+  if (!username || !password) {
+    return { host, port, up: false, latencyMs: Date.now() - startedAt };
+  }
+
+  let client: Awaited<ReturnType<typeof createTurnClient>> | undefined;
+  try {
+    client = await createTurnClient(
+      { address: [host, port], username, password },
+      { lifetime: 60, transport: "udp" },
+    );
+    return { host, port, up: true, latencyMs: Date.now() - startedAt };
+  } catch {
+    return { host, port, up: false, latencyMs: Date.now() - startedAt };
+  } finally {
+    await client?.close();
+  }
+}
+
 export async function checkServers(kind: ServerKind) {
   const servers = configuredServers(kind);
-  const checker = kind === "webrtc" ? checkWebSocket : checkTcpServer;
+  const checker =
+    kind === "webrtc"
+      ? checkWebSocket
+      : kind === "turn"
+        ? checkTurnServer
+        : checkStunServer;
   const results = await Promise.all(servers.map(checker));
   return {
     kind,
