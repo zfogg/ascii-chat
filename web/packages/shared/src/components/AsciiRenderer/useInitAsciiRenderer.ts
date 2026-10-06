@@ -15,6 +15,11 @@ import {
   wasmColorFilterToString,
 } from "../../utils/colorMappers";
 
+// Match the original browser renderer scale. The canvas is displayed at its
+// raster dimensions, so reducing this value makes every CSS pixel represent a
+// larger terminal glyph when the canvas fills its container.
+const BROWSER_RASTER_FONT_SIZE_PT = 12.0;
+
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
@@ -154,7 +159,7 @@ export function useInitAsciiRenderer({
 
       view.setInt32(0, cols, true); // cols
       view.setInt32(4, rows, true); // rows
-      view.setFloat64(8, 12.0, true); // font_size_pt
+      view.setFloat64(8, BROWSER_RASTER_FONT_SIZE_PT, true); // font_size_pt
       view.setInt32(16, 0, true); // theme
 
       // Use "Matrix" font_spec when matrix_rain is enabled, otherwise use default font selection
