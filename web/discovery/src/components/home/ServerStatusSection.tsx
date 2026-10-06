@@ -74,7 +74,7 @@ export default function ServerStatusSection() {
         📡 Server status
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg text-gray-300">
-        Live reachability from the site’s Vercel function.
+        Live reachability of ascii-chat official discovery infrastructure.
       </p>
       <aside
         role="alert"
