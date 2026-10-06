@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { statusHandler } from "../_tcp";
+import { statusHandler } from "../_tcp.js";
 
 export default async function handler(
   request: IncomingMessage,
