@@ -51,13 +51,11 @@ export const SITES = {
 export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
- * Discovery service API base URL (for fetching session strings)
- * In dev: localhost:3001 (API server, accessible across all sites)
- * In prod: set via VITE_DISCOVERY_API_BASE environment variable
+ * Canonical session-string API. Every website uses this endpoint.
  */
-export const DISCOVERY_API_BASE = isDev
+export const SESSION_STRINGS_API_BASE = isDev
   ? "http://localhost:3001"
-  : import.meta.env["VITE_DISCOVERY_API_BASE"] || "";
+  : "https://ascii-chat.com";
 
 /**
  * API endpoints with full URLs (for cross-origin requests in dev)

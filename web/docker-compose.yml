@@ -5,7 +5,6 @@ services:
       dockerfile: Dockerfile
       args:
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
-        VITE_DISCOVERY_API_BASE: ${VITE_DISCOVERY_API_BASE:-http://localhost:3001}
         SSH_PUBLIC_KEY: ${SSH_PUBLIC_KEY}
         GPG_PUBLIC_KEY: ${GPG_PUBLIC_KEY}
         NODE_ENV: ${NODE_ENV:-development}
