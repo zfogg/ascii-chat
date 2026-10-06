@@ -1984,13 +1984,13 @@ skip_acds_session:
   // ====================================================================
   if (session_string[0] != '\0') {
     if (session_is_mdns_only) {
-      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s (LAN only via "
-                "mDNS)\n🔗 Share with others on your LAN to join:\n   ascii-chat "
-                "%s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      log_plain("========================================================\nSession String: %s (LAN only via "
+                "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
+                "%s\n========================================================",
                 session_string, session_string);
     } else {
-      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s\n🔗 Share this "
-                "globally to join:\n   ascii-chat %s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      log_plain("========================================================\nSession String: %s\nShare this "
+                "globally to join:\n   ascii-chat %s\n========================================================",
                 session_string, session_string);
     }
   }
