@@ -41,8 +41,8 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
   | Variable | Format | Current default |
   | --- | --- | --- |
   | `DISCOVERY_WEBRTC_SERVERS` | Comma-separated `ws://` or `wss://` URLs; bare `host:port` defaults to `wss` except port 80, which defaults to `ws`. | `wss://discovery-service.ascii-chat.com:443` |
-  | `DISCOVERY_STUN_SERVERS` | Comma-separated `host:port` values. Whitespace around commas is ignored. | `stun.ascii-chat.com:3478,stun.l.google.com:19302` |
-  | `DISCOVERY_TURN_SERVERS` | Comma-separated `host:port` values. Whitespace around commas is ignored. | `turn.ascii-chat.com:3478` |
+  | `DISCOVERY_STUN_SERVERS` | Comma-separated `stun:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302` |
+  | `DISCOVERY_TURN_SERVERS` | Comma-separated `turn:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `turn:turn.ascii-chat.com:3478` |
 
   The Vite build exposes these non-secret values to the frontend, and the Vercel functions use the same values at runtime. Set all three before production deployment when overriding defaults. `DISCOVERY_STATUS_TURN_USERNAME` and `DISCOVERY_STATUS_TURN_PASSWORD` remain server-only credentials for authenticated TURN probes.
 - `web/discovery/api/session-strings.ts` is a same-origin Vercel Function. It uses the C-derived word lists and Web Crypto rejection sampling; do not replace it with a downloaded native binary or cache its responses.
