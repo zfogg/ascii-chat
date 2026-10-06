@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { connect as connectTls } from "node:tls";
 import {
   classes,
   createTurnClient,
   Message,
   methods,
+  parseMessage,
   StunProtocol,
 } from "werift-ice";
 import {
@@ -33,7 +35,10 @@ export function configuredServers(kind: ServerKind): ServerTarget[] {
 async function checkStunServer({
   host,
   port,
+  transport,
 }: ServerTarget): Promise<ServerResult> {
+  if (transport === "tls") return checkStunTlsServer({ host, port, transport });
+
   const startedAt = Date.now();
   const protocol = new StunProtocol();
 
@@ -54,6 +59,48 @@ async function checkStunServer({
   } finally {
     await protocol.close();
   }
+}
+
+function checkStunTlsServer({ host, port }: ServerTarget): Promise<ServerResult> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const request = new Message(methods.BINDING, classes.REQUEST);
+    const socket = connectTls({ host, port, servername: host });
+    let response = Buffer.alloc(0);
+    let settled = false;
+
+    const finish = (up: boolean) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve({
+        host,
+        port,
+        transport: "tls",
+        up,
+        latencyMs: Date.now() - startedAt,
+      });
+    };
+
+    const timeout = setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
+    socket.once("secureConnect", () => socket.write(request.bytes));
+    socket.once("error", () => finish(false));
+    socket.on("data", (chunk) => {
+      response = Buffer.concat([response, Buffer.from(chunk)]);
+      while (response.length >= 20) {
+        const length = response.readUInt16BE(2);
+        const messageLength = 20 + length;
+        if (response.length < messageLength) return;
+        const message = parseMessage(response.subarray(0, messageLength));
+        response = response.subarray(messageLength);
+        if (message && message.transactionId.equals(request.transactionId)) {
+          clearTimeout(timeout);
+          finish(true);
+          return;
+        }
+      }
+    });
+  });
 }
 
 function checkWebSocket({
@@ -85,6 +132,7 @@ function checkWebSocket({
 async function checkTurnServer({
   host,
   port,
+  transport,
 }: ServerTarget): Promise<ServerResult> {
   const startedAt = Date.now();
   const username = process.env["DISCOVERY_STATUS_TURN_USERNAME"];
@@ -98,7 +146,11 @@ async function checkTurnServer({
   try {
     client = await createTurnClient(
       { address: [host, port], username, password },
-      { lifetime: 60, transport: "udp" },
+      {
+        lifetime: 60,
+        transport: transport === "tls" ? "tls" : "udp",
+        tlsOptions: transport === "tls" ? { servername: host } : undefined,
+      },
     );
     return { host, port, up: true, latencyMs: Date.now() - startedAt };
   } catch {

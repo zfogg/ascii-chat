@@ -4,6 +4,7 @@ export type ServerTarget = {
   host: string;
   port: number;
   protocol?: "ws" | "wss";
+  transport?: "udp" | "tls";
   path?: string;
 };
 
@@ -46,11 +47,16 @@ function parseWebRtcTarget(entry: string): ServerTarget {
 }
 
 function parseIceTarget(kind: "stun" | "turn", entry: string): ServerTarget {
-  const value = entry.trim().replace(new RegExp(`^${kind}:`, "i"), "");
+  const rawValue = entry.trim();
+  const secure = rawValue.toLowerCase().startsWith(`${kind}s:`);
+  const value = rawValue.replace(new RegExp(`^${kind}s?:`, "i"), "");
   const url = new URL(`${kind}://${value}`);
   if (!url.hostname) throw new Error(`Invalid ${kind.toUpperCase()} server target: ${entry}`);
-  // STUN and TURN both default to 3478 for UDP and TCP; TLS variants use 5349.
-  return { host: url.hostname, port: parsePort(url.port || "3478", entry) };
+  return {
+    host: url.hostname,
+    port: parsePort(url.port || (secure ? "5349" : "3478"), entry),
+    transport: secure ? "tls" : "udp",
+  };
 }
 
 export function configuredServerTargets(
@@ -72,5 +78,5 @@ export function serverTargetUrl(kind: ServerKind, target: ServerTarget) {
     const protocol = target.protocol || (target.port === 80 ? "ws" : "wss");
     return `${protocol}://${target.host}:${target.port}${target.path || ""}`;
   }
-  return `${kind}:${target.host}:${target.port}`;
+  return `${kind}${target.transport === "tls" ? "s" : ""}:${target.host}:${target.port}`;
 }
