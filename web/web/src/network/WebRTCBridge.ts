@@ -175,7 +175,13 @@ export class WebRTCBridge implements PacketTransport {
         // A small audio packet may bypass buffered video that has already
         // entered the DataChannel. An unsent video frame remains queued after
         // audio; partially sent ACIP packets still keep their byte order.
-        if (this.channel.bufferedAmount >= this.sendWindow && !isAudio) break;
+        // A raw browser image commonly exceeds the 256 KiB steady-state
+        // window. Do not pause partway through that packet: the receiver
+        // cannot use an incomplete ACIP frame, and draining it a 128 KiB low
+        // watermark at a time leaves the server composing stale input. Keep
+        // one complete replaceable image in flight; the next one still waits
+        // until the DataChannel has room.
+        if (this.channel.bufferedAmount >= highWaterMark && !isAudio) break;
         if (
           entry.replaceable &&
           entry.offset === 0 &&
@@ -191,7 +197,7 @@ export class WebRTCBridge implements PacketTransport {
         entry.offset += chunk.length;
         this.queuedBytes -= chunk.length;
         if (entry.offset === entry.packet.length) this.queue.shift();
-        if (this.channel.bufferedAmount >= this.sendWindow) break;
+        if (this.channel.bufferedAmount >= highWaterMark) break;
       }
     } catch (error) {
       this.onError(error instanceof Error ? error : new Error(String(error)));
