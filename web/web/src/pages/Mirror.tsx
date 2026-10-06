@@ -24,14 +24,14 @@ import {
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
 import { SITES } from "@ascii-chat/shared/utils";
 import {
-  Settings,
+  BinarySettings,
   AsciiRenderer,
   PageControlBar,
   PageLayout,
   AsciiChatWebHead,
   VideoUploadModal,
 } from "../components";
-import type { SettingsConfig } from "../components";
+import type { BinarySettingsConfig } from "../components";
 import {
   AsciiChatMode,
   mapColorModeToWasm,
@@ -72,7 +72,7 @@ export function MirrorPage() {
     return promise;
   }, []);
 
-  const applyWasmSettings = useCallback((settings: SettingsConfig) => {
+  const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
     const applyStart = performance.now();
     console.log(
       `[Mirror] applyWasmSettings called at ${applyStart.toFixed(0)}ms`,
@@ -205,7 +205,7 @@ export function MirrorPage() {
   }, [wasmInitialized, wasmModule]);
 
   // Handle settings change
-  const handleSettingsChange = (newSettings: SettingsConfig) => {
+  const handleSettingsChange = (newSettings: BinarySettingsConfig) => {
     setSettings(newSettings);
     // Apply WASM settings immediately so renderer recreates if needed
     applyWasmSettings(newSettings);
@@ -291,7 +291,7 @@ export function MirrorPage() {
         canvasRef={canvasRef}
         showSettings={showSettings}
         settingsPanel={
-          <Settings
+          <BinarySettings
             config={settings}
             onChange={handleSettingsChange}
             mode={AsciiChatMode.MIRROR}
@@ -312,6 +312,7 @@ export function MirrorPage() {
             onSettingsClick={() => setShowSettings(!showSettings)}
             showConnectionButton={false}
             showSettingsButton={true}
+            settingsOpen={showSettings}
           />
         }
         renderer={(() => {

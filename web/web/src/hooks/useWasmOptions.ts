@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type {
-  SettingsConfig,
+  BinarySettingsConfig,
   ColorMode,
   ColorFilter,
   Palette,
@@ -23,7 +23,7 @@ export interface WasmOptionsManager {
   getFlipX: () => boolean;
   setTargetFps: (fps: number) => void;
   getTargetFps: () => number;
-  applySettings: (settings: SettingsConfig) => void;
+  applySettings: (settings: BinarySettingsConfig) => void;
 }
 
 /**
@@ -99,7 +99,7 @@ export function createWasmOptionsManager(
     getFlipX: getFlipXFn,
     setTargetFps: setTargetFpsFn,
     getTargetFps: getTargetFpsFn,
-    applySettings: (settings: SettingsConfig) => {
+    applySettings: (settings: BinarySettingsConfig) => {
       console.log("[WasmOptionsManager] applySettings called with:", settings);
       try {
         console.log(
@@ -154,7 +154,7 @@ export function createWasmOptionsManager(
  */
 export function useWasmOptions(manager: WasmOptionsManager | null) {
   const applySettings = useCallback(
-    (settings: SettingsConfig) => {
+    (settings: BinarySettingsConfig) => {
       if (!manager) return;
       manager.applySettings(settings);
     },

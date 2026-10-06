@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { SettingsConfig } from "../components";
+import type { BinarySettingsConfig } from "../components";
 import { type MediaSource, MediaSourceType } from "./useClientLike";
 import {
   isOptionsInitialized,
@@ -21,7 +21,7 @@ import {
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 
 interface UseMirrorWebcamParams {
-  settings: SettingsConfig;
+  settings: BinarySettingsConfig;
   videoRef: RefObject<HTMLVideoElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   streamRef: MutableRefObject<MediaStream | null>;

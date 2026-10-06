@@ -8,7 +8,7 @@ import {
 } from "../network";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
-import type { SettingsConfig } from "../components";
+import type { BinarySettingsConfig } from "../components";
 
 // Helper to compute simple frame hash
 const computeFrameHash = (data: Uint8Array): number => {
@@ -24,7 +24,7 @@ const computeFrameHash = (data: Uint8Array): number => {
 interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
-  settings: SettingsConfig;
+  settings: BinarySettingsConfig;
   captureFrame: (drawVideo?: boolean) => {
     data: Uint8Array;
     width: number;

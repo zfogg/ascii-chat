@@ -1,7 +1,7 @@
 import { Heading } from "@ascii-chat/shared/components";
-import { getOptionHelp, AsciiChatMode } from "../utils";
-import { Tooltip } from "./Tooltip";
-import { LOCKED_SETTINGS_HELP } from "./lockedSettings";
+import { getOptionHelp, AsciiChatMode } from "../../utils";
+import { Tooltip } from "../Tooltip";
+import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type ColorFilter =
@@ -26,7 +26,7 @@ export type Palette =
   | "cool"
   | "custom";
 
-export interface SettingsConfig {
+export interface BinarySettingsConfig {
   width: number;
   height: number;
   targetFps: number;
@@ -38,20 +38,20 @@ export interface SettingsConfig {
   flipX?: boolean;
 }
 
-interface SettingsProps {
-  config: SettingsConfig;
-  onChange: (config: SettingsConfig) => void;
+interface BinarySettingsProps {
+  config: BinarySettingsConfig;
+  onChange: (config: BinarySettingsConfig) => void;
   disabled?: boolean;
   mode: AsciiChatMode;
 }
 
-export function Settings({
+export function BinarySettings({
   config,
   onChange,
   disabled = false,
   mode,
-}: SettingsProps) {
-  const updateConfig = (updates: Partial<SettingsConfig>) => {
+}: BinarySettingsProps) {
+  const updateConfig = (updates: Partial<BinarySettingsConfig>) => {
     if (!disabled) onChange({ ...config, ...updates });
   };
 
@@ -67,7 +67,6 @@ export function Settings({
           Settings
         </Heading>
         <div className="flex flex-wrap gap-3">
-          {/* Width Field */}
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "width")
@@ -91,7 +90,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Height Field */}
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "height")
@@ -107,9 +105,7 @@ export function Settings({
                 max="2560"
                 value={config.height}
                 onChange={(e) =>
-                  updateConfig({
-                    height: parseInt(e.target.value) || 0,
-                  })
+                  updateConfig({ height: parseInt(e.target.value) || 0 })
                 }
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
@@ -117,7 +113,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Frame Rate */}
           <Tooltip
             text={disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "fps")}
           >
@@ -146,7 +141,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Color Mode */}
           <Tooltip
             text={
               disabled
@@ -175,7 +169,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Color Filter */}
           <Tooltip
             text={
               disabled
@@ -212,7 +205,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Palette */}
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
@@ -240,7 +232,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Matrix Rain Effect */}
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "matrix")
@@ -264,7 +255,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Webcam Flip */}
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")
@@ -288,7 +278,6 @@ export function Settings({
             </div>
           </Tooltip>
 
-          {/* Custom Palette Characters (shown when palette is custom) */}
           {config.palette === "custom" && (
             <Tooltip
               text={

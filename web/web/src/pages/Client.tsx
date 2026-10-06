@@ -54,12 +54,12 @@ import {
 import {
   AsciiRenderer,
   ConnectionPanelModal,
-  Settings,
+  BinarySettings,
   AsciiChatWebHead,
   PageControlBar,
   PageLayout,
 } from "../components";
-import type { AsciiRendererHandle, SettingsConfig } from "../components";
+import type { AsciiRendererHandle, BinarySettingsConfig } from "../components";
 import { HelpLabel } from "../components/HelpLabel";
 import { Tooltip } from "../components/Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../components/lockedSettings";
@@ -202,7 +202,7 @@ export function ClientPage({
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
-  const [settings, setSettings] = useState<SettingsConfig>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<AsciiFrame[]>([]);
@@ -792,7 +792,7 @@ export function ClientPage({
         canvasRef={canvasRef}
         showSettings={showSettings}
         settingsPanel={
-          <Settings
+          <BinarySettings
             config={settings}
             disabled={settingsDisabled}
             onChange={setSettings}
@@ -1030,8 +1030,9 @@ export function ClientPage({
             onStopWebcam={isWebcamRunning ? stopWebcam : undefined}
             showConnectionButton={!discoveryMode}
             onConnectionClick={() => setShowModal(true)}
-            onSettingsClick={() => setShowSettings(!showSettings)}
+            onSettingsClick={() => setShowSettings((open) => !open)}
             showSettingsButton={true}
+            settingsOpen={showSettings}
             compactVerticalSpacing={discoveryMode}
           />
         }

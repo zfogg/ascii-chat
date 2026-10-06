@@ -6,7 +6,7 @@ import {
   buildCapabilitiesPacket,
   buildStreamStartPacket,
 } from "../network";
-import type { AsciiRendererHandle, SettingsConfig } from "../components";
+import type { AsciiRendererHandle, BinarySettingsConfig } from "../components";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import { WebRTCSession, type DiscoveryOptions } from "../network/WebRTCSession";
@@ -35,7 +35,7 @@ interface UseClientConnectionOptions {
   onConnectionStateChange?: (state: ConnectionState) => void;
   serverUrl: string;
   terminalDimensions: { cols: number; rows: number };
-  settings: SettingsConfig;
+  settings: BinarySettingsConfig;
   rendererRef: React.RefObject<AsciiRendererHandle | null>;
   frameQueueRef: React.MutableRefObject<AsciiFrame[]>;
   uniqueReceivedFramesRef: React.MutableRefObject<Record<string, number>>;

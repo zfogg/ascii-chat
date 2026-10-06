@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
-import type { SettingsConfig, AsciiRendererHandle } from "../components";
+import type { BinarySettingsConfig, AsciiRendererHandle } from "../components";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
 import { getDefaultSettings } from "../utils";
 
@@ -13,7 +13,7 @@ export interface UseClientLikeOptions {
   /** Check if WASM is ready */
   isWasmReady: () => boolean;
   /** Apply settings to WASM */
-  applyWasmSettings: (settings: SettingsConfig) => void;
+  applyWasmSettings: (settings: BinarySettingsConfig) => void;
   /** Set WASM terminal dimensions */
   setWasmDimensions: (cols: number, rows: number) => void;
   /** Optional callback after dimensions change (for network modes) */
@@ -48,8 +48,8 @@ export interface UseClientLikeReturn {
   wasmInitialized: boolean;
   showSettings: boolean;
   setShowSettings: (show: boolean) => void;
-  settings: SettingsConfig;
-  setSettings: (settings: SettingsConfig) => void;
+  settings: BinarySettingsConfig;
+  setSettings: (settings: BinarySettingsConfig) => void;
 
   // Hooks
   captureFrame: () => {
@@ -101,7 +101,7 @@ export function useClientLike(
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] =
-    useState<SettingsConfig>(getDefaultSettings());
+    useState<BinarySettingsConfig>(getDefaultSettings());
 
   // Debug refs
   const debugCountRef = useRef(0);

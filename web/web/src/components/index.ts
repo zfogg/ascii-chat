@@ -12,12 +12,12 @@ export { Header } from "./Header";
 export { Layout } from "./Layout";
 export { PageControlBar } from "./PageControlBar";
 export { PageLayout } from "./PageLayout";
-export { Settings } from "./Settings";
+export { BinarySettings } from "./shared/BinarySettings";
 export type {
-  SettingsConfig,
+  BinarySettingsConfig,
   ColorMode,
   ColorFilter,
   Palette,
-} from "./Settings";
+} from "./shared/BinarySettings";
 export { Tooltip } from "./Tooltip";
 export { VideoUploadModal } from "./VideoUploadModal";

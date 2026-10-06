@@ -68,7 +68,7 @@ vi.mock("@ascii-chat/shared/wasm", async (importOriginal) => ({
 }));
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
 vi.mock("../../src/components", async () => ({
-  ...(await import("../../src/components/Settings")),
+  ...(await import("../../src/components/shared/BinarySettings")),
   ...(await import("../../src/components/PageLayout")),
   ...(await import("../../src/components/PageControlBar")),
   AsciiChatWebHead: () => null,
@@ -123,6 +123,36 @@ afterEach(() => {
 });
 
 describe("Discovery page", () => {
+  it.each([
+    ["client", false],
+    ["discovery", true],
+  ])(
+    "opens working shared settings on the %s route",
+    async (_, discoveryMode) => {
+      const view = render(<ClientPage discoveryMode={discoveryMode} />, {
+        wrapper: HeadingProvider,
+      });
+      await act(async () => {});
+
+      const button = screen.getByRole("button", { name: "Settings" });
+      expect(button).toHaveAttribute("aria-expanded", "false");
+      await userEvent.click(button);
+      expect(button).toHaveAttribute("aria-expanded", "true");
+
+      const slider = screen.getByRole("slider");
+      fireEvent.change(slider, { target: { value: "30" } });
+      expect(slider).toHaveValue("30");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Matrix Rain" }),
+      );
+      expect(
+        screen.getByRole("button", { name: "🟢 Matrix Rain" }),
+      ).toBeInTheDocument();
+
+      view.unmount();
+    },
+  );
+
   it("loads the three primary fields in order with advanced settings collapsed", async () => {
     window.history.replaceState(
       {},
