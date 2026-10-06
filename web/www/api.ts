@@ -8,7 +8,7 @@ import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
 import MiniSearch from "minisearch";
-import { generateSessionStrings } from "./src/utils/strings.ts";
+import { generateSessionStrings } from "../packages/shared/src/utils/sessionStrings.js";
 
 dotenv.config();
 

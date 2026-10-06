@@ -26,11 +26,7 @@ export function GET(request: Request): Response {
   const strings = generateSessionStrings(count);
   return Response.json(
     { count: strings.length, strings },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    },
+    { headers: { "Cache-Control": "no-store" } },
   );
 }
 

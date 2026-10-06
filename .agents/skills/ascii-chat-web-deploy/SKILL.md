@@ -37,6 +37,7 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 - `web/web` is a Vite single-page app. Its `vercel.json` rewrite is required so direct client routes do not receive Vercel's 404 page. Keep the rewrite when modifying deployment configuration.
 - `web/discovery` requires the `SSH_PUBLIC_KEY` and `GPG_PUBLIC_KEY` Vercel environment variables. Its Vercel build command must generate those key files, run `pnpm run vite:build`, and copy `dist/index.html` to `dist/404.html`. Avoid the full `pnpm run build` in Vercel: its formatter can inspect Vercel-generated `.vercel` files and fail the build.
 - `web/discovery/api/session-strings.ts` is a same-origin Vercel Function. It uses the C-derived word lists and Web Crypto rejection sampling; do not replace it with a downloaded native binary or cache its responses.
+- `web/www/api/session-strings.ts` uses the same shared generator. The main homepage fetches this same-origin function, so keep it deployed whenever changing session-string presentation.
 - For a local web build, use pnpm. If the isolated worktree has no dependencies, report that limitation rather than installing unrelated dependencies into the user's checkout.
 
 ## Domains and DNS

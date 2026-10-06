@@ -1,8 +1,8 @@
 import {
   adjectives,
   adjectives_count,
-} from "./sessionStringAdjectives";
-import { nouns, nouns_count } from "./sessionStringNouns";
+} from "./sessionStringAdjectives.js";
+import { nouns, nouns_count } from "./sessionStringNouns.js";
 
 const UINT32_RANGE = 0x1_0000_0000;
 
