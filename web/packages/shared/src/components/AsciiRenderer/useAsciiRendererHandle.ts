@@ -103,18 +103,6 @@ export function useAsciiRendererHandle({
         if (resizeTimeoutRef.current) {
           return false;
         }
-        // ANSI frames describe a complete terminal grid.  Rendering a frame
-        // for a different grid into this renderer leaves terminal state from
-        // older cells visible and makes dropped frames look like interleaved
-        // tiles. Wait until the server has adopted the current dimensions.
-        if (
-          dimensions &&
-          (dimensions.cols !== dimensionsRef.current.cols ||
-            dimensions.rows !== dimensionsRef.current.rows)
-        ) {
-          return false;
-        }
-
         try {
           // Encode string to UTF-8 bytes
           const data = textEncoderRef.current.encode(ansiString);

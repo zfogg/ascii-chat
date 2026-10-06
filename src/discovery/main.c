@@ -580,7 +580,7 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
           if (processed) {
             processing_end = time_get_ns();
             send_start = processing_end;
-            result = acip_send_image_frame(transport, processed->pixels, processed->w, processed->h, 3);
+            result = acip_send_image_frame(transport, processed->pixels, processed->w, processed->h, PIXEL_FORMAT_RGB);
             send_end = time_get_ns();
             image_destroy(processed);
             if (result != ASCIICHAT_OK)

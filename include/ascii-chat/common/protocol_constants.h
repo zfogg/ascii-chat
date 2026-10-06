@@ -71,16 +71,16 @@
  * Pixel Format Constants
  * ============================================================================ */
 
-/** @brief RGB pixel format */
-#define PIXEL_FORMAT_RGB 0
+/** @brief Packed RGB24 pixel format used by ACIP image-frame senders */
+#define PIXEL_FORMAT_RGB 1
 
-/** @brief RGBA pixel format */
-#define PIXEL_FORMAT_RGBA 1
+/** @brief Packed RGBA32 pixel format */
+#define PIXEL_FORMAT_RGBA 2
 
 /** @brief BGR pixel format */
-#define PIXEL_FORMAT_BGR 2
+#define PIXEL_FORMAT_BGR 3
 
 /** @brief BGRA pixel format */
-#define PIXEL_FORMAT_BGRA 3
+#define PIXEL_FORMAT_BGRA 4
 
 /** @} */

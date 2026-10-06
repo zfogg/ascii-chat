@@ -1270,10 +1270,10 @@ void *acds_websocket_client_handler(void *arg) {
   bool auth_required = server->config.require_client_identity;
   ctx->auth_required = auth_required;
 
-  // TLS protects wss:// signaling. Plain ws:// signaling retains the
-  // application handshake so discovery packets, including room credentials,
-  // are encrypted before they cross the network.
-  bool skip_handshake = !auth_required && ctx->is_secure;
+  // Browser discovery signaling sends plain ACIP packets over both ws:// and
+  // wss://. Authentication still requires the native handshake, but ordinary
+  // browser signaling must proceed directly to session lookup.
+  bool skip_handshake = !auth_required;
 
   if (skip_handshake) {
     client_data->handshake_complete = true;

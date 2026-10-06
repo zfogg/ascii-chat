@@ -27,6 +27,12 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/server.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/common/protocol_constants.h>
+#include <ascii-chat/util/overflow.h>
 #include <ascii-chat/ringbuffer.h>
 #include "session/audio.h"
 #include <ascii-chat/audio/opus.h>
@@ -64,6 +70,8 @@ typedef struct {
   bool video_active;
   bool audio_active;
   uint64_t connected_at;
+  uint16_t render_width;
+  uint16_t render_height;
 
   /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
   struct acip_transport *transport;
@@ -74,6 +82,17 @@ typedef struct {
   /** @brief Incoming audio ringbuffer (written by receive loop, read by render thread) */
   ringbuffer_t *incoming_audio;
 } session_host_client_t;
+
+static asciichat_error_t session_host_send_packet(session_host_client_t *client, packet_type_t type,
+                                                  const void *payload, size_t payload_len) {
+  if (client->transport) {
+    return packet_send_via_transport(client->transport, type, payload, payload_len, 0);
+  }
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    return packet_send(client->socket, type, payload, payload_len);
+  }
+  return SET_ERRNO(ERROR_INVALID_STATE, "Session host client has no active transport");
+}
 
 /* ============================================================================
  * Session Host Context Structure
@@ -369,8 +388,8 @@ static void *accept_loop_thread(void *arg) {
 
   while (host->accept_thread_running && host->running) {
     // Set timeout to 1 second
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 10000;
 
     FD_ZERO(&readfds);
     max_fd = 0;
@@ -465,13 +484,13 @@ static void *receive_loop_thread(void *arg) {
     }
     mutex_unlock(&host->clients_mutex);
 
-    // If no clients, just wait for timeout
+    // If clients only have a non-socket transport, poll its receive queue below.
     if (max_fd == INVALID_SOCKET_VALUE) {
-      continue;
+      platform_sleep_ms(1);
     }
 
-    // Wait for data on any client socket
-    int activity = select((int)max_fd + 1, &readfds, NULL, NULL, &tv);
+    // Wait briefly for socket data, then also check non-socket transports.
+    int activity = max_fd == INVALID_SOCKET_VALUE ? 0 : select((int)max_fd + 1, &readfds, NULL, NULL, &tv);
     if (activity < 0) {
       if (errno != EINTR) {
         log_error("select() failed in receive loop");
@@ -479,37 +498,58 @@ static void *receive_loop_thread(void *arg) {
       continue;
     }
 
-    if (activity == 0) {
-      // Timeout - check if we should exit
-      continue;
-    }
-
-    // Check each client for incoming data
+    // Check socket readiness and queued transport data for each client.
     mutex_lock(&host->clients_mutex);
     for (int i = 0; i < host->max_clients; i++) {
-      if (!host->clients[i].active || host->clients[i].socket == INVALID_SOCKET_VALUE) {
+      if (!host->clients[i].active) {
         continue;
       }
 
-      if (!FD_ISSET(host->clients[i].socket, &readfds)) {
+      acip_transport_t *client_transport = host->clients[i].transport;
+      socket_t client_socket = host->clients[i].socket;
+      bool transport_ready = client_transport && acip_transport_has_pending_data(client_transport);
+      bool socket_ready = client_socket != INVALID_SOCKET_VALUE && FD_ISSET(client_socket, &readfds);
+      if (!transport_ready && !socket_ready) {
         continue;
       }
 
       // Try to receive packet from this client
-      packet_type_t ptype;
+      packet_type_t ptype = (packet_type_t)0;
       void *data = NULL;
       size_t len = 0;
-      asciichat_error_t result = packet_receive(host->clients[i].socket, &ptype, &data, &len);
+      void *transport_buffer = NULL;
+      size_t transport_buffer_len = 0;
+      asciichat_error_t result;
+      if (transport_ready) {
+        void *packet = NULL;
+        result = acip_transport_recv(client_transport, &packet, &transport_buffer_len, &transport_buffer);
+        if (result == ASCIICHAT_OK && packet && transport_buffer_len >= sizeof(packet_header_t)) {
+          const packet_header_t *header = (const packet_header_t *)packet;
+          ptype = (packet_type_t)NET_TO_HOST_U16(header->type);
+          len = NET_TO_HOST_U32(header->length);
+          if (len != transport_buffer_len - sizeof(packet_header_t)) {
+            result = SET_ERRNO(ERROR_NETWORK, "WebRTC packet length mismatch");
+          } else {
+            data = (uint8_t *)packet + sizeof(packet_header_t);
+          }
+        } else if (result == ASCIICHAT_OK) {
+          result = SET_ERRNO(ERROR_NETWORK, "WebRTC packet header is truncated");
+        }
+      } else {
+        result = packet_receive(client_socket, &ptype, &data, &len);
+      }
 
       if (result != ASCIICHAT_OK) {
-        log_warn("packet_receive failed from client %u: %d", host->clients[i].client_id, result);
+        log_warn("Failed to receive packet from client %u: %d", host->clients[i].client_id, result);
+        if (transport_buffer) {
+          buffer_pool_free(NULL, transport_buffer, transport_buffer_len);
+        }
         // Client disconnected or error - will be cleaned up by timeout mechanism
         continue;
       }
 
       // Process packet based on type
       uint32_t client_id = host->clients[i].client_id;
-      socket_t client_socket = host->clients[i].socket;
       mutex_unlock(&host->clients_mutex);
 
       switch (ptype) {
@@ -519,26 +559,63 @@ static void *receive_loop_thread(void *arg) {
           const image_frame_packet_t *frame_hdr = (const image_frame_packet_t *)data;
           const uint8_t *pixel_data = (const uint8_t *)data + sizeof(image_frame_packet_t);
           size_t pixel_data_size = len - sizeof(image_frame_packet_t);
+          uint32_t width = NET_TO_HOST_U32(frame_hdr->width);
+          uint32_t height = NET_TO_HOST_U32(frame_hdr->height);
+          uint32_t pixel_format = NET_TO_HOST_U32(frame_hdr->pixel_format);
+          size_t bytes_per_pixel = (pixel_format == PIXEL_FORMAT_RGBA || pixel_format == PIXEL_FORMAT_BGRA) ? 4 : 3;
+          size_t expected_size = 0;
+          size_t pixel_count = 0;
 
-          // Find client and store frame in incoming_video buffer
-          mutex_lock(&host->clients_mutex);
-          for (int j = 0; j < host->max_clients; j++) {
-            if (host->clients[j].client_id == client_id && host->clients[j].incoming_video) {
-              // Store frame in the image buffer
-              image_t *img = host->clients[j].incoming_video;
-              if (img->w == (int)frame_hdr->width && img->h == (int)frame_hdr->height) {
-                // Copy pixel data (RGB format)
-                size_t expected_size = (size_t)frame_hdr->width * frame_hdr->height * 3;
-                if (pixel_data_size >= expected_size) {
-                  memcpy(img->pixels, pixel_data, expected_size);
-                  log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u)", client_id,
-                                  frame_hdr->width, frame_hdr->height);
+          if (pixel_format < PIXEL_FORMAT_RGB || pixel_format > PIXEL_FORMAT_BGRA || width == 0 || height == 0 ||
+              width > INT_MAX || height > INT_MAX ||
+              checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK ||
+              checked_size_mul(pixel_count, bytes_per_pixel, &expected_size) != ASCIICHAT_OK ||
+              expected_size != pixel_data_size) {
+            log_warn("Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)", client_id,
+                     width, height, pixel_format, pixel_data_size);
+          } else {
+            // Frame dimensions and pixel format are network-order fields. Resize
+            // this participant's image when its capture dimensions change.
+            mutex_lock(&host->clients_mutex);
+            for (int j = 0; j < host->max_clients; j++) {
+              if (host->clients[j].active && host->clients[j].client_id == client_id &&
+                  host->clients[j].incoming_video) {
+                image_t *img = host->clients[j].incoming_video;
+                if (img->w != (int)width || img->h != (int)height) {
+                  image_t *resized = image_new(width, height);
+                  if (!resized) {
+                    log_warn("Could not allocate %ux%u video frame for client %u", width, height, client_id);
+                    break;
+                  }
+                  image_destroy(img);
+                  host->clients[j].incoming_video = img = resized;
                 }
+
+                uint8_t *dst = (uint8_t *)img->pixels;
+                if (pixel_format == PIXEL_FORMAT_RGB) {
+                  memcpy(dst, pixel_data, pixel_count * 3);
+                } else if (pixel_format == PIXEL_FORMAT_BGR) {
+                  for (size_t p = 0; p < pixel_count; p++) {
+                    dst[p * 3] = pixel_data[p * 3 + 2];
+                    dst[p * 3 + 1] = pixel_data[p * 3 + 1];
+                    dst[p * 3 + 2] = pixel_data[p * 3];
+                  }
+                } else {
+                  const bool bgra = pixel_format == PIXEL_FORMAT_BGRA;
+                  for (size_t p = 0; p < pixel_count; p++) {
+                    const uint8_t *src = pixel_data + p * 4;
+                    dst[p * 3] = src[bgra ? 2 : 0];
+                    dst[p * 3 + 1] = src[1];
+                    dst[p * 3 + 2] = src[bgra ? 0 : 2];
+                  }
+                }
+                log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u, format %u)", client_id,
+                                width, height, pixel_format);
+                break;
               }
-              break;
             }
+            mutex_unlock(&host->clients_mutex);
           }
-          mutex_unlock(&host->clients_mutex);
         }
         break;
 
@@ -548,11 +625,15 @@ static void *receive_loop_thread(void *arg) {
           const uint8_t *batch_data = (const uint8_t *)data;
           // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
           (void)batch_data[0]; // Avoid unused variable warning if we don't use sample_rate/frame_duration
-          uint32_t batch_frame_count = *(const uint32_t *)(batch_data + 8);
+          uint32_t batch_frame_count_net = 0;
+          memcpy(&batch_frame_count_net, batch_data + 8, sizeof(batch_frame_count_net));
+          uint32_t batch_frame_count = NET_TO_HOST_U32(batch_frame_count_net);
 
-          if (batch_frame_count > 0 && batch_frame_count <= 1000) {
-            const uint16_t *frame_sizes = (const uint16_t *)(batch_data + 16);
+          size_t frame_sizes_len = (size_t)batch_frame_count * sizeof(uint16_t);
+          if (batch_frame_count > 0 && batch_frame_count <= 1000 && 16 + frame_sizes_len <= len) {
+            const uint8_t *frame_sizes = batch_data + 16;
             const uint8_t *opus_frames = batch_data + 16 + (batch_frame_count * sizeof(uint16_t));
+            const uint8_t *batch_end = batch_data + len;
 
             // Find client and decode audio
             mutex_lock(&host->clients_mutex);
@@ -561,7 +642,12 @@ static void *receive_loop_thread(void *arg) {
                 // Decode each Opus frame and write to ringbuffer
                 const uint8_t *current_frame = opus_frames;
                 for (uint32_t k = 0; k < batch_frame_count; k++) {
-                  uint16_t frame_size = frame_sizes[k];
+                  uint16_t frame_size_net = 0;
+                  memcpy(&frame_size_net, frame_sizes + k * sizeof(frame_size_net), sizeof(frame_size_net));
+                  uint16_t frame_size = NET_TO_HOST_U16(frame_size_net);
+                  if ((size_t)(batch_end - current_frame) < frame_size) {
+                    break;
+                  }
                   if (frame_size > 0) {
                     // Allocate buffer for decoded samples
                     float decoded_samples[960]; // Max 20ms @ 48kHz
@@ -598,6 +684,27 @@ static void *receive_loop_thread(void *arg) {
         mutex_unlock(&host->clients_mutex);
         break;
 
+      case PACKET_TYPE_CLIENT_CAPABILITIES:
+        if (data && len >= sizeof(terminal_capabilities_packet_t)) {
+          terminal_capabilities_packet_t caps;
+          memcpy(&caps, data, sizeof(caps));
+          uint16_t width = NET_TO_HOST_U16(caps.width);
+          uint16_t height = NET_TO_HOST_U16(caps.height);
+          if (width > 0 && height > 0) {
+            mutex_lock(&host->clients_mutex);
+            for (int j = 0; j < host->max_clients; j++) {
+              if (host->clients[j].active && host->clients[j].client_id == client_id) {
+                host->clients[j].render_width = width;
+                host->clients[j].render_height = height;
+                log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
+                break;
+              }
+            }
+            mutex_unlock(&host->clients_mutex);
+          }
+        }
+        break;
+
       case PACKET_TYPE_STREAM_STOP:
         log_info("Client %u stopped streaming", client_id);
         mutex_lock(&host->clients_mutex);
@@ -613,7 +720,11 @@ static void *receive_loop_thread(void *arg) {
       case PACKET_TYPE_PING:
         // Respond with PONG
         log_debug_every(NS_PER_MS_INT, "PING from client %u", client_id);
-        packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
+        if (client_transport) {
+          packet_send_via_transport(client_transport, PACKET_TYPE_PONG, NULL, 0, 0);
+        } else {
+          packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
+        }
         break;
 
       case PACKET_TYPE_CLIENT_LEAVE:
@@ -627,7 +738,9 @@ static void *receive_loop_thread(void *arg) {
       }
 
       // Free packet data
-      if (data) {
+      if (transport_buffer) {
+        buffer_pool_free(NULL, transport_buffer, transport_buffer_len);
+      } else if (data) {
         SAFE_FREE(data);
       }
 
@@ -694,7 +807,7 @@ static void *host_render_thread(void *arg) {
 
               // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
               ascii_frames[frame_idx] =
-                  ascii_convert(img, 80, 24, false, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+                  ascii_convert(img, 80, 24, true, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
               if (ascii_frames[frame_idx]) {
                 sources[frame_idx].frame_data = ascii_frames[frame_idx];
                 sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
@@ -706,16 +819,87 @@ static void *host_render_thread(void *arg) {
             }
           }
 
-          // Create grid layout from all ASCII frames (empty grid if no active participants)
+          // Use the first connected WebRTC client's negotiated dimensions for
+          // the shared grid so its ACIP frame dimensions match the browser renderer.
+          int output_width = 80;
+          int output_height = 24;
+          for (int i = 0; i < host->max_clients; i++) {
+            if (host->clients[i].active && host->clients[i].transport && host->clients[i].render_width > 0 &&
+                host->clients[i].render_height > 0) {
+              output_width = host->clients[i].render_width;
+              output_height = host->clients[i].render_height;
+              break;
+            }
+          }
           size_t grid_size = 0;
-          char *grid_frame = ascii_create_grid(sources, active_video_count, 80, 24, &grid_size);
+          char *grid_frame = ascii_create_grid(sources, active_video_count, output_width, output_height, &grid_size);
 
           if (grid_frame) {
             // Broadcast grid to all connected participants
             if (active_video_count > 0) {
               for (int i = 0; i < host->max_clients; i++) {
-                if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-                  packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+                if (host->clients[i].active &&
+                    (host->clients[i].transport || host->clients[i].socket != INVALID_SOCKET_VALUE)) {
+                  if (host->clients[i].transport) {
+                    // Web clients parse the ACIP ASCII-frame payload, which includes
+                    // dimensions, size, and checksum ahead of the grid bytes.
+                    uint16_t client_width = host->clients[i].render_width;
+                    uint16_t client_height = host->clients[i].render_height;
+                    if (client_width == 0 || client_height == 0) {
+                      client_width = (uint16_t)output_width;
+                      client_height = (uint16_t)output_height;
+                    }
+
+                    if (active_video_count != 1 && client_width == output_width && client_height == output_height) {
+                      acip_send_ascii_frame(host->clients[i].transport, grid_frame, grid_size, output_width,
+                                            output_height, "session-host");
+                    } else {
+                      // The terminal renderer's line feeds rely on the grid
+                      // width. Rebuild the source cells at this client's grid
+                      // dimensions instead of relabeling an 80x24 frame.
+                      char **client_frames = SAFE_CALLOC((size_t)active_video_count, sizeof(*client_frames), char **);
+                      ascii_frame_source_t *client_sources =
+                          SAFE_CALLOC((size_t)active_video_count, sizeof(*client_sources), ascii_frame_source_t *);
+                      if (client_frames && client_sources) {
+                        int client_frame_idx = 0;
+                        for (int j = 0; j < host->max_clients; j++) {
+                          if (host->clients[j].active && host->clients[j].video_active &&
+                              host->clients[j].incoming_video) {
+                            client_frames[client_frame_idx] = ascii_convert(
+                                host->clients[j].incoming_video, client_width, client_height, true, false, false,
+                                PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+                            client_sources[client_frame_idx].frame_data =
+                                client_frames[client_frame_idx] ? client_frames[client_frame_idx] : "";
+                            client_sources[client_frame_idx].frame_size = client_frames[client_frame_idx]
+                                                                              ? strlen(client_frames[client_frame_idx]) + 1
+                                                                              : 1;
+                            client_frame_idx++;
+                          }
+                        }
+                        if (active_video_count == 1 && client_frames[0]) {
+                          acip_send_ascii_frame(host->clients[i].transport, client_frames[0],
+                                                strlen(client_frames[0]), client_width, client_height,
+                                                "session-host");
+                        } else {
+                          size_t client_grid_size = 0;
+                          char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
+                                                                client_height, &client_grid_size);
+                          if (client_grid) {
+                            acip_send_ascii_frame(host->clients[i].transport, client_grid, client_grid_size,
+                                                  client_width, client_height, "session-host");
+                            SAFE_FREE(client_grid);
+                          }
+                        }
+                        for (int j = 0; j < active_video_count; j++) {
+                          SAFE_FREE(client_frames[j]);
+                        }
+                      }
+                      SAFE_FREE(client_frames);
+                      SAFE_FREE(client_sources);
+                    }
+                  } else {
+                    session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+                  }
                 }
               }
             }
@@ -802,19 +986,27 @@ static void *host_render_thread(void *arg) {
 
         // Only broadcast audio if we have network-connected clients (not memory participants)
         if (opus_len > 0) {
+          uint16_t frame_sizes[1] = {(uint16_t)opus_len};
           mutex_lock(&host->clients_mutex);
-          bool has_network_clients = false;
+          bool has_socket_clients = false;
           for (int i = 0; i < host->max_clients; i++) {
-            if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-              has_network_clients = true;
-              break;
+            if (!host->clients[i].active) {
+              continue;
+            }
+            if (host->clients[i].transport) {
+              asciichat_error_t audio_result = acip_send_audio_opus_batch(
+                  host->clients[i].transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+              if (audio_result != ASCIICHAT_OK) {
+                log_warn("Failed to send mixed audio to WebRTC client %u", host->clients[i].client_id);
+              }
+            } else if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
+              has_socket_clients = true;
             }
           }
           mutex_unlock(&host->clients_mutex);
 
-          if (has_network_clients) {
-            // Broadcast mixed audio to all participants
-            uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+          if (has_socket_clients) {
+            // Preserve the existing socket-based audio broadcast path.
             av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
           }
         }
@@ -993,6 +1185,8 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL; // No alternative transport initially
+      host->clients[i].render_width = 0;
+      host->clients[i].render_height = 0;
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
@@ -1309,9 +1503,15 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t send_result =
-          packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
+    if (host->clients[i].active && host->clients[i].transport) {
+      asciichat_error_t send_result = acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1,
+                                                            80, 24, "session-host");
+      if (send_result != ASCIICHAT_OK) {
+        log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
+        result = send_result;
+      }
+    } else if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t send_result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame, frame_len);
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
         result = send_result; // Store error but continue broadcasting to other clients
@@ -1337,10 +1537,14 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].client_id == client_id && host->clients[i].active &&
-        host->clients[i].socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t result =
-          packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
+    if (host->clients[i].client_id == client_id && host->clients[i].active) {
+      asciichat_error_t result = host->clients[i].transport
+                                     ? acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24,
+                                                             "session-host")
+                                     : (host->clients[i].socket != INVALID_SOCKET_VALUE
+                                            ? packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame,
+                                                          frame_len)
+                                            : ERROR_NOT_FOUND);
       mutex_unlock(&host->clients_mutex);
       return result;
     }
@@ -1371,6 +1575,10 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start_render: invalid host");
   }
+
+  // Discovery mode starts the shared host renderer without passing through
+  // server/main.c, which normally initializes the ASCII lookup palettes.
+  ascii_simd_init();
 
   if (!host->running) {
     return SET_ERRNO(ERROR_INVALID_STATE, "session_host_start_render: not running");
@@ -1480,7 +1688,27 @@ asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32
         log_info("WebRTC transport cleared for client %u, reverting to socket", client_id);
       }
 
+      server_state_packet_t state = {0};
+      if (transport) {
+        uint32_t active_count = 0;
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].active) {
+            active_count++;
+          }
+        }
+        state.connected_client_count = HOST_TO_NET_U32(active_count);
+        state.active_client_count = HOST_TO_NET_U32(active_count);
+      }
       mutex_unlock(&host->clients_mutex);
+
+      if (transport) {
+        // Discovery sessions bypass the native server handshake. Notify the
+        // browser after registering its transport so it can start media.
+        asciichat_error_t send_result = acip_send_server_state(transport, &state);
+        if (send_result != ASCIICHAT_OK) {
+          return send_result;
+        }
+      }
       return ASCIICHAT_OK;
     }
   }

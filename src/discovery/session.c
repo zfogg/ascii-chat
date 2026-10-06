@@ -824,17 +824,23 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
 
   // Implement transport switching for participant/host
   if (session->is_host && session->host_ctx) {
-    // We are the host - set transport for the remote client
-    // participant_id contains the client's ID
-    uint32_t client_id = 0;
-    // Extract client ID from participant_id (use first 4 bytes as uint32)
-    memcpy(&client_id, participant_id, sizeof(uint32_t));
+    // Each WebRTC peer needs its own host client slot. Reusing the first slot
+    // replaces the previous peer's transport, so only the most recently
+    // connected browser receives frames.
+    uint32_t client_id = session_host_add_client(session->host_ctx, INVALID_SOCKET_VALUE, "webrtc", 0);
+    if (client_id == 0) {
+      log_error("Failed to allocate host client for WebRTC peer %02x%02x%02x%02x", participant_id[0],
+                participant_id[1], participant_id[2], participant_id[3]);
+      return;
+    }
 
     asciichat_error_t result = session_host_set_client_transport(session->host_ctx, client_id, transport);
     if (result == ASCIICHAT_OK) {
-      log_info("✓ Host: Successfully switched client %u to WebRTC transport", client_id);
+      log_info("✓ Host: WebRTC peer %02x%02x%02x%02x assigned client %u", participant_id[0], participant_id[1],
+               participant_id[2], participant_id[3], client_id);
     } else {
       log_error("✗ Host: Failed to set WebRTC transport for client %u: %d", client_id, result);
+      session_host_remove_client(session->host_ctx, client_id);
     }
   } else if (session->participant_ctx) {
     // We are a participant - set transport for ourselves
@@ -1018,9 +1024,11 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     session->turn_count = 0;
   }
 
-  // Determine our role for WebRTC peer connection
-  // Participants always use JOINER role (they initiate connections)
-  webrtc_peer_role_t role = WEBRTC_ROLE_JOINER;
+  // The session host accepts offers and generates answers. A newly created
+  // session has not set is_host yet when this runs, but its initiator will
+  // become the host during NAT negotiation. Treat that initiator as the
+  // responder now so it does not generate a competing offer for a browser.
+  webrtc_peer_role_t role = (session->is_host || session->is_initiator) ? WEBRTC_ROLE_CREATOR : WEBRTC_ROLE_JOINER;
 
   log_info("Initializing WebRTC peer manager (role=%s, stun_count=%zu, turn_count=%zu)",
            role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);

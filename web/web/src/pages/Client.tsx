@@ -331,11 +331,19 @@ export function ClientPage({
     }
 
     setFps(0);
-    let previousFrameCount = renderedFrameCountRef.current;
+    // The discovery canvas receives completed ASCII frames over WebRTC. Count
+    // their arrival instead of local canvas writes: the latter may be skipped
+    // while a resize or compositor update is in progress, even though the
+    // remote stream is advancing normally.
+    const frameCount = () =>
+      discoveryMode
+        ? receivedFrameCountRef.current
+        : renderedFrameCountRef.current;
+    let previousFrameCount = frameCount();
     let previousTime = performance.now();
     const intervalId = window.setInterval(() => {
       const now = performance.now();
-      const currentFrameCount = renderedFrameCountRef.current;
+      const currentFrameCount = frameCount();
       const elapsedSeconds = (now - previousTime) / 1000;
       setFps(
         elapsedSeconds > 0
@@ -349,7 +357,7 @@ export function ClientPage({
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [connectionState]);
+  }, [connectionState, discoveryMode]);
 
   const optionsManager = useMemo(() => {
     if (!wasmInitialized || !isClientWasmReady()) return null;
@@ -1032,7 +1040,7 @@ export function ClientPage({
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
-            onFpsChange={setFps}
+            {...(discoveryMode ? {} : { onFpsChange: setFps })}
             error={discoveryMode ? rendererError : error || rendererError}
             showFps={isWebcamRunning}
             connectionState={connectionState}

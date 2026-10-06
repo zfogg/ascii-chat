@@ -295,7 +295,11 @@ export class WebRTCSession implements ClientSession {
                 // native host may still be replacing its peer-manager
                 // callback with the transport callback, which drops those
                 // first packets. SERVER_STATE is emitted after registration.
-                if (packet.type === PacketType.SERVER_STATE)
+                // A legacy/native host may begin streaming before emitting
+                // SERVER_STATE. The first valid ASCII frame proves the data
+                // channel and protocol callback are ready, so do not leave
+                // the browser stuck in the connection timeout.
+                if (packet.type === PacketType.SERVER_STATE || packet.type === PacketType.ASCII_FRAME)
                   this.completeConnection();
                 this.packetCallback?.(packet, bytes.slice(22));
               }

@@ -878,7 +878,7 @@ typedef struct {
   uint32_t width;
   /** @brief Image height in pixels */
   uint32_t height;
-  /** @brief Pixel format enum (0=RGB24, 1=RGBA32, 2=BGR24, etc.) */
+  /** @brief Pixel format enum (1=RGB24, 2=RGBA32, 3=BGR24, 4=BGRA32) */
   uint32_t pixel_format;
   /** @brief Compressed data size (0 = not compressed, >0 = compressed) */
   uint32_t compressed_size;
