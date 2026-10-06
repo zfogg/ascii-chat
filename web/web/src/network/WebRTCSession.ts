@@ -143,22 +143,8 @@ export class WebRTCSession implements ClientSession {
       } else if (
         state === ConnectionState.CONNECTING &&
         this.lookedUp &&
-        this.state !== ConnectionState.CONNECTED
+        !this.joined
       ) {
-        if (this.joined) {
-          // The ACDS participant is bound to the signaling socket that sent
-          // JOIN. Once that socket closes, this participant ID and any pending
-          // SDP/ICE negotiation are stale. Restart the whole discovery session
-          // instead of reconnecting the socket around an orphaned peer.
-          this.options.onProgress?.(
-            "Signaling lost during WebRTC setup; restarting session",
-          );
-          this.fail(
-            new Error("Discovery signaling dropped during WebRTC setup"),
-          );
-          return;
-        }
-
         // SocketBridge retries transient signaling drops itself. Let that
         // socket finish its handshake, then look up the session again if the
         // interrupted connection had not joined yet.
