@@ -51,11 +51,13 @@ export const SITES = {
 export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
- * Canonical session-string API. Every website uses this endpoint.
+ * Canonical session-string API. Every website uses this endpoint. The www host
+ * is used directly because the apex redirects there and redirects are not CORS
+ * responses.
  */
 export const SESSION_STRINGS_API_BASE = isDev
   ? "http://localhost:3001"
-  : "https://ascii-chat.com";
+  : "https://www.ascii-chat.com";
 
 /**
  * API endpoints with full URLs (for cross-origin requests in dev)
