@@ -49,6 +49,7 @@ function parseIceTarget(kind: "stun" | "turn", entry: string): ServerTarget {
   const value = entry.trim().replace(new RegExp(`^${kind}:`, "i"), "");
   const url = new URL(`${kind}://${value}`);
   if (!url.hostname) throw new Error(`Invalid ${kind.toUpperCase()} server target: ${entry}`);
+  // STUN and TURN both default to 3478 for UDP and TCP; TLS variants use 5349.
   return { host: url.hostname, port: parsePort(url.port || "3478", entry) };
 }
 
