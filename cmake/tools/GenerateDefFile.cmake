@@ -66,7 +66,11 @@ foreach(OBJ_FILE ${OBJ_FILES})
     # Parse nm output and extract symbol names
     string(REGEX MATCHALL "[^\n]+ [TDBRCStdbrc] [^\n]+" SYMBOLS "${NM_OUTPUT}")
     foreach(SYMBOL_LINE ${SYMBOLS})
-        string(REGEX REPLACE ".*[TDBRCStdbrc] ([^ \n]+)" "\\1" SYMBOL_NAME "${SYMBOL_LINE}")
+        # llvm-nm prints "object: address class symbol". Anchor extraction to
+        # those fields so a compiler-generated string's contents cannot be
+        # mistaken for the symbol name (for example, a literal ending in
+        # "destroy" must not become an export named destroy).
+        string(REGEX REPLACE "^.*: [0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \n]+)$" "\\1" SYMBOL_NAME "${SYMBOL_LINE}")
         if(SYMBOL_NAME)
             list(APPEND ALL_SYMBOLS "${SYMBOL_NAME}")
         endif()

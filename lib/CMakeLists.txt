@@ -928,7 +928,7 @@ add_library(ascii-chat-shared SHARED
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
                 -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            DEPENDS ${MODULE_TARGETS}
+            DEPENDS ${MODULE_TARGETS} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
             COMMENT "Generating Windows .def file from object files"
             VERBATIM
         )

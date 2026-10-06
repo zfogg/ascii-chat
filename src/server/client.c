@@ -986,9 +986,22 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
       return NULL;
     }
 
+    // The unencrypted socket receive path retains the wire header in its
+    // allocation. Packet handlers always consume payload-only data, matching
+    // the encrypted and ACIP-dispatch paths.
+    if (envelope.data == envelope.allocated_buffer) {
+      const packet_header_t *header = (const packet_header_t *)envelope.allocated_buffer;
+      envelope.type = (packet_type_t)NET_TO_HOST_U16(header->type);
+      envelope.data = (uint8_t *)envelope.allocated_buffer + sizeof(*header);
+      envelope.len = NET_TO_HOST_U32(header->length);
+    }
+
     // Process the capabilities packet directly
     log_debug("Processing initial capabilities packet from client %s (from %s)", client->client_id,
               used_pending_packet ? "pending packet" : "network");
+    log_info("INITIAL_CAPABILITIES: client_id=%s source=%s type=%u payload_len=%zu allocated_size=%zu data=%p",
+             client->client_id, used_pending_packet ? "pending" : "network", envelope.type, envelope.len,
+             envelope.allocated_size, envelope.data);
     handle_client_capabilities_packet(client, envelope.data, envelope.len);
 
     // Free the packet data
