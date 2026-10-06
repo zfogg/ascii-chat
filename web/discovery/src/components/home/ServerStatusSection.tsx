@@ -4,6 +4,7 @@ import { Heading, Link } from "@ascii-chat/shared/components";
 type Server = {
   host: string;
   port: number;
+  transport?: "udp" | "tls";
   up: boolean;
 };
 
@@ -32,11 +33,11 @@ const SERVICES: Service[] = [
 
 const formatServer = (
   protocol: Service["protocol"],
-  { host, port }: Server,
+  { host, port, transport }: Server,
 ) => {
   if (protocol === "webrtc")
     return `${port === 80 ? "ws" : "wss"}://${host}:${port}`;
-  return `${protocol}:${host}:${port}`;
+  return `${protocol}${transport === "tls" ? "s" : ""}:${host}:${port}`;
 };
 
 export default function ServerStatusSection() {

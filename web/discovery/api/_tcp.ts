@@ -4,6 +4,7 @@ import {
   classes,
   createTurnClient,
   Message,
+  makeIntegrityKey,
   methods,
   parseMessage,
   StunProtocol,
@@ -142,14 +143,17 @@ async function checkTurnServer({
     return { host, port, up: false, latencyMs: Date.now() - startedAt };
   }
 
+  if (transport === "tls") {
+    return checkTurnTlsServer({ host, port, transport }, username, password);
+  }
+
   let client: Awaited<ReturnType<typeof createTurnClient>> | undefined;
   try {
     client = await createTurnClient(
       { address: [host, port], username, password },
       {
         lifetime: 60,
-        transport: transport === "tls" ? "tls" : "udp",
-        tlsOptions: transport === "tls" ? { servername: host } : undefined,
+        transport: "udp",
       },
     );
     return { host, port, up: true, latencyMs: Date.now() - startedAt };
@@ -158,6 +162,83 @@ async function checkTurnServer({
   } finally {
     await client?.close();
   }
+}
+
+function checkTurnTlsServer(
+  { host, port }: ServerTarget,
+  username: string,
+  password: string,
+): Promise<ServerResult> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const initialRequest = new Message(methods.ALLOCATE, classes.REQUEST)
+      .setAttribute("LIFETIME", 60)
+      .setAttribute("REQUESTED-TRANSPORT", 0x11000000);
+    const socket = connectTls({ host, port, servername: host });
+    let response = Buffer.alloc(0);
+    let authenticatedRequest: Message | undefined;
+    let integrityKey: Buffer | undefined;
+    let settled = false;
+
+    const finish = (up: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.destroy();
+      resolve({
+        host,
+        port,
+        transport: "tls",
+        up,
+        latencyMs: Date.now() - startedAt,
+      });
+    };
+
+    const timeout = setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
+    socket.once("secureConnect", () => socket.write(initialRequest.bytes));
+    socket.once("error", () => finish(false));
+    socket.on("data", (chunk) => {
+      response = Buffer.concat([response, Buffer.from(chunk)]);
+      while (response.length >= 20) {
+        const length = response.readUInt16BE(2);
+        const messageLength = 20 + length;
+        if (response.length < messageLength) return;
+        const messageBytes = response.subarray(0, messageLength);
+        response = response.subarray(messageLength);
+        const message = parseMessage(messageBytes, integrityKey);
+        if (!message) continue;
+
+        if (!authenticatedRequest && message.transactionId.equals(initialRequest.transactionId)) {
+          const [errorCode] = message.getAttributeValue("ERROR-CODE") || [];
+          const realm = message.getAttributeValue("REALM");
+          const nonce = message.getAttributeValue("NONCE");
+          if (errorCode !== 401 || !realm || !nonce) {
+            finish(false);
+            return;
+          }
+          integrityKey = makeIntegrityKey(username, realm, password);
+          authenticatedRequest = new Message(methods.ALLOCATE, classes.REQUEST)
+            .setAttribute("LIFETIME", 60)
+            .setAttribute("REQUESTED-TRANSPORT", 0x11000000)
+            .setAttribute("USERNAME", username)
+            .setAttribute("REALM", realm)
+            .setAttribute("NONCE", nonce)
+            .addMessageIntegrity(integrityKey)
+            .addFingerprint();
+          socket.write(authenticatedRequest.bytes);
+          continue;
+        }
+
+        if (
+          authenticatedRequest &&
+          message.transactionId.equals(authenticatedRequest.transactionId)
+        ) {
+          finish(message.messageClass === classes.RESPONSE);
+          return;
+        }
+      }
+    });
+  });
 }
 
 export async function checkServers(kind: ServerKind) {
