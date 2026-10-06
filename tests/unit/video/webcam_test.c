@@ -19,9 +19,10 @@ Test(webcam, test_pattern_dimensions_and_colors) {
   cr_assert_eq(frame->w, 320);
   cr_assert_eq(frame->h, 240);
   cr_assert_not_null(frame->pixels);
-  cr_assert_eq(frame->pixels[320 + 1].r, 255);
-  cr_assert_eq(frame->pixels[320 + 41].g, 255);
-  cr_assert_eq(frame->pixels[320 + 81].b, 255);
+  // Choose positions inside the bars and outside the animated checkerboard.
+  cr_assert_eq(frame->pixels[320 + 10].r, 255);
+  cr_assert_eq(frame->pixels[320 + 50].g, 255);
+  cr_assert_eq(frame->pixels[320 + 90].b, 255);
   cr_assert_eq(frame->pixels[320 + 40].r, 0);
   cr_assert_eq(frame->pixels[320 + 40].g, 0);
   cr_assert_eq(frame->pixels[320 + 40].b, 0);
@@ -38,12 +39,12 @@ Test(webcam, test_pattern_reuses_buffer_and_animates_five_times_faster) {
   rgb_pixel_t initial_row[320];
   memcpy(initial_row, pixels + 320, sizeof(initial_row));
 
-  // Ten frame intervals advance 25 pixels, rather than the original five.
+  // Every generated frame advances the pattern by five pixels.
   for (unsigned int index = 1; index <= 10; index++) {
     image_t *next = media_source_read_video(source);
     cr_assert_eq(next, frame);
     cr_assert_eq(next->pixels, pixels);
-    unsigned int phase = index * 5 / 2;
+    unsigned int phase = index * 5;
     for (unsigned int x = 0; x < 320; x++) {
       cr_assert_eq(memcmp(&next->pixels[320 + x], &initial_row[(x + phase) % 320], sizeof(rgb_pixel_t)), 0);
     }

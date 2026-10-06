@@ -226,7 +226,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
   log_debug("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd,
-           tcp->is_connected ? "true" : "false");
+            tcp->is_connected ? "true" : "false");
 
   if (!tcp->is_connected) {
     log_error("[TCP_RECV_STATE] ❌ DISCONNECTED: Cannot recv - transport marked disconnected! sockfd=%d", tcp->sockfd);
@@ -237,15 +237,14 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL && transport->crypto_ctx->encrypt_data);
   log_debug("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd,
-           enforce_encryption ? "yes" : "no");
+            enforce_encryption ? "yes" : "no");
 
-  uint64_t receive_timeout_ns = transport->receive_timeout_ns != 0
-                                    ? transport->receive_timeout_ns
-                                    : RECV_TIMEOUT * NS_PER_SEC_INT;
+  uint64_t receive_timeout_ns =
+      transport->receive_timeout_ns != 0 ? transport->receive_timeout_ns : RECV_TIMEOUT * NS_PER_SEC_INT;
   packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx,
-                                                                  enforce_encryption, &envelope, receive_timeout_ns);
-  log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu", result,
-           result == PACKET_RECV_SUCCESS ? envelope.len : 0);
+                                                                   enforce_encryption, &envelope, receive_timeout_ns);
+  log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",
+            result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {
     if (result == PACKET_RECV_EOF) {
@@ -260,6 +259,10 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
       if (HAS_ERRNO(&error_context) && error_context.code == ERROR_NETWORK_TIMEOUT) {
         return ERROR_NETWORK_TIMEOUT;
       }
+      // A non-timeout receive error is terminal for this stream. Retaining a
+      // connected state after the peer has gone away causes callers to retry a
+      // socket that can no longer deliver packets.
+      tcp->is_connected = false;
       log_error("[TCP_RECV_STATE] ❌ RECV_FAILED: result=%d on sockfd=%d", result, tcp->sockfd);
       return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
     }
@@ -299,7 +302,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
     const packet_header_t *hdr = (const packet_header_t *)envelope.data;
     uint16_t pkt_type = NET_TO_HOST_U16(hdr->type);
     log_debug("[TCP_RECV_STATE] ✅ RECV_OK: sockfd=%d, packet_type=%d (0x%04x), len=%zu", tcp->sockfd, pkt_type,
-             pkt_type, envelope.len);
+              pkt_type, envelope.len);
   } else {
     log_warn("[TCP_RECV_STATE] ⚠️  RECV_OK_SMALL_PACKET: sockfd=%d, len=%zu (< header)", tcp->sockfd, envelope.len);
   }

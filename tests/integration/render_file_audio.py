@@ -70,7 +70,7 @@ def main():
         def launch(name, *args):
             handle = open(root / f"{name}.stderr", "wb")
             handles.append(handle)
-            process = subprocess.Popen([binary, "--no-check-update", "--log-level", "warn", "--log-file", str(root / f"{name}.log"), *args],
+            process = subprocess.Popen([binary, "--no-check-update", "--log-level", "info", "--log-file", str(root / f"{name}.log"), *args],
                                        env=env, stdout=subprocess.DEVNULL, stderr=handle)
             processes.append(process)
             return process
