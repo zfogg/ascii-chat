@@ -554,42 +554,57 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   int glyph_rendered_count = 0;
   int occupied_cell_count = 0;
   int glyph_missing_count = 0;
+  // ANSI 16/256 colors are indexed.  Converting them through libvterm for
+  // every cell is especially expensive in the single-threaded WASM renderer.
+  // A terminal palette has at most 256 entries and is stable for a frame.
+  uint32_t indexed_rgb[256] = {0};
+  bool indexed_rgb_valid[256] = {false};
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
       vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
 
       uint8_t fr, fg, fb, br, bg, bb;
-      if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
-        VTermColor foreground = cell.fg;
-        vterm_screen_convert_color_to_rgb(r->vts, &foreground);
-        if (VTERM_COLOR_IS_RGB(&foreground)) {
-          fr = foreground.rgb.red;
-          fg = foreground.rgb.green;
-          fb = foreground.rgb.blue;
-        } else {
-          fr = def_fg_r;
-          fg = def_fg_g;
-          fb = def_fg_b;
+      if (VTERM_COLOR_IS_RGB(&cell.fg)) {
+        fr = cell.fg.rgb.red;
+        fg = cell.fg.rgb.green;
+        fb = cell.fg.rgb.blue;
+      } else if (VTERM_COLOR_IS_INDEXED(&cell.fg)) {
+        const uint8_t index = cell.fg.indexed.idx;
+        if (!indexed_rgb_valid[index]) {
+          VTermColor foreground = cell.fg;
+          vterm_screen_convert_color_to_rgb(r->vts, &foreground);
+          indexed_rgb[index] = ((uint32_t)foreground.rgb.red << 16) |
+                               ((uint32_t)foreground.rgb.green << 8) |
+                               foreground.rgb.blue;
+          indexed_rgb_valid[index] = true;
         }
+        fr = (uint8_t)(indexed_rgb[index] >> 16);
+        fg = (uint8_t)(indexed_rgb[index] >> 8);
+        fb = (uint8_t)indexed_rgb[index];
       } else {
         fr = def_fg_r;
         fg = def_fg_g;
         fb = def_fg_b;
       }
 
-      if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
-        VTermColor background = cell.bg;
-        vterm_screen_convert_color_to_rgb(r->vts, &background);
-        if (VTERM_COLOR_IS_RGB(&background)) {
-          br = background.rgb.red;
-          bg = background.rgb.green;
-          bb = background.rgb.blue;
-        } else {
-          br = def_bg_r;
-          bg = def_bg_g;
-          bb = def_bg_b;
+      if (VTERM_COLOR_IS_RGB(&cell.bg)) {
+        br = cell.bg.rgb.red;
+        bg = cell.bg.rgb.green;
+        bb = cell.bg.rgb.blue;
+      } else if (VTERM_COLOR_IS_INDEXED(&cell.bg)) {
+        const uint8_t index = cell.bg.indexed.idx;
+        if (!indexed_rgb_valid[index]) {
+          VTermColor background = cell.bg;
+          vterm_screen_convert_color_to_rgb(r->vts, &background);
+          indexed_rgb[index] = ((uint32_t)background.rgb.red << 16) |
+                               ((uint32_t)background.rgb.green << 8) |
+                               background.rgb.blue;
+          indexed_rgb_valid[index] = true;
         }
+        br = (uint8_t)(indexed_rgb[index] >> 16);
+        bg = (uint8_t)(indexed_rgb[index] >> 8);
+        bb = (uint8_t)indexed_rgb[index];
       } else {
         br = def_bg_r;
         bg = def_bg_g;

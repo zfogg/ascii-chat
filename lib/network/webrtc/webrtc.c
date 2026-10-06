@@ -725,6 +725,16 @@ asciichat_error_t webrtc_datachannel_get_buffered_amount(webrtc_data_channel_t *
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t webrtc_datachannel_get_max_message_size(webrtc_data_channel_t *dc, size_t *size) {
+  if (!dc || dc->rtc_id < 0 || !size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel and max message size are required");
+  int result = rtcMaxMessageSize(dc->rtc_id);
+  if (result <= 0)
+    return SET_ERRNO(ERROR_NETWORK, "Failed to query DataChannel max message size");
+  *size = (size_t)result;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8_t *data, size_t size) {
   if (!dc || dc->rtc_id < 0 || !data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");

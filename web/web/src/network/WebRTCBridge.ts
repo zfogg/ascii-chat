@@ -12,7 +12,7 @@ export class WebRTCBridge implements PacketTransport {
   private readonly limit = 8 * 1024 * 1024;
   // Keep at most one current ASCII snapshot ahead of the receiver. A deeper
   // ordered backlog delays both rendered video and audio packets behind it.
-  private readonly sendWindow = 64 * 1024;
+  private readonly sendWindow = 256 * 1024;
   private closed = false;
   private receivedChunks = 0;
   private receivedBytes = 0;
@@ -182,10 +182,7 @@ export class WebRTCBridge implements PacketTransport {
           this.channel.bufferedAmount + entry.packet.length > highWaterMark
         )
           break;
-        const chunkSize = Math.max(
-          1,
-          Math.min(16384, this.maxMessageSize || 16384),
-        );
+        const chunkSize = Math.max(1, this.maxMessageSize || 16384);
         const chunk = entry.packet.slice(
           entry.offset,
           entry.offset + chunkSize,

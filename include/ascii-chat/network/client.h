@@ -137,6 +137,8 @@ typedef struct client_info {
   uint64_t frames_sent;
   uint64_t frames_received;          // Track incoming frames from this client
   uint32_t frames_received_logged;   // Track for periodic logging (thread-safe via client_state_mutex)
+  uint64_t video_receive_rate_window_ns;
+  uint32_t video_receive_rate_window_frames;
   uint32_t last_received_frame_hash; // Hash of last frame received from this client
 
   // Buffers for incoming media (individual per client)

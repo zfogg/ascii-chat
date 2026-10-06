@@ -1270,12 +1270,10 @@ void *acds_websocket_client_handler(void *arg) {
   bool auth_required = server->config.require_client_identity;
   ctx->auth_required = auth_required;
 
-  // Browser discovery signaling sends ACIP lookup/join packets directly. Its
-  // subsequent media transport is DTLS-protected, and identity-gated
-  // deployments still retain the application handshake below. Requiring a
-  // handshake for an unauthenticated ws:// browser makes the service wait for
-  // PROTOCOL_VERSION while the browser is already waiting for LOOKUP response.
-  bool skip_handshake = !auth_required;
+  // TLS protects wss:// signaling. Plain ws:// signaling retains the
+  // application handshake so discovery packets, including room credentials,
+  // are encrypted before they cross the network.
+  bool skip_handshake = !auth_required && ctx->is_secure;
 
   if (skip_handshake) {
     client_data->handshake_complete = true;

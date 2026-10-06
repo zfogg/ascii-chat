@@ -332,17 +332,51 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   }
 
   mutex_lock(&wrtc->send_mutex);
+  uint64_t send_start_ns = time_get_ns();
+  size_t buffered_before_send = 0;
+  if (len >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, data, sizeof(header));
+    if (NET_TO_HOST_U64(header.magic) == PACKET_MAGIC) {
+      uint16_t packet_type = NET_TO_HOST_U16(header.type);
+      if (packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME) {
+        asciichat_error_t buffered_result =
+            webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
+        if (buffered_result != ASCIICHAT_OK) {
+          buffered_before_send = 0;
+          CLEAR_ERRNO();
+        }
+      }
+    }
+  }
+
+  size_t max_message_size = 16384;
+  asciichat_error_t max_size_result =
+      webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
+  if (max_size_result != ASCIICHAT_OK || max_message_size == 0) {
+    max_message_size = 16384;
+    CLEAR_ERRNO();
+  }
+  log_info_every(60 * NS_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes",
+                 max_message_size);
+
   asciichat_error_t result = ASCIICHAT_OK;
   for (size_t offset = 0; offset < len;) {
     size_t chunk = len - offset;
-    if (chunk > 16384)
-      chunk = 16384;
+    if (chunk > max_message_size)
+      chunk = max_message_size;
     result = webrtc_datachannel_send(wrtc->data_channel, (const uint8_t *)data + offset, chunk);
     if (result != ASCIICHAT_OK)
       break;
     offset += chunk;
   }
   mutex_unlock(&wrtc->send_mutex);
+
+  uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
+  if (send_duration_ns > 20 * NS_PER_MS_INT) {
+    log_warn_every(US_PER_SEC_INT, "WebRTC DataChannel send blocked %.1fms for %zu-byte packet (buffered=%zu)",
+                   (double)send_duration_ns / 1e6, len, buffered_before_send);
+  }
 
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send on WebRTC DataChannel");

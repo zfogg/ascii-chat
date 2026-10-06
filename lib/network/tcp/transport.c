@@ -93,8 +93,8 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   // Lock send mutex to prevent concurrent sends from corrupting packet data
   mutex_lock(&tcp->send_mutex);
 
-  log_info("[TCP_SEND_STATE] Entry: transport=%p, sockfd=%d, len=%zu, is_connected=%s, data=%p", (void *)transport,
-           tcp->sockfd, len, tcp->is_connected ? "true" : "false", data);
+  log_dev("[TCP_SEND_STATE] Entry: transport=%p, sockfd=%d, len=%zu, is_connected=%s, data=%p", (void *)transport,
+          tcp->sockfd, len, tcp->is_connected ? "true" : "false", data);
 
   if (!tcp->is_connected) {
     log_error("[TCP_SEND_STATE] ❌ DISCONNECTED: Cannot send - transport marked disconnected! sockfd=%d, len=%zu",
@@ -114,8 +114,8 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   // Extract packet type from header
   const packet_header_t *header = (const packet_header_t *)data;
   uint16_t packet_type = NET_TO_HOST_U16(header->type);
-  log_info("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type, len,
-           (void *)header);
+  log_dev("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type, len,
+          (void *)header);
 
   // Check if encryption is needed
   bool should_encrypt = false;
@@ -130,16 +130,16 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
     }
   }
 
-  log_info("[TCP_SEND_STATE] 🔐 CRYPTO_CHECK: crypto_ready=%s, is_handshake=%s, will_encrypt=%s",
-           crypto_ready ? "yes" : "no", is_handshake ? "yes" : "no", should_encrypt ? "yes" : "no");
+  log_dev("[TCP_SEND_STATE] 🔐 CRYPTO_CHECK: crypto_ready=%s, is_handshake=%s, will_encrypt=%s",
+          crypto_ready ? "yes" : "no", is_handshake ? "yes" : "no", should_encrypt ? "yes" : "no");
 
   // If no encryption needed, send raw data
   if (!should_encrypt) {
-    log_info("[TCP_SEND_STATE] 📤 PLAINTEXT_SEND: sockfd=%d, len=%zu bytes (packet_type=%d)", tcp->sockfd, len,
-             packet_type);
+    log_dev("[TCP_SEND_STATE] 📤 PLAINTEXT_SEND: sockfd=%d, len=%zu bytes (packet_type=%d)", tcp->sockfd, len,
+            packet_type);
     asciichat_error_t result = tcp_send_all(tcp->sockfd, data, len);
     if (result == ASCIICHAT_OK) {
-      log_info("[TCP_SEND_STATE] ✅ PLAINTEXT_SEND_OK: sockfd=%d, %zu bytes sent successfully", tcp->sockfd, len);
+      log_dev("[TCP_SEND_STATE] ✅ PLAINTEXT_SEND_OK: sockfd=%d, %zu bytes sent successfully", tcp->sockfd, len);
     } else {
       log_error("[TCP_SEND_STATE] ❌ PLAINTEXT_SEND_FAILED: sockfd=%d, len=%zu - error code set", tcp->sockfd, len);
     }

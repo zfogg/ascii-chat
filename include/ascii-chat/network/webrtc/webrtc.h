@@ -290,6 +290,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
  */
 asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8_t *data, size_t size);
 asciichat_error_t webrtc_datachannel_get_buffered_amount(webrtc_data_channel_t *dc, size_t *amount);
+asciichat_error_t webrtc_datachannel_get_max_message_size(webrtc_data_channel_t *dc, size_t *size);
 
 /**
  * @brief Check if DataChannel is open and ready

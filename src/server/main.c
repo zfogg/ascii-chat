@@ -1888,12 +1888,15 @@ static asciichat_error_t server_init_fn(void *user_data) {
             }
 
             // Configure peer_manager
+            const char *server_address = GET_OPTION(address);
+            bool bind_webrtc_to_server_address = server_address && server_address[0] &&
+                                                 strcmp(server_address, "0.0.0.0") != 0 &&
+                                                 strcmp(server_address, "::") != 0;
             webrtc_peer_manager_config_t pm_config = {
                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-                // The TCP listener defaults to loopback, but WebRTC peers do not
-                // advertise loopback ICE candidates. Let libdatachannel gather on
-                // all local interfaces instead of inheriting the TCP bind address.
-                .bind_address = NULL,
+                // Honor an explicitly selected server interface for ICE. With a
+                // wildcard bind, let libdatachannel gather candidates on all interfaces.
+                .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
                 .stun_servers = stun_servers,
                 .stun_count = stun_count,
                 .turn_servers = turn_servers,

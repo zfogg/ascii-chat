@@ -217,6 +217,7 @@ jobs:
           ls -la build/bin/test_unit_crypto_common 2>/dev/null && build/bin/test_unit_crypto_common --help 2>&1 | head -5 || echo "test binary not found"
 
           # Run unit tests (filtered by label)
+          set -o pipefail
           ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 2 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
@@ -555,6 +556,7 @@ jobs:
 
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
+          set -o pipefail
           ctest --test-dir build --label-regex "^performance$" --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"

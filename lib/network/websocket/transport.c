@@ -614,8 +614,9 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected,
                   (void *)ws_data->wsi, len);
   } else {
-    log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
-             (void *)ws_data->wsi, len);
+    log_dev_every(4500 * US_PER_MS_INT,
+                  "[WEBSOCKET_SEND_SERVER] Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
+                  (void *)ws_data->wsi, len);
   }
 
   // Check if encryption is needed (matching tcp_send logic)
@@ -734,7 +735,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // lws_callback_on_writable_all_protocol() for all protocols.
     START_TIMER("ws_callback");
     lws_cancel_service(ws_data->context);
-    STOP_TIMER_AND_LOG(info, 0, "ws_callback", "[WEBSOCKET] lws_cancel_service");
+    STOP_TIMER_AND_LOG(dev, 0, "ws_callback", "[WEBSOCKET] lws_cancel_service");
     log_debug(">>> CANCELLED SERVICE to wake event loop for wsi=%p", (void *)ws_data->wsi);
 
     SAFE_FREE(send_buffer);

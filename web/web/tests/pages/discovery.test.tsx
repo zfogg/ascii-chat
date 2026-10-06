@@ -5,10 +5,11 @@ import {
   fireEvent,
   render,
   screen,
-  within,
+  waitFor,
 } from "@testing-library/react";
 import { HeadingProvider } from "@ascii-chat/shared/components";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import {
   afterEach,
   beforeEach,
@@ -71,8 +72,15 @@ vi.mock("../../src/components", async () => ({
   ...(await import("../../src/components/PageLayout")),
   ...(await import("../../src/components/PageControlBar")),
   AsciiChatWebHead: () => null,
-  AsciiRenderer: () => null,
   ConnectionPanelModal: () => null,
+  AsciiRenderer: ({
+    onDimensionsChange,
+  }: {
+    onDimensionsChange: (dimensions: { cols: number; rows: number }) => void;
+  }) => {
+    useEffect(() => onDimensionsChange({ cols: 80, rows: 40 }), [onDimensionsChange]);
+    return null;
+  },
 }));
 
 const fieldNames = [
@@ -157,6 +165,7 @@ describe("Discovery page", () => {
         target: { value },
       });
     await userEvent.click(screen.getByRole("button", { name: "Join session" }));
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
     expect(backend.connect).toHaveBeenCalledOnce();
     expect(backend.options?.discovery).toEqual({
       sessionName: "blue-mountain-tiger",
@@ -228,6 +237,7 @@ describe("Discovery page", () => {
       target: { value: "blue-mountain-tiger" },
     });
     await userEvent.click(screen.getByRole("button", { name: "Join session" }));
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
     expectFieldsDisabled(true);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     await act(async () => reject(new Error("Discovery unavailable")));
@@ -288,17 +298,13 @@ describe("Discovery page", () => {
     expect(
       help.some((node) =>
         node.textContent?.includes(
-          "Leave both blank to use credentials from the discovery service",
+          "Leave both TURN fields blank to use the credentials provided by the discovery service.",
         ),
       ),
     ).toBe(true);
     expect(screen.queryByText(LOCKED_SETTINGS_HELP)).not.toBeInTheDocument();
     expect(
-      within(
-        screen.getByRole("group", { name: /^TURN credentials/ }),
-      ).getByLabelText("TURN password", {
-        exact: true,
-      }),
+      screen.getByLabelText("TURN password", { exact: true }),
     ).toHaveAttribute("type", "password");
   });
 });

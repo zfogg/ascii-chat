@@ -833,7 +833,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   // This metric is used by debug scripts to measure FPS across all modes
   static atomic_t g_display_frames_rendered = {0};
   int frame_number = atomic_fetch_add_u64(&g_display_frames_rendered, 1) + 1;
-  log_info("[FRAMES_RENDERED_TOTAL] %d", frame_number);
+  log_dev("[FRAMES_RENDERED_TOTAL] %d", frame_number);
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display

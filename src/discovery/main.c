@@ -43,6 +43,7 @@
 #include "session/participant.h"
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/terminal.h>
@@ -161,6 +162,10 @@ static asciichat_error_t discovery_audio_play_packet(discovery_video_receiver_t 
 
 static void *discovery_video_receive_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
+  uint64_t report_start_ns = time_get_ns();
+  uint64_t report_received_frames = 0;
+  uint64_t report_rendered_frames = 0;
+  uint64_t report_render_time_ns = 0;
   while (atomic_load_bool(&ctx->running) && !should_exit() && acip_transport_is_connected(ctx->transport)) {
     asciichat_error_t result = ASCIICHAT_OK;
     // Keep the newest display frame and bound receive work so capture cannot starve.
@@ -171,14 +176,28 @@ static void *discovery_video_receive_thread(void *user_data) {
       size_t length = 0;
       result = packet_receive_via_transport(ctx->transport, &type, &payload, &length, &allocated);
       if (result == ASCIICHAT_OK && type == PACKET_TYPE_ASCII_FRAME && length >= sizeof(ascii_frame_packet_t)) {
+        report_received_frames++;
         ascii_frame_packet_t header;
         memcpy(&header, payload, sizeof(header));
-        size_t size = NET_TO_HOST_U32(header.original_size);
-        if (NET_TO_HOST_U32(header.compressed_size) == 0 && size <= length - sizeof(header)) {
-          SAFE_FREE(latest_text);
-          latest_text = SAFE_MALLOC(size + 1, char *);
-          memcpy(latest_text, (const uint8_t *)payload + sizeof(header), size);
-          latest_text[size] = '\0';
+        uint32_t original_size = NET_TO_HOST_U32(header.original_size);
+        uint32_t compressed_size = NET_TO_HOST_U32(header.compressed_size);
+        bool is_compressed = (NET_TO_HOST_U32(header.flags) & FRAME_FLAG_IS_COMPRESSED) != 0;
+        size_t encoded_size = is_compressed ? compressed_size : original_size;
+        size_t encoded_length = length - sizeof(header);
+        if (encoded_size == encoded_length && (!is_compressed || compressed_size > 0)) {
+          char *decoded = packet_decode_frame_data_malloc((const char *)payload + sizeof(header), encoded_length,
+                                                          is_compressed, original_size, compressed_size);
+          if (decoded) {
+            SAFE_FREE(latest_text);
+            latest_text = decoded;
+          } else {
+            log_warn_every(US_PER_SEC_INT, "Could not decode server ASCII frame (compressed=%d original=%u encoded=%u)",
+                           is_compressed, original_size, compressed_size);
+            CLEAR_ERRNO();
+          }
+        } else {
+          log_warn_every(US_PER_SEC_INT, "Invalid server ASCII frame lengths (compressed=%d original=%u encoded=%u payload=%zu)",
+                         is_compressed, original_size, encoded_size, encoded_length);
         }
       } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {
         result = packet_send_via_transport(ctx->transport, PACKET_TYPE_PONG, payload, length, 0);
@@ -195,9 +214,24 @@ static void *discovery_video_receive_thread(void *user_data) {
       }
     }
     if (latest_text) {
+      uint64_t render_start_ns = time_get_ns();
       session_display_render_frame(ctx->display, latest_text);
+      report_render_time_ns += time_get_ns() - render_start_ns;
+      report_rendered_frames++;
       SAFE_FREE(latest_text);
       latest_text = NULL;
+    }
+    uint64_t now_ns = time_get_ns();
+    uint64_t report_elapsed_ns = now_ns - report_start_ns;
+    if (report_elapsed_ns >= NS_PER_SEC_INT) {
+      log_info("Discovery ASCII receive/render rate: received=%.1f fps rendered=%.1f fps avg_render=%.2fms",
+               (double)report_received_frames * NS_PER_SEC_INT / (double)report_elapsed_ns,
+               (double)report_rendered_frames * NS_PER_SEC_INT / (double)report_elapsed_ns,
+               report_rendered_frames ? (double)report_render_time_ns / (double)report_rendered_frames / 1e6 : 0.0);
+      report_start_ns = now_ns;
+      report_received_frames = 0;
+      report_rendered_frames = 0;
+      report_render_time_ns = 0;
     }
     platform_sleep_ns(NS_PER_MS_INT);
   }
@@ -462,7 +496,11 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       packet.height = HOST_TO_NET_U16(GET_OPTION(height) > 0 ? GET_OPTION(height) : 24);
       packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
       packet.utf8_support = caps.utf8_support ? 1 : 0;
-      packet.desired_fps = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 15;
+      int desired_fps = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : caps.desired_fps;
+      if (desired_fps <= 0) {
+        desired_fps = DEFAULT_MAX_FPS;
+      }
+      packet.desired_fps = (uint8_t)(desired_fps > 144 ? 144 : desired_fps);
       packet.wants_padding = caps.wants_padding ? 1 : 0;
       packet.detection_reliable = caps.detection_reliable;
       SAFE_STRNCPY(packet.term_type, caps.term_type, sizeof(packet.term_type));
@@ -530,22 +568,45 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
           signal_exit();
           break;
         }
+        uint64_t capture_start = time_get_ns();
         image_t *frame = session_capture_read_frame(capture);
+        uint64_t capture_end = time_get_ns();
+        uint64_t processing_start = capture_end;
+        uint64_t processing_end = processing_start;
+        uint64_t send_start = processing_start;
+        uint64_t send_end = send_start;
         if (frame) {
           image_t *processed = session_capture_process_for_transmission(capture, frame);
           if (processed) {
+            processing_end = time_get_ns();
+            send_start = processing_end;
             result = acip_send_image_frame(transport, processed->pixels, processed->w, processed->h, 3);
+            send_end = time_get_ns();
             image_destroy(processed);
             if (result != ASCIICHAT_OK)
               break;
           }
         }
+        if (processing_end == processing_start)
+          processing_end = time_get_ns();
+        uint64_t signaling_start = send_end;
         result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+        uint64_t signaling_end = time_get_ns();
         if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT)
           break;
+        uint64_t event_start = time_get_ns();
         APP_CALLBACK_VOID(platform_pump_events);
+        uint64_t event_end = time_get_ns();
         uint64_t interval = NS_PER_SEC_INT / (GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 30);
         uint64_t elapsed = time_get_ns() - iteration_start;
+        if (elapsed > 50 * NS_PER_MS_INT) {
+          log_warn_every(US_PER_SEC_INT,
+                         "Discovery media loop took %.1fms (capture=%.1fms process=%.1fms send=%.1fms signaling=%.1fms "
+                         "events=%.1fms)",
+                         (double)elapsed / 1e6, (double)(capture_end - capture_start) / 1e6,
+                         (double)(processing_end - processing_start) / 1e6, (double)(send_end - send_start) / 1e6,
+                         (double)(signaling_end - signaling_start) / 1e6, (double)(event_end - event_start) / 1e6);
+        }
         if (elapsed < interval)
           platform_sleep_ns(interval - elapsed);
       }

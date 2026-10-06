@@ -17,7 +17,10 @@ const signalingHarness = vi.hoisted(() => ({
   current: null as null | {
     emit(state: number): void;
     sendPacket: ReturnType<typeof vi.fn>;
-    options: { applicationEncryption?: boolean };
+    options: {
+      applicationEncryption?: boolean;
+      discoveryHandshake?: boolean;
+    };
   },
 }));
 
@@ -25,7 +28,12 @@ vi.mock("../../src/network/ClientConnection", () => ({
   ClientConnection: class {
     private stateCallback: ((state: number) => void) | null = null;
 
-    constructor(public options: { applicationEncryption?: boolean }) {
+    constructor(
+      public options: {
+        applicationEncryption?: boolean;
+        discoveryHandshake?: boolean;
+      },
+    ) {
       signalingHarness.current = this;
     }
     onStateChange(callback: (state: number) => void) {
@@ -187,6 +195,7 @@ describe("WebRTC signaling reconnects", () => {
     });
 
     expect(signalingHarness.current!.options.applicationEncryption).toBe(false);
+    expect(signalingHarness.current!.options.discoveryHandshake).toBeUndefined();
   });
 
   it("repeats lookup after a transient reconnect before the session is joined", async () => {
@@ -258,7 +267,7 @@ describe("WebRTC ACIP framing", () => {
   it("keeps a full raw frame together and replaces it while backpressured", () => {
     const dc = channel();
     Object.defineProperty(dc, "bufferedAmount", {
-      value: 100000,
+      value: 300000,
       writable: true,
     });
     const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
@@ -279,10 +288,33 @@ describe("WebRTC ACIP framing", () => {
     );
     expect(sent).not.toContain(stale);
   });
+  it("sends one raw frame without pausing inside the 256 KiB live window", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", { value: 0, writable: true });
+    vi.mocked(dc.send).mockImplementation((data) => {
+      Object.defineProperty(dc, "bufferedAmount", {
+        value: dc.bufferedAmount + (data as Uint8Array).byteLength,
+        writable: true,
+      });
+    });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
+    const frame = packetOfType(3001, 230424);
+
+    bridge.send(frame, true);
+
+    const sentBytes = vi
+      .mocked(dc.send)
+      .mock.calls.reduce(
+        (total, [chunk]) => total + (chunk as Uint8Array).byteLength,
+        0,
+      );
+    expect(sentBytes).toBe(frame.byteLength);
+    expect(dc.send).toHaveBeenCalledTimes(15);
+  });
   it("sends queued audio before a replaceable frame that has not started", () => {
     const dc = channel();
     Object.defineProperty(dc, "bufferedAmount", {
-      value: 100000,
+      value: 300000,
       writable: true,
     });
     const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());

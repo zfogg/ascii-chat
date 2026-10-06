@@ -226,7 +226,17 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     return 0;
   }
 
-  // Collect client info snapshots WITHOUT holding rwlock
+  // Keep client slots and their incoming frame buffers alive until every
+  // active source has been copied out of its double buffer. remove_client()
+  // frees those buffers under the manager write lock after stopping only that
+  // client's own workers; the other clients' render workers also read them.
+  bool manager_lock_held = g_client_manager_rwlock_initialized;
+  if (manager_lock_held) {
+    rwlock_rdlock(&g_client_manager_rwlock);
+  }
+
+  // Snapshot fields while holding the manager read lock so removal cannot
+  // invalidate a frame-buffer pointer between this scan and its copy.
   typedef struct {
     char client_id[MAX_CLIENT_ID_LEN];
     bool is_active;
@@ -237,7 +247,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   client_snapshot_t client_snapshots[MAX_CLIENTS];
   int snapshot_count = 0;
 
-  // NO LOCK: All fields are atomic or stable pointers
+  // The manager read lock protects slot identity and buffer lifetime; stream
+  // flags are atomic because receive callbacks update them independently.
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
@@ -260,7 +271,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     client_snapshot_t *snap = &client_snapshots[i];
 
     if (!snap->is_active) {
-      log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Skipping inactive client %u", snap->client_id);
+      log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Skipping inactive client %s", snap->client_id);
       continue;
     }
 
@@ -291,48 +302,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       size_t frame_size_val = frame->size;
 
-      // Compute hash of incoming frame to verify it's changing
-      uint32_t incoming_hash = 0;
-      if (frame_size_val > 0) {
-        for (size_t i = 0; i < frame_size_val && i < 1000; i++) {
-          uint8_t byte = ((unsigned char *)frame->data)[i];
-          incoming_hash = (uint32_t)((uint64_t)incoming_hash * 31 + byte);
-        }
-      }
-
-      // DIAGNOSTIC: Track incoming frame changes from buffer
-      static uint32_t last_buffer_hash = 0;
-      if (incoming_hash != last_buffer_hash) {
-        log_dev("BUFFER_FRAME CHANGE: Client %u got NEW frame from buffer: hash=0x%08x (prev=0x%08x) size=%zu",
-                 snap->client_id, incoming_hash, last_buffer_hash, frame_size_val);
-        last_buffer_hash = incoming_hash;
-      } else {
-        log_dev_every(25000, "BUFFER_FRAME DUPLICATE: Client %u frame hash=0x%08x size=%zu (no change)",
-                      snap->client_id, incoming_hash, frame_size_val);
-      }
-
-      // DETAILED BUFFER INSPECTION: Extract and log frame dimensions + first pixels
-      if (frame_size_val >= 8) {
-        uint32_t width_net, height_net;
-        memcpy(&width_net, frame->data, sizeof(uint32_t));
-        memcpy(&height_net, (char *)frame->data + sizeof(uint32_t), sizeof(uint32_t));
-        uint32_t width = NET_TO_HOST_U32(width_net);
-        uint32_t height = NET_TO_HOST_U32(height_net);
-
-        // Extract first 3 RGB pixels to inspect actual pixel data
-        uint8_t *pixel_ptr = (uint8_t *)frame->data + 8;
-        uint32_t first_pixel_rgb = 0;
-        if (frame_size_val >= 11) {
-          first_pixel_rgb = ((uint32_t)pixel_ptr[0] << 16) | ((uint32_t)pixel_ptr[1] << 8) | (uint32_t)pixel_ptr[2];
-        }
-
-        log_dev("BUFFER_INSPECT: Client %u dims=%ux%u pixel_data_size=%zu first_pixel_rgb=0x%06x data_hash=0x%08x",
-                 snap->client_id, width, height, frame_size_val - 8, first_pixel_rgb, incoming_hash);
-      }
-
-      log_debug_every(5 * NS_PER_MS_INT, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
-                      incoming_hash, frame_size_val);
-
       if (frame_size_val >= (sizeof(uint32_t) * 2 + 3)) {
         // PARSE AND VALIDATE DIMENSIONS BEFORE COPYING
         // Don't trust frame->size - calculate correct size from dimensions
@@ -341,7 +310,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
         // Reject obviously corrupted dimensions
         if (peek_width == 0 || peek_height == 0 || peek_width > 4096 || peek_height > 2160) {
-          log_debug("Per-client %u: rejected dimensions %ux%u as corrupted", snap->client_id, peek_width, peek_height);
+          log_debug("Per-client %s: rejected dimensions %ux%u as corrupted", snap->client_id, peek_width, peek_height);
           mutex_unlock(&video_buffer->swap_mutex);
           continue;
         }
@@ -402,19 +371,18 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       // Debug logging to understand the data
       if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
-        SET_ERRNO(ERROR_INVALID_STATE, "UNINITIALIZED MEMORY DETECTED! First 16 bytes of frame data:");
-        uint8_t *bytes = (uint8_t *)frame_to_use->data;
-        SET_ERRNO(ERROR_INVALID_STATE,
-                  "  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", bytes[0],
-                  bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10],
-                  bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+        SET_ERRNO(ERROR_INVALID_STATE, "Uninitialized frame dimensions from client %s: 0x%08x x 0x%08x",
+                  snap->client_id, img_width, img_height);
       }
 
       // Validate dimensions using image utility function
       if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
         SET_ERRNO(ERROR_INVALID_STATE,
-                  "Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)", snap->client_id,
+                  "Per-client: Invalid image dimensions from client %s: %ux%u (data may be corrupted)", snap->client_id,
                   img_width, img_height);
+        if (got_new_frame) {
+          SAFE_FREE(current_frame.data);
+        }
         source_count++;
         continue;
       }
@@ -424,8 +392,11 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       {
         size_t rgb_size = 0;
         if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
-          SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %u: %ux%u",
+          SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %s: %ux%u",
                     snap->client_id, img_width, img_height);
+          if (got_new_frame) {
+            SAFE_FREE(current_frame.data);
+          }
           source_count++;
           continue;
         }
@@ -433,8 +404,11 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       }
       if (frame_to_use->size != expected_size) {
         SET_ERRNO(ERROR_INVALID_STATE,
-                  "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
+                  "Per-client: Frame size mismatch from client %s: got %zu, expected %zu for %ux%u image",
                   snap->client_id, frame_to_use->size, expected_size, img_width, img_height);
+        if (got_new_frame) {
+          SAFE_FREE(current_frame.data);
+        }
         source_count++;
         continue;
       }
@@ -446,6 +420,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       image_t *img = image_new_from_pool(img_width, img_height);
       if (!img) {
         log_error("Per-client: image_new_from_pool failed for %ux%u", img_width, img_height);
+        if (got_new_frame) {
+          SAFE_FREE(current_frame.data);
+        }
         continue;
       }
       memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
@@ -467,6 +444,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     source_count++;
   }
 
+  if (manager_lock_held) {
+    rwlock_rdunlock(&g_client_manager_rwlock);
+  }
   return source_count;
 }
 
@@ -814,7 +794,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   }
 
   if (!render_client) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Target client not found", target_client_id);
+    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %s: Target client not found", target_client_id);
     return NULL;
   }
 
@@ -822,14 +802,14 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   // Terminal caps are set once during handshake and never change, so this is safe
   bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
   if (!has_terminal_caps_snapshot) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Terminal capabilities not received", target_client_id);
+    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %s: Terminal capabilities not received", target_client_id);
     return NULL;
   }
 
   terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
 
   if (!render_client->client_palette_initialized) {
-    SET_ERRNO(ERROR_TERMINAL, "Client %u palette not initialized - cannot render frame", target_client_id);
+    SET_ERRNO(ERROR_TERMINAL, "Client %s palette not initialized - cannot render frame", target_client_id);
     return NULL;
   }
 
@@ -853,7 +833,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   if (convert_duration_ns > 5 * NS_PER_MS_INT) { // Log if > 5ms
     char duration_str[32];
     time_pretty((uint64_t)((double)convert_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %u took %s to convert %dx%d image to ASCII",
+    log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %s took %s to convert %dx%d image to ASCII",
                    target_client_id, duration_str, composite->w, composite->h);
   }
 
@@ -967,11 +947,11 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
                                           int *out_sources_count) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
-  // Register stream atomics with named debug registry
-  static bool stream_atomics_registered = false;
-  if (!stream_atomics_registered) {
+  // Register the stream counter once even when per-client render workers enter
+  // this function concurrently.
+  static _Atomic bool stream_atomics_registered = false;
+  if (!atomic_exchange_explicit(&stream_atomics_registered, true, memory_order_acq_rel)) {
     NAMED_REGISTER_ATOMIC(&g_previous_active_video_count, "server_video_source_count_for_layout_detection", NULL);
-    stream_atomics_registered = true;
   }
 
   uint64_t frame_gen_start_ns = time_get_ns();
@@ -1005,13 +985,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     }
   }
 
-  static uint64_t last_detailed_log = 0;
-  uint64_t now_ns = collect_end_ns;
-  if (now_ns - last_detailed_log > 333 * NS_PER_MS_INT) { // Log every 333ms (3x per second)
-    last_detailed_log = now_ns;
-    log_dev("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
-             (collect_end_ns - collect_start_ns) / NS_PER_MS);
-  }
+  log_dev_every(333 * NS_PER_MS_INT, "FRAME_GEN_START: target_client=%s sources=%d collect=%.1fms", target_client_id,
+               sources_with_video, (collect_end_ns - collect_start_ns) / NS_PER_MS);
 
   // Return the source count for debugging/tracking
   if (out_sources_count) {
@@ -1137,7 +1112,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
       *out_size = ascii_len;
     }
 
-    log_dev_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %u",
+    log_dev_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %s",
                   *out_size, target_client_id);
 
     // Debug: Log the last 50 bytes of the frame to see what's really there
@@ -1168,7 +1143,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 
     out = ascii_frame;
   } else {
-    SET_ERRNO(ERROR_TERMINAL, "Per-client %u: Failed to convert image to ASCII", target_client_id);
+    SET_ERRNO(ERROR_TERMINAL, "Per-client %s: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
   }
 
@@ -1194,7 +1169,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   if (frame_gen_duration_ns > 10 * NS_PER_MS_INT) { // Log if > 10ms
     char duration_str[32];
     time_pretty((uint64_t)((double)frame_gen_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %u full frame gen took %s", target_client_id,
+    log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %s full frame gen took %s", target_client_id,
                    duration_str);
   }
 

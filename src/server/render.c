@@ -353,7 +353,7 @@ void *client_video_render_thread(void *arg) {
 
   log_debug("Video render thread: client_id=%s, webrtc=%d", thread_client_id, is_webrtc);
 
-  log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
+  log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %s", thread_client_id);
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
 
   // Wait for client to send terminal capabilities before rendering
@@ -362,7 +362,7 @@ void *client_video_render_thread(void *arg) {
   int waited_ms = 0;
   while (!client->has_terminal_caps && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     if (waited_ms == 0) {
-      log_debug("Waiting for terminal capabilities from client %u...", thread_client_id);
+      log_debug("Waiting for terminal capabilities from client %s...", thread_client_id);
     }
     APP_CALLBACK_VOID(platform_pump_events);
     platform_sleep_ms(10);
@@ -373,7 +373,7 @@ void *client_video_render_thread(void *arg) {
     }
   }
   if (client->has_terminal_caps) {
-    log_debug("Received terminal capabilities for client %u after %dms", thread_client_id, waited_ms);
+    log_debug("Received terminal capabilities for client %s after %dms", thread_client_id, waited_ms);
   }
 
   // Get client's desired FPS from capabilities or use default
@@ -383,15 +383,15 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
+    log_debug("Client %s requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
               desired_fps);
   } else {
-    log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
+    log_debug("Client %s using default FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
               desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
-  log_debug("Client %u render interval: %dms (%d FPS)", thread_client_id, base_frame_interval_ms, client_fps);
+  log_debug("Client %s render interval: %dms (%d FPS)", thread_client_id, base_frame_interval_ms, client_fps);
 
   // FPS tracking for video render thread
   fps_t video_fps_tracker = {0};
@@ -399,17 +399,23 @@ void *client_video_render_thread(void *arg) {
 
   const uint64_t frame_interval_ns = NS_PER_SEC_INT / client_fps;
   uint64_t next_frame_ns = time_get_ns() + frame_interval_ns;
+  bool last_has_sources = false;
+  uint32_t frame_gen_count = 0;
+  uint64_t frame_gen_start_time = 0;
+  uint32_t last_frame_hash = UINT32_MAX;
+  uint32_t commits_count = 0;
+  uint64_t commits_start_time = 0;
 
-  log_info("Video render loop STARTING for client %u", thread_client_id);
+  log_info("Video render loop STARTING for client %s", thread_client_id);
 
   bool should_continue = true;
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     START_TIMER("render_iteration");
-    log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %u", thread_client_id);
+    log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %s", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load_bool(&g_should_exit)) {
-      log_debug("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
+      log_debug("Video render thread stopping for client %s (g_should_exit)", thread_client_id);
       break;
     }
 
@@ -420,7 +426,7 @@ void *client_video_render_thread(void *arg) {
     should_continue = video_running && active && !shutting_down;
 
     if (!should_continue) {
-      log_debug("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
+      log_debug("Video render thread stopping for client %s (should_continue=false: video_running=%d, active=%d, "
                 "shutting_down=%d)",
                 thread_client_id, video_running, active, shutting_down);
       break;
@@ -470,20 +476,19 @@ void *client_video_render_thread(void *arg) {
     bool has_video_sources = any_clients_sending_video();
 
     // DIAGNOSTIC: Track when video sources become available
-    static bool last_has_sources = false;
     if (has_video_sources != last_has_sources) {
-      log_warn("DIAGNOSTIC: Client %u video sources: %s", thread_client_id,
+      log_warn("DIAGNOSTIC: Client %s video sources: %s", thread_client_id,
                has_video_sources ? "AVAILABLE" : "UNAVAILABLE");
       last_has_sources = has_video_sources;
     }
 
     log_debug_every(5 * NS_PER_MS_INT,
-                    "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
+                    "Video render iteration for client %s: has_video_sources=%d, width=%u, height=%u", thread_client_id,
                     has_video_sources, width_snapshot, height_snapshot);
 
     // Use default dimensions if client dimensions not received
     if (width_snapshot == 0 || height_snapshot == 0) {
-      log_dev_every(5 * NS_PER_MS_INT, "Using default dimensions for client %u (client reported: width=%u, height=%u)",
+      log_dev_every(5 * NS_PER_MS_INT, "Using default dimensions for client %s (client reported: width=%u, height=%u)",
                     thread_client_id, width_snapshot, height_snapshot);
       // Use 80x25 as standard terminal size fallback for snapshot/test clients
       width_snapshot = 80;
@@ -496,10 +501,6 @@ void *client_video_render_thread(void *arg) {
     int sources_count = 0; // Track number of video sources in this frame
 
     // DIAGNOSTIC: Track every frame generation attempt
-    // Use per-client static variables to track frequency independently
-    static uint32_t frame_gen_count = 0;
-    static uint64_t frame_gen_start_time = 0;
-
     frame_gen_count++;
     if (frame_gen_count == 1) {
       frame_gen_start_time = current_time_ns;
@@ -509,10 +510,10 @@ void *client_video_render_thread(void *arg) {
     if (frame_gen_count % 120 == 0) {
       uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
       double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-      log_dev("render loop: client=%u fps=%.1f", thread_client_id, gen_fps);
+      log_dev("render loop: client=%s fps=%.1f", thread_client_id, gen_fps);
     }
 
-    log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
+    log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %s with dims %ux%u",
                   thread_client_id, width_snapshot, height_snapshot);
 
     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
@@ -536,18 +537,17 @@ void *client_video_render_thread(void *arg) {
     // The frame data (animated background or test pattern) is still valid content
 
     // DEBUG: Log frame generation details
-    static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
     uint32_t current_frame_hash = 0;
     if (ascii_frame && frame_size > 0) {
       for (size_t i = 0; i < frame_size && i < 1000; i++) {
         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
       if (current_frame_hash != last_frame_hash) {
-        log_dev("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
+        log_dev("RENDER_FRAME CHANGE: Client %s frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
                  frame_size, sources_count, current_frame_hash, last_frame_hash);
         last_frame_hash = current_frame_hash;
       } else {
-        log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)",
+        log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %s frame #%zu sources=%d hash=0x%08x (no change)",
                       thread_client_id, frame_size, sources_count, current_frame_hash);
       }
     }
@@ -558,7 +558,7 @@ void *client_video_render_thread(void *arg) {
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
-      log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
+      log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %s (size=%zu)", thread_client_id, frame_size);
       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
       // Send thread will compare this with last sent count to detect grid changes
       atomic_store_u64(&client->last_rendered_grid_sources, (uint64_t)sources_count);
@@ -591,8 +591,6 @@ void *client_video_render_thread(void *arg) {
               time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
                           sizeof(commit_duration_str));
 
-              static uint32_t commits_count = 0;
-              static uint64_t commits_start_time = 0;
               commits_count++;
               if (commits_count == 1) {
                 commits_start_time = commit_end_ns;
@@ -600,10 +598,10 @@ void *client_video_render_thread(void *arg) {
               if (commits_count % 10 == 0) {
                 uint64_t elapsed_ns = commit_end_ns - commits_start_time;
                 double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-                log_dev("render commit rate: client=%u fps=%.1f", thread_client_id, commit_fps);
+                log_dev("render commit rate: client=%s fps=%.1f", thread_client_id, commit_fps);
               }
 
-              log_dev("FRAME_COMMIT: Client %u took %s (hash=0x%08x)", thread_client_id,
+              log_dev("FRAME_COMMIT: Client %s took %s (hash=0x%08x)", thread_client_id,
                        commit_duration_str, current_frame_hash);
 
               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
@@ -625,7 +623,7 @@ void *client_video_render_thread(void *arg) {
       SAFE_FREE(ascii_frame);
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
+      log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %s",
                     client_id_snapshot);
     }
 
@@ -639,7 +637,7 @@ void *client_video_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Video render thread stopped for client %u", thread_client_id);
+  log_debug("Video render thread stopped for client %s", thread_client_id);
 #endif
 
   // Clean up thread-local error context before exit
@@ -781,7 +779,7 @@ void *client_audio_render_thread(void *arg) {
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_debug("Audio render thread started for client %u (%s), webrtc=%d", thread_client_id, thread_display_name,
+  log_debug("Audio render thread started for client %s (%s), webrtc=%d", thread_client_id, thread_display_name,
             is_webrtc);
 #endif
 
@@ -799,7 +797,7 @@ void *client_audio_render_thread(void *arg) {
   // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
   opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
   if (!opus_encoder) {
-    log_error("Failed to create Opus encoder for audio render thread (client %u)", thread_client_id);
+    log_error("Failed to create Opus encoder for audio render thread (client %s)", thread_client_id);
     return NULL;
   }
 
@@ -814,11 +812,11 @@ void *client_audio_render_thread(void *arg) {
   bool should_continue = true;
   uint64_t audio_deadline = time_get_ns();
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
-    log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
+    log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %s", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load_bool(&g_should_exit)) {
-      log_debug("Audio render thread stopping for client %u (g_should_exit)", thread_client_id);
+      log_debug("Audio render thread stopping for client %s (g_should_exit)", thread_client_id);
       break;
     }
 
@@ -828,12 +826,12 @@ void *client_audio_render_thread(void *arg) {
                        ((int)atomic_load_bool(&client->active) != 0) && !atomic_load_bool(&client->shutting_down));
 
     if (!should_continue) {
-      log_debug("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
+      log_debug("Audio render thread stopping for client %s (should_continue=false)", thread_client_id);
       break;
     }
 
     if (!g_audio_mixer) {
-      log_dev_every(10 * NS_PER_MS_INT, "Audio render waiting for mixer (client %u)", thread_client_id);
+      log_dev_every(10 * NS_PER_MS_INT, "Audio render waiting for mixer (client %s)", thread_client_id);
       // Check shutdown flag while waiting
       if (atomic_load_bool(&g_should_exit))
         break;
@@ -961,7 +959,7 @@ void *client_audio_render_thread(void *arg) {
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
           // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
           log_dev_every(4500 * US_PER_MS_INT,
-                        "Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
+                        "Server audio frame #%d for client %s: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
                         "first4=[%.4f,%.4f,%.4f,%.4f]",
                         server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
                         opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
@@ -1065,7 +1063,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Audio render thread stopped for client %u", thread_client_id);
+  log_debug("Audio render thread stopped for client %s", thread_client_id);
 #endif
 
   // Clean up Opus encoder
@@ -1324,33 +1322,33 @@ void stop_client_render_threads(client_info_t *client) {
   bool is_shutting_down = atomic_load_bool(&g_should_exit);
 
   if (asciichat_thread_is_initialized(&client->video_render_thread)) {
-    log_debug("Joining video render thread for client %u", client->client_id);
+    log_debug("Joining video render thread for client %s", client->client_id);
     int result;
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
-      log_debug("Shutdown mode: joining video render thread for client %u (no timeout)", client->client_id);
+      log_debug("Shutdown mode: joining video render thread for client %s (no timeout)", client->client_id);
       result = asciichat_thread_join(&client->video_render_thread, NULL);
       if (result != 0) {
-        log_warn("Video render thread for client %u failed to join during shutdown: %s", client->client_id,
+        log_warn("Video render thread for client %s failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
-      log_debug("Calling asciichat_thread_join for video thread of client %u", client->client_id);
+      log_debug("Calling asciichat_thread_join for video thread of client %s", client->client_id);
       result = asciichat_thread_join(&client->video_render_thread, NULL);
-      log_debug("asciichat_thread_join returned %d for video thread of client %u", result, client->client_id);
+      log_debug("asciichat_thread_join returned %d for video thread of client %s", result, client->client_id);
     }
 
     if (result == 0) {
 #ifdef DEBUG_THREADS
-      log_debug("Video render thread joined for client %u", client->client_id);
+      log_debug("Video render thread joined for client %s", client->client_id);
 #endif
     } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s", client->client_id,
+        log_warn("Failed to join video render thread for client %s during shutdown (continuing): %s", client->client_id,
                  SAFE_STRERROR(result));
       } else {
-        log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+        log_error("Failed to join video render thread for client %s: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
     if (result == 0) {
@@ -1363,10 +1361,10 @@ void stop_client_render_threads(client_info_t *client) {
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
-      log_debug("Shutdown mode: joining audio render thread for client %u (no timeout)", client->client_id);
+      log_debug("Shutdown mode: joining audio render thread for client %s (no timeout)", client->client_id);
       result = asciichat_thread_join(&client->audio_render_thread, NULL);
       if (result != 0) {
-        log_warn("Audio render thread for client %u failed to join during shutdown: %s", client->client_id,
+        log_warn("Audio render thread for client %s failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
@@ -1375,14 +1373,14 @@ void stop_client_render_threads(client_info_t *client) {
 
     if (result == 0) {
 #ifdef DEBUG_THREADS
-      log_debug("Audio render thread joined for client %u", client->client_id);
+      log_debug("Audio render thread joined for client %s", client->client_id);
 #endif
     } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s", client->client_id,
+        log_warn("Failed to join audio render thread for client %s during shutdown (continuing): %s", client->client_id,
                  SAFE_STRERROR(result));
       } else {
-        log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+        log_error("Failed to join audio render thread for client %s: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
     if (result == 0) {
@@ -1394,6 +1392,6 @@ void stop_client_render_threads(client_info_t *client) {
   // mutex_destroy(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_debug("Successfully destroyed render threads for client %u", client->client_id);
+  log_debug("Successfully destroyed render threads for client %s", client->client_id);
 #endif
 }

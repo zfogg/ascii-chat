@@ -87,6 +87,22 @@ export class WebRTCSession implements ClientSession {
   private closed = false;
   private lookedUp = false;
 
+  /**
+   * A native peer installs its DataChannel receive callback while registering
+   * the client, after the browser's `open` event can already have fired.  The
+   * initial SERVER_STATE packet is sent after that registration, so it is the
+   * protocol-ready acknowledgement for browser control traffic.
+   */
+  private completeConnection(): void {
+    if (this.closed || this.state === ConnectionState.CONNECTED) return;
+    this.clearTimer();
+    this.setState(ConnectionState.CONNECTED);
+    this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
+    this.resolveConnect?.();
+    this.resolveConnect = null;
+    this.rejectConnect = null;
+  }
+
   constructor(
     private options: DiscoveryOptions,
     width = 80,
@@ -94,10 +110,8 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      // ACDS WebSocket signaling accepts plain ACIP discovery packets. Its
-      // handler explicitly bypasses the native crypto handshake; sending a
-      // PROTOCOL_VERSION packet here makes the service reject the connection
-      // before LOOKUP can be sent. The peer DataChannel remains DTLS-encrypted.
+      // ACDS relays plain ACIP signaling and skips the native crypto handshake.
+      // The peer DataChannel remains protected by WebRTC DTLS.
       applicationEncryption: false,
       width,
       height,
@@ -277,6 +291,12 @@ export class WebRTCSession implements ClientSession {
                       payloadBytes: bytes.length - 22,
                     }));
                 }
+                // Do not send browser capabilities at DataChannel open: the
+                // native host may still be replacing its peer-manager
+                // callback with the transport callback, which drops those
+                // first packets. SERVER_STATE is emitted after registration.
+                if (packet.type === PacketType.SERVER_STATE)
+                  this.completeConnection();
                 this.packetCallback?.(packet, bytes.slice(22));
               }
             } catch (error) {
@@ -286,12 +306,6 @@ export class WebRTCSession implements ClientSession {
           (error) => this.fail(error),
           this.peer?.sctp?.maxMessageSize,
         );
-        this.clearTimer();
-        this.setState(ConnectionState.CONNECTED);
-        this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
-        this.resolveConnect?.();
-        this.resolveConnect = null;
-        this.rejectConnect = null;
       };
       channel.onclose = () => {
         if (!this.closed) this.fail(new Error("WebRTC DataChannel closed"));
