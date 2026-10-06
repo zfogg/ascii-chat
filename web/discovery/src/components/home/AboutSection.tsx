@@ -64,12 +64,12 @@ export default function AboutSection({
           <strong>ACDS server (WebSocket):</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.WSS}</code>
         </li>
-        {ACDS_ENDPOINTS.STUN.map((server, index) => (
-          <li key={server}>
-            <strong>Default STUN server ({index + 1}):</strong>{" "}
-            <code className="bg-gray-800 px-1 rounded">{server}</code>
-          </li>
-        ))}
+        <li>
+          <strong>Default STUN servers:</strong>{" "}
+          <code className="bg-gray-800 px-1 rounded">
+            {ACDS_ENDPOINTS.STUN.join(",")}
+          </code>
+        </li>
         <li>
           <strong>Default TURN server:</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">
