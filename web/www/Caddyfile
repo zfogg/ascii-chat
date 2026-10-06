@@ -10,7 +10,7 @@
   header Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
 
   # COEP/COOP headers for WASM threading support
-  header Cross-Origin-Embedder-Policy "credentialless"
+  header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
   # API routing from vercel.json routes
