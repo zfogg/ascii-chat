@@ -1,9 +1,9 @@
-import { API_RELATIVE, DISCOVERY_API_BASE } from "./urls";
+import { SESSION_STRINGS_API_BASE } from "./urls";
 
 /**
  * Fetch session strings from the API
- * In production, fetches from discovery service (configured via VITE_DISCOVERY_API_BASE)
- * In development, fetches from local API
+ * Fetches from the canonical ascii-chat.com API in production and the local API
+ * in development.
  * @param count - Number of session strings to generate (default: 1)
  * @returns Promise<string[]> - Array of session strings
  * @throws Error if the API call fails or count is invalid
@@ -12,14 +12,9 @@ export async function fetchSessionStrings(
   count: number = 1,
 ): Promise<string[]> {
   try {
-    // In production, use discovery service API if configured
-    // In dev, use relative URL with local API
-    const apiBase = DISCOVERY_API_BASE || "";
-    const endpoint = apiBase
-      ? `${apiBase}/api/session-strings`
-      : API_RELATIVE.SESSION_STRINGS;
-
-    const response = await fetch(`${endpoint}?count=${count}`);
+    const response = await fetch(
+      `${SESSION_STRINGS_API_BASE}/api/session-strings?count=${count}`,
+    );
 
     if (!response.ok) {
       const error = await response.json();

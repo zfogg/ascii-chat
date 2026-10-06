@@ -26,7 +26,12 @@ export function GET(request: Request): Response {
   const strings = generateSessionStrings(count);
   return Response.json(
     { count: strings.length, strings },
-    { headers: { "Cache-Control": "no-store" } },
+    {
+      headers: {
+        "Access-Control-Allow-Origin": "https://discovery.ascii-chat.com",
+        "Cache-Control": "no-store",
+      },
+    },
   );
 }
 
