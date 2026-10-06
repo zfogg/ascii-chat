@@ -1028,10 +1028,10 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   // Create peer manager configuration
   webrtc_peer_manager_config_t pm_config = {
       .role = role,
-      .bind_address = session->is_host && GET_OPTION(address) && GET_OPTION(address)[0] &&
-                              strcmp(GET_OPTION(address), "0.0.0.0") != 0
-                          ? GET_OPTION(address)
-                          : NULL,
+      // The host TCP listener can be loopback-only while WebRTC still needs
+      // candidates for every usable local interface. Do not reuse the TCP
+      // bind address for libdatachannel's ICE sockets.
+      .bind_address = NULL,
       .stun_servers = session->stun_servers,
       .stun_count = session->stun_count,
       .turn_servers = session->turn_servers,
