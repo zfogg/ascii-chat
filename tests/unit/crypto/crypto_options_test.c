@@ -275,16 +275,14 @@ Test(crypto_options, server_only_options) {
 }
 
 Test(crypto_options, mutually_exclusive_options) {
-  const char *argv[] = {"program", "client", "--no-encrypt", "--key", "password"};
+  char program[] = "program";
+  char client[] = "client";
+  char no_encrypt[] = "--no-encrypt";
+  char key[] = "--key";
+  char password[] = "password";
+  char *argv[] = {program, client, no_encrypt, key, password};
 
-  options_init(5, (char **)argv);
-
-  // Get options from RCU state
-  const options_t *opts = options_get();
-
-  // Both should be set, but --no-encrypt takes precedence
-  cr_assert(opts->no_encrypt, "No encrypt should be set");
-  cr_assert(opts->encrypt_key[0] != '\0', "Key should still be set");
+  cr_assert_neq(options_init(5, argv), ASCIICHAT_OK, "--no-encrypt must reject key authentication");
 }
 
 Test(crypto_options, invalid_key_formats) {
@@ -421,6 +419,11 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
     argv[argc++] = key_val;
   }
 
+  if (no_encrypt && has_key) {
+    cr_assert_neq(options_init(argc, (char **)argv), ASCIICHAT_OK, "--no-encrypt must reject key authentication");
+    return;
+  }
+
   options_init(argc, (char **)argv);
 
   // Get options from RCU state
@@ -493,17 +496,16 @@ Test(crypto_options, version_display) {
 Test(crypto_options, many_options) {
   // Note: --server-key is CLIENT-only, --client-keys is SERVER-only
   // So we test with client mode and skip --client-keys
-  const char *argv[] = {"program", "client", "--no-encrypt", "--key", "password", "--server-key", "/etc/server_key"};
+  char program[] = "program";
+  char client[] = "client";
+  char no_encrypt[] = "--no-encrypt";
+  char key[] = "--key";
+  char password[] = "password";
+  char server_key[] = "--server-key";
+  char server_key_value[] = "/etc/server_key";
+  char *argv[] = {program, client, no_encrypt, key, password, server_key, server_key_value};
 
-  options_init(7, (char **)argv);
-
-  // Get options from RCU state
-  const options_t *opts = options_get();
-
-  // Options should be set
-  cr_assert(opts->no_encrypt, "No encrypt should be set");
-  cr_assert(opts->encrypt_key[0] != '\0', "Key should be set");
-  cr_assert(opts->server_key[0] != '\0', "Server key should be set");
+  cr_assert_neq(options_init(7, argv), ASCIICHAT_OK, "--no-encrypt must reject authentication options");
 }
 
 Test(crypto_options, repeated_options) {

@@ -110,7 +110,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   if (waitpid(pid, &status, 0) < 0 || !WIFEXITED(status)) {
     return ERROR_INVALID_STATE;
   }
-  return WEXITSTATUS(status);
+  return WEXITSTATUS(status) == 0 ? 0 : 1;
 }
 
 /* ============================================================================
