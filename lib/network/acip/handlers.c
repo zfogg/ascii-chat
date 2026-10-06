@@ -20,6 +20,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/overflow.h>
 #include <string.h>
 
 // =============================================================================
@@ -204,10 +205,10 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
   }
   (void)transport;
 
-  // ACDS sends PARTICIPANT_JOINED to every participant before relaying SDP/ICE.
-  // The generic client callback set does not expose this notification yet, but
-  // it must not terminate a live signaling receive loop.
-  if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+  // ACDS broadcasts participant lifecycle notifications to peers. The generic
+  // client callback set does not expose them, so ignore them while keeping the
+  // signaling receive loop alive for subsequent SDP and ICE packets.
+  if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED || type == PACKET_TYPE_ACIP_PARTICIPANT_LEFT) {
     return ASCIICHAT_OK;
   }
 
@@ -715,7 +716,7 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   (void)transport;
 
   // DEBUG: Log all packet types received
-  log_info("ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu", type, type, payload_len);
+  log_dev("ACIP_HANDLE: type=%d payload_len=%zu", type, payload_len);
 
   // O(1) dispatch via hash table lookup
   int idx = handler_hash_lookup(g_server_handler_hash, type);
@@ -725,14 +726,14 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  log_info("📥 [HANDLER_DISPATCH] Calling handler: type=%d (%s), handler_idx=%d, payload=%zu bytes, client_ctx=%p",
-           type, g_packet_type_name(type), idx, payload_len, client_ctx);
+  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes",
+           type, g_packet_type_name(type), idx, payload_len);
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
     log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d", type, g_packet_type_name(type), result);
   } else {
-    log_info("✅ [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed", type,
+    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type,
              g_packet_type_name(type), payload_len);
   }
 
@@ -745,22 +746,19 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
 
 static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
-  log_info("ACIP_IMAGE_FRAME_HANDLER: Received IMAGE_FRAME packet, payload_len=%zu, client_ctx=%p", payload_len,
-           client_ctx);
+  log_dev("ACIP_IMAGE_FRAME_HANDLER: payload_len=%zu", payload_len);
 
   if (!callbacks->on_image_frame) {
     log_warn("ACIP_IMAGE_FRAME_HANDLER: No callback registered for on_image_frame");
     return ASCIICHAT_OK;
   }
 
-  log_info("ACIP_IMAGE_FRAME_HANDLER: Callback is registered, checking payload size (need %zu bytes)",
+  log_dev("ACIP_IMAGE_FRAME_HANDLER: Callback registered (header=%zu)",
            sizeof(image_frame_packet_t));
 
-  if (payload_len < sizeof(image_frame_packet_t)) {
-    log_error("ACIP_IMAGE_FRAME_HANDLER: Payload too small: %zu bytes (need %zu)", payload_len,
-              sizeof(image_frame_packet_t));
-    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len,
-                     sizeof(image_frame_packet_t));
+  if (payload_len < sizeof(uint32_t) * 2) {
+    log_error("ACIP_IMAGE_FRAME_HANDLER: Payload too small: %zu bytes (need at least 8)", payload_len);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need at least 8)", payload_len);
   }
 
   // Debug: Log raw payload bytes
@@ -773,6 +771,36 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", payload_bytes[i]);
   }
   log_dev_every(4500 * US_PER_MS_INT, "   First bytes: %s", hex_buf);
+
+  // Older browser clients send [width:u32][height:u32][RGB24 pixels]. Accept
+  // that exact size alongside the current image_frame_packet_t wire header.
+  uint32_t legacy_width_net;
+  uint32_t legacy_height_net;
+  memcpy(&legacy_width_net, payload_bytes, sizeof(legacy_width_net));
+  memcpy(&legacy_height_net, payload_bytes + sizeof(legacy_width_net), sizeof(legacy_height_net));
+  uint32_t legacy_width = NET_TO_HOST_U32(legacy_width_net);
+  uint32_t legacy_height = NET_TO_HOST_U32(legacy_height_net);
+  size_t legacy_pixels = 0;
+  size_t legacy_rgb_size = 0;
+  size_t legacy_payload_size = 0;
+  if (legacy_width > 0 && legacy_height > 0 && legacy_width <= 8192 && legacy_height <= 8192 &&
+      checked_size_mul(legacy_width, legacy_height, &legacy_pixels) == ASCIICHAT_OK &&
+      checked_size_mul(legacy_pixels, 3, &legacy_rgb_size) == ASCIICHAT_OK &&
+      checked_size_add(sizeof(uint32_t) * 2, legacy_rgb_size, &legacy_payload_size) == ASCIICHAT_OK &&
+      payload_len == legacy_payload_size) {
+    image_frame_packet_t legacy_header = {0};
+    legacy_header.width = legacy_width;
+    legacy_header.height = legacy_height;
+    legacy_header.pixel_format = 1; // RGB24
+    callbacks->on_image_frame(&legacy_header, payload_bytes + sizeof(uint32_t) * 2, legacy_rgb_size, client_ctx,
+                              callbacks->app_ctx);
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(image_frame_packet_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len,
+                     sizeof(image_frame_packet_t));
+  }
 
   // Extract header
   image_frame_packet_t header;
@@ -821,13 +849,13 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pixel format: %u (expected: 1-4)", header.pixel_format);
   }
 
-  log_info(
+  log_dev(
       "📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p",
       header.width, header.height, header.pixel_format, pixel_data_len, client_ctx);
 
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
 
-  log_info("✅ [IMAGE_FRAME_DONE] on_image_frame callback returned successfully");
+  log_dev("IMAGE_FRAME_DONE");
   return ASCIICHAT_OK;
 }
 

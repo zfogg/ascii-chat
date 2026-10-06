@@ -195,6 +195,7 @@ static void *webcam_capture_thread_func(void *arg) {
   static uint64_t capture_frame_count = 0;
   static uint64_t last_capture_frame_time_ns = 0;
   static image_t *last_frame = NULL; // Cache last frame to render when paused
+  bool force_raw_video = false;
   if (!fps_tracker_initialized) {
     fps_init(&fps_tracker, CAPTURE_TARGET_FPS, "WEBCAM_TX");
     fps_tracker_initialized = true;
@@ -273,7 +274,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Determine which codec to use based on --video-codec option
     const char *video_codec = GET_OPTION(video_codec);
-    bool use_hevc = video_codec && strcmp(video_codec, "raw") != 0; // Default to HEVC unless explicitly "raw"
+    bool use_hevc = !force_raw_video && video_codec && strcmp(video_codec, "raw") != 0;
 
     // Request keyframe periodically to force encoder flush (every 30 frames)
     // This ensures we get some encoded output even when the encoder is buffering inter-frames
@@ -291,6 +292,14 @@ static void *webcam_capture_thread_func(void *arg) {
                       processed_image->h);
       send_result = threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
                                                    (uint32_t)processed_image->h);
+      if (send_result == ERROR_MEDIA_INIT) {
+        // Missing platform HEVC encoders should degrade video quality, not tear
+        // down an otherwise healthy audio/video connection.
+        log_warn("HEVC encoding is unavailable; switching this connection to raw video frames");
+        force_raw_video = true;
+        send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+                                                (uint32_t)processed_image->h, 1);
+      }
     } else {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
                       processed_image->h);

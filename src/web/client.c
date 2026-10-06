@@ -48,6 +48,16 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/terminal/ansi.h>
+#include <ascii-chat/font.h>
+
+/* Browser terminal rendering reads the embedded font directly from WASM memory. */
+const unsigned char *get_font_default_ptr(void) {
+  return g_font_default;
+}
+
+unsigned int get_font_default_size(void) {
+  return (unsigned int)g_font_default_size;
+}
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/format.h>
@@ -392,6 +402,18 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
     return -1;
+  }
+
+  // Discovery sends CRYPTO_PARAMETERS before KEY_EXCHANGE_INIT. Initialize
+  // here so the negotiated values survive the subsequent key exchange packet.
+  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
+    if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+      crypto_handshake_destroy(&g_crypto_handshake_ctx);
+    }
+    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+    if (crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false) != ASCIICHAT_OK) {
+      return -1;
+    }
   }
 
   // Extract packet type and payload

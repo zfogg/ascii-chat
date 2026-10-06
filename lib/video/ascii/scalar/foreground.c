@@ -97,9 +97,8 @@ char *image_print(const image_t *p, const char *palette) {
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
-      // Use same 64-entry cache as SIMD for consistency
-      // Use char_idx to properly index into cache64, not luma_idx
-      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+      // cache64 is indexed by luminance bucket; char_idx is only for run matching.
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       // Find run length for same character (RLE optimization)
       int j = x + 1;
@@ -593,9 +592,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-
-      const utf8_char_t *char_info = &utf8_cache->cache[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {
         // Copy UTF-8 character bytes
@@ -717,9 +714,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-
-      const utf8_char_t *char_info = &utf8_cache->cache[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {
         // Copy UTF-8 character bytes

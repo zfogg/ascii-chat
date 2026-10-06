@@ -114,11 +114,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     conn_data->has_pending_send = false;
 
     // Get client address
-    char client_name[128];
-    char client_ip[64];
-    lws_get_peer_simple(wsi, client_name, sizeof(client_name));
-    (void)lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name), client_ip,
-                                 sizeof(client_ip));
+    char client_ip[64] = {0};
+    if (!lws_get_peer_simple(wsi, client_ip, sizeof(client_ip)) || client_ip[0] == '\0') {
+      safe_snprintf(client_ip, sizeof(client_ip), "unknown");
+      log_warn("Could not determine WebSocket client IP address");
+    }
 
     log_info("WebSocket client connected from %s", client_ip);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Client IP: %s", client_ip);
@@ -198,19 +198,23 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       return -1;
     }
 
+    // Mark the handler as owning the transport before it becomes visible to a
+    // worker. A peer can close immediately after the upgrade; CLOSED must not
+    // destroy a transport that has already been queued for handling.
+    conn_data->handler_started = true;
     asciichat_error_t queue_result =
         thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
     log_info("🔵 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
 
     if (queue_result != ASCIICHAT_OK) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
+      conn_data->handler_started = false;
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
       return -1;
     }
 
-    conn_data->handler_started = true;
     log_debug("[LWS_CALLBACK_ESTABLISHED] Handler work queued successfully");
     log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler work queued! ★★★");
     break;

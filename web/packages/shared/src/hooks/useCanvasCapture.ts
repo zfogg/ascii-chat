@@ -14,7 +14,7 @@ export function useCanvasCapture(
     height: number;
   } | null>(null);
 
-  const captureFrame = useCallback((): {
+  const captureFrame = useCallback((drawVideo = true): {
     data: Uint8Array;
     width: number;
     height: number;
@@ -23,7 +23,7 @@ export function useCanvasCapture(
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (!video || !canvas) {
+    if (!canvas || (drawVideo && !video)) {
       console.warn(
         `[useCanvasCapture] captureFrame at ${capStartTime.toFixed(0)}ms: Video or canvas not ready (video=${!!video}, canvas=${!!canvas})`,
       );
@@ -46,8 +46,9 @@ export function useCanvasCapture(
     }
 
     try {
-      // Verify video has data
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
+      // Direct track capture has already painted the current VideoFrame onto
+      // the canvas, so it does not depend on the hidden video element's size.
+      if (drawVideo && video && (video.videoWidth === 0 || video.videoHeight === 0)) {
         console.warn(
           "[useCanvasCapture] Video not ready - no dimensions:",
           video.videoWidth,
@@ -65,7 +66,9 @@ export function useCanvasCapture(
         return null;
       }
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (drawVideo && video) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       // Verify imageData has expected size

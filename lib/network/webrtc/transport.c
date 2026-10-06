@@ -38,6 +38,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <string.h>
 
 /**
@@ -47,12 +48,13 @@
  * On overflow, retain control packets and recent media so the connection can recover.
  */
 #define WEBRTC_RECV_QUEUE_SIZE 512
+// At 60 Hz, 96 queued packets can represent more than a second of stale
+// media.  Start coalescing early so a congested peer stays close to live.
+#define WEBRTC_RECV_QUEUE_HIGH_WATER 12
 
-// Keep only a short video backlog on the ordered DataChannel. Once the send
-// queue grows beyond this point, newer ASCII snapshots supersede the queued
-// ones; dropping a snapshot is preferable to delaying audio and control
-// packets or exhausting memory while the peer is congested.
-#define WEBRTC_VIDEO_BUFFERED_HIGH_WATER_BYTES (256 * 1024)
+// Allow ICE connectivity checks to recover temporarily, then let the owning
+// session tear down and renegotiate a peer that has remained disconnected.
+#define WEBRTC_DISCONNECTED_GRACE_NS (30 * NS_PER_SEC_INT)
 
 /**
  * @brief Receive queue element (variable-length message)
@@ -72,12 +74,14 @@ typedef struct {
   uint8_t *partial;                    ///< Incomplete ACIP packet bytes
   size_t partial_len;
   size_t partial_capacity;
-  mutex_t queue_mutex; ///< Protect queue operations
-  cond_t queue_cond;   ///< Signal when messages arrive
-  bool is_connected;   ///< Connection state
-  bool close_requested; ///< Whether this transport has closed its borrowed peer handles
-  mutex_t state_mutex; ///< Protect state changes
-  mutex_t send_mutex;  ///< Keep chunks from concurrent packets together
+  mutex_t queue_mutex;            ///< Protect queue operations
+  cond_t queue_cond;              ///< Signal when messages arrive
+  bool is_connected;              ///< Connection state
+  bool data_channel_closed;       ///< DataChannel close is terminal for this transport
+  bool close_requested;           ///< Whether this transport has closed its borrowed peer handles
+  uint64_t disconnected_since_ns; ///< Start of the current transient ICE disconnect
+  mutex_t state_mutex;            ///< Protect state changes
+  mutex_t send_mutex;             ///< Keep chunks from concurrent packets together
 } webrtc_transport_data_t;
 
 // =============================================================================
@@ -94,24 +98,36 @@ static bool queued_message_is_media(const webrtc_recv_msg_t *msg) {
          type == PACKET_TYPE_AUDIO_OPUS_BATCH;
 }
 
-static void discard_stale_media(webrtc_transport_data_t *wrtc) {
+static bool queued_message_is_video(const webrtc_recv_msg_t *msg) {
+  if (msg->len < sizeof(packet_header_t))
+    return false;
+  packet_header_t header;
+  memcpy(&header, msg->data, sizeof(header));
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  return type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_ASCII_FRAME;
+}
+
+static void discard_stale_video(webrtc_transport_data_t *wrtc) {
   webrtc_recv_msg_t queued[WEBRTC_RECV_QUEUE_SIZE];
-  size_t count = 0, media_count = 0;
+  size_t count = 0, video_count = 0;
   while (count < WEBRTC_RECV_QUEUE_SIZE && ringbuffer_read(wrtc->recv_queue, &queued[count])) {
-    if (queued_message_is_media(&queued[count]))
-      media_count++;
+    if (queued_message_is_video(&queued[count]))
+      video_count++;
     count++;
   }
-  size_t to_discard = media_count > 24 ? media_count - 24 : (media_count > 0 ? 1 : 0);
+  // Video frames are independent snapshots. Drop only superseded video frames;
+  // audio packets carry consecutive samples and must remain ordered so playback
+  // does not develop gaps when the receive worker briefly falls behind.
+  size_t video_to_discard = video_count > 1 ? video_count - 1 : 0;
   for (size_t i = 0; i < count; i++) {
-    if (to_discard && queued_message_is_media(&queued[i])) {
+    if (video_to_discard && queued_message_is_video(&queued[i])) {
       buffer_pool_free(NULL, queued[i].data, queued[i].len);
-      to_discard--;
+      video_to_discard--;
     } else {
       ringbuffer_write(wrtc->recv_queue, &queued[i]);
     }
   }
-  log_warn_every(US_PER_SEC_INT, "WebRTC receive backlog: discarded stale media, retained control packets");
+  log_warn_every(US_PER_SEC_INT, "WebRTC receive backlog: coalesced superseded video frames");
 }
 
 /**
@@ -166,10 +182,14 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (ringbuffer_is_full(wrtc->recv_queue))
-      discard_stale_media(wrtc);
+    if (ringbuffer_is_full(wrtc->recv_queue)) {
+      discard_stale_video(wrtc);
+    }
     if (!ringbuffer_write(wrtc->recv_queue, &msg)) {
       bool media = queued_message_is_media(&msg);
+      if (media) {
+        log_warn_every(US_PER_SEC_INT, "WebRTC receive queue saturated; dropping newest media packet");
+      }
       buffer_pool_free(NULL, msg.data, msg.len);
       if (media) {
         offset += packet_len;
@@ -179,6 +199,11 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       log_error("WebRTC receive queue exceeded");
       webrtc_datachannel_close(channel);
       return;
+    }
+    // Keep video presentation current while preserving every queued audio
+    // packet and control message.
+    if (ringbuffer_size(wrtc->recv_queue) > WEBRTC_RECV_QUEUE_HIGH_WATER) {
+      discard_stale_video(wrtc);
     }
     offset += packet_len;
   }
@@ -202,6 +227,8 @@ static void webrtc_on_open(webrtc_data_channel_t *channel, void *user_data) {
 
   mutex_lock(&wrtc->state_mutex);
   wrtc->is_connected = true;
+  wrtc->data_channel_closed = false;
+  wrtc->disconnected_since_ns = 0;
   mutex_unlock(&wrtc->state_mutex);
 
   log_info("WebRTC DataChannel opened, transport ready");
@@ -220,11 +247,8 @@ static void webrtc_on_error(webrtc_data_channel_t *channel, const char *error_ms
     return;
   }
 
-  mutex_lock(&wrtc->state_mutex);
-  wrtc->is_connected = false;
-  mutex_unlock(&wrtc->state_mutex);
-
-  // Wake any blocking recv() calls
+  // A DataChannel error can be reported while ICE is recovering. The peer
+  // connection state determines whether the transport is terminal.
   cond_broadcast(&wrtc->queue_cond);
 }
 
@@ -243,6 +267,7 @@ static void webrtc_on_close(webrtc_data_channel_t *channel, void *user_data) {
 
   mutex_lock(&wrtc->state_mutex);
   wrtc->is_connected = false;
+  wrtc->data_channel_closed = true;
   mutex_unlock(&wrtc->state_mutex);
 
   // Wake any blocking recv() calls
@@ -258,15 +283,45 @@ static bool webrtc_transport_is_connected_impl(webrtc_transport_data_t *wrtc) {
     return false;
   }
 
-  mutex_lock(&wrtc->state_mutex);
-  bool connected = wrtc->is_connected && !wrtc->close_requested;
-  mutex_unlock(&wrtc->state_mutex);
-  if (!connected || !wrtc->peer_conn || !wrtc->data_channel || !webrtc_datachannel_is_open(wrtc->data_channel)) {
+  if (!wrtc->peer_conn || !wrtc->data_channel) {
     return false;
   }
 
+  mutex_lock(&wrtc->state_mutex);
+  bool close_requested = wrtc->close_requested;
+  bool data_channel_closed = wrtc->data_channel_closed;
+  bool connected = wrtc->is_connected;
+  mutex_unlock(&wrtc->state_mutex);
   webrtc_state_t state = webrtc_get_state(wrtc->peer_conn);
-  return state == WEBRTC_STATE_CONNECTED || state == WEBRTC_STATE_DISCONNECTED;
+  if (close_requested || data_channel_closed) {
+    return false;
+  }
+
+  if (state == WEBRTC_STATE_CONNECTED) {
+    if (!connected || !webrtc_datachannel_is_open(wrtc->data_channel)) {
+      return false;
+    }
+    mutex_lock(&wrtc->state_mutex);
+    wrtc->disconnected_since_ns = 0;
+    mutex_unlock(&wrtc->state_mutex);
+    return true;
+  }
+
+  if (state != WEBRTC_STATE_DISCONNECTED) {
+    return false;
+  }
+
+  // ICE can briefly enter DISCONNECTED while connectivity checks recover.
+  // Retain the DataChannel for a bounded window so a temporary network change
+  // does not restart the whole session; a stuck peer must still be cleaned up.
+  uint64_t now_ns = time_get_ns();
+  mutex_lock(&wrtc->state_mutex);
+  if (wrtc->disconnected_since_ns == 0) {
+    wrtc->disconnected_since_ns = now_ns;
+  }
+  bool within_grace = now_ns - wrtc->disconnected_since_ns <= WEBRTC_DISCONNECTED_GRACE_NS;
+  mutex_unlock(&wrtc->state_mutex);
+  return within_grace;
 }
 
 static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *data, size_t len) {
@@ -277,28 +332,6 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   }
 
   mutex_lock(&wrtc->send_mutex);
-  if (len >= sizeof(packet_header_t)) {
-    packet_header_t header;
-    memcpy(&header, data, sizeof(header));
-    if (NET_TO_HOST_U64(header.magic) == PACKET_MAGIC &&
-        NET_TO_HOST_U16(header.type) == PACKET_TYPE_ASCII_FRAME) {
-      size_t buffered_amount = 0;
-      asciichat_error_t buffered_result =
-          webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_amount);
-      if (buffered_result == ASCIICHAT_OK) {
-        if (buffered_amount > WEBRTC_VIDEO_BUFFERED_HIGH_WATER_BYTES) {
-          log_warn_every(US_PER_SEC_INT,
-                        "WebRTC video backlog is %zu bytes; dropping stale ASCII frame to preserve live media",
-                        buffered_amount);
-          mutex_unlock(&wrtc->send_mutex);
-          return ASCIICHAT_OK;
-        }
-      } else {
-        CLEAR_ERRNO();
-      }
-    }
-  }
-
   asciichat_error_t result = ASCIICHAT_OK;
   for (size_t offset = 0; offset < len;) {
     size_t chunk = len - offset;
@@ -332,7 +365,10 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
     }
 
     // Wait for message arrival or connection close
-    cond_wait(&wrtc->queue_cond, &wrtc->queue_mutex);
+    // Peer-connection state changes do not necessarily produce a DataChannel
+    // callback. Periodically recheck the peer state so a lost connection can
+    // leave this blocking receive path and let its owner clean up.
+    cond_timedwait(&wrtc->queue_cond, &wrtc->queue_mutex, 250 * NS_PER_MS_INT);
   }
 
   // Read message from queue
@@ -365,14 +401,18 @@ static asciichat_error_t webrtc_close(acip_transport_t *transport) {
   wrtc->is_connected = false;
   mutex_unlock(&wrtc->state_mutex);
 
-  // Close DataChannel
-  if (wrtc->data_channel) {
-    webrtc_datachannel_close(wrtc->data_channel);
-  }
-
-  // Close peer connection
+  // Close the peer connection before deleting its DataChannel. libdatachannel
+  // tears down channel state as part of rtcClose(); deleting the channel first
+  // leaves rtcClose() trying to access an ID that no longer exists.
   if (wrtc->peer_conn) {
     webrtc_peer_connection_close(wrtc->peer_conn);
+  }
+
+  // Delete the channel after the peer has stopped using it. Its owner will
+  // later destroy the wrapper; we only invalidate the native channel here so
+  // queued callbacks cannot retain this transport as user_data.
+  if (wrtc->data_channel) {
+    webrtc_datachannel_close(wrtc->data_channel);
   }
 
   // Wake any blocking recv() calls

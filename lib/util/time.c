@@ -614,11 +614,17 @@ void adaptive_sleep_init(adaptive_sleep_state_t *state, const adaptive_sleep_con
   // Copy configuration
   state->config = *config;
 
-  // Start at baseline speed (no speedup initially)
-  state->current_speed_multiplier = config->min_speed_multiplier;
+  // A multiplier of 1.0 preserves the configured interval. Clamp it for
+  // configurations whose allowed range does not include the baseline.
+  state->current_speed_multiplier = 1.0;
+  if (state->current_speed_multiplier < config->min_speed_multiplier) {
+    state->current_speed_multiplier = config->min_speed_multiplier;
+  }
+  if (state->current_speed_multiplier > config->max_speed_multiplier) {
+    state->current_speed_multiplier = config->max_speed_multiplier;
+  }
 
-  // Initial sleep is the baseline
-  state->last_sleep_ns = config->baseline_sleep_ns;
+  state->last_sleep_ns = (uint64_t)(config->baseline_sleep_ns / state->current_speed_multiplier);
 }
 
 uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth) {
@@ -653,7 +659,13 @@ uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_de
 
   } else {
     // Queue is at or below target - slow down to baseline
-    desired_multiplier = cfg->min_speed_multiplier;
+    desired_multiplier = 1.0;
+    if (desired_multiplier < cfg->min_speed_multiplier) {
+      desired_multiplier = cfg->min_speed_multiplier;
+    }
+    if (desired_multiplier > cfg->max_speed_multiplier) {
+      desired_multiplier = cfg->max_speed_multiplier;
+    }
 
     // Ramp down gradually based on slowdown_rate
     double delta = desired_multiplier - state->current_speed_multiplier;

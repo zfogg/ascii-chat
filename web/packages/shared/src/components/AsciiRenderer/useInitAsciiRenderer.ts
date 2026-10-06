@@ -8,7 +8,6 @@ import {
   getMatrixRain,
   getPalette,
   getTargetFps,
-  setFlipX,
 } from "../../wasm";
 import {
   wasmColorModeToString,
@@ -32,12 +31,14 @@ interface UseInitAsciiRendererReturn {
 interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   wasmModuleReady: boolean | undefined;
+  initializeOptions?: boolean;
   matrixMode?: boolean;
 }
 
 export function useInitAsciiRenderer({
   canvasRef,
   wasmModuleReady,
+  initializeOptions = true,
   matrixMode = false,
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
@@ -51,6 +52,7 @@ export function useInitAsciiRenderer({
   const pendingDimensionsRef = useRef<{ cols: number; rows: number } | null>(
     null,
   );
+  const observedContainerSizeRef = useRef({ width: 0, height: 0 });
   const currentMatrixModeRef = useRef<boolean>(false);
 
   // Rebuild and apply args with current settings from WASM state
@@ -386,15 +388,12 @@ export function useInitAsciiRenderer({
         // after resize renders in truecolor instead of matrix green. The renderer
         // appears to lose its settings state during the resize/recreation cycle.
 
-        // Ensure flip-x state is set before reinitialization
-        setFlipX(true);
-
         // Skip reinitialization during rapid resizes to avoid "Too many string options" errors.
         // Only reinitialize once per resize debounce cycle to preserve WASM options state.
         // The new renderer will use whatever settings were last applied.
 
         // Create new renderer with updated dimensions using the actual WASM matrix rain state
-        const isMatrixMode = getMatrixRain();
+        const isMatrixMode = currentMatrixModeRef.current;
         console.log("[handleContainerResize] STARTING RECREATION", {
           newWidth,
           newHeight,
@@ -553,6 +552,17 @@ export function useInitAsciiRenderer({
         const newWidth = Math.round(entry.contentRect.width);
         const newHeight = Math.round(entry.contentRect.height);
 
+        if (
+          observedContainerSizeRef.current.width === newWidth &&
+          observedContainerSizeRef.current.height === newHeight
+        ) {
+          return;
+        }
+        observedContainerSizeRef.current = {
+          width: newWidth,
+          height: newHeight,
+        };
+
         console.log("[ResizeObserver] size change", {
           newWidth,
           newHeight,
@@ -577,20 +587,22 @@ export function useInitAsciiRenderer({
 
       moduleRef.current.canvas = canvas;
 
-      // Ensure flip-x state is set before reinitialization
-      setFlipX(true);
-
-      // Apply all current WASM settings before creating the renderer
-      // This ensures flip state, color mode, matrix mode, etc. are all applied
-      reinitializeWithCurrentSettings();
+      // A shared client WASM instance already has initialized options. Running
+      // mirror_init_with_args on it would initialize the same C option state a
+      // second time and switch the active mode underneath the client.
+      if (initializeOptions) reinitializeWithCurrentSettings();
 
       const container = canvas.parentElement;
       const containerRect = container?.getBoundingClientRect();
       const containerWidth = Math.round(containerRect?.width ?? 1200);
       const containerHeight = Math.round(containerRect?.height ?? 1000);
+      observedContainerSizeRef.current = {
+        width: containerWidth,
+        height: containerHeight,
+      };
 
       // Create config and renderer, checking current matrix mode
-      const isMatrixMode = getMatrixRain();
+      const isMatrixMode = matrixMode;
       currentMatrixModeRef.current = isMatrixMode;
       const { configPtr } = createConfigStruct(
         containerWidth,
@@ -626,6 +638,8 @@ export function useInitAsciiRenderer({
       getRendererDimensions,
       setupResizeObserver,
       reinitializeWithCurrentSettings,
+      initializeOptions,
+      matrixMode,
     ],
   );
 

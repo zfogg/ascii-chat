@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>WASM ANSI-16 renderer test</title>
+<style>
+  body { margin: 24px; background: #10131a; color: #e6e9ef; font: 16px system-ui; }
+  canvas { image-rendering: pixelated; border: 1px solid #65708a; }
+  pre { white-space: pre-wrap; }
+</style>
+<h1>WASM ANSI-16 renderer test</h1>
+<canvas id="result"></canvas>
+<pre id="status">Loading renderer…</pre>
+<script type="module">
+  import ClientModuleFactory from "/wasm/client.js";
+
+  const status = document.querySelector("#status");
+  try {
+    const wasmBinary = await fetch("/wasm/client.wasm").then((r) => r.arrayBuffer());
+    const module = await ClientModuleFactory({ wasmBinary, locateFile: (name) => `/wasm/${name}` });
+    const config = module._malloc(544);
+    const out = module._malloc(4);
+    const view = new DataView(module.HEAPU8.buffer, config, 544);
+    view.setInt32(0, 18, true);
+    view.setInt32(4, 1, true);
+    view.setFloat64(8, 12, true);
+    view.setInt32(16, 0, true);
+    module.HEAPU8.fill(0, config + 20, config + 532);
+    module.HEAPU8[config + 532] = 0;
+    view.setInt32(536, module._get_font_default_ptr(), true);
+    view.setInt32(540, module._get_font_default_size(), true);
+    const result = module._term_renderer_create(config, out);
+    if (result !== 0) throw new Error(`renderer create failed: ${result}`);
+    const renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(0, true);
+    const frame = "\x1b[31mRED   \x1b[32mGREEN   \x1b[34mBLUE";
+    const framePtr = module._malloc(frame.length + 1);
+    module.stringToUTF8(frame, framePtr, frame.length + 1);
+    const feed = module._term_renderer_feed(renderer, framePtr, frame.length);
+    if (feed !== 0) throw new Error(`renderer feed failed: ${feed}`);
+    const width = module._term_renderer_width_px(renderer);
+    const height = module._term_renderer_height_px(renderer);
+    const pitch = module._term_renderer_pitch(renderer);
+    const pixelsPtr = module._term_renderer_pixels(renderer);
+    const pixels = module.HEAPU8.slice(pixelsPtr, pixelsPtr + pitch * height);
+    const canvas = document.querySelector("#result");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    const image = ctx.createImageData(width, height);
+    for (let y = 0; y < height; y++) {
+      image.data.set(pixels.subarray(y * pitch, y * pitch + width * 4), y * width * 4);
+    }
+    ctx.putImageData(image, 0, 0);
+    const counts = { red: 0, green: 0, blue: 0 };
+    for (let i = 0; i < pixels.length; i += 4) {
+      const [r, g, b] = pixels.subarray(i, i + 3);
+      if (r > 180 && g < 100 && b < 100) counts.red++;
+      if (g > 180 && r < 100 && b < 100) counts.green++;
+      if (b > 180 && r < 100 && g < 100) counts.blue++;
+    }
+    status.textContent = JSON.stringify({ width, height, counts }, null, 2);
+    module._term_renderer_destroy(renderer);
+    module._free(framePtr);
+    module._free(config);
+    module._free(out);
+  } catch (error) {
+    status.textContent = String(error?.stack || error);
+  }
+</script>

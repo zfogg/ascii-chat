@@ -17,6 +17,13 @@ declare global {
       uniqueRendered?: number;
       frameHashes?: Record<string, number>;
     };
+    __webrtcBridgeMetrics?: {
+      chunks: number;
+      bytes: number;
+      pending: number;
+      dataType: string;
+      isArrayBuffer: boolean;
+    };
   }
 }
 import {
@@ -100,11 +107,19 @@ export function ClientPage({
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
+  const [rendererRequested, setRendererRequested] = useState(!discoveryMode);
+  const pendingDiscoveryJoinRef = useRef(false);
+  const discoveryJoinGenerationRef = useRef(0);
   useEffect(() => {
+    // The discovery join form does not need the Emscripten renderer. Loading a
+    // pthread runtime while the user is still editing connection details can
+    // monopolize the browser main thread before a session even exists.
+    if (!rendererRequested) return;
     let active = true;
-    void initMirrorWasm(MirrorModuleFactory, {
+    const initializeRenderer = initMirrorWasm(MirrorModuleFactory, {
       locateFile: (path) => `/wasm/${path}`,
-    })
+    });
+    void initializeRenderer
       .then(() => {
         if (active) setRendererReady(true);
       })
@@ -114,7 +129,7 @@ export function ClientPage({
     return () => {
       active = false;
     };
-  }, []);
+  }, [rendererRequested]);
   const [micEnabled, setMicEnabled] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const audioRef = useRef<AudioPipeline | null>(null);
@@ -186,17 +201,24 @@ export function ClientPage({
   const [fps, setFps] = useState<number | undefined>();
 
   // Settings state (must be declared before hooks that use it)
+  // Discovery shares the native server cadence and targets display refresh.
   const [settings, setSettings] = useState<SettingsConfig>(DEFAULT_SETTINGS);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<AsciiFrame[]>([]);
 
   const renderLoopStartTimeRef = useRef<number>(0);
-  const changingFrameCountRef = useRef(0);
-  const lastRenderedFrameContentRef = useRef<string | null>(null);
+  const renderedFrameCountRef = useRef(0);
 
-  const renderCallCountRef = useRef(0);
   const frameHashesRef = useRef<Record<string, number>>({});
+  const renderTimingRef = useRef({
+    frames: 0,
+    totalMs: 0,
+    maxMs: 0,
+    windowStart: 0,
+    previousFrameAt: 0,
+    maxFrameGapMs: 0,
+  });
 
   // Simple hash function for frame content
   const hashFrame = (content: string): string => {
@@ -208,10 +230,11 @@ export function ClientPage({
     return hash.toString(36);
   };
 
-  const renderNoOpCountRef = useRef(0);
   const diagnosticFrameCountRef = useRef(0);
   const cumulativeUniqueFramesRef = useRef(0);
   const uniqueReceivedFramesRef = useRef<Record<string, number>>({}); // Track unique frames at reception
+  const uniqueReceivedFrameCountRef = useRef(0);
+  const uniqueReceivedFrameOrderRef = useRef<string[]>([]);
 
   // Use client connection hook
   const {
@@ -236,6 +259,8 @@ export function ClientPage({
     rendererRef,
     frameQueueRef,
     uniqueReceivedFramesRef,
+    uniqueReceivedFrameCountRef,
+    uniqueReceivedFrameOrderRef,
     frameCountRef,
     receivedFrameCountRef,
     frameReceiptTimesRef,
@@ -244,25 +269,79 @@ export function ClientPage({
     },
   });
 
-  // Report the rate of actual visual changes, not RAF callbacks or received
-  // packets. This drops to zero when a connected session stops animating.
+  // A discovery peer receives its initial capabilities as soon as the
+  // DataChannel opens. Wait until the renderer has reported a settled size so
+  // that setup sends one authoritative capability packet instead of racing its
+  // creation and ResizeObserver updates against the protocol startup.
+  useEffect(() => {
+    if (!discoveryMode || !pendingDiscoveryJoinRef.current) return;
+
+    if (rendererError) {
+      pendingDiscoveryJoinRef.current = false;
+      setError(rendererError);
+      setConnecting(false);
+      return;
+    }
+    if (
+      !rendererReady ||
+      terminalDimensions.cols <= 0 ||
+      terminalDimensions.rows <= 0
+    )
+      return;
+
+    const generation = discoveryJoinGenerationRef.current;
+    const settledDimensions = { ...terminalDimensions };
+    const timer = window.setTimeout(() => {
+      if (
+        !pendingDiscoveryJoinRef.current ||
+        generation !== discoveryJoinGenerationRef.current
+      )
+        return;
+
+      pendingDiscoveryJoinRef.current = false;
+      void connectToServer()
+        .catch(() => {})
+        .finally(() => setConnecting(false));
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (
+        terminalDimensions.cols !== settledDimensions.cols ||
+        terminalDimensions.rows !== settledDimensions.rows
+      )
+        discoveryJoinGenerationRef.current++;
+    };
+  }, [
+    connectToServer,
+    discoveryMode,
+    rendererError,
+    rendererReady,
+    setError,
+    terminalDimensions,
+  ]);
+
+  // Count frames the renderer successfully consumes, not RAF callbacks or
+  // packets that are still waiting in the receive queue. Static images can
+  // still be rendered at full frame rate when adjacent pixels are identical.
   useEffect(() => {
     if (connectionState !== ConnectionState.CONNECTED) {
       setFps(undefined);
-      lastRenderedFrameContentRef.current = null;
       return;
     }
 
     setFps(0);
-    let previousFrameCount = changingFrameCountRef.current;
+    let previousFrameCount = renderedFrameCountRef.current;
     let previousTime = performance.now();
     const intervalId = window.setInterval(() => {
       const now = performance.now();
-      const currentFrameCount = changingFrameCountRef.current;
+      const currentFrameCount = renderedFrameCountRef.current;
       const elapsedSeconds = (now - previousTime) / 1000;
       setFps(
         elapsedSeconds > 0
-          ? Math.round((currentFrameCount - previousFrameCount) / elapsedSeconds)
+          ? Math.round(
+              (currentFrameCount - previousFrameCount) / elapsedSeconds,
+            )
           : 0,
       );
       previousFrameCount = currentFrameCount;
@@ -355,6 +434,8 @@ export function ClientPage({
     setMicEnabled(false);
   }, []);
   const disconnectMedia = useCallback(() => {
+    pendingDiscoveryJoinRef.current = false;
+    discoveryJoinGenerationRef.current++;
     // Audio callbacks can survive briefly while AudioContext.close() drains.
     // Stop them from sending into a DataChannel that disconnect() just closed.
     audioStreamStartedRef.current = false;
@@ -363,6 +444,16 @@ export function ClientPage({
     handleDisconnect();
   }, [stopWebcam, closeAudio, handleDisconnect]);
   useEffect(() => {
+    if (
+      connectionState === ConnectionState.DISCONNECTED ||
+      connectionState === ConnectionState.ERROR
+    ) {
+      // AudioWorklet callbacks may already be queued when a discovery peer is
+      // replaced. Gate them before stopping capture so they cannot send stale
+      // Opus packets on the next DataChannel before its STREAM_START arrives.
+      audioStreamStartedRef.current = false;
+    }
+
     if (connectionState === ConnectionState.DISCONNECTED) {
       stopWebcam();
       closeAudio();
@@ -464,87 +555,92 @@ export function ClientPage({
   useEffect(() => {
     const metrics = {
       rendered: frameCountRef.current,
-      received: Object.keys(uniqueReceivedFramesRef.current).length, // Count unique frames, not packets
+      received: uniqueReceivedFrameCountRef.current,
       queueDepth: frameQueueRef.current.length,
       uniqueRendered: cumulativeUniqueFramesRef.current,
       frameHashes: uniqueReceivedFramesRef.current,
     };
     window.__clientFrameMetrics = metrics;
-    if (frameCountRef.current % 60 === 0 && frameCountRef.current > 0) {
-      console.log("[Client] Exposed metrics:", metrics);
-    }
   });
 
-  const renderFrame = useCallback(
-    (_deltaMs: number) => {
-      renderCallCountRef.current++;
-
-      if (frameQueueRef.current.length === 0 || !rendererRef.current) {
-        renderNoOpCountRef.current++;
+  const renderFrame = useCallback((_deltaMs: number) => {
+    // Delta-time frame queue draining: drop stale frames on slow hardware
+    if (frameQueueRef.current.length > 0 && rendererRef.current) {
+      if (renderLoopStartTimeRef.current === 0) {
+        renderLoopStartTimeRef.current = performance.now();
       }
 
-      // Log every 60 calls to renderFrame (regardless of whether we actually render)
-      if (renderCallCountRef.current % 60 === 0) {
-        const noOpRate = (
-          (renderNoOpCountRef.current / renderCallCountRef.current) *
-          100
-        ).toFixed(1);
-        console.log(
-          `[Client] renderFrame called ${renderCallCountRef.current} times (${noOpRate}% no-op), queue depth: ${frameQueueRef.current.length}`,
-        );
-      }
+      // Display the latest snapshot instead of replaying a backlog.
+      const frame = frameQueueRef.current.pop();
+      frameQueueRef.current.length = 0;
+      if (frame) {
+        const frameContent = frame.ansiString;
+        const frameHash = hashFrame(frameContent);
+        const writeStartedAt = performance.now();
+        const drewFrame = rendererRef.current.writeFrame(frameContent, {
+          cols: frame.header.width,
+          rows: frame.header.height,
+        });
+        const writeDurationMs = performance.now() - writeStartedAt;
+        if (!drewFrame) {
+          return;
+        }
+        renderedFrameCountRef.current++;
+        const timing = renderTimingRef.current;
+        const renderedAt = performance.now();
+        if (!timing.windowStart) timing.windowStart = renderedAt;
+        if (timing.previousFrameAt) {
+          timing.maxFrameGapMs = Math.max(
+            timing.maxFrameGapMs,
+            renderedAt - timing.previousFrameAt,
+          );
+        }
+        timing.previousFrameAt = renderedAt;
+        timing.frames++;
+        timing.totalMs += writeDurationMs;
+        timing.maxMs = Math.max(timing.maxMs, writeDurationMs);
+        if (timing.frames >= 60) {
+          console.info(
+            "[ClientRenderTiming]",
+            JSON.stringify({
+              frames: timing.frames,
+              elapsedMs: Math.round(renderedAt - timing.windowStart),
+              avgWriteMs: Number((timing.totalMs / timing.frames).toFixed(2)),
+              maxWriteMs: Number(timing.maxMs.toFixed(2)),
+              maxFrameGapMs: Number(timing.maxFrameGapMs.toFixed(2)),
+            }),
+          );
+          timing.frames = 0;
+          timing.totalMs = 0;
+          timing.maxMs = 0;
+          timing.windowStart = renderedAt;
+          timing.maxFrameGapMs = 0;
+        }
+        // Track if this is a new unique frame we haven't seen before
+        if (!frameHashesRef.current[frameHash]) {
+          cumulativeUniqueFramesRef.current++;
+        }
+        frameHashesRef.current[frameHash] =
+          (frameHashesRef.current[frameHash] || 0) + 1;
 
-      // Delta-time frame queue draining: drop stale frames on slow hardware
-      if (frameQueueRef.current.length > 0 && rendererRef.current) {
-        if (renderLoopStartTimeRef.current === 0) {
+        frameCountRef.current++;
+        diagnosticFrameCountRef.current++;
+        const metrics = window.__clientFrameMetrics;
+        if (metrics) {
+          metrics.rendered = frameCountRef.current;
+          metrics.uniqueRendered = cumulativeUniqueFramesRef.current;
+          metrics.queueDepth = frameQueueRef.current.length;
+        }
+
+        // Log render rate every 60 rendered frames (using diagnostic counter)
+        if (diagnosticFrameCountRef.current % 60 === 0) {
           renderLoopStartTimeRef.current = performance.now();
-        }
-
-        // Display the latest snapshot instead of replaying a backlog.
-        const frame = frameQueueRef.current.pop();
-        frameQueueRef.current.length = 0;
-        if (frame) {
-          const frameContent = frame.ansiString;
-          const frameHash = hashFrame(frameContent);
-          const drewFrame = rendererRef.current.writeFrame(frameContent, {
-            cols: frame.header.width,
-            rows: frame.header.height,
-          });
-          if (!drewFrame) {
-            renderNoOpCountRef.current++;
-            return;
-          }
-          if (lastRenderedFrameContentRef.current !== frameContent) {
-            changingFrameCountRef.current++;
-            lastRenderedFrameContentRef.current = frameContent;
-          }
-          // Track if this is a new unique frame we haven't seen before
-          if (!frameHashesRef.current[frameHash]) {
-            cumulativeUniqueFramesRef.current++;
-          }
-          frameHashesRef.current[frameHash] =
-            (frameHashesRef.current[frameHash] || 0) + 1;
-
-          frameCountRef.current++;
-          diagnosticFrameCountRef.current++;
-
-          // Log render rate every 60 rendered frames (using diagnostic counter)
-          if (diagnosticFrameCountRef.current % 60 === 0) {
-            const uniqueFrames = Object.keys(frameHashesRef.current).length;
-            console.log(`[Client] Rendered ${uniqueFrames} unique frames`);
-            console.log(
-              `[Client] Frame hash distribution:`,
-              frameHashesRef.current,
-            );
-            renderLoopStartTimeRef.current = performance.now();
-            diagnosticFrameCountRef.current = 0;
-            frameHashesRef.current = {};
-          }
+          diagnosticFrameCountRef.current = 0;
+          frameHashesRef.current = {};
         }
       }
-    },
-    [],
-  );
+    }
+  }, []);
 
   const { startRenderLoop } = useRenderLoop(
     renderFrame,
@@ -594,11 +690,17 @@ export function ClientPage({
       audioStreamStartedRef.current = true;
       if (micEnabled) {
         void audioRef.current?.startCapture().catch((error) => {
-          console.error("[Client] Could not resume microphone after reconnect:", error);
+          console.error(
+            "[Client] Could not resume microphone after reconnect:",
+            error,
+          );
         });
       }
     } catch (error) {
-      console.warn("[Client] Could not resume audio stream after reconnect:", error);
+      console.warn(
+        "[Client] Could not resume audio stream after reconnect:",
+        error,
+      );
     }
   }, [audioEnabled, connectionState, discovery, clientRef, micEnabled]);
 
@@ -689,201 +791,220 @@ export function ClientPage({
             mode={AsciiChatMode.CLIENT}
           />
         }
-        topPanel={discoveryMode && (
-        <div className="flex flex-col">
-        <form
-          className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            setConnecting(true);
-            void connectToServer()
-              .catch(() => {})
-              .finally(() => setConnecting(false));
-          }}
-        >
-          <Tooltip text={disabledSettingsHelp} className="contents">
-            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-              Discovery service URL
-              <input
-                aria-label="Discovery service URL"
-                disabled={settingsDisabled}
-                value={signalingUrl}
-                onChange={(event) => setSignalingUrl(event.target.value)}
-                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-              />
-            </label>
-          </Tooltip>
-          <Tooltip text={disabledSettingsHelp} className="contents">
-            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-              Session name
-              <input
-                aria-label="Session name"
-                disabled={settingsDisabled}
-                required
-                maxLength={47}
-                value={sessionName}
-                onChange={(event) => setSessionName(event.target.value)}
-                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                placeholder="blue-mountain-tiger"
-              />
-            </label>
-          </Tooltip>
-          <Tooltip text={disabledSettingsHelp} className="contents">
-            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-              Session password
-              <input
-                aria-label="Session password"
-                disabled={settingsDisabled}
-                type="password"
-                value={sessionPassword}
-                onChange={(event) => setSessionPassword(event.target.value)}
-                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                autoComplete="off"
-              />
-            </label>
-          </Tooltip>
-          <button
-            type="submit"
-            disabled={settingsDisabled}
-            className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Join session
-          </button>
-          {(connecting || connectionState === ConnectionState.CONNECTED) && (
-            <button
-              type="button"
-              onClick={disconnectMedia}
-              className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
-            >
-              {connecting ? "Cancel" : "Disconnect"}
-            </button>
-          )}
-          <div className="flex items-center gap-3 w-full min-w-0">
-            <details className="flex-shrink-0">
-              <summary className="cursor-pointer">Connection settings</summary>
-              <div className="flex flex-col gap-2 mt-2">
-                <Tooltip text={disabledSettingsHelp} className="contents">
-                  <label className="flex flex-col gap-1 w-56 max-w-full">
-                    Connection route
-                    <select
-                      aria-label="Connection route"
-                      value={connectionRoute}
-                      disabled={settingsDisabled}
-                      onChange={(event) =>
-                        setConnectionRoute(event.target.value as "all" | "relay")
-                      }
-                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
-                    >
-                      <option value="all">Automatic</option>
-                      <option value="relay">Relay only</option>
-                    </select>
-                  </label>
-                </Tooltip>
-                <Tooltip text={disabledSettingsHelp} className="contents">
-                  <label>
-                    <HelpLabel
-                      label="STUN/TURN URLs (comma-separated)"
-                      text={
-                        'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
-                      }
-                    />
-                    <input
-                      aria-label="STUN/TURN URLs"
-                      disabled={settingsDisabled}
-                      value={iceUrls}
-                      onChange={(event) => setIceUrls(event.target.value)}
-                      className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
-                    />
-                  </label>
-                </Tooltip>
-                <fieldset disabled={settingsDisabled}>
-                  <div className="flex flex-wrap gap-3 mt-2">
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        <HelpLabel
-                          label="TURN username"
-                          text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                        />
-                        <input
-                          aria-label="TURN username"
-                          disabled={settingsDisabled}
-                          value={turnUsername}
-                          maxLength={127}
-                          required={!!turnCredential}
-                          onChange={(event) =>
-                            setTurnUsername(event.target.value)
-                          }
-                          autoComplete="off"
-                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                        />
-                      </label>
-                    </Tooltip>
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        <HelpLabel
-                          label="TURN password"
-                          text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                        />
-                        <input
-                          aria-label="TURN password"
-                          disabled={settingsDisabled}
-                          type="password"
-                          value={turnCredential}
-                          maxLength={127}
-                          required={!!turnUsername}
-                          onChange={(event) =>
-                            setTurnCredential(event.target.value)
-                          }
-                          autoComplete="off"
-                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                        />
-                      </label>
-                    </Tooltip>
-                  </div>
-                </fieldset>
-              </div>
-            </details>
-          </div>
-          {error && (
-            <p role="alert" title={error} className="w-full text-terminal-1">
-              {error}
-            </p>
-          )}
-        </form>
-        {connectionState === ConnectionState.CONNECTED && (
-          <div className="flex gap-3 mt-3">
-            <button
-              onClick={() => {
-                if (audioEnabled) closeAudio();
-                else void enableAudio();
-              }}
-              className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-            >
-              {audioEnabled ? "Disable speakers" : "Enable speakers"}
-            </button>
-            <button
-              onClick={() => void toggleMicrophone()}
-              className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-            >
-              {micEnabled ? "Mute microphone" : "Enable microphone"}
-            </button>
-            {audioEnabled && (
-              <output
-                data-testid="audio-levels"
-                data-sent={audioLevels.sent}
-                data-played={audioLevels.played}
-                data-played-samples={audioLevels.playedSamples}
-                data-underruns={audioLevels.underruns}
-                className="self-center text-sm text-terminal-8"
+        topPanel={
+          discoveryMode && (
+            <div className="flex flex-col">
+              <form
+                className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  pendingDiscoveryJoinRef.current = true;
+                  discoveryJoinGenerationRef.current++;
+                  setRendererRequested(true);
+                  setConnecting(true);
+                }}
               >
-                Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
-                {Math.round(audioLevels.playback * 100)}%
-              </output>
-            )}
-          </div>
-        )}
-        </div>
-      )}
+                <Tooltip text={disabledSettingsHelp} className="contents">
+                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                    Discovery service URL
+                    <input
+                      aria-label="Discovery service URL"
+                      disabled={settingsDisabled}
+                      value={signalingUrl}
+                      onChange={(event) => setSignalingUrl(event.target.value)}
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                    />
+                  </label>
+                </Tooltip>
+                <Tooltip text={disabledSettingsHelp} className="contents">
+                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                    Session name
+                    <input
+                      aria-label="Session name"
+                      disabled={settingsDisabled}
+                      required
+                      maxLength={47}
+                      value={sessionName}
+                      onChange={(event) => setSessionName(event.target.value)}
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                      placeholder="blue-mountain-tiger"
+                    />
+                  </label>
+                </Tooltip>
+                <Tooltip text={disabledSettingsHelp} className="contents">
+                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                    Session password
+                    <input
+                      aria-label="Session password"
+                      disabled={settingsDisabled}
+                      type="password"
+                      value={sessionPassword}
+                      onChange={(event) =>
+                        setSessionPassword(event.target.value)
+                      }
+                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                      autoComplete="off"
+                    />
+                  </label>
+                </Tooltip>
+                <button
+                  type="submit"
+                  disabled={settingsDisabled}
+                  className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Join session
+                </button>
+                {(connecting ||
+                  connectionState === ConnectionState.CONNECTED) && (
+                  <button
+                    type="button"
+                    onClick={disconnectMedia}
+                    className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
+                  >
+                    {connecting ? "Cancel" : "Disconnect"}
+                  </button>
+                )}
+                <div className="flex items-center gap-3 w-full min-w-0">
+                  <details className="flex-shrink-0">
+                    <summary className="cursor-pointer">
+                      Connection settings
+                    </summary>
+                    <div className="flex flex-col gap-2 mt-2">
+                      <Tooltip text={disabledSettingsHelp} className="contents">
+                        <label className="flex flex-col gap-1 w-56 max-w-full">
+                          Connection route
+                          <select
+                            aria-label="Connection route"
+                            value={connectionRoute}
+                            disabled={settingsDisabled}
+                            onChange={(event) =>
+                              setConnectionRoute(
+                                event.target.value as "all" | "relay",
+                              )
+                            }
+                            className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+                          >
+                            <option value="all">Automatic</option>
+                            <option value="relay">Relay only</option>
+                          </select>
+                        </label>
+                      </Tooltip>
+                      <Tooltip text={disabledSettingsHelp} className="contents">
+                        <label>
+                          <HelpLabel
+                            label="STUN/TURN URLs (comma-separated)"
+                            text={
+                              'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
+                            }
+                          />
+                          <input
+                            aria-label="STUN/TURN URLs"
+                            disabled={settingsDisabled}
+                            value={iceUrls}
+                            onChange={(event) => setIceUrls(event.target.value)}
+                            className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                          />
+                        </label>
+                      </Tooltip>
+                      <fieldset disabled={settingsDisabled}>
+                        <div className="flex flex-wrap gap-3 mt-2">
+                          <Tooltip
+                            text={disabledSettingsHelp}
+                            className="contents"
+                          >
+                            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                              <HelpLabel
+                                label="TURN username"
+                                text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                              />
+                              <input
+                                aria-label="TURN username"
+                                disabled={settingsDisabled}
+                                value={turnUsername}
+                                maxLength={127}
+                                required={!!turnCredential}
+                                onChange={(event) =>
+                                  setTurnUsername(event.target.value)
+                                }
+                                autoComplete="off"
+                                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                              />
+                            </label>
+                          </Tooltip>
+                          <Tooltip
+                            text={disabledSettingsHelp}
+                            className="contents"
+                          >
+                            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                              <HelpLabel
+                                label="TURN password"
+                                text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                              />
+                              <input
+                                aria-label="TURN password"
+                                disabled={settingsDisabled}
+                                type="password"
+                                value={turnCredential}
+                                maxLength={127}
+                                required={!!turnUsername}
+                                onChange={(event) =>
+                                  setTurnCredential(event.target.value)
+                                }
+                                autoComplete="off"
+                                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                              />
+                            </label>
+                          </Tooltip>
+                        </div>
+                      </fieldset>
+                    </div>
+                  </details>
+                </div>
+                {error && (
+                  <p
+                    role="alert"
+                    title={error}
+                    className="w-full text-terminal-1"
+                  >
+                    {error}
+                  </p>
+                )}
+              </form>
+              {connectionState === ConnectionState.CONNECTED && (
+                <div className="flex gap-3 mt-3">
+                  <button
+                    onClick={() => {
+                      if (audioEnabled) closeAudio();
+                      else void enableAudio();
+                    }}
+                    className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+                  >
+                    {audioEnabled ? "Disable speakers" : "Enable speakers"}
+                  </button>
+                  <button
+                    onClick={() => void toggleMicrophone()}
+                    className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+                  >
+                    {micEnabled ? "Mute microphone" : "Enable microphone"}
+                  </button>
+                  {audioEnabled && (
+                    <output
+                      data-testid="audio-levels"
+                      data-sent={audioLevels.sent}
+                      data-played={audioLevels.played}
+                      data-played-samples={audioLevels.playedSamples}
+                      data-underruns={audioLevels.underruns}
+                      className="self-center text-sm text-terminal-8"
+                    >
+                      Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+                      {Math.round(audioLevels.playback * 100)}%
+                    </output>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
         controlBar={
           <PageControlBar
             title={discoveryMode ? "Discovery" : "Client"}
@@ -907,6 +1028,7 @@ export function ClientPage({
           />
         }
         renderer={
+          rendererRequested ? (
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
@@ -916,6 +1038,7 @@ export function ClientPage({
             connectionState={connectionState}
             wasmModuleReady={rendererReady}
           />
+          ) : undefined
         }
         modal={
           discoveryMode ? undefined : (

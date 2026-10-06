@@ -4,17 +4,32 @@ import {
   ConnectionState,
   PacketType,
   encryptPacket,
+  initClientWasm,
 } from "../../src/wasm/client";
 
-const sockets = vi.hoisted(() => ({ sent: [] as Uint8Array[] }));
+const sockets = vi.hoisted(() => ({
+  sent: [] as Uint8Array[],
+  instances: [] as Array<{
+    emit(state: string): void;
+    isConnected(): boolean;
+  }>,
+}));
 vi.mock("../../src/network/SocketBridge", () => ({
   SocketBridge: class {
-    constructor(private options: { onStateChange: (state: string) => void }) {}
+    private connected = false;
+    constructor(private options: { onStateChange: (state: string) => void }) {
+      sockets.instances.push(this);
+    }
     async connect() {
+      this.connected = true;
       this.options.onStateChange("open");
     }
     isConnected() {
-      return true;
+      return this.connected;
+    }
+    emit(state: string) {
+      this.connected = state === "open";
+      this.options.onStateChange(state);
     }
     send(bytes: Uint8Array) {
       sockets.sent.push(bytes);
@@ -42,6 +57,7 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
 describe("WebSocket encryption defaults", () => {
   beforeEach(() => {
     sockets.sent = [];
+    sockets.instances = [];
     vi.clearAllMocks();
   });
   it.each([
@@ -70,6 +86,62 @@ describe("WebSocket encryption defaults", () => {
     await connection.connect();
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
     expect(encryptPacket).toHaveBeenCalledOnce();
+    connection.disconnect();
+  });
+
+  it.each([
+    ["ws://localhost:27226", true, ConnectionState.HANDSHAKE],
+    ["wss://example.com", false, ConnectionState.CONNECTED],
+  ] as const)(
+    "%s sends the discovery protocol version before signaling",
+    async (serverUrl, supportsEncryption, expectedState) => {
+      const connection = new ClientConnection({
+        serverUrl,
+        discoveryHandshake: true,
+      });
+      const states: ConnectionState[] = [];
+      connection.onStateChange((state) => states.push(state));
+      await connection.connect();
+
+      const versionPacket = sockets.sent[0]!;
+      expect(new DataView(versionPacket.buffer).getUint16(8, false)).toBe(
+        PacketType.PROTOCOL_VERSION,
+      );
+      expect(versionPacket[26]).toBe(supportsEncryption ? 1 : 0);
+      expect(states).toContain(expectedState);
+      connection.disconnect();
+    },
+  );
+
+  it("waits for WASM crypto reinitialization before sending version on retry", async () => {
+    let finishReinit!: () => void;
+    const reinit = new Promise<void>((resolve) => {
+      finishReinit = resolve;
+    });
+    vi.mocked(initClientWasm)
+      .mockResolvedValueOnce(undefined)
+      .mockImplementationOnce(() => reinit);
+
+    const connection = new ClientConnection({
+      serverUrl: "ws://localhost:27226",
+      discoveryHandshake: true,
+    });
+    await connection.connect();
+    expect(sockets.sent).toHaveLength(1);
+    Object.assign(connection, { wasEverConnected: true });
+
+    const socket = sockets.instances[0]!;
+    socket.emit("closed");
+    socket.emit("connecting");
+    socket.emit("open");
+    await Promise.resolve();
+
+    expect(sockets.sent).toHaveLength(1);
+    finishReinit();
+    await vi.waitFor(() => expect(sockets.sent).toHaveLength(2));
+    expect(new DataView(sockets.sent[1]!.buffer).getUint16(8, false)).toBe(
+      PacketType.PROTOCOL_VERSION,
+    );
     connection.disconnect();
   });
 });

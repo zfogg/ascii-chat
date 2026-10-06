@@ -55,7 +55,7 @@ if(USE_MUSL)
 endif()
 
 # Non-musl builds: Use system package manager
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(ALSA alsa REQUIRED)
@@ -65,9 +65,9 @@ if(UNIX AND NOT APPLE)
 
     message(STATUS "${BoldGreen}✓${ColorReset} ALSA: ${ALSA_LDFLAGS}")
 
-elseif(APPLE)
-    # macOS: ALSA is Linux-only, not available on macOS
-    message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux-only, skipping for macOS")
+elseif(APPLE OR EMSCRIPTEN)
+    # ALSA is Linux-only and is not used by the browser audio path.
+    message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux-only, skipping for this platform")
     set(ALSA_LIBRARIES "")
     set(ALSA_INCLUDE_DIRS "")
 

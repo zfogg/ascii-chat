@@ -290,25 +290,46 @@ static void *audio_worker_thread(void *arg) {
     bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline && (ctx->duplex_stream || ctx->output_stream);
 
     if (want_aec3) {
-      // AEC3 path: process matched render+capture in 480-sample-aligned chunks
+      // Process matched render and capture where a playback reference is
+      // available. Microphone capture must still progress when playback is
+      // silent or has not produced a reference yet.
       size_t matched = (capture_available < render_available) ? capture_available : render_available;
-      // Round down to AEC3 frame boundary so no partial frames
       size_t aligned = (matched / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
-      // Cap to batch buffer size
       if (aligned > WORKER_BATCH_SAMPLES)
         aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+
+      bool has_render_reference = aligned > 0;
+      if (aligned == 0 && capture_available >= AEC3_FRAME_SIZE) {
+        // AEC3 consumes paired 10 ms frames. With no complete render frame,
+        // use a zero reference so an empty playback buffer cannot stall the
+        // microphone ring buffer until it overflows.
+        aligned = (capture_available / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+        if (aligned > WORKER_BATCH_SAMPLES)
+          aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+        if (render_available > 0) {
+          size_t discard = render_available > WORKER_BATCH_SAMPLES ? WORKER_BATCH_SAMPLES : render_available;
+          audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, discard);
+        }
+      }
 
       if (aligned > 0) {
         uint64_t capture_start_ns = time_get_ns();
 
         size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, aligned);
-        size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, aligned);
+        size_t render_read = 0;
+        if (has_render_reference) {
+          render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, aligned);
+        } else {
+          memset(ctx->worker_render_batch, 0, capture_read * sizeof(float));
+          render_read = capture_read;
+        }
 
         if (capture_read > 0 && render_read > 0) {
           uint64_t aec3_start_ns = time_get_ns();
 
-          // Both buffers have identical, frame-aligned sample counts - AEC3 sees
-          // the real continuous audio stream with no padding or gaps
+          // Both buffers have identical, frame-aligned sample counts. A zero
+          // render reference leaves near-end microphone audio available when
+          // there is no speaker signal to cancel.
           client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
                                                ctx->worker_capture_batch, (int)capture_read, ctx->worker_capture_batch);
 
@@ -971,6 +992,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
   atomic_store_u64(&rb->write_index, 0);
   atomic_store_u64(&rb->read_index, 0);
   atomic_store_bool(&rb->discard_pending, false);
+  atomic_store_u64(&rb->discard_to_index, 0);
   // For capture buffers (jitter_buffer_enabled=false), mark as already filled to bypass jitter logic
   // For playback buffers (jitter_buffer_enabled=true), start unfilled to wait for threshold
   atomic_store_bool(&rb->jitter_buffer_filled, !jitter_buffer_enabled);
@@ -1019,6 +1041,7 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   // Ring buffer indices (lock-free producer-consumer)
   NAMED_REGISTER_ATOMIC(&rb->write_index, "write_index_producer_position", (uintptr_t)(const void *)(rb));
   NAMED_REGISTER_ATOMIC(&rb->read_index, "read_index_consumer_position", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->discard_to_index, "discard_to_index_producer_position", (uintptr_t)(const void *)(rb));
 
   // Jitter buffer state management
   NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag",
@@ -1038,6 +1061,7 @@ void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb) {
 
   NAMED_UNREGISTER(&rb->write_index);
   NAMED_UNREGISTER(&rb->read_index);
+  NAMED_UNREGISTER(&rb->discard_to_index);
   NAMED_UNREGISTER(&rb->jitter_buffer_filled);
   NAMED_UNREGISTER(&rb->crossfade_samples_remaining);
   NAMED_UNREGISTER(&rb->crossfade_fade_in);
@@ -1052,6 +1076,8 @@ void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
   // Reset buffer to empty state (no audio to play = silence at shutdown)
   atomic_store_u64(&rb->write_index, 0);
   atomic_store_u64(&rb->read_index, 0);
+  atomic_store_bool(&rb->discard_pending, false);
+  atomic_store_u64(&rb->discard_to_index, 0);
   rb->last_sample = 0.0f;
   // Clear the actual data to zeros to prevent any stale audio
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
@@ -1060,6 +1086,11 @@ void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
 
 void audio_ring_buffer_discard_pending(audio_ring_buffer_t *rb) {
   if (rb) {
+    // Capture the current producer position before the caller writes its new
+    // samples. The consumer can drop everything through this point while
+    // preserving samples appended afterward.
+    unsigned int write_idx = atomic_load_u64(&rb->write_index);
+    atomic_store_u64(&rb->discard_to_index, write_idx);
     atomic_store_bool(&rb->discard_pending, true);
   }
 }
@@ -1091,24 +1122,34 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   // (when buffer is full, write_idx will be just before read_idx, not equal to it)
   int available = AUDIO_RING_BUFFER_SIZE - 1 - buffer_level;
 
-  // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
-  // Writer must not modify read_index (race condition with reader).
-  // Instead, we drop incoming samples to keep buffer bounded.
-  // This sacrifices newest data to prevent unbounded latency growth.
+  // If playback has fallen behind, ask its consumer to skip the stale queue.
+  // Dropping incoming samples here preserves the old backlog, so playback
+  // drains outdated audio and then underruns before it can return to live data.
   if (buffer_level > AUDIO_JITTER_HIGH_WATER_MARK) {
-    // Buffer is already too full - drop incoming samples to maintain target level
-    int target_writes = AUDIO_JITTER_TARGET_LEVEL - buffer_level;
-    if (target_writes < 0) {
-      target_writes = 0; // Buffer is way over - drop everything
-    }
-
-    if (samples > target_writes) {
-      int dropped = samples - target_writes;
+    if (rb->jitter_buffer_enabled) {
+      // The read callback owns read_index. Let it advance to the latest write
+      // position atomically on its next invocation, then preserve this fresh
+      // packet so audio resumes from the current stream position.
+      audio_ring_buffer_discard_pending(rb);
       log_warn_every(LOG_RATE_FAST,
-                     "Audio buffer high water mark exceeded (%d > %d): dropping %d INCOMING samples "
-                     "(keeping newest %d to maintain target %d)",
-                     buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped, target_writes, AUDIO_JITTER_TARGET_LEVEL);
-      samples = target_writes; // Only write what fits within target level
+                     "Audio playback backlog (%d samples); requesting consumer to skip stale queued audio",
+                     buffer_level);
+    } else {
+      // Capture queues also have a high-water mark, but their reader may be
+      // processing a matching microphone/render interval. Retain the existing
+      // policy there instead of changing the reader's timeline asynchronously.
+      int target_writes = AUDIO_JITTER_TARGET_LEVEL - buffer_level;
+      if (target_writes < 0) {
+        target_writes = 0;
+      }
+
+      if (samples > target_writes) {
+        int dropped = samples - target_writes;
+        log_warn_every(LOG_RATE_FAST,
+                       "Audio capture buffer high water mark exceeded (%d > %d): dropping %d incoming samples",
+                       buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped);
+        samples = target_writes;
+      }
     }
   }
 
@@ -1155,11 +1196,17 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   // Keep read_index consumer-owned while letting a producer request a flush.
   if (atomic_exchange_bool(&rb->discard_pending, false)) {
-    unsigned int write_idx = atomic_load_u64(&rb->write_index);
-    atomic_store_u64(&rb->read_index, write_idx);
-    rb->last_sample = 0.0f;
-    atomic_store_u64(&rb->crossfade_samples_remaining, 0);
-    return 0;
+    unsigned int read_idx = atomic_load_u64(&rb->read_index);
+    unsigned int discard_to = atomic_load_u64(&rb->discard_to_index);
+    unsigned int advance = (discard_to + AUDIO_RING_BUFFER_SIZE - read_idx) % AUDIO_RING_BUFFER_SIZE;
+    // A concurrent callback may already have consumed beyond the requested
+    // boundary. In that case the target is behind us and must not rewind the
+    // single-consumer index.
+    if (advance < AUDIO_RING_BUFFER_SIZE / 2) {
+      atomic_store_u64(&rb->read_index, discard_to);
+      rb->last_sample = 0.0f;
+      atomic_store_u64(&rb->crossfade_samples_remaining, 0);
+    }
   }
 
   // LOCK-FREE: Load indices with proper memory ordering
@@ -1645,7 +1692,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   const PaDeviceInfo *outputInfo = NULL;
   bool has_output = false;
 
-  if (GET_OPTION(speakers_index) >= 0) {
+  if (GET_OPTION(audio_no_playback)) {
+    outputParams.device = paNoDevice;
+    log_info("Audio playback disabled by --no-audio-playback");
+  } else if (GET_OPTION(speakers_index) >= 0) {
     outputParams.device = GET_OPTION(speakers_index);
   } else {
     outputParams.device = Pa_GetDefaultOutputDevice();
@@ -1682,13 +1732,11 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     log_debug("  Output: None (input-only mode - will send audio to server)");
   }
 
-  // Keep both device streams native and convert in the callbacks whenever a
-  // device does not run at the pipeline rate. A single 48 kHz duplex stream is
-  // used only when both devices natively support that rate.
-  bool rates_differ = has_input && has_output &&
-                      (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate ||
-                       inputInfo->defaultSampleRate != AUDIO_SAMPLE_RATE ||
-                       outputInfo->defaultSampleRate != AUDIO_SAMPLE_RATE);
+  // Keep capture and playback synchronized in one 48 kHz duplex stream when
+  // both devices share a native rate. PortAudio handles conversion to/from
+  // that rate. Separate streams are needed only when the devices themselves
+  // run at different rates or one direction is unavailable.
+  bool rates_differ = has_input && has_output && (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate);
   bool try_separate = rates_differ || !has_input || !has_output;
   PaError err = paNoError;
 

@@ -158,6 +158,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
     ${LIB_ROOT}/buffer_pool.c
+    ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system
     ${LIB_ROOT}/options/rcu.c
@@ -293,7 +294,6 @@ set(LIB_SRC_COMMON
 
 # Mirror-specific sources (not needed by client mode)
 set(LIB_SRC_MIRROR_ONLY
-    ${LIB_ROOT}/video/ascii/rle.c            # RLE codec for server ASCII frames - mirror only
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
     ${LIB_ROOT}/audio/visualization.c # Audio waveform and spectrum rendering for mirror WASM
 )
@@ -546,6 +546,9 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _term_renderer_get_cols
     _term_renderer_get_rows
     _term_renderer_destroy
+    # Embedded font data used by the browser renderer
+    _get_font_default_ptr
+    _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height

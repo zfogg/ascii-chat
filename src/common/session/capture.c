@@ -30,10 +30,10 @@
  * ============================================================================ */
 
 /** @brief Maximum frame width for network transmission (bandwidth optimization) */
-#define SESSION_MAX_FRAME_WIDTH 480
+#define SESSION_MAX_FRAME_WIDTH 320
 
 /** @brief Maximum frame height for network transmission (bandwidth optimization) */
-#define SESSION_MAX_FRAME_HEIGHT 270
+#define SESSION_MAX_FRAME_HEIGHT 180
 
 /* ============================================================================
  * Session Capture Context Structure

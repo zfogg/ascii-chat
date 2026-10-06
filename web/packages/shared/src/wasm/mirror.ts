@@ -84,6 +84,15 @@ export type EmscriptenModuleFactory = (
 let wasmModule: MirrorModule | null = null;
 
 /**
+ * Share an already-created compatible module with the terminal renderer.
+ * Discovery uses the client build, which also exports the renderer entry
+ * points. Reusing it avoids starting a second Emscripten pthread runtime.
+ */
+export function adoptMirrorWasmModule(module: MirrorModule): void {
+  wasmModule = module;
+}
+
+/**
  * Initialize the WASM module (call once at app start)
  * @param moduleFactory - Emscripten module factory function (from mirror.js)
  * @param options - Optional overrides (e.g., locateFile for cross-origin .wasm loading)

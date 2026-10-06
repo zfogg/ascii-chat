@@ -188,12 +188,36 @@ void platform_sleep_us(unsigned int usec) {
  * up to the nearest millisecond, minimum 1ms.
  */
 void platform_sleep_ns(uint64_t ns) {
-  // Convert nanoseconds to milliseconds
-  DWORD timeout_ms = (DWORD)((ns + NS_PER_MS_INT - 1) / NS_PER_MS_INT); // Round up
-  if (timeout_ms < 1)
-    timeout_ms = 1;
+  if (ns == 0) {
+    return;
+  }
 
-  Sleep(timeout_ms);
+  // Sleep() rounds a sub-millisecond remainder up to the next scheduler
+  // tick.  Render loops frequently have only 1-3ms left after processing a
+  // frame, so that rounding can skip an entire 16.7ms video deadline and
+  // produce a stable ~30 FPS cadence.  A high-resolution waitable timer keeps
+  // those deadline sleeps precise without busy-spinning a CPU core.
+  // A waitable timer is stateful: setting a new deadline cancels the prior
+  // deadline.  Each render/audio thread therefore needs its own handle.
+  static _Thread_local HANDLE timer = NULL;
+  if (!timer) {
+    timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    if (!timer) {
+      timer = CreateWaitableTimerW(NULL, FALSE, NULL);
+    }
+  }
+  if (timer) {
+    LARGE_INTEGER due_time;
+    // Relative waitable-timer deadlines are measured in 100ns units.
+    uint64_t ticks_100ns = (ns + 99) / 100;
+    due_time.QuadPart = -(LONGLONG)ticks_100ns;
+    if (SetWaitableTimer(timer, &due_time, 0, NULL, NULL, FALSE) && WaitForSingleObject(timer, INFINITE) == WAIT_OBJECT_0) {
+      return;
+    }
+  }
+
+  DWORD timeout_ms = (DWORD)((ns + NS_PER_MS_INT - 1) / NS_PER_MS_INT);
+  Sleep(timeout_ms ? timeout_ms : 1);
 }
 
 /**

@@ -68,6 +68,7 @@ export function discoveryRTCConfiguration(
 
 /** Signaling stays on ACDS; all media travels on the peer's DTLS DataChannel. */
 export class WebRTCSession implements ClientSession {
+  readonly transportType = "webrtc" as const;
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
@@ -93,7 +94,11 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      discoveryHandshake: true,
+      // ACDS WebSocket signaling accepts plain ACIP discovery packets. Its
+      // handler explicitly bypasses the native crypto handshake; sending a
+      // PROTOCOL_VERSION packet here makes the service reject the connection
+      // before LOOKUP can be sent. The peer DataChannel remains DTLS-encrypted.
+      applicationEncryption: false,
       width,
       height,
     });
@@ -136,9 +141,21 @@ export class WebRTCSession implements ClientSession {
           this.fail(error);
         }
       } else if (
+        state === ConnectionState.CONNECTING &&
         this.lookedUp &&
+        !this.joined
+      ) {
+        // SocketBridge retries transient signaling drops itself. Let that
+        // socket finish its handshake, then look up the session again if the
+        // interrupted connection had not joined yet.
+        this.lookedUp = false;
+        this.options.onProgress?.("Reconnecting to discovery service");
+      } else if (
+        this.lookedUp &&
+        !this.joined &&
         state !== ConnectionState.CONNECTED &&
-        state !== ConnectionState.HANDSHAKE
+        state !== ConnectionState.HANDSHAKE &&
+        state !== ConnectionState.CONNECTING
       ) {
         this.fail(
           new Error(
@@ -238,6 +255,7 @@ export class WebRTCSession implements ClientSession {
           channel.close();
           return;
         }
+        let receivedAsciiFrames = 0;
         this.bridge = new WebRTCBridge(
           channel,
           (bytes) => {
@@ -249,7 +267,18 @@ export class WebRTCSession implements ClientSession {
                 );
               if (packet.type === PacketType.PING)
                 this.sendPacket(PacketType.PONG, bytes.slice(22));
-              else this.packetCallback?.(packet, bytes.slice(22));
+              else {
+                if (packet.type === PacketType.ASCII_FRAME) {
+                  receivedAsciiFrames++;
+                  if (receivedAsciiFrames % 60 === 0)
+                    console.info("[WebRTCSession] ASCII_FRAME dispatch", JSON.stringify({
+                      count: receivedAsciiFrames,
+                      callbackAttached: Boolean(this.packetCallback),
+                      payloadBytes: bytes.length - 22,
+                    }));
+                }
+                this.packetCallback?.(packet, bytes.slice(22));
+              }
             } catch (error) {
               this.fail(error);
             }

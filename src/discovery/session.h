@@ -145,6 +145,7 @@ typedef struct {
   uint8_t participant_id[16];
   uint8_t initiator_id[16];
   char session_string[SESSION_STRING_BUFFER_SIZE];
+  char password[128]; ///< Session password used when joining password-protected sessions
   bool is_initiator;
   bool is_host;
   bool host_elected; ///< True if we've been elected as host (even if waiting for peer)
@@ -238,6 +239,7 @@ typedef struct {
 
   // Session to join (NULL = create new)
   const char *session_string; ///< Session string to join (or NULL to create)
+  const char *password;       ///< Session password (optional)
 
   // Local server config (if we become host)
   uint16_t local_port; ///< Local port for hosting (default: 27224)

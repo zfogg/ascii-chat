@@ -47,6 +47,9 @@ export function useAsciiRendererHandle({
   const changedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
+  const textEncoderRef = useRef(new TextEncoder());
+  const imageDataRef = useRef<ImageData | null>(null);
+  const lastFrameChangedRef = useRef(false);
 
   useEffect(() => {
     if (!showFps) {
@@ -91,6 +94,7 @@ export function useAsciiRendererHandle({
         ansiString: string,
         dimensions?: { cols: number; rows: number },
       ): boolean {
+        lastFrameChangedRef.current = false;
         if (!moduleRef.current || !setupDoneRef.current) {
           return false;
         }
@@ -99,8 +103,10 @@ export function useAsciiRendererHandle({
         if (resizeTimeoutRef.current) {
           return false;
         }
-        // The debounce ends before the server has necessarily adopted the new
-        // size. Keep the cleared canvas blank until a matching frame arrives.
+        // ANSI frames describe a complete terminal grid.  Rendering a frame
+        // for a different grid into this renderer leaves terminal state from
+        // older cells visible and makes dropped frames look like interleaved
+        // tiles. Wait until the server has adopted the current dimensions.
         if (
           dimensions &&
           (dimensions.cols !== dimensionsRef.current.cols ||
@@ -111,8 +117,7 @@ export function useAsciiRendererHandle({
 
         try {
           // Encode string to UTF-8 bytes
-          const encoder = new TextEncoder();
-          const data = encoder.encode(ansiString);
+          const data = textEncoderRef.current.encode(ansiString);
 
           // Allocate memory in WASM and copy data
           const ptr = moduleRef.current._malloc(data.length);
@@ -149,7 +154,6 @@ export function useAsciiRendererHandle({
               const fbStride = moduleRef.current._term_renderer_pitch(
                 rendererPtrRef.current,
               );
-
               // Use canvas dimensions (set to container size earlier)
               const fbWidth = canvas.width;
               const fbHeight = canvas.height;
@@ -166,23 +170,43 @@ export function useAsciiRendererHandle({
                 const w: number = fbWidth as number;
                 const h: number = fbHeight as number;
                 const stride: number = fbStride ? (fbStride as number) : w * 4;
-
-                // Read RGBA32 framebuffer from WASM memory (now 4 bytes per pixel)
-                const fbData: Uint8Array = new Uint8Array(
+                const fbData = new Uint8Array(
                   moduleRef.current.HEAPU8.buffer,
                   fbPtr,
                   h * stride,
                 );
+                const rowBytes = w * 4;
+                let imageData = imageDataRef.current;
+                if (!imageData || imageData.width !== w || imageData.height !== h) {
+                  imageData = new ImageData(w, h);
+                  imageDataRef.current = imageData;
+                }
+                // Frames received from the server are display snapshots. Do
+                // not compare their framebuffer byte-by-byte in JavaScript:
+                // at typical canvas sizes that costs hundreds of millions of
+                // comparisons per second and blocks rAF. Typed-array copies
+                // stay in native code, and a received frame is a valid FPS
+                // update even when its pixels happen to match the prior one.
+                lastFrameChangedRef.current = true;
+                if (stride === rowBytes) {
+                  imageData.data.set(fbData);
+                } else {
+                  for (let row = 0; row < h; row++) {
+                    const sourceStart = row * stride;
+                    const destinationStart = row * rowBytes;
+                    imageData.data.set(
+                      fbData.subarray(sourceStart, sourceStart + rowBytes),
+                      destinationStart,
+                    );
+                  }
+                }
 
-                // Create ImageData directly from RGBA data (no conversion needed)
-                const imageData = new ImageData(w, h);
-                // Copy RGBA data directly - no per-pixel conversion loop
-                imageData.data.set(fbData.subarray(0, w * h * 4));
-
-                // Display on canvas
                 const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                  throw new Error("[AsciiRenderer] Canvas context not found");
+                }
+                ctx.putImageData(imageData, 0, 0);
                 if (ctx) {
-                  ctx.putImageData(imageData, 0, 0);
                   if (
                     new URLSearchParams(window.location.search).get(
                       "verifyGrid",
@@ -190,8 +214,6 @@ export function useAsciiRendererHandle({
                   ) {
                     startGridStabilityProbe(canvas);
                   }
-                } else {
-                  throw new Error("[AsciiRenderer] Canvas context not found");
                 }
               } else {
                 throw new Error(
@@ -220,11 +242,15 @@ export function useAsciiRendererHandle({
           return false;
         }
 
-        if (showFps) {
+        if (showFps && lastFrameChangedRef.current) {
           const now = performance.now();
           changedFrameTimesRef.current.push(now);
         }
         return true;
+      },
+
+      getLastFrameChanged() {
+        return lastFrameChangedRef.current;
       },
 
       getDimensions() {

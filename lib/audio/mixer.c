@@ -801,7 +801,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
               sum_squares += source_samples[source_count][s] * source_samples[source_count][s];
             }
             source_rms = sqrtf(sum_squares / (float)samples_read);
-            log_info_every(NS_PER_MS_INT, "MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f",
+            log_dev_every(NS_PER_MS_INT, "MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f",
                            mixer->source_ids[i], i, samples_read, source_rms);
           }
 

@@ -1,5 +1,6 @@
 export {
   initMirrorWasm,
+  adoptMirrorWasmModule,
   cleanupMirrorWasm,
   convertFrameToAscii,
   submitAudioSamples,

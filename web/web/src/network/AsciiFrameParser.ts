@@ -1,3 +1,5 @@
+import { decompress as decompressZstd } from "fzstd";
+
 /**
  * Parse ascii_frame_packet_t from decrypted payload.
  *
@@ -62,23 +64,31 @@ export function parseAsciiFrame(payload: Uint8Array): AsciiFrame {
     flags,
   };
 
-  if (header.flags & FrameFlags.IS_COMPRESSED) {
-    // Compressed frames not yet supported
-    const err = "Compressed ASCII frames not supported";
+  const compressed = (header.flags & FrameFlags.IS_COMPRESSED) !== 0;
+  const encodedSize = compressed ? compressedSize : originalSize;
+  if (
+    (compressed && compressedSize === 0) ||
+    ASCII_FRAME_HEADER_SIZE + encodedSize !== payload.length
+  ) {
+    const payloadDataSize = payload.length - ASCII_FRAME_HEADER_SIZE;
+    const err = `Frame payload size mismatch: header says ${encodedSize} bytes but payload has ${payloadDataSize}`;
     console.error(`[AsciiFrameParser] ERROR: ${err}`);
     throw new Error(err);
   }
 
-  if (ASCII_FRAME_HEADER_SIZE + originalSize > payload.length) {
-    const err = `Frame payload size mismatch: header says ${originalSize} bytes but only ${payload.length - ASCII_FRAME_HEADER_SIZE} available`;
-    console.error(`[AsciiFrameParser] ERROR: ${err}`);
-    throw new Error(err);
-  }
-
-  const frameBytes = payload.slice(
+  const encodedFrame = payload.subarray(
     ASCII_FRAME_HEADER_SIZE,
-    ASCII_FRAME_HEADER_SIZE + originalSize,
+    ASCII_FRAME_HEADER_SIZE + encodedSize,
   );
+  let frameBytes: Uint8Array;
+  if (compressed) {
+    frameBytes = decompressZstd(encodedFrame);
+    if (frameBytes.byteLength !== originalSize) {
+      throw new Error("Decompressed ASCII frame size mismatch");
+    }
+  } else {
+    frameBytes = encodedFrame;
+  }
 
   const decoder = new TextDecoder("utf-8");
   const ansiString = decoder.decode(frameBytes);

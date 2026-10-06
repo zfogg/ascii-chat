@@ -10,9 +10,10 @@
  */
 
 // C++ headers must come FIRST before any C headers that include stdatomic.h
+#include <algorithm>
 #include <memory>
 #include <cstring>
-#include <math.h>
+#include <cmath>
 #include <atomic>
 
 // WebRTC headers for AEC3 MUST come before ascii-chat headers to avoid macro conflicts
@@ -169,6 +170,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
   p->flags = p->config.flags;
   p->frame_size = p->config.sample_rate * p->config.frame_size_ns / 1000;
+  p->agc_current_gain = 1.0f;
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 
@@ -632,23 +634,25 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed_output, capture_count);
   }
 
-  // Apply manual AGC (simple pre-gain to boost quiet microphones)
-  // TODO: Replace with proper WebRTC AGC module for adaptive gain control
-  static int agc_call_count = 0;
-  agc_call_count++;
-  if (agc_call_count <= 3 || agc_call_count % 100 == 0) {
-    log_info("AGC check #%d: flags.agc=%d, agc_max_gain=%.1f", agc_call_count, pipeline->flags.agc,
-             pipeline->config.agc_max_gain);
-  }
-
-  if (pipeline->flags.agc) {
-    // Convert dB to linear gain: linear = 10^(dB/20)
-    const float agc_pregain = powf(10.0f, pipeline->config.agc_max_gain / 20.0f);
+  // Adjust gain from this frame's level. Applying agc_max_gain as a constant
+  // pre-gain amplifies silence and background noise by the maximum amount.
+  if (pipeline->flags.agc && capture_count > 0) {
+    double energy = 0.0;
     for (int i = 0; i < capture_count; i++) {
-      processed_output[i] *= agc_pregain;
+      const double sample = processed_output[i];
+      energy += sample * sample;
     }
-    if (agc_call_count <= 3 || agc_call_count % 100 == 0) {
-      log_info("AGC: Applied %.1f dB pre-gain (%.2fx multiplier)", pipeline->config.agc_max_gain, agc_pregain);
+    const float rms = static_cast<float>(std::sqrt(energy / capture_count));
+    const float target_rms = std::clamp(pipeline->config.agc_level / 32768.0f, 0.05f, 0.5f);
+    const float max_gain_db = std::clamp(static_cast<float>(pipeline->config.agc_max_gain), 0.0f, 36.0f);
+    const float max_gain = std::pow(10.0f, max_gain_db / 20.0f);
+    const float desired_gain = rms > 1e-5f ? std::clamp(target_rms / rms, 1.0f, max_gain) : 1.0f;
+
+    // Attenuate a loud frame quickly and raise quiet input more gradually.
+    const float smoothing = desired_gain < pipeline->agc_current_gain ? 0.25f : 0.05f;
+    pipeline->agc_current_gain += smoothing * (desired_gain - pipeline->agc_current_gain);
+    for (int i = 0; i < capture_count; i++) {
+      processed_output[i] *= pipeline->agc_current_gain;
     }
   }
 
@@ -691,6 +695,7 @@ void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
   // Reset global counters
   g_render_frames_fed.store(0, std::memory_order_relaxed);
   g_max_render_rms.store(0.0f, std::memory_order_relaxed);
+  pipeline->agc_current_gain = 1.0f;
 
   log_info("Pipeline state reset");
 }

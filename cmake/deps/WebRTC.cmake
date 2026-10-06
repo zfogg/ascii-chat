@@ -22,6 +22,17 @@
 #
 # =============================================================================
 
+if(EMSCRIPTEN)
+    # The browser client uses the Web Audio API and does not compile the native
+    # audio pipeline that consumes WebRTC AEC3.
+    if(NOT TARGET webrtc_audio_processing)
+        add_library(webrtc_audio_processing INTERFACE)
+    endif()
+    set(WEBRTC_AEC3_LIBRARIES "")
+    message(STATUS "WebRTC AEC3: skipped for the browser audio backend")
+    return()
+endif()
+
 include(FetchContent)
 
 # Allow FetchContent_Populate() for patching before configuration.
@@ -92,7 +103,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
     # This ensures cached WebRTC libs match the current build settings
     # Include build type because Debug uses ASan which affects ABI (annotate_string mismatch)
     # Include USE_MUSL so WebRTC is rebuilt with musl target when musl is enabled
-    set(WEBRTC_BUILD_CONFIG "CONFIG=12;BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};ARCH=${CMAKE_SYSTEM_PROCESSOR};HOST_ARCH=${CMAKE_HOST_SYSTEM_PROCESSOR};VCPKG=${VCPKG_TARGET_TRIPLET};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};COMPILER=${CMAKE_C_COMPILER};SANITIZERS=${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
+    set(WEBRTC_BUILD_CONFIG "CONFIG=13;BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};ARCH=${CMAKE_SYSTEM_PROCESSOR};HOST_ARCH=${CMAKE_HOST_SYSTEM_PROCESSOR};VCPKG=${VCPKG_TARGET_TRIPLET};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};COMPILER=${CMAKE_C_COMPILER};SANITIZERS=${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
     set(WEBRTC_CONFIG_MARKER "${WEBRTC_BUILD_DIR}/.build_config")
     # Normalize: strip trailing whitespace from config string
     string(STRIP "${WEBRTC_BUILD_CONFIG}" WEBRTC_BUILD_CONFIG)
@@ -209,6 +220,14 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         # Pass CMAKE_PREFIX_PATH so WebRTC can find system Abseil (Homebrew, vcpkg, etc.)
         if(CMAKE_PREFIX_PATH)
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+        endif()
+
+        # The top-level vcpkg toolchain resolves Abseil to an installed config
+        # package, but the standalone AEC3 configure does not inherit that
+        # package directory. Pass it explicitly so AEC3 does not silently build
+        # bundled Abseil objects that conflict with the DLL used by the main app.
+        if(absl_DIR)
+            list(APPEND WEBRTC_CMAKE_ARGS "-Dabsl_DIR=${absl_DIR}")
         endif()
 
         # For musl builds, add target triple and disable FORTIFY_SOURCE
@@ -630,6 +649,14 @@ elseif(absl_FOUND)
                 absl::optional
             )
             message(STATUS "  WebRTC AEC3: Linking against system Abseil (CMake targets)")
+        endif()
+        if(WIN32)
+            # vcpkg's Abseil DLL omits RawLog, which the bundled AEC3 base archive references.
+            set(_webrtc_raw_logging_lib
+                "${WEBRTC_BUILD_DIR}/lib/${_webrtc_lib_prefix}absl_absl_raw_logging_internal.lib")
+            if(EXISTS "${_webrtc_raw_logging_lib}")
+                target_link_libraries(webrtc_audio_processing INTERFACE "${_webrtc_raw_logging_lib}")
+            endif()
         endif()
     else()
         target_link_libraries(webrtc_audio_processing INTERFACE

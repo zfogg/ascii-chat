@@ -13,8 +13,16 @@ it("keeps resize output blank until the server frame matches the new dimensions"
     "ImageData",
     class {
       data: Uint8ClampedArray;
-      constructor(width: number, height: number) {
-        this.data = new Uint8ClampedArray(width * height * 4);
+      constructor(
+        dataOrWidth: Uint8ClampedArray | number,
+        widthOrHeight: number,
+        maybeHeight?: number,
+      ) {
+        void maybeHeight;
+        this.data =
+          dataOrWidth instanceof Uint8ClampedArray
+            ? dataOrWidth
+            : new Uint8ClampedArray(dataOrWidth * widthOrHeight * 4);
       }
     },
   );

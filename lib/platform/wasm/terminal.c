@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common/limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -177,7 +178,9 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   platform_strlcpy(caps.colorterm, "truecolor", sizeof(caps.colorterm));
   caps.wants_background = true;
   caps.palette_type = 0; // Default palette
-  caps.desired_fps = 30;
+  // Browser rendering uses requestAnimationFrame and supports the same
+  // 60 FPS default as the native terminal paths.
+  caps.desired_fps = DEFAULT_MAX_FPS;
   caps.color_filter = COLOR_FILTER_NONE;
   return caps;
 }

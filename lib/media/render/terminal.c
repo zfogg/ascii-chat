@@ -469,6 +469,16 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 }
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
+  if (!r || (!ansi_frame && len > 0)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "term_renderer_feed: renderer or frame is invalid");
+  }
+
+  // libvterm natively implements CSI REP.  Expanding those runs here turns a
+  // compact network frame into synchronous browser-main-thread work before
+  // every paint.
+  const char *frame = ansi_frame;
+  const size_t frame_len = len;
+
   // Clear framebuffer to ensure no leftover pixels from previous frames
   uint8_t def_fg_r, def_fg_g, def_fg_b;
   uint8_t def_bg_r, def_bg_g, def_bg_b;
@@ -483,14 +493,14 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
   // Count newlines to determine CRLF conversion size
   int newline_count = 0;
-  for (size_t i = 0; i < len; i++) {
-    if (ansi_frame[i] == '\n')
+  for (size_t i = 0; i < frame_len; i++) {
+    if (frame[i] == '\n')
       newline_count++;
   }
 
   // Convert LF-only line endings to CRLF (vterm expects CRLF)
   // This fixes cursor positioning on alternate rows
-  char *fixed_frame = SAFE_MALLOC(len + newline_count, char *);
+  char *fixed_frame = SAFE_MALLOC(frame_len + (size_t)newline_count, char *);
   if (!fixed_frame) {
     log_error("failed to allocate memory for CRLF conversion");
     return SET_ERRNO(ERROR_MEMORY, "CRLF conversion allocation failed");
@@ -498,19 +508,19 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
   size_t fixed_pos = 0;
   int frame_row = 0;
-  for (size_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < frame_len; i++) {
     // A video frame is a fixed grid, not a scrolling terminal transcript.
     // A trailing newline on the bottom row must not scroll the whole image.
-    if (ansi_frame[i] == '\n' && frame_row >= r->rows - 1) {
+    if (frame[i] == '\n' && frame_row >= r->rows - 1) {
       continue;
     }
-    fixed_frame[fixed_pos++] = ansi_frame[i];
-    if (ansi_frame[i] == '\n' && (i == 0 || ansi_frame[i - 1] != '\r')) {
+    fixed_frame[fixed_pos++] = frame[i];
+    if (frame[i] == '\n' && (i == 0 || frame[i - 1] != '\r')) {
       // Insert carriage return before LF if not already preceded by CR
       fixed_frame[fixed_pos - 1] = '\r';
       fixed_frame[fixed_pos++] = '\n';
     }
-    if (ansi_frame[i] == '\n') frame_row++;
+    if (frame[i] == '\n') frame_row++;
   }
 
   vterm_input_write(r->vt, fixed_frame, fixed_pos);
@@ -542,26 +552,44 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   }
 
   int glyph_rendered_count = 0;
+  int occupied_cell_count = 0;
+  int glyph_missing_count = 0;
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
       vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
 
       uint8_t fr, fg, fb, br, bg, bb;
-      if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg) && VTERM_COLOR_IS_RGB(&cell.fg)) {
-        fr = cell.fg.rgb.red;
-        fg = cell.fg.rgb.green;
-        fb = cell.fg.rgb.blue;
+      if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
+        VTermColor foreground = cell.fg;
+        vterm_screen_convert_color_to_rgb(r->vts, &foreground);
+        if (VTERM_COLOR_IS_RGB(&foreground)) {
+          fr = foreground.rgb.red;
+          fg = foreground.rgb.green;
+          fb = foreground.rgb.blue;
+        } else {
+          fr = def_fg_r;
+          fg = def_fg_g;
+          fb = def_fg_b;
+        }
       } else {
         fr = def_fg_r;
         fg = def_fg_g;
         fb = def_fg_b;
       }
 
-      if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg) && VTERM_COLOR_IS_RGB(&cell.bg)) {
-        br = cell.bg.rgb.red;
-        bg = cell.bg.rgb.green;
-        bb = cell.bg.rgb.blue;
+      if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
+        VTermColor background = cell.bg;
+        vterm_screen_convert_color_to_rgb(r->vts, &background);
+        if (VTERM_COLOR_IS_RGB(&background)) {
+          br = background.rgb.red;
+          bg = background.rgb.green;
+          bb = background.rgb.blue;
+        } else {
+          br = def_bg_r;
+          bg = def_bg_g;
+          bb = def_bg_b;
+        }
       } else {
         br = def_bg_r;
         bg = def_bg_g;
@@ -586,6 +614,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       }
 
       if (cell.chars[0] && cell.chars[0] != ' ') {
+        occupied_cell_count++;
         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
 
@@ -600,11 +629,15 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
                        fg, fb, br, bg, bb);
             glyph_rendered_count++;
           }
+        } else {
+          glyph_missing_count++;
         }
       }
     }
   }
-  log_info("term_renderer_feed: Rendered %d glyphs out of %d cells", glyph_rendered_count, r->rows * r->cols);
+  log_debug_every(5 * US_PER_SEC_INT,
+                  "term_renderer_feed: Rendered %d glyphs from %d occupied cells (%d missing) out of %d cells",
+                  glyph_rendered_count, occupied_cell_count, glyph_missing_count, r->rows * r->cols);
 
   return ASCIICHAT_OK;
 }

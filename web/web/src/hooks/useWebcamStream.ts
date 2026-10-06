@@ -25,7 +25,7 @@ interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: SettingsConfig;
-  captureFrame: () => {
+  captureFrame: (drawVideo?: boolean) => {
     data: Uint8Array;
     width: number;
     height: number;
@@ -58,10 +58,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const startingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const h265EncoderRef = useRef<H265Encoder | null>(null);
-  const webcamCaptureLoopRef = useRef<(() => void) | null>(null);
+  const webcamCaptureLoopRef = useRef<((drawVideo?: boolean) => void) | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const testPatternAnimationRef = useRef<number | null>(null);
 
-  const captureLoopCountRef = useRef(0);
   const captureLoopFrameCountRef = useRef(0);
   const lastFrameHashRef = useRef(0);
   const uniqueFrameCountRef = useRef(0);
@@ -71,28 +71,16 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
   const createWebcamCaptureLoop = useCallback(() => {
-    let lastLogTime = performance.now();
-
     // Timer-based frame sending to match server render loop (not RAF-based)
     // RAF fires at monitor refresh rate (60+ Hz) regardless of frame send interval
     // Timer ensures we send at exactly the target FPS, matching C client behavior
-    const sendOneFrame = () => {
+    const sendOneFrame = (drawVideo = true) => {
       const now = performance.now();
-
-      // Log every 100ms regardless of frame sends
-      if (now - lastLogTime > 100) {
-        lastLogTime = now;
-        console.log(
-          `[Client] Frame send: count=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${
-            !!clientRef.current && connectionState === ConnectionState.CONNECTED
-          }`,
-        );
-      }
 
       // Call captureAndSendFrame through ref to get the latest version
       const conn = clientRef.current;
       if (conn && connectionState === ConnectionState.CONNECTED) {
-        const frame = captureFrame();
+        const frame = captureFrame(drawVideo);
         if (frame && frame.data) {
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
@@ -191,10 +179,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               console.error("[Client] Failed to send IMAGE_FRAME:", err);
             }
           }
-        } else {
-          console.warn(
-            `[Client] captureFrame returned null at call ${captureLoopCountRef.current}`,
-          );
         }
       }
     };
@@ -207,10 +191,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     webcamCaptureLoopRef.current = createWebcamCaptureLoop();
   }, [createWebcamCaptureLoop]);
 
-  // Start/stop timer when connection changes
+  // Capture on the camera track's frame delivery callback. Polling a hidden
+  // video element's currentTime is subject to compositor throttling, which can
+  // reduce a healthy webcam to only a few frames per second.
   useEffect(() => {
     if (
       connectionState === ConnectionState.CONNECTED &&
+      isWebcamRunning &&
       webcamCaptureLoopRef.current
     ) {
       const videoTrack = streamRef.current?.getVideoTracks()[0];
@@ -221,16 +208,128 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             console.warn("[Client] Unable to update webcam frame rate:", error),
           );
       }
-      // Start timer to send frames at target FPS
       const sendInterval = 1000 / settings.targetFps;
-      captureTimerRef.current = setInterval(() => {
-        if (webcamCaptureLoopRef.current) {
-          webcamCaptureLoopRef.current();
+      const video = videoRef.current;
+      let stopped = false;
+      let animationFrameId: number | null = null;
+      let lastSentAt = 0;
+      let lastVideoTime = Number.NaN;
+      let captureCallbackHandle: number | null = null;
+      let frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
+      const frameVideo = video as
+        | (HTMLVideoElement & {
+            requestVideoFrameCallback?: (
+              callback: (now: number, metadata: { mediaTime: number }) => void,
+            ) => number;
+            cancelVideoFrameCallback?: (handle: number) => void;
+          })
+        | null;
+
+      // Read camera frames from the track directly when the browser supports
+      // MediaStreamTrackProcessor. A hidden, offscreen video element can be
+      // compositor-throttled even while the camera itself is producing frames.
+      const TrackProcessor = (
+        window as Window & {
+          MediaStreamTrackProcessor?: new (options: {
+            track: MediaStreamTrack;
+          }) => { readable: ReadableStream<VideoFrame> };
         }
-      }, sendInterval);
-      console.log(
-        `[Client] Started frame send timer: ${sendInterval.toFixed(1)}ms interval (${settings.targetFps} FPS)`,
-      );
+      ).MediaStreamTrackProcessor;
+      if (TrackProcessor && videoTrack) {
+        try {
+          frameReader = new TrackProcessor({
+            track: videoTrack,
+          }).readable.getReader();
+          const readFrames = async () => {
+            while (!stopped && frameReader) {
+              const { value: frame, done } = await frameReader.read();
+              if (done) break;
+              try {
+                const now = performance.now();
+                const canvas = canvasRef.current;
+                const context = canvas?.getContext("2d");
+                if (canvas && context && now - lastSentAt >= sendInterval) {
+                  context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                  webcamCaptureLoopRef.current?.(false);
+                  lastSentAt = now;
+                }
+              } finally {
+                frame.close();
+              }
+            }
+          };
+          void readFrames().catch((error: unknown) => {
+            if (!stopped) {
+              console.warn(
+                "[Client] Camera track reader stopped; video frame capture may be throttled:",
+                error,
+              );
+            }
+          });
+        } catch (error) {
+          console.warn(
+            "[Client] Direct camera track capture unavailable; using video callback:",
+            error,
+          );
+          frameReader = null;
+        }
+      }
+
+      if (frameReader) {
+        console.log(
+          `[Client] Capturing webcam frames directly from the media track, capped at ${settings.targetFps} FPS`,
+        );
+      } else if (frameVideo?.requestVideoFrameCallback) {
+        const onVideoFrame = (now: number) => {
+          if (stopped) return;
+          if (now - lastSentAt >= sendInterval) {
+            webcamCaptureLoopRef.current?.();
+            lastSentAt = now;
+          }
+          captureCallbackHandle =
+            frameVideo.requestVideoFrameCallback!(onVideoFrame);
+        };
+        captureCallbackHandle =
+          frameVideo.requestVideoFrameCallback(onVideoFrame);
+        console.log(
+          `[Client] Capturing webcam frames from the media track, capped at ${settings.targetFps} FPS`,
+        );
+      } else {
+        const pollDecodedFrame = (now: number) => {
+          if (stopped) return;
+          if (video) {
+            const videoTime = video.currentTime;
+            if (
+              video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+              !video.paused &&
+              videoTime !== lastVideoTime &&
+              now - lastSentAt >= sendInterval
+            ) {
+              webcamCaptureLoopRef.current?.();
+              lastVideoTime = videoTime;
+              lastSentAt = now;
+            }
+          }
+          animationFrameId = requestAnimationFrame(pollDecodedFrame);
+        };
+        animationFrameId = requestAnimationFrame(pollDecodedFrame);
+      }
+
+      return () => {
+        stopped = true;
+        if (captureCallbackHandle !== null) {
+          frameVideo?.cancelVideoFrameCallback?.(captureCallbackHandle);
+        }
+        if (frameReader) {
+          void frameReader.cancel().catch(() => undefined);
+          frameReader = null;
+        }
+        if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+        if (captureTimerRef.current) {
+          clearInterval(captureTimerRef.current);
+          captureTimerRef.current = null;
+        }
+      };
     } else {
       // Stop timer when disconnected
       if (captureTimerRef.current) {
@@ -246,7 +345,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         captureTimerRef.current = null;
       }
     };
-  }, [connectionState, settings.targetFps]);
+  }, [
+    canvasRef,
+    connectionState,
+    isWebcamRunning,
+    settings.targetFps,
+    videoRef,
+  ]);
 
   const startWebcam = useCallback(async () => {
     if (startingRef.current || streamRef.current) return;
@@ -301,9 +406,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
-      const cameraIndexValue = new URLSearchParams(
-        window.location.search,
-      ).get("videoDeviceIndex");
+      const cameraIndexValue = new URLSearchParams(window.location.search).get(
+        "videoDeviceIndex",
+      );
       const cameraIndex =
         cameraIndexValue === null ? null : Number(cameraIndexValue);
       let videoConstraints: MediaTrackConstraints = {
@@ -315,9 +420,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
           throw new Error("videoDeviceIndex must be a non-negative integer");
         }
-        const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(
-          (device) => device.kind === "videoinput",
-        );
+        const cameras = (
+          await navigator.mediaDevices.enumerateDevices()
+        ).filter((device) => device.kind === "videoinput");
         const camera = cameras[cameraIndex];
         if (!camera?.deviceId) {
           throw new Error(
@@ -328,29 +433,110 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           ...videoConstraints,
           deviceId: { exact: camera.deviceId },
         };
-        console.log(`[Client] Selecting camera ${cameraIndex}: ${camera.label}`);
+        console.log(
+          `[Client] Selecting camera ${cameraIndex}: ${camera.label}`,
+        );
       }
 
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: videoConstraints,
-          audio: false,
-        });
-      } catch (err) {
-        if (cameraIndex !== null) throw err;
-        console.error(
-          "[Client] getUserMedia failed (trying fallback without constraints):",
-          err,
-        );
+      const useTestPattern = new URLSearchParams(window.location.search).has(
+        "test",
+      );
+      let stream: MediaStream;
+      if (useTestPattern) {
+        const pattern = document.createElement("canvas");
+        pattern.width = 640;
+        pattern.height = 480;
+        const context = pattern.getContext("2d");
+        if (!context) throw new Error("Could not create test-pattern canvas");
+        let frame = 0;
+        const draw = () => {
+          frame++;
+          // Keep the synthetic source animated but low entropy. A full-frame
+          // color gradient defeats ANSI/zstd compression and tests bandwidth
+          // saturation rather than the live render cadence.
+          context.fillStyle = "#101820";
+          context.fillRect(0, 0, pattern.width, pattern.height);
+          const x = (frame * 9) % (pattern.width - 120);
+          const y = (frame * 5) % (pattern.height - 120);
+          context.fillStyle = frame % 40 < 20 ? "#00d4ff" : "#ff4d8d";
+          context.fillRect(x, y, 120, 120);
+          context.fillStyle = "#ffffff";
+          context.font = "48px sans-serif";
+          context.fillText(`Test frame ${frame}`, 40, 80);
+          testPatternAnimationRef.current = requestAnimationFrame(draw);
+        };
+        draw();
+        stream = pattern.captureStream(settings.targetFps);
+      } else {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: videoConstraints,
             audio: false,
           });
-        } catch (err2) {
-          console.error("[Client] getUserMedia failed completely:", err2);
-          throw err2;
+        } catch (err) {
+          if (cameraIndex !== null) throw err;
+          console.error(
+            "[Client] getUserMedia failed (trying fallback without constraints):",
+            err,
+          );
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+          } catch (err2) {
+            console.error("[Client] getUserMedia failed completely:", err2);
+            throw err2;
+          }
+        }
+      }
+
+      // Some Windows UVC cameras only expose 60 FPS at 720p or widescreen
+      // VGA, while the default 640x480 mode is limited to 30 FPS. ASCII input
+      // is downscaled below, so negotiate a 720p source only when the current
+      // mode is below target and this camera advertises a high-FPS mode.
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack?.getCapabilities && videoTrack.getSettings) {
+        const capabilities = videoTrack.getCapabilities();
+        const currentSettings = videoTrack.getSettings();
+        const currentFps = currentSettings.frameRate;
+        const maximumFps = capabilities.frameRate?.max;
+        if (
+          maximumFps !== undefined &&
+          maximumFps >= Math.min(settings.targetFps, 45) &&
+          (currentFps === undefined ||
+            currentFps + 1 < Math.min(settings.targetFps, maximumFps))
+        ) {
+          try {
+            await videoTrack.applyConstraints({
+              width: { ideal: Math.max(w, 1280) },
+              height: { ideal: Math.max(h, 720) },
+              frameRate: { ideal: Math.min(settings.targetFps, maximumFps) },
+            });
+            let negotiatedSettings = videoTrack.getSettings();
+            if (
+              currentFps !== undefined &&
+              negotiatedSettings.frameRate !== undefined &&
+              negotiatedSettings.frameRate <= currentFps + 1
+            ) {
+              // Keep the smaller mode if the higher-resolution request does
+              // not improve frame rate; it costs less to capture and scale.
+              await videoTrack.applyConstraints(videoConstraints);
+              negotiatedSettings = videoTrack.getSettings();
+            }
+            console.log(
+              `[Client] Camera mode: ${videoTrack.label}, ${negotiatedSettings.width ?? "?"}x${negotiatedSettings.height ?? "?"} @ ${negotiatedSettings.frameRate ?? "?"} FPS (device max ${maximumFps})`,
+            );
+          } catch (error) {
+            console.warn(
+              "[Client] Unable to negotiate the camera's high-FPS mode:",
+              error,
+            );
+          }
+        } else {
+          console.log(
+            `[Client] Camera mode: ${videoTrack.label}, ${currentSettings.width ?? "?"}x${currentSettings.height ?? "?"} @ ${currentFps ?? "?"} FPS (device max ${maximumFps ?? "?"})`,
+          );
         }
       }
 
@@ -551,12 +737,16 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       }
 
       if (generation !== generationRef.current) return;
-      // Keep raw RGB fallback bounded for browsers without hardware HEVC.
-      const scale = Math.min(
-        1,
-        320 / canvasRef.current.width,
-        240 / canvasRef.current.height,
-      );
+      const isUncompressedWebRTC =
+        clientRef.current?.transportType === "webrtc" &&
+        !H265Encoder.isSupported();
+      const scale = isUncompressedWebRTC
+        ? 1
+        : Math.min(
+            1,
+            320 / canvasRef.current.width,
+            240 / canvasRef.current.height,
+          );
       canvasRef.current.width = Math.max(
         2,
         Math.floor((canvasRef.current.width * scale) / 2) * 2,
@@ -617,6 +807,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (generation === generationRef.current) setError(errMsg);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      if (testPatternAnimationRef.current !== null) {
+        cancelAnimationFrame(testPatternAnimationRef.current);
+        testPatternAnimationRef.current = null;
+      }
     } finally {
       startingRef.current = false;
     }
@@ -663,6 +857,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+    }
+    if (testPatternAnimationRef.current !== null) {
+      cancelAnimationFrame(testPatternAnimationRef.current);
+      testPatternAnimationRef.current = null;
     }
 
     if (videoRef.current) {

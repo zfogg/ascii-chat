@@ -29,8 +29,10 @@ typedef struct {
   webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
   webrtc_data_channel_t *dc;           ///< WebRTC data channel
   bool is_connected;                   ///< DataChannel opened
-  bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
+  bool remote_sdp_attempted;            ///< A remote description was applied or attempted
   bool remote_description_set;          ///< libdatachannel has installed the remote SDP and ICE transport
+  char remote_ice_ufrag[257];            ///< ICE generation currently installed on this peer
+  bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;
@@ -95,7 +97,6 @@ static asciichat_error_t queue_pending_ice_candidate(webrtc_peer_manager_t *mana
 }
 
 static asciichat_error_t apply_pending_ice_candidates(webrtc_peer_manager_t *manager, peer_entry_t *peer) {
-  asciichat_error_t first_error = ASCIICHAT_OK;
   pending_ice_candidate_t **link = &manager->pending_ice;
   while (*link) {
     pending_ice_candidate_t *pending = *link;
@@ -106,17 +107,41 @@ static asciichat_error_t apply_pending_ice_candidates(webrtc_peer_manager_t *man
 
     asciichat_error_t result = webrtc_add_remote_candidate(peer->pc, pending->candidate, pending->mid);
     if (result != ASCIICHAT_OK) {
-      log_error("Failed to apply queued ICE candidate after remote SDP: %s", asciichat_error_string(result));
-      if (first_error == ASCIICHAT_OK) {
-        first_error = result;
-      }
+      // A candidate queued before a retry offer can belong to the previous ICE
+      // generation. Discard that candidate, but keep processing the new SDP and
+      // the remaining trickled candidates.
+      log_warn("Discarding queued ICE candidate rejected by the new SDP: %s", asciichat_error_string(result));
     }
 
     *link = pending->next;
     manager->pending_ice_count--;
     free_pending_ice_candidate(pending);
   }
-  return first_error;
+  return ASCIICHAT_OK;
+}
+
+static bool extract_ice_ufrag(const char *sdp, char *ufrag, size_t capacity) {
+  if (!sdp || !ufrag || capacity == 0) {
+    return false;
+  }
+
+  static const char prefix[] = "a=ice-ufrag:";
+  const char *value = strstr(sdp, prefix);
+  if (!value) {
+    ufrag[0] = '\0';
+    return false;
+  }
+
+  value += sizeof(prefix) - 1;
+  size_t length = strcspn(value, "\r\n");
+  if (length == 0 || length >= capacity) {
+    ufrag[0] = '\0';
+    return false;
+  }
+
+  memcpy(ufrag, value, length);
+  ufrag[length] = '\0';
+  return true;
 }
 
 // =============================================================================
@@ -330,6 +355,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
+  peer->remote_sdp_attempted = false;
   peer->remote_description_set = false;
   peer->gathering_timeout_reported = false;
   peer->manager = manager;
@@ -360,7 +386,9 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     return SET_ERRNO(result, "Failed to create WebRTC peer connection");
   }
 
-  // For joiner role, create data channel (creator receives it via callback)
+  // The joiner creates the negotiated channel before making its offer. The
+  // creator waits for the remote offer; webrtc_set_remote_description creates
+  // its matching channel after applying that offer to avoid offer glare.
   if (manager->role == WEBRTC_ROLE_JOINER) {
     result = webrtc_create_datachannel(peer->pc, "acip", &peer->dc);
     if (result != ASCIICHAT_OK) {
@@ -369,7 +397,6 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
       return SET_ERRNO(result, "Failed to create WebRTC data channel");
     }
 
-    // Set datachannel callbacks
     webrtc_datachannel_callbacks_t dc_callbacks = {
         .on_open = on_datachannel_open,
         .on_close = NULL,
@@ -498,6 +525,9 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   memcpy(sdp_str, sdp_data, sdp_len);
   sdp_str[sdp_len] = '\0'; // Null-terminate
 
+  char incoming_ice_ufrag[257] = {0};
+  bool has_incoming_ice_ufrag = extract_ice_ufrag(sdp_str, incoming_ice_ufrag, sizeof(incoming_ice_ufrag));
+
   log_debug("Handling incoming SDP %s from remote peer (len=%u)", sdp_type, sdp_len);
 
   mutex_lock(&manager->peers_mutex);
@@ -521,16 +551,26 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     }
   }
 
-  // A discovery client may retry with a new offer after ICE fails. Keep the
-  // participant ID stable across attempts, so discard a dead creator-side peer
-  // before creating the replacement connection. Reusing a failed peer leaves
-  // the retry without a new local SDP answer.
+  // libdatachannel cannot apply an ICE restart to an existing peer connection.
+  // Repeated signaling can also redeliver the same offer, which must not be
+  // mistaken for a new ICE generation or applied twice.
   if (sdp->sdp_type == 0 && manager->role == WEBRTC_ROLE_CREATOR) {
     peer_entry_t *existing = find_peer_locked(manager, sdp->sender_id);
-    if (existing && existing->pc) {
+    if (existing && existing->remote_sdp_attempted && existing->pc) {
       webrtc_state_t state = webrtc_get_state(existing->pc);
-      if (state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED) {
-        log_warn("Replacing failed WebRTC peer for retrying participant");
+      bool comparable_ice_generation = has_incoming_ice_ufrag && existing->remote_ice_ufrag[0] != '\0';
+      bool new_ice_generation = comparable_ice_generation &&
+                                strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
+      bool terminal_state = state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED;
+      if (!terminal_state && comparable_ice_generation && !new_ice_generation && existing->remote_description_set) {
+        log_debug("Ignoring duplicate WebRTC offer for existing ICE generation");
+        mutex_unlock(&manager->peers_mutex);
+        SAFE_FREE(sdp_str);
+        mutex_unlock(&manager->signaling_mutex);
+        return ASCIICHAT_OK;
+      }
+      if (terminal_state || new_ice_generation) {
+        log_info("Replacing WebRTC peer for %s", new_ice_generation ? "new ICE generation" : "terminal connection state");
         remove_peer_locked(manager, existing);
       }
     }
@@ -544,6 +584,10 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     return SET_ERRNO(result, "Failed to create peer connection for SDP");
   }
 
+  if (sdp->sdp_type == 0 && manager->role == WEBRTC_ROLE_CREATOR) {
+    peer->remote_sdp_attempted = true;
+  }
+
   mutex_unlock(&manager->peers_mutex);
 
   // Set remote SDP
@@ -554,11 +598,14 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     mutex_unlock(&manager->signaling_mutex);
     return SET_ERRNO(result, "Failed to set remote SDP");
   }
+
   // A peer entry can be created before its offer arrives (for example when
   // ACDS reports a participant join). Do not treat that entry as ready for
   // trickle ICE until libdatachannel has accepted its remote description.
   peer->remote_description_set = true;
-
+  if (sdp->sdp_type == 0 && has_incoming_ice_ufrag) {
+    memcpy(peer->remote_ice_ufrag, incoming_ice_ufrag, strlen(incoming_ice_ufrag) + 1);
+  }
 
   result = apply_pending_ice_candidates(manager, peer);
   if (result != ASCIICHAT_OK) {

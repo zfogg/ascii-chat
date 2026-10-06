@@ -43,6 +43,16 @@ FetchContent_Declare(opus-src
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (WASM)...")
 
+    if(CMAKE_HOST_WIN32)
+        set(OPUS_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
+        set(OPUS_WASM_CC "CC=emcc.bat")
+        set(OPUS_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
+    else()
+        set(OPUS_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
+        set(OPUS_WASM_CC "CC=emcc")
+        set(OPUS_WASM_MAKE_SHELL)
+    endif()
+
     include(ExternalProject)
     FetchContent_MakeAvailable(opus-src)
 
@@ -54,11 +64,12 @@ if(DEFINED EMSCRIPTEN)
 
         ExternalProject_Add(opus-wasm
             SOURCE_DIR ${opus-src_SOURCE_DIR}
+            BUILD_IN_SOURCE 1
             PREFIX ${OPUS_BUILD_DIR}
             STAMP_DIR ${OPUS_BUILD_DIR}/stamps
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND
-                <SOURCE_DIR>/configure
+                ${OPUS_CONFIGURE_COMMAND}
                 --prefix=${OPUS_PREFIX}
                 --host=wasm32-emscripten
                 --enable-static
@@ -68,11 +79,11 @@ if(DEFINED EMSCRIPTEN)
                 --disable-intrinsics
                 --disable-asm
                 --with-pic
-                CC=emcc
+                ${OPUS_WASM_CC}
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
-            BUILD_COMMAND make -j
-            INSTALL_COMMAND make install
+            BUILD_COMMAND make -j ${OPUS_WASM_MAKE_SHELL}
+            INSTALL_COMMAND make ${OPUS_WASM_MAKE_SHELL} install
             BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE

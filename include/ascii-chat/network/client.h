@@ -85,6 +85,8 @@ typedef struct client_info {
   bool is_tcp_client;                // True for TCP clients, false for WebRTC (for cleanup logic)
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
   asciichat_thread_t receive_thread; // Thread for receiving client data
+  asciichat_thread_t send_thread;    // Thread for sending data to client
+  thread_id_t send_thread_id;        // Thread ID of send thread (for self-join detection)
   thread_id_t receive_thread_id;     // Thread ID of receive thread (for self-join detection)
   void *server_ctx;                  // Pointer to server_context_t (avoid circular includes)
   char client_id[MAX_CLIENT_ID_LEN]; // String-based client ID: "noun.N (transport:port)"
@@ -154,7 +156,6 @@ typedef struct client_info {
   cond_t dispatch_queue_cond;            // Condition variable to wake dispatch thread when packets arrive
 
   // Dedicated send thread for this client
-  asciichat_thread_t send_thread;
   atomic_t send_thread_running;
 
   // Per-client grid tracking for CLEAR_CONSOLE logic

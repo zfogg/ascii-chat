@@ -764,6 +764,26 @@ git commit -m "fix: description
 # Don't leave an "claude by anthropic" reference in the commit message
 ```
 
+### Web Production Deployment
+
+The `ascii-chat-www` Vercel project serves `ascii-chat.com`. Its production
+branch is `deploy-web-www`, which starts from the repository default branch
+(`master`). Do not deploy production from ordinary `master` pushes.
+
+To publish the latest already-pushed `master` without checking out branches or
+disturbing a dirty working tree:
+
+```bash
+git fetch origin
+git push origin origin/master:deploy-web-www
+```
+
+This advances `deploy-web-www` to the current remote `master` commit and triggers
+one Vercel production deployment. Keep updates to `deploy-web-www` intentional and
+infrequent. Vercel can still create preview deployments for non-production
+pushes that change `web/www` or its dependencies; do not rely on Vercel's
+Ignored Build Step to avoid deployment quota usage.
+
 ## Common Issues
 
 ### Build Issues

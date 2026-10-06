@@ -679,6 +679,15 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+# clang-cl disables C++ exceptions by default, but this adapter catches
+# exceptions from the libdatachannel C++ API.
+if(WIN32)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        target_compile_options(ascii-chat-network PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/EHsc>")
+    else()
+        target_compile_options(ascii-chat-network PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-fexceptions>")
+    endif()
+endif()
 # Exclude main() function from mdns library
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
 # yyjson for /health JSON endpoint

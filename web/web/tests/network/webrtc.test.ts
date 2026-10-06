@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from "vite-plus/test";
+import { ConnectionState } from "../../src/wasm/client";
 import { WebRTCBridge } from "../../src/network/WebRTCBridge";
 import {
   discoveryRTCConfiguration,
+  WebRTCSession,
   type DiscoveryOptions,
 } from "../../src/network/WebRTCSession";
 import {
@@ -10,6 +12,39 @@ import {
   parseSignal,
   signalPacket,
 } from "../../src/network/acdsProtocol";
+
+const signalingHarness = vi.hoisted(() => ({
+  current: null as null | {
+    emit(state: number): void;
+    sendPacket: ReturnType<typeof vi.fn>;
+    options: { applicationEncryption?: boolean };
+  },
+}));
+
+vi.mock("../../src/network/ClientConnection", () => ({
+  ClientConnection: class {
+    private stateCallback: ((state: number) => void) | null = null;
+
+    constructor(public options: { applicationEncryption?: boolean }) {
+      signalingHarness.current = this;
+    }
+    onStateChange(callback: (state: number) => void) {
+      this.stateCallback = callback;
+    }
+    onPacketReceived() {}
+    connect() {
+      return Promise.resolve();
+    }
+    sendPacket = vi.fn();
+    getState() {
+      return ConnectionState.DISCONNECTED;
+    }
+    disconnect() {}
+    emit(state: number) {
+      this.stateCallback?.(state);
+    }
+  },
+}));
 
 function channel() {
   return {
@@ -41,6 +76,7 @@ describe("Discovery connection settings", () => {
     turnUsername: "discovery-user",
     turnPassword: "discovery-password",
   };
+
 
   it("defaults to automatic routing and discovery credentials", () => {
     expect(discoveryRTCConfiguration(options, joined)).toEqual({
@@ -141,6 +177,41 @@ describe("Discovery connection settings", () => {
   });
 });
 
+describe("WebRTC signaling reconnects", () => {
+  it("sends browser discovery packets without the native crypto handshake", () => {
+    new WebRTCSession({
+      sessionName: "blue-mountain-tiger",
+      password: "",
+      signalingUrl: "ws://localhost:27225",
+      iceServers: [],
+    });
+
+    expect(signalingHarness.current!.options.applicationEncryption).toBe(false);
+  });
+
+  it("repeats lookup after a transient reconnect before the session is joined", async () => {
+    const options: DiscoveryOptions = {
+      sessionName: "blue-mountain-tiger",
+      password: "",
+      signalingUrl: "ws://localhost:27225",
+      iceServers: [],
+    };
+    const session = new WebRTCSession(options);
+    const attempt = session.connect();
+    void attempt.catch(() => {});
+    await Promise.resolve();
+
+    const signaling = signalingHarness.current!;
+    signaling.emit(ConnectionState.CONNECTED);
+    signaling.emit(ConnectionState.CONNECTING);
+    signaling.emit(ConnectionState.HANDSHAKE);
+    signaling.emit(ConnectionState.CONNECTED);
+
+    expect(signaling.sendPacket).toHaveBeenCalledTimes(2);
+    session.disconnect();
+  });
+});
+
 describe("WebRTC ACIP framing", () => {
   it("replaces stale unsent raw video while preserving control packets", () => {
     const dc = channel();
@@ -186,7 +257,10 @@ describe("WebRTC ACIP framing", () => {
   });
   it("keeps a full raw frame together and replaces it while backpressured", () => {
     const dc = channel();
-    Object.defineProperty(dc, "bufferedAmount", { value: 100000, writable: true });
+    Object.defineProperty(dc, "bufferedAmount", {
+      value: 100000,
+      writable: true,
+    });
     const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
     const stale = packet(230424);
     const newest = packet(230424);
@@ -207,7 +281,10 @@ describe("WebRTC ACIP framing", () => {
   });
   it("sends queued audio before a replaceable frame that has not started", () => {
     const dc = channel();
-    Object.defineProperty(dc, "bufferedAmount", { value: 100000, writable: true });
+    Object.defineProperty(dc, "bufferedAmount", {
+      value: 100000,
+      writable: true,
+    });
     const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
     const frame = packet(230424);
     const audio = packetOfType(4001, 150);
@@ -240,6 +317,35 @@ describe("WebRTC ACIP framing", () => {
       dc.onmessage!({ data: chunk.buffer } as MessageEvent<ArrayBuffer>);
     expect(received.mock.calls.map((call) => call[0])).toEqual([first, second]);
     expect(failure).not.toHaveBeenCalled();
+  });
+  it("coalesces stale ASCII snapshots without delaying audio", () => {
+    const dc = channel(),
+      received = vi.fn(),
+      failure = vi.fn();
+    let dispatch: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      dispatch = callback;
+      return 1;
+    });
+    try {
+      new WebRTCBridge(dc, received, failure);
+      const staleFrame = packetOfType(3000, 10);
+      const newestFrame = packetOfType(3000, 20);
+      const audio = packetOfType(4001, 12);
+
+      dc.onmessage!({ data: staleFrame.buffer } as MessageEvent<ArrayBuffer>);
+      dc.onmessage!({ data: audio.buffer } as MessageEvent<ArrayBuffer>);
+      dc.onmessage!({ data: newestFrame.buffer } as MessageEvent<ArrayBuffer>);
+
+      expect(received).toHaveBeenCalledTimes(1);
+      expect(received).toHaveBeenLastCalledWith(audio);
+      dispatch!(0);
+      expect(received).toHaveBeenLastCalledWith(newestFrame);
+      expect(received).not.toHaveBeenCalledWith(staleFrame);
+      expect(failure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("honors SCTP message limits and resumes after backpressure", () => {
     const dc = channel();

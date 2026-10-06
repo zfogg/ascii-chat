@@ -631,6 +631,10 @@ asciichat_error_t webrtc_set_remote_description(webrtc_peer_connection_t *pc, co
     return SET_ERRNO(ERROR_NETWORK, "Failed to set remote SDP (rtc error %d)", result);
   }
 
+  const char *dcmap = strstr(sdp, "a=dcmap:");
+  if (strcmp(type, "offer") == 0) {
+    log_debug("Remote WebRTC offer DataChannel map: %s", dcmap ? dcmap : "(none)");
+  }
   if (strcmp(type, "offer") == 0 && strstr(sdp, "\na=dcmap:0 label=\"acip\"") && !pc->dc) {
     rtcDataChannelInit init = {0};
     init.negotiated = true;
@@ -677,7 +681,8 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Create data channel
+  // Native peers use DCEP. Browser offers advertise the separately negotiated
+  // ACIP channel and are handled in webrtc_set_remote_description().
   int dc_id = rtcCreateDataChannel(pc->rtc_id, label);
   if (dc_id < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to create data channel (rtc error %d)", dc_id);

@@ -7,6 +7,7 @@ export interface PacketTransport {
 }
 
 export interface ClientSession {
+  readonly transportType?: "websocket" | "webrtc";
   connect(): Promise<void>;
   disconnect(): void;
   getPublicKey(): string | null;

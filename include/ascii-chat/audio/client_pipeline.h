@@ -261,6 +261,9 @@ typedef struct {
   /** Configuration */
   client_audio_pipeline_config_t config;
 
+  /** Smoothed linear gain for the capture AGC. */
+  float agc_current_gain;
+
   /** Frame size in samples */
   int frame_size;
 

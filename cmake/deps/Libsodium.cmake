@@ -86,6 +86,16 @@ endif()
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (WASM)...")
 
+    if(CMAKE_HOST_WIN32)
+        set(LIBSODIUM_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
+        set(LIBSODIUM_WASM_CC "CC=emcc.bat")
+        set(LIBSODIUM_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
+    else()
+        set(LIBSODIUM_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
+        set(LIBSODIUM_WASM_CC "CC=emcc")
+        set(LIBSODIUM_WASM_MAKE_SHELL)
+    endif()
+
     include(ExternalProject)
     include(FetchContent)
     FetchContent_Declare(libsodium-src
@@ -105,11 +115,12 @@ if(DEFINED EMSCRIPTEN)
 
         ExternalProject_Add(libsodium-wasm
             SOURCE_DIR ${libsodium-src_SOURCE_DIR}
+            BUILD_IN_SOURCE 1
             PREFIX ${LIBSODIUM_BUILD_DIR}
             STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND
-                <SOURCE_DIR>/configure
+                ${LIBSODIUM_CONFIGURE_COMMAND}
                 --prefix=${LIBSODIUM_PREFIX}
                 --host=wasm32-emscripten
                 --enable-static
@@ -117,12 +128,12 @@ if(DEFINED EMSCRIPTEN)
                 --with-pic
                 --disable-asm
                 --disable-soname-versions
-                CC=emcc
+                ${LIBSODIUM_WASM_CC}
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
                 ac_cv_func_memset_s=no
-            BUILD_COMMAND make -j
-            INSTALL_COMMAND make install
+            BUILD_COMMAND make -j ${LIBSODIUM_WASM_MAKE_SHELL}
+            INSTALL_COMMAND make ${LIBSODIUM_WASM_MAKE_SHELL} install
             BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE

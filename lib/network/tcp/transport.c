@@ -225,7 +225,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
                                   void **out_allocated_buffer) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
-  log_info("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd,
+  log_debug("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd,
            tcp->is_connected ? "true" : "false");
 
   if (!tcp->is_connected) {
@@ -236,12 +236,15 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   // Use secure packet receive with envelope
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL && transport->crypto_ctx->encrypt_data);
-  log_info("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd,
+  log_debug("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd,
            enforce_encryption ? "yes" : "no");
 
-  packet_recv_result_t result =
-      receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
-  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu", result,
+  uint64_t receive_timeout_ns = transport->receive_timeout_ns != 0
+                                    ? transport->receive_timeout_ns
+                                    : RECV_TIMEOUT * NS_PER_SEC_INT;
+  packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx,
+                                                                  enforce_encryption, &envelope, receive_timeout_ns);
+  log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu", result,
            result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {
@@ -253,6 +256,10 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
       log_error("[TCP_RECV_STATE] ❌ RECV_SECURITY_VIOLATION: Crypto error on sockfd=%d", tcp->sockfd);
       return SET_ERRNO(ERROR_CRYPTO, "Security violation");
     } else {
+      asciichat_error_context_t error_context;
+      if (HAS_ERRNO(&error_context) && error_context.code == ERROR_NETWORK_TIMEOUT) {
+        return ERROR_NETWORK_TIMEOUT;
+      }
       log_error("[TCP_RECV_STATE] ❌ RECV_FAILED: result=%d on sockfd=%d", result, tcp->sockfd);
       return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
     }
@@ -291,7 +298,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   if (envelope.len >= sizeof(packet_header_t)) {
     const packet_header_t *hdr = (const packet_header_t *)envelope.data;
     uint16_t pkt_type = NET_TO_HOST_U16(hdr->type);
-    log_info("[TCP_RECV_STATE] ✅ RECV_OK: sockfd=%d, packet_type=%d (0x%04x), len=%zu", tcp->sockfd, pkt_type,
+    log_debug("[TCP_RECV_STATE] ✅ RECV_OK: sockfd=%d, packet_type=%d (0x%04x), len=%zu", tcp->sockfd, pkt_type,
              pkt_type, envelope.len);
   } else {
     log_warn("[TCP_RECV_STATE] ⚠️  RECV_OK_SMALL_PACKET: sockfd=%d, len=%zu (< header)", tcp->sockfd, envelope.len);

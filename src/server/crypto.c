@@ -504,10 +504,11 @@ int server_crypto_handshake(client_info_t *client) {
     return -1;
   }
 
-  // Step 0.5: Receive CRYPTO_CLIENT_HELLO (multi-key support)
-  // When server has multiple identity keys, client MUST send CLIENT_HELLO to select the correct key
-  // For single-key servers, CLIENT_HELLO is optional (backward compatibility)
-  if (g_num_server_identity_keys > 0) {
+  // Step 0.5: Receive CRYPTO_CLIENT_HELLO when the client pins a server key.
+  // The capability flag lets the server distinguish clients that will send
+  // the hello from clients that are waiting for KEY_EXCHANGE_INIT.
+  bool client_requires_server_verification = client_caps.requires_verification != 0;
+  if (g_num_server_identity_keys > 0 && client_requires_server_verification) {
     log_debug("SERVER_CRYPTO_HANDSHAKE: Waiting for optional CRYPTO_CLIENT_HELLO from client %u", client->client_id);
 
     // Try to receive CLIENT_HELLO packet

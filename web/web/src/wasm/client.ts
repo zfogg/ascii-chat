@@ -291,6 +291,16 @@ export function packetTypeName(type: number): string {
   return names[type] || `UNKNOWN(${type})`;
 }
 
+function isMediaPacketType(type: number): boolean {
+  return (
+    type === PacketType.ASCII_FRAME ||
+    type === PacketType.IMAGE_FRAME ||
+    type === PacketType.IMAGE_FRAME_H265 ||
+    type === PacketType.AUDIO_BATCH ||
+    type === PacketType.AUDIO_OPUS_BATCH
+  );
+}
+
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
 import ClientModuleFactory from "./dist/client.js";
@@ -377,6 +387,11 @@ async function loadWasmModule(): Promise<void> {
   console.log("[WASM] Module loaded and help text available");
 }
 
+/** The initialized client module, for discovery's terminal renderer. */
+export function getClientWasmModule(): ClientModule | null {
+  return wasmModule;
+}
+
 /**
  * Initialize the WASM module (call once at app start)
  */
@@ -421,7 +436,6 @@ async function initializeClientWasm(
   if (options.height !== undefined) {
     args.push("--height", options.height.toString());
   }
-
   const argsString = args.join(" ");
   console.log("[Client WASM] Initializing with args:", argsString);
 
@@ -832,9 +846,11 @@ export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
 
     // Parse JSON
     const parsed = JSON.parse(jsonStr) as ParsedPacket;
-    console.debug(
-      `[Client WASM] parsePacket: type=${packetTypeName(parsed.type)}, len=${parsed.length}, client_id=${parsed.client_id}`,
-    );
+    if (!isMediaPacketType(parsed.type)) {
+      console.debug(
+        `[Client WASM] parsePacket: type=${packetTypeName(parsed.type)}, len=${parsed.length}, client_id=${parsed.client_id}`,
+      );
+    }
     return parsed;
   } finally {
     wasmModule._free(pktPtr);
@@ -892,9 +908,11 @@ export function serializePacket(
     const packet = new Uint8Array(outLen);
     packet.set(wasmModule.HEAPU8.subarray(outputPtr, outputPtr + outLen));
 
-    console.debug(
-      `[Client WASM] serializePacket: type=${packetTypeName(packetType)}, payload=${payload.length}B, total=${outLen}B`,
-    );
+    if (!isMediaPacketType(packetType)) {
+      console.debug(
+        `[Client WASM] serializePacket: type=${packetTypeName(packetType)}, payload=${payload.length}B, total=${outLen}B`,
+      );
+    }
     return packet;
   } finally {
     if (payloadPtr) wasmModule._free(payloadPtr);

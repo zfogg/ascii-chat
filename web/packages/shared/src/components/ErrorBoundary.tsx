@@ -61,14 +61,15 @@ export default class ErrorBoundary extends Component<Props, State> {
                 Go Home
               </button>
               {typeof window !== "undefined" &&
-                window.location.hostname === "localhost" &&
+                (window.location.hostname === "localhost" ||
+                  window.location.hostname === "127.0.0.1") &&
                 this.state.error && (
                   <details className="mt-6 text-left">
                     <summary className="cursor-pointer text-gray-400 hover:text-gray-300">
                       Debug Info (dev only)
                     </summary>
                     <pre className="mt-2 p-3 bg-gray-900 rounded text-xs overflow-auto max-h-40">
-                      {this.state.error.toString()}
+                      {this.state.error.stack ?? this.state.error.toString()}
                     </pre>
                   </details>
                 )}

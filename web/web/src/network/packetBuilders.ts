@@ -52,8 +52,11 @@ export function buildCapabilitiesPacket(
 
   // Network byte order (big-endian) - server uses NET_TO_HOST_U32/U16 to read
   view.setUint32(0, 0x0f, false); // capabilities (color+utf8+etc)
-  view.setUint32(4, 3, false); // color_level (truecolor)
-  view.setUint32(8, 16777216, false); // color_count
+  // Truecolor and 256-color ANSI expand a 128x32 animated frame beyond the
+  // DataChannel's live-media window. ANSI-16 keeps colored ASCII while
+  // reducing per-cell escape sequences enough for interactive delivery.
+  view.setUint32(4, 1, false); // color_level (TERM_COLOR_16)
+  view.setUint32(8, 16, false); // color_count
   view.setUint32(12, 0, false); // render_mode (foreground)
   view.setUint16(16, cols, false); // width
   view.setUint16(18, rows, false); // height
@@ -103,8 +106,8 @@ export function buildCapabilitiesPacket(
 }
 
 /**
- * Build IMAGE_FRAME payload: legacy 8-byte header + RGB24 pixel data.
- * Server expects: [width:4][height:4][rgb_data:w*h*3] (network byte order, big-endian)
+ * Build IMAGE_FRAME payload: 24-byte native image_frame_packet_t header + RGB24 pixels.
+ * Header fields and pixels use network byte order / packed RGB24 as in acip_send_image_frame().
  */
 export function buildImageFramePayload(
   rgbaData: Uint8Array,
@@ -113,8 +116,8 @@ export function buildImageFramePayload(
 ): Uint8Array {
   const pixelCount = width * height;
   const rgb24Size = pixelCount * 3;
-  // image_frame_packet_t structure:
-  // width(4) + height(4) + pixel_format(4) + compressed_size(4) + checksum(4) + timestamp(4) + rgb24_data
+  // Keep this layout in sync with image_frame_packet_t in packet.h.
+  // The C sender uses pixel_format=1 for RGB24.
   const headerSize = 24;
   const totalSize = headerSize + rgb24Size;
   const buf = new ArrayBuffer(totalSize);
@@ -124,22 +127,20 @@ export function buildImageFramePayload(
   // Fill header (network byte order big-endian)
   view.setUint32(0, width, false); // width
   view.setUint32(4, height, false); // height
-  view.setUint32(8, 3, false); // pixel_format: 3 = RGB24
-  view.setUint32(12, 0, false); // compressed_size: 0 (not compressed)
-  view.setUint32(16, 0, false); // checksum: 0 (TODO: calculate proper CRC32 if needed)
-  view.setUint32(20, Date.now(), false); // timestamp: current time in milliseconds
-
+  view.setUint32(8, 1, false); // pixel_format (RGB24)
+  view.setUint32(12, 0, false); // compressed_size (raw pixels)
+  view.setUint32(16, 0, false); // checksum (unused by current handler)
+  view.setUint32(20, 0, false); // timestamp (same as native sender)
   // Convert RGBA to RGB24 (strip alpha channel)
-  let srcIdx = 0;
   let dstIdx = headerSize;
   for (let i = 0; i < pixelCount; i++) {
-    const r = rgbaData[srcIdx] ?? 0;
-    const g = rgbaData[srcIdx + 1] ?? 0;
-    const b = rgbaData[srcIdx + 2] ?? 0;
-    bytes[dstIdx] = r; // R
-    bytes[dstIdx + 1] = g; // G
-    bytes[dstIdx + 2] = b; // B
-    srcIdx += 4;
+      const srcIdx = i * 4;
+      const r = rgbaData[srcIdx] ?? 0;
+      const g = rgbaData[srcIdx + 1] ?? 0;
+      const b = rgbaData[srcIdx + 2] ?? 0;
+      bytes[dstIdx] = r; // R
+      bytes[dstIdx + 1] = g; // G
+      bytes[dstIdx + 2] = b; // B
     dstIdx += 3;
   }
 

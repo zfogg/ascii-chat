@@ -21,6 +21,7 @@
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/network/crc32.h>
+#include <ascii-chat/network/compression.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <string.h>
 
@@ -207,27 +208,46 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }
 
-  log_info("★ SEND_ASCII_FRAME START: client_id=%s, width=%u, height=%u, frame_size=%zu bytes", client_id, width,
-           height, frame_size);
+  if (frame_size > UINT32_MAX) {
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "ASCII frame is too large: %zu bytes", frame_size);
+  }
+
+  log_dev("SEND_ASCII_FRAME: client_id=%s, width=%u, height=%u, frame_size=%zu bytes", client_id, width, height,
+          frame_size);
 
   // Calculate CRC32 checksum of frame data for integrity verification
   uint32_t checksum_value = asciichat_crc32(frame_data, frame_size);
   log_debug("★ SEND_ASCII_FRAME: CRC32 checksum calculated: 0x%08x for %zu bytes", checksum_value, frame_size);
+
+  // Compress ANSI text before sending it. Native and browser clients decode zstd frames.
+  const void *payload_data = frame_data;
+  size_t payload_size = frame_size;
+  void *compressed_data = NULL;
+  bool is_compressed = false;
+  size_t compressed_size = 0;
+  if (frame_size >= COMPRESSION_MIN_SIZE &&
+      compress_data(frame_data, frame_size, &compressed_data, &compressed_size, 1) == ASCIICHAT_OK &&
+      compressed_data && compressed_size < frame_size && should_compress(frame_size, compressed_size)) {
+    payload_data = compressed_data;
+    payload_size = compressed_size;
+    is_compressed = true;
+  }
 
   // Create ASCII frame packet header
   ascii_frame_packet_t header;
   header.width = HOST_TO_NET_U32(width);
   header.height = HOST_TO_NET_U32(height);
   header.original_size = HOST_TO_NET_U32((uint32_t)frame_size);
-  header.compressed_size = 0;
+  header.compressed_size = HOST_TO_NET_U32(is_compressed ? (uint32_t)payload_size : 0);
   header.checksum = HOST_TO_NET_U32(checksum_value);
-  header.flags = 0;
+  header.flags = HOST_TO_NET_U32(is_compressed ? FRAME_FLAG_IS_COMPRESSED : 0);
 
   // Calculate total packet size
   size_t total_size;
-  if (checked_size_add(sizeof(header), frame_size, &total_size) != ASCIICHAT_OK) {
+  if (checked_size_add(sizeof(header), payload_size, &total_size) != ASCIICHAT_OK) {
+    SAFE_FREE(compressed_data);
     log_error("★ SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)", sizeof(header),
-              frame_size);
+              payload_size);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
   }
 
@@ -237,6 +257,7 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   // Allocate buffer
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
+    SAFE_FREE(compressed_data);
     log_error("★ SEND_ASCII_FRAME: Memory allocation FAILED for %zu bytes", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
   }
@@ -245,20 +266,21 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
 
   // Build packet: header + data
   memcpy(buffer, &header, sizeof(header));
-  memcpy(buffer + sizeof(header), frame_data, frame_size);
+  memcpy(buffer + sizeof(header), payload_data, payload_size);
 
   // Send via transport with client_id for logging
-  log_info("★ SEND_ASCII_FRAME: Calling packet_send_via_transport with PACKET_TYPE_ASCII_FRAME");
+  log_dev("SEND_ASCII_FRAME: sending PACKET_TYPE_ASCII_FRAME");
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, 0);
 
   if (result == ASCIICHAT_OK) {
-    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%s, sent %zu bytes total", client_id, total_size);
+    log_dev("SEND_ASCII_FRAME: sent client_id=%s bytes=%zu", client_id, total_size);
   } else {
     log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%s", result, asciichat_error_string(result),
               client_id);
   }
 
   buffer_pool_free(NULL, buffer, total_size);
+  SAFE_FREE(compressed_data);
   return result;
 }
 

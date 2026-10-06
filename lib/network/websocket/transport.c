@@ -592,30 +592,27 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   // when accessed from the service thread context. See: line 325 (similar issue).
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  // For server-side transports (owns_context=false), the connection is already established
-  // For client-side transports (owns_context=true), check connection status WITHOUT blocking
-  // CRITICAL: Don't hold state_mutex while waiting - this prevents service thread from updating state
-  // Instead, do a quick check and return error if not connected. Caller can retry.
+  // For server-side transports (owns_context=false), the connection is already established.
+  // For client-side transports, packets may be queued before the asynchronous WebSocket
+  // handshake completes. The service thread drains that queue after CLIENT_ESTABLISHED.
   if (ws_data->owns_context) {
-    // Quick non-blocking check of connection status
+    // Check connection state without blocking the service thread.
     mutex_lock(&ws_data->state_mutex);
     bool connected = ws_data->is_connected;
     bool connection_failed = ws_data->connection_failed;
     mutex_unlock(&ws_data->state_mutex);
 
-    // Return error if connection failed or not yet established
     if (connection_failed) {
       log_error("[WEBSOCKET_SEND] Connection failed - cannot send");
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
     if (!connected) {
-      log_warn("[WEBSOCKET_SEND] Connection not yet established - cannot send (client will retry)");
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket connection not yet established");
+      log_debug("[WEBSOCKET_SEND] Connection is opening; queueing packet for delivery after handshake");
     }
 
-    log_dev_every(1000000, "websocket_send (client): is_connected=true, wsi=%p, send_len=%zu", (void *)ws_data->wsi,
-                  len);
+    log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected,
+                  (void *)ws_data->wsi, len);
   } else {
     log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
              (void *)ws_data->wsi, len);
@@ -804,11 +801,12 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  // Wait for connection to be established if not yet connected
-  // This is necessary because acip_websocket_client_transport_create() returns immediately
-  // while the service thread establishes the connection asynchronously.
-  // We use a 5-second timeout to avoid hanging if the connection fails.
-  {
+  // Client transports are returned before the asynchronous WebSocket upgrade
+  // completes, so their first recv() must wait for the connection state. A
+  // server transport is created from LWS_CALLBACK_ESTABLISHED and may already
+  // have queued the client's first packet before its handler starts; applying
+  // the client-only gate there can hide that packet after an early close.
+  if (ws_data->owns_context) {
     mutex_lock(&ws_data->state_mutex);
     bool connected = ws_data->is_connected;
     bool connection_failed = ws_data->connection_failed;

@@ -151,6 +151,13 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
 int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
 
 /**
+ * @brief Detach a thread so its resources are reclaimed when it exits
+ * @param thread Pointer to thread handle
+ * @return 0 on success, non-zero on failure
+ */
+int asciichat_thread_detach(asciichat_thread_t *thread);
+
+/**
  * @brief Wait for a thread to complete with timeout
  * @param thread Thread handle to wait for
  * @param retval Pointer to store thread return value (or NULL to ignore)

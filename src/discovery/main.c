@@ -627,6 +627,7 @@ int discovery_main(void) {
       .acds_port = (uint16_t)GET_OPTION(discovery_port),
       .acds_url = service_url,
       .session_string = is_initiator ? NULL : session_string,
+      .password = GET_OPTION(password),
       .local_port = (uint16_t)port_int,
       .on_state_change = on_discovery_state_change,
       .on_session_ready = on_session_ready,

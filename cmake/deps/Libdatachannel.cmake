@@ -538,8 +538,10 @@ if(NOT libdatachannel_POPULATED)
         # SOLUTION: Use Apple's system clang (/usr/bin/clang++) for libdatachannel build.
         # Apple's clang properly handles SDK include paths and has compatible libc++.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-            # Check if we're using Homebrew clang (path contains "homebrew" or "Cellar")
-            if(CMAKE_CXX_COMPILER MATCHES "(homebrew|Cellar)")
+            # CMake is often given Homebrew's stable /usr/local/opt/llvm path,
+            # which is a symlink and does not reveal the Cellar in its spelling.
+            get_filename_component(_libdc_cxx_compiler_realpath "${CMAKE_CXX_COMPILER}" REALPATH)
+            if(CMAKE_CXX_COMPILER MATCHES "(homebrew|Cellar)" OR _libdc_cxx_compiler_realpath MATCHES "(homebrew|Cellar)")
                 # Use Apple's system clang for libdatachannel build
                 if(EXISTS "/usr/bin/clang" AND EXISTS "/usr/bin/clang++")
                     list(FILTER LIBDATACHANNEL_CMAKE_ARGS EXCLUDE REGEX "CMAKE_C_COMPILER|CMAKE_CXX_COMPILER")

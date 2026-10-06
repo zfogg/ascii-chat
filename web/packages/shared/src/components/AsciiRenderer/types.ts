@@ -3,6 +3,8 @@ export interface AsciiRendererHandle {
     ansiString: string,
     dimensions?: { cols: number; rows: number },
   ): boolean;
+  /** Whether the last successful writeFrame call changed displayed pixels. */
+  getLastFrameChanged?(): boolean;
   getDimensions(): { cols: number; rows: number };
   clear(): void;
   recreateRenderer(): void;
@@ -15,5 +17,6 @@ export interface AsciiRendererProps {
   showFps?: boolean;
   connectionState?: number;
   wasmModuleReady?: boolean;
+  initializeOptions?: boolean;
   matrixMode?: boolean;
 }

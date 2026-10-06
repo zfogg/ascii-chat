@@ -320,7 +320,8 @@ bool session_server_like_shutdown_requested(void) {
  * Shared Handshake
  * ============================================================================ */
 
-asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_context_t *ctx,
+                                                            acip_transport_t *transport) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
   }
@@ -410,6 +411,21 @@ asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
 
   log_info("Crypto handshake complete");
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  if (!ctx || !transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
+  }
+
+  // Crypto key generation and signing can exceed the normal one-second packet
+  // polling interval on slower or busy peers. Keep the longer deadline scoped
+  // to the handshake so idle-session polling remains responsive.
+  const uint64_t previous_receive_timeout_ns = transport->receive_timeout_ns;
+  transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
+  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport);
+  transport->receive_timeout_ns = previous_receive_timeout_ns;
+  return result;
 }
 
 /* ============================================================================

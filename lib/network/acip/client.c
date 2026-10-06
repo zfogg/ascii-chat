@@ -57,11 +57,15 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
   log_debug("[ACIP_RECV] 📥 RECV_CALL: using transport->methods->recv()");
   asciichat_error_t recv_result = acip_transport_recv(transport, &packet_data, &packet_len, &allocated_buffer);
-  log_info("[ACIP_RECV] 📥 RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
+  log_debug("[ACIP_RECV] 📥 RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
            packet_data, allocated_buffer);
 
   if (recv_result != ASCIICHAT_OK) {
-    log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
+    if (recv_result == ERROR_NETWORK_TIMEOUT) {
+      log_debug("[ACIP_RECV] Receive timed out while waiting for signaling data");
+    } else {
+      log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
+    }
     return recv_result;
   }
 
@@ -81,7 +85,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   envelope.allocated_size = packet_len;
   envelope.was_encrypted = false;
 
-  log_info("[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
+  log_debug("[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
            envelope.len, packet_len);
 
   log_dev_every(4500 * US_PER_MS_INT, "ACIP received packet: type=%u, len=%u, total_size=%zu", envelope.type,
@@ -100,7 +104,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
   // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
-    log_info("[ACIP_RECV] 🔐 ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)", envelope.len);
+    log_debug("[ACIP_RECV] 🔐 ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)", envelope.len);
     asciichat_error_t decrypt_result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
     if (decrypt_result != ASCIICHAT_OK) {
       log_error("[ACIP_RECV] ❌ DECRYPT_FAILED: %d", decrypt_result);
@@ -110,7 +114,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   }
 
   // Dispatch packet to appropriate ACIP handler
-  log_info("[ACIP_RECV] 🎯 DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p", envelope.type, envelope.type,
+  log_debug("[ACIP_RECV] 🎯 DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p", envelope.type, envelope.type,
            envelope.len, (void *)callbacks);
   asciichat_error_t dispatch_result =
       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
@@ -118,7 +122,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   if (dispatch_result != ASCIICHAT_OK) {
     log_error("[ACIP_RECV] ❌ DISPATCH_FAILED: type=%u, error=%d", envelope.type, dispatch_result);
   } else {
-    log_info("[ACIP_RECV] ✅ DISPATCH_OK: type=%u (0x%04x) handled by callbacks", envelope.type, envelope.type);
+    log_debug("[ACIP_RECV] ✅ DISPATCH_OK: type=%u (0x%04x) handled by callbacks", envelope.type, envelope.type);
   }
 
   // Always free the allocated buffer (even if handler failed)

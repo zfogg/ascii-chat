@@ -21,6 +21,6 @@ void stop_client_render_threads(client_info_t *client);
 #else
 #define VIDEO_RENDER_FPS 60 // Linux/macOS can handle higher rates
 #endif
-// Audio render rate: 480 samples per iteration, 10ms interval = 100 FPS
-// This gives 48,000 samples/sec which matches real-time playback rate
-#define AUDIO_RENDER_FPS 100 // 10ms interval for real-time rate
+// Audio mixing runs at 100 Hz, while each outgoing 960-sample Opus frame at
+// 48 kHz is queued every 20 ms.
+#define AUDIO_PACKET_FPS 50

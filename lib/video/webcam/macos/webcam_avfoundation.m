@@ -272,7 +272,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
         for (AVCaptureDeviceFormat *format in captureDevice.formats) {
           for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
-            if (range.maxFrameRate >= target_fps && (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
+            if (range.minFrameRate <= target_fps && range.maxFrameRate >= target_fps &&
+                (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
               bestFormat = format;
               bestRange = range;
             }
@@ -280,11 +281,16 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
         }
 
         if (bestFormat && bestRange) {
-          captureDevice.activeFormat = bestFormat;
-          captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, (int32_t)target_fps);
-          captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, (int32_t)target_fps);
-          log_info("AVFoundation: Configured for %u FPS (device supports %.0f - %.0f FPS)", target_fps,
-                   bestRange.minFrameRate, bestRange.maxFrameRate);
+          @try {
+            captureDevice.activeFormat = bestFormat;
+            captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, (int32_t)target_fps);
+            captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, (int32_t)target_fps);
+            log_info("AVFoundation: Configured for %u FPS (device supports %.0f - %.0f FPS)", target_fps,
+                     bestRange.minFrameRate, bestRange.maxFrameRate);
+          } @catch (NSException *exception) {
+            log_warn("AVFoundation: Device rejected %u FPS configuration: %s; using its default frame rate", target_fps,
+                     [[exception reason] UTF8String]);
+          }
         } else {
           // Device doesn't support requested FPS - find the maximum FPS available
           AVFrameRateRange *maxRange = nil;
@@ -300,11 +306,16 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
           if (maxFormat && maxRange) {
             int actual_fps = (int)maxRange.maxFrameRate;
-            captureDevice.activeFormat = maxFormat;
-            captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, actual_fps);
-            captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, actual_fps);
-            log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
-                     maxRange.maxFrameRate);
+            @try {
+              captureDevice.activeFormat = maxFormat;
+              captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, actual_fps);
+              captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, actual_fps);
+              log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
+                       maxRange.maxFrameRate);
+            } @catch (NSException *exception) {
+              log_warn("AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
+                       [[exception reason] UTF8String]);
+            }
           } else {
             log_warn("Could not determine device FPS capabilities, using device default");
           }

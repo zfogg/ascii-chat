@@ -825,12 +825,10 @@ void server_connection_close() {
 
   mutex_unlock(&g_send_mutex);
 
-  if (g_sockfd != INVALID_SOCKET_VALUE) {
-    log_debug("[TRANSPORT_LIFECYCLE] Closing socket: %d", (int)g_sockfd);
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    log_debug("[TRANSPORT_LIFECYCLE] Socket closed");
-  }
+  // The socket belongs to the connection handle's TCP/WebSocket owner. The
+  // caller cleans up that owner after protocol workers have stopped; closing
+  // g_sockfd here would close the same descriptor a second time.
+  g_sockfd = INVALID_SOCKET_VALUE;
 
   g_my_client_id = 0;
 

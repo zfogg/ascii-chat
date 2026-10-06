@@ -41,6 +41,7 @@ export type PacketReceivedCallback = (
 ) => void;
 
 export class ClientConnection {
+  readonly transportType = "websocket" as const;
   private socket: (PacketTransport & { connect(): Promise<void> }) | null =
     null;
   private transportState = ConnectionState.DISCONNECTED;
@@ -120,6 +121,10 @@ export class ClientConnection {
     );
     setServerAddress(serverHost, serverPort);
 
+    await this.connectSocket();
+  }
+
+  private async connectSocket(): Promise<void> {
     // Create WebSocket connection
     console.log(
       "[ClientConnection] Connecting to server:",
@@ -139,118 +144,7 @@ export class ClientConnection {
         );
         console.log("[ClientConnection] WebSocket state:", state);
         if (state === "open") {
-          if (!this.usesApplicationEncryption) {
-            this.transportState = ConnectionState.CONNECTED;
-            this.wasEverConnected = true;
-            this.onStateChangeCallback?.(ConnectionState.CONNECTED);
-            return;
-          }
-          if (this.options.discoveryHandshake) {
-            const version = new Uint8Array(16);
-            new DataView(version.buffer).setUint16(0, 1, false);
-            version[4] = 1;
-            this.socket?.send(
-              serializePacket(PacketType.PROTOCOL_VERSION, version, 0),
-            );
-          }
-          console.error(
-            `[ClientConnection] *** State is OPEN, socketHasEverOpened=${this.socketHasEverOpened}`,
-          );
-          console.log(
-            "[ClientConnection] WebSocket opened, setting state to CONNECTING",
-          );
-
-          // Check if this is a reconnection (socket opened before, now opening again)
-          const isReconnection = this.socketHasEverOpened;
-          if (!this.socketHasEverOpened) {
-            this.socketHasEverOpened = true;
-            console.error(
-              "[ClientConnection] ✓ First time socket opened - this is initial connection",
-            );
-          } else {
-            console.error(
-              "[ClientConnection] ✓ Socket opening again - this is a reconnection, reinitializing WASM",
-            );
-          }
-
-          // On reconnection, fully reinitialize WASM to reset state machine
-          if (isReconnection) {
-            console.error(
-              "[ClientConnection] ✓ RECONNECTION DETECTED - starting WASM reinit",
-            );
-            console.log(
-              "[ClientConnection] Reinitializing WASM for reconnection...",
-            );
-            this.wasmReinitInProgress = true;
-            this.deferredPackets = [];
-            cleanupClientWasm();
-
-            // Extract server address BEFORE async operations
-            const url = new URL(this.options.serverUrl);
-            const serverHost = url.hostname;
-            const serverPort =
-              parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
-
-            const reinitOptions: { width?: number; height?: number } = {};
-            if (this.options.width !== undefined)
-              reinitOptions.width = this.options.width;
-            if (this.options.height !== undefined)
-              reinitOptions.height = this.options.height;
-            initClientWasm(reinitOptions)
-              .then(() => {
-                console.log("[ClientConnection] WASM reinitialized");
-                // Regenerate keypair (this clears the crypto context, so must do before setServerAddress)
-                return generateKeypair().then((publicKey) => {
-                  this.clientPublicKey = publicKey;
-                  console.log("[ClientConnection] New keypair generated");
-
-                  // Set server address AFTER generateKeypair() because generateKeypair() clears the context
-                  console.log(
-                    "[ClientConnection] Re-setting server address for reconnect:",
-                    serverHost,
-                    serverPort,
-                  );
-                  try {
-                    setServerAddress(serverHost, serverPort);
-                    console.log(
-                      "[ClientConnection] Server address set successfully (after generateKeypair)",
-                    );
-                  } catch (e) {
-                    console.error(
-                      "[ClientConnection] Failed to set server address:",
-                      e,
-                    );
-                  }
-
-                  // Re-register send callback
-                  registerSendPacketCallback((rawPacket: Uint8Array) => {
-                    if (!this.socket) return;
-                    this.socket.send(rawPacket);
-                  });
-                  console.log(
-                    "[ClientConnection] WASM reconnection setup complete",
-                  );
-                });
-              })
-              .then(() => {
-                console.log(
-                  "[ClientConnection] WASM reinit fully complete, processing deferred packets",
-                );
-                this.wasmReinitInProgress = false;
-                // Process any packets that arrived while WASM was reinitializing
-                const deferred = this.deferredPackets;
-                this.deferredPackets = [];
-                console.log(
-                  `[ClientConnection] Processing ${deferred.length} deferred packets`,
-                );
-                deferred.forEach((packet) => this.handlePacket(packet));
-              })
-              .catch((error) => {
-                console.error("[ClientConnection] WASM reinit failed:", error);
-                this.wasmReinitInProgress = false;
-              });
-          }
-          this.onStateChangeCallback?.(ConnectionState.CONNECTING);
+          void this.handleSocketOpen();
         } else if (state === "connecting") {
           // SocketBridge is attempting to reconnect
           console.log("[ClientConnection] SocketBridge reconnecting...");
@@ -286,6 +180,69 @@ export class ClientConnection {
     console.log("[ClientConnection] Setting state to HANDSHAKE");
     this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
     console.log("[ClientConnection] Connect complete");
+  }
+
+  private async handleSocketOpen(): Promise<void> {
+    const isReconnection = this.socketHasEverOpened;
+    this.socketHasEverOpened = true;
+
+    if (isReconnection && this.usesApplicationEncryption) {
+      // Pause packet handling before resetting WASM. On reconnect the server
+      // must not receive PROTOCOL_VERSION until the new crypto context and its
+      // packet callback are ready to process the handshake response.
+      this.wasmReinitInProgress = true;
+      this.deferredPackets = [];
+      this.onStateChangeCallback?.(ConnectionState.CONNECTING);
+      cleanupClientWasm();
+
+      const url = new URL(this.options.serverUrl);
+      const serverHost = url.hostname;
+      const serverPort =
+        parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
+      const reinitOptions: { width?: number; height?: number } = {};
+      if (this.options.width !== undefined)
+        reinitOptions.width = this.options.width;
+      if (this.options.height !== undefined)
+        reinitOptions.height = this.options.height;
+
+      try {
+        await initClientWasm(reinitOptions);
+        this.clientPublicKey = await generateKeypair();
+        setServerAddress(serverHost, serverPort);
+        registerSendPacketCallback((rawPacket: Uint8Array) => {
+          if (this.socket) this.socket.send(rawPacket);
+        });
+
+        const deferred = this.deferredPackets;
+        this.deferredPackets = [];
+        this.wasmReinitInProgress = false;
+        deferred.forEach((packet) => this.handlePacket(packet));
+      } catch (error) {
+        this.wasmReinitInProgress = false;
+        console.error("[ClientConnection] WASM reinit failed:", error);
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+        return;
+      }
+    }
+
+    if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
+
+    if (this.options.discoveryHandshake) {
+      const version = new Uint8Array(16);
+      new DataView(version.buffer).setUint16(0, 1, false);
+      version[4] = this.usesApplicationEncryption ? 1 : 0;
+      this.socket.send(serializePacket(PacketType.PROTOCOL_VERSION, version, 0));
+    }
+
+    if (!this.usesApplicationEncryption) {
+      this.transportState = ConnectionState.CONNECTED;
+      this.wasEverConnected = true;
+      this.onStateChangeCallback?.(ConnectionState.CONNECTED);
+      return;
+    }
+
+    this.onStateChangeCallback?.(ConnectionState.CONNECTING);
   }
 
   /**

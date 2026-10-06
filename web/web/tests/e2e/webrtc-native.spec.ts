@@ -42,9 +42,11 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
       () =>
         page.locator("canvas.ascii-canvas").evaluate((element) => {
           const canvas = element as HTMLCanvasElement;
-          const pixels = canvas
-            .getContext("2d")!
-            .getImageData(0, 0, canvas.width, canvas.height).data;
+          const context = canvas.getContext("2d");
+          // bitmaprenderer owns the presentation context in accelerated
+          // browsers; rendered-frame telemetry covers that path.
+          if (!context) return true;
+          const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
           for (let i = 0; i < pixels.length; i += 4) {
             if (pixels[i]! > 30 || pixels[i + 1]! > 30 || pixels[i + 2]! > 30)
               return true;
@@ -67,7 +69,10 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
   ).toBeVisible();
-  expect(await renderedFrames()).toBeGreaterThan(initialFrames + 3);
+  const finalFrames = await renderedFrames();
+  // The 15-second smoke window is intentionally short, but it must still
+  // demonstrate interactive-rate rendering rather than a merely live channel.
+  expect((finalFrames - initialFrames) / 15).toBeGreaterThan(50);
   await page.screenshot({
     path: "../../build/webrtc-browser/connected.png",
     fullPage: true,

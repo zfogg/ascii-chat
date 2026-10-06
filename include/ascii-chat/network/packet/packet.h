@@ -1267,6 +1267,8 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
  */
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *envelope);
+packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
+                                                        packet_envelope_t *envelope, uint64_t timeout_ns);
 
 /**
  * @brief Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet

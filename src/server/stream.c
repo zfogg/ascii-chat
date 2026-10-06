@@ -275,26 +275,27 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     multi_source_frame_t current_frame = {0};
     bool got_new_frame = false;
 
-    // Always try to get the last available video frame for consistent ASCII generation
-    // The double buffer ensures we always have the last valid frame
+    // Always try to get the last available video frame for consistent ASCII generation.
+    // Keep the swap mutex held until the front-buffer bytes have been copied:
+    // after the next commit, this frame becomes the writer's back buffer and
+    // can be overwritten while the compositor is still reading it.
     if (snap->is_sending_video && snap->video_buffer) {
-      // Get the latest frame (always available from double buffer)
-      const video_frame_t *frame = video_frame_peek_latest(snap->video_buffer);
-
-      if (!frame) {
-        continue; // Skip to next snapshot
+      video_frame_buffer_t *video_buffer = snap->video_buffer;
+      mutex_lock(&video_buffer->swap_mutex);
+      const video_frame_t *frame = video_buffer->front_buffer;
+      if (!frame || !frame->data || frame->size < sizeof(uint32_t) * 2 ||
+          frame->size > video_buffer->allocated_buffer_size) {
+        mutex_unlock(&video_buffer->swap_mutex);
+        continue;
       }
-
-      // Try to access frame fields ONE AT A TIME to pinpoint the hang
-      void *frame_data_ptr = frame->data;
 
       size_t frame_size_val = frame->size;
 
       // Compute hash of incoming frame to verify it's changing
       uint32_t incoming_hash = 0;
-      if (frame_data_ptr && frame_size_val > 0) {
+      if (frame_size_val > 0) {
         for (size_t i = 0; i < frame_size_val && i < 1000; i++) {
-          uint8_t byte = ((unsigned char *)frame_data_ptr)[i];
+          uint8_t byte = ((unsigned char *)frame->data)[i];
           incoming_hash = (uint32_t)((uint64_t)incoming_hash * 31 + byte);
         }
       }
@@ -302,7 +303,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       // DIAGNOSTIC: Track incoming frame changes from buffer
       static uint32_t last_buffer_hash = 0;
       if (incoming_hash != last_buffer_hash) {
-        log_info("BUFFER_FRAME CHANGE: Client %u got NEW frame from buffer: hash=0x%08x (prev=0x%08x) size=%zu",
+        log_dev("BUFFER_FRAME CHANGE: Client %u got NEW frame from buffer: hash=0x%08x (prev=0x%08x) size=%zu",
                  snap->client_id, incoming_hash, last_buffer_hash, frame_size_val);
         last_buffer_hash = incoming_hash;
       } else {
@@ -311,41 +312,43 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       }
 
       // DETAILED BUFFER INSPECTION: Extract and log frame dimensions + first pixels
-      if (frame_data_ptr && frame_size_val >= 8) {
+      if (frame_size_val >= 8) {
         uint32_t width_net, height_net;
-        memcpy(&width_net, frame_data_ptr, sizeof(uint32_t));
-        memcpy(&height_net, (char *)frame_data_ptr + sizeof(uint32_t), sizeof(uint32_t));
+        memcpy(&width_net, frame->data, sizeof(uint32_t));
+        memcpy(&height_net, (char *)frame->data + sizeof(uint32_t), sizeof(uint32_t));
         uint32_t width = NET_TO_HOST_U32(width_net);
         uint32_t height = NET_TO_HOST_U32(height_net);
 
         // Extract first 3 RGB pixels to inspect actual pixel data
-        uint8_t *pixel_ptr = (uint8_t *)frame_data_ptr + 8;
+        uint8_t *pixel_ptr = (uint8_t *)frame->data + 8;
         uint32_t first_pixel_rgb = 0;
         if (frame_size_val >= 11) {
           first_pixel_rgb = ((uint32_t)pixel_ptr[0] << 16) | ((uint32_t)pixel_ptr[1] << 8) | (uint32_t)pixel_ptr[2];
         }
 
-        log_info("BUFFER_INSPECT: Client %u dims=%ux%u pixel_data_size=%zu first_pixel_rgb=0x%06x data_hash=0x%08x",
+        log_dev("BUFFER_INSPECT: Client %u dims=%ux%u pixel_data_size=%zu first_pixel_rgb=0x%06x data_hash=0x%08x",
                  snap->client_id, width, height, frame_size_val - 8, first_pixel_rgb, incoming_hash);
       }
 
       log_debug_every(5 * NS_PER_MS_INT, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
                       incoming_hash, frame_size_val);
 
-      if (frame_data_ptr && frame_size_val > 0 && frame_size_val >= (sizeof(uint32_t) * 2 + 3)) {
+      if (frame_size_val >= (sizeof(uint32_t) * 2 + 3)) {
         // PARSE AND VALIDATE DIMENSIONS BEFORE COPYING
         // Don't trust frame->size - calculate correct size from dimensions
-        uint32_t peek_width = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr));
-        uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr + sizeof(uint32_t)));
+        uint32_t peek_width = NET_TO_HOST_U32(read_u32_unaligned(frame->data));
+        uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned(frame->data + sizeof(uint32_t)));
 
         // Reject obviously corrupted dimensions
         if (peek_width == 0 || peek_height == 0 || peek_width > 4096 || peek_height > 2160) {
           log_debug("Per-client %u: rejected dimensions %ux%u as corrupted", snap->client_id, peek_width, peek_height);
+          mutex_unlock(&video_buffer->swap_mutex);
           continue;
         }
 
         // Validate dimensions
         if (image_validate_dimensions((size_t)peek_width, (size_t)peek_height) != ASCIICHAT_OK) {
+          mutex_unlock(&video_buffer->swap_mutex);
           continue;
         }
 
@@ -355,6 +358,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           size_t rgb_size = 0;
           if (image_calc_rgb_size((size_t)peek_width, (size_t)peek_height, &rgb_size) != ASCIICHAT_OK) {
             log_debug("Per-client: rgb_size calc failed for %ux%u", peek_width, peek_height);
+            mutex_unlock(&video_buffer->swap_mutex);
             continue;
           }
           correct_frame_size += rgb_size;
@@ -366,6 +370,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         // Verify frame is at least large enough for the correct size
         if (frame_size_val < correct_frame_size) {
           log_debug("Per-client: frame too small: got %zu, need %zu", frame_size_val, correct_frame_size);
+          mutex_unlock(&video_buffer->swap_mutex);
           continue;
         }
 
@@ -380,7 +385,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
         }
+        mutex_unlock(&video_buffer->swap_mutex);
       } else {
+        mutex_unlock(&video_buffer->swap_mutex);
       }
     }
 
@@ -846,8 +853,8 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   if (convert_duration_ns > 5 * NS_PER_MS_INT) { // Log if > 5ms
     char duration_str[32];
     time_pretty((uint64_t)((double)convert_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn("SLOW_ASCII_CONVERT: Client %u took %s to convert %dx%d image to ASCII", target_client_id, duration_str,
-             composite->w, composite->h);
+    log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %u took %s to convert %dx%d image to ASCII",
+                   target_client_id, duration_str, composite->w, composite->h);
   }
 
   return ascii_frame;
@@ -1002,7 +1009,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   uint64_t now_ns = collect_end_ns;
   if (now_ns - last_detailed_log > 333 * NS_PER_MS_INT) { // Log every 333ms (3x per second)
     last_detailed_log = now_ns;
-    log_info("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
+    log_dev("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
              (collect_end_ns - collect_start_ns) / NS_PER_MS);
   }
 
@@ -1119,7 +1126,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
         } else {
           // No reset found, use full length as fallback
           *out_size = ascii_len;
-          log_warn("Frame has no reset sequences, sending full %zu bytes", ascii_len);
+          log_dev_every(LOG_RATE_SLOW, "Frame has no reset sequences, sending full %zu bytes", ascii_len);
         }
       }
     } else {
@@ -1184,7 +1191,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   if (frame_gen_duration_ns > 10 * NS_PER_MS_INT) { // Log if > 10ms
     char duration_str[32];
     time_pretty((uint64_t)((double)frame_gen_duration_ns), -1, duration_str, sizeof(duration_str));
-    log_warn("SLOW_FRAME_GENERATION: Client %u full frame gen took %s", target_client_id, duration_str);
+    log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %u full frame gen took %s", target_client_id,
+                   duration_str);
   }
 
   return out;

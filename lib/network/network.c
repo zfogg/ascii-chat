@@ -200,8 +200,12 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
     int result = socket_poll(&pfd, 1, (int64_t)timeout_ns);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %llu nanoseconds",
-                  (unsigned long long)timeout_ns);
+        /* A read timeout is the ordinary idle state for signaling sockets.
+         * Do not emit an error on every polling interval. */
+        asciichat_errno = ERROR_NETWORK_TIMEOUT;
+        asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
+        asciichat_errno_context.has_system_error = true;
+        asciichat_errno_context.system_errno = ETIMEDOUT;
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -210,9 +214,20 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
       return -1; // Fatal error
     }
 
-    // Check if socket is ready
+    // Poll can return readiness for a hangup or socket error without POLLIN.
+    // Treat those as terminal network errors so callers tear down the dead
+    // connection instead of retrying it as an idle timeout in a tight loop.
+    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+      SET_ERRNO(ERROR_NETWORK, "recv_with_timeout poll reported socket flags 0x%x", pfd.revents);
+      return -1;
+    }
+
+    // Other readiness flags without POLLIN are an ordinary no-data result.
     if (!(pfd.revents & POLLIN)) {
-      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout socket not ready after poll");
+      asciichat_errno = ERROR_NETWORK_TIMEOUT;
+      asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
+      asciichat_errno_context.has_system_error = true;
+      asciichat_errno_context.system_errno = ETIMEDOUT;
       return -1;
     }
 

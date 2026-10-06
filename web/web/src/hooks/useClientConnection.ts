@@ -39,6 +39,8 @@ interface UseClientConnectionOptions {
   rendererRef: React.RefObject<AsciiRendererHandle | null>;
   frameQueueRef: React.MutableRefObject<AsciiFrame[]>;
   uniqueReceivedFramesRef: React.MutableRefObject<Record<string, number>>;
+  uniqueReceivedFrameCountRef: React.MutableRefObject<number>;
+  uniqueReceivedFrameOrderRef: React.MutableRefObject<string[]>;
   frameCountRef: React.MutableRefObject<number>;
   receivedFrameCountRef: React.MutableRefObject<number>;
   frameReceiptTimesRef: React.MutableRefObject<number[]>;
@@ -53,6 +55,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     rendererRef,
     frameQueueRef,
     uniqueReceivedFramesRef,
+    uniqueReceivedFrameCountRef,
+    uniqueReceivedFrameOrderRef,
     frameCountRef,
     receivedFrameCountRef,
     frameReceiptTimesRef,
@@ -78,6 +82,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     null,
   );
   const hasBeenConnectedRef = useRef(false);
+  const autoReconnectEnabledRef = useRef(false);
   const lastReceivedFrameAtRef = useRef(0);
 
   const connectToServer = useCallback(
@@ -120,6 +125,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               width,
               height,
             });
+
+        if (discovery) autoReconnectEnabledRef.current = true;
 
         conn.onStateChange((state) => {
           onConnectionStateChange?.(state);
@@ -206,6 +213,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
           if (state === ConnectionState.ERROR) {
             console.error("[Client] Connection error state reached");
+            if (discovery && !hasBeenConnectedRef.current) {
+              // Initial join failures are usually actionable (unknown/full
+              // session, missing password, or unsupported session config).
+              // Repeating them cannot recover and creates a visible retry loop.
+              autoReconnectEnabledRef.current = false;
+            }
             if (showErrors && (!discovery || !hasBeenConnectedRef.current)) {
               setError("Connection error");
               setShowModal(true);
@@ -232,22 +245,30 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               );
             }
 
-            // Update test metrics immediately (for E2E test frame counting)
-            // Use unique frame count instead of packet count for accurate server frame measurement
-            window.__clientFrameMetrics = {
-              rendered: frameCountRef.current,
-              received: Object.keys(uniqueReceivedFramesRef.current).length, // Count unique frames, not packets
-              queueDepth: frameQueueRef.current.length,
-              uniqueRendered: Object.keys(uniqueReceivedFramesRef.current)
-                .length,
-              frameHashes: uniqueReceivedFramesRef.current,
-            };
-
             try {
               const frame = parseAsciiFrame(decryptedPayload);
+              if (receivedFrameCountRef.current % 60 === 0)
+                console.info("[useClientConnection] parsed ASCII_FRAME", JSON.stringify({
+                  received: receivedFrameCountRef.current,
+                  dimensions: `${frame.header.width}x${frame.header.height}`,
+                  rendererDimensions: rendererRef.current
+                    ? `${rendererRef.current.getDimensions().cols}x${rendererRef.current.getDimensions().rows}`
+                    : null,
+                  ansiBytes: frame.ansiString.length,
+                  visibleChars: (frame.ansiString.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "").match(/\S/g) || []).length,
+                  sample: frame.ansiString.slice(0, 96),
+                }));
               // Track unique frames at reception (for measuring actual frames from server)
               const frameHash = hashFrame(frame.ansiString);
               if (!uniqueReceivedFramesRef.current[frameHash]) {
+                uniqueReceivedFrameCountRef.current++;
+                uniqueReceivedFrameOrderRef.current.push(frameHash);
+                if (uniqueReceivedFrameOrderRef.current.length > 256) {
+                  const expiredHash =
+                    uniqueReceivedFrameOrderRef.current.shift();
+                  if (expiredHash !== undefined)
+                    delete uniqueReceivedFramesRef.current[expiredHash];
+                }
                 uniqueReceivedFramesRef.current[frameHash] = 0;
               }
               uniqueReceivedFramesRef.current[frameHash]++;
@@ -260,6 +281,15 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   0,
                   frameQueueRef.current.length - 3,
                 );
+
+              window.__clientFrameMetrics = {
+                rendered: frameCountRef.current,
+                received: uniqueReceivedFrameCountRef.current,
+                queueDepth: frameQueueRef.current.length,
+                uniqueRendered:
+                  window.__clientFrameMetrics?.uniqueRendered ?? 0,
+                frameHashes: uniqueReceivedFramesRef.current,
+              };
             } catch (err) {
               console.error("[Client] Failed to parse ASCII frame:", err);
             }
@@ -304,6 +334,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       rendererRef,
       frameQueueRef,
       uniqueReceivedFramesRef,
+      uniqueReceivedFrameCountRef,
+      uniqueReceivedFrameOrderRef,
       frameCountRef,
       receivedFrameCountRef,
       frameReceiptTimesRef,
@@ -323,7 +355,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     if (
       !discovery ||
       connectionState !== ConnectionState.ERROR ||
-      !hasBeenConnectedRef.current
+      !hasBeenConnectedRef.current ||
+      !autoReconnectEnabledRef.current
     )
       return;
 
@@ -332,18 +365,23 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       if (cancelled || !hasBeenConnectedRef.current) return;
       reconnectAttemptRef.current++;
       const delayMs = Math.min(5000, 500 * reconnectAttemptRef.current);
-      setStatus(`Connection lost; reconnecting in ${(delayMs / 1000).toFixed(1)}s`);
+      setStatus(
+        `Connection lost; reconnecting in ${(delayMs / 1000).toFixed(1)}s`,
+      );
       reconnectTimeoutRef.current = setTimeout(() => {
         reconnectTimeoutRef.current = null;
-        void connectToServerRef.current({ showErrors: false }).catch((error) => {
-          console.warn("[Client] Discovery reconnect failed:", error);
-          attemptReconnect();
-        });
+        void connectToServerRef
+          .current({ showErrors: false })
+          .catch((error) => {
+            console.warn("[Client] Discovery reconnect failed:", error);
+            attemptReconnect();
+          });
       }, delayMs);
     };
     attemptReconnect();
 
     return () => {
+      cancelled = true;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -351,15 +389,15 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     };
   }, [connectionState, discovery]);
 
-  // WebRTC can leave a DataChannel open after media delivery has stopped. A
-  // stalled frame stream is a broken session even if the connection badge is
-  // still green, so feed it into the same reconnect path.
+  // A data channel may stay open after the server's frame stream has stalled.
+  // Treat the missing frames as a failed discovery connection so the normal
+  // reconnect path can replace the dead media session.
   useEffect(() => {
     if (!discovery || connectionState !== ConnectionState.CONNECTED) return;
 
     const watchdog = setInterval(() => {
       const lastFrameAt = lastReceivedFrameAtRef.current;
-      if (lastFrameAt && performance.now() - lastFrameAt > 12000) {
+      if (lastFrameAt && performance.now() - lastFrameAt > 12_000) {
         console.warn(
           "[Client] No ASCII frames received for 12s; reconnecting discovery session",
         );

@@ -118,6 +118,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
@@ -370,6 +371,32 @@ void *client_dispatch_thread(void *arg);          ///< Async dispatch thread for
 void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
 static int start_client_threads(server_context_t *server_ctx, client_info_t *client,
                                 bool is_tcp); ///< Common thread initialization
+
+static void initialize_default_render_capabilities(client_info_t *client) {
+  if (!client) {
+    return;
+  }
+
+  // Keep safe defaults for early control packets, but do not mark capabilities
+  // complete. The render thread must wait for the browser's actual dimensions
+  // and requested frame rate instead of flooding a just-opened DataChannel at
+  // the fallback rate.
+  client->width = 64;
+  client->height = 16;
+  client->terminal_caps.color_level = TERM_COLOR_NONE;
+  client->terminal_caps.color_count = 2;
+  client->terminal_caps.render_mode = RENDER_MODE_FOREGROUND;
+  client->terminal_caps.palette_type = PALETTE_STANDARD;
+  client->terminal_caps.desired_fps = VIDEO_RENDER_FPS;
+  client->terminal_caps.wants_padding = false;
+  client->terminal_caps.utf8_support = false;
+  client->terminal_caps.detection_reliable = false;
+  client->client_palette_type = PALETTE_STANDARD;
+  client->client_palette_initialized =
+      initialize_client_palette(PALETTE_STANDARD, NULL, client->client_palette_chars, &client->client_palette_len,
+                               client->client_luminance_palette) == 0;
+  client->has_terminal_caps = false;
+}
 
 /* ============================================================================
  * Client Lookup Functions
@@ -1015,7 +1042,8 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // This creates: receive thread -> render threads -> send thread
   // The render threads MUST be created before send thread to avoid the race condition
   // where send thread reads empty frames before render thread generates the first real frame
-  const char *client_id_snapshot = client->client_id;
+  char client_id_snapshot[MAX_CLIENT_ID_LEN];
+  SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
   if (start_client_threads(server_ctx, client, true) != 0) {
     log_error("Failed to start threads for TCP client %s", client_id_snapshot);
     // Client is already in hash table - use remove_client for proper cleanup
@@ -1260,6 +1288,8 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
     return NULL;
   }
 
+  initialize_default_render_capabilities(client);
+
   // Initialize send mutex to protect concurrent socket writes
   if (mutex_init(&client->send_mutex, "client_send") != 0) {
     log_error("Failed to initialize send mutex for WebRTC client %s", new_client_id);
@@ -1280,22 +1310,6 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
   // WebRTC uses the transport abstraction which handles packet reception automatically.
   log_debug("WebRTC client %s initialized - receive thread will process capabilities", new_client_id);
-
-  // Conditionally start threads based on caller preference
-  // WebSocket handler passes start_threads=false to defer thread startup until after crypto init
-  // This ensures receive thread doesn't try to process packets before crypto context is ready
-  if (start_threads) {
-    log_debug("[ADD_WEBRTC_CLIENT] Starting client threads (receive, render) for client %s...", new_client_id);
-    if (start_client_threads(server_ctx, client, false) != 0) {
-      log_error("Failed to start threads for WebRTC client %s", new_client_id);
-      return NULL;
-    }
-    log_debug("Created receive thread for WebRTC client %s", new_client_id);
-    log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", new_client_id);
-  } else {
-    log_debug("[ADD_WEBRTC_CLIENT] Deferring thread startup for client %s (caller will start after crypto init)",
-              new_client_id);
-  }
 
   // Send initial server state to the new client
   if (send_server_state_to_client(client) != 0) {
@@ -1345,6 +1359,21 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
   broadcast_server_state_to_all_clients();
+
+  // The browser can send CLIENT_CAPABILITIES and STREAM_START immediately when
+  // its DataChannel opens. Start media threads only after this client is fully
+  // registered and all initial control traffic is complete; the WebRTC
+  // transport queues those incoming packets until the receive thread begins.
+  // WebSocket callers still defer this until their crypto setup is complete.
+  if (start_threads) {
+    log_debug("[ADD_WEBRTC_CLIENT] Starting client threads after initialization for %s", new_client_id);
+    if (start_client_threads(server_ctx, client, false) != 0) {
+      log_error("Failed to start threads for WebRTC client %s", new_client_id);
+      return NULL;
+    }
+  } else {
+    log_debug("[ADD_WEBRTC_CLIENT] Deferring client thread startup for %s until crypto setup", new_client_id);
+  }
 
   return client;
 
@@ -1729,11 +1758,8 @@ void *client_dispatch_thread(void *arg) {
     }
     mutex_unlock(&client->client_state_mutex);
 
-    // Frame received! Log it immediately
-    char dequeue_elapsed_str[32];
-    time_pretty(dequeue_end - dequeue_start, -1, dequeue_elapsed_str, sizeof(dequeue_elapsed_str));
-    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %s)", client_id, queued_pkt->data_len,
-             dequeue_elapsed_str);
+    log_info("DISPATCH_THREAD[%u]: dequeued %zu-byte packet in %.1fμs", client_id, queued_pkt->data_len,
+            (dequeue_end - dequeue_start) / 1000.0);
 
     // Process the dequeued packet
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
@@ -1742,8 +1768,7 @@ void *client_dispatch_thread(void *arg) {
     uint8_t *payload = (uint8_t *)header + sizeof(packet_header_t);
     size_t payload_len = 0;
 
-    log_info("🔍 DISPATCH_THREAD[%u]: Processing %zu byte packet (header size=%zu)", client_id, total_len,
-             sizeof(packet_header_t));
+    log_info("DISPATCH_THREAD[%u]: processing %zu-byte packet", client_id, total_len);
 
     if (total_len < sizeof(packet_header_t)) {
       log_error("🔴 DISPATCH_THREAD[%u]: Packet too small (%zu < %zu), DROPPING", client_id, total_len,
@@ -1756,13 +1781,13 @@ void *client_dispatch_thread(void *arg) {
       packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
       payload_len = NET_TO_HOST_U32(header->length);
 
-      log_info("🎯 DISPATCH_THREAD[%u]: Packet type=%d, payload_len=%u, total_len=%zu", client_id, packet_type,
-               payload_len, total_len);
+    log_info("DISPATCH_THREAD[%u]: type=%d payload_len=%u total_len=%zu", client_id, packet_type, payload_len,
+              total_len);
 
       // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
       // This mirrors the decryption logic in acip_server_receive_and_dispatch()
       if (packet_type == PACKET_TYPE_ENCRYPTED && client->transport && client->transport->crypto_ctx) {
-        log_info("🔐 DISPATCH_THREAD[%u]: Decrypting PACKET_TYPE_ENCRYPTED", client_id);
+        log_info("DISPATCH_THREAD[%u]: decrypting packet", client_id);
 
         uint8_t *ciphertext = payload;
         size_t ciphertext_len = payload_len;
@@ -1802,13 +1827,11 @@ void *client_dispatch_thread(void *arg) {
         payload_len = NET_TO_HOST_U32(inner_header->length);
         payload = plaintext + sizeof(packet_header_t);
 
-        log_info("🔐 DISPATCH_THREAD[%u]: Decrypted inner packet type=%d, payload_len=%u", client_id, packet_type,
-                 payload_len);
+        log_info("DISPATCH_THREAD[%u]: decrypted type=%d payload_len=%u", client_id, packet_type, payload_len);
 
         // Dispatch the decrypted packet
         if (client->transport) {
-          log_info("🎯 DISPATCH_THREAD[%u]: Calling acip_handle_server_packet(type=%d, payload_len=%u)", client_id,
-                   packet_type, payload_len);
+          log_info("DISPATCH_THREAD[%u]: dispatching type=%d payload_len=%u", client_id, packet_type, payload_len);
           asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
                                                                         payload_len, client, &g_acip_server_callbacks);
 
@@ -1816,8 +1839,7 @@ void *client_dispatch_thread(void *arg) {
             log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
           } else {
-            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched decrypted packet type=%d", client_id,
-                     packet_type);
+            log_info("DISPATCH_THREAD[%u]: dispatched decrypted type=%d", client_id, packet_type);
           }
         } else {
           log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch decrypted packet - transport is NULL", client_id);
@@ -1828,8 +1850,7 @@ void *client_dispatch_thread(void *arg) {
       } else {
         // Not encrypted or no crypto context - dispatch as-is
         if (client->transport) {
-          log_info("🎯 DISPATCH_THREAD[%u]: Calling acip_handle_server_packet(type=%d, payload_len=%u)", client_id,
-                   packet_type, payload_len);
+          log_info("DISPATCH_THREAD[%u]: dispatching type=%d payload_len=%zu", client_id, packet_type, payload_len);
           asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
                                                                         payload_len, client, &g_acip_server_callbacks);
 
@@ -1837,7 +1858,7 @@ void *client_dispatch_thread(void *arg) {
             log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
           } else {
-            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched packet type=%d", client_id, packet_type);
+            log_info("DISPATCH_THREAD[%u]: dispatched type=%d", client_id, packet_type);
           }
         } else {
           log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch packet - transport is NULL", client_id);
@@ -2015,8 +2036,7 @@ void *client_receive_thread(void *arg) {
         break;
       }
 
-      log_info("🔍 RECV_THREAD[%s]: transport->recv() returned result=%d, packet_len=%zu, allocated_buffer=%p",
-               client->client_id, recv_result, packet_len, allocated_buffer);
+      log_dev("RECV_THREAD[%s]: recv result=%d packet_len=%zu", client->client_id, recv_result, packet_len);
 
       // Validate received packet before queueing
       if (packet_len < sizeof(packet_header_t)) {
@@ -2030,15 +2050,15 @@ void *client_receive_thread(void *arg) {
 
       // Queue the received packet for async dispatch
       // This prevents the receive thread from blocking on dispatch
-      log_info("✅ RECV_THREAD[%s]: Queuing %zu byte packet for async dispatch", client->client_id, packet_len);
+      log_dev("RECV_THREAD[%s]: queueing %zu-byte packet", client->client_id, packet_len);
 
       // Extract packet type from the header to preserve it when queueing
       const packet_header_t *pkt_header = (const packet_header_t *)allocated_buffer;
       packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(pkt_header->type);
       uint32_t payload_len = NET_TO_HOST_U32(pkt_header->length);
 
-      log_info("🔍 RECV_THREAD[%s]: Packet header: type=%d, payload_len=%u, total_len=%zu", client->client_id, pkt_type,
-               payload_len, packet_len);
+      log_dev("RECV_THREAD[%s]: type=%d payload_len=%u total_len=%zu", client->client_id, pkt_type, payload_len,
+              packet_len);
 
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
@@ -2057,8 +2077,7 @@ void *client_receive_thread(void *arg) {
         log_error("🔴 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
                   client->client_id);
       } else {
-        log_info("✅ RECV_THREAD[%s]: Successfully queued packet (type=%d, len=%zu)", client->client_id, pkt_type,
-                 packet_len);
+        log_dev("RECV_THREAD[%s]: queued type=%d len=%zu", client->client_id, pkt_type, packet_len);
       }
     }
   }
@@ -2066,7 +2085,10 @@ void *client_receive_thread(void *arg) {
   // Mark client as inactive and stop all threads
   // Must stop render threads when client disconnects.
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
-  const char *client_id_snapshot = client->client_id;
+  char client_id_snapshot[MAX_CLIENT_ID_LEN] = {0};
+  SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
+  bool is_tcp_client = client->is_tcp_client;
+  server_context_t *server_ctx = (server_context_t *)client->server_ctx;
   log_debug("Setting active=false in receive_thread_fn (client_id=%s, exiting receive loop)", client_id_snapshot);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->send_thread_running, false);
@@ -2077,12 +2099,11 @@ void *client_receive_thread(void *arg) {
   // Safe to call from receive thread now: remove_client() detects self-join via thread IDs
   // and skips the receive thread join when called from the receive thread itself
   log_debug("Receive thread for client %s calling remove_client() for cleanup", client_id_snapshot);
-  server_context_t *server_ctx = (server_context_t *)client->server_ctx;
-  if (server_ctx) {
+  if (server_ctx && !is_tcp_client) {
     if (remove_client(server_ctx, client_id_snapshot) != 0) {
       log_warn("Failed to remove client %s from receive thread cleanup", client_id_snapshot);
     }
-  } else {
+  } else if (!server_ctx) {
     log_error("Receive thread for client %s: server_ctx is NULL, cannot call remove_client()", client_id_snapshot);
   }
 
@@ -2105,6 +2126,8 @@ void *client_send_thread_func(void *arg) {
     log_error("Invalid client info in send thread (NULL pointer)");
     return NULL;
   }
+
+  client->send_thread_id = asciichat_thread_self();
 
   // Check if client_id is empty (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
@@ -2145,14 +2168,18 @@ void *client_send_thread_func(void *arg) {
 
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
-#define MAX_AUDIO_BATCH 8
+// A video deadline must still be reachable while audio is active. Sending a
+// deep audio batch on the same ordered WebRTC channel lets one client hold
+// video (and the next audio update) behind several synchronous sends.
+#define MAX_AUDIO_BATCH 1
   int loop_iteration_count = 0;
+  bool transport_failed = false;
   while (!atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down) &&
          atomic_load_bool(&client->active) && atomic_load_bool(&client->send_thread_running)) {
     loop_iteration_count++;
     bool sent_something = false;
     uint64_t loop_start_ns = time_get_ns();
-    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] START: client=%s", loop_iteration_count, client->client_id);
+    log_dev_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] START: client=%s", loop_iteration_count, client->client_id);
 
     // PRIORITY: Drain all queued audio packets before video
     // Audio must not be rate-limited by video frame sending (16.67ms)
@@ -2205,8 +2232,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         acip_transport_t *transport = client->transport;
         bool stopping = atomic_load_bool(&client->shutting_down) || !transport;
-        mutex_unlock(&client->send_mutex);
         if (stopping) {
+          mutex_unlock(&client->send_mutex);
           result = ERROR_NETWORK;
         } else {
           uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
@@ -2217,6 +2244,7 @@ void *client_send_thread_func(void *arg) {
             if (result != ASCIICHAT_OK)
               break;
           }
+          mutex_unlock(&client->send_mutex);
         }
       } // End of if (audio_packet_count > 0)
 
@@ -2231,6 +2259,7 @@ void *client_send_thread_func(void *arg) {
         }
         // Network errors corrupt the TCP stream - must disconnect immediately
         if (result == ERROR_NETWORK) {
+          transport_failed = true;
           log_error("CLOSING_CLIENT_ON_NETWORK_ERROR: client_id=%s due to audio send failure (corrupted stream)",
                     client->client_id);
           break; // Exit send loop to trigger cleanup
@@ -2243,16 +2272,12 @@ void *client_send_thread_func(void *arg) {
       uint64_t audio_done_ns = time_get_ns();
       char audio_elapsed_str[32];
       time_pretty(audio_done_ns - loop_start_ns, -1, audio_elapsed_str, sizeof(audio_elapsed_str));
-      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %s", loop_iteration_count,
+      log_dev_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %s", loop_iteration_count,
                      audio_elapsed_str);
 
-      // Small sleep to let more audio packets queue (helps batching efficiency)
-      if (audio_packet_count > 0) {
-        platform_sleep_us(100); // 0.1ms - minimal delay
-      }
     } else {
       // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
-      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
+      log_dev_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms - enough for audio render thread to queue more packets
 
       // Check if session rekeying should be triggered
@@ -2307,29 +2332,7 @@ void *client_send_thread_func(void *arg) {
       break;
     }
 
-    // Get latest frame from double buffer (lock-free operation)
-    // Consume only once the sender is ready to transmit.
-    const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
-    uint64_t frame_get_ns = time_get_ns();
-    char frame_get_elapsed_str[32];
-    time_pretty(frame_get_ns - video_check_ns, -1, frame_get_elapsed_str, sizeof(frame_get_elapsed_str));
-    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_GET_FRAME: took %s, frame=%p", loop_iteration_count,
-                   frame_get_elapsed_str, (void *)frame);
-    log_dev_every(4500 * US_PER_MS_INT, "Send thread: video_frame_get_latest returned %p for client %s", (void *)frame,
-                  client->client_id);
-
-    // Check if get_latest failed (buffer might have been destroyed)
-    if (!frame) {
-      // The render thread may not have committed the first frame yet. Keep the
-      // sender alive and retry; a destroyed buffer is handled by the check
-      // immediately above.
-      log_dev_every(LOG_RATE_SLOW, "Send thread: no rendered frame yet for client %s", client->client_id);
-      platform_sleep_us(1 * US_PER_MS_INT);
-      continue;
-    }
-
-    // Check if it's time to send a video frame (60fps rate limiting)
-    // Only rate-limit the SEND operation, not frame consumption
+    // Check the frame deadline before consuming the latest-frame flag.
     uint64_t current_time_ns = time_get_ns();
     uint64_t current_time_us = time_ns_to_us(current_time_ns);
     uint64_t time_since_last_send_us = current_time_us - last_video_send_time;
@@ -2339,7 +2342,48 @@ void *client_send_thread_func(void *arg) {
                   (time_since_last_send_us >= video_send_interval_us));
 
     if (current_time_us - last_video_send_time >= video_send_interval_us) {
-      log_info_every(5000 * US_PER_MS_INT, "✓ SEND_TIME_READY: client_id=%s time_since=%llu interval=%llu",
+      video_frame_buffer_t *outgoing_buffer = client->outgoing_video_buffer;
+      const video_frame_t *frame = NULL;
+      char *frame_data_snapshot = NULL;
+      size_t frame_size = 0;
+      uint32_t width = 0;
+      uint32_t height = 0;
+
+      // The frame pointer is borrowed only until the next commit. Keep the
+      // swap mutex held through the copy so a slow network send cannot read a
+      // buffer after the render thread has reused it.
+      mutex_lock(&outgoing_buffer->swap_mutex);
+      if (atomic_load_bool(&outgoing_buffer->new_frame_available)) {
+        frame = outgoing_buffer->front_buffer;
+        if (frame && frame->data && frame->size > 0 &&
+            frame->size <= outgoing_buffer->allocated_buffer_size) {
+          frame_size = frame->size;
+          width = frame->width;
+          height = frame->height;
+          frame_data_snapshot = SAFE_MALLOC(frame_size, char *);
+          if (frame_data_snapshot) {
+            memcpy(frame_data_snapshot, frame->data, frame_size);
+            atomic_store_bool(&outgoing_buffer->new_frame_available, false);
+          }
+        }
+      }
+      mutex_unlock(&outgoing_buffer->swap_mutex);
+
+      uint64_t frame_get_ns = time_get_ns();
+      char frame_get_elapsed_str[32];
+      time_pretty(frame_get_ns - video_check_ns, -1, frame_get_elapsed_str, sizeof(frame_get_elapsed_str));
+      log_dev_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_SNAPSHOT: took %s, frame=%p, bytes=%zu",
+                    loop_iteration_count, frame_get_elapsed_str, (const void *)frame, frame_size);
+
+      if (!frame_data_snapshot) {
+        // The render thread may not have committed a frame yet, or the latest
+        // frame could not be copied. Keep the sender alive and try again.
+        log_dev_every(LOG_RATE_SLOW, "Send thread: no snapshot ready for client %s", client->client_id);
+        platform_sleep_us(1 * US_PER_MS_INT);
+        continue;
+      }
+
+      log_dev_every(5000 * US_PER_MS_INT, "SEND_TIME_READY: client_id=%s time_since=%llu interval=%llu",
                      client->client_id, (unsigned long long)time_since_last_send_us,
                      (unsigned long long)video_send_interval_us);
       uint64_t frame_start_ns = time_get_ns();
@@ -2351,19 +2395,20 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport
-        // Get transport reference briefly to avoid deadlock on TCP buffer full
+        // Keep the send lock until the complete ACIP packet is written. TCP is
+        // a byte stream, so a PONG or state update from another thread must not
+        // interleave with this packet.
         mutex_lock(&client->send_mutex);
         if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
+          SAFE_FREE(frame_data_snapshot);
           log_warn("BREAK_CLEAR_CONSOLE: client_id=%s shutting_down=%d transport=%p", client->client_id,
                    atomic_load_bool(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
         acip_transport_t *clear_transport = client->transport;
-        mutex_unlock(&client->send_mutex);
-
-        // Network I/O happens OUTSIDE the mutex
         acip_send_clear_console(clear_transport);
+        mutex_unlock(&client->send_mutex);
         log_debug_every(LOG_RATE_FAST, "Client %s: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
                         client->client_id, sent_sources, rendered_sources);
         atomic_store_u64(&client->last_sent_grid_sources, rendered_sources);
@@ -2372,28 +2417,13 @@ void *client_send_thread_func(void *arg) {
 
       log_info_every(5000 * US_PER_MS_INT,
                      "🎯 FRAME_VALIDATION: client_id=%s frame=%p, frame->data=%p, frame->size=%zu", client->client_id,
-                     (void *)frame, (void *)frame->data, frame->size);
+                     (const void *)frame, (void *)frame_data_snapshot, frame_size);
 
-      if (!frame->data) {
-        log_info("❌ SKIP_NO_DATA: client_id=%s frame=%p data=%p", client->client_id, (void *)frame,
-                 (void *)frame->data);
-        continue;
-      }
       log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
-                     (void *)frame->data);
+                     (void *)frame_data_snapshot);
+      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame_size);
 
-      if (frame->data && frame->size == 0) {
-        log_info("❌ SKIP_ZERO_SIZE: client_id=%s size=%zu", client->client_id, frame->size);
-        platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
-        continue;
-      }
-      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame->size);
-
-      // Snapshot frame metadata (safe with double-buffer system)
-      const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
-      size_t frame_size = frame->size;                    // Size snapshot - prevent race condition with render thread
-      uint32_t width = frame->width;
-      uint32_t height = frame->height;
+      const char *frame_data = frame_data_snapshot;
       uint64_t step1_ns = time_get_ns();
       uint64_t step2_ns = time_get_ns();
       uint64_t step3_ns = time_get_ns();
@@ -2412,12 +2442,14 @@ void *client_send_thread_func(void *arg) {
       if (!crypto_ready) {
         log_info("⚠️  SKIP_SEND_CRYPTO: client_id=%s crypto_initialized=%d no_encrypt=%d", client->client_id,
                  client->crypto_initialized, GET_OPTION(no_encrypt));
+        SAFE_FREE(frame_data_snapshot);
         continue; // Skip this frame, will try again on next loop iteration
       }
       log_info_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
 
-      // Get transport reference briefly to avoid deadlock on TCP buffer full
-      // ACIP transport handles header building, CRC32, encryption internally
+      // ACIP transport handles header building, CRC32, and encryption. Keep
+      // send_mutex for the complete write so packets from the receive thread
+      // cannot splice into this TCP packet.
       log_dev_every(4500 * US_PER_MS_INT,
                     "Send thread: About to send frame to client %s (width=%u, height=%u, size=%zu, data=%p)",
                     client->client_id, width, height, frame_size, (void *)frame_data);
@@ -2438,27 +2470,30 @@ void *client_send_thread_func(void *arg) {
       mutex_lock(&client->send_mutex);
       if (atomic_load_bool(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
+        SAFE_FREE(frame_data_snapshot);
         log_warn("BREAK_FRAME_SEND: client_id=%s shutting_down=%d transport=%p loop_iter=%d", client->client_id,
                  atomic_load_bool(&client->shutting_down), (void *)client->transport, loop_iteration_count);
         break; // Client is shutting down, exit thread
       }
       acip_transport_t *frame_transport = client->transport;
-      mutex_unlock(&client->send_mutex);
-
-      // Network I/O happens OUTSIDE the mutex
-      log_dev_every(4500 * US_PER_MS_INT, "SEND_ASCII_FRAME: client_id=%s size=%zu width=%u height=%u",
-                    client->client_id, frame_size, width, height);
+      log_dev_every(4500 * US_PER_MS_INT, "SEND_ASCII_FRAME: client_id=%s tcp=%d size=%zu width=%u height=%u",
+                    client->client_id, client->is_tcp_client, frame_size, width, height);
       uint64_t send_start_ns = time_get_ns();
-      log_dev("[SEND_LOOP_%d] FRAME_SEND_START: size=%zu", loop_iteration_count, frame_size);
+      log_dev_every(4500 * US_PER_MS_INT, "[SEND_LOOP_%d] FRAME_SEND_START: client_id=%s size=%zu",
+                    loop_iteration_count, client->client_id, frame_size);
       asciichat_error_t send_result =
           acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height, client->client_id);
+      mutex_unlock(&client->send_mutex);
+      SAFE_FREE(frame_data_snapshot);
       uint64_t send_end_ns = time_get_ns();
       char send_elapsed_str[32];
       time_pretty(send_end_ns - send_start_ns, -1, send_elapsed_str, sizeof(send_elapsed_str));
-      log_dev("[SEND_LOOP_%d] FRAME_SEND_END: took %s, result=%d", loop_iteration_count, send_elapsed_str, send_result);
+      log_dev_every(4500 * US_PER_MS_INT, "[SEND_LOOP_%d] FRAME_SEND_END: client_id=%s took %s result=%d",
+                    loop_iteration_count, client->client_id, send_elapsed_str, send_result);
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
+        transport_failed = send_result == ERROR_NETWORK;
         if (!atomic_load_bool(&g_should_exit)) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %s: %s", client->client_id,
                     asciichat_error_string(send_result));
@@ -2471,9 +2506,10 @@ void *client_send_thread_func(void *arg) {
 
       log_dev_every(4500 * US_PER_MS_INT, "SEND_FRAME_SUCCESS: client_id=%s size=%zu", client->client_id, frame_size);
 
-      // Increment frame counter and log
+      // Increment frame counter for metrics.
       unsigned long frame_count = atomic_fetch_add_u64(&client->frames_sent_count, 1) + 1;
-      log_info("🎬 FRAME_SENT: client_id=%s frame_num=%lu size=%zu", client->client_id, frame_count, frame_size);
+      log_dev_every(4500 * US_PER_MS_INT, "FRAME_SENT: client_id=%s frame_num=%lu size=%zu", client->client_id,
+                    frame_count, frame_size);
 
       sent_something = true;
       last_video_send_time = last_video_send_time == 0
@@ -2499,7 +2535,7 @@ void *client_send_thread_func(void *arg) {
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
-      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
+      log_dev_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
     }
     uint64_t loop_end_ns = time_get_ns();
@@ -2507,8 +2543,7 @@ void *client_send_thread_func(void *arg) {
     if (loop_elapsed_ns > 10 * NS_PER_MS) {
       char loop_elapsed_str[32];
       time_pretty(loop_elapsed_ns, -1, loop_elapsed_str, sizeof(loop_elapsed_str));
-      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %s (client=%u)", loop_iteration_count, loop_elapsed_str,
-               client->client_id);
+      log_warn_every(LOG_RATE_DEFAULT, "SEND_LOOP: took %s (client=%u)", loop_elapsed_str, client->client_id);
     }
   }
 
@@ -2520,6 +2555,21 @@ void *client_send_thread_func(void *arg) {
 
   // Mark thread as stopped
   atomic_store_bool(&client->send_thread_running, false);
+
+  // The receive loop can remain alive while the media send path has already
+  // discovered a dead WebRTC DataChannel. Retire the whole client here so its
+  // render workers cannot keep producing media for a peer that is gone.
+  if (transport_failed && !client->is_tcp_client && !atomic_load_bool(&g_should_exit) &&
+      !atomic_load_bool(&client->shutting_down)) {
+    char client_id_snapshot[MAX_CLIENT_ID_LEN] = {0};
+    SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
+    server_context_t *server_ctx = (server_context_t *)client->server_ctx;
+    if (server_ctx && client_id_snapshot[0] != '\0') {
+      log_info("Removing WebRTC client %s after terminal send failure", client_id_snapshot);
+      (void)remove_client(server_ctx, client_id_snapshot);
+    }
+  }
+
   log_debug("Send thread for client %s terminated", client->client_id);
 
   // Clean up thread-local error context before exit
@@ -2944,11 +2994,35 @@ static void acip_server_on_protocol_version(const protocol_version_packet_t *ver
 static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
                                        void *client_ctx, void *app_ctx) {
   (void)app_ctx;
-  uint64_t callback_start_ns = time_get_ns();
   client_info_t *client = (client_info_t *)client_ctx;
 
-  log_info("CALLBACK_IMAGE_FRAME: client_id=%s, width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
+  // Reject empty or missing RGB payloads before diagnostics sample the first
+  // pixel. Malformed frames must not turn a logging path into a server crash.
+  if (!header || !client || !pixel_data || data_len < 3) {
+    log_warn("Ignoring empty or invalid WebRTC image frame payload (data_len=%zu)", data_len);
+    return;
+  }
+
+  log_dev("CALLBACK_IMAGE_FRAME: client_id=%s width=%u height=%u pixel_format=%u compressed_size=%u data_len=%zu",
            client->client_id, header->width, header->height, header->pixel_format, header->compressed_size, data_len);
+
+  size_t bright_pixels = 0;
+  size_t pixel_count = data_len / 3;
+  for (size_t i = 0; i < pixel_count; i++) {
+    const uint8_t *pixel = (const uint8_t *)pixel_data + i * 3;
+    if (pixel[0] > 160 || pixel[1] > 160 || pixel[2] > 160) {
+      bright_pixels++;
+    }
+  }
+  size_t center_pixel_offset = ((size_t)(header->height / 2) * header->width + header->width / 2) * 3;
+  const uint8_t *first_pixel = pixel_data;
+  const uint8_t *center_pixel = center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset
+                                                                    : first_pixel;
+  log_info_every(NS_PER_SEC_INT,
+                 "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x "
+                 "bright=%zu/%zu",
+                 client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
+                 first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2], bright_pixels, pixel_count);
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header->width == 0 || header->height == 0) {
@@ -2963,15 +3037,6 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_error("Image dimensions too large: %ux%u (max: %ux%u)", header->width, header->height, MAX_WIDTH, MAX_HEIGHT);
     disconnect_client_for_bad_data(client, "IMAGE_FRAME dimensions too large");
     return;
-  }
-
-  // Auto-set dimensions from IMAGE_FRAME if not already set (fallback for missing CLIENT_CAPABILITIES)
-  // This ensures render thread can start even if CLIENT_CAPABILITIES was never sent
-  if (client->width == 0 || client->height == 0) {
-    client->width = header->width;
-    client->height = header->height;
-    log_info("Client %s: Auto-set dimensions from IMAGE_FRAME: %ux%u (CLIENT_CAPABILITIES not received)",
-             client->client_id, header->width, header->height);
   }
 
   // Auto-enable video stream if not already enabled
@@ -2993,10 +3058,11 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     mutex_unlock(&client->client_state_mutex);
   }
 
-  // Compute hash of incoming pixel data to detect duplicates
-  uint32_t incoming_pixel_hash = 0;
-  for (size_t i = 0; i < data_len && i < 1000; i++) {
-    incoming_pixel_hash = (uint32_t)((uint64_t)incoming_pixel_hash * 31 + ((unsigned char *)pixel_data)[i]);
+  // Hash the full image so motion outside the first row is visible in the
+  // duplicate-frame diagnostics.
+  uint32_t incoming_pixel_hash = 2166136261u;
+  for (size_t i = 0; i < data_len; i++) {
+    incoming_pixel_hash = (incoming_pixel_hash ^ ((const uint8_t *)pixel_data)[i]) * 16777619u;
   }
 
   // Per-client hash tracking to detect duplicate frames
@@ -3008,16 +3074,20 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     first_pixel_rgb = ((uint32_t)((unsigned char *)pixel_data)[0] << 16) |
                       ((uint32_t)((unsigned char *)pixel_data)[1] << 8) | (uint32_t)((unsigned char *)pixel_data)[2];
   }
-
   if (is_new_frame) {
-    log_info("RECV_FRAME #%u NEW: Client %s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x (prev=0x%08x)",
+    log_dev("RECV_FRAME #%u NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x",
              client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
              first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
-    log_info("RECV_FRAME #%u DUP: Client %s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
+    log_dev("RECV_FRAME #%u DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
              client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
              first_pixel_rgb);
+  }
+  if (client->frames_received_logged > 0 && client->frames_received_logged % 60 == 0) {
+    log_info("Incoming video signature client=%s frames=%u state=%s hash=0x%08x size=%ux%u bytes=%zu",
+             client->client_id, client->frames_received_logged, is_new_frame ? "changing" : "duplicate",
+             incoming_pixel_hash, header->width, header->height, data_len);
   }
 
   // Store frame data to incoming_video_buffer
@@ -3025,9 +3095,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // so we must copy it immediately into the persistent frame buffer (which is pre-allocated to 2MB)
   if (client->incoming_video_buffer) {
     video_frame_buffer_t *vfb = client->incoming_video_buffer;
-    log_info("VFB_DEBUG: vfb=%p, vfb->allocated_size=%zu, vfb->active=%d, back_buffer=%p, frames[0]=%p frames[1]=%p",
-             (void *)vfb, vfb->allocated_buffer_size, vfb->active, (void *)vfb->back_buffer, (void *)&vfb->frames[0],
-             (void *)&vfb->frames[1]);
+    log_dev("VFB: client=%s allocated_size=%zu active=%d", client->client_id, vfb->allocated_buffer_size, vfb->active);
 
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
     if (frame && frame->data && data_len > 0) {
@@ -3035,8 +3103,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
-      log_info("FRAME_STORAGE: client=%s, frame=%p, frame->data=%p, capacity=%zu, data_len=%zu, total=%zu",
-               client->client_id, (void *)frame, (void *)frame->data, buffer_capacity, data_len, total_size);
+      log_dev("FRAME_STORAGE: client=%s capacity=%zu data_len=%zu total=%zu", client->client_id, buffer_capacity,
+              data_len, total_size);
 
       // CRITICAL: Bounds check BEFORE memcpy to prevent heap-buffer-overflow
       // If buffer is too small, skip frame storage instead of overflowing
@@ -3073,10 +3141,6 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
 
-  uint64_t callback_end_ns = time_get_ns();
-  char cb_duration_str[32];
-  time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
-  log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 
 /**
@@ -3135,7 +3199,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   uint64_t callback_start_ns = time_get_ns();
   client_info_t *client = (client_info_t *)client_ctx;
 
-  log_info("CALLBACK_IMAGE_FRAME_H265: client_id=%s, width=%u, height=%u, h265_data_len=%zu", client->client_id, width,
+  log_dev("CALLBACK_IMAGE_FRAME_H265: client_id=%s, width=%u, height=%u, h265_data_len=%zu", client->client_id, width,
            height, data_len);
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
@@ -3151,13 +3215,6 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     log_error("H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height, MAX_WIDTH, MAX_HEIGHT);
     disconnect_client_for_bad_data(client, "IMAGE_FRAME_H265 dimensions too large");
     return;
-  }
-
-  // Auto-set dimensions from IMAGE_FRAME_H265 if not already set
-  if (client->width == 0 || client->height == 0) {
-    client->width = width;
-    client->height = height;
-    log_info("Client %s: Auto-set dimensions from IMAGE_FRAME_H265: %ux%u", client->client_id, width, height);
   }
 
   // Auto-enable video stream if not already enabled
@@ -3484,13 +3541,18 @@ static void acip_server_on_client_leave(void *client_ctx, void *app_ctx) {
 static void acip_server_on_stream_start(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  handle_stream_start_packet(client, &stream_types, sizeof(stream_types));
+  // The ACIP parser has already converted these flags to host byte order.
+  // The shared packet handler consumes the network-order payload used by the
+  // TCP packet dispatcher, so restore that representation at this boundary.
+  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
+  handle_stream_start_packet(client, &stream_types_net, sizeof(stream_types_net));
 }
 
 static void acip_server_on_stream_stop(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  handle_stream_stop_packet(client, &stream_types, sizeof(stream_types));
+  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
+  handle_stream_stop_packet(client, &stream_types_net, sizeof(stream_types_net));
 }
 
 static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx) {
@@ -3504,17 +3566,16 @@ static void acip_server_on_ping(void *client_ctx, void *app_ctx) {
   client_info_t *client = (client_info_t *)client_ctx;
 
   // Respond with PONG using ACIP transport
-  // Get transport reference briefly to avoid deadlock on TCP buffer full
+  // Keep the lock through the packet write: this handler runs on the receive
+  // thread and otherwise races the video/audio sender on TCP.
   mutex_lock(&client->send_mutex);
   if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     return; // Client is shutting down, skip pong
   }
   acip_transport_t *pong_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the mutex
   asciichat_error_t pong_result = acip_send_pong(pong_transport);
+  mutex_unlock(&client->send_mutex);
 
   if (pong_result != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %s: %s", client->client_id,

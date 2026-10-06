@@ -119,17 +119,6 @@
 #include "main.h"
 #include "protocol.h"
 
-static bool decoded_audio_is_silent(const float *samples, size_t count) {
-  if (!samples || count == 0) {
-    return false;
-  }
-  for (size_t i = 0; i < count; i++) {
-    if (samples[i] > 0.001f || samples[i] < -0.001f) {
-      return false;
-    }
-  }
-  return true;
-}
 #include "client.h"
 #include "session/h265/server.h"
 #include <ascii-chat/app_callbacks.h>
@@ -537,9 +526,22 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 
   uint32_t stream_type;
   memcpy(&stream_type, data, sizeof(uint32_t));
+  stream_type = NET_TO_HOST_U32(stream_type);
+
+  /* Older browser/WASM packet serializers emitted this control payload in
+   * host order while the enclosing ACIP header remained in network order.
+   * Accept that unambiguous two-bit form so a connected browser is not
+   * disconnected before it can send its first frame. */
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+  if ((stream_type & VALID_STREAM_MASK) == 0) {
+    uint32_t host_order_stream_type = HOST_TO_NET_U32(stream_type);
+    if ((host_order_stream_type & ~VALID_STREAM_MASK) == 0 && host_order_stream_type != 0) {
+      log_debug("Normalizing legacy host-order STREAM_START flags 0x%x", stream_type);
+      stream_type = host_order_stream_type;
+    }
+  }
 
   // Validate at least one stream type flag is set
-  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
   VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
 
   // Validate no unknown stream type bits are set
@@ -619,6 +621,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
 
   uint32_t stream_type;
   memcpy(&stream_type, data, sizeof(uint32_t));
+  stream_type = NET_TO_HOST_U32(stream_type);
 
   // Validate at least one stream type flag is set
   const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
@@ -658,17 +661,16 @@ void handle_ping_packet(client_info_t *client, const void *data, size_t len) {
   (void)data;
   (void)len;
 
-  // Get transport reference briefly to avoid deadlock on TCP buffer full
+  // Serialize the complete PONG write with the sender. TCP packets cannot be
+  // sent concurrently without risking byte-stream interleaving.
   mutex_lock(&client->send_mutex);
   if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     return;
   }
   acip_transport_t *pong_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the mutex
   asciichat_error_t pong_result = acip_send_pong(pong_transport);
+  mutex_unlock(&client->send_mutex);
   if (pong_result != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
               asciichat_error_string(pong_result));
@@ -1284,9 +1286,6 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 #endif
 
   if (client->incoming_audio_buffer) {
-    if (decoded_audio_is_silent(samples, total_samples)) {
-      audio_ring_buffer_discard_pending(client->incoming_audio_buffer);
-    }
     asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
     if (write_result != ASCIICHAT_OK) {
       log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
@@ -1465,9 +1464,6 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Note: audio_ring_buffer_write returns error code, not sample count
   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
   if (client->incoming_audio_buffer && total_decoded > 0) {
-    if (decoded_audio_is_silent(decoded_samples, (size_t)total_decoded)) {
-      audio_ring_buffer_discard_pending(client->incoming_audio_buffer);
-    }
     asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
     if (result != ASCIICHAT_OK) {
       log_error("Client %u: Failed to write decoded audio to buffer: %d", client->client_id, result);

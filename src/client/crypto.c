@@ -523,7 +523,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
   client_caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
   client_caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
   client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
-  client_caps.requires_verification = 0; // Client doesn't require server verification (uses known_hosts)
+  client_caps.requires_verification =
+      (g_crypto_ctx.verify_server_key && g_crypto_ctx.expected_server_key[0] != '\0') ? 1 : 0;
   client_caps.preferred_kex = KEX_ALGO_X25519;
   client_caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
   client_caps.preferred_cipher =

@@ -58,6 +58,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       showFps = true,
       connectionState,
       wasmModuleReady,
+      initializeOptions = true,
       matrixMode = false,
     },
     ref,
@@ -80,6 +81,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     } = useInitAsciiRenderer({
       canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
       wasmModuleReady,
+      initializeOptions,
       matrixMode,
     });
 
@@ -101,7 +103,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     setUpdateDimensions(updateDimensions);
 
     return (
-      <div className="ascii-canvas-container w-full h-full flex flex-col items-center justify-center overflow-hidden relative flex-1">
+      <div className="ascii-canvas-container w-full h-full min-w-0 min-h-0 flex flex-col items-center justify-center overflow-hidden relative flex-1">
         <style>
           {`
           canvas {

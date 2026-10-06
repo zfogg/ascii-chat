@@ -94,6 +94,16 @@ endif()
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source (WASM)...")
 
+    if(CMAKE_HOST_WIN32)
+        set(PCRE2_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
+        set(PCRE2_WASM_CC "CC=emcc.bat")
+        set(PCRE2_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
+    else()
+        set(PCRE2_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
+        set(PCRE2_WASM_CC "CC=emcc")
+        set(PCRE2_WASM_MAKE_SHELL)
+    endif()
+
     include(ExternalProject)
     include(FetchContent)
     FetchContent_Declare(pcre2-src
@@ -113,11 +123,12 @@ if(DEFINED EMSCRIPTEN)
 
         ExternalProject_Add(pcre2-wasm
             SOURCE_DIR ${pcre2-src_SOURCE_DIR}
+            BUILD_IN_SOURCE 1
             PREFIX ${PCRE2_BUILD_DIR}
             STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND
-                <SOURCE_DIR>/configure
+                ${PCRE2_CONFIGURE_COMMAND}
                 --prefix=${PCRE2_PREFIX}
                 --host=wasm32-emscripten
                 --enable-static
@@ -127,11 +138,11 @@ if(DEFINED EMSCRIPTEN)
                 --disable-pcre2-32
                 --disable-maintainer-mode
                 --with-pic
-                CC=emcc
+                ${PCRE2_WASM_CC}
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
-            BUILD_COMMAND make -j
-            INSTALL_COMMAND make install
+            BUILD_COMMAND make -j ${PCRE2_WASM_MAKE_SHELL}
+            INSTALL_COMMAND make ${PCRE2_WASM_MAKE_SHELL} install
             BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE

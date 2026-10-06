@@ -14,7 +14,6 @@
  */
 export interface WasmModule {
   HEAPU8: Uint8Array;
-  HEAPF32: Float32Array;
   UTF8ToString(ptr: number): string;
   stringToUTF8(str: string, outPtr: number, maxBytes: number): void;
   lengthBytesUTF8(str: string): number;

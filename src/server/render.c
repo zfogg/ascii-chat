@@ -509,8 +509,7 @@ void *client_video_render_thread(void *arg) {
     if (frame_gen_count % 120 == 0) {
       uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
       double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-      log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
-               elapsed_ns / (double)NS_PER_SEC_INT);
+      log_dev("render loop: client=%u fps=%.1f", thread_client_id, gen_fps);
     }
 
     log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
@@ -529,7 +528,7 @@ void *client_video_render_thread(void *arg) {
       char sleep_str[32], create_str[32];
       time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
       time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
-      log_warn("  TIMING: adaptive_sleep=%s, frame_create=%s", sleep_str, create_str);
+      log_dev("render timing: adaptive_sleep=%s frame_create=%s", sleep_str, create_str);
     }
 
     // Always send frames at configured FPS, even if no external video sources yet
@@ -544,7 +543,7 @@ void *client_video_render_thread(void *arg) {
         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
       if (current_frame_hash != last_frame_hash) {
-        log_info("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
+        log_dev("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
                  frame_size, sources_count, current_frame_hash, last_frame_hash);
         last_frame_hash = current_frame_hash;
       } else {
@@ -601,11 +600,10 @@ void *client_video_render_thread(void *arg) {
               if (commits_count % 10 == 0) {
                 uint64_t elapsed_ns = commit_end_ns - commits_start_time;
                 double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-                log_warn("DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)",
-                         thread_client_id, commit_fps);
+                log_dev("render commit rate: client=%u fps=%.1f", thread_client_id, commit_fps);
               }
 
-              log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
+              log_dev("FRAME_COMMIT: Client %u took %s (hash=0x%08x)", thread_client_id,
                        commit_duration_str, current_frame_hash);
 
               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
@@ -807,7 +805,7 @@ void *client_audio_render_thread(void *arg) {
 
   // FPS tracking for audio render thread
   fps_t audio_fps_tracker = {0};
-  fps_init(&audio_fps_tracker, AUDIO_RENDER_FPS, "SERVER AUDIO");
+  fps_init(&audio_fps_tracker, AUDIO_PACKET_FPS, "SERVER AUDIO");
 
   // Per-thread counters (NOT static - each thread instance gets its own)
   int backpressure_check_counter = 0;
@@ -1355,8 +1353,9 @@ void stop_client_render_threads(client_info_t *client) {
         log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
-    // Clear thread handle safely using platform abstraction
-    asciichat_thread_init(&client->video_render_thread);
+    if (result == 0) {
+      asciichat_thread_init(&client->video_render_thread);
+    }
   }
 
   if (asciichat_thread_is_initialized(&client->audio_render_thread)) {
@@ -1386,8 +1385,9 @@ void stop_client_render_threads(client_info_t *client) {
         log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
-    // Clear thread handle safely using platform abstraction
-    asciichat_thread_init(&client->audio_render_thread);
+    if (result == 0) {
+      asciichat_thread_init(&client->audio_render_thread);
+    }
   }
 
   // DO NOT destroy the mutex here - client.c will handle it

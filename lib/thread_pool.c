@@ -17,6 +17,21 @@
 #include <pthread.h>
 #endif
 
+static void thread_pool_insert_entry_locked(thread_pool_t *pool, thread_pool_entry_t *entry) {
+  if (!pool->threads || pool->threads->stop_id > entry->stop_id) {
+    entry->next = pool->threads;
+    pool->threads = entry;
+  } else {
+    thread_pool_entry_t *prev = pool->threads;
+    while (prev->next && prev->next->stop_id <= entry->stop_id) {
+      prev = prev->next;
+    }
+    entry->next = prev->next;
+    prev->next = entry;
+  }
+  pool->thread_count++;
+}
+
 /**
  * @brief Worker thread function for work queue mode
  *
@@ -221,6 +236,17 @@ void thread_pool_destroy(thread_pool_t *pool) {
               pool->thread_count);
   }
 
+  mutex_lock(&pool->threads_mutex);
+  bool threads_still_running = pool->thread_count > 0;
+  mutex_unlock(&pool->threads_mutex);
+  if (threads_still_running) {
+    // A timed-out thread still owns access to this pool. Retain the pool and
+    // its synchronization objects so that worker cannot race freed memory.
+    log_error("Keeping thread pool '%s' alive because %zu worker thread(s) have not exited", pool->name,
+              pool->thread_count);
+    return;
+  }
+
   // Clean up work queue (in case there's pending work)
   if (pool->is_work_queue_mode) {
     mutex_lock(&pool->work_queue_mutex);
@@ -396,7 +422,8 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     mutex_unlock(&pool->work_queue_mutex);
   }
 
-  // Save thread list and clear it (WHILE holding mutex to prevent worker state changes)
+  // Detach the current list so workers can finish without holding the pool
+  // mutex. Any thread that misses its join deadline is reinserted below.
   thread_pool_entry_t *threads_to_join = pool->threads;
   pool->threads = NULL;
   pool->thread_count = 0;
@@ -406,36 +433,57 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
 
   // Now join threads (WITHOUT holding the mutex to prevent deadlock)
   thread_pool_entry_t *entry = threads_to_join;
-  int joined_count = 0, freed_count = 0;
+  int joined_count = 0, freed_count = 0, still_running_count = 0;
+  thread_pool_entry_t *still_running = NULL;
   const uint64_t THREAD_JOIN_TIMEOUT_NS = 2 * 1000000000ULL; // 2 second timeout per thread
 
   while (entry) {
     log_debug("Joining thread '%s' (stop_id=%d) in pool '%s' with 2s timeout", entry->name, entry->stop_id, pool->name);
+    thread_pool_entry_t *next = entry->next;
 
-    // Join thread with timeout to prevent hanging on stuck threads
-    // If thread doesn't exit in 2 seconds, log warning and continue anyway
-    // This prevents reconnection loop from being blocked by deadlocked workers
+    // A timed-out worker may still access its pool and arguments. Keep its
+    // entry tracked so later shutdown can join it before freeing those objects.
     int join_result = asciichat_thread_join_timeout(&entry->thread, NULL, THREAD_JOIN_TIMEOUT_NS);
     if (join_result != 0) {
       if (join_result == ETIMEDOUT) {
-        log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout - may be stuck. Continuing anyway.",
-                 entry->name, entry->stop_id);
+        log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout; retaining its pool entry.", entry->name,
+                 entry->stop_id);
       } else {
-        log_warn("Failed to join thread '%s' in pool '%s' (error %d)", entry->name, pool->name, join_result);
+        log_error("Failed to join thread '%s' in pool '%s' (error %d); retaining its pool entry", entry->name,
+                  pool->name, join_result);
       }
+      entry->next = still_running;
+      still_running = entry;
+      still_running_count++;
+      entry = next;
+      continue;
     } else {
       joined_count++;
     }
 
-    thread_pool_entry_t *next = entry->next;
     log_debug("Freeing thread_pool_entry '%s' at %p", entry->name, (void *)entry);
     SAFE_FREE(entry);
     freed_count++;
     entry = next;
   }
+
+  if (still_running) {
+    mutex_lock(&pool->threads_mutex);
+    while (still_running) {
+      thread_pool_entry_t *entry = still_running;
+      still_running = still_running->next;
+      entry->next = NULL;
+      thread_pool_insert_entry_locked(pool, entry);
+    }
+    mutex_unlock(&pool->threads_mutex);
+  }
+
   log_debug("thread_pool_stop_all: joined=%d, freed=%d", joined_count, freed_count);
 
   log_debug("All threads stopped in pool '%s'", pool->name);
+  if (still_running_count > 0) {
+    return SET_ERRNO(ERROR_THREAD, "%d thread(s) in pool '%s' did not stop", still_running_count, pool->name);
+  }
   return ASCIICHAT_OK;
 }
 

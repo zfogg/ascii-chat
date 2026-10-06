@@ -211,6 +211,8 @@ typedef struct audio_ring_buffer {
   atomic_t read_index;
   /** @brief Consumer should discard queued samples before its next read */
   atomic_t discard_pending;
+  /** @brief Producer position at which the stale queue ends */
+  atomic_t discard_to_index;
   /** @brief True after initial jitter buffer fill */
   atomic_t jitter_buffer_filled;
   /** @brief Samples remaining in crossfade (0 = no crossfade active) */

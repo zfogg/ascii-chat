@@ -14,7 +14,7 @@ export function useRenderLoop(
   lastFrameTimeRef: MutableRefObject<number>,
   onError?: (error: unknown) => void,
 ): UseRenderLoopReturn {
-  const loopDebugRef = useRef({ count: 0, lastLog: 0, skipped: 0 });
+  const loopDebugRef = useRef({ count: 0, lastLog: 0, skipped: 0, rendered: 0 });
   const frameRef = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -39,9 +39,27 @@ export function useRenderLoop(
         if (elapsed + 1 >= interval) {
           const intervals = Math.max(1, Math.floor((elapsed + 1) / interval));
           lastFrameTimeRef.current += intervals * interval;
+          debug.rendered++;
           renderFrame(elapsed);
         } else {
           debug.skipped++;
+        }
+
+        if (!debug.lastLog) debug.lastLog = time;
+        if (time - debug.lastLog >= 1000) {
+          console.info(
+            "[RenderLoopTiming]",
+            JSON.stringify({
+              rafFps: Number((debug.count * 1000 / (time - debug.lastLog)).toFixed(1)),
+              renderAttempts: debug.rendered,
+              skipped: debug.skipped,
+              elapsedMs: Math.round(time - debug.lastLog),
+            }),
+          );
+          debug.count = 0;
+          debug.rendered = 0;
+          debug.skipped = 0;
+          debug.lastLog = time;
         }
 
         // Schedule next frame

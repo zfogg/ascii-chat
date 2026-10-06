@@ -154,6 +154,9 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   } else {
     session->is_initiator = true;
   }
+  if (config->password && config->password[0]) {
+    SAFE_STRNCPY(session->password, config->password, sizeof(session->password));
+  }
 
   // Callbacks
   session->on_state_change = config->on_state_change;
@@ -1189,7 +1192,10 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     return sig_result;
   }
 
-  join_msg.has_password = 0;
+  if (session->password[0]) {
+    join_msg.has_password = 1;
+    SAFE_STRNCPY(join_msg.password, session->password, sizeof(join_msg.password));
+  }
 
   // Send SESSION_JOIN
   asciichat_error_t result =

@@ -224,7 +224,14 @@ void asciichat_thread_exit(void *retval) {
  * @return 0 on success, error code on failure
  */
 int asciichat_thread_detach(asciichat_thread_t *thread) {
-  return pthread_detach(*thread);
+  if (!thread || !asciichat_thread_is_initialized(thread)) {
+    return SET_ERRNO(ERROR_THREAD, "Invalid thread handle for detach operation");
+  }
+  int result = pthread_detach(*thread);
+  if (result == 0) {
+    asciichat_thread_init(thread);
+  }
+  return result;
 }
 
 /**

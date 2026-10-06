@@ -193,6 +193,7 @@ static asciichat_error_t packet_validate_header(const packet_header_t *header, u
     }
     break;
   // All crypto handshake packet types - validate using session parameters
+  case PACKET_TYPE_CRYPTO_CLIENT_HELLO:
   case PACKET_TYPE_CRYPTO_CAPABILITIES:
   case PACKET_TYPE_CRYPTO_PARAMETERS:
   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
@@ -567,6 +568,12 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
  */
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *envelope) {
+  return receive_packet_secure_with_timeout(sockfd, crypto_ctx, enforce_encryption, envelope,
+                                            RECV_TIMEOUT * NS_PER_SEC_INT);
+}
+
+packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
+                                                        packet_envelope_t *envelope, uint64_t timeout_ns) {
 
   if (!envelope) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: envelope=%p", envelope);
@@ -578,11 +585,16 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Receive packet header
   packet_header_t header;
-  uint64_t header_timeout_ns = RECV_TIMEOUT * NS_PER_SEC_INT;
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), header_timeout_ns);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), timeout_ns);
 
   // Check for errors first (before comparing signed with unsigned)
   if (received < 0) {
+    /* Preserve a poll timeout so callers can wait for the next signaling packet
+     * without treating an idle connection as a receive failure. */
+    asciichat_error_context_t error_context;
+    if (HAS_ERRNO(&error_context) && error_context.code == ERROR_NETWORK_TIMEOUT) {
+      return PACKET_RECV_ERROR;
+    }
     SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
     return PACKET_RECV_ERROR;
   }
@@ -639,7 +651,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    uint64_t recv_timeout = calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = MAX(timeout_ns, calculate_packet_timeout(pkt_len));
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);

@@ -769,6 +769,48 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
   }
 }
 
+static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, acds_client_data_t *client_data) {
+  if (!server || !client_data || !client_data->joined_session) {
+    return ASCIICHAT_OK;
+  }
+
+  session_entry_t *session = database_session_find_by_id(server->db, client_data->session_id);
+  bool was_host = false;
+  if (session) {
+    const uint8_t *host_id = session->host_established ? session->host_participant_id : session->initiator_id;
+    was_host = memcmp(host_id, client_data->participant_id, sizeof(client_data->participant_id)) == 0;
+    session_entry_destroy(session);
+  }
+
+  asciichat_error_t result = database_session_leave(server->db, client_data->session_id, client_data->participant_id);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(result, "Failed to remove disconnected participant from session");
+  }
+
+  client_data->joined_session = false;
+
+  // A closed connection can no longer send SESSION_LEAVE. Notify peers after
+  // deleting the participant so reconnects do not try signaling this socket.
+  session = database_session_find_by_id(server->db, client_data->session_id);
+  if (session) {
+    acip_participant_left_t participant_left = {0};
+    memcpy(participant_left.session_id, client_data->session_id, sizeof(participant_left.session_id));
+    memcpy(participant_left.left_participant_id, client_data->participant_id,
+           sizeof(participant_left.left_participant_id));
+    participant_left.was_host = was_host ? 1 : 0;
+    participant_left.remaining_count = session->current_participants;
+    result =
+        signaling_broadcast(server->db, server->tcp_server, client_data->session_id, PACKET_TYPE_ACIP_PARTICIPANT_LEFT,
+                            &participant_left, sizeof(participant_left), client_data->participant_id);
+    if (result != ASCIICHAT_OK) {
+      log_warn("Failed to notify peers that participant left: %s", asciichat_error_string(result));
+    }
+    session_entry_destroy(session);
+  }
+
+  return ASCIICHAT_OK;
+}
+
 static void acds_on_session_leave(const acip_session_leave_t *req, acip_transport_t *transport, const char *client_ip,
                                   void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
@@ -776,14 +818,17 @@ static void acds_on_session_leave(const acip_session_leave_t *req, acip_transpor
 
   log_debug("SESSION_LEAVE packet from %s", client_ip);
 
-  asciichat_error_t leave_result = database_session_leave(server->db, req->session_id, req->participant_id);
+  if (!client_data || !client_data->joined_session ||
+      memcmp(req->session_id, client_data->session_id, sizeof(client_data->session_id)) != 0 ||
+      memcmp(req->participant_id, client_data->participant_id, sizeof(client_data->participant_id)) != 0) {
+    acip_send_error(transport, ERROR_INVALID_PARAM, "SESSION_LEAVE does not match this connection");
+    log_warn("Rejected SESSION_LEAVE from %s because it did not match the joined participant", client_ip);
+    return;
+  }
+
+  asciichat_error_t leave_result = acds_remove_client_from_session(server, client_data);
   if (leave_result == ASCIICHAT_OK) {
     log_info("Client %s left session", client_ip);
-
-    // Update client data to mark as not joined
-    if (client_data) {
-      client_data->joined_session = false;
-    }
   } else {
     acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
     log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
@@ -1108,6 +1153,13 @@ void *acds_client_handler(void *arg) {
   }
 
   // Cleanup - handler always cleans up since it runs until connection closes
+  if (client_data->joined_session) {
+    asciichat_error_t leave_result = acds_remove_client_from_session(server, client_data);
+    if (leave_result != ASCIICHAT_OK) {
+      log_warn("Could not clean up disconnected participant %02x%02x...: %s", client_data->participant_id[0],
+               client_data->participant_id[1], asciichat_error_string(leave_result));
+    }
+  }
   tcp_server_remove_client(server->tcp_server, client_socket);
   log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(server->tcp_server));
 
@@ -1218,15 +1270,16 @@ void *acds_websocket_client_handler(void *arg) {
   bool auth_required = server->config.require_client_identity;
   ctx->auth_required = auth_required;
 
-  // Skip crypto handshake only for wss:// connections WITHOUT authentication requirement
-  // For plain ws://, always do crypto handshake
-  // For wss:// WITH auth requirement, always do crypto handshake
-  bool skip_handshake = ctx->is_secure && !auth_required;
+  // Browser discovery signaling sends ACIP lookup/join packets directly. Its
+  // subsequent media transport is DTLS-protected, and identity-gated
+  // deployments still retain the application handshake below. Requiring a
+  // handshake for an unauthenticated ws:// browser makes the service wait for
+  // PROTOCOL_VERSION while the browser is already waiting for LOOKUP response.
+  bool skip_handshake = !auth_required;
 
   if (skip_handshake) {
     client_data->handshake_complete = true;
-    log_info("WebSocket connection from %s - skipping crypto handshake (TLS encryption used, no auth required)",
-             client_ip);
+    log_info("WebSocket connection from %s - skipping custom crypto handshake on secure signaling", client_ip);
   } else {
     log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
              auth_required ? " (client authentication required)" : "");
@@ -1333,6 +1386,13 @@ void *acds_websocket_client_handler(void *arg) {
   }
 
   // Cleanup
+  if (client_data->joined_session) {
+    asciichat_error_t leave_result = acds_remove_client_from_session(server, client_data);
+    if (leave_result != ASCIICHAT_OK) {
+      log_warn("Could not clean up disconnected WebSocket participant %02x%02x...: %s", client_data->participant_id[0],
+               client_data->participant_id[1], asciichat_error_string(leave_result));
+    }
+  }
   tcp_server_remove_client(server->tcp_server, synthetic_id);
   log_debug("WebSocket client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(server->tcp_server));
 

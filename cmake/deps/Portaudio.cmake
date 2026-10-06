@@ -21,13 +21,17 @@
 # =============================================================================
 
 # =============================================================================
-# iOS build: Skip PortAudio (use AVAudioEngine in platform layer)
+# iOS and WebAssembly builds use their platform audio APIs instead of PortAudio.
 # =============================================================================
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} (iOS - skipped, using AVAudioEngine)...")
+if(PLATFORM_IOS OR EMSCRIPTEN)
+    if(PLATFORM_IOS)
+        message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} (iOS - skipped, using AVAudioEngine)...")
+    else()
+        message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} (WebAssembly - skipped, using Web Audio)...")
+    endif()
 
     # PortAudio is not suitable for iOS
-    # iOS uses AVAudioEngine for audio I/O, implemented in lib/platform/ios/
+    # iOS uses AVAudioEngine and the browser uses Web Audio for audio I/O.
     # Create a stub target for compatibility
     if(NOT TARGET portaudio)
         add_library(portaudio INTERFACE)
@@ -37,7 +41,7 @@ if(PLATFORM_IOS)
     set(PORTAUDIO_LIBRARIES "")
     set(PORTAUDIO_INCLUDE_DIRS "")
 
-    message(STATUS "${BoldYellow}⚠${ColorReset} PortAudio skipped for iOS (audio via AVAudioEngine)")
+    message(STATUS "${BoldYellow}⚠${ColorReset} PortAudio skipped for platform audio backend")
     return()
 endif()
 
