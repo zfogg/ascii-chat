@@ -91,7 +91,12 @@ export default function ServerStatusSection() {
         <p className="leading-relaxed text-base text-red-100 md:text-lg">
           ascii-chat’s official WebRTC signaling, STUN, and TURN services are
           offline while the developer arranges suitable hosting. ascii-chat is{" "}
-          <Link href="https://github.com/zfogg/ascii-chat" underline>
+          <Link
+            href="https://github.com/zfogg/ascii-chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline
+          >
             open source
           </Link>
           , so anyone may run and use their own discovery service. Until

@@ -19,6 +19,8 @@ export default function SecuritySection({
         client/server. You can find more about the crypto protocol in the{" "}
         <Link
           href={SITES.CRYPTO_DOCS}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={() =>
             handleLinkClick(SITES.CRYPTO_DOCS, "Crypto docs (security)")
           }
@@ -28,6 +30,8 @@ export default function SecuritySection({
         . See the{" "}
         <Link
           href={SITES.MAIN + "/man1#SECURITY"}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={() =>
             handleLinkClick(
               SITES.MAIN + "/man1#SECURITY",
