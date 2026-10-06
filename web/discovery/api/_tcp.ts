@@ -9,6 +9,8 @@ import {
 
 const PROBE_TIMEOUT_MS = 3_000;
 const STUN_RETRANSMISSIONS = 2;
+const STUN_RESPONSE_TIMEOUT_MS =
+  PROBE_TIMEOUT_MS / (2 ** (STUN_RETRANSMISSIONS + 1) - 1);
 
 type ServerTarget = {
   host: string;
@@ -59,7 +61,7 @@ export function configuredServers(kind: ServerKind): ServerTarget[] {
 }
 
 function configuredWebRtcServers(): ServerTarget[] {
-  const value = process.env.DISCOVERY_STATUS_WEBRTC_SERVERS;
+  const value = process.env["DISCOVERY_STATUS_WEBRTC_SERVERS"];
   if (!value) return DEFAULT_SERVERS.webrtc;
 
   return value.split(",").map((entry) => {
@@ -97,7 +99,7 @@ async function checkStunServer({
       undefined,
       {
         retransmissions: STUN_RETRANSMISSIONS,
-        responseTimeout: PROBE_TIMEOUT_MS / (STUN_RETRANSMISSIONS + 1),
+        responseTimeout: STUN_RESPONSE_TIMEOUT_MS,
       },
     );
     return { host, port, up: true, latencyMs: Date.now() - startedAt };
@@ -139,8 +141,8 @@ async function checkTurnServer({
   port,
 }: ServerTarget): Promise<ServerResult> {
   const startedAt = Date.now();
-  const username = process.env.DISCOVERY_STATUS_TURN_USERNAME;
-  const password = process.env.DISCOVERY_STATUS_TURN_PASSWORD;
+  const username = process.env["DISCOVERY_STATUS_TURN_USERNAME"];
+  const password = process.env["DISCOVERY_STATUS_TURN_PASSWORD"];
 
   if (!username || !password) {
     return { host, port, up: false, latencyMs: Date.now() - startedAt };
