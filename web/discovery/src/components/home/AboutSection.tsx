@@ -1,5 +1,24 @@
 import { Heading, Link } from "@ascii-chat/shared/components";
-import { SITES, ACDS_ENDPOINTS } from "@ascii-chat/shared/utils";
+import { SITES } from "@ascii-chat/shared/utils";
+import {
+  configuredServerTargets,
+  serverTargetUrl,
+} from "../../config/serverEndpoints";
+
+const configuredEndpoints = {
+  webrtc: configuredServerTargets(
+    "webrtc",
+    import.meta.env.VITE_DISCOVERY_WEBRTC_SERVERS,
+  ),
+  stun: configuredServerTargets(
+    "stun",
+    import.meta.env.VITE_DISCOVERY_STUN_SERVERS,
+  ),
+  turn: configuredServerTargets(
+    "turn",
+    import.meta.env.VITE_DISCOVERY_TURN_SERVERS,
+  ),
+};
 
 export default function AboutSection({
   sessionStrings,
@@ -46,7 +65,7 @@ export default function AboutSection({
         🏗️ Official ACDS Infrastructure
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg">
-        The official ACDS deployment consists of three components:
+        The official ACDS deployment consists of four components:
       </p>
       <ul className="leading-relaxed ml-0 pl-4 space-y-2">
         <li>
@@ -57,23 +76,27 @@ export default function AboutSection({
           ) - Serves public keys over HTTPS
         </li>
         <li>
-          <strong>ACDS server (TCP):</strong>{" "}
-          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.TCP}</code>
+          <strong>ACDS server (WebRTC signaling):</strong>{" "}
+          <code className="bg-gray-800 px-1 rounded">
+            {configuredEndpoints.webrtc
+              .map((target) => serverTargetUrl("webrtc", target))
+              .join(",")}
+          </code>
         </li>
         <li>
-          <strong>ACDS server (WebSocket):</strong>{" "}
-          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.WSS}</code>
+          <strong>Default STUN servers:</strong>{" "}
+          <code className="bg-gray-800 px-1 rounded">
+            {configuredEndpoints.stun
+              .map((target) => serverTargetUrl("stun", target))
+              .join(",")}
+          </code>
         </li>
-        {ACDS_ENDPOINTS.STUN.map((server, index) => (
-          <li key={server}>
-            <strong>Default STUN server ({index + 1}):</strong>{" "}
-            <code className="bg-gray-800 px-1 rounded">{server}</code>
-          </li>
-        ))}
         <li>
           <strong>Default TURN server:</strong>{" "}
           <code className="bg-gray-800 px-1 rounded">
-            {ACDS_ENDPOINTS.TURN}
+            {configuredEndpoints.turn
+              .map((target) => serverTargetUrl("turn", target))
+              .join(",")}
           </code>
         </li>
       </ul>

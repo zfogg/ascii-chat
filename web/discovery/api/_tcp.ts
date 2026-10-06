@@ -1,91 +1,43 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { connect as connectTls } from "node:tls";
 import {
   classes,
   createTurnClient,
   Message,
+  makeIntegrityKey,
   methods,
+  parseMessage,
   StunProtocol,
 } from "werift-ice";
+import {
+  configuredServerTargets,
+  SERVER_ENVIRONMENT_VARIABLES,
+  type ServerKind,
+  type ServerTarget,
+} from "../src/config/serverEndpoints.js";
 
 const PROBE_TIMEOUT_MS = 3_000;
 const STUN_RETRANSMISSIONS = 2;
-
-type ServerTarget = {
-  host: string;
-  port: number;
-  protocol?: "ws" | "wss";
-  path?: string;
-};
 
 type ServerResult = ServerTarget & {
   up: boolean;
   latencyMs: number;
 };
 
-export type ServerKind = "webrtc" | "stun" | "turn";
-
-export const DEFAULT_SERVERS: Record<ServerKind, ServerTarget[]> = {
-  webrtc: [{ host: "discovery-service.ascii-chat.com", port: 443 }],
-  stun: [
-    { host: "stun.ascii-chat.com", port: 3478 },
-    { host: "stun.l.google.com", port: 19302 },
-  ],
-  turn: [{ host: "turn.ascii-chat.com", port: 3478 }],
-};
-
-function parseServers(
-  value: string | undefined,
-  fallback: ServerTarget[],
-): ServerTarget[] {
-  if (!value) return fallback;
-
-  const servers = value.split(",").map((entry) => {
-    const separator = entry.lastIndexOf(":");
-    const host = entry.slice(0, separator).trim();
-    const port = Number(entry.slice(separator + 1));
-    if (!host || !Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error(`Invalid server target: ${entry}`);
-    }
-    return { host, port };
-  });
-
-  return servers.length > 0 ? servers : fallback;
-}
-
 export function configuredServers(kind: ServerKind): ServerTarget[] {
-  if (kind === "webrtc") return configuredWebRtcServers();
-  const variable = `DISCOVERY_STATUS_${kind.toUpperCase()}_SERVERS`;
-  return parseServers(process.env[variable], DEFAULT_SERVERS[kind]);
-}
-
-function configuredWebRtcServers(): ServerTarget[] {
-  const value = process.env.DISCOVERY_STATUS_WEBRTC_SERVERS;
-  if (!value) return DEFAULT_SERVERS.webrtc;
-
-  return value.split(",").map((entry) => {
-    const target = entry.trim();
-    if (!target.startsWith("ws://") && !target.startsWith("wss://")) {
-      return parseServers(target, [])[0]!;
-    }
-
-    const url = new URL(target);
-    const port = Number(url.port || (url.protocol === "ws:" ? 80 : 443));
-    if (!url.hostname || !Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error(`Invalid WebRTC status target: ${entry}`);
-    }
-    return {
-      host: url.hostname,
-      port,
-      protocol: url.protocol.slice(0, -1) as "ws" | "wss",
-      path: `${url.pathname}${url.search}`,
-    };
-  });
+  return configuredServerTargets(
+    kind,
+    process.env[SERVER_ENVIRONMENT_VARIABLES[kind]],
+  );
 }
 
 async function checkStunServer({
   host,
   port,
+  transport,
 }: ServerTarget): Promise<ServerResult> {
+  if (transport === "tls") return checkStunTlsServer({ host, port, transport });
+
   const startedAt = Date.now();
   const protocol = new StunProtocol();
 
@@ -106,6 +58,48 @@ async function checkStunServer({
   } finally {
     await protocol.close();
   }
+}
+
+function checkStunTlsServer({ host, port }: ServerTarget): Promise<ServerResult> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const request = new Message(methods.BINDING, classes.REQUEST);
+    const socket = connectTls({ host, port, servername: host });
+    let response = Buffer.alloc(0);
+    let settled = false;
+
+    const finish = (up: boolean) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve({
+        host,
+        port,
+        transport: "tls",
+        up,
+        latencyMs: Date.now() - startedAt,
+      });
+    };
+
+    const timeout = setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
+    socket.once("secureConnect", () => socket.write(request.bytes));
+    socket.once("error", () => finish(false));
+    socket.on("data", (chunk) => {
+      response = Buffer.concat([response, Buffer.from(chunk)]);
+      while (response.length >= 20) {
+        const length = response.readUInt16BE(2);
+        const messageLength = 20 + length;
+        if (response.length < messageLength) return;
+        const message = parseMessage(response.subarray(0, messageLength));
+        response = response.subarray(messageLength);
+        if (message && message.transactionId.equals(request.transactionId)) {
+          clearTimeout(timeout);
+          finish(true);
+          return;
+        }
+      }
+    });
+  });
 }
 
 function checkWebSocket({
@@ -137,6 +131,7 @@ function checkWebSocket({
 async function checkTurnServer({
   host,
   port,
+  transport,
 }: ServerTarget): Promise<ServerResult> {
   const startedAt = Date.now();
   const username = process.env.DISCOVERY_STATUS_TURN_USERNAME;
@@ -146,11 +141,18 @@ async function checkTurnServer({
     return { host, port, up: false, latencyMs: Date.now() - startedAt };
   }
 
+  if (transport === "tls") {
+    return checkTurnTlsServer({ host, port, transport }, username, password);
+  }
+
   let client: Awaited<ReturnType<typeof createTurnClient>> | undefined;
   try {
     client = await createTurnClient(
       { address: [host, port], username, password },
-      { lifetime: 60, transport: "udp" },
+      {
+        lifetime: 60,
+        transport: "udp",
+      },
     );
     return { host, port, up: true, latencyMs: Date.now() - startedAt };
   } catch {
@@ -158,6 +160,83 @@ async function checkTurnServer({
   } finally {
     await client?.close();
   }
+}
+
+function checkTurnTlsServer(
+  { host, port }: ServerTarget,
+  username: string,
+  password: string,
+): Promise<ServerResult> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const initialRequest = new Message(methods.ALLOCATE, classes.REQUEST)
+      .setAttribute("LIFETIME", 60)
+      .setAttribute("REQUESTED-TRANSPORT", 0x11000000);
+    const socket = connectTls({ host, port, servername: host });
+    let response = Buffer.alloc(0);
+    let authenticatedRequest: Message | undefined;
+    let integrityKey: Buffer | undefined;
+    let settled = false;
+
+    const finish = (up: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.destroy();
+      resolve({
+        host,
+        port,
+        transport: "tls",
+        up,
+        latencyMs: Date.now() - startedAt,
+      });
+    };
+
+    const timeout = setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
+    socket.once("secureConnect", () => socket.write(initialRequest.bytes));
+    socket.once("error", () => finish(false));
+    socket.on("data", (chunk) => {
+      response = Buffer.concat([response, Buffer.from(chunk)]);
+      while (response.length >= 20) {
+        const length = response.readUInt16BE(2);
+        const messageLength = 20 + length;
+        if (response.length < messageLength) return;
+        const messageBytes = response.subarray(0, messageLength);
+        response = response.subarray(messageLength);
+        const message = parseMessage(messageBytes, integrityKey);
+        if (!message) continue;
+
+        if (!authenticatedRequest && message.transactionId.equals(initialRequest.transactionId)) {
+          const [errorCode] = message.getAttributeValue("ERROR-CODE") || [];
+          const realm = message.getAttributeValue("REALM");
+          const nonce = message.getAttributeValue("NONCE");
+          if (errorCode !== 401 || !realm || !nonce) {
+            finish(false);
+            return;
+          }
+          integrityKey = makeIntegrityKey(username, realm, password);
+          authenticatedRequest = new Message(methods.ALLOCATE, classes.REQUEST)
+            .setAttribute("LIFETIME", 60)
+            .setAttribute("REQUESTED-TRANSPORT", 0x11000000)
+            .setAttribute("USERNAME", username)
+            .setAttribute("REALM", realm)
+            .setAttribute("NONCE", nonce)
+            .addMessageIntegrity(integrityKey)
+            .addFingerprint();
+          socket.write(authenticatedRequest.bytes);
+          continue;
+        }
+
+        if (
+          authenticatedRequest &&
+          message.transactionId.equals(authenticatedRequest.transactionId)
+        ) {
+          finish(message.messageClass === classes.RESPONSE);
+          return;
+        }
+      }
+    });
+  });
 }
 
 export async function checkServers(kind: ServerKind) {
