@@ -16,25 +16,28 @@ type Service = {
   label: string;
   endpoint: string;
   protocol: "webrtc" | "stun" | "turn";
+  numbered?: boolean;
 };
 
 const SERVICES: Service[] = [
   { label: "WebRTC", endpoint: "/api/status/webrtc", protocol: "webrtc" },
-  { label: "STUN", endpoint: "/api/status/stun", protocol: "stun" },
-  { label: "coturn / TURN", endpoint: "/api/status/turn", protocol: "turn" },
+  {
+    label: "STUN",
+    endpoint: "/api/status/stun",
+    protocol: "stun",
+    numbered: true,
+  },
+  { label: "TURN", endpoint: "/api/status/turn", protocol: "turn" },
 ];
 
-const formatServers = (
+const formatServer = (
   protocol: Service["protocol"],
-  servers: Server[] | undefined,
-) =>
-  servers
-    ?.map(({ host, port }) => {
-      if (protocol === "webrtc")
-        return `${port === 80 ? "ws" : "wss"}://${host}:${port}`;
-      return `${protocol}:${host}:${port}`;
-    })
-    .join(", ") || "Checking…";
+  { host, port }: Server,
+) => {
+  if (protocol === "webrtc")
+    return `${port === 80 ? "ws" : "wss"}://${host}:${port}`;
+  return `${protocol}:${host}:${port}`;
+};
 
 export default function ServerStatusSection() {
   const [checks, setChecks] = useState<Record<string, CheckResult>>({});
@@ -89,40 +92,52 @@ export default function ServerStatusSection() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {SERVICES.map(({ label, endpoint, protocol }) => {
+            {SERVICES.flatMap(({ label, endpoint, protocol, numbered }) => {
               const check = checks[endpoint];
-              const isUp = check?.up === true;
-              const isKnownDown = check !== undefined && !isUp;
-              return (
-                <tr key={endpoint}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-100">{label}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span
-                      aria-label={
-                        isUp ? "Up" : isKnownDown ? "Down" : "Checking"
-                      }
-                      className={
-                        isUp
-                          ? "text-green-400"
-                          : isKnownDown
-                            ? "text-red-400"
-                            : "text-gray-400"
-                      }
-                    >
-                      {isUp ? "✅ Up" : isKnownDown ? "❌ Down" : "… Checking"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-300">
-                    {formatServers(protocol, check?.servers)}
-                  </td>
-                </tr>
-              );
+              const servers = check?.servers || [];
+              if (servers.length === 0) {
+                return (
+                  <tr key={endpoint}>
+                    <td className="px-4 py-3 font-medium text-gray-100">
+                      {label}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">… Checking</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                      Checking…
+                    </td>
+                  </tr>
+                );
+              }
+
+              return servers.map((server, index) => {
+                const isUp = server.up;
+                return (
+                  <tr key={`${endpoint}-${server.host}-${server.port}`}>
+                    <td className="px-4 py-3 font-medium text-gray-100">
+                      {numbered ? `${label} (${index + 1})` : label}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        aria-label={isUp ? "Up" : "Down"}
+                        className={isUp ? "text-green-400" : "text-red-400"}
+                      >
+                        {isUp ? "✅ Up" : "❌ Down"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                      {formatServer(protocol, server)}
+                    </td>
+                  </tr>
+                );
+              });
             })}
           </tbody>
         </table>
       </div>
+      <p className="mt-2 text-xs text-gray-400">
+        STUN servers are used in the priority shown (1, then 2) and passed to
+        ascii-chat as a comma-separated list.
+      </p>
     </section>
   );
 }
