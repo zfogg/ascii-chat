@@ -40,7 +40,10 @@ asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Test pattern requires a valid image and frame counter");
   }
 
-  unsigned int animation_phase = *frame_counter / 2;
+  // Advance every generated frame. Discovery's FPS indicator measures visual
+  // changes, so holding each test pattern phase for two frames makes a 60 Hz
+  // source appear to run at only 30 FPS.
+  unsigned int animation_phase = *frame_counter;
   *frame_counter += 5; // Speed up animation by a factor of five.
 
   for (int y = 0; y < image->h; y++) {
@@ -71,8 +74,10 @@ asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_
         break;
       }
 
-      // Add animated grid lines
-      if (animated_x % 40 == 0 || y % 30 == 0) {
+      // Add animated grid lines. The phase alternates the cell pattern each
+      // generated frame so a downsampled terminal client still has a visible
+      // frame-to-frame change when --test-pattern is used for cadence tests.
+      if (animated_x % 40 == 0 || y % 30 == 0 || (((x / 10) + (y / 10) + animation_phase) & 1) == 0) {
         pixel->r = 0;
         pixel->g = 0;
         pixel->b = 0;

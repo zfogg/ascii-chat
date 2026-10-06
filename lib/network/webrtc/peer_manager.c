@@ -30,6 +30,7 @@ typedef struct {
   webrtc_data_channel_t *dc;           ///< WebRTC data channel
   bool is_connected;                   ///< DataChannel opened
   bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
+  bool remote_description_set;          ///< libdatachannel has installed the remote SDP and ICE transport
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;
@@ -329,6 +330,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
+  peer->remote_description_set = false;
   peer->gathering_timeout_reported = false;
   peer->manager = manager;
 
@@ -552,6 +554,11 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     mutex_unlock(&manager->signaling_mutex);
     return SET_ERRNO(result, "Failed to set remote SDP");
   }
+  // A peer entry can be created before its offer arrives (for example when
+  // ACDS reports a participant join). Do not treat that entry as ready for
+  // trickle ICE until libdatachannel has accepted its remote description.
+  peer->remote_description_set = true;
+
 
   result = apply_pending_ice_candidates(manager, peer);
   if (result != ASCIICHAT_OK) {
@@ -604,12 +611,12 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
 
   // Find peer connection
   peer_entry_t *peer = find_peer_locked(manager, ice->sender_id);
-  if (!peer) {
+  if (!peer || !peer->remote_description_set) {
     mutex_unlock(&manager->peers_mutex);
     asciichat_error_t result = queue_pending_ice_candidate(manager, ice->sender_id, candidate, mid);
     mutex_unlock(&manager->signaling_mutex);
     if (result == ASCIICHAT_OK) {
-      log_debug("Queued ICE candidate received before its SDP");
+      log_debug("Queued ICE candidate received before remote SDP was installed");
     }
     return result;
   }
