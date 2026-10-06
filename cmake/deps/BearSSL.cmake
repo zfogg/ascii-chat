@@ -302,6 +302,15 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
             # Always add -fPIC for shared library support
             set(BEARSSL_EXTRA_CFLAGS "-fPIC")
+            if(APPLE)
+                get_filename_component(BEARSSL_CLANG_BIN_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+                get_filename_component(BEARSSL_LLVM_ROOT "${BEARSSL_CLANG_BIN_DIR}" DIRECTORY)
+                string(REGEX MATCH "^[0-9]+" BEARSSL_CLANG_MAJOR "${CMAKE_C_COMPILER_VERSION}")
+                set(BEARSSL_CLANG_RESOURCE_DIR "${BEARSSL_LLVM_ROOT}/lib/clang/${BEARSSL_CLANG_MAJOR}")
+                if(EXISTS "${BEARSSL_CLANG_RESOURCE_DIR}/include")
+                    string(APPEND BEARSSL_EXTRA_CFLAGS " -resource-dir ${BEARSSL_CLANG_RESOURCE_DIR}")
+                endif()
+            endif()
             set(BEARSSL_CC "${CMAKE_C_COMPILER}")
 
             # Clean BearSSL build directory before initial build

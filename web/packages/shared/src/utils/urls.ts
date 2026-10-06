@@ -51,13 +51,13 @@ export const SITES = {
 export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
- * Discovery service API base URL (for fetching session strings)
- * In dev: localhost:3001 (API server, accessible across all sites)
- * In prod: set via VITE_DISCOVERY_API_BASE environment variable
+ * Canonical session-string API. Every website uses this endpoint. The www host
+ * is used directly because the apex redirects there and redirects are not CORS
+ * responses.
  */
-export const DISCOVERY_API_BASE = isDev
+export const SESSION_STRINGS_API_BASE = isDev
   ? "http://localhost:3001"
-  : import.meta.env["VITE_DISCOVERY_API_BASE"] || "";
+  : "https://www.ascii-chat.com";
 
 /**
  * API endpoints with full URLs (for cross-origin requests in dev)
@@ -97,6 +97,10 @@ export const ACDS_ENDPOINTS = {
   TCP: "tcp://discovery-service.ascii-chat.com:27225",
   /** WebSocket/TLS endpoint for web clients */
   WSS: "wss://discovery-service.ascii-chat.com:443",
+  /** Default STUN servers, in the priority passed to ascii-chat */
+  STUN: ["stun:stun.ascii-chat.com:3478", "stun:stun.l.google.com:19302"],
+  /** Default TURN server */
+  TURN: "turn:turn.ascii-chat.com:3478",
 } as const;
 
 export type SiteKey = keyof typeof SITES;

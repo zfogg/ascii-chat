@@ -24,7 +24,9 @@ export default function PublicKeysSection({
       <p className="leading-relaxed mb-4 text-base md:text-lg">
         These Ed25519 public keys verify the identity of the official ACDS
         server at the endpoints listed in the{" "}
-        <Link href="#infrastructure">Official ACDS Infrastructure</Link>{" "}
+        <Link href="#official-acds-infrastructure">
+          Official ACDS Infrastructure
+        </Link>{" "}
         section. The ascii-chat client automatically downloads and trusts these
         keys, establishing a secure connection to the ACDS server without
         requiring manual verification. You may also download and verify these

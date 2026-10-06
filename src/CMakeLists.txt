@@ -224,6 +224,7 @@ elseif(_use_shared_lib)
         # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)
         if(FFMPEG_LIBRARIES)
             target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+            target_link_directories(ascii-chat PRIVATE ${FFMPEG_LIBRARY_DIRS})
         endif()
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
@@ -294,6 +295,10 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
         set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
+        if(NOT ASCIICHAT_STATIC_LIBCXX AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+            list(APPEND _release_rpath "${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
+        endif()
+
         set_target_properties(ascii-chat PROPERTIES
             BUILD_RPATH "${_release_rpath}"
             INSTALL_RPATH "${_release_rpath}"
@@ -306,6 +311,9 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
             "LINKER:-rpath,/usr/local/lib"
             "LINKER:-rpath,${HOMEBREW_PREFIX}/lib"
         )
+        if(NOT ASCIICHAT_STATIC_LIBCXX AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+            target_link_options(ascii-chat PRIVATE "LINKER:-rpath,${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
+        endif()
         # Post-build: Remove any build-directory RPATH entries that CMake added automatically
         # This handles the case where CMAKE_LIBRARY_OUTPUT_DIRECTORY gets added to RPATH
         add_custom_command(TARGET ascii-chat POST_BUILD

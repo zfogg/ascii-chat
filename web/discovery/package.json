@@ -20,11 +20,13 @@
     "openpgp": "^5.11.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.0",
+    "werift-ice": "^0.2.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/multicast-dns": "^7.2.4",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",

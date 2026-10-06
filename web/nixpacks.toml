@@ -12,9 +12,5 @@ value = ""
 name = "GPG_PUBLIC_KEY"
 value = ""
 
-[[build.env]]
-name = "VITE_DISCOVERY_API_BASE"
-value = "https://discovery.ascii-chat.com"
-
 [start]
 cmd = "echo 'Static site build complete'"

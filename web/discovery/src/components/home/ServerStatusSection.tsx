@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heading } from "@ascii-chat/shared/components";
+import { Heading, Link } from "@ascii-chat/shared/components";
 
 type Server = {
   host: string;
@@ -74,8 +74,36 @@ export default function ServerStatusSection() {
         📡 Server status
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg text-gray-300">
-        Live reachability from the site’s Vercel function.
+        Live reachability of ascii-chat official discovery infrastructure.
       </p>
+      <aside
+        role="alert"
+        aria-labelledby="official-services-offline"
+        className="mb-6 rounded-lg border-2 border-red-500 bg-red-950/60 px-5 py-4 shadow-[0_0_24px_rgba(239,68,68,0.2)]"
+      >
+        <Heading
+          id="official-services-offline"
+          level={3}
+          className="mb-2 text-xl font-bold text-red-300 md:text-2xl"
+        >
+          ‼️ Official services are offline
+        </Heading>
+        <p className="leading-relaxed text-base text-red-100 md:text-lg">
+          ascii-chat’s official WebRTC signaling, STUN, and TURN services are
+          offline while the developer arranges suitable hosting. ascii-chat is{" "}
+          <Link
+            href="https://github.com/zfogg/ascii-chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline
+          >
+            open source
+          </Link>
+          , so anyone may run and use their own discovery service. Until
+          official hosting returns, the ascii-chat client app releases cannot
+          create or find sessions. Host your own service or check back soon.
+        </p>
+      </aside>
       <div className="overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full text-left text-sm md:text-base">
           <thead className="bg-gray-800 text-gray-200">

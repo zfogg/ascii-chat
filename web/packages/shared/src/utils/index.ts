@@ -1,6 +1,7 @@
 export { getCommitSha } from "./getCommitSha";
 export { MediaSourceType, type MediaSource } from "./mediaSource";
 export { fetchSessionStrings } from "./fetchSessionStrings";
+export { generateSessionString, generateSessionStrings } from "./sessionStrings";
 export { useScrollToHash } from "./anchors";
 export {
   SITES,

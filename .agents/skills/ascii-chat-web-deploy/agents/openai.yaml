@@ -1,0 +1,3 @@
+interface:
+  display_name: "Ascii Chat Web Deploy"
+  short_description: "Release the Vercel web sites safely"
