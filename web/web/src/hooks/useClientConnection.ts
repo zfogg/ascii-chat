@@ -139,7 +139,11 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           if (state === ConnectionState.CONNECTED) {
             hasBeenConnectedRef.current = true;
             reconnectAttemptRef.current = 0;
-            lastReceivedFrameAtRef.current = performance.now();
+            // Startup can legitimately take longer than the stalled-stream
+            // threshold while the native host creates its first composite
+            // frame. Leave this at zero until a real ASCII frame arrives so
+            // the watchdog cannot turn a successful join into a reconnect.
+            lastReceivedFrameAtRef.current = 0;
             console.log(
               "[Client] CONNECTED state reached, attempting to send CLIENT_CAPABILITIES and STREAM_START",
             );
