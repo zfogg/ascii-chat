@@ -12,6 +12,30 @@ static media_source_t *create_test_source(void) {
   return source;
 }
 
+static rgb_pixel_t test_pattern_pixel(unsigned int x, unsigned int y, unsigned int phase) {
+  unsigned int animated_x = (x + phase) % 320;
+  rgb_pixel_t pixel = {0};
+
+  switch ((animated_x / 40) % 3) {
+  case 0:
+    pixel.r = 255;
+    break;
+  case 1:
+    pixel.g = 255;
+    break;
+  default:
+    pixel.b = 255;
+    break;
+  }
+
+  if (animated_x % 40 == 0 || y % 30 == 0 || (((x / 10) + (y / 10) + phase) & 1) == 0) {
+    pixel.r = 0;
+    pixel.g = 0;
+    pixel.b = 0;
+  }
+  return pixel;
+}
+
 Test(webcam, test_pattern_dimensions_and_colors) {
   media_source_t *source = create_test_source();
   image_t *frame = media_source_read_video(source);
@@ -36,9 +60,6 @@ Test(webcam, test_pattern_reuses_buffer_and_animates_five_times_faster) {
   image_t *frame = media_source_read_video(source);
   cr_assert_not_null(frame);
   rgb_pixel_t *pixels = frame->pixels;
-  rgb_pixel_t initial_row[320];
-  memcpy(initial_row, pixels + 320, sizeof(initial_row));
-
   // Every generated frame advances the pattern by five pixels.
   for (unsigned int index = 1; index <= 10; index++) {
     image_t *next = media_source_read_video(source);
@@ -46,7 +67,8 @@ Test(webcam, test_pattern_reuses_buffer_and_animates_five_times_faster) {
     cr_assert_eq(next->pixels, pixels);
     unsigned int phase = index * 5;
     for (unsigned int x = 0; x < 320; x++) {
-      cr_assert_eq(memcmp(&next->pixels[320 + x], &initial_row[(x + phase) % 320], sizeof(rgb_pixel_t)), 0);
+      rgb_pixel_t expected = test_pattern_pixel(x, 1, phase);
+      cr_assert_eq(memcmp(&next->pixels[320 + x], &expected, sizeof(expected)), 0);
     }
   }
   media_source_destroy(source);
