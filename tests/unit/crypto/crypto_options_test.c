@@ -275,9 +275,9 @@ Test(crypto_options, server_only_options) {
 }
 
 Test(crypto_options, mutually_exclusive_options) {
-  const char *argv[] = {"program", "--no-encrypt", "--key", "password"};
+  const char *argv[] = {"program", "client", "--no-encrypt", "--key", "password"};
 
-  options_init(4, (char **)argv);
+  options_init(5, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -493,9 +493,9 @@ Test(crypto_options, version_display) {
 Test(crypto_options, many_options) {
   // Note: --server-key is CLIENT-only, --client-keys is SERVER-only
   // So we test with client mode and skip --client-keys
-  const char *argv[] = {"program", "--no-encrypt", "--key", "password", "--server-key", "/etc/server_key"};
+  const char *argv[] = {"program", "client", "--no-encrypt", "--key", "password", "--server-key", "/etc/server_key"};
 
-  options_init(6, (char **)argv); // true = client mode for --server-key
+  options_init(7, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();

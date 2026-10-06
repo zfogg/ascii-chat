@@ -216,8 +216,7 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   if (!mdns) {
     log_warn("mDNS: Failed to initialize mDNS - discovery unavailable");
-    SAFE_FREE(state.servers);
-    return NULL;
+    return state.servers;
   }
 
   // Start mDNS query for _ascii-chat._tcp services
@@ -227,8 +226,7 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
   if (query_result != ASCIICHAT_OK) {
     log_info("mDNS: Query failed - no servers found via service discovery");
     asciichat_mdns_destroy(mdns);
-    SAFE_FREE(state.servers);
-    return NULL;
+    return state.servers;
   }
 
   // Poll for responses until timeout

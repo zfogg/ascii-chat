@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <stdlib.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/path.h>
@@ -6,27 +7,8 @@
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/options/options.h>
 
-/* Simulate systems where executable JIT memory is unavailable. */
-static int pcre2_jit_compile_fallback(pcre2_code *code, uint32_t options) {
-  (void)code;
-  (void)options;
-  return PCRE2_ERROR_JIT_BADOPTION;
-}
-
-#ifdef __APPLE__
-/* Mach-O shared-library calls need explicit interposition from the test executable. */
-extern int pcre2_jit_compile(pcre2_code *code, uint32_t options);
-__attribute__((used, section("__DATA,__interpose"))) static const struct {
-  int (*replacement)(pcre2_code *, uint32_t);
-  int (*replacee)(pcre2_code *, uint32_t);
-} pcre2_jit_interpose = {pcre2_jit_compile_fallback, pcre2_jit_compile};
-#else
-int pcre2_jit_compile(pcre2_code *code, uint32_t options) {
-  return pcre2_jit_compile_fallback(code, options);
-}
-#endif
-
 static void setup(void) {
+  setenv("ASCII_CHAT_PCRE2_DISABLE_JIT", "1", 1);
   pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("^fallback-probe$", 0);
   cr_assert_not_null(singleton);
   pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);

@@ -139,7 +139,10 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   }
 
   /* Attempt JIT compilation (non-fatal if fails) */
-  int jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+  int jit_rc = PCRE2_ERROR_JIT_BADOPTION;
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT")) {
+    jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+  }
   if (jit_rc < 0) {
     log_debug("PCRE2 JIT compilation not available (code %d), using interpreted mode", jit_rc);
   } else {
