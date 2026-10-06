@@ -60,7 +60,6 @@ export class ClientConnection {
   private deferredPackets: Uint8Array[] = [];
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
   private packetStats: Map<number, number> = new Map(); // Track packets by type
-  private ownsCryptoWasm = false;
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -68,60 +67,59 @@ export class ClientConnection {
    * Initialize WASM and connect to server
    */
   async connect(): Promise<void> {
-    if (this.usesApplicationEncryption) {
-      console.log("[ClientConnection] Initializing WASM client...");
+    console.log("[ClientConnection] Initializing WASM client...");
 
-      // Plain ACDS signaling uses TypeScript ACIP framing and is protected by
-      // the peer DataChannel's DTLS transport. It must not create or reset the
-      // shared native crypto client before its WebSocket is opened.
-      const initOptions: { width?: number; height?: number } = {};
-      if (this.options.width !== undefined)
-        initOptions.width = this.options.width;
-      if (this.options.height !== undefined)
-        initOptions.height = this.options.height;
-      await initClientWasm(initOptions);
-      this.ownsCryptoWasm = true;
-      if (this.isUserDisconnecting) return;
-      console.log("[ClientConnection] WASM init complete");
+    // Initialize WASM module
+    const initOptions: { width?: number; height?: number } = {};
+    if (this.options.width !== undefined)
+      initOptions.width = this.options.width;
+    if (this.options.height !== undefined)
+      initOptions.height = this.options.height;
+    await initClientWasm(initOptions);
+    if (this.isUserDisconnecting) return;
+    console.log("[ClientConnection] WASM init complete");
 
-      registerSendPacketCallback((rawPacket: Uint8Array) => {
-        let typeInfo = `${rawPacket.length} bytes`;
-        try {
-          const parsed = parsePacket(rawPacket);
-          typeInfo = `type=${parsed.type} (${packetTypeName(parsed.type)}) ${rawPacket.length} bytes`;
-        } catch {
-          /* ignore parse errors */
-        }
-        console.error(
-          `[ClientConnection] >>> WASM->JS->WS sending raw packet: ${typeInfo}`,
-        );
-        if (!this.socket) {
-          console.error(
-            "[ClientConnection] Cannot send packet - socket not connected",
-          );
-          return;
-        }
-        this.socket.send(rawPacket);
-        console.error(`[ClientConnection] >>> WASM->JS->WS packet sent OK`);
-      });
-      console.error("[ClientConnection] WASM send packet callback registered");
-
-      console.log("[ClientConnection] Generating keypair...");
-      this.clientPublicKey = await generateKeypair();
-      console.log("[ClientConnection] Client public key:", this.clientPublicKey);
-
-      if (this.isUserDisconnecting) return;
-      const url = new URL(this.options.serverUrl);
-      const serverHost = url.hostname;
-      const serverPort =
-        parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
-      console.log(
-        "[ClientConnection] Setting server address:",
-        serverHost,
-        serverPort,
+    // Register callback so WASM can send raw packets back through WebSocket
+    registerSendPacketCallback((rawPacket: Uint8Array) => {
+      // Try to parse the packet to get its type name
+      let typeInfo = `${rawPacket.length} bytes`;
+      try {
+        const parsed = parsePacket(rawPacket);
+        typeInfo = `type=${parsed.type} (${packetTypeName(parsed.type)}) ${rawPacket.length} bytes`;
+      } catch {
+        /* ignore parse errors */
+      }
+      console.error(
+        `[ClientConnection] >>> WASM->JS->WS sending raw packet: ${typeInfo}`,
       );
-      setServerAddress(serverHost, serverPort);
-    }
+      if (!this.socket) {
+        console.error(
+          "[ClientConnection] Cannot send packet - socket not connected",
+        );
+        return;
+      }
+      this.socket.send(rawPacket);
+      console.error(`[ClientConnection] >>> WASM->JS->WS packet sent OK`);
+    });
+    console.error("[ClientConnection] WASM send packet callback registered");
+
+    // Generate client keypair
+    console.log("[ClientConnection] Generating keypair...");
+    this.clientPublicKey = await generateKeypair();
+    console.log("[ClientConnection] Client public key:", this.clientPublicKey);
+
+    if (this.isUserDisconnecting) return;
+    // Set server address for known_hosts verification
+    const url = new URL(this.options.serverUrl);
+    const serverHost = url.hostname;
+    const serverPort =
+      parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
+    console.log(
+      "[ClientConnection] Setting server address:",
+      serverHost,
+      serverPort,
+    );
+    setServerAddress(serverHost, serverPort);
 
     await this.connectSocket();
   }
@@ -631,10 +629,7 @@ export class ClientConnection {
       this.socket.close();
       this.socket = null;
     }
-    if (this.ownsCryptoWasm) {
-      cleanupClientWasm();
-      this.ownsCryptoWasm = false;
-    }
+    cleanupClientWasm();
     this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
   }
 }
