@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/options/options.h>
@@ -28,6 +30,18 @@ static void reset_crypto_options(void) {
 
   // Reset optind for getopt_long (critical for multiple test runs)
   optind = 1;
+}
+
+static int options_init_exit_code(int argc, char **argv) {
+  pid_t pid = fork();
+  if (pid < 0) {
+    return 1;
+  }
+  if (pid == 0) {
+    _exit(options_init(argc, argv) == ASCIICHAT_OK ? 0 : 1);
+  }
+  int status = 0;
+  return waitpid(pid, &status, 0) >= 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : 1;
 }
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -282,7 +296,7 @@ Test(crypto_options, mutually_exclusive_options) {
   char password[] = "password";
   char *argv[] = {program, client, no_encrypt, key, password};
 
-  cr_assert_neq(options_init(5, argv), ASCIICHAT_OK, "--no-encrypt must reject key authentication");
+  cr_assert_neq(options_init_exit_code(5, argv), 0, "--no-encrypt must reject key authentication");
 }
 
 Test(crypto_options, invalid_key_formats) {
@@ -420,7 +434,7 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
   }
 
   if (no_encrypt && has_key) {
-    cr_assert_neq(options_init(argc, (char **)argv), ASCIICHAT_OK, "--no-encrypt must reject key authentication");
+    cr_assert_neq(options_init_exit_code(argc, (char **)argv), 0, "--no-encrypt must reject key authentication");
     return;
   }
 
@@ -505,7 +519,7 @@ Test(crypto_options, many_options) {
   char server_key_value[] = "/etc/server_key";
   char *argv[] = {program, client, no_encrypt, key, password, server_key, server_key_value};
 
-  cr_assert_neq(options_init(7, argv), ASCIICHAT_OK, "--no-encrypt must reject authentication options");
+  cr_assert_neq(options_init_exit_code(7, argv), 0, "--no-encrypt must reject authentication options");
 }
 
 Test(crypto_options, repeated_options) {

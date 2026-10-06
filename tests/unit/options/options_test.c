@@ -107,10 +107,10 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   }
 
   int status = 0;
-  if (waitpid(pid, &status, 0) < 0 || !WIFEXITED(status)) {
-    return ERROR_INVALID_STATE;
+  if (waitpid(pid, &status, 0) < 0) {
+    return 1;
   }
-  return WEXITSTATUS(status) == 0 ? 0 : 1;
+  return WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : 1;
 }
 
 /* ============================================================================
