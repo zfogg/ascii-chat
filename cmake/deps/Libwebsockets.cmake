@@ -313,7 +313,8 @@ if(LWS_OPENSSL_SSL_LIBRARY AND LWS_OPENSSL_CRYPTO_LIBRARY)
     set(LWS_OPENSSL_LIBS_EXIST TRUE)
 endif()
 
-if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS_EXIST)
+if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a"
+   OR NOT EXISTS "${LWS_NATIVE_PREFIX}/include/libwebsockets.h" OR NOT LWS_OPENSSL_LIBS_EXIST)
     message(STATUS "  libwebsockets not in cache, building from source with extensions enabled...")
     message(STATUS "  libwebsockets will use OpenSSL from: ${LWS_OPENSSL_PREFIX}")
     if(LWS_OPENSSL_SSL_LIBRARY)

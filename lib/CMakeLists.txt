@@ -580,6 +580,10 @@ endif()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
 
+if(LIBWEBSOCKETS_BUILD_TARGET)
+    add_dependencies(ascii-chat-core ${LIBWEBSOCKETS_BUILD_TARGET})
+endif()
+
 # For OBJECT libs, link external deps
 target_link_libraries(ascii-chat-core PRIVATE
     ${SQLITE3_LIBRARIES}
