@@ -41,7 +41,7 @@ function parseWebRtcTarget(entry: string): ServerTarget {
     host: url.hostname,
     port: parsePort(url.port || (url.protocol === "ws:" ? "80" : "443"), entry),
     protocol: url.protocol.slice(0, -1) as "ws" | "wss",
-    path: `${url.pathname}${url.search}`,
+    path: `${url.pathname === "/" ? "" : url.pathname}${url.search}`,
   };
 }
 
