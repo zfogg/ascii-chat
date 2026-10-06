@@ -52,6 +52,11 @@
 // stays close to live.
 #define WEBRTC_RECV_QUEUE_HIGH_WATER 12
 
+// DataChannel sends are asynchronous. Bound replaceable video so reliable,
+// ordered delivery cannot turn a slow peer into an ever-growing history of
+// obsolete frames.
+#define WEBRTC_SEND_VIDEO_HIGH_WATER (256 * 1024)
+
 // Allow ICE connectivity checks to recover temporarily, then let the owning
 // session tear down and renegotiate a peer that has remained disconnected.
 #define WEBRTC_DISCONNECTED_GRACE_NS (30 * NS_PER_SEC_INT)
@@ -392,6 +397,20 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   }
   log_info_every(60 * NS_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes",
                  max_message_size);
+
+  // A video packet is a replaceable snapshot. Admit it only when the
+  // DataChannel can hold the complete packet without queuing obsolete
+  // snapshots ahead of a current frame.
+  if (is_video_packet) {
+    size_t high_water = len > WEBRTC_SEND_VIDEO_HIGH_WATER ? len : WEBRTC_SEND_VIDEO_HIGH_WATER;
+    if (buffered_before_send >= high_water || len > high_water - buffered_before_send) {
+      mutex_unlock(&wrtc->send_mutex);
+      log_warn_every(US_PER_SEC_INT,
+                     "WebRTC outgoing video backlog: dropping replaceable %zu-byte frame (buffered=%zu, limit=%zu)",
+                     len, buffered_before_send, high_water);
+      return ASCIICHAT_OK;
+    }
+  }
 
   asciichat_error_t result = ASCIICHAT_OK;
   for (size_t offset = 0; offset < len;) {
