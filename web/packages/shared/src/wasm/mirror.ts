@@ -92,6 +92,7 @@ export async function initMirrorWasm(
   moduleFactory: EmscriptenModuleFactory,
   options?: {
     locateFile?: (path: string) => string;
+    mainScriptUrlOrBlob?: string;
     initialArgs?: string[];
   },
 ): Promise<void> {
@@ -110,6 +111,9 @@ export async function initMirrorWasm(
 
   if (options?.locateFile) {
     moduleOverrides["locateFile"] = options.locateFile;
+  }
+  if (options?.mainScriptUrlOrBlob) {
+    moduleOverrides["mainScriptUrlOrBlob"] = options.mainScriptUrlOrBlob;
   }
 
   try {

@@ -2,7 +2,7 @@ import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import sitemap from "vite-plugin-sitemap";
 import { execSync } from "child_process";
-import { mkdirSync } from "fs";
+import { copyFileSync, mkdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -72,12 +72,28 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Permissions-Policy": "camera=(self), microphone=(self), geolocation=()",
+    },
+  },
   plugins: [
     react(),
     {
       name: "ensure-outdir",
       closeBundle() {
         mkdirSync("dist", { recursive: true });
+        mkdirSync("dist/wasm", { recursive: true });
+        copyFileSync(
+          path.resolve(__dirname, "../web/src/wasm/dist/mirror.js"),
+          path.resolve(__dirname, "dist/wasm/mirror.js"),
+        );
+        copyFileSync(
+          path.resolve(__dirname, "../web/src/wasm/dist/mirror.wasm"),
+          path.resolve(__dirname, "dist/wasm/mirror.wasm"),
+        );
       },
     },
     sitemap({

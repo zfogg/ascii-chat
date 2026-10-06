@@ -170,6 +170,7 @@ export default function MirrorDemoWidget({
 
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
+      mainScriptUrlOrBlob: `${wasmBaseUrl}/wasm/mirror.js`,
       initialArgs,
     });
 
