@@ -89,9 +89,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Matrix_Digital_Rain"><a class="permalink" href="#Matrix_Digital_Rain">Matrix
   Digital Rain</a></h2>
-<p class="Pp">Use <b>--matrix</b> to overlay falling Matrix-style characters
-    on the video rendering. The effect uses the digital palette by default and
-    can be combined with color filters. Press <b>0</b> while rendering to toggle
+<p class="Pp">Use <b>--matrix</b> to overlay falling Matrix-style characters on
+    the video rendering. The effect uses the digital palette by default and can
+    be combined with color filters. Press <b>0</b> while rendering to toggle
     Matrix rain.</p>
 <p class="Pp">For example, enable Matrix rain with the default colors or a green
     filter:</p>
@@ -107,8 +107,8 @@ ascii-chat mirror --matrix --color-filter green
     waveform whose height follows the signal level, or <b>--fft</b> to view a
     scrolling frequency display. Both replace the video image and follow the
     source selected by <b>--audio-source</b> (all sources by default). The
-    colors adapt to dark and light
-    terminal backgrounds. Choose one visualization at a time.</p>
+    colors adapt to dark and light terminal backgrounds. Choose one
+    visualization at a time.</p>
 <p class="Pp">For example, inspect a local video's audio track with either
     visualization:</p>
 <p class="Pp"></p>
@@ -116,7 +116,7 @@ ascii-chat mirror --matrix --color-filter green
 ascii-chat mirror --file music.mp4 --audio-source media --fft
 </pre>
 <p class="Pp">To inspect received audio during a call, use either
-    visualization:</p>
+  visualization:</p>
 <p class="Pp"></p>
 <pre>ascii-chat client --audio-source call --waveform
 ascii-chat client --audio-source call --fft
@@ -126,6 +126,7 @@ ascii-chat client --audio-source call --fft
     visualize the local microphone, local media, and audio received from other
     call participants together while playing an MP4, select <b>both</b> for
     capture. The visualization source defaults to <b>all</b>:</p>
+<p class="Pp"></p>
 <pre>ascii-chat client --file music.mp4 --audio-capture-source both --waveform
 </pre>
 <p class="Pp"></p>
@@ -142,10 +143,10 @@ ascii-chat client --audio-source call --fft
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-astral-individual-colony
-fleet-man-interpreter
-stricken-brazilian-interference
-elementary-gambler-match</pre>
+furthest-peanut-fuss
+principal-thrust-soak
+fickle-dakota-transport
+partial-gate-morgue</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -229,22 +230,22 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat mundane-reminder-civilian</b></dt>
+  <dt><b>ascii-chat more-irish-wood</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat courageous-farrier-pike --file video.mp4</b></dt>
+  <dt><b>ascii-chat seventy-monthly-thorn --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat singsong-creativity-sailor --url
+  <dt><b>ascii-chat elusive-skipper-radio --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat incomparable-supernatural-update -f -</b></dt>
+  <dt><b>ascii-chat oblique-showtime-squeeze -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat charcoal-suspicion-contact --palette-chars '@%#*+=-:.
+  <dt><b>ascii-chat hysterical-mystic-narrator --palette-chars '@%#*+=-:.
     '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat polish-curry-shield --discovery-service
+  <dt><b>ascii-chat seasick-chapter-flap --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat discovery-service</b></dt>
+  <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
   <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
@@ -254,11 +255,11 @@ https://example.com/stream.m3u8</pre>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat client --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat client -f video.mp4</b></dt>
+  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
   <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
@@ -356,8 +357,9 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
-  <dd>Set FILE as path for log file (default: current directory; filenames:
-      server.log, client.log, mirror.log, acds.log, discovery.log).</dd>
+  <dd>Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or
+      %TEMP%scii-chat; filenames: server.log, client.log, mirror.log, acds.log,
+      discovery.log). (mode: global)</dd>
   <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
     <i>VALUE</i></b></a></dt>
   <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
@@ -583,16 +585,12 @@ https://example.com/stream.m3u8</pre>
   <dd>Alias for --speakers-volume. (modes: default, client, mirror)</dd>
   <dt id="audio-source"><a class="permalink" href="#audio-source"><b>--audio-source
     <i>VALUE</i></b></a></dt>
-  <dd>Select which audio source to visualize: all, call, mic, or media. (default:
-      all) (modes: default, client, mirror)</dd>
+  <dd>Select audio shown by --waveform/--fft: all (default), call, mic, or
+      media. (modes: default, client, mirror)</dd>
   <dt id="audio-capture-source"><a class="permalink" href="#audio-capture-source"><b>--audio-capture-source
     <i>VALUE</i></b></a></dt>
-  <dd>Select local audio to capture: auto, mic, media, both, or remote. (default:
-      auto) (modes: default, client, mirror)</dd>
-  <dt id="audio-analysis"><a class="permalink" href="#audio-analysis"><b>--audio-analysis
-    <i>BOOLEAN</i></b></a></dt>
-  <dd>Enable audio analysis (debug). (default: false) (modes: default,
-    client)</dd>
+  <dd>Select local audio capture and media playback: auto, mic, media, both, or
+      remote. (modes: default, client, mirror)</dd>
   <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable speakers output. (default: false) (modes: default, client)</dd>
@@ -724,8 +722,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Disable compression. (default: false) (modes: default, client,
     server)</dd>
   <dt><b>--discovery-service <i>STRING</i></b></dt>
-  <dd>Discovery service endpoint (IP address or hostname). (default: localhost)
-      (modes: default, client, server)</dd>
+  <dd>Discovery service endpoint (IP address or hostname). (default:
+      discovery-service.ascii-chat.com) (modes: default, client, server)</dd>
   <dt id="discovery-service-port"><a class="permalink" href="#discovery-service-port"><b>--discovery-service-port
     <i>INTEGER</i></b></a></dt>
   <dd>Discovery service port (1-65535). (default: 27225) (modes: default,
@@ -868,25 +866,6 @@ https://example.com/stream.m3u8</pre>
   <dt id="database"><a class="permalink" href="#database"><b>--database
     <i>STRING</i></b></a></dt>
   <dd>Path to SQLite database for discovery session storage. (modes:
-      discovery-service)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="DEBUG"><a class="permalink" href="#DEBUG">DEBUG</a></h2>
-<dl class="Bl-tag">
-  <dt id="sync-state"><a class="permalink" href="#sync-state"><b>--sync-state
-    <i>TIME</i></b></a></dt>
-  <dd>Print synchronization primitive state with optional time offset (debug
-      builds only). (default: 0.00) (modes: global, client, server, mirror,
-      discovery-service)</dd>
-  <dt id="backtrace"><a class="permalink" href="#backtrace"><b>--backtrace
-    <i>TIME</i></b></a></dt>
-  <dd>Print backtrace with optional time offset (debug builds only). (default:
-      0.00) (modes: global, client, server, mirror, discovery-service)</dd>
-  <dt id="memory-report"><a class="permalink" href="#memory-report"><b>--memory-report
-    <i>TIME</i></b></a></dt>
-  <dd>Print memory report periodically at specified interval in seconds (debug
-      builds only). (default: 0.00) (modes: global, client, server, mirror,
       discovery-service)
     <p class="Pp"></p>
     <p class="Pp"></p>
@@ -1233,12 +1212,10 @@ https://example.com/stream.m3u8</pre>
       (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
   <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
   <dd>See: <b>--audio</b></dd>
-  <dt id="ASCII_CHAT_AUDIO_ANALYSIS"><a class="permalink" href="#ASCII_CHAT_AUDIO_ANALYSIS"><b>ASCII_CHAT_AUDIO_ANALYSIS</b></a></dt>
-  <dd>See: <b>--audio-analysis</b></dd>
-  <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
-  <dd>See: <b>--audio-source</b></dd>
   <dt id="ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><b>ASCII_CHAT_AUDIO_CAPTURE_SOURCE</b></a></dt>
   <dd>See: <b>--audio-capture-source</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
+  <dd>See: <b>--audio-source</b></dd>
   <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
   <dd>See: <b>--client-keys</b></dd>
   <dt id="ASCII_CHAT_COLOR"><a class="permalink" href="#ASCII_CHAT_COLOR"><b>ASCII_CHAT_COLOR</b></a></dt>
