@@ -15,6 +15,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
@@ -459,12 +460,21 @@ static void asciichat_instr_runtime_init_once(void) {
   const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
   if (output_dir_env != NULL && output_dir_env[0] != '\0') {
     char *normalized_output_dir = NULL;
-    asciichat_error_t validation_result =
-        path_validate_user_path(output_dir_env, PATH_ROLE_LOG_FILE, &normalized_output_dir);
-    if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
-      SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
-      g_output_dir[sizeof(g_output_dir) - 1] = '\0';
-      g_output_dir_set = true;
+    char probe_path[PATH_MAX];
+    if (platform_is_directory(output_dir_env) &&
+        safe_snprintf(probe_path, sizeof(probe_path), "%s%c.ascii-instr-probe.log", output_dir_env, PATH_DELIM) <
+            (int)sizeof(probe_path)) {
+      asciichat_error_t validation_result =
+          path_validate_user_path(probe_path, PATH_ROLE_LOG_FILE, &normalized_output_dir);
+      if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
+        char *last_separator = strrchr(normalized_output_dir, PATH_DELIM);
+        if (last_separator != NULL) {
+          *last_separator = '\0';
+          SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
+          g_output_dir[sizeof(g_output_dir) - 1] = '\0';
+          g_output_dir_set = true;
+        }
+      }
     } else {
       log_warn("Ignoring invalid ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR path: %s", output_dir_env);
     }
