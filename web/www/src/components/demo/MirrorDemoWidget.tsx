@@ -736,10 +736,10 @@ export default function MirrorDemoWidget({
                     <button
                       key={opt.id}
                       onClick={() => switchOption(opt)}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                         selectedOptionId === opt.id
-                          ? "bg-green-700 hover:bg-green-600 cursor-not-allowed text-white"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-110 transform transition-transform cursor-pointer"
+                          ? "bg-green-700 hover:bg-green-600 text-white"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-110 transform transition-transform"
                       }`}
                     >
                       {opt.label}
@@ -757,7 +757,7 @@ export default function MirrorDemoWidget({
                   <button
                     onClick={startMicrophone}
                     disabled={loading}
-                    className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
+                    className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loading ? "Loading..." : "Microphone"}
                   </button>
@@ -765,7 +765,7 @@ export default function MirrorDemoWidget({
                     <button
                       onClick={startWebcam}
                       disabled={loading}
-                      className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
+                      className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {loading ? "Loading..." : "Webcam"}
                     </button>
@@ -773,7 +773,7 @@ export default function MirrorDemoWidget({
                 <button
                   onClick={startDemo}
                   disabled={loading}
-                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
+                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? "Loading..." : isAudioVisualization ? "Demo Audio" : "Demo Video"}
                 </button>
@@ -792,13 +792,13 @@ export default function MirrorDemoWidget({
                       paused
                         ? "bg-green-700/80 hover:bg-green-600 text-white"
                         : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
-                    }`}
+                    } cursor-pointer`}
                   >
                     {paused ? "Play" : "Pause"}
                   </button>
                   <button
                     onClick={restart}
-                    className="px-3 py-1 rounded text-xs font-medium transition-colors bg-gray-800/80 hover:bg-gray-700 text-gray-300"
+                    className="px-3 py-1 rounded text-xs font-medium transition-colors bg-gray-800/80 hover:bg-gray-700 text-gray-300 cursor-pointer"
                   >
                     Restart
                   </button>
@@ -808,7 +808,7 @@ export default function MirrorDemoWidget({
                       muted
                         ? "bg-green-700/80 hover:bg-green-600 text-white"
                         : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
-                    }`}
+                    } cursor-pointer`}
                   >
                     {muted ? "Unmute" : "Mute"}
                   </button>
@@ -820,10 +820,10 @@ export default function MirrorDemoWidget({
                     <button
                       key={opt.id}
                       onClick={() => switchOption(opt)}
-                      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
                         selectedOptionId === opt.id
                           ? "bg-green-700/80 hover:bg-green-600 text-white"
-                          : "bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:scale-110 transform transition-transform cursor-pointer"
+                          : "bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:scale-110 transform transition-transform"
                       }`}
                     >
                       {opt.label}
@@ -839,7 +839,7 @@ export default function MirrorDemoWidget({
         {source && (
           <button
             onClick={stop}
-            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-20"
+            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors cursor-pointer z-20"
           >
             Stop
           </button>
