@@ -171,19 +171,20 @@ export function useMirrorWebcam({
       );
 
       streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-
+      const video = videoRef.current;
       console.time("[Mirror] loadedmetadata");
-      await new Promise<void>((resolve) => {
-        videoRef.current!.addEventListener(
-          "loadedmetadata",
-          () => {
-            console.timeEnd("[Mirror] loadedmetadata");
-            resolve();
-          },
-          { once: true },
-        );
-      });
+      const metadataReady =
+        video.readyState >= HTMLMediaElement.HAVE_METADATA
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              video.addEventListener("loadedmetadata", () => resolve(), {
+                once: true,
+              });
+            });
+      video.srcObject = stream;
+      await video.play();
+      await metadataReady;
+      console.timeEnd("[Mirror] loadedmetadata");
 
       lastFrameTimeRef.current = performance.now();
       setIsWebcamRunning(true);
