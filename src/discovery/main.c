@@ -480,6 +480,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         result = audio_init(&audio);
         if (result != ASCIICHAT_OK)
           return result;
+        media_source_t *local_source = (media_source_t *)session_capture_get_media_source(capture);
+        bool has_media_audio = media_source_has_audio(local_source);
+        audio.capture_media_source = local_source;
+        audio.playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio);
+        log_info("Discovery audio input: media=%d, microphone=%d", has_media_audio,
+                 audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio));
         client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
         config.flags.jitter_buffer = false;
         receiver.audio_pipeline = client_audio_pipeline_create(&config);

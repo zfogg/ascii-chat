@@ -41,7 +41,7 @@ export default function AudioSetupSection() {
         </p>
         <CodeBlock language="bash">
           {
-            "# Auto-detection (DEFAULT)\n# Uses microphone unless media is playing\nascii-chat client example.com --audio --audio-source auto\n\n# Microphone only (always capture)\nascii-chat client example.com --audio --audio-source mic\n\n# Media only (for screen sharing audio)\nascii-chat mirror --audio-source media\n\n# Both simultaneously\nascii-chat client example.com --audio --audio-source both"
+            "# Auto-detection (DEFAULT)\n# Uses microphone unless media is playing\nascii-chat client example.com --audio --audio-capture-source auto\n\n# Microphone only (always capture)\nascii-chat client example.com --audio --audio-capture-source mic\n\n# Media only (for screen sharing audio)\nascii-chat mirror --audio-capture-source media\n\n# Both simultaneously\nascii-chat client example.com --audio --audio-capture-source both"
           }
         </CodeBlock>
         <div className="info-box-info mt-3">

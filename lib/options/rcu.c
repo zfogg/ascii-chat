@@ -214,6 +214,7 @@ static const options_t g_default_options = (options_t){
     // ========================================================================
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
     .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
+    .audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT,
     .waveform = false,
     .fft = false,
     .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,

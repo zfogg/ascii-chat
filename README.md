@@ -196,7 +196,7 @@ man build/share/man/man5/ascii-chat.5     # File formats
 
 Use `--waveform` to view the selected audio as a live, volume-shaped waveform, or
 `--fft` to view a scrolling frequency display. The displays replace the video
-image, follow the source selected by `--audio-source`, and adapt their colors to
+image, follow the source selected by `--audio-source` (all by default), and adapt their colors to
 dark and light terminal backgrounds. Choose one visualization at a time.
 
 ```bash
@@ -205,7 +205,7 @@ ascii-chat mirror --file music.mp4 --audio-source media --waveform
 ascii-chat mirror --file music.mp4 --audio-source media --fft
 
 # Inspect received call audio
-ascii-chat client --audio-source remote --fft
+ascii-chat client --audio-source call --fft
 ```
 
 **Shell Completions:**

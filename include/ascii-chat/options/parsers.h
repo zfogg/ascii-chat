@@ -304,19 +304,15 @@ bool parse_volume(const char *arg, void *dest, char **error_msg);
 bool parse_log_file(const char *arg, void *dest, char **error_msg);
 
 /**
- * @brief Parse audio source option (--audio-source)
- * @param arg String argument (e.g., "auto", "mic", "media", "both", "remote")
+ * @brief Parse visualization source option (--audio-source)
+ * @param arg String argument (e.g., "all", "call", "mic", "media")
  * @param dest Destination pointer (audio_source_t*)
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
  *
- * Valid values:
- * - "auto" - Smart selection (AUDIO_SOURCE_AUTO, default)
- *   When media is playing (--file or --url): media only
- *   When no media: mic only
- * - "mic" - Microphone only (AUDIO_SOURCE_MIC)
- * - "media" - Media only (AUDIO_SOURCE_MEDIA)
- * - "both" - Both microphone and media (AUDIO_SOURCE_BOTH)
- * - "remote" - Received network audio only (AUDIO_SOURCE_REMOTE)
+ * Valid values: all (the default), call, mic, or media.
  */
 bool parse_audio_source(const char *arg, void *dest, char **error_msg);
+
+/** Parse local capture policy option (--audio-capture-source). */
+bool parse_audio_capture_source(const char *arg, void *dest, char **error_msg);

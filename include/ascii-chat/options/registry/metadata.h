@@ -53,6 +53,9 @@ extern const char *g_render_theme_descs[];
 extern const char *g_audio_source_values[];
 extern const int g_audio_source_integers[];
 extern const char *g_audio_source_descs[];
+extern const char *g_audio_capture_source_values[];
+extern const int g_audio_capture_source_integers[];
+extern const char *g_audio_capture_source_descs[];
 
 // Example arrays
 extern const char *g_compression_examples[];

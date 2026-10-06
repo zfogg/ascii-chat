@@ -257,31 +257,31 @@ typedef enum {
 } utf8_setting_t;
 
 /**
- * @brief Audio source selection for playback and capture
- *
- * Determines which audio sources are active during playback:
- * - AUDIO_SOURCE_AUTO: Smart selection based on context (default)
- *   - With media (--file/--url): media only
- *   - Without media: microphone only
- * - AUDIO_SOURCE_MICROPHONE: Capture from microphone only
- * - AUDIO_SOURCE_MEDIA: Playback media audio only (no microphone)
- * - AUDIO_SOURCE_BOTH: Both microphone and media audio simultaneously
- * - AUDIO_SOURCE_REMOTE: Received network audio only; local capture is disabled
+ * @brief Audio source selected for visualization
  *
  * @ingroup options
  */
 typedef enum {
-  /** Smart selection: media only when playing, mic otherwise */
-  AUDIO_SOURCE_AUTO = 0,
-  /** Microphone input only */
-  AUDIO_SOURCE_MIC = 1,
-  /** Media audio only (no microphone) */
-  AUDIO_SOURCE_MEDIA = 2,
-  /** Both microphone and media audio */
-  AUDIO_SOURCE_BOTH = 3,
-  /** Received network audio (visualization only; no local audio is transmitted) */
-  AUDIO_SOURCE_REMOTE = 4
+  /** Combine local microphone, local media, and audio received from other participants */
+  AUDIO_SOURCE_ALL = 0,
+  /** Audio received from other participants in the call */
+  AUDIO_SOURCE_CALL = 1,
+  /** Local microphone input */
+  AUDIO_SOURCE_MIC = 2,
+  /** Local media playback */
+  AUDIO_SOURCE_MEDIA = 3,
+  /** Backward-compatible spelling for all available visualization sources */
+  AUDIO_SOURCE_AUTO = AUDIO_SOURCE_ALL
 } audio_source_t;
+
+/** Audio source policy for local capture and media playback. */
+typedef enum {
+  AUDIO_CAPTURE_SOURCE_AUTO = 0,
+  AUDIO_CAPTURE_SOURCE_MIC = 1,
+  AUDIO_CAPTURE_SOURCE_MEDIA = 2,
+  AUDIO_CAPTURE_SOURCE_BOTH = 3,
+  AUDIO_CAPTURE_SOURCE_REMOTE = 4
+} audio_capture_source_t;
 
 /**
  * @name Configuration Constants
@@ -688,8 +688,10 @@ typedef enum {
 /** @brief Default audio enabled flag (true = audio enabled by default) */
 #define OPT_AUDIO_ENABLED_DEFAULT true
 
-/** @brief Default audio source (AUDIO_SOURCE_AUTO = smart selection) */
-#define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_AUTO
+/** @brief Visualize all available sources by default */
+#define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_ALL
+/** @brief Preserve automatic local audio capture selection by default */
+#define OPT_AUDIO_CAPTURE_SOURCE_DEFAULT AUDIO_CAPTURE_SOURCE_AUTO
 
 /** @brief Default microphone device index (-1 means system default) */
 #define OPT_MICROPHONE_INDEX_DEFAULT (-1)
@@ -820,6 +822,7 @@ static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
 static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
 static const audio_source_t default_audio_source_value = OPT_AUDIO_SOURCE_DEFAULT;
+static const audio_capture_source_t default_audio_capture_source_value = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;
 static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
 static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
 static const double default_microphone_sensitivity_value = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
@@ -1048,7 +1051,8 @@ typedef struct options_state {
   // Audio Configuration
   // ============================================================================
   bool audio_enabled;           ///< Enable audio streaming
-  audio_source_t audio_source;  ///< Audio source selection (auto/mic/media/both/remote)
+  audio_source_t audio_source;  ///< Visualization source (all/call/mic/media)
+  audio_capture_source_t audio_capture_source; ///< Local capture/media selection policy
   bool waveform; ///< Replace the video image with a live audio waveform
   bool fft;      ///< Replace the video image with a live audio frequency spectrogram
   int microphone_index;         ///< Microphone device index (-1 = default)

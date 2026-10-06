@@ -701,13 +701,12 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   int color_mode =
       terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
-  bool has_media = GET_OPTION(media_file)[0] != '\0' || GET_OPTION(media_url)[0] != '\0';
-  audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
-  if (selected_audio == AUDIO_SOURCE_MEDIA || (selected_audio == AUDIO_SOURCE_AUTO && has_media))
+  audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIX;
+  if (selected_audio == AUDIO_SOURCE_MEDIA)
     visual_source = AUDIO_VISUALIZATION_SOURCE_MEDIA;
-  else if (selected_audio == AUDIO_SOURCE_BOTH)
-    visual_source = AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX;
-  else if (selected_audio == AUDIO_SOURCE_REMOTE)
+  else if (selected_audio == AUDIO_SOURCE_MIC)
+    visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+  else if (selected_audio == AUDIO_SOURCE_CALL)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
   if (GET_OPTION(fft))
     return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),

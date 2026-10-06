@@ -4,7 +4,7 @@
 in client, discovery, and mirror modes. Mirror is a solo session: it records local
 audio without playing the microphone back through the speakers.
 
-Local audio follows `--audio-source`:
+Local capture and media playback follow `--audio-capture-source`:
 
 - `auto`: file/URL audio when available, otherwise the microphone.
 - `mic`: the microphone.
@@ -27,7 +27,7 @@ Examples:
 ascii-chat mirror --render-file solo.mp4
 ascii-chat mirror --file music.wav --render-file music-with-webcam.mp4
 ascii-chat client localhost --file clip.mp4 --render-file call.mp4
-ascii-chat client localhost --file music.wav --audio-source both --render-file call.mp4
+ascii-chat client localhost --file music.wav --audio-capture-source both --render-file call.mp4
 ```
 
 Video containers such as MP4 and WebM support audio. Still images and GIF do not.

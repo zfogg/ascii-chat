@@ -250,9 +250,10 @@ static void *audio_worker_thread(void *arg) {
     process_count++;
 
     bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
-    audio_source_t selection = GET_OPTION(audio_source);
-    bool use_media = has_media && (selection == AUDIO_SOURCE_AUTO || selection == AUDIO_SOURCE_MEDIA ||
-                                   selection == AUDIO_SOURCE_BOTH);
+    audio_capture_source_t selection = GET_OPTION(audio_capture_source);
+    bool use_media = has_media && (selection == AUDIO_CAPTURE_SOURCE_AUTO ||
+                                   selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
+                                   selection == AUDIO_CAPTURE_SOURCE_BOTH);
     bool use_mic = audio_should_enable_microphone(selection, has_media);
     if (use_media && !use_mic) {
       uint64_t now = time_get_ns();
@@ -1593,7 +1594,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   bool media_audio = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
-  if (!audio_should_enable_microphone(GET_OPTION(audio_source), media_audio))
+  if (!audio_should_enable_microphone(GET_OPTION(audio_capture_source), media_audio))
     ctx->playback_only = true;
   bool media_only = media_audio && ctx->playback_only;
 
@@ -2306,21 +2307,21 @@ bool audio_is_supported_sample_rate(uint32_t sample_rate) {
   return false;
 }
 
-bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio) {
+bool audio_should_enable_microphone(audio_capture_source_t source, bool has_media_audio) {
   switch (source) {
-  case AUDIO_SOURCE_AUTO:
+  case AUDIO_CAPTURE_SOURCE_AUTO:
     return !has_media_audio;
 
-  case AUDIO_SOURCE_MIC:
+  case AUDIO_CAPTURE_SOURCE_MIC:
     return true;
 
-  case AUDIO_SOURCE_MEDIA:
+  case AUDIO_CAPTURE_SOURCE_MEDIA:
     return false;
 
-  case AUDIO_SOURCE_BOTH:
+  case AUDIO_CAPTURE_SOURCE_BOTH:
     return true;
 
-  case AUDIO_SOURCE_REMOTE:
+  case AUDIO_CAPTURE_SOURCE_REMOTE:
     return false;
 
   default:

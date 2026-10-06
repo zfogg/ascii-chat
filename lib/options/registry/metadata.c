@@ -151,14 +151,23 @@ const char *g_render_theme_descs[] = {"Dark background (black), light text", "Li
 // Audio Source Metadata
 // ============================================================================
 
-const char *g_audio_source_values[] = {OPT_AUDIO_SOURCE_AUTO, OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA,
-                                       OPT_AUDIO_SOURCE_BOTH, OPT_AUDIO_SOURCE_REMOTE, NULL};
-const int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH,
-                                      AUDIO_SOURCE_REMOTE};
-const char *g_audio_source_descs[] = {"Smart selection (media-only when playing files, mic-only otherwise)",
-                                      "Microphone only (no media audio)", "Media audio only (no microphone)",
-                                      "Both microphone and media audio simultaneously",
-                                      "Received network audio only; disables local microphone and media capture", NULL};
+const char *g_audio_source_values[] = {OPT_AUDIO_SOURCE_ALL, OPT_AUDIO_SOURCE_CALL, OPT_AUDIO_SOURCE_MIC,
+                                       OPT_AUDIO_SOURCE_MEDIA, NULL};
+const int g_audio_source_integers[] = {AUDIO_SOURCE_ALL, AUDIO_SOURCE_CALL, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA};
+const char *g_audio_source_descs[] = {"Local microphone, local media, and other call participants (default)",
+                                      "Audio received from other call participants", "Local microphone only",
+                                      "Local media playback only", NULL};
+
+const char *g_audio_capture_source_values[] = {OPT_AUDIO_CAPTURE_SOURCE_AUTO, OPT_AUDIO_CAPTURE_SOURCE_MIC,
+                                               OPT_AUDIO_CAPTURE_SOURCE_MEDIA, OPT_AUDIO_CAPTURE_SOURCE_BOTH,
+                                               OPT_AUDIO_CAPTURE_SOURCE_REMOTE, NULL};
+const int g_audio_capture_source_integers[] = {AUDIO_CAPTURE_SOURCE_AUTO, AUDIO_CAPTURE_SOURCE_MIC,
+                                               AUDIO_CAPTURE_SOURCE_MEDIA, AUDIO_CAPTURE_SOURCE_BOTH,
+                                               AUDIO_CAPTURE_SOURCE_REMOTE};
+const char *g_audio_capture_source_descs[] = {"Microphone when no media is playing; media only otherwise (default)",
+                                              "Capture microphone only", "Play media audio only",
+                                              "Capture microphone and play media audio simultaneously",
+                                              "Do not capture local audio", NULL};
 
 // ============================================================================
 // Log Format Output Type Metadata (--log-format flag values)

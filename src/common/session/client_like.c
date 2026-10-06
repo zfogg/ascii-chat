@@ -655,10 +655,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       audio_ctx = SAFE_CALLOC(1, sizeof(*audio_ctx), audio_context_t *);
       if (audio_init(audio_ctx) == ASCIICHAT_OK) {
         audio_available = true;
-        if (file_audio && GET_OPTION(audio_source) != AUDIO_SOURCE_MIC)
+        if (file_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC)
           audio_ctx->capture_media_source = source;
         audio_ctx->monitor_local_media = true;
-        audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_source), file_audio);
+        audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), file_audio);
         session_capture_set_audio_context(capture, audio_ctx);
         media_source_set_audio_context(source, audio_ctx);
       } else {

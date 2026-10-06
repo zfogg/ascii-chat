@@ -76,7 +76,7 @@ def main():
             return process
 
         try:
-            mirror = launch("mirror", "mirror", "--file", str(root / "440.mp4"), "--audio-source", "media",
+            mirror = launch("mirror", "mirror", "--file", str(root / "440.mp4"), "--audio-capture-source", "media",
                             "--snapshot", "--snapshot-delay", "3", "--fps", "10", "--width", "40", "--height", "12",
                             "--render-file", str(root / "mirror.mp4"))
             mirror.wait(timeout=20)

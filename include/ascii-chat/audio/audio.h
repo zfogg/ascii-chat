@@ -833,25 +833,25 @@ void audio_flush_playback_buffers(audio_context_t *ctx);
  * @brief Determine if microphone should be enabled based on audio source setting and media state
  *
  * Smart helper function for determining microphone input availability based on:
- * - User's --audio-source preference (auto, microphone, media, both, remote)
+ * - User's --audio-capture-source preference (auto, microphone, media, both, remote)
  * - Whether media audio is currently being played (--file or --url)
  *
- * @param source Audio source preference from --audio-source option
+ * @param source Audio capture policy from --audio-capture-source option
  * @param has_media_audio True if media with audio is being played, false otherwise
  *
  * @return true if microphone should be enabled, false otherwise
  *
- * Behavior by audio_source value:
- * - AUDIO_SOURCE_AUTO: Enable microphone only when no media audio (smart default)
- * - AUDIO_SOURCE_MICROPHONE: Always enable microphone (ignore media state)
- * - AUDIO_SOURCE_MEDIA: Never enable microphone (media-only)
- * - AUDIO_SOURCE_BOTH: Always enable microphone (allow simultaneous capture)
- * - AUDIO_SOURCE_REMOTE: Disable microphone and local media capture
+ * Behavior by capture source value:
+ * - AUDIO_CAPTURE_SOURCE_AUTO: Enable microphone only when no media audio (smart default)
+ * - AUDIO_CAPTURE_SOURCE_MIC: Always enable microphone (ignore media state)
+ * - AUDIO_CAPTURE_SOURCE_MEDIA: Never enable microphone (media-only)
+ * - AUDIO_CAPTURE_SOURCE_BOTH: Always enable microphone (allow simultaneous capture)
+ * - AUDIO_CAPTURE_SOURCE_REMOTE: Disable microphone and local media capture
  *
  * Usage:
  * @code
  * bool has_media = (media_file && strlen(media_file) > 0);
- * bool enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), has_media);
+ * bool enable_mic = audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media);
  * if (enable_mic) {
  *     audio_ctx->playback_only = false;  // Allow microphone capture
  * } else {
@@ -861,6 +861,6 @@ void audio_flush_playback_buffers(audio_context_t *ctx);
  *
  * @ingroup audio
  */
-bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio);
+bool audio_should_enable_microphone(audio_capture_source_t source, bool has_media_audio);
 
 /** @} */

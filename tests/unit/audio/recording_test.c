@@ -337,7 +337,7 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
 
 Test(recording, media_audio_recording_runs_without_input_or_output_devices, .timeout = 10) {
   options_t options = *options_get();
-  options.audio_source = AUDIO_SOURCE_MEDIA;
+  options.audio_capture_source = AUDIO_CAPTURE_SOURCE_MEDIA;
   options.speakers_index = INT_MAX;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
 
@@ -435,7 +435,7 @@ Test(recording, rendered_video_contains_mixed_audio_and_flushes_the_tail, .timeo
 
 Test(recording, both_source_mixes_microphone_and_file_in_the_same_outgoing_block, .timeout = 10) {
   options_t options = *options_get();
-  options.audio_source = AUDIO_SOURCE_BOTH;
+  options.audio_capture_source = AUDIO_CAPTURE_SOURCE_BOTH;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
   char path[1024];
   create_audio_fixture(path, sizeof(path));

@@ -18,7 +18,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   return ASCIICHAT_OK; // No-op in WASM
 }
 
-bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio) {
+bool audio_should_enable_microphone(audio_capture_source_t source, bool has_media_audio) {
   (void)source;
   (void)has_media_audio;
   return false; // No microphone access in WASM mirror mode

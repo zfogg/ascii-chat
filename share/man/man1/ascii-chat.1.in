@@ -89,7 +89,7 @@ ascii-chat mirror --matrix --color-filter green
 Use \fB\-\-waveform\fR to view the selected audio as a live waveform whose
 height follows the signal level, or \fB\-\-fft\fR to view a scrolling
 frequency display. Both replace the video image and follow the source selected
-by \fB\-\-audio-source\fR. The colors adapt to dark and light terminal
+by \fB\-\-audio-source\fR (all sources by default). The colors adapt to dark and light terminal
 backgrounds. Choose one visualization at a time.
 .PP
 For example, inspect a local video's audio track with either visualization:
@@ -102,8 +102,18 @@ ascii-chat mirror --file music.mp4 --audio-source media --fft
 To inspect received audio during a call, use either visualization:
 .PP
 .EX
-ascii-chat client --audio-source remote --waveform
-ascii-chat client --audio-source remote --fft
+ascii-chat client --audio-source call --waveform
+ascii-chat client --audio-source call --fft
+.EE
+.PP
+The default \fB--audio-capture-source auto\fR uses media audio without
+capturing the local microphone while a media file is playing. To visualize the
+local microphone, local media, and audio received from other call participants
+together while playing an MP4, select \fBboth\fR for capture. The visualization
+source defaults to \fBall\fR:
+.PP
+.EX
+ascii-chat client --file music.mp4 --audio-capture-source both --waveform
 .EE
 .\" MANUAL-END: ANIMATIONS
 

@@ -106,7 +106,8 @@ ascii-chat mirror --matrix --color-filter green
 <p class="Pp">Use <b>--waveform</b> to view the selected audio as a live
     waveform whose height follows the signal level, or <b>--fft</b> to view a
     scrolling frequency display. Both replace the video image and follow the
-    source selected by <b>--audio-source</b>. The colors adapt to dark and light
+    source selected by <b>--audio-source</b> (all sources by default). The
+    colors adapt to dark and light
     terminal backgrounds. Choose one visualization at a time.</p>
 <p class="Pp">For example, inspect a local video's audio track with either
     visualization:</p>
@@ -117,8 +118,15 @@ ascii-chat mirror --file music.mp4 --audio-source media --fft
 <p class="Pp">To inspect received audio during a call, use either
     visualization:</p>
 <p class="Pp"></p>
-<pre>ascii-chat client --audio-source remote --waveform
-ascii-chat client --audio-source remote --fft
+<pre>ascii-chat client --audio-source call --waveform
+ascii-chat client --audio-source call --fft
+</pre>
+<p class="Pp">The default <b>--audio-capture-source auto</b> uses media audio
+    without capturing the local microphone while a media file is playing. To
+    visualize the local microphone, local media, and audio received from other
+    call participants together while playing an MP4, select <b>both</b> for
+    capture. The visualization source defaults to <b>all</b>:</p>
+<pre>ascii-chat client --file music.mp4 --audio-capture-source both --waveform
 </pre>
 <p class="Pp"></p>
 </section>
@@ -575,8 +583,12 @@ https://example.com/stream.m3u8</pre>
   <dd>Alias for --speakers-volume. (modes: default, client, mirror)</dd>
   <dt id="audio-source"><a class="permalink" href="#audio-source"><b>--audio-source
     <i>VALUE</i></b></a></dt>
-  <dd>Select which audio source to use: auto, mic, media, both, or remote
-      (received network audio only). (modes: default, client, mirror)</dd>
+  <dd>Select which audio source to visualize: all, call, mic, or media. (default:
+      all) (modes: default, client, mirror)</dd>
+  <dt id="audio-capture-source"><a class="permalink" href="#audio-capture-source"><b>--audio-capture-source
+    <i>VALUE</i></b></a></dt>
+  <dd>Select local audio to capture: auto, mic, media, both, or remote. (default:
+      auto) (modes: default, client, mirror)</dd>
   <dt id="audio-analysis"><a class="permalink" href="#audio-analysis"><b>--audio-analysis
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable audio analysis (debug). (default: false) (modes: default,
@@ -1225,6 +1237,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--audio-analysis</b></dd>
   <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
   <dd>See: <b>--audio-source</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><b>ASCII_CHAT_AUDIO_CAPTURE_SOURCE</b></a></dt>
+  <dd>See: <b>--audio-capture-source</b></dd>
   <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
   <dd>See: <b>--client-keys</b></dd>
   <dt id="ASCII_CHAT_COLOR"><a class="permalink" href="#ASCII_CHAT_COLOR"><b>ASCII_CHAT_COLOR</b></a></dt>

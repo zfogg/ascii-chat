@@ -120,12 +120,19 @@ bool options_is_enum_option(const char *option_name);
 #define OPT_RECONNECT_OFF  "off"
 #define OPT_RECONNECT_AUTO "auto"
 
-/* audio-source values */
-#define OPT_AUDIO_SOURCE_AUTO  "auto"
+/* audio visualization source values */
+#define OPT_AUDIO_SOURCE_ALL   "all"
+#define OPT_AUDIO_SOURCE_CALL  "call"
 #define OPT_AUDIO_SOURCE_MIC   "mic"
 #define OPT_AUDIO_SOURCE_MEDIA "media"
-#define OPT_AUDIO_SOURCE_BOTH  "both"
-#define OPT_AUDIO_SOURCE_REMOTE "remote"
+#define OPT_AUDIO_SOURCE_AUTO  "auto"
+
+/* audio-capture-source values */
+#define OPT_AUDIO_CAPTURE_SOURCE_AUTO   "auto"
+#define OPT_AUDIO_CAPTURE_SOURCE_MIC    "mic"
+#define OPT_AUDIO_CAPTURE_SOURCE_MEDIA  "media"
+#define OPT_AUDIO_CAPTURE_SOURCE_BOTH   "both"
+#define OPT_AUDIO_CAPTURE_SOURCE_REMOTE "remote"
 
 #ifdef __cplusplus
 }

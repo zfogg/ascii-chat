@@ -1170,37 +1170,54 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   char lower[32];
   to_lower(arg, lower, sizeof(lower));
 
-  // Auto (smart selection based on media state)
-  if (strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0) {
-    *audio_source = AUDIO_SOURCE_AUTO;
+  if (strcmp(lower, OPT_AUDIO_SOURCE_ALL) == 0 || strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0 ||
+      strcmp(lower, "both") == 0) {
+    *audio_source = AUDIO_SOURCE_ALL;
     return true;
   }
-
-  // Microphone only
+  if (strcmp(lower, OPT_AUDIO_SOURCE_CALL) == 0 || strcmp(lower, "remote") == 0) {
+    *audio_source = AUDIO_SOURCE_CALL;
+    return true;
+  }
   if (strcmp(lower, OPT_AUDIO_SOURCE_MIC) == 0) {
     *audio_source = AUDIO_SOURCE_MIC;
     return true;
   }
-
-  // Media only
   if (strcmp(lower, OPT_AUDIO_SOURCE_MEDIA) == 0) {
     *audio_source = AUDIO_SOURCE_MEDIA;
     return true;
   }
 
-  // Both microphone and media
-  if (strcmp(lower, OPT_AUDIO_SOURCE_BOTH) == 0) {
-    *audio_source = AUDIO_SOURCE_BOTH;
-    return true;
-  }
-
-  if (strcmp(lower, OPT_AUDIO_SOURCE_REMOTE) == 0) {
-    *audio_source = AUDIO_SOURCE_REMOTE;
-    return true;
-  }
-
   if (error_msg) {
-    *error_msg = platform_strdup("Audio source must be 'auto', 'mic', 'media', 'both', or 'remote'");
+    *error_msg = platform_strdup("Audio source must be 'all', 'call', 'mic', or 'media'");
   }
   return false;
+}
+
+bool parse_audio_capture_source(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg)
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
+    return false;
+  }
+
+  audio_capture_source_t *source = (audio_capture_source_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+  if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_AUTO) == 0)
+    *source = AUDIO_CAPTURE_SOURCE_AUTO;
+  else if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_MIC) == 0)
+    *source = AUDIO_CAPTURE_SOURCE_MIC;
+  else if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_MEDIA) == 0)
+    *source = AUDIO_CAPTURE_SOURCE_MEDIA;
+  else if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_BOTH) == 0)
+    *source = AUDIO_CAPTURE_SOURCE_BOTH;
+  else if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_REMOTE) == 0)
+    *source = AUDIO_CAPTURE_SOURCE_REMOTE;
+  else {
+    if (error_msg)
+      *error_msg = platform_strdup("Audio capture source must be 'auto', 'mic', 'media', 'both', or 'remote'");
+    return false;
+  }
+  return true;
 }
