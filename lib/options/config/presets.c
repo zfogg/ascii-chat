@@ -407,6 +407,12 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_dependency_conflicts(b, "fft", "matrix", "Option --fft cannot be used with --matrix");
   options_builder_add_dependency_conflicts(b, "waveform", "fft",
                                            "Options --waveform and --fft cannot be used together");
+  options_builder_add_dependency_conflicts(b, "waveform", "audio",
+                                           "Option --waveform requires audio; remove --audio=false");
+  options_builder_add_dependency_conflicts(b, "fft", "audio", "Option --fft requires audio; remove --audio=false");
+  options_builder_add_dependency_conflicts(b, "waveform", "stretch",
+                                           "Option --waveform cannot be used with --stretch");
+  options_builder_add_dependency_conflicts(b, "fft", "stretch", "Option --fft cannot be used with --stretch");
 
   // ============================================================================
   // Requirements (dependencies that must be satisfied)

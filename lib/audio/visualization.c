@@ -144,7 +144,7 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
 }
 
 char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                          bool use_color, int color_mode) {
+                                          bool use_color, int color_mode, bool flip_x, bool flip_y) {
   if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
@@ -168,12 +168,14 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
   memset(cells, ' ', cell_count);
   unsigned char palette[MAX_TERMINAL_WIDTH][3] = {{0}};
 
-  float peak = 0.0f;
+  float positive_peak = 0.0f;
+  float negative_peak = 0.0f;
   size_t x = 0;
 
   for (size_t i = 0; i < sample_count; i++) {
     float sample = samples[i];
-    peak = fmaxf(peak, fabsf(sample));
+    positive_peak = fmaxf(positive_peak, sample);
+    negative_peak = fmaxf(negative_peak, -sample);
 
     size_t next_bucket = ((i + 1) * width) / sample_count;
     if (next_bucket != x || i + 1 == sample_count) {
@@ -182,20 +184,24 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
       size_t bucket_center = begin + (end - begin) / 2;
       float centroid = waveform_spectral_centroid(samples, sample_count, bucket_center);
       /* A gentle square-root scale keeps speech visible without flattening loud peaks. */
-      float level = sqrtf(fminf(peak, 1.0f));
+      float level = sqrtf(fminf(fmaxf(positive_peak, negative_peak), 1.0f));
       visualization_color_for_level(centroid, level, color_mode, &palette[x][0], &palette[x][1], &palette[x][2]);
-      unsigned int amplitude = (unsigned int)lrintf(level * (float)half_height);
-      if (amplitude > half_height)
-        amplitude = half_height;
-      unsigned int top = center - amplitude;
-      unsigned int bottom = center + amplitude;
+      unsigned int positive_amplitude = (unsigned int)lrintf(sqrtf(fminf(positive_peak, 1.0f)) * (float)half_height);
+      unsigned int negative_amplitude = (unsigned int)lrintf(sqrtf(fminf(negative_peak, 1.0f)) * (float)half_height);
+      if (positive_amplitude > half_height)
+        positive_amplitude = half_height;
+      if (negative_amplitude > half_height)
+        negative_amplitude = half_height;
+      unsigned int top = center - positive_amplitude;
+      unsigned int bottom = center + negative_amplitude;
       for (unsigned int y = top; y <= bottom; y++) {
         char ch = (y == top || y == bottom) ? '+' : '#';
         cells[(size_t)y * width + x] = ch;
       }
 
       /* Advance to the next time slice in the left-to-right history. */
-      peak = 0.0f;
+      positive_peak = 0.0f;
+      negative_peak = 0.0f;
       x = next_bucket;
     }
   }
@@ -210,10 +216,12 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
   size_t used = 0;
   for (unsigned int y = 0; y < grid_height; y++) {
     for (unsigned int x = 0; x < width; x++) {
-      char ch = cells[(size_t)y * width + x];
+      unsigned int source_x = flip_x ? width - x - 1 : x;
+      unsigned int source_y = flip_y ? grid_height - y - 1 : y;
+      char ch = cells[(size_t)source_y * width + source_x];
       if (use_color && ch != ' ') {
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um%c\033[0m", palette[x][0],
-                                 palette[x][1], palette[x][2], ch);
+        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um%c\033[0m", palette[source_x][0],
+                                 palette[source_x][1], palette[source_x][2], ch);
       } else {
         frame[used++] = ch;
       }
@@ -265,7 +273,7 @@ static void visualization_fft(float *real, float *imaginary) {
 }
 
 char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color, int color_mode) {
+                                     bool use_color, int color_mode, bool flip_x, bool flip_y) {
   if (width < 16 || height < 6 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
@@ -324,7 +332,9 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       float db = 20.0f * log10f(fmaxf(magnitude, 0.00001f));
       float intensity = fmaxf(0.0f, fminf(1.0f, (db + 58.0f) / 52.0f));
       int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
-      size_t cell = (size_t)row * width + x;
+      unsigned int source_x = flip_x ? width - x - 1 : x;
+      unsigned int source_row = flip_y ? height - row - 1 : row;
+      size_t cell = (size_t)source_row * width + source_x;
       cells[cell] = levels[level];
       float band_hz = sqrtf(low_hz * high_hz);
       visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],

@@ -308,10 +308,10 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
                                                  ? AUDIO_VISUALIZATION_SOURCE_MIC
                                                  : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, audio_source, true,
-                                         AUDIO_VISUALIZATION_COLOR_BRIGHTER);
-  return audio_visualization_render_waveform(width, height, audio_source, true,
-                                             AUDIO_VISUALIZATION_COLOR_BRIGHTER);
+    return audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+                                          GET_OPTION(flip_x), GET_OPTION(flip_y));
+  return audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+                                             GET_OPTION(flip_x), GET_OPTION(flip_y));
 }
 
 EMSCRIPTEN_KEEPALIVE
