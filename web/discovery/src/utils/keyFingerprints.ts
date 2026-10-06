@@ -49,7 +49,7 @@ export async function getSshFingerprint(
     const hashBase64 = btoa(String.fromCharCode(...hashArray));
 
     // Format: SHA256:base64 (OpenSSH standard)
-    return `SHA256:${hashBase64.replace(/=/g, "")}`;
+    return `SHA256:${hashBase64.replace(/=+$/, "")}`;
   } catch {
     return null;
   }
