@@ -96,7 +96,7 @@ export default function ServerStatusSection() {
           </Link>
           , so anyone may run and use their own discovery service. Until
           official hosting returns, the ascii-chat client app releases cannot
-          create or find sessions—host your own service or check back soon.
+          create or find sessions. Host your own service or check back soon.
         </p>
       </aside>
       <div className="overflow-x-auto rounded-lg border border-gray-700">
