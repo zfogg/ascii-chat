@@ -341,6 +341,7 @@ Test(main_integration, server_client_basic_connection) {
                          "--websocket-port",
                          websocket_port_str,
                          "--no-encrypt",
+                         "--test-pattern",
                          "--status-screen=false",
                          NULL};
 
