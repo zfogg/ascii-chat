@@ -97,6 +97,10 @@ export const ACDS_ENDPOINTS = {
   TCP: "tcp://discovery-service.ascii-chat.com:27225",
   /** WebSocket/TLS endpoint for web clients */
   WSS: "wss://discovery-service.ascii-chat.com:443",
+  /** Default STUN servers, in the priority passed to ascii-chat */
+  STUN: ["stun:stun.ascii-chat.com:3478", "stun:stun.l.google.com:19302"],
+  /** Default TURN server */
+  TURN: "turn:turn.ascii-chat.com:3478",
 } as const;
 
 export type SiteKey = keyof typeof SITES;
