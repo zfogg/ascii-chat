@@ -352,12 +352,20 @@ Test(main_integration, server_client_basic_connection) {
   cr_assert(server_ready, "Server should be listening");
 
   // Start client with test pattern (no webcam needed in Docker)
-  char *client_argv[] = {"ascii-chat",        "--log-file", "/tmp/test_client.log",
-                         "--no-check-update", "client",     client_address,
+  char *client_argv[] = {"ascii-chat",
+                         "--log-file",
+                         "/tmp/test_client.log",
+                         "--log-level",
+                         "debug",
+                         "--no-check-update",
+                         "client",
+                         client_address,
                          "--no-encrypt",   // Skip crypto handshake for speed
                          "--test-pattern", // Use test pattern instead of webcam
                          "--snapshot",     // Take single snapshot and exit immediately
-                         "--snapshot-delay",  "3",          NULL};
+                         "--snapshot-delay",
+                         "3",
+                         NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
   cr_assert_gt(client_pid, 0, "Client should spawn");
