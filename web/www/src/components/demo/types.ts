@@ -12,6 +12,8 @@ export interface DemoSettings {
   palette?: Palette;
   paletteChars?: string;
   matrixRain?: boolean;
+  waveform?: boolean;
+  fft?: boolean;
   flipX?: boolean;
   flipY?: boolean;
   targetFps?: number;

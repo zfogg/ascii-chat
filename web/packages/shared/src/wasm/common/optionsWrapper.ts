@@ -14,6 +14,7 @@
  */
 export interface WasmModule {
   HEAPU8: Uint8Array;
+  HEAPF32: Float32Array;
   UTF8ToString(ptr: number): string;
   stringToUTF8(str: string, outPtr: number, maxBytes: number): void;
   lengthBytesUTF8(str: string): number;
@@ -35,6 +36,10 @@ export interface WasmModule {
   _get_palette_chars?(): number;
   _set_matrix_rain?(enabled: number): number;
   _get_matrix_rain?(): number;
+  _set_waveform?(enabled: number): number;
+  _get_waveform?(): number;
+  _set_fft?(enabled: number): number;
+  _get_fft?(): number;
   _set_flip_x?(enabled: number): number;
   _get_flip_x?(): number;
   _set_flip_y?(enabled: number): number;

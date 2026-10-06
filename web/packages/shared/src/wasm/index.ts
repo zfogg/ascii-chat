@@ -2,13 +2,20 @@ export {
   initMirrorWasm,
   cleanupMirrorWasm,
   convertFrameToAscii,
+  submitAudioSamples,
+  renderAudioVisualization,
   isWasmReady,
   getMirrorModule,
   RenderMode,
   ColorMode,
   ColorFilter,
 } from "./mirror";
-export type { Palette, EmscriptenModuleFactory, MirrorModule } from "./mirror";
+export type {
+  AudioVisualizationSource,
+  Palette,
+  EmscriptenModuleFactory,
+  MirrorModule,
+} from "./mirror";
 export { createOptionAccessor } from "./common/optionsWrapper";
 export type { WasmModule, OptionAccessor } from "./common/optionsWrapper";
 export {
@@ -32,6 +39,10 @@ export {
   setPaletteChars,
   getPaletteChars,
   setMatrixRain,
+  setWaveform,
+  getWaveform,
+  setFft,
+  getFft,
   getMatrixRain,
   setFlipX,
   getFlipX,

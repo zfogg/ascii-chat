@@ -295,6 +295,7 @@ set(LIB_SRC_COMMON
 set(LIB_SRC_MIRROR_ONLY
     ${LIB_ROOT}/video/ascii/rle.c            # RLE codec for server ASCII frames - mirror only
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
+    ${LIB_ROOT}/audio/visualization.c # Audio waveform and spectrum rendering for mirror WASM
 )
 
 # Client-specific sources (crypto + network)
@@ -484,6 +485,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_init_with_args
     _mirror_cleanup
     _mirror_convert_frame
+    _mirror_submit_audio_samples
+    _mirror_render_audio_visualization
     _mirror_free_string
     _get_help_text
     # Terminal renderer functions (libvterm + FreeType)
@@ -516,6 +519,10 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_palette_chars
     _set_matrix_rain
     _get_matrix_rain
+    _set_waveform
+    _get_waveform
+    _set_fft
+    _get_fft
     _set_flip_x
     _get_flip_x
     _set_flip_y

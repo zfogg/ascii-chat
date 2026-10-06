@@ -23,6 +23,7 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/audio/visualization.h>
 
 // Global digital rain effect context
 static digital_rain_t *g_digital_rain = NULL;
@@ -290,6 +291,27 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   }
 
   return ascii_output;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void mirror_submit_audio_samples(const float *samples, int count, int source) {
+  if (!samples || count <= 0 || count > 8192)
+    return;
+  audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
+                                                                       : AUDIO_VISUALIZATION_SOURCE_MEDIA,
+                             samples, (size_t)count);
+}
+
+EMSCRIPTEN_KEEPALIVE
+char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
+  audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC
+                                                 ? AUDIO_VISUALIZATION_SOURCE_MIC
+                                                 : AUDIO_VISUALIZATION_SOURCE_MEDIA;
+  if (GET_OPTION(fft))
+    return audio_visualization_render_fft(width, height, audio_source, true,
+                                         AUDIO_VISUALIZATION_COLOR_BRIGHTER);
+  return audio_visualization_render_waveform(width, height, audio_source, true,
+                                             AUDIO_VISUALIZATION_COLOR_BRIGHTER);
 }
 
 EMSCRIPTEN_KEEPALIVE

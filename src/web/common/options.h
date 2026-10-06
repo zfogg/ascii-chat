@@ -37,6 +37,11 @@ const char *get_palette_chars(void);
 int set_matrix_rain(int enabled);
 int get_matrix_rain(void);
 
+int set_waveform(int enabled);
+int get_waveform(void);
+int set_fft(int enabled);
+int get_fft(void);
+
 // Horizontal flip setters/getters
 int set_flip_x(int enabled);
 int get_flip_x(void);

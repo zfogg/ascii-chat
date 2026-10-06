@@ -1,6 +1,6 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
-import { AudioVisualizationDemo, MirrorDemoWidget } from "../../demo";
+import { MirrorDemoWidget } from "../../demo";
 import type { DemoOption } from "../../demo";
 import { ColorFilter } from "@ascii-chat/shared/wasm";
 
@@ -20,6 +20,15 @@ const MATRIX_OPTIONS: DemoOption[] = [
       palette: "standard",
       colorFilter: ColorFilter.RAINBOW,
     },
+  },
+];
+
+const AUDIO_OPTIONS: DemoOption[] = [
+  { id: "waveform", label: "Audio Waveform", settings: { waveform: true } },
+  {
+    id: "fft",
+    label: "Audio Fast Fourier Transform",
+    settings: { fft: true },
   },
 ];
 
@@ -67,17 +76,20 @@ export default function AnimationsEffectsSection() {
       </div>
       <div className="docs-subsection-spacing mt-10">
         <Heading level={3} className="heading-3 text-emerald-300 mb-3">
-          Live Audio Displays
+          Audio Visualizations
         </Heading>
         <p className="docs-paragraph">
-          The waveform traces the audio signal over time, while the FFT display
-          shows how energy is distributed across frequencies. Both follow the
-          selected <code>--audio-source</code> in the native client.
+          Watch microphone speech, claps, music, or a media file as a flowing,
+          frequency-colored waveform, or inspect how its energy spreads across
+          bass, midrange, and treble. Choose Microphone for live input or Demo
+          Audio to play the bundled music clip.
         </p>
         <CodeBlock language="bash">
-          {"# Show the selected audio source as a flowing waveform\nascii-chat mirror --file music.mp4 --audio-source media --waveform\n\n# Inspect the source's frequency spectrum\nascii-chat mirror --file music.mp4 --audio-source media --fft"}
+          {"# Visualize microphone input as a waveform\nascii-chat mirror --audio-source mic --waveform\n\n# Inspect the microphone frequency spectrum\nascii-chat mirror --audio-source mic --fft\n\n# Visualize audio from a media file\nascii-chat mirror --file music.mp4 --audio-source media --waveform\nascii-chat mirror --file music.mp4 --audio-source media --fft"}
         </CodeBlock>
-        <AudioVisualizationDemo />
+        <div className="mt-6">
+          <MirrorDemoWidget demoOptions={AUDIO_OPTIONS} />
+        </div>
       </div>
     </section>
   );

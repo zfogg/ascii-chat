@@ -135,6 +135,26 @@ int get_matrix_rain(void) {
   return result;
 }
 
+EMSCRIPTEN_KEEPALIVE
+int set_waveform(int enabled) {
+  return options_set_bool("waveform", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_waveform(void) {
+  return GET_OPTION(waveform) ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int set_fft(int enabled) {
+  return options_set_bool("fft", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_fft(void) {
+  return GET_OPTION(fft) ? 1 : 0;
+}
+
 // ============================================================================
 // Horizontal Flip Accessors
 // ============================================================================

@@ -156,8 +156,7 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     return NULL;
   audio_visualization_read(source, samples, sample_count);
 
-  /* Reserve the first row for a quiet source label; the remaining grid is the waveform. */
-  const unsigned int grid_height = height - 1;
+  const unsigned int grid_height = height;
   const unsigned int center = grid_height / 2;
   const unsigned int half_height = grid_height - 1 - center;
   const size_t cell_count = (size_t)width * grid_height;
@@ -201,15 +200,14 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     }
   }
 
-  static const char *source_names[] = {"MICROPHONE", "MEDIA", "REMOTE", "MIC + MEDIA", "ALL INPUTS"};
-  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height * 2 + 96;
+  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height + 1;
   char *frame = SAFE_MALLOC(capacity, char *);
   if (!frame) {
     SAFE_FREE(cells);
     SAFE_FREE(samples);
     return NULL;
   }
-  size_t used = (size_t)snprintf(frame, capacity, "AUDIO WAVEFORM  |  %s\n", source_names[source]);
+  size_t used = 0;
   for (unsigned int y = 0; y < grid_height; y++) {
     for (unsigned int x = 0; x < width; x++) {
       char ch = cells[(size_t)y * width + x];
@@ -276,7 +274,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   if (!samples)
     return NULL;
   audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
-  size_t cell_count = (size_t)width * (height - 1);
+  size_t cell_count = (size_t)width * height;
   char *cells = SAFE_MALLOC(cell_count, char *);
   unsigned char *colors = SAFE_MALLOC(cell_count * 3, unsigned char *);
   if (!cells || !colors) {
@@ -291,7 +289,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   /* Each column is a 21 ms Hann-windowed spectrum; adjacent columns overlap heavily. */
   float real[FFT_SIZE], imaginary[FFT_SIZE];
   static const char levels[] = " .:-=+*#%@";
-  const unsigned int spectrum_height = height - 2;
+  const unsigned int spectrum_height = height;
   for (unsigned int x = 0; x < width; x++) {
     size_t center = (size_t)x * (VISUALIZATION_HISTORY - 1) / (width - 1);
     size_t start = center > FFT_SIZE / 2 ? center - FFT_SIZE / 2 : 0;
@@ -326,7 +324,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       float db = 20.0f * log10f(fmaxf(magnitude, 0.00001f));
       float intensity = fmaxf(0.0f, fminf(1.0f, (db + 58.0f) / 52.0f));
       int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
-      size_t cell = (size_t)(row + 1) * width + x;
+      size_t cell = (size_t)row * width + x;
       cells[cell] = levels[level];
       float band_hz = sqrtf(low_hz * high_hz);
       visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
@@ -334,8 +332,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     }
   }
 
-  static const char *source_names[] = {"MICROPHONE", "MEDIA", "REMOTE", "MIC + MEDIA", "ALL INPUTS"};
-  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height * 2 + 96;
+  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height + 1;
   char *frame = SAFE_MALLOC(capacity, char *);
   if (!frame) {
     SAFE_FREE(colors);
@@ -343,8 +340,8 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     SAFE_FREE(samples);
     return NULL;
   }
-  size_t used = (size_t)snprintf(frame, capacity, "AUDIO FFT  |  %s  |  1s\n", source_names[source]);
-  for (unsigned int row = 0; row < height - 1; row++) {
+  size_t used = 0;
+  for (unsigned int row = 0; row < height; row++) {
     for (unsigned int x = 0; x < width; x++) {
       size_t cell = (size_t)row * width + x;
       char ch = cells[cell];

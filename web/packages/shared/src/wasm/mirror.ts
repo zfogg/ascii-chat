@@ -28,6 +28,8 @@ interface MirrorModuleExports {
     src_height: number,
   ): number;
   _mirror_free_string(ptr: number): void;
+  _mirror_submit_audio_samples(samples_ptr: number, count: number, source: number): void;
+  _mirror_render_audio_visualization(width: number, height: number, source: number): number;
   _get_help_text(mode: number, option_name: number): number;
   // Terminal renderer functions (libvterm + FreeType)
   _term_renderer_create(cfg_ptr: number, out_ptr: number): number;
@@ -42,6 +44,7 @@ interface MirrorModuleExports {
   // Embedded font data
   _get_font_default_ptr(): number;
   _get_font_default_size(): number;
+  HEAPF32: Float32Array;
   // Memory management
   _malloc(size: number): number;
   _free(ptr: number): void;
@@ -53,6 +56,8 @@ export interface MirrorModule extends WasmModule {
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
+  _mirror_submit_audio_samples: MirrorModuleExports["_mirror_submit_audio_samples"];
+  _mirror_render_audio_visualization: MirrorModuleExports["_mirror_render_audio_visualization"];
   _get_help_text: MirrorModuleExports["_get_help_text"];
   _term_renderer_create: MirrorModuleExports["_term_renderer_create"];
   _term_renderer_feed: MirrorModuleExports["_term_renderer_feed"];
@@ -271,6 +276,53 @@ export function convertFrameToAscii(
     if (dataPtr && dataPtr > 0) {
       wasmModule._free(dataPtr);
     }
+  }
+}
+
+export type AudioVisualizationSource = "microphone" | "media";
+
+function audioVisualizationSourceId(source: AudioVisualizationSource): number {
+  return source === "microphone" ? 0 : 1;
+}
+
+export function submitAudioSamples(
+  samples: Float32Array,
+  source: AudioVisualizationSource = "media",
+): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const pointer = wasmModule._malloc(samples.byteLength);
+  if (!pointer) throw new Error("Failed to allocate WASM audio sample buffer");
+  try {
+    wasmModule.HEAPU8.set(
+      new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength),
+      pointer,
+    );
+    wasmModule._mirror_submit_audio_samples(
+      pointer,
+      samples.length,
+      audioVisualizationSourceId(source),
+    );
+  } finally {
+    wasmModule._free(pointer);
+  }
+}
+
+export function renderAudioVisualization(
+  width: number,
+  height: number,
+  source: AudioVisualizationSource = "media",
+): string {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const pointer = wasmModule._mirror_render_audio_visualization(
+    width,
+    height,
+    audioVisualizationSourceId(source),
+  );
+  if (!pointer) return "";
+  try {
+    return wasmModule.UTF8ToString(pointer);
+  } finally {
+    wasmModule._mirror_free_string(pointer);
   }
 }
 

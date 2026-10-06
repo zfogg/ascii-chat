@@ -225,6 +225,26 @@ export function getMatrixRain(): boolean {
   return options.getBool("matrix_rain");
 }
 
+export function setWaveform(enabled: boolean): void {
+  if (!options) throw new Error("Options not initialized");
+  options.setBool("waveform", enabled);
+}
+
+export function getWaveform(): boolean {
+  if (!options) throw new Error("Options not initialized");
+  return options.getBool("waveform");
+}
+
+export function setFft(enabled: boolean): void {
+  if (!options) throw new Error("Options not initialized");
+  options.setBool("fft", enabled);
+}
+
+export function getFft(): boolean {
+  if (!options) throw new Error("Options not initialized");
+  return options.getBool("fft");
+}
+
 // ============================================================================
 // Horizontal Flip Accessors
 // ============================================================================

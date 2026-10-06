@@ -13,6 +13,10 @@ import {
   setPalette,
   setPaletteChars,
   setMatrixRain,
+  setWaveform,
+  setFft,
+  submitAudioSamples,
+  renderAudioVisualization,
   setTargetFps,
   ColorMode,
   ColorFilter,
@@ -48,7 +52,9 @@ function applyDemoOption(
   const s = option.settings;
   // Reset all options to defaults first, then apply preset overrides.
   // This prevents stale state from a previous demo leaking through.
-  setColorMode(s.colorMode ?? ColorMode.AUTO);
+  // The browser renderer has a known truecolor capability; the state API
+  // rejects AUTO because browser terminal detection is not available here.
+  setColorMode(s.colorMode ?? ColorMode.TRUECOLOR);
   setColorFilter(s.colorFilter ?? ColorFilter.NONE);
   setRenderMode(s.renderMode ?? RenderMode.FOREGROUND);
   setPalette(s.palette ?? "standard");
@@ -59,7 +65,12 @@ function applyDemoOption(
     lastMatrixRain,
   });
   // Set matrix flag first so C side knows about it before renderer recreation
+  setMatrixRain(false);
+  setWaveform(false);
+  setFft(false);
   setMatrixRain(matrixRainNow);
+  setWaveform(s.waveform ?? false);
+  setFft(s.fft ?? false);
   // Update matrix mode state for renderer prop
   onSetMatrixMode?.(matrixRainNow);
   // Trigger renderer recreation if matrix rain changed (after C side is updated)
@@ -97,6 +108,7 @@ export default function MirrorDemoWidget({
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [termDims, setTermDims] = useState({ cols: 0, rows: 0 });
+  const termDimsRef = useRef(termDims);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     demoOptions?.[defaultOptionIndex]?.id ?? null,
@@ -110,6 +122,12 @@ export default function MirrorDemoWidget({
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sourceRef = useRef<MediaSource>(null);
   const frameCountRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const mediaElementSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const microphoneSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioOutputConnectedRef = useRef(false);
+  const audioDiagnosticLoggedRef = useRef(false);
 
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
 
@@ -140,10 +158,15 @@ export default function MirrorDemoWidget({
 
     // Build initial args from the first demo option's settings
     const initialArgs: string[] = [];
-    const firstOption = demoOptions?.[defaultOptionIndex];
-    if (firstOption?.settings?.matrixRain) {
+    const initialOption = selectedOption ?? demoOptions?.[defaultOptionIndex];
+    if (initialOption?.settings?.matrixRain) {
       initialArgs.push("--matrix");
     }
+    if (initialOption?.settings?.waveform || initialOption?.settings?.fft) {
+      initialArgs.push("--audio-source", "media");
+    }
+    if (initialOption?.settings?.waveform) initialArgs.push("--waveform");
+    if (initialOption?.settings?.fft) initialArgs.push("--fft");
 
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
@@ -151,7 +174,7 @@ export default function MirrorDemoWidget({
     });
 
     setWasmReady(true);
-  }, [addDebugLog, demoOptions, defaultOptionIndex]);
+  }, [addDebugLog, demoOptions, defaultOptionIndex, selectedOption]);
 
   const stop = useCallback(() => {
     if (frameIntervalRef.current) {
@@ -162,6 +185,8 @@ export default function MirrorDemoWidget({
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+    microphoneSourceRef.current?.disconnect();
+    microphoneSourceRef.current = null;
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
@@ -191,6 +216,7 @@ export default function MirrorDemoWidget({
   );
 
   const startWebcam = useCallback(async () => {
+    stop();
     rendererRef.current?.clear();
     setLoading(true);
     setError(null);
@@ -245,11 +271,74 @@ export default function MirrorDemoWidget({
     }
   }, [initWasm, stop, applySelectedOption, termDims]);
 
-  const startDemo = useCallback(async () => {
+  const ensureAudioAnalyzer = useCallback(async (playThrough: boolean) => {
+    let audioContext = audioContextRef.current;
+    if (!audioContext) {
+      audioContext = new AudioContext({ sampleRate: 48000 });
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.72;
+      audioContextRef.current = audioContext;
+      audioAnalyserRef.current = analyser;
+    }
+    const analyser = audioAnalyserRef.current!;
+    if (playThrough && !audioOutputConnectedRef.current) {
+      analyser.connect(audioContext.destination);
+      audioOutputConnectedRef.current = true;
+    } else if (!playThrough && audioOutputConnectedRef.current) {
+      analyser.disconnect(audioContext.destination);
+      audioOutputConnectedRef.current = false;
+    }
+    await audioContext.resume();
+  }, []);
+
+  const startAudioAnalysis = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) throw new Error("Demo video is not ready");
+    await ensureAudioAnalyzer(true);
+    if (!mediaElementSourceRef.current) {
+      const mediaSource = audioContextRef.current!.createMediaElementSource(video);
+      mediaSource.connect(audioAnalyserRef.current!);
+      mediaElementSourceRef.current = mediaSource;
+    }
+  }, [ensureAudioAnalyzer]);
+
+  const startMicrophone = useCallback(async () => {
+    stop();
     rendererRef.current?.clear();
     setLoading(true);
     setError(null);
     setDebugLogs([]);
+    try {
+      registerActiveDemo(stop);
+      await initWasm();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      streamRef.current = stream;
+      await ensureAudioAnalyzer(false);
+      microphoneSourceRef.current = audioContextRef.current!.createMediaStreamSource(stream);
+      microphoneSourceRef.current.connect(audioAnalyserRef.current!);
+      applySelectedOption(false);
+      if (termDims.cols > 0 && termDims.rows > 0) {
+        setDimensions(termDims.cols, termDims.rows);
+      }
+      sourceRef.current = MediaSourceType.MICROPHONE;
+      setSource(MediaSourceType.MICROPHONE);
+    } catch (err) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setError(`Microphone access failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [stop, initWasm, ensureAudioAnalyzer, applySelectedOption, termDims]);
+
+  const startDemo = useCallback(async () => {
+    stop();
+    rendererRef.current?.clear();
+    setLoading(true);
+    setError(null);
+    setDebugLogs([]);
+    audioDiagnosticLoggedRef.current = false;
     addDebugLog("Starting demo...");
     try {
       registerActiveDemo(stop);
@@ -322,6 +411,14 @@ export default function MirrorDemoWidget({
           };
         });
 
+        if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
+          // The analyzer receives the media element's WebAudio output. Keep the
+          // element unmuted before connecting it to the graph.
+          videoRef.current!.muted = false;
+          await startAudioAnalysis();
+          addDebugLog("Audio analyzer connected to WASM visualization input");
+        }
+
         addDebugLog("Playing video...");
         await videoRef.current.play();
         addDebugLog("Video playing, unmuting...");
@@ -342,6 +439,27 @@ export default function MirrorDemoWidget({
       sourceRef.current = MediaSourceType.FILE;
       addDebugLog("Demo started successfully");
       setSource(MediaSourceType.FILE);
+      if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
+        if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+        frameIntervalRef.current = setInterval(() => {
+          const analyser = audioAnalyserRef.current;
+          const renderer = rendererRef.current;
+          if (!analyser || !renderer || !isWasmReady()) return;
+          try {
+            const samples = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(samples);
+            submitAudioSamples(samples);
+            const dims = termDimsRef.current;
+            const frame = renderAudioVisualization(dims.cols, dims.rows);
+            if (frame) renderer.writeFrame(frame);
+          } catch (error) {
+            if (!audioDiagnosticLoggedRef.current) {
+              addDebugLog(`Waveform render error: ${error instanceof Error ? error.message : String(error)}`);
+              audioDiagnosticLoggedRef.current = true;
+            }
+          }
+        }, 1000 / 24);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       addDebugLog(`ERROR: ${errorMsg}`);
@@ -349,7 +467,15 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption, addDebugLog, termDims]);
+  }, [
+    initWasm,
+    stop,
+    applySelectedOption,
+    addDebugLog,
+    termDims,
+    selectedOption,
+    startAudioAnalysis,
+  ]);
 
   const togglePause = useCallback(() => {
     if (videoRef.current) {
@@ -391,9 +517,14 @@ export default function MirrorDemoWidget({
           },
           setMatrixMode,
         );
+        if (source === MediaSourceType.FILE && (option.settings.waveform || option.settings.fft)) {
+          void startAudioAnalysis().catch((err: unknown) => {
+            setError(err instanceof Error ? err.message : String(err));
+          });
+        }
       }
     },
-    [source],
+    [source, startAudioAnalysis],
   );
 
   useEffect(() => {
@@ -413,8 +544,21 @@ export default function MirrorDemoWidget({
   }, [termDims, wasmReady, addDebugLog]);
 
   useEffect(() => {
+    if (source !== null && sourceRef.current !== source) {
+      stop();
+      setError("The previous demo source stopped. Start a source to continue.");
+    }
+  }, [source, stop]);
+
+  useEffect(() => {
     if (!source || !wasmReady) return;
     if (termDims.cols <= 0 || termDims.rows <= 0) return;
+    if (
+      (selectedOption?.settings.waveform || selectedOption?.settings.fft) &&
+      frameIntervalRef.current
+    ) {
+      return;
+    }
 
     const interval = setInterval(() => {
       if (
@@ -424,6 +568,19 @@ export default function MirrorDemoWidget({
         !videoRef.current
       )
         return;
+
+      if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
+        const analyser = audioAnalyserRef.current;
+        if (analyser) {
+          const audioSource = source === MediaSourceType.MICROPHONE ? "microphone" : "media";
+          const samples = new Float32Array(analyser.fftSize);
+          analyser.getFloatTimeDomainData(samples);
+          submitAudioSamples(samples, audioSource);
+          const audioFrame = renderAudioVisualization(termDims.cols, termDims.rows, audioSource);
+          if (audioFrame) rendererRef.current.writeFrame(audioFrame);
+          return;
+        }
+      }
 
       const frame = captureFrame();
       if (!frame) return;
@@ -476,24 +633,37 @@ export default function MirrorDemoWidget({
     }, 1000 / 24);
 
     frameIntervalRef.current = interval;
-    return () => clearInterval(interval);
-  }, [source, wasmReady, termDims, captureFrame]);
+    return () => {
+      clearInterval(interval);
+      if (frameIntervalRef.current === interval) {
+        frameIntervalRef.current = null;
+      }
+    };
+  }, [source, wasmReady, termDims, captureFrame, selectedOption, addDebugLog]);
 
   useEffect(() => {
     const stopFn = stop;
     return () => {
       stopFn();
+      void audioContextRef.current?.close();
+      audioContextRef.current = null;
+      audioAnalyserRef.current = null;
       unregisterActiveDemo(stopFn);
       cleanupMirrorWasm();
     };
   }, [stop]);
 
   const handleDimensionsChange = useCallback(
-    (dims: { cols: number; rows: number }) => setTermDims(dims),
+    (dims: { cols: number; rows: number }) => {
+      termDimsRef.current = dims;
+      setTermDims(dims);
+    },
     [],
   );
 
   const hasOptions = demoOptions && demoOptions.length > 0;
+  const isAudioVisualization =
+    selectedOption?.settings.waveform || selectedOption?.settings.fft;
 
   return (
     <div className="mb-8">
@@ -582,19 +752,29 @@ export default function MirrorDemoWidget({
                 </p>
               )}
               <div className="flex gap-3">
-                <button
-                  onClick={startWebcam}
-                  disabled={loading}
-                  className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
-                >
-                  {loading ? "Loading..." : "Webcam"}
-                </button>
+                {isAudioVisualization ? (
+                  <button
+                    onClick={startMicrophone}
+                    disabled={loading}
+                    className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
+                  >
+                    {loading ? "Loading..." : "Microphone"}
+                  </button>
+                ) : (
+                    <button
+                      onClick={startWebcam}
+                      disabled={loading}
+                      className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
+                    >
+                      {loading ? "Loading..." : "Webcam"}
+                    </button>
+                  )}
                 <button
                   onClick={startDemo}
                   disabled={loading}
                   className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
                 >
-                  {loading ? "Loading..." : "Demo Video"}
+                  {loading ? "Loading..." : isAudioVisualization ? "Demo Audio" : "Demo Video"}
                 </button>
               </div>
               {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
@@ -683,7 +863,7 @@ export default function MirrorDemoWidget({
       )}
 
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
-        Demo video:{" "}
+        {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
         <a
           href="https://www.youtube.com/watch?v=RtCaoKY769E"
           className="text-gray-500 hover:text-gray-400 underline"
