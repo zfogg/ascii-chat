@@ -1,4 +1,4 @@
-import { generateSessionStrings } from "../../packages/shared/src/utils/sessionStrings";
+import { generateSessionStrings } from "../../packages/shared/src/utils/sessionStrings.js";
 
 const MAX_COUNT = 20;
 
