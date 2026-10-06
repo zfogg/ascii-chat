@@ -42,11 +42,5 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
 ## Domains and DNS
 
-Cloudflare manages `ascii-chat.com` DNS. Before changing records, obtain explicit confirmation naming the target hostname and the records being replaced. Use Vercel's currently displayed CNAME/TXT values; they are project-specific and can change.
-
-- Set the Vercel CNAME and ownership TXT records to **DNS only** (not proxied).
-- A hostname moving from the previous Sidechain host has both an A and AAAA record; remove the AAAA record before converting the A record to a CNAME.
-- Multiple `_vercel` TXT records can coexist. Add the required verification value; never overwrite an existing Vercel verification record for another site.
+Cloudflare manages `ascii-chat.com` DNS. Before changing records, obtain explicit confirmation naming the target hostname and the records being replaced.
 - Never alter `discovery-service.ascii-chat.com`, `stun.ascii-chat.com`, or `turn.ascii-chat.com` while deploying the discovery website. Those are service endpoints, not the `discovery.ascii-chat.com` frontend.
-
-After DNS propagation, wait for Vercel to show **Valid Configuration**, then directly load and visually verify the hostname. Leave the verified site open for the user when appropriate.
