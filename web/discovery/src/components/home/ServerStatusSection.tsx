@@ -76,6 +76,26 @@ export default function ServerStatusSection() {
       <p className="leading-relaxed mb-4 text-base md:text-lg text-gray-300">
         Live reachability from the site’s Vercel function.
       </p>
+      <aside
+        role="alert"
+        aria-labelledby="official-services-offline"
+        className="mb-6 rounded-lg border-2 border-red-500 bg-red-950/60 px-5 py-4 shadow-[0_0_24px_rgba(239,68,68,0.2)]"
+      >
+        <Heading
+          id="official-services-offline"
+          level={3}
+          className="mb-2 text-xl font-bold text-red-300 md:text-2xl"
+        >
+          ‼️ Official services are offline
+        </Heading>
+        <p className="leading-relaxed text-base text-red-100 md:text-lg">
+          ascii-chat’s official WebRTC signaling, STUN, and TURN services are
+          offline while the developer arranges suitable hosting. ascii-chat is
+          open source, so anyone may run and use their own discovery service.
+          Until official hosting returns, the built-in default servers cannot
+          create or find sessions—host your own service or check back soon.
+        </p>
+      </aside>
       <div className="overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full text-left text-sm md:text-base">
           <thead className="bg-gray-800 text-gray-200">
