@@ -44,14 +44,14 @@ export default defineConfig({
     "import.meta.env.VITE_GPG_PUBLIC_KEY": JSON.stringify(
       process.env.GPG_PUBLIC_KEY || "",
     ),
-    "import.meta.env.VITE_DISCOVERY_STATUS_WEBRTC_SERVERS": JSON.stringify(
-      process.env.DISCOVERY_STATUS_WEBRTC_SERVERS || "",
+    "import.meta.env.VITE_DISCOVERY_WEBRTC_SERVERS": JSON.stringify(
+      process.env.DISCOVERY_WEBRTC_SERVERS || "",
     ),
-    "import.meta.env.VITE_DISCOVERY_STATUS_STUN_SERVERS": JSON.stringify(
-      process.env.DISCOVERY_STATUS_STUN_SERVERS || "",
+    "import.meta.env.VITE_DISCOVERY_STUN_SERVERS": JSON.stringify(
+      process.env.DISCOVERY_STUN_SERVERS || "",
     ),
-    "import.meta.env.VITE_DISCOVERY_STATUS_TURN_SERVERS": JSON.stringify(
-      process.env.DISCOVERY_STATUS_TURN_SERVERS || "",
+    "import.meta.env.VITE_DISCOVERY_TURN_SERVERS": JSON.stringify(
+      process.env.DISCOVERY_TURN_SERVERS || "",
     ),
   },
   resolve: {

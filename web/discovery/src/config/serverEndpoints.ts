@@ -8,9 +8,9 @@ export type ServerTarget = {
 };
 
 export const SERVER_ENVIRONMENT_VARIABLES: Record<ServerKind, string> = {
-  webrtc: "DISCOVERY_STATUS_WEBRTC_SERVERS",
-  stun: "DISCOVERY_STATUS_STUN_SERVERS",
-  turn: "DISCOVERY_STATUS_TURN_SERVERS",
+  webrtc: "DISCOVERY_WEBRTC_SERVERS",
+  stun: "DISCOVERY_STUN_SERVERS",
+  turn: "DISCOVERY_TURN_SERVERS",
 };
 
 const DEFAULT_SERVER_LISTS: Record<ServerKind, string> = {
