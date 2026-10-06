@@ -331,8 +331,8 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     const char *codec_name = use_hevc ? "H265" : "RAW";
-    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
-             (double)send_duration_ns / 1e6);
+    log_debug_every(LOG_RATE_NORMAL, "CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
+                    (double)send_duration_ns / 1e6);
 
     // Cache last frame for rendering when paused
     // Make a copy since the original is owned by media_source

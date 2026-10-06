@@ -1074,7 +1074,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   if (!composite) {
     SET_ERRNO(ERROR_INVALID_STATE, "Per-client %s: Failed to create composite image", target_client_id);
     *out_size = 0;
-    out = NULL;
+    return NULL;
   }
 
   // Convert composite to ASCII using client capabilities
@@ -1092,6 +1092,9 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
     if (ascii_len > 10 * 1024 * 1024) {
       log_error("Frame size exceeds 10MB safety limit (possible buffer overflow)");
       SET_ERRNO(ERROR_INVALID_PARAM, "Frame size exceeds 10MB");
+      SAFE_FREE(ascii_frame);
+      image_destroy(composite);
+      *out_size = 0;
       return NULL;
     }
 
