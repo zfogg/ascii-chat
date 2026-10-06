@@ -2242,6 +2242,9 @@ void *client_send_thread_func(void *arg) {
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
+  const int target_video_fps = client->has_terminal_caps && client->terminal_caps.desired_fps > 0
+                                   ? client->terminal_caps.desired_fps
+                                   : VIDEO_RENDER_FPS;
 
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
@@ -2599,9 +2602,16 @@ void *client_send_thread_func(void *arg) {
       uint64_t rate_elapsed_ns = rate_now_ns - video_rate_window_start_ns;
       if (rate_elapsed_ns >= NS_PER_SEC_INT) {
         unsigned long rate_frames = frame_count - video_rate_window_start_count;
-        log_info("Server ASCII delivery client=%s fps=%.1f frames=%lu elapsed=%.2fs", client->client_id,
-                 (double)rate_frames * NS_PER_SEC_INT / (double)rate_elapsed_ns, rate_frames,
-                 (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
+        double delivery_fps = (double)rate_frames * NS_PER_SEC_INT / (double)rate_elapsed_ns;
+        if (delivery_fps < (double)target_video_fps * 0.9) {
+          log_warn("Server ASCII delivery lagging client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs",
+                   client->client_id, delivery_fps, target_video_fps, rate_frames,
+                   (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
+        } else {
+          log_info("Server ASCII delivery client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs", client->client_id,
+                   delivery_fps, target_video_fps, rate_frames,
+                   (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
+        }
         video_rate_window_start_ns = rate_now_ns;
         video_rate_window_start_count = frame_count;
       }

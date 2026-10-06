@@ -235,29 +235,23 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
     return;
   }
 
-  // Check if reader has consumed the previous frame
+  // Keep the unread check, pointer swap, and publication atomic with respect
+  // to readers. Checking front_buffer before taking this mutex races with a
+  // reader consuming the previous frame and with another commit swapping it.
+  mutex_lock(&vfb->swap_mutex);
   if (atomic_load_bool(&vfb->new_frame_available) && vfb->front_buffer->size > 0) {
-    // Reader hasn't consumed yet - we're dropping a frame
     uint64_t drops = atomic_fetch_add_u64(&vfb->total_frames_dropped, 1) + 1;
-    // Throttle drop logging - only log every 100 drops to avoid spam
     if (drops == 1 || drops % 100 == 0) {
       log_dev_every(4500 * US_PER_MS_INT, "Dropping frame for client %u (reader too slow, total drops: %llu)",
                     vfb->client_id, (unsigned long long)drops);
     }
   }
-
-  // Pointer swap using mutex for thread safety
-  // The send thread reads front_buffer while render thread swaps
-  // Without this mutex, the send thread could read a stale front_buffer pointer
-  // mid-swap, causing it to see size=0 on newly-initialized frames
-  mutex_lock(&vfb->swap_mutex);
   video_frame_t *temp = vfb->front_buffer;
   vfb->front_buffer = vfb->back_buffer;
   vfb->back_buffer = temp;
+  atomic_store_bool(&vfb->new_frame_available, true);
   mutex_unlock(&vfb->swap_mutex);
 
-  // Signal reader that new frame is available
-  atomic_store_bool(&vfb->new_frame_available, true);
   atomic_fetch_add_u64(&vfb->total_frames_received, 1);
 }
 
@@ -271,17 +265,12 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
     return NULL;
   }
 
+  mutex_lock(&vfb->swap_mutex);
   if (!atomic_load_bool(&vfb->new_frame_available)) {
+    mutex_unlock(&vfb->swap_mutex);
     return NULL;
   }
-
-  // Mark that we've consumed any new frame
   atomic_store_bool(&vfb->new_frame_available, false);
-
-  // Use mutex to safely read front_buffer pointer
-  // (in case render thread is swapping)
-  // This ensures we get a consistent pointer and don't read mid-swap
-  mutex_lock(&vfb->swap_mutex);
   const video_frame_t *result = vfb->front_buffer;
   mutex_unlock(&vfb->swap_mutex);
 

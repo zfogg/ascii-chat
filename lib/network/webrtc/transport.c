@@ -48,8 +48,8 @@
  * On overflow, retain control packets and recent media so the connection can recover.
  */
 #define WEBRTC_RECV_QUEUE_SIZE 512
-// At 60 Hz, 96 queued packets can represent more than a second of stale
-// media.  Start coalescing early so a congested peer stays close to live.
+// Start coalescing well before the 512-message ring fills so a congested peer
+// stays close to live.
 #define WEBRTC_RECV_QUEUE_HIGH_WATER 12
 
 // Allow ICE connectivity checks to recover temporarily, then let the owning
@@ -107,27 +107,58 @@ static bool queued_message_is_video(const webrtc_recv_msg_t *msg) {
   return type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_ASCII_FRAME;
 }
 
-static void discard_stale_video(webrtc_transport_data_t *wrtc) {
+static bool queued_message_is_audio(const webrtc_recv_msg_t *msg) {
+  if (msg->len < sizeof(packet_header_t))
+    return false;
+  packet_header_t header;
+  memcpy(&header, msg->data, sizeof(header));
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  return type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS_BATCH;
+}
+
+static void discard_stale_media(webrtc_transport_data_t *wrtc) {
   webrtc_recv_msg_t queued[WEBRTC_RECV_QUEUE_SIZE];
-  size_t count = 0, video_count = 0;
+  size_t count = 0, video_count = 0, audio_count = 0;
   while (count < WEBRTC_RECV_QUEUE_SIZE && ringbuffer_read(wrtc->recv_queue, &queued[count])) {
     if (queued_message_is_video(&queued[count]))
       video_count++;
+    else if (queued_message_is_audio(&queued[count]))
+      audio_count++;
     count++;
   }
-  // Video frames are independent snapshots. Drop only superseded video frames;
-  // audio packets carry consecutive samples and must remain ordered so playback
-  // does not develop gaps when the receive worker briefly falls behind.
-  size_t video_to_discard = video_count > 1 ? video_count - 1 : 0;
+  // Video frames are snapshots, so retain the newest one. Preserve a short
+  // recent audio history, but discard stale audio when it would otherwise fill
+  // the queue and prevent new video packets from reaching the receive worker.
+  // Derive the audio allowance from the existing queue high-water mark after
+  // reserving room for control messages and the newest video frame.
+  size_t control_count = count - video_count - audio_count;
+  size_t retained_video_count = video_count > 0 ? 1 : 0;
+  size_t non_audio_count = control_count + retained_video_count;
+  size_t keep_audio_count = non_audio_count < WEBRTC_RECV_QUEUE_HIGH_WATER
+                                ? WEBRTC_RECV_QUEUE_HIGH_WATER - non_audio_count
+                                : 0;
+  size_t video_to_discard = video_count - retained_video_count;
+  size_t audio_to_discard = audio_count > keep_audio_count ? audio_count - keep_audio_count : 0;
+  size_t dropped_video = 0;
+  size_t dropped_audio = 0;
   for (size_t i = 0; i < count; i++) {
     if (video_to_discard && queued_message_is_video(&queued[i])) {
       buffer_pool_free(NULL, queued[i].data, queued[i].len);
       video_to_discard--;
+      dropped_video++;
+    } else if (audio_to_discard && queued_message_is_audio(&queued[i])) {
+      buffer_pool_free(NULL, queued[i].data, queued[i].len);
+      audio_to_discard--;
+      dropped_audio++;
     } else {
       ringbuffer_write(wrtc->recv_queue, &queued[i]);
     }
   }
-  log_warn_every(US_PER_SEC_INT, "WebRTC receive backlog: coalesced superseded video frames");
+  if (dropped_video || dropped_audio) {
+    log_warn_every(US_PER_SEC_INT,
+                   "WebRTC receive backlog: dropped %zu stale video packets and %zu oldest audio packets",
+                   dropped_video, dropped_audio);
+  }
 }
 
 /**
@@ -183,7 +214,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
     if (ringbuffer_is_full(wrtc->recv_queue)) {
-      discard_stale_video(wrtc);
+      discard_stale_media(wrtc);
     }
     if (!ringbuffer_write(wrtc->recv_queue, &msg)) {
       bool media = queued_message_is_media(&msg);
@@ -200,10 +231,10 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       webrtc_datachannel_close(channel);
       return;
     }
-    // Keep video presentation current while preserving every queued audio
-    // packet and control message.
+    // Keep video presentation current and prevent stale audio from filling the
+    // bounded queue ahead of newer media and control packets.
     if (ringbuffer_size(wrtc->recv_queue) > WEBRTC_RECV_QUEUE_HIGH_WATER) {
-      discard_stale_video(wrtc);
+      discard_stale_media(wrtc);
     }
     offset += packet_len;
   }
@@ -334,12 +365,14 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   mutex_lock(&wrtc->send_mutex);
   uint64_t send_start_ns = time_get_ns();
   size_t buffered_before_send = 0;
+  bool is_video_packet = false;
   if (len >= sizeof(packet_header_t)) {
     packet_header_t header;
     memcpy(&header, data, sizeof(header));
     if (NET_TO_HOST_U64(header.magic) == PACKET_MAGIC) {
       uint16_t packet_type = NET_TO_HOST_U16(header.type);
-      if (packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME) {
+      is_video_packet = packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME;
+      if (is_video_packet) {
         asciichat_error_t buffered_result =
             webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
         if (buffered_result != ASCIICHAT_OK) {

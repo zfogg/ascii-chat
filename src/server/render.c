@@ -405,6 +405,9 @@ void *client_video_render_thread(void *arg) {
   uint32_t last_frame_hash = UINT32_MAX;
   uint32_t commits_count = 0;
   uint64_t commits_start_time = 0;
+  uint64_t render_rate_window_start_ns = time_get_ns();
+  uint64_t rendered_frames_in_window = 0;
+  uint64_t missed_deadlines_in_window = 0;
 
   log_info("Video render loop STARTING for client %s", thread_client_id);
 
@@ -443,6 +446,9 @@ void *client_video_render_thread(void *arg) {
     uint64_t after_sleep_ns = time_get_ns();
     uint64_t elapsed_intervals =
         after_sleep_ns >= next_frame_ns ? (after_sleep_ns - next_frame_ns) / frame_interval_ns + 1 : 1;
+    if (elapsed_intervals > 1) {
+      missed_deadlines_in_window += elapsed_intervals - 1;
+    }
     next_frame_ns += elapsed_intervals * frame_interval_ns;
 
     // Capture timestamp for FPS tracking and frame timestamps
@@ -617,6 +623,23 @@ void *client_video_render_thread(void *arg) {
 
           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
           fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
+          rendered_frames_in_window++;
+          uint64_t render_rate_now_ns = time_get_ns();
+          uint64_t render_rate_elapsed_ns = render_rate_now_ns - render_rate_window_start_ns;
+          if (render_rate_elapsed_ns >= NS_PER_SEC_INT) {
+            double render_fps = (double)rendered_frames_in_window * NS_PER_SEC_INT / (double)render_rate_elapsed_ns;
+            if (render_fps < (double)client_fps * 0.9 || missed_deadlines_in_window > 0) {
+              log_warn("Server video render lagging client=%s fps=%.1f target=%d missed_deadlines=%llu",
+                       thread_client_id, render_fps, client_fps,
+                       (unsigned long long)missed_deadlines_in_window);
+            } else {
+              log_info("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id,
+                       render_fps, client_fps);
+            }
+            render_rate_window_start_ns = render_rate_now_ns;
+            rendered_frames_in_window = 0;
+            missed_deadlines_in_window = 0;
+          }
         }
       }
 
@@ -806,7 +829,6 @@ void *client_audio_render_thread(void *arg) {
   fps_init(&audio_fps_tracker, AUDIO_PACKET_FPS, "SERVER AUDIO");
 
   // Per-thread counters (NOT static - each thread instance gets its own)
-  int backpressure_check_counter = 0;
   int server_audio_frame_count = 0;
 
   bool should_continue = true;
@@ -903,24 +925,16 @@ void *client_audio_render_thread(void *arg) {
 
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
-      // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
-      // Only check periodically every 100 iterations (~0.6s at 172 fps)
-      // NOTE: backpressure_check_counter is now per-thread (not static), so each client thread has its own counter
-      bool apply_backpressure = false;
-
-      if (++backpressure_check_counter >= 100) {
-        backpressure_check_counter = 0;
-        size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-        // Opus frames are produced at ~50 FPS (20ms each)
-        // Reduced threshold from 50 to 10 packets (~200ms buffer) to prevent audio gaps
-        // On localhost, queue shouldn't back up at all; aggressive thresholds cause frame skipping
-        apply_backpressure = (queue_depth > 10); // > 10 packets = ~200ms buffered at 50 FPS
-
-        if (apply_backpressure) {
-          log_warn_every(4500 * US_PER_MS_INT,
-                         "Audio backpressure for client %s: queue depth %zu packets (%.1fms buffered)",
-                         client_id_snapshot, queue_depth, (float)queue_depth / 50.0f * 1000.0f);
-        }
+      // A completed Opus frame is only 20 ms, while the outgoing audio queue
+      // is the same ordered path that precedes video. Enforce the bound for
+      // every frame: checking only once per 100 iterations lets a 200 ms
+      // backlog grow past a second before the producer reacts.
+      size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+      bool apply_backpressure = queue_depth >= 10;
+      if (apply_backpressure) {
+        log_warn_every(4500 * US_PER_MS_INT,
+                       "Audio backpressure for client %s: queue depth %zu packets (%.1fms buffered)",
+                       client_id_snapshot, queue_depth, (float)queue_depth / 50.0f * 1000.0f);
       }
 
       if (apply_backpressure) {
