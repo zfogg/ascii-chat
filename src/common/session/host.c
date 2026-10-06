@@ -865,21 +865,19 @@ static void *host_render_thread(void *arg) {
                         for (int j = 0; j < host->max_clients; j++) {
                           if (host->clients[j].active && host->clients[j].video_active &&
                               host->clients[j].incoming_video) {
-                            client_frames[client_frame_idx] = ascii_convert(
-                                host->clients[j].incoming_video, client_width, client_height, true, false, false,
-                                PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+                            client_frames[client_frame_idx] =
+                                ascii_convert(host->clients[j].incoming_video, client_width, client_height, true, false,
+                                              false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
                             client_sources[client_frame_idx].frame_data =
                                 client_frames[client_frame_idx] ? client_frames[client_frame_idx] : "";
-                            client_sources[client_frame_idx].frame_size = client_frames[client_frame_idx]
-                                                                              ? strlen(client_frames[client_frame_idx]) + 1
-                                                                              : 1;
+                            client_sources[client_frame_idx].frame_size =
+                                client_frames[client_frame_idx] ? strlen(client_frames[client_frame_idx]) + 1 : 1;
                             client_frame_idx++;
                           }
                         }
                         if (active_video_count == 1 && client_frames[0]) {
-                          acip_send_ascii_frame(host->clients[i].transport, client_frames[0],
-                                                strlen(client_frames[0]), client_width, client_height,
-                                                "session-host");
+                          acip_send_ascii_frame(host->clients[i].transport, client_frames[0], strlen(client_frames[0]),
+                                                client_width, client_height, "session-host");
                         } else {
                           size_t client_grid_size = 0;
                           char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
@@ -994,8 +992,8 @@ static void *host_render_thread(void *arg) {
               continue;
             }
             if (host->clients[i].transport) {
-              asciichat_error_t audio_result = acip_send_audio_opus_batch(
-                  host->clients[i].transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+              asciichat_error_t audio_result = acip_send_audio_opus_batch(host->clients[i].transport, opus_buffer,
+                                                                          opus_len, frame_sizes, 1, 48000, 20);
               if (audio_result != ASCIICHAT_OK) {
                 log_warn("Failed to send mixed audio to WebRTC client %u", host->clients[i].client_id);
               }
@@ -1504,8 +1502,8 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].active && host->clients[i].transport) {
-      asciichat_error_t send_result = acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1,
-                                                            80, 24, "session-host");
+      asciichat_error_t send_result =
+          acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24, "session-host");
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
         result = send_result;
@@ -1538,13 +1536,12 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].client_id == client_id && host->clients[i].active) {
-      asciichat_error_t result = host->clients[i].transport
-                                     ? acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24,
-                                                             "session-host")
-                                     : (host->clients[i].socket != INVALID_SOCKET_VALUE
-                                            ? packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame,
-                                                          frame_len)
-                                            : ERROR_NOT_FOUND);
+      asciichat_error_t result =
+          host->clients[i].transport
+              ? acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24, "session-host")
+              : (host->clients[i].socket != INVALID_SOCKET_VALUE
+                     ? packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame, frame_len)
+                     : ERROR_NOT_FOUND);
       mutex_unlock(&host->clients_mutex);
       return result;
     }

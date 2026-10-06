@@ -196,7 +196,8 @@ static void *discovery_video_receive_thread(void *user_data) {
             CLEAR_ERRNO();
           }
         } else {
-          log_warn_every(US_PER_SEC_INT, "Invalid server ASCII frame lengths (compressed=%d original=%u encoded=%u payload=%zu)",
+          log_warn_every(US_PER_SEC_INT,
+                         "Invalid server ASCII frame lengths (compressed=%d original=%u encoded=%u payload=%zu)",
                          is_compressed, original_size, encoded_size, encoded_length);
         }
       } else if (result == ASCIICHAT_OK && type == PACKET_TYPE_PING) {

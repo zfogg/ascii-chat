@@ -426,9 +426,12 @@ if(NOT libdatachannel_POPULATED)
     endif()
     file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}")
 
-    # Bind the cached objects to the OpenSSL headers and libraries used by this build.
+    # Bind the cached objects to the toolchain and OpenSSL headers and libraries
+    # used by this build. CMake caches its archiver selection, so a compiler
+    # upgrade must rebuild this nested project instead of reusing its cache.
     set(_libdatachannel_openssl_stamp "${LIBDATACHANNEL_BUILD_DIR}/openssl-binding.sha256")
-    set(_libdatachannel_openssl_signature "${OPENSSL_INCLUDE_DIR};${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
+    set(_libdatachannel_openssl_signature
+        "${CMAKE_C_COMPILER};${CMAKE_CXX_COMPILER};${CMAKE_AR};${CMAKE_RANLIB};${OPENSSL_INCLUDE_DIR};${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
     foreach(_openssl_input "${OPENSSL_INCLUDE_DIR}/openssl/opensslv.h" "${OPENSSL_CRYPTO_LIBRARY}")
         if(EXISTS "${_openssl_input}")
             file(SHA256 "${_openssl_input}" _openssl_hash)
@@ -455,12 +458,14 @@ if(NOT libdatachannel_POPULATED)
     if(LIBDATACHANNEL_NEEDS_REBUILD)
         message(STATUS "${BoldYellow}libdatachannel${ColorReset} building from source...")
 
-        # Clean old build to ensure fresh compilation
-        if(EXISTS "${LIBDATACHANNEL_BUILD_DIR}/lib")
-            file(REMOVE_RECURSE "${LIBDATACHANNEL_BUILD_DIR}/lib")
+        # Clean the nested configure cache as well as its output. Otherwise an
+        # old CMAKE_AR can survive a compiler upgrade and point at a removed
+        # LLVM installation.
+        if(EXISTS "${LIBDATACHANNEL_BUILD_DIR}")
+            file(REMOVE_RECURSE "${LIBDATACHANNEL_BUILD_DIR}")
             message(STATUS "Cleaned old libdatachannel build artifacts")
         endif()
-        file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}/lib")
+        file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}")
 
         # Prepare CMake args for libdatachannel build
         set(LIBDATACHANNEL_CMAKE_ARGS

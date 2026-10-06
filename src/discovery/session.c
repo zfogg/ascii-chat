@@ -829,8 +829,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     // connected browser receives frames.
     uint32_t client_id = session_host_add_client(session->host_ctx, INVALID_SOCKET_VALUE, "webrtc", 0);
     if (client_id == 0) {
-      log_error("Failed to allocate host client for WebRTC peer %02x%02x%02x%02x", participant_id[0],
-                participant_id[1], participant_id[2], participant_id[3]);
+      log_error("Failed to allocate host client for WebRTC peer %02x%02x%02x%02x", participant_id[0], participant_id[1],
+                participant_id[2], participant_id[3]);
       return;
     }
 
