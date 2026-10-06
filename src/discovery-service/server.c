@@ -1279,7 +1279,8 @@ void *acds_websocket_client_handler(void *arg) {
 
   if (skip_handshake) {
     client_data->handshake_complete = true;
-    log_info("WebSocket connection from %s - skipping custom crypto handshake on secure signaling", client_ip);
+    log_info("WebSocket connection from %s - skipping custom crypto handshake for unauthenticated browser signaling",
+             client_ip);
   } else {
     log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
              auth_required ? " (client authentication required)" : "");

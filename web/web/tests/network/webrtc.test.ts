@@ -17,7 +17,10 @@ const signalingHarness = vi.hoisted(() => ({
   current: null as null | {
     emit(state: number): void;
     sendPacket: ReturnType<typeof vi.fn>;
-    options: { applicationEncryption?: boolean };
+    options: {
+      applicationEncryption?: boolean;
+      discoveryHandshake?: boolean;
+    };
   },
 }));
 
@@ -25,7 +28,12 @@ vi.mock("../../src/network/ClientConnection", () => ({
   ClientConnection: class {
     private stateCallback: ((state: number) => void) | null = null;
 
-    constructor(public options: { applicationEncryption?: boolean }) {
+    constructor(
+      public options: {
+        applicationEncryption?: boolean;
+        discoveryHandshake?: boolean;
+      },
+    ) {
       signalingHarness.current = this;
     }
     onStateChange(callback: (state: number) => void) {
@@ -187,6 +195,7 @@ describe("WebRTC signaling reconnects", () => {
     });
 
     expect(signalingHarness.current!.options.applicationEncryption).toBe(false);
+    expect(signalingHarness.current!.options.discoveryHandshake).toBeUndefined();
   });
 
   it("repeats lookup after a transient reconnect before the session is joined", async () => {
@@ -208,6 +217,57 @@ describe("WebRTC signaling reconnects", () => {
     signaling.emit(ConnectionState.CONNECTED);
 
     expect(signaling.sendPacket).toHaveBeenCalledTimes(2);
+    session.disconnect();
+  });
+
+  it("restarts negotiation when signaling reconnects after JOIN but before the data channel opens", async () => {
+    const session = new WebRTCSession({
+      sessionName: "blue-mountain-tiger",
+      password: "",
+      signalingUrl: "ws://localhost:27225",
+      iceServers: [],
+    });
+    const states: ConnectionState[] = [];
+    session.onStateChange((state) => states.push(state));
+    const attempt = session.connect();
+    void attempt.catch(() => {});
+    await Promise.resolve();
+
+    const signaling = signalingHarness.current!;
+    signaling.emit(ConnectionState.CONNECTED);
+    Object.assign(session, {
+      joined: {
+        participantId: new Uint8Array(16),
+        sessionId: new Uint8Array(16),
+        hostId: new Uint8Array(16),
+        turnUsername: "",
+        turnPassword: "",
+      },
+    });
+
+    signaling.emit(ConnectionState.CONNECTING);
+
+    expect(session.getState()).toBe(ConnectionState.ERROR);
+    expect(states).toContain(ConnectionState.ERROR);
+  });
+
+  it("keeps an established WebRTC peer when signaling reconnects", async () => {
+    const session = new WebRTCSession({
+      sessionName: "blue-mountain-tiger",
+      password: "",
+      signalingUrl: "ws://localhost:27225",
+      iceServers: [],
+    });
+    const attempt = session.connect();
+    void attempt.catch(() => {});
+    await Promise.resolve();
+
+    const signaling = signalingHarness.current!;
+    signaling.emit(ConnectionState.CONNECTED);
+    Object.assign(session, { state: ConnectionState.CONNECTED, joined: {} });
+    signaling.emit(ConnectionState.CONNECTING);
+
+    expect(session.getState()).toBe(ConnectionState.CONNECTED);
     session.disconnect();
   });
 });
