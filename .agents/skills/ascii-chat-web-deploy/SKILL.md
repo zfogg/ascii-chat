@@ -19,7 +19,20 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
 ## Release procedure
 
-1. Preserve a dirty checkout. From a clean worktree or without switching branches, bring the intended remote commit to the matching release branch:
+1. Preserve a dirty checkout. Before every release, reconcile all three release branches into `master` from a clean worktree. A release branch may contain direct agent work, so never assume `master` already contains it. Merge each branch that is not already an ancestor of `origin/master`, resolve and verify any conflicts, then push `master`:
+
+   ```bash
+   git fetch origin
+   git checkout --detach origin/master
+   git merge origin/deploy-web-www
+   git merge origin/deploy-web-web
+   git merge origin/deploy-web-discovery
+   git push origin HEAD:master
+   ```
+
+   Run each merge only when needed; preserve all release-branch commits rather than replacing the branch or force-pushing it.
+
+2. From the reconciled `master`, bring the intended remote commit to the matching release branch:
 
    ```bash
    git fetch origin
@@ -28,9 +41,9 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
    Replace `<site>` with `www`, `web`, or `discovery`. Do not force-push a release branch.
 
-2. Confirm the matching GitHub Actions run succeeds before treating the release as deployed. The deployment must use pnpm; do not substitute npm, Docker, or a manual Vercel Git deployment.
+3. Confirm the matching GitHub Actions run succeeds before treating the release as deployed. The deployment must use pnpm; do not substitute npm, Docker, or a manual Vercel Git deployment.
 
-3. Open the public URL directly and take a fresh screenshot/accessibility check. For the web client, test direct deep links such as `/mirror`, `/client`, and `/discovery`, not just in-app navigation.
+4. Open the public URL directly and take a fresh screenshot/accessibility check. For the web client, test direct deep links such as `/mirror`, `/client`, and `/discovery`, not just in-app navigation.
 
 ## Build and routing notes
 
