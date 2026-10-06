@@ -5,6 +5,7 @@ import {
   PacketType,
   encryptPacket,
   initClientWasm,
+  cleanupClientWasm,
 } from "../../src/wasm/client";
 
 const sockets = vi.hoisted(() => ({
@@ -87,6 +88,18 @@ describe("WebSocket encryption defaults", () => {
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
     expect(encryptPacket).toHaveBeenCalledOnce();
     connection.disconnect();
+  });
+
+  it("does not initialize or reset shared crypto WASM for plain discovery signaling", async () => {
+    const connection = new ClientConnection({
+      serverUrl: "ws://localhost:27225",
+      applicationEncryption: false,
+    });
+
+    await connection.connect();
+    expect(initClientWasm).not.toHaveBeenCalled();
+    connection.disconnect();
+    expect(cleanupClientWasm).not.toHaveBeenCalled();
   });
 
   it.each([
