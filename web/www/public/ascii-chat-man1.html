@@ -85,22 +85,43 @@
 </dl>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="AUDIO_VISUALIZATIONS"><a class="permalink" href="#AUDIO_VISUALIZATIONS">AUDIO
-  VISUALIZATIONS</a></h1>
+<h1 class="Sh" id="ANIMATIONS"><a class="permalink" href="#ANIMATIONS">ANIMATIONS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Matrix_Digital_Rain"><a class="permalink" href="#Matrix_Digital_Rain">Matrix
+  Digital Rain</a></h2>
+<p class="Pp">Use <b>--matrix</b> to overlay falling Matrix-style characters
+    on the video rendering. The effect uses the digital palette by default and
+    can be combined with color filters. Press <b>0</b> while rendering to toggle
+    Matrix rain.</p>
+<p class="Pp">For example, enable Matrix rain with the default colors or a green
+    filter:</p>
+<p class="Pp"></p>
+<pre>ascii-chat mirror --matrix
+ascii-chat mirror --matrix --color-filter green
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Audio_Visualizations"><a class="permalink" href="#Audio_Visualizations">Audio
+  Visualizations</a></h2>
 <p class="Pp">Use <b>--waveform</b> to view the selected audio as a live
     waveform whose height follows the signal level, or <b>--fft</b> to view a
     scrolling frequency display. Both replace the video image and follow the
     source selected by <b>--audio-source</b>. The colors adapt to dark and light
     terminal backgrounds. Choose one visualization at a time.</p>
-<p class="Pp">For example, inspect a local video's audio track with:</p>
+<p class="Pp">For example, inspect a local video's audio track with either
+    visualization:</p>
 <p class="Pp"></p>
-<pre>ascii-chat mirror --file music.mp4 --audio-source media --fft
+<pre>ascii-chat mirror --file music.mp4 --audio-source media --waveform
+ascii-chat mirror --file music.mp4 --audio-source media --fft
 </pre>
-<p class="Pp">To inspect received audio during a call, use:</p>
+<p class="Pp">To inspect received audio during a call, use either
+    visualization:</p>
 <p class="Pp"></p>
 <pre>ascii-chat client --audio-source remote --waveform
+ascii-chat client --audio-source remote --fft
 </pre>
 <p class="Pp"></p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="POSITIONAL_ARGUMENTS"><a class="permalink" href="#POSITIONAL_ARGUMENTS">POSITIONAL
@@ -978,7 +999,7 @@ https://example.com/stream.m3u8</pre>
   <dd>Toggle webcam flip (horizontal mirror). Only works when using a webcam
       source.</dd>
 </dl>
-<p class="Pp"><b>Animations</b></p>
+<p class="Pp"><b>Animation Controls</b></p>
 <dl class="Bl-tag">
   <dt><b>0</b></dt>
   <dd>Toggle Matrix-style digital rain effect.</dd>

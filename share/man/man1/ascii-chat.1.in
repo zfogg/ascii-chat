@@ -72,26 +72,40 @@ strings instead of IP addresses. See the SECURITY section for
 notes on the official instance and its keys.
 .\" MANUAL-END: MODES
 
-.\" MANUAL-START: AUDIO VISUALIZATIONS
-.SH AUDIO VISUALIZATIONS
+.\" MANUAL-START: ANIMATIONS
+.SH ANIMATIONS
+.SS "Matrix Digital Rain"
+Use \fB\-\-matrix\fR to overlay falling Matrix-style characters on the video
+rendering. The effect uses the digital palette by default and can be combined
+with color filters. Press \fB0\fR while rendering to toggle Matrix rain.
+.PP
+For example, enable Matrix rain with the default colors or a green filter:
+.PP
+.EX
+ascii-chat mirror --matrix
+ascii-chat mirror --matrix --color-filter green
+.EE
+.SS "Audio Visualizations"
 Use \fB\-\-waveform\fR to view the selected audio as a live waveform whose
 height follows the signal level, or \fB\-\-fft\fR to view a scrolling
 frequency display. Both replace the video image and follow the source selected
 by \fB\-\-audio-source\fR. The colors adapt to dark and light terminal
 backgrounds. Choose one visualization at a time.
 .PP
-For example, inspect a local video's audio track with:
+For example, inspect a local video's audio track with either visualization:
 .PP
 .EX
+ascii-chat mirror --file music.mp4 --audio-source media --waveform
 ascii-chat mirror --file music.mp4 --audio-source media --fft
 .EE
 .PP
-To inspect received audio during a call, use:
+To inspect received audio during a call, use either visualization:
 .PP
 .EX
 ascii-chat client --audio-source remote --waveform
+ascii-chat client --audio-source remote --fft
 .EE
-.\" MANUAL-END: AUDIO VISUALIZATIONS
+.\" MANUAL-END: ANIMATIONS
 
 .\" AUTO-START: POSITIONAL ARGUMENTS
 .\" This section is auto-generated. Manual edits will be lost.
@@ -239,7 +253,7 @@ Toggle FPS counter overlay in the top-right corner.
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
 .PP
-.B Animations
+.B Animation Controls
 .TP
 .B 0
 Toggle Matrix-style digital rain effect.
