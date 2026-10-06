@@ -13,6 +13,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
     ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dns.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/tailscale.c
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c
     ${CMAKE_CURRENT_SOURCE_DIR}/errors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/parallel_connect.c

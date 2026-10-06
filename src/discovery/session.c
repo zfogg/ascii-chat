@@ -30,6 +30,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/tailscale.h>
 
 #ifdef _WIN32
 #include <time.h>
@@ -899,9 +900,21 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     return SET_ERRNO(ERROR_INVALID_PARAM, "--webrtc-relay-only conflicts with disabled TURN or WebRTC");
   }
 
-  // Set up STUN servers (unless --webrtc-skip-stun is set)
-  if (GET_OPTION(webrtc_skip_stun)) {
-    log_info("Skipping STUN (--webrtc-skip-stun) - will use TURN relay only");
+  const char *stun_servers_option = GET_OPTION(stun_servers);
+  bool default_stun_servers = !stun_servers_option || stun_servers_option[0] == '\0' ||
+                              strcmp(stun_servers_option, OPT_ENDPOINT_STUN_SERVERS_DEFAULT) == 0;
+  bool tailscale_direct = default_stun_servers && is_tailscale_host(GET_OPTION(discovery_server));
+
+  // A Tailscale discovery service already provides a private mesh path. Avoid
+  // sharing its ICE socket with public STUN when the default servers are used:
+  // some macOS networks reject those UDP sends and libjuice then abandons the
+  // otherwise reachable Tailscale host candidate.
+  if (GET_OPTION(webrtc_skip_stun) || tailscale_direct) {
+    if (tailscale_direct && !GET_OPTION(webrtc_skip_stun)) {
+      log_info("Skipping default STUN for Tailscale discovery service; using mesh host candidates");
+    } else {
+      log_info("Skipping STUN (--webrtc-skip-stun)");
+    }
     session->stun_servers = NULL;
     session->stun_count = 0;
   } else {
@@ -927,7 +940,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
 
   // Set up TURN servers (if credentials available from ACDS and not disabled)
   if (GET_OPTION(webrtc_disable_turn)) {
-    log_info("TURN disabled (--webrtc-disable-turn) - will use direct P2P + STUN only");
+    log_info("TURN disabled (--webrtc-disable-turn)");
     session->turn_servers = NULL;
     session->turn_count = 0;
   } else if (turn_username[0] != '\0' && turn_credential[0] != '\0') {
