@@ -30,6 +30,7 @@ const hashFrame = (content: string): string => {
 };
 
 interface UseClientConnectionOptions {
+  autoConnect?: boolean;
   discovery?: DiscoveryOptions;
   onAudioPacket?: (type: number, payload: Uint8Array) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
@@ -49,6 +50,7 @@ interface UseClientConnectionOptions {
 
 export function useClientConnection(options: UseClientConnectionOptions) {
   const {
+    autoConnect = false,
     serverUrl,
     terminalDimensions,
     settings,
@@ -74,7 +76,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   );
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string>("");
-  const [hasAutoConnected, setHasAutoConnected] = useState(false);
   const [wasmInitialized, setWasmInitialized] = useState(false);
 
   const reconnectAttemptRef = useRef<number>(0);
@@ -181,6 +182,10 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   dims.cols,
                   dims.rows,
                   settings.targetFps,
+                  settings.colorMode,
+                  settings.colorFilter,
+                  settings.palette,
+                  settings.paletteChars,
                 );
                 console.log(
                   `[Client] Payload size: ${capsPayload.length} bytes`,
@@ -252,16 +257,23 @@ export function useClientConnection(options: UseClientConnectionOptions) {
             try {
               const frame = parseAsciiFrame(decryptedPayload);
               if (receivedFrameCountRef.current % 60 === 0)
-                console.info("[useClientConnection] parsed ASCII_FRAME", JSON.stringify({
-                  received: receivedFrameCountRef.current,
-                  dimensions: `${frame.header.width}x${frame.header.height}`,
-                  rendererDimensions: rendererRef.current
-                    ? `${rendererRef.current.getDimensions().cols}x${rendererRef.current.getDimensions().rows}`
-                    : null,
-                  ansiBytes: frame.ansiString.length,
-                  visibleChars: (frame.ansiString.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "").match(/\S/g) || []).length,
-                  sample: frame.ansiString.slice(0, 96),
-                }));
+                console.info(
+                  "[useClientConnection] parsed ASCII_FRAME",
+                  JSON.stringify({
+                    received: receivedFrameCountRef.current,
+                    dimensions: `${frame.header.width}x${frame.header.height}`,
+                    rendererDimensions: rendererRef.current
+                      ? `${rendererRef.current.getDimensions().cols}x${rendererRef.current.getDimensions().rows}`
+                      : null,
+                    ansiBytes: frame.ansiString.length,
+                    visibleChars: (
+                      frame.ansiString
+                        .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
+                        .match(/\S/g) || []
+                    ).length,
+                    sample: frame.ansiString.slice(0, 96),
+                  }),
+                );
               // Track unique frames at reception (for measuring actual frames from server)
               const frameHash = hashFrame(frame.ansiString);
               if (!uniqueReceivedFramesRef.current[frameHash]) {
@@ -429,54 +441,13 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     setPublicKey("");
   }, []);
 
-  // Auto-connect on mount with serverUrl (development mode only)
-  // Continuously retry connection with exponential backoff until successful
-  // This allows page load before server startup, silently retrying in background
-  // This is a developer feature - disabled in production
+  // Connecting is an explicit user action. `?connect` remains available for
+  // links and automated tests, but it makes one visible attempt rather than
+  // repeatedly opening sockets while somebody is editing the URL.
   useEffect(() => {
-    // Only auto-connect in development mode
-    if (discovery || import.meta.env.PROD) {
-      return;
-    }
-
-    if (hasAutoConnected) return;
-
-    const attemptConnect = async () => {
-      reconnectAttemptRef.current++;
-      const attempt = reconnectAttemptRef.current;
-      console.log(
-        `[Client] Auto-connect attempt ${attempt} with serverUrl:`,
-        serverUrl,
-      );
-
-      try {
-        // Use showErrors: false to suppress modal and let retries happen silently
-        await connectToServer({ showErrors: false });
-        console.log("[Client] Auto-connect succeeded on attempt:", attempt);
-        setHasAutoConnected(true);
-      } catch (err) {
-        const delayMs = Math.min(1000, 100 * attempt); // Backoff: 100ms, 200ms, ..., up to 1000ms
-        console.log(
-          `[Client] Auto-connect failed on attempt ${attempt}, retrying in ${delayMs}ms:`,
-          err,
-        );
-
-        // Schedule next retry
-        reconnectTimeoutRef.current = setTimeout(attemptConnect, delayMs);
-      }
-    };
-
-    // Initial 150ms delay to ensure terminal sizing is complete
-    const initialTimer = setTimeout(attemptConnect, 150);
-
-    return () => {
-      clearTimeout(initialTimer);
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-  }, [serverUrl, hasAutoConnected, connectToServer, discovery]);
+    if (discovery || !autoConnect) return;
+    void connectToServer().catch(() => {});
+  }, [autoConnect, connectToServer, discovery]);
 
   useEffect(
     () => () => {

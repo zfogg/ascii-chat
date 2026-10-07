@@ -1,7 +1,7 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 
-interface PageControlBarProps {
+export interface PageControlBarProps {
   title?: string | undefined;
   status?: string | undefined;
   statusDotColor?: string | undefined;
@@ -20,6 +20,7 @@ interface PageControlBarProps {
   showSettingsButton?: boolean | undefined;
   settingsOpen?: boolean | undefined;
   compactVerticalSpacing?: boolean | undefined;
+  statusControls?: ReactNode | undefined;
 }
 
 export function PageControlBar({
@@ -41,6 +42,7 @@ export function PageControlBar({
   showSettingsButton = true,
   settingsOpen = false,
   compactVerticalSpacing = false,
+  statusControls,
 }: PageControlBarProps) {
   const getFpsColor = () => {
     if (fps === undefined || fps === null) return "text-terminal-8";
@@ -101,6 +103,9 @@ export function PageControlBar({
               FPS: {fps}
               {targetFps && ` / ${targetFps}`}
             </span>
+          )}
+          {statusControls && (
+            <div className="flex items-center gap-2">{statusControls}</div>
           )}
         </div>
         <div className="flex gap-2">

@@ -1,24 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  getMirrorModule,
   initMirrorWasm,
   isWasmReady,
-  setDimensions,
-  getDimensions,
-  setColorMode,
-  getColorMode,
-  setColorFilter,
-  getColorFilter,
-  setPalette,
-  getPalette,
-  setPaletteChars,
-  getPaletteChars,
-  setMatrixRain,
-  getMatrixRain,
-  setFlipX,
-  getFlipX,
-  setTargetFps,
-  getTargetFps,
-  getMirrorModule,
 } from "@ascii-chat/shared/wasm";
 // @ts-expect-error - Generated file without types
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
@@ -26,22 +10,19 @@ import { SITES } from "@ascii-chat/shared/utils";
 import {
   BinarySettings,
   AsciiRenderer,
-  PageControlBar,
   PageLayout,
+  ModeHeader,
   AsciiChatWebHead,
   VideoUploadModal,
 } from "../components";
 import type { BinarySettingsConfig } from "../components";
+import { AsciiChatMode } from "../utils";
 import {
-  AsciiChatMode,
-  mapColorModeToWasm,
-  mapColorFilterToWasm,
-} from "../utils";
-import {
-  createWasmOptionsManager,
+  applyMirrorWasmSettings,
   useClientLike,
   useMirrorRenderLoop,
   useMirrorWebcam,
+  setMirrorWasmDimensions,
 } from "../hooks";
 
 export function MirrorPage() {
@@ -73,73 +54,11 @@ export function MirrorPage() {
   }, []);
 
   const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
-    const applyStart = performance.now();
-    console.log(
-      `[Mirror] applyWasmSettings called at ${applyStart.toFixed(0)}ms`,
-    );
-
-    const omStart = performance.now();
-    console.log(
-      `[Mirror] Creating WasmOptionsManager at ${omStart.toFixed(0)}ms`,
-    );
-    const om = createWasmOptionsManager(
-      setColorMode,
-      getColorMode,
-      setColorFilter,
-      getColorFilter,
-      setPalette,
-      getPalette,
-      setPaletteChars,
-      getPaletteChars,
-      setMatrixRain,
-      getMatrixRain,
-      setFlipX,
-      getFlipX,
-      setDimensions,
-      getDimensions,
-      setTargetFps,
-      getTargetFps,
-      mapColorModeToWasm,
-      mapColorFilterToWasm,
-    );
-    const omEnd = performance.now();
-    console.log(
-      `[Mirror] WasmOptionsManager created at ${omEnd.toFixed(0)}ms (took ${(omEnd - omStart).toFixed(1)}ms)`,
-    );
-
-    const beforeApply = performance.now();
-    console.log(
-      `[Mirror] Calling om.applySettings at ${beforeApply.toFixed(0)}ms`,
-    );
-    om?.applySettings(settings);
-    const afterApply = performance.now();
-    console.log(
-      `[Mirror] om.applySettings returned at ${afterApply.toFixed(0)}ms (took ${(afterApply - beforeApply).toFixed(1)}ms)`,
-    );
+    applyMirrorWasmSettings(settings);
   }, []);
 
   const setWasmDimensions = useCallback((cols: number, rows: number) => {
-    const om = createWasmOptionsManager(
-      setColorMode,
-      getColorMode,
-      setColorFilter,
-      getColorFilter,
-      setPalette,
-      getPalette,
-      setPaletteChars,
-      getPaletteChars,
-      setMatrixRain,
-      getMatrixRain,
-      setFlipX,
-      getFlipX,
-      setDimensions,
-      getDimensions,
-      setTargetFps,
-      getTargetFps,
-      mapColorModeToWasm,
-      mapColorFilterToWasm,
-    );
-    om?.setDimensions(cols, rows);
+    setMirrorWasmDimensions(cols, rows);
   }, []);
 
   const optionsManager = useClientLike({
@@ -289,30 +208,32 @@ export function MirrorPage() {
       <PageLayout
         videoRef={videoRef}
         canvasRef={canvasRef}
-        showSettings={showSettings}
-        settingsPanel={
-          <BinarySettings
-            config={settings}
-            onChange={handleSettingsChange}
-            mode={AsciiChatMode.MIRROR}
-          />
-        }
-        controlBar={
-          <PageControlBar
-            title="ASCII Mirror"
-            dimensions={terminalDimensions}
-            fps={fps}
-            targetFps={settings.targetFps}
-            isWebcamRunning={isWebcamRunning}
-            mediaSource={mediaSource}
-            onStartWebcam={startWebcam}
-            onStopWebcam={stopWebcam}
-            onUploadClick={() => setShowUploadModal(true)}
-            videoRef={videoRef}
-            onSettingsClick={() => setShowSettings(!showSettings)}
-            showConnectionButton={false}
-            showSettingsButton={true}
-            settingsOpen={showSettings}
+        header={
+          <ModeHeader
+            showSettings={showSettings}
+            settingsPanel={
+              <BinarySettings
+                config={settings}
+                onChange={handleSettingsChange}
+                mode={AsciiChatMode.MIRROR}
+              />
+            }
+            controlBar={{
+              title: "Mirror mode",
+              dimensions: terminalDimensions,
+              fps,
+              targetFps: settings.targetFps,
+              isWebcamRunning,
+              mediaSource,
+              onStartWebcam: startWebcam,
+              onStopWebcam: stopWebcam,
+              onUploadClick: () => setShowUploadModal(true),
+              videoRef,
+              onSettingsClick: () => setShowSettings(!showSettings),
+              showConnectionButton: false,
+              showSettingsButton: true,
+              settingsOpen: showSettings,
+            }}
           />
         }
         renderer={(() => {

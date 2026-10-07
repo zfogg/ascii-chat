@@ -119,7 +119,7 @@ test.describe("Client Connection to Native Server", () => {
     });
 
     // Navigate to client demo page with test server URL
-    const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
+    const clientUrl = `${WEB_CLIENT_URL}?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
     await page.goto(clientUrl, { waitUntil: "networkidle" });
   });
 

@@ -102,7 +102,7 @@ test("Client connection persists and renders continuous frames", async ({
   });
 
   console.log("========== NAVIGATING ==========");
-  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  const clientUrl = `http://localhost:3000/client?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log(

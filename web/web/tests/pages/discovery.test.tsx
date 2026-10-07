@@ -28,7 +28,9 @@ const backend = vi.hoisted(() => ({
   state: 0,
   status: "Disconnected",
   error: "",
-  options: undefined as { discovery?: DiscoveryOptions } | undefined,
+  options: undefined as
+    | { autoConnect?: boolean; discovery?: DiscoveryOptions }
+    | undefined,
   connect: vi.fn<() => Promise<void>>(),
   disconnect: vi.fn(),
   stopWebcam: vi.fn(),
@@ -37,7 +39,10 @@ const backend = vi.hoisted(() => ({
   setError: vi.fn(),
 }));
 vi.mock("../../src/hooks", () => ({
-  useClientConnection: (options: { discovery?: DiscoveryOptions }) => {
+  useClientConnection: (options: {
+    autoConnect?: boolean;
+    discovery?: DiscoveryOptions;
+  }) => {
     backend.options = options;
     return {
       clientRef: backend.clientRef,
@@ -53,7 +58,8 @@ vi.mock("../../src/hooks", () => ({
       handleDisconnect: backend.disconnect,
     };
   },
-  createWasmOptionsManager: vi.fn(),
+  applyMirrorWasmSettings: vi.fn(),
+  setMirrorWasmDimensions: vi.fn(),
   useCanvasCapture: () => ({ captureFrame: vi.fn() }),
   useRenderLoop: () => ({ startRenderLoop: vi.fn() }),
   useWebcamStream: () => ({
@@ -71,6 +77,7 @@ vi.mock("../../src/components", async () => ({
   ...(await import("../../src/components/shared/BinarySettings")),
   ...(await import("../../src/components/PageLayout")),
   ...(await import("../../src/components/PageControlBar")),
+  ...(await import("../../src/components/ModeHeader")),
   AsciiChatWebHead: () => null,
   ConnectionPanelModal: () => null,
   AsciiRenderer: ({
@@ -78,7 +85,10 @@ vi.mock("../../src/components", async () => ({
   }: {
     onDimensionsChange: (dimensions: { cols: number; rows: number }) => void;
   }) => {
-    useEffect(() => onDimensionsChange({ cols: 80, rows: 40 }), [onDimensionsChange]);
+    useEffect(
+      () => onDimensionsChange({ cols: 80, rows: 40 }),
+      [onDimensionsChange],
+    );
     return null;
   },
 }));
@@ -123,6 +133,45 @@ afterEach(() => {
 });
 
 describe("Discovery page", () => {
+  it("keeps the browser client disconnected until Connect is clicked", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/client?serverUrl=ws%3A%2F%2Flocalhost%3A29999",
+    );
+    const view = render(<ClientPage />, { wrapper: HeadingProvider });
+    await act(async () => {});
+
+    expect(backend.options?.autoConnect).toBe(false);
+    expect(backend.connect).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+    view.unmount();
+  });
+
+  it("allows a link to request one browser-client connection", async () => {
+    window.history.replaceState({}, "", "/client?connect");
+    const view = render(<ClientPage />, { wrapper: HeadingProvider });
+    await act(async () => {});
+
+    expect(backend.options?.autoConnect).toBe(true);
+    view.unmount();
+  });
+
+  it.each([ConnectionState.CONNECTING, ConnectionState.HANDSHAKE])(
+    "lets the browser client cancel while connection state is %s",
+    async (state) => {
+      backend.state = state;
+      window.history.replaceState({}, "", "/client");
+      await act(async () => {
+        render(<ClientPage />, { wrapper: HeadingProvider });
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(backend.disconnect).toHaveBeenCalledOnce();
+      expect(backend.stopWebcam).toHaveBeenCalledOnce();
+    },
+  );
+
   it.each([
     ["client", false],
     ["discovery", true],
@@ -234,7 +283,7 @@ describe("Discovery page", () => {
     ConnectionState.HANDSHAKE,
     ConnectionState.CONNECTED,
   ])(
-    "locks discovery and rendering settings in connection state %s",
+    "locks connection settings while keeping rendering settings live in connection state %s",
     async (state) => {
       backend.state = state;
       await openPage();
@@ -245,12 +294,10 @@ describe("Discovery page", () => {
       ).toBeDisabled();
       await userEvent.click(screen.getByRole("button", { name: "Settings" }));
       const slider = screen.getByRole("slider");
-      const panel = slider.closest(".settings-locked")!;
-      expect(
-        panel.querySelectorAll("input, select, button").length,
-      ).toBeGreaterThanOrEqual(8);
-      for (const control of panel.querySelectorAll("input, select, button"))
-        expect(control).toBeDisabled();
+      expect(slider.closest(".settings-locked")).toBeNull();
+      expect(slider).toBeEnabled();
+      fireEvent.change(slider, { target: { value: "45" } });
+      expect(slider).toHaveValue("45");
     },
   );
 
@@ -312,6 +359,24 @@ describe("Discovery page", () => {
     expect(screen.getAllByText(backend.status)).toHaveLength(1);
     expect(screen.getByRole("alert")).toHaveTextContent("Session not found");
     expectFieldsDisabled(false);
+  });
+
+  it("places connected audio controls beside the discovery status", async () => {
+    backend.state = ConnectionState.CONNECTED;
+    backend.status = "Connected over WebRTC (DTLS encrypted)";
+    await openPage();
+
+    const status = screen.getByText(backend.status);
+    const speakers = screen.getByRole("button", { name: "Enable speakers" });
+    const microphone = screen.getByRole("button", {
+      name: "Enable microphone",
+    });
+
+    expect(status.parentElement).toContainElement(speakers);
+    expect(status.parentElement).toContainElement(microphone);
+    expect(
+      screen.getByRole("button", { name: "Settings" }).parentElement,
+    ).not.toContainElement(speakers);
   });
 
   it("preserves the quoted STUN/TURN example and credential help", async () => {

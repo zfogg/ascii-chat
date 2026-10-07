@@ -17,6 +17,73 @@ export const AUDIO_CODEC_CAP_RAW = 1 << 0; // Bit 0: Raw PCM support
 export const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
 export const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
 
+export type BrowserColorMode = "auto" | "none" | "16" | "256" | "truecolor";
+export type BrowserColorFilter =
+  | "none"
+  | "black"
+  | "white"
+  | "green"
+  | "magenta"
+  | "fuchsia"
+  | "orange"
+  | "teal"
+  | "cyan"
+  | "pink"
+  | "red"
+  | "yellow"
+  | "rainbow";
+export type BrowserPalette =
+  | "standard"
+  | "blocks"
+  | "digital"
+  | "minimal"
+  | "cool"
+  | "custom";
+
+const COLOR_FILTER_VALUES: Record<BrowserColorFilter, number> = {
+  none: 0,
+  black: 1,
+  white: 2,
+  green: 3,
+  magenta: 4,
+  fuchsia: 5,
+  orange: 6,
+  teal: 7,
+  cyan: 8,
+  pink: 9,
+  red: 10,
+  yellow: 11,
+  rainbow: 12,
+};
+
+// These values match palette_type_t. PALETTE_UNSET is 0; Standard is 1.
+const PALETTE_VALUES: Record<BrowserPalette, number> = {
+  standard: 1,
+  blocks: 2,
+  digital: 3,
+  minimal: 4,
+  cool: 5,
+  custom: 6,
+};
+
+function getColorCapabilities(colorMode: BrowserColorMode): {
+  count: number;
+  level: number;
+} {
+  switch (colorMode) {
+    case "none":
+      return { level: 0, count: 0 };
+    case "16":
+      return { level: 1, count: 16 };
+    case "256":
+      return { level: 2, count: 256 };
+    case "auto":
+    case "truecolor":
+      // A canvas renderer does not inherit terminal capability limits.
+      return { level: 3, count: 16_777_216 };
+  }
+}
+
 // Helper functions to map Settings types to WASM enums
 export function buildStreamStartPacket(
   includeAudio: boolean = false,
@@ -45,6 +112,10 @@ export function buildCapabilitiesPacket(
   cols: number,
   rows: number,
   targetFps: number = 60,
+  colorMode: BrowserColorMode = "truecolor",
+  colorFilter: BrowserColorFilter = "none",
+  palette: BrowserPalette = "standard",
+  paletteChars?: string,
 ): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE);
   const view = new DataView(buf);
@@ -52,11 +123,9 @@ export function buildCapabilitiesPacket(
 
   // Network byte order (big-endian) - server uses NET_TO_HOST_U32/U16 to read
   view.setUint32(0, 0x0f, false); // capabilities (color+utf8+etc)
-  // Truecolor and 256-color ANSI expand a 128x32 animated frame beyond the
-  // DataChannel's live-media window. ANSI-16 keeps colored ASCII while
-  // reducing per-cell escape sequences enough for interactive delivery.
-  view.setUint32(4, 1, false); // color_level (TERM_COLOR_16)
-  view.setUint32(8, 16, false); // color_count
+  const color = getColorCapabilities(colorMode);
+  view.setUint32(4, color.level, false); // color_level
+  view.setUint32(8, color.count, false); // color_count
   view.setUint32(12, 0, false); // render_mode (foreground)
   view.setUint16(16, cols, false); // width
   view.setUint16(18, rows, false); // height
@@ -71,10 +140,13 @@ export function buildCapabilitiesPacket(
 
   bytes[84] = 1; // detection_reliable
   view.setUint32(85, 1, false); // utf8_support
-  view.setUint32(89, 1, false); // palette_type (PALETTE_STANDARD=1)
-  // palette_custom[64] at offset 93 - zeroed
+  view.setUint32(89, PALETTE_VALUES[palette], false); // palette_type
+  if (palette === "custom" && paletteChars) {
+    // palette_custom[64] at offset 93, null-padded by ArrayBuffer.
+    bytes.set(new TextEncoder().encode(paletteChars).slice(0, 63), 93);
+  }
   bytes[157] = Math.min(targetFps, 144); // desired_fps (0-144)
-  bytes[158] = 0; // color_filter (none)
+  bytes[158] = COLOR_FILTER_VALUES[colorFilter]; // color_filter
   bytes[159] = 1; // wants_padding
 
   // Codec capabilities (network byte order, big-endian)
@@ -85,7 +157,7 @@ export function buildCapabilitiesPacket(
 
   // Log capabilities packet structure for debugging
   console.log(
-    `[Client] CAPABILITIES packet: size=${bytes.length}, width=${cols}, height=${rows}, video_caps=0x${VIDEO_CODEC_CAP_SUPPORTED.toString(
+    `[Client] CAPABILITIES packet: size=${bytes.length}, width=${cols}, height=${rows}, color=${colorMode}, video_caps=0x${VIDEO_CODEC_CAP_SUPPORTED.toString(
       16,
     )}, audio_caps=0x${AUDIO_CODEC_CAP_ALL.toString(16)}`,
   );
@@ -134,13 +206,13 @@ export function buildImageFramePayload(
   // Convert RGBA to RGB24 (strip alpha channel)
   let dstIdx = headerSize;
   for (let i = 0; i < pixelCount; i++) {
-      const srcIdx = i * 4;
-      const r = rgbaData[srcIdx] ?? 0;
-      const g = rgbaData[srcIdx + 1] ?? 0;
-      const b = rgbaData[srcIdx + 2] ?? 0;
-      bytes[dstIdx] = r; // R
-      bytes[dstIdx + 1] = g; // G
-      bytes[dstIdx + 2] = b; // B
+    const srcIdx = i * 4;
+    const r = rgbaData[srcIdx] ?? 0;
+    const g = rgbaData[srcIdx + 1] ?? 0;
+    const b = rgbaData[srcIdx + 2] ?? 0;
+    bytes[dstIdx] = r; // R
+    bytes[dstIdx + 1] = g; // G
+    bytes[dstIdx + 2] = b; // B
     dstIdx += 3;
   }
 

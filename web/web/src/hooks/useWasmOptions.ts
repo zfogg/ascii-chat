@@ -1,10 +1,31 @@
 import { useCallback } from "react";
+import {
+  getColorFilter,
+  getColorMode,
+  getDimensions,
+  getFlipX,
+  getMatrixRain,
+  getPalette,
+  getPaletteChars,
+  getTargetFps,
+  isOptionsInitialized,
+  isWasmReady,
+  setColorFilter,
+  setColorMode,
+  setDimensions,
+  setFlipX,
+  setMatrixRain,
+  setPalette,
+  setPaletteChars,
+  setTargetFps,
+} from "@ascii-chat/shared/wasm";
 import type {
   BinarySettingsConfig,
   ColorMode,
   ColorFilter,
   Palette,
 } from "../components";
+import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 
 export interface WasmOptionsManager {
   setDimensions: (width: number, height: number) => void;
@@ -24,6 +45,50 @@ export interface WasmOptionsManager {
   setTargetFps: (fps: number) => void;
   getTargetFps: () => number;
   applySettings: (settings: BinarySettingsConfig) => void;
+}
+
+/**
+ * The browser mirror renderer owns the shared options module used by all
+ * browser video modes. Keep its option wiring in one place so Client and
+ * Discovery apply exactly the same settings as Mirror.
+ */
+export function createMirrorWasmOptionsManager(): WasmOptionsManager {
+  return createWasmOptionsManager(
+    setColorMode,
+    getColorMode,
+    setColorFilter,
+    getColorFilter,
+    setPalette,
+    getPalette,
+    setPaletteChars,
+    getPaletteChars,
+    setMatrixRain,
+    getMatrixRain,
+    setFlipX,
+    getFlipX,
+    setDimensions,
+    getDimensions,
+    setTargetFps,
+    getTargetFps,
+    mapColorModeToWasm,
+    mapColorFilterToWasm,
+  );
+}
+
+/** Apply settings when the shared Mirror WASM option accessor is available. */
+export function applyMirrorWasmSettings(
+  settings: BinarySettingsConfig,
+): boolean {
+  if (!isWasmReady() || !isOptionsInitialized()) return false;
+  createMirrorWasmOptionsManager().applySettings(settings);
+  return true;
+}
+
+/** Keep the shared renderer dimensions synchronized with the current canvas. */
+export function setMirrorWasmDimensions(cols: number, rows: number): boolean {
+  if (!isWasmReady() || !isOptionsInitialized()) return false;
+  createMirrorWasmOptionsManager().setDimensions(cols, rows);
+  return true;
 }
 
 /**

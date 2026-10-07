@@ -43,7 +43,7 @@ test("Real webcam animates with server frames", async ({ page, context }) => {
   });
 
   console.log("Opening browser client with REAL WEBCAM...");
-  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  const clientUrl = `http://localhost:3000/client?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log("\nWaiting 5 seconds for frames to render from real webcam...");

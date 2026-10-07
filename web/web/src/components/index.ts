@@ -12,6 +12,7 @@ export { Header } from "./Header";
 export { Layout } from "./Layout";
 export { PageControlBar } from "./PageControlBar";
 export { PageLayout } from "./PageLayout";
+export { ModeHeader } from "./ModeHeader";
 export { BinarySettings } from "./shared/BinarySettings";
 export type {
   BinarySettingsConfig,

@@ -157,6 +157,67 @@ export class ServerFixture {
   }
 }
 
+/** A real CLI connection that completes before the browser joins. */
+export class NativeClientFixture {
+  private process: ChildProcess | null = null;
+  private appDataDir: string | null = null;
+
+  constructor(private readonly serverPort: number) {}
+
+  async start(): Promise<void> {
+    const binaryPath = path.join(process.cwd(), "../../build/bin/ascii-chat");
+    this.appDataDir = fs.mkdtempSync(
+      path.join(process.cwd(), ".native-client-appdata-"),
+    );
+    this.process = spawn(
+      binaryPath,
+      [
+        "--no-check-update",
+        "client",
+        `127.0.0.1:${this.serverPort}`,
+        "--test-pattern",
+        "--fps",
+        "60",
+      ],
+      {
+        env: { ...process.env, APPDATA: this.appDataDir },
+      },
+    );
+    await new Promise<void>((resolve, reject) => {
+      const process = this.process;
+      const timer = setTimeout(resolve, 500);
+      process.once("exit", (code) => {
+        clearTimeout(timer);
+        reject(
+          new Error(`Native client exited before connecting (code ${code})`),
+        );
+      });
+    });
+  }
+
+  async stop(): Promise<void> {
+    const process = this.process;
+    this.process = null;
+    if (!process || process.exitCode !== null) return;
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        process.kill("SIGKILL");
+        resolve();
+      }, 5000);
+      process.once("exit", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      process.kill("SIGTERM");
+    });
+    if (this.appDataDir) {
+      fs.rmSync(this.appDataDir, { force: true, recursive: true });
+      this.appDataDir = null;
+    }
+  }
+}
+
 /**
  * Check if a port is listening
  */

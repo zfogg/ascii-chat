@@ -108,7 +108,7 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   });
 
   console.log("Starting browser client...");
-  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  const clientUrl = `http://localhost:3000/client?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log("Waiting 3 seconds for frames to arrive...");

@@ -94,7 +94,7 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   });
 
   console.log("\n========== NAVIGATING TO CLIENT PAGE ==========\n");
-  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  const clientUrl = `http://localhost:3000/client?connect&testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log(

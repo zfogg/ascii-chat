@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Extend Window interface for frame metrics
 declare global {
@@ -26,57 +19,29 @@ declare global {
     };
   }
 }
-import {
-  cleanupClientWasm,
-  ConnectionState,
-  isWasmReady as isClientWasmReady,
-  PacketType,
-} from "../wasm/client";
-import {
-  getColorFilter,
-  initMirrorWasm,
-  getColorMode,
-  getDimensions,
-  getFlipX,
-  getMatrixRain,
-  getPalette,
-  getPaletteChars,
-  getTargetFps,
-  setColorFilter,
-  setColorMode,
-  setDimensions,
-  setFlipX,
-  setMatrixRain,
-  setPalette,
-  setPaletteChars,
-  setTargetFps,
-} from "@ascii-chat/shared/wasm";
+import { cleanupClientWasm, ConnectionState, PacketType } from "../wasm/client";
+import { initMirrorWasm } from "@ascii-chat/shared/wasm";
 import {
   AsciiRenderer,
-  ConnectionPanelModal,
   BinarySettings,
   AsciiChatWebHead,
-  PageControlBar,
   PageLayout,
+  ModeHeader,
 } from "../components";
 import type { AsciiRendererHandle, BinarySettingsConfig } from "../components";
 import { HelpLabel } from "../components/HelpLabel";
 import { Tooltip } from "../components/Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../components/lockedSettings";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
-import {
-  AsciiChatMode,
-  mapColorModeToClient,
-  mapColorFilterToClient,
-  DEFAULT_SETTINGS,
-} from "../utils";
+import { AsciiChatMode, DEFAULT_SETTINGS } from "../utils";
 import { DISCOVERY_SERVICE_URL, SITES } from "@ascii-chat/shared/utils";
 import {
-  createWasmOptionsManager,
+  applyMirrorWasmSettings,
   useCanvasCapture,
   useRenderLoop,
   useClientConnection,
   useWebcamStream,
+  setMirrorWasmDimensions,
 } from "../hooks";
 import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
@@ -91,6 +56,7 @@ export function ClientPage({
   discoveryMode?: boolean;
 }) {
   const params = new URLSearchParams(window.location.search);
+  const requestedConnection = !discoveryMode && params.has("connect");
   const [sessionName, setSessionName] = useState(params.get("session") || "");
   const [sessionPassword, setSessionPassword] = useState("");
   const [connectionRoute, setConnectionRoute] = useState<"all" | "relay">(
@@ -192,7 +158,11 @@ export function ClientPage({
   const receivedFrameCountRef = useRef<number>(0);
   const frameReceiptTimesRef = useRef<number[]>([]);
 
-  const [serverUrl, setServerUrl] = useState<string>(DISCOVERY_SERVICE_URL);
+  const [serverUrl, setServerUrl] = useState<string>(
+    params.get("serverUrl") ||
+      params.get("testServerUrl") ||
+      "ws://localhost:27226",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [terminalDimensions, setTerminalDimensions] = useState({
     cols: 0,
@@ -202,10 +172,12 @@ export function ClientPage({
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
-  const [settings, setSettings] = useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
+  const [settings, setSettings] =
+    useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<AsciiFrame[]>([]);
+  const latestFrameRef = useRef<AsciiFrame | null>(null);
 
   const renderLoopStartTimeRef = useRef<number>(0);
   const renderedFrameCountRef = useRef(0);
@@ -242,14 +214,12 @@ export function ClientPage({
     status,
     publicKey,
     connectionState,
-    showModal,
-    setShowModal,
     error,
     setError,
-    wasmInitialized,
     connectToServer,
     handleDisconnect,
   } = useClientConnection({
+    autoConnect: requestedConnection,
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
     onConnectionStateChange,
@@ -359,58 +329,17 @@ export function ClientPage({
     return () => window.clearInterval(intervalId);
   }, [connectionState, discoveryMode]);
 
-  const optionsManager = useMemo(() => {
-    if (!wasmInitialized || !isClientWasmReady()) return null;
-
-    return createWasmOptionsManager(
-      setColorMode,
-      getColorMode,
-      setColorFilter,
-      getColorFilter,
-      setPalette,
-      getPalette,
-      setPaletteChars,
-      getPaletteChars,
-      setMatrixRain,
-      getMatrixRain,
-      setFlipX,
-      getFlipX,
-      setDimensions,
-      getDimensions,
-      setTargetFps,
-      getTargetFps,
-      mapColorModeToClient,
-      mapColorFilterToClient,
-    );
-  }, [wasmInitialized]);
-
-  // Read server URL from query parameter (for E2E tests)
-  // Use useLayoutEffect to ensure this runs before render and auto-connect
-  useLayoutEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const testServerUrl = params.get("testServerUrl");
-    console.log(`[Client] Query params: search="${window.location.search}"`);
-    console.log(`[Client] testServerUrl from query: "${testServerUrl}"`);
-    if (testServerUrl) {
-      console.log(`[Client] Setting serverUrl to: "${testServerUrl}"`);
-      setServerUrl(testServerUrl);
-    } else {
-      console.log(
-        "[Client] No testServerUrl in query, using default server URL",
-      );
-    }
-  }, []);
-
-  // Apply WASM settings when they change
+  // Client and Discovery render through the same mirror WASM module as
+  // /mirror. Apply the settings as soon as that renderer is ready instead of
+  // waiting for the unrelated protocol WASM module to initialize.
   useEffect(() => {
-    if (optionsManager && isClientWasmReady()) {
-      try {
-        optionsManager.applySettings(settings);
-      } catch (err) {
-        console.error("Failed to apply WASM settings:", err);
-      }
+    if (!rendererReady) return;
+    try {
+      applyMirrorWasmSettings(settings);
+    } catch (err) {
+      console.error("Failed to apply renderer settings:", err);
     }
-  }, [optionsManager, settings]);
+  }, [rendererReady, settings]);
 
   // Update frame interval when target FPS changes
   useEffect(() => {
@@ -538,9 +467,7 @@ export function ClientPage({
       setTerminalDimensions(dims);
 
       // Tell WASM about new dimensions (for proper ASCII rendering)
-      if (optionsManager && isClientWasmReady()) {
-        optionsManager.setDimensions(dims.cols, dims.rows);
-      }
+      setMirrorWasmDimensions(dims.cols, dims.rows);
 
       // If connected, send updated dimensions to server
       if (clientRef.current && connectionState === ConnectionState.CONNECTED) {
@@ -549,6 +476,10 @@ export function ClientPage({
             dims.cols,
             dims.rows,
             settings.targetFps,
+            settings.colorMode,
+            settings.colorFilter,
+            settings.palette,
+            settings.paletteChars,
           );
           clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
         } catch (err) {
@@ -556,8 +487,38 @@ export function ClientPage({
         }
       }
     },
-    [connectionState, optionsManager, settings, clientRef],
+    [connectionState, settings, clientRef],
   );
+
+  // The native server renders each client's ASCII stream according to its
+  // advertised capabilities. Re-send them when the live settings panel
+  // changes so color, palette, filter, and FPS updates take effect without a
+  // reconnect.
+  useEffect(() => {
+    if (
+      connectionState !== ConnectionState.CONNECTED ||
+      terminalDimensions.cols <= 0 ||
+      terminalDimensions.rows <= 0 ||
+      !clientRef.current
+    )
+      return;
+    try {
+      clientRef.current.sendPacket(
+        PacketType.CLIENT_CAPABILITIES,
+        buildCapabilitiesPacket(
+          terminalDimensions.cols,
+          terminalDimensions.rows,
+          settings.targetFps,
+          settings.colorMode,
+          settings.colorFilter,
+          settings.palette,
+          settings.paletteChars,
+        ),
+      );
+    } catch (err) {
+      console.error("[Client] Failed to apply live capabilities:", err);
+    }
+  }, [clientRef, connectionState, settings, terminalDimensions]);
 
   // Expose frame count for testing
   useEffect(() => {
@@ -572,16 +533,21 @@ export function ClientPage({
   });
 
   const renderFrame = useCallback((_deltaMs: number) => {
-    // Delta-time frame queue draining: drop stale frames on slow hardware
-    if (frameQueueRef.current.length > 0 && rendererRef.current) {
+    // Drain new network frames when they arrive, but keep presenting the most
+    // recent complete frame at the selected display cadence. WebSocket frame
+    // delivery can be bursty; tying canvas writes directly to packet arrival
+    // makes the visible FPS unnecessarily inherit that jitter.
+    if (frameQueueRef.current.length > 0) {
+      latestFrameRef.current = frameQueueRef.current.pop() ?? null;
+      frameQueueRef.current.length = 0;
+    }
+    const frame = latestFrameRef.current;
+    if (frame && rendererRef.current) {
       if (renderLoopStartTimeRef.current === 0) {
         renderLoopStartTimeRef.current = performance.now();
       }
 
-      // Display the latest snapshot instead of replaying a backlog.
-      const frame = frameQueueRef.current.pop();
-      frameQueueRef.current.length = 0;
-      if (frame) {
+      {
         const frameContent = frame.ansiString;
         const frameHash = hashFrame(frameContent);
         const writeStartedAt = performance.now();
@@ -744,9 +710,45 @@ export function ClientPage({
     connectionState === ConnectionState.CONNECTING ||
     connectionState === ConnectionState.HANDSHAKE ||
     connectionState === ConnectionState.CONNECTED;
+  const connectionInProgress =
+    connectionState === ConnectionState.CONNECTING ||
+    connectionState === ConnectionState.HANDSHAKE;
   const disabledSettingsHelp = settingsDisabled
     ? LOCKED_SETTINGS_HELP
     : undefined;
+  const audioControls =
+    connectionState === ConnectionState.CONNECTED ? (
+      <>
+        <button
+          onClick={() => {
+            if (audioEnabled) closeAudio();
+            else void enableAudio();
+          }}
+          className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+        >
+          {audioEnabled ? "Disable speakers" : "Enable speakers"}
+        </button>
+        <button
+          onClick={() => void toggleMicrophone()}
+          className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+        >
+          {micEnabled ? "Mute microphone" : "Enable microphone"}
+        </button>
+        {audioEnabled && (
+          <output
+            data-testid="audio-levels"
+            data-sent={audioLevels.sent}
+            data-played={audioLevels.played}
+            data-played-samples={audioLevels.playedSamples}
+            data-underruns={audioLevels.underruns}
+            className="self-center text-sm text-terminal-8"
+          >
+            Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+            {Math.round(audioLevels.playback * 100)}%
+          </output>
+        )}
+      </>
+    ) : undefined;
 
   return (
     <>
@@ -755,315 +757,318 @@ export function ClientPage({
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
       />
-      {!discoveryMode && connectionState === ConnectionState.CONNECTED && (
-        <div className="flex gap-3 px-4 py-2">
-          <button
-            onClick={() => {
-              if (audioEnabled) closeAudio();
-              else void enableAudio();
-            }}
-            className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-          >
-            {audioEnabled ? "Disable speakers" : "Enable speakers"}
-          </button>
-          <button
-            onClick={() => void toggleMicrophone()}
-            className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-          >
-            {micEnabled ? "Mute microphone" : "Enable microphone"}
-          </button>
-          {audioEnabled && (
-            <output
-              data-testid="audio-levels"
-              data-sent={audioLevels.sent}
-              data-played={audioLevels.played}
-              data-played-samples={audioLevels.playedSamples}
-              data-underruns={audioLevels.underruns}
-              className="self-center text-sm text-terminal-8"
-            >
-              Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
-              {Math.round(audioLevels.playback * 100)}%
-            </output>
-          )}
-        </div>
-      )}
       <PageLayout
         videoRef={videoRef}
         canvasRef={canvasRef}
-        showSettings={showSettings}
-        settingsPanel={
-          <BinarySettings
-            config={settings}
-            disabled={settingsDisabled}
-            onChange={setSettings}
-            mode={AsciiChatMode.CLIENT}
-          />
-        }
-        topPanel={
-          discoveryMode && (
-            <div className="flex flex-col">
-              <form
-                className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  pendingDiscoveryJoinRef.current = true;
-                  discoveryJoinGenerationRef.current++;
-                  setRendererRequested(true);
-                  setConnecting(true);
-                }}
-              >
-                <Tooltip text={disabledSettingsHelp} className="contents">
-                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                    Discovery service URL
-                    <input
-                      aria-label="Discovery service URL"
-                      disabled={settingsDisabled}
-                      value={signalingUrl}
-                      onChange={(event) => setSignalingUrl(event.target.value)}
-                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                    />
-                  </label>
-                </Tooltip>
-                <Tooltip text={disabledSettingsHelp} className="contents">
-                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                    Session name
-                    <input
-                      aria-label="Session name"
-                      disabled={settingsDisabled}
-                      required
-                      maxLength={47}
-                      value={sessionName}
-                      onChange={(event) => setSessionName(event.target.value)}
-                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                      placeholder="blue-mountain-tiger"
-                    />
-                  </label>
-                </Tooltip>
-                <Tooltip text={disabledSettingsHelp} className="contents">
-                  <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                    Session password
-                    <input
-                      aria-label="Session password"
-                      disabled={settingsDisabled}
-                      type="password"
-                      value={sessionPassword}
-                      onChange={(event) =>
-                        setSessionPassword(event.target.value)
-                      }
-                      className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                      autoComplete="off"
-                    />
-                  </label>
-                </Tooltip>
-                <button
-                  type="submit"
-                  disabled={settingsDisabled}
-                  className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Join session
-                </button>
-                {(connecting ||
-                  connectionState === ConnectionState.CONNECTED) && (
-                  <button
-                    type="button"
-                    onClick={disconnectMedia}
-                    className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
-                  >
-                    {connecting ? "Cancel" : "Disconnect"}
-                  </button>
-                )}
-                <div className="flex items-center gap-3 w-full min-w-0">
-                  <details className="flex-shrink-0">
-                    <summary className="cursor-pointer">
-                      Connection settings
-                    </summary>
-                    <div className="flex flex-col gap-2 mt-2">
-                      <Tooltip text={disabledSettingsHelp} className="contents">
-                        <label className="flex flex-col gap-1 w-56 max-w-full">
-                          Connection route
-                          <select
-                            aria-label="Connection route"
-                            value={connectionRoute}
-                            disabled={settingsDisabled}
-                            onChange={(event) =>
-                              setConnectionRoute(
-                                event.target.value as "all" | "relay",
-                              )
-                            }
-                            className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
-                          >
-                            <option value="all">Automatic</option>
-                            <option value="relay">Relay only</option>
-                          </select>
-                        </label>
-                      </Tooltip>
-                      <Tooltip text={disabledSettingsHelp} className="contents">
-                        <label>
-                          <HelpLabel
-                            label="STUN/TURN URLs (comma-separated)"
-                            text={
-                              'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
-                            }
-                          />
-                          <input
-                            aria-label="STUN/TURN URLs"
-                            disabled={settingsDisabled}
-                            value={iceUrls}
-                            onChange={(event) => setIceUrls(event.target.value)}
-                            className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
-                          />
-                        </label>
-                      </Tooltip>
-                      <fieldset disabled={settingsDisabled}>
-                        <div className="flex flex-wrap gap-3 mt-2">
-                          <Tooltip
-                            text={disabledSettingsHelp}
-                            className="contents"
-                          >
-                            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                              <HelpLabel
-                                label="TURN username"
-                                text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                              />
-                              <input
-                                aria-label="TURN username"
-                                disabled={settingsDisabled}
-                                value={turnUsername}
-                                maxLength={127}
-                                required={!!turnCredential}
-                                onChange={(event) =>
-                                  setTurnUsername(event.target.value)
-                                }
-                                autoComplete="off"
-                                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                              />
-                            </label>
-                          </Tooltip>
-                          <Tooltip
-                            text={disabledSettingsHelp}
-                            className="contents"
-                          >
-                            <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                              <HelpLabel
-                                label="TURN password"
-                                text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                              />
-                              <input
-                                aria-label="TURN password"
-                                disabled={settingsDisabled}
-                                type="password"
-                                value={turnCredential}
-                                maxLength={127}
-                                required={!!turnUsername}
-                                onChange={(event) =>
-                                  setTurnCredential(event.target.value)
-                                }
-                                autoComplete="off"
-                                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                              />
-                            </label>
-                          </Tooltip>
-                        </div>
-                      </fieldset>
-                    </div>
-                  </details>
-                </div>
-                {error && (
-                  <p
-                    role="alert"
-                    title={error}
-                    className="w-full text-terminal-1"
-                  >
-                    {error}
-                  </p>
-                )}
-              </form>
-              {connectionState === ConnectionState.CONNECTED && (
-                <div className="flex gap-3 mt-3">
-                  <button
-                    onClick={() => {
-                      if (audioEnabled) closeAudio();
-                      else void enableAudio();
-                    }}
-                    className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-                  >
-                    {audioEnabled ? "Disable speakers" : "Enable speakers"}
-                  </button>
-                  <button
-                    onClick={() => void toggleMicrophone()}
-                    className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
-                  >
-                    {micEnabled ? "Mute microphone" : "Enable microphone"}
-                  </button>
-                  {audioEnabled && (
-                    <output
-                      data-testid="audio-levels"
-                      data-sent={audioLevels.sent}
-                      data-played={audioLevels.played}
-                      data-played-samples={audioLevels.playedSamples}
-                      data-underruns={audioLevels.underruns}
-                      className="self-center text-sm text-terminal-8"
-                    >
-                      Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
-                      {Math.round(audioLevels.playback * 100)}%
-                    </output>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        }
-        controlBar={
-          <PageControlBar
-            title={discoveryMode ? "Discovery" : "Client"}
-            status={status}
-            statusDotColor={getStatusDotColor()}
-            dimensions={terminalDimensions}
-            fps={fps}
-            targetFps={settings.targetFps}
-            isWebcamRunning={isWebcamRunning}
-            onStartWebcam={
-              connectionState === ConnectionState.CONNECTED
-                ? startWebcam
-                : undefined
+        header={
+          <ModeHeader
+            showSettings={showSettings}
+            settingsPanel={
+              <BinarySettings
+                config={settings}
+                onChange={setSettings}
+                mode={AsciiChatMode.CLIENT}
+              />
             }
-            onStopWebcam={isWebcamRunning ? stopWebcam : undefined}
-            showConnectionButton={!discoveryMode}
-            onConnectionClick={() => setShowModal(true)}
-            onSettingsClick={() => setShowSettings((open) => !open)}
-            showSettingsButton={true}
-            settingsOpen={showSettings}
-            compactVerticalSpacing={discoveryMode}
+            connectionPanel={
+              discoveryMode ? (
+                <div className="flex flex-col">
+                  <form
+                    className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      pendingDiscoveryJoinRef.current = true;
+                      discoveryJoinGenerationRef.current++;
+                      setRendererRequested(true);
+                      setConnecting(true);
+                    }}
+                  >
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        Discovery service URL
+                        <input
+                          aria-label="Discovery service URL"
+                          disabled={settingsDisabled}
+                          value={signalingUrl}
+                          onChange={(event) =>
+                            setSignalingUrl(event.target.value)
+                          }
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                        />
+                      </label>
+                    </Tooltip>
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        Session name
+                        <input
+                          aria-label="Session name"
+                          disabled={settingsDisabled}
+                          required
+                          maxLength={47}
+                          value={sessionName}
+                          onChange={(event) =>
+                            setSessionName(event.target.value)
+                          }
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                          placeholder="blue-mountain-tiger"
+                        />
+                      </label>
+                    </Tooltip>
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        Session password
+                        <input
+                          aria-label="Session password"
+                          disabled={settingsDisabled}
+                          type="password"
+                          value={sessionPassword}
+                          onChange={(event) =>
+                            setSessionPassword(event.target.value)
+                          }
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                          autoComplete="off"
+                        />
+                      </label>
+                    </Tooltip>
+                    <button
+                      type="submit"
+                      disabled={settingsDisabled}
+                      className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Join session
+                    </button>
+                    {(connecting ||
+                      connectionState === ConnectionState.CONNECTED) && (
+                      <button
+                        type="button"
+                        onClick={disconnectMedia}
+                        className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
+                      >
+                        {connecting ? "Cancel" : "Disconnect"}
+                      </button>
+                    )}
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                      <details className="flex-shrink-0">
+                        <summary className="cursor-pointer">
+                          Connection settings
+                        </summary>
+                        <div className="flex flex-col gap-2 mt-2">
+                          <Tooltip
+                            text={disabledSettingsHelp}
+                            className="contents"
+                          >
+                            <label className="flex flex-col gap-1 w-56 max-w-full">
+                              Connection route
+                              <select
+                                aria-label="Connection route"
+                                value={connectionRoute}
+                                disabled={settingsDisabled}
+                                onChange={(event) =>
+                                  setConnectionRoute(
+                                    event.target.value as "all" | "relay",
+                                  )
+                                }
+                                className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2"
+                              >
+                                <option value="all">Automatic</option>
+                                <option value="relay">Relay only</option>
+                              </select>
+                            </label>
+                          </Tooltip>
+                          <Tooltip
+                            text={disabledSettingsHelp}
+                            className="contents"
+                          >
+                            <label>
+                              <HelpLabel
+                                label="STUN/TURN URLs (comma-separated)"
+                                text={
+                                  'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
+                                }
+                              />
+                              <input
+                                aria-label="STUN/TURN URLs"
+                                disabled={settingsDisabled}
+                                value={iceUrls}
+                                onChange={(event) =>
+                                  setIceUrls(event.target.value)
+                                }
+                                className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                              />
+                            </label>
+                          </Tooltip>
+                          <fieldset disabled={settingsDisabled}>
+                            <div className="flex flex-wrap gap-3 mt-2">
+                              <Tooltip
+                                text={disabledSettingsHelp}
+                                className="contents"
+                              >
+                                <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                                  <HelpLabel
+                                    label="TURN username"
+                                    text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                                  />
+                                  <input
+                                    aria-label="TURN username"
+                                    disabled={settingsDisabled}
+                                    value={turnUsername}
+                                    maxLength={127}
+                                    required={!!turnCredential}
+                                    onChange={(event) =>
+                                      setTurnUsername(event.target.value)
+                                    }
+                                    autoComplete="off"
+                                    className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                                  />
+                                </label>
+                              </Tooltip>
+                              <Tooltip
+                                text={disabledSettingsHelp}
+                                className="contents"
+                              >
+                                <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                                  <HelpLabel
+                                    label="TURN password"
+                                    text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                                  />
+                                  <input
+                                    aria-label="TURN password"
+                                    disabled={settingsDisabled}
+                                    type="password"
+                                    value={turnCredential}
+                                    maxLength={127}
+                                    required={!!turnUsername}
+                                    onChange={(event) =>
+                                      setTurnCredential(event.target.value)
+                                    }
+                                    autoComplete="off"
+                                    className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
+                                  />
+                                </label>
+                              </Tooltip>
+                            </div>
+                          </fieldset>
+                        </div>
+                      </details>
+                    </div>
+                    {error && (
+                      <p
+                        role="alert"
+                        title={error}
+                        className="w-full text-terminal-1"
+                      >
+                        {error}
+                      </p>
+                    )}
+                  </form>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  <form
+                    className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void connectToServer();
+                    }}
+                  >
+                    <Tooltip text={disabledSettingsHelp} className="contents">
+                      <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
+                        Server WebSocket URL
+                        <input
+                          aria-label="Server WebSocket URL"
+                          disabled={settingsDisabled}
+                          value={serverUrl}
+                          onChange={(event) => setServerUrl(event.target.value)}
+                          placeholder="ws://localhost:27226"
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
+                        />
+                      </label>
+                    </Tooltip>
+                    {connectionState === ConnectionState.CONNECTED ? (
+                      <button
+                        type="button"
+                        onClick={disconnectMedia}
+                        className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
+                      >
+                        Disconnect
+                      </button>
+                    ) : connectionInProgress ? (
+                      <button
+                        type="button"
+                        onClick={disconnectMedia}
+                        className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={settingsDisabled}
+                        className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Connect
+                      </button>
+                    )}
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                      <details className="flex-shrink-0">
+                        <summary className="cursor-pointer">
+                          Connection settings
+                        </summary>
+                        <div className="mt-2 text-sm text-terminal-8 space-y-1">
+                          <p>Transport: encrypted WebSocket</p>
+                          <p>Crypto: X25519 + XSalsa20-Poly1305 AEAD</p>
+                          {publicKey && (
+                            <p className="break-all">Client key: {publicKey}</p>
+                          )}
+                        </div>
+                      </details>
+                    </div>
+                    {error && (
+                      <p
+                        role="alert"
+                        title={error}
+                        className="w-full text-terminal-1"
+                      >
+                        {error}
+                      </p>
+                    )}
+                  </form>
+                </div>
+              )
+            }
+            controlBar={{
+              title: discoveryMode ? "Discovery mode" : "Client mode",
+              status,
+              statusDotColor: getStatusDotColor(),
+              dimensions: terminalDimensions,
+              fps,
+              targetFps: settings.targetFps,
+              isWebcamRunning,
+              onStartWebcam:
+                connectionState === ConnectionState.CONNECTED
+                  ? startWebcam
+                  : undefined,
+              onStopWebcam: isWebcamRunning ? stopWebcam : undefined,
+              showConnectionButton: false,
+              onSettingsClick: () => setShowSettings((open) => !open),
+              showSettingsButton: true,
+              settingsOpen: showSettings,
+              statusControls: audioControls,
+            }}
           />
         }
         renderer={
           rendererRequested ? (
-          <AsciiRenderer
-            ref={rendererRef}
-            onDimensionsChange={handleDimensionsChange}
-            {...(discoveryMode ? {} : { onFpsChange: setFps })}
-            error={discoveryMode ? rendererError : error || rendererError}
-            showFps={isWebcamRunning}
-            connectionState={connectionState}
-            wasmModuleReady={rendererReady}
-          />
-          ) : undefined
-        }
-        modal={
-          discoveryMode ? undefined : (
-            <ConnectionPanelModal
-              isOpen={showModal}
-              onClose={() => setShowModal(false)}
+            <AsciiRenderer
+              ref={rendererRef}
+              onDimensionsChange={handleDimensionsChange}
+              {...(discoveryMode ? {} : { onFpsChange: setFps })}
+              error={discoveryMode ? rendererError : error || rendererError}
+              showFps={isWebcamRunning}
               connectionState={connectionState}
-              status={status}
-              publicKey={publicKey}
-              serverUrl={serverUrl}
-              onServerUrlChange={setServerUrl}
-              onConnect={connectToServer}
-              onDisconnect={disconnectMedia}
-              isConnected={connectionState === ConnectionState.CONNECTED}
+              wasmModuleReady={rendererReady}
             />
-          )
+          ) : undefined
         }
       />
     </>
