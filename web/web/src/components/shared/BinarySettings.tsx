@@ -54,6 +54,9 @@ export function BinarySettings({
   disabled = false,
   mode,
 }: BinarySettingsProps) {
+  const audioVisualizationSelected =
+    config.animationEnabled &&
+    (config.animation === "waveform" || config.animation === "fft");
   const updateConfig = (updates: Partial<BinarySettingsConfig>) => {
     if (!disabled) onChange({ ...config, ...updates });
   };
@@ -188,7 +191,7 @@ export function BinarySettings({
                 onChange={(e) =>
                   updateConfig({ colorFilter: e.target.value as ColorFilter })
                 }
-                disabled={disabled}
+                disabled={disabled || audioVisualizationSelected}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >
                 <option value="none">None</option>
@@ -251,6 +254,12 @@ export function BinarySettings({
                     matrixRain:
                       !config.animationEnabled &&
                       (config.animation ?? "matrix") === "matrix",
+                    colorFilter:
+                      !config.animationEnabled &&
+                      ((config.animation ?? "matrix") === "waveform" ||
+                        (config.animation ?? "matrix") === "fft")
+                        ? "none"
+                        : config.colorFilter,
                   })
                 }
                 disabled={disabled}
@@ -276,6 +285,10 @@ export function BinarySettings({
                   updateConfig({
                     animation: e.target.value as Animation,
                     matrixRain: e.target.value === "matrix",
+                    colorFilter:
+                      e.target.value === "waveform" || e.target.value === "fft"
+                        ? "none"
+                        : config.colorFilter,
                   })
                 }
                 disabled={disabled}

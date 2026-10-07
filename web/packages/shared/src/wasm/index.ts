@@ -6,6 +6,7 @@ export {
   submitAudioVisualizationSamples,
   submitAudioSamples,
   renderAudioVisualization,
+  formatAudioVisualizationFrame,
   renderAudioVisualizationFrame,
   renderAnalyserAudioVisualization,
   isWasmReady,

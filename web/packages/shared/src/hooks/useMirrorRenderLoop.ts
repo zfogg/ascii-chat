@@ -50,7 +50,6 @@ export function useMirrorRenderLoop({
     terminalDimensions: { cols: number; rows: number };
     captureFrame: Function;
   } | null>(null);
-
   useEffect(() => {
     const loopId = `loop${++loopCounter}`;
 
@@ -99,7 +98,6 @@ export function useMirrorRenderLoop({
     const audioSamples = new Float32Array(1024);
     let audioContext: AudioContext | null = null;
     let analyser: AnalyserNode | null = null;
-
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
         return;

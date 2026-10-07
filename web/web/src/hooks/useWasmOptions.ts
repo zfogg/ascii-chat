@@ -92,7 +92,14 @@ export function applyMirrorWasmSettings(
   settings: BinarySettingsConfig,
 ): boolean {
   if (!isWasmReady() || !isOptionsInitialized()) return false;
-  createMirrorWasmOptionsManager().applySettings(settings);
+  const audioVisualizationEnabled =
+    settings.animationEnabled &&
+    (settings.animation === "waveform" || settings.animation === "fft");
+  createMirrorWasmOptionsManager().applySettings({
+    ...settings,
+    // Audio visualizations own their colors; color filters are video-only.
+    colorFilter: audioVisualizationEnabled ? "none" : settings.colorFilter,
+  });
   return true;
 }
 

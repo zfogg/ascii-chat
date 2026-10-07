@@ -6,6 +6,9 @@ import { createOptionAccessor, type WasmModule } from "./common/optionsWrapper";
 import {
   initializeOptions,
   cleanupOptions,
+  getColorMode,
+  getPalette,
+  getPaletteChars,
   RenderMode,
   ColorMode,
   ColorFilter,
@@ -303,6 +306,69 @@ export function convertFrameToAscii(
 export type AudioVisualizationSource = "microphone" | "media";
 export type AudioVisualizationMode = "waveform" | "fft";
 
+const AUDIO_PALETTES: Record<Palette, string> = {
+  standard: "   ...',;:clodxkO0KXNWM",
+  blocks: "   ░░▒▒▓▓██",
+  digital: "   -=≡≣▰▱◼",
+  minimal: "   .-+*#",
+  cool: "   ▁▂▃▄▅▆▇█",
+  custom: "",
+};
+
+const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
+
+function paletteCharacter(red: number, green: number, blue: number): string {
+  const palette =
+    getPalette() === "custom"
+      ? getPaletteChars()
+      : AUDIO_PALETTES[getPalette()];
+  const characters = Array.from(palette || AUDIO_PALETTES.standard);
+  const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
+  return (
+    characters[
+      Math.min(
+        characters.length - 1,
+        Math.round(luminance * (characters.length - 1)),
+      )
+    ] ?? " "
+  );
+}
+
+function ansi16Color(red: number, green: number, blue: number): number {
+  const bright = Math.max(red, green, blue) > 191 ? 60 : 0;
+  const bits =
+    (red > 127 ? 1 : 0) | (green > 127 ? 2 : 0) | (blue > 127 ? 4 : 0);
+  return 30 + bits + bright;
+}
+
+function ansi256Color(red: number, green: number, blue: number): number {
+  const component = (value: number) => Math.round((value / 255) * 5);
+  return 16 + 36 * component(red) + 6 * component(green) + component(blue);
+}
+
+/** Apply browser color-mode and palette settings to one generated audio frame. */
+export function formatAudioVisualizationFrame(frame: string): string {
+  const colorMode = getColorMode();
+  return frame.replace(
+    TRUECOLOR_CELL,
+    (_match, redText, greenText, blueText) => {
+      const red = Number(redText);
+      const green = Number(greenText);
+      const blue = Number(blueText);
+      const character = paletteCharacter(red, green, blue);
+
+      if (colorMode === ColorMode.NONE) return character;
+      if (colorMode === ColorMode.COLOR_16) {
+        return `\x1b[${ansi16Color(red, green, blue)}m${character}\x1b[0m`;
+      }
+      if (colorMode === ColorMode.COLOR_256) {
+        return `\x1b[38;5;${ansi256Color(red, green, blue)}m${character}\x1b[0m`;
+      }
+      return `\x1b[38;2;${red};${green};${blue}m${character}\x1b[0m`;
+    },
+  );
+}
+
 function audioVisualizationSourceId(source: AudioVisualizationSource): number {
   return source === "microphone" ? 0 : 1;
 }
@@ -356,7 +422,7 @@ export function renderAudioVisualization(
   );
   if (!pointer) return "";
   try {
-    return wasmModule.UTF8ToString(pointer);
+    return formatAudioVisualizationFrame(wasmModule.UTF8ToString(pointer));
   } finally {
     wasmModule._mirror_free_string(pointer);
   }

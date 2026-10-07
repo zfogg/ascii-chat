@@ -162,9 +162,9 @@ export function useMirrorWebcam({
           height: { ideal: settings.height },
           facingMode: "user",
         },
-        audio: Boolean(
-          settings.animationEnabled && settings.animation !== "matrix",
-        ),
+        // Keep the microphone track available so waveform/FFT can be enabled
+        // after the camera has started, without requiring a reconnect.
+        audio: true,
       });
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
       console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
@@ -245,6 +245,34 @@ export function useMirrorWebcam({
   useEffect(() => {
     setPermissionGranted(true);
   }, []);
+
+  // Fast Refresh can preserve the running state after it has discarded the
+  // stream ref. Do not leave the renderer in a false-running state with no
+  // camera or microphone samples to display.
+  useEffect(() => {
+    const isTestMode = new URLSearchParams(window.location.search).has(
+      "test",
+    );
+    const video = videoRef.current;
+    const hasMediaSource =
+      streamRef.current !== null ||
+      video?.srcObject !== null ||
+      (video?.src !== undefined && video.src !== "");
+    if (isWebcamRunning && !isTestMode && !hasMediaSource) {
+      setIsWebcamRunning(false);
+      setMediaSource(null);
+      setError(
+        "Camera and microphone are no longer active. Start Webcam to reconnect.",
+      );
+    }
+  }, [
+    isWebcamRunning,
+    videoRef,
+    streamRef,
+    setIsWebcamRunning,
+    setMediaSource,
+    setError,
+  ]);
 
   // Test pages use a synthetic input source. Keep that automation scoped to ?test;
   // a normal mirror page must only request camera or microphone access after a click.
