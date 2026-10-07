@@ -1270,14 +1270,13 @@ void *acds_websocket_client_handler(void *arg) {
   bool auth_required = server->config.require_client_identity;
   ctx->auth_required = auth_required;
 
-  // Browser discovery signaling sends plain ACIP packets over both ws:// and
-  // wss://. Authentication still requires the native handshake, but ordinary
-  // browser signaling must proceed directly to session lookup.
-  bool skip_handshake = !auth_required;
+  // Plain WebSocket signaling requires the ACIP crypto handshake. TLS can
+  // replace application encryption when identity authentication is not needed.
+  bool skip_handshake = ctx->is_secure && !auth_required;
 
   if (skip_handshake) {
     client_data->handshake_complete = true;
-    log_info("WebSocket connection from %s - skipping custom crypto handshake on secure signaling", client_ip);
+    log_info("Secure WebSocket connection from %s - using TLS without custom crypto handshake", client_ip);
   } else {
     log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
              auth_required ? " (client authentication required)" : "");

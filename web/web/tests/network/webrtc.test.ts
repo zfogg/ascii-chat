@@ -7,6 +7,7 @@ import {
   type DiscoveryOptions,
 } from "../../src/network/WebRTCSession";
 import {
+  AcdsType,
   lookupRequest,
   parseJoined,
   parseSignal,
@@ -186,7 +187,7 @@ describe("Discovery connection settings", () => {
 });
 
 describe("WebRTC signaling reconnects", () => {
-  it("sends browser discovery packets without the native crypto handshake", () => {
+  it("enables protocol negotiation and the transport-appropriate encryption default", () => {
     new WebRTCSession({
       sessionName: "blue-mountain-tiger",
       password: "",
@@ -194,8 +195,8 @@ describe("WebRTC signaling reconnects", () => {
       iceServers: [],
     });
 
-    expect(signalingHarness.current!.options.applicationEncryption).toBe(false);
-    expect(signalingHarness.current!.options.discoveryHandshake).toBeUndefined();
+    expect(signalingHarness.current!.options.applicationEncryption).toBeUndefined();
+    expect(signalingHarness.current!.options.discoveryHandshake).toBe(true);
   });
 
   it("repeats lookup after a transient reconnect before the session is joined", async () => {
@@ -212,8 +213,15 @@ describe("WebRTC signaling reconnects", () => {
 
     const signaling = signalingHarness.current!;
     signaling.emit(ConnectionState.CONNECTED);
+    expect(signaling.sendPacket).toHaveBeenCalledTimes(1);
+    expect(signaling.sendPacket).toHaveBeenLastCalledWith(
+      AcdsType.LOOKUP,
+      lookupRequest(options.sessionName),
+    );
+
     signaling.emit(ConnectionState.CONNECTING);
     signaling.emit(ConnectionState.HANDSHAKE);
+    expect(signaling.sendPacket).toHaveBeenCalledTimes(1);
     signaling.emit(ConnectionState.CONNECTED);
 
     expect(signaling.sendPacket).toHaveBeenCalledTimes(2);

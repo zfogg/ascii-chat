@@ -27,12 +27,8 @@ if(NOT EXISTS "${BINARY}")
     message(FATAL_ERROR "Binary not found: ${BINARY}")
 endif()
 
-# Use bash/grep for fast path validation instead of CMake string operations
-# CMake's string(FIND) is O(n) for each call and becomes prohibitively slow
-# for large binaries with thousands of strings. grep is optimized for this.
-
-# Build grep patterns to exclude whitelisted paths
-set(GREP_EXCLUDE_PATTERNS
+# Paths from system dependencies that are expected in release binaries.
+set(WHITELISTED_PATHS
     # Alpine Linux official package builder (always uses this path)
     "/home/buildozer/aports/"
     # Homebrew builds (official package manager paths)
@@ -54,35 +50,51 @@ set(GREP_EXCLUDE_PATTERNS
     "vcpkg/current/buildtrees/"
 )
 
-# Build grep exclude arguments
-set(GREP_EXCLUDE_ARGS "")
-foreach(PATTERN ${GREP_EXCLUDE_PATTERNS})
-    # Escape special regex chars and add to grep exclude list
-    string(REPLACE "/" "\\/" PATTERN_ESCAPED "${PATTERN}")
-    list(APPEND GREP_EXCLUDE_ARGS "-v")
-    list(APPEND GREP_EXCLUDE_ARGS "${PATTERN_ESCAPED}")
-endforeach()
-
-# Run validation via bash using grep - much faster than CMake string operations
-# Patterns: C:\Users\, C:/Users/, /home/, /Users/, /mnt/c/Users/, /mnt/d/
-# Use a two-pass grep: first to find suspect paths, then to exclude whitelisted paths
+# Run llvm-strings directly so Windows paths and tool locations are passed
+# through CMake's native process launcher instead of being interpreted by bash.
 execute_process(
-    COMMAND bash -c "
-        SUSPECT=\$(${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\\\\\Users\\\\\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/')
-        if [ -z \"\$SUSPECT\" ]; then exit 1; fi
-        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' -e '/home/buildozer/aports/' -e '/home/linuxbrew/' -e '/opt/homebrew/' -e 'scoop.apps.vcpkg.' -e 'vcpkg.current.buildtrees.' -e 'vcpkg.current.packages.' | head -20
-    "
-    OUTPUT_VARIABLE FOUND_PATHS
-    RESULT_VARIABLE GREP_RESULT
+    COMMAND "${LLVM_STRINGS}" "${BINARY}"
+    OUTPUT_VARIABLE BINARY_STRINGS
+    ERROR_VARIABLE STRINGS_ERROR
+    RESULT_VARIABLE STRINGS_RESULT
     TIMEOUT 10
 )
 
-# grep returns 0 if matches found, 1 if no matches, 2+ for errors
-if(GREP_RESULT EQUAL 0 AND FOUND_PATHS)
-    # Count number of lines found
-    string(REGEX MATCHALL "\n" NEWLINES "${FOUND_PATHS}")
-    list(LENGTH NEWLINES NUM_FOUND)
-    math(EXPR NUM_FOUND "${NUM_FOUND} + 1")  # +1 because last line doesn't have newline
+if(NOT STRINGS_RESULT EQUAL 0)
+    message(FATAL_ERROR "Could not inspect ${BINARY} with llvm-strings: ${STRINGS_ERROR}")
+endif()
+
+# Match candidate strings first, then use literal checks for the path prefixes.
+# This keeps the scan to one regex pass while avoiding shell-specific escaping.
+string(REGEX MATCHALL "[^\n]*(C:|/home/|/Users/|/mnt/)[^\n]*" CANDIDATE_LINES "${BINARY_STRINGS}")
+set(FOUND_PATHS "")
+set(FOUND_COUNT 0)
+foreach(LINE IN LISTS CANDIDATE_LINES)
+    string(REPLACE "\\" "/" NORMALIZED_LINE "${LINE}")
+    string(TOLOWER "${NORMALIZED_LINE}" LOWER_LINE)
+    if(NOT LOWER_LINE MATCHES "c:/users/|/home/|/users/|/mnt/c/users/|/mnt/d/")
+        continue()
+    endif()
+
+    set(IS_WHITELISTED FALSE)
+    foreach(PATH IN LISTS WHITELISTED_PATHS)
+        string(TOLOWER "${PATH}" LOWER_PATH)
+        string(FIND "${LOWER_LINE}" "${LOWER_PATH}" PATH_INDEX)
+        if(NOT PATH_INDEX EQUAL -1)
+            set(IS_WHITELISTED TRUE)
+            break()
+        endif()
+    endforeach()
+
+    if(NOT IS_WHITELISTED)
+        math(EXPR FOUND_COUNT "${FOUND_COUNT} + 1")
+        if(FOUND_COUNT LESS_EQUAL 20)
+            string(APPEND FOUND_PATHS "${LINE}\n")
+        endif()
+    endif()
+endforeach()
+
+if(FOUND_COUNT GREATER 0)
 
     message(FATAL_ERROR
         "=============================================================================\n"
@@ -90,7 +102,7 @@ if(GREP_RESULT EQUAL 0 AND FOUND_PATHS)
         "=============================================================================\n"
         "  Binary: ${BINARY}\n"
         "\n"
-        "  Found ${NUM_FOUND} strings containing developer/build paths:\n"
+        "  Found at least ${FOUND_COUNT} strings containing developer/build paths:\n"
         "\n"
         "${FOUND_PATHS}\n"
         "\n"
@@ -109,12 +121,6 @@ if(GREP_RESULT EQUAL 0 AND FOUND_PATHS)
         "    - Use relative paths for static libraries\n"
         "=============================================================================\n"
     )
-endif()
-
-# If grep timed out or had an error, skip validation
-if(GREP_RESULT GREATER 1)
-    message(STATUS "Path validation skipped: grep error or timeout on large binary")
-    return()
 endif()
 
 message(STATUS "Path validation passed: no developer paths found in ${BINARY}")

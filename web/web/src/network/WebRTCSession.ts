@@ -110,9 +110,9 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      // ACDS relays plain ACIP signaling and skips the native crypto handshake.
-      // The peer DataChannel remains protected by WebRTC DTLS.
-      applicationEncryption: false,
+      // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
+      // TLS when ACDS does not require client identity authentication.
+      discoveryHandshake: true,
       width,
       height,
     });
