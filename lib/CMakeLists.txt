@@ -1513,6 +1513,8 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     ${FONTCONFIG_LINK_LIBRARIES}
     ${VTERM_LDFLAGS}
     libdatachannel
+    ${LIBWEBSOCKETS_LIBRARIES}
+    OpenSSL::SSL
     OpenSSL::Crypto
 )
 

@@ -171,10 +171,8 @@ else()
     # Note: ascii-chat-shared has EXCLUDE_FROM_ALL, so we install it separately
     # (the main install(TARGETS) loop skips EXCLUDE_FROM_ALL targets)
     #
-    # Keep the runtime library and SONAME symlink in Runtime so packaged
-    # executables can load libasciichat without installing the development files.
-    # The unversioned linker name remains in Development for consumers building
-    # against the library.
+    # The shared library is a development artifact; Release executables link the
+    # combined static archive and do not load libasciichat at runtime.
     if(APPLE)
         set(_ascii_chat_shared_label "libasciichat.dylib")
     else()
@@ -182,41 +180,21 @@ else()
     endif()
 
     if(TARGET ascii-chat-shared)
-        if(APPLE)
-            install(TARGETS ascii-chat-shared
-                LIBRARY DESTINATION lib
-                    NAMELINK_SKIP
-                    COMPONENT Runtime
-                ARCHIVE DESTINATION lib
-                    COMPONENT Development
-                OPTIONAL
-            )
+        install(TARGETS ascii-chat-shared
+            LIBRARY DESTINATION lib
+                NAMELINK_SKIP
+                COMPONENT Development
+            ARCHIVE DESTINATION lib
+                COMPONENT Development
+            OPTIONAL
+        )
 
-            install(TARGETS ascii-chat-shared
-                LIBRARY DESTINATION lib
-                    NAMELINK_ONLY
-                    COMPONENT Development
-                OPTIONAL
-            )
-        else()
-            # Linux and other Unix packages currently keep all shared-library
-            # development files together in the Development component.
-            install(TARGETS ascii-chat-shared
-                LIBRARY DESTINATION lib
-                    NAMELINK_SKIP
-                    COMPONENT Development
-                ARCHIVE DESTINATION lib
-                    COMPONENT Development
-                OPTIONAL
-            )
-
-            install(TARGETS ascii-chat-shared
-                LIBRARY DESTINATION lib
-                    NAMELINK_ONLY
-                    COMPONENT Development
-                OPTIONAL
-            )
-        endif()
+        install(TARGETS ascii-chat-shared
+            LIBRARY DESTINATION lib
+                NAMELINK_ONLY
+                COMPONENT Development
+            OPTIONAL
+        )
 
     endif()
 

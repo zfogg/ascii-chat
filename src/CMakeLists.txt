@@ -83,6 +83,8 @@ set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
     if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
+    elseif(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        set(_use_shared_lib FALSE)
     elseif(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
         set(_use_shared_lib FALSE)
     else()
@@ -90,7 +92,13 @@ if(NOT USE_MUSL)
     endif()
 endif()
 
-if(NOT _use_shared_lib AND NOT USE_MUSL)
+if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
+    # macOS Release executables statically link the project archive and its
+    # dependencies. Keep ascii-chat-shared as a separate development artifact.
+    add_dependencies(ascii-chat build-ascii-chat-static-lib generate_version)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-static-lib-with-deps OpenSSL::SSL)
+    set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
+elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     # Static release linking: link object libraries directly into executable
     # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
     # and Windows Release (fully static binary with all deps compiled in)
