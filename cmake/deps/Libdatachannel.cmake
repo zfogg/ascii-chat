@@ -651,6 +651,14 @@ if(NOT libdatachannel_POPULATED)
             elseif(OPENSSL_ROOT_DIR)
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
             endif()
+
+            # Release packages use the OpenSSL archives built by the parent
+            # project. Without this hint, FindOpenSSL in the nested build can
+            # pick a Homebrew dylib and create OpenSSL::Crypto without the
+            # OpenSSL::SSL target required by libdatachannel.
+            if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_USE_STATIC_LIBS=TRUE")
+            endif()
         endif()
 
         # Build libdatachannel at configure time (not part of main build)
