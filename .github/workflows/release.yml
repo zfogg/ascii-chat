@@ -146,8 +146,17 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
+          EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$VERSION^{}" | cut -f1)
+          if [[ -n "$EXISTING_TAG" ]]; then
+            if [[ "$EXISTING_TAG" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag $VERSION already points to $EXISTING_TAG, expected $GITHUB_SHA"
+              exit 1
+            fi
+            echo "Tag $VERSION already points to the tested source commit $GITHUB_SHA; reusing it."
+          else
+            git tag -a "$VERSION" -m "Release $VERSION"
+            git push origin "$VERSION"
+          fi
 
       - name: Create release tarball
         id: tarball
