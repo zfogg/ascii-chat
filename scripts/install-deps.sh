@@ -68,7 +68,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 yyjson \
-    libvterm freetype fontconfig \
+    libvterm freetype fontconfig expat \
     >/dev/null 2>&1 || true
 
   echo "Homebrew packages: installation attempt completed"
