@@ -92,7 +92,6 @@ export function useAsciiRendererHandle({
     () => ({
       writeFrame(
         ansiString: string,
-        dimensions?: { cols: number; rows: number },
       ): boolean {
         lastFrameChangedRef.current = false;
         if (!moduleRef.current || !setupDoneRef.current) {

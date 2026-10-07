@@ -9,6 +9,11 @@ import {
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
+import {
+  createTestPatternVideoSource,
+  isTestMode,
+  type TestPatternVideoSource,
+} from "@ascii-chat/shared";
 
 // Helper to compute simple frame hash
 const computeFrameHash = (data: Uint8Array): number => {
@@ -62,7 +67,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     null,
   );
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const testPatternAnimationRef = useRef<number | null>(null);
+  const testPatternSourceRef = useRef<TestPatternVideoSource | null>(null);
 
   const captureLoopFrameCountRef = useRef(0);
   const lastFrameHashRef = useRef(0);
@@ -455,35 +460,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      const useTestPattern = new URLSearchParams(window.location.search).has(
-        "test",
-      );
+      const useTestPattern = isTestMode();
       let stream: MediaStream;
       if (useTestPattern) {
-        const pattern = document.createElement("canvas");
-        pattern.width = 640;
-        pattern.height = 480;
-        const context = pattern.getContext("2d");
-        if (!context) throw new Error("Could not create test-pattern canvas");
-        let frame = 0;
-        const draw = () => {
-          frame++;
-          // Keep the synthetic source animated but low entropy. A full-frame
-          // color gradient defeats ANSI/zstd compression and tests bandwidth
-          // saturation rather than the live render cadence.
-          context.fillStyle = "#101820";
-          context.fillRect(0, 0, pattern.width, pattern.height);
-          const x = (frame * 9) % (pattern.width - 120);
-          const y = (frame * 5) % (pattern.height - 120);
-          context.fillStyle = frame % 40 < 20 ? "#00d4ff" : "#ff4d8d";
-          context.fillRect(x, y, 120, 120);
-          context.fillStyle = "#ffffff";
-          context.font = "48px sans-serif";
-          context.fillText(`Test frame ${frame}`, 40, 80);
-          testPatternAnimationRef.current = requestAnimationFrame(draw);
-        };
-        draw();
-        stream = pattern.captureStream(settings.targetFps);
+        const source = createTestPatternVideoSource(settings.targetFps);
+        testPatternSourceRef.current = source;
+        stream = source.stream;
       } else {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -824,10 +806,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (generation === generationRef.current) setError(errMsg);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      if (testPatternAnimationRef.current !== null) {
-        cancelAnimationFrame(testPatternAnimationRef.current);
-        testPatternAnimationRef.current = null;
-      }
+      testPatternSourceRef.current?.stop();
+      testPatternSourceRef.current = null;
     } finally {
       startingRef.current = false;
     }
@@ -878,10 +858,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    if (testPatternAnimationRef.current !== null) {
-      cancelAnimationFrame(testPatternAnimationRef.current);
-      testPatternAnimationRef.current = null;
-    }
+    testPatternSourceRef.current?.stop();
+    testPatternSourceRef.current = null;
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;

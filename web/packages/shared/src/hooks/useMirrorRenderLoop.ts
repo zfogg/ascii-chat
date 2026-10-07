@@ -11,6 +11,11 @@ import {
   renderAudioVisualizationFrame,
 } from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components";
+import {
+  drawTestPatternFrame,
+  fillTestPatternAudioSamples,
+  isTestMode,
+} from "../testPattern";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;
@@ -92,7 +97,7 @@ export function useMirrorRenderLoop({
 
     let isActive = true;
     let currentRafHandle = 0;
-    const isTestMode = new URLSearchParams(window.location.search).has("test");
+    const testMode = isTestMode();
     let lastFrameTime = performance.now();
     let lastConversionTime = 0;
     const audioSamples = new Float32Array(1024);
@@ -116,7 +121,7 @@ export function useMirrorRenderLoop({
         (animation === "waveform" || animation === "fft")
       ) {
         if (
-          !isTestMode &&
+          !testMode &&
           !analyser &&
           streamRef.current?.getAudioTracks().length
         ) {
@@ -128,18 +133,10 @@ export function useMirrorRenderLoop({
             .connect(analyser);
         }
         for (let index = 0; index < audioSamples.length; index++) {
-          audioSamples[index] = isTestMode
-            ? Math.sin(
-                (index / audioSamples.length) * Math.PI * 16 + now / 70,
-              ) *
-                0.68 +
-              Math.sin(
-                (index / audioSamples.length) * Math.PI * 53 + now / 31,
-              ) *
-                0.22
-            : 0;
+          audioSamples[index] = 0;
         }
-        asciiArt = isTestMode
+        if (testMode) fillTestPatternAudioSamples(audioSamples, now);
+        asciiArt = testMode
           ? renderAudioVisualizationFrame(
               audioSamples,
               terminalDimensions.cols,
@@ -154,7 +151,7 @@ export function useMirrorRenderLoop({
                 { source: "microphone", mode: animation },
               )
             : "";
-      } else if (isTestMode) {
+      } else if (testMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -162,19 +159,7 @@ export function useMirrorRenderLoop({
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
-        // Create gradient pattern for testing
-        const time = (Date.now() % 10000) / 10000; // Cycle every 10 seconds
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        gradient.addColorStop(0, `hsl(${time * 360}, 100%, 50%)`);
-        gradient.addColorStop(1, `hsl(${(time + 0.5) * 360}, 100%, 50%)`);
-
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Add some animated bars
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        const barHeight = canvas.height * 0.1;
-        ctx.fillRect(0, canvas.height * time, canvas.width, barHeight);
+        drawTestPatternFrame(ctx, canvas.width, canvas.height);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frame = {

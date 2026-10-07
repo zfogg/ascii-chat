@@ -147,8 +147,12 @@ if(DEFINED EMSCRIPTEN)
     endforeach()
 
     # Create static archive using emar
+    set(VTERM_ARCHIVER "${CMAKE_AR}")
+    if(EMAR_EXECUTABLE)
+        set(VTERM_ARCHIVER "${EMAR_EXECUTABLE}")
+    endif()
     execute_process(
-        COMMAND ${CMAKE_AR} rcs "${libvterm_wasm_SOURCE_DIR}/libvterm.a" ${OBJ_FILES}
+        COMMAND ${VTERM_ARCHIVER} rcs "${libvterm_wasm_SOURCE_DIR}/libvterm.a" ${OBJ_FILES}
         RESULT_VARIABLE AR_RESULT
     )
     if(NOT AR_RESULT EQUAL 0)

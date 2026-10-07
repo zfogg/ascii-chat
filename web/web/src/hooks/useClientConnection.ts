@@ -84,6 +84,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   );
   const hasBeenConnectedRef = useRef(false);
   const autoReconnectEnabledRef = useRef(false);
+  const autoConnectStartedRef = useRef(false);
   const lastReceivedFrameAtRef = useRef(0);
 
   const connectToServer = useCallback(
@@ -446,7 +447,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   // links and automated tests, but it makes one visible attempt rather than
   // repeatedly opening sockets while somebody is editing the URL.
   useEffect(() => {
-    if (discovery || !autoConnect) return;
+    if (discovery || !autoConnect || autoConnectStartedRef.current) return;
+    autoConnectStartedRef.current = true;
     void connectToServer().catch(() => {});
   }, [autoConnect, connectToServer, discovery]);
 

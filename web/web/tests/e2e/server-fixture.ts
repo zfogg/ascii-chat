@@ -3,6 +3,12 @@ import * as fs from "fs";
 import * as path from "path";
 import * as net from "net";
 
+function getAsciiChatBinaryPath(): string {
+  const configuredPath = process.env["ASCII_CHAT_TEST_BINARY"];
+  if (configuredPath) return path.resolve(configuredPath);
+  return path.resolve(process.cwd(), "../../build/bin/ascii-chat");
+}
+
 /**
  * Server fixture for E2E tests - starts a dedicated server on a dynamic port
  */
@@ -16,7 +22,7 @@ export class ServerFixture {
   constructor(port: number) {
     this.port = port;
     // WebSocket port is TCP port + 1
-    this.wsUrl = `ws://localhost:${port + 1}`;
+    this.wsUrl = `ws://127.0.0.1:${port + 1}`;
     this.logFile = path.join(process.cwd(), `.server-${port}.log`);
   }
 
@@ -32,7 +38,7 @@ export class ServerFixture {
       this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
 
       // Path to binary relative to project root (tests run from web/ subdirectory)
-      const binaryPath = path.join(process.cwd(), "../../build/bin/ascii-chat");
+      const binaryPath = getAsciiChatBinaryPath();
 
       // Use separate ports for TCP and WebSocket: TCP on basePort, WebSocket on basePort+1
       const tcpPort = this.port;
@@ -165,7 +171,7 @@ export class NativeClientFixture {
   constructor(private readonly serverPort: number) {}
 
   async start(): Promise<void> {
-    const binaryPath = path.join(process.cwd(), "../../build/bin/ascii-chat");
+    const binaryPath = getAsciiChatBinaryPath();
     this.appDataDir = fs.mkdtempSync(
       path.join(process.cwd(), ".native-client-appdata-"),
     );
@@ -177,7 +183,10 @@ export class NativeClientFixture {
         `127.0.0.1:${this.serverPort}`,
         "--test-pattern",
         "--fps",
-        "60",
+        // The browser is the 60 FPS subject under test. Keep the native peer
+        // active but inexpensive so it verifies multi-client composition
+        // without consuming the server's entire render budget.
+        "20",
       ],
       {
         env: { ...process.env, APPDATA: this.appDataDir },

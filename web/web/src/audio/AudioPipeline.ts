@@ -1,5 +1,10 @@
 import { OpusEncoder } from "./OpusEncoder";
 import { getClientModule, PacketType } from "../wasm/client";
+import {
+  createTestPatternAudioSource,
+  isTestMode,
+  type TestPatternAudioSource,
+} from "@ascii-chat/shared";
 
 export interface AudioPipelineOptions {
   onAudioData?: (payload: Uint8Array) => void;
@@ -37,6 +42,7 @@ export class AudioPipeline {
   private microphoneLevel = 0;
   private playbackLevel = 0;
   private lastLevelUpdate = 0;
+  private testPatternSource: TestPatternAudioSource | null = null;
 
   private reportLevels(): void {
     const now = performance.now();
@@ -89,18 +95,25 @@ export class AudioPipeline {
   async startCapture(): Promise<void> {
     const generation = ++this.generation;
     await this.enablePlayback();
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        sampleRate: 48000,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: false,
-    });
+    const stream = isTestMode()
+      ? (() => {
+          this.testPatternSource = createTestPatternAudioSource(this.context!);
+          return this.testPatternSource.stream;
+        })()
+      : await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 48000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
     if (generation !== this.generation || !this.context) {
       stream.getTracks().forEach((track) => track.stop());
+      this.testPatternSource?.stop();
+      this.testPatternSource = null;
       return;
     }
     this.stream = stream;
@@ -256,6 +269,8 @@ export class AudioPipeline {
     this.source?.disconnect();
     this.gain?.disconnect();
     this.stream?.getTracks().forEach((track) => track.stop());
+    this.testPatternSource?.stop();
+    this.testPatternSource = null;
     this.processor = null;
     this.source = null;
     this.gain = null;

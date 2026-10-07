@@ -59,15 +59,19 @@ if (process.env.ASCII_CHAT_WASM_USE_PREBUILT === "1") {
       throw new Error(`WASM artifact mismatch: ${file}`);
   }
 } else {
+  const artifactDirectory = process.env.ASCII_CHAT_WASM_ARTIFACT_DIR;
   const build = resolve(repo, process.env.ASCII_CHAT_WASM_BUILD_DIR || "build");
-  execFileSync(
-    "cmake",
-    ["--build", build, "--target", "mirror-web", "client-web"],
-    { stdio: "inherit" },
-  );
-  const source = existsSync(resolve(build, "client.wasm"))
-    ? build
-    : resolve(build, "web");
+  if (!artifactDirectory)
+    execFileSync(
+      "cmake",
+      ["--build", build, "--target", "mirror-web", "client-web"],
+      { stdio: "inherit" },
+    );
+  const source = artifactDirectory
+    ? resolve(repo, artifactDirectory)
+    : existsSync(resolve(build, "client.wasm"))
+      ? build
+      : resolve(build, "web");
   mkdirSync(output, { recursive: true });
   for (const file of files)
     copyFileSync(resolve(source, file), resolve(output, file));

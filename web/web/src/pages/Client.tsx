@@ -39,6 +39,7 @@ import { LOCKED_SETTINGS_HELP } from "../components/lockedSettings";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import { AsciiChatMode, DEFAULT_SETTINGS } from "../utils";
 import { DISCOVERY_SERVICE_URL, SITES } from "@ascii-chat/shared/utils";
+import { isTestMode } from "@ascii-chat/shared";
 import {
   applyMirrorWasmSettings,
   useCanvasCapture,
@@ -60,7 +61,8 @@ export function ClientPage({
   discoveryMode?: boolean;
 }) {
   const params = new URLSearchParams(window.location.search);
-  const requestedConnection = !discoveryMode && params.has("connect");
+  const requestedConnection =
+    !discoveryMode && (params.has("connect") || isTestMode());
   const [sessionName, setSessionName] = useState(params.get("session") || "");
   const [sessionPassword, setSessionPassword] = useState("");
   const [connectionRoute, setConnectionRoute] = useState<"all" | "relay">(
