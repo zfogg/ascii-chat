@@ -57,22 +57,21 @@ message(STATUS "Generating .def file: ${OUTPUT_FILE}")
 set(ALL_SYMBOLS "")
 foreach(OBJ_FILE ${OBJ_FILES})
     execute_process(
-        COMMAND ${NM_TOOL} --format=posix --extern-only --defined-only "${OBJ_FILE}"
+        COMMAND ${NM_TOOL} --format=just-symbols --extern-only --defined-only "${OBJ_FILE}"
         OUTPUT_VARIABLE NM_OUTPUT
         ERROR_QUIET
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-    # Parse one POSIX-format record per line. The default Windows llvm-nm
-    # format varies between toolchain versions, including whether the object
-    # filename is printed as a separate record.
+    # Request only symbol names. The default and POSIX llvm-nm record layouts
+    # differ across Windows toolchain versions.
     string(REPLACE "\r\n" "\n" NM_OUTPUT "${NM_OUTPUT}")
     string(REPLACE "\r" "\n" NM_OUTPUT "${NM_OUTPUT}")
     string(REPLACE "\n" ";" NM_LINES "${NM_OUTPUT}")
     foreach(NM_LINE ${NM_LINES})
         string(STRIP "${NM_LINE}" NM_LINE)
         set(SYMBOL_NAME "")
-        if(NM_LINE MATCHES "^([^ \t]+) [TDBRCStdbrc] [0-9A-Fa-f]+ [0-9A-Fa-f]+$")
+        if(NM_LINE MATCHES "^([^ \t]+)$")
             set(SYMBOL_NAME "${CMAKE_MATCH_1}")
         endif()
         if(SYMBOL_NAME)
