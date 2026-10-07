@@ -747,6 +747,7 @@ else()
         target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
+            target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
             target_link_libraries(ascii-chat-network PRIVATE ${NATPMP_LIBRARY})
         endif()
     endif()
