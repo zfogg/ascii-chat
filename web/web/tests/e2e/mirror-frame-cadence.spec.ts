@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+// Exercise a large desktop canvas at 1920x1080.
+test.use({ viewport: { width: 1920, height: 1080 } });
+
 test("Mirror test pattern sustains near-refresh-rate ASCII rendering", async ({
   page,
 }) => {
@@ -10,19 +13,14 @@ test("Mirror test pattern sustains near-refresh-rate ASCII rendering", async ({
     timeout: 15_000,
   });
 
-  const fps = page.getByText(/FPS:\s*\d+\s*\/\s*60/);
-  await expect
-    .poll(
-      async () => {
-        const match = (await fps.textContent())?.match(/FPS:\s*(\d+)/);
-        return match ? Number(match[1]) : 0;
-      },
-      { timeout: 15_000, message: "Mirror should sustain at least 55 FPS" },
-    )
-    .toBeGreaterThanOrEqual(55);
-
   const canvas = page.locator("canvas.ascii-canvas");
   await expect(canvas).toBeVisible();
+  const canvasBounds = await canvas.boundingBox();
+  const viewport = page.viewportSize();
+  expect(canvasBounds).not.toBeNull();
+  expect(canvasBounds!.width).toBeGreaterThan(viewport!.width * 0.8);
+  expect(canvasBounds!.height).toBeGreaterThan(viewport!.height * 0.6);
+
   await expect
     .poll(
       () =>
@@ -44,4 +42,15 @@ test("Mirror test pattern sustains near-refresh-rate ASCII rendering", async ({
       { timeout: 10_000, message: "ASCII canvas should contain rendered pixels" },
     )
     .toBe(true);
+
+  const fps = page.getByText(/FPS:\s*\d+\s*\/\s*60/);
+  await expect
+    .poll(
+      async () => {
+        const match = (await fps.textContent())?.match(/FPS:\s*(\d+)/);
+        return match ? Number(match[1]) : 0;
+      },
+      { timeout: 20_000, message: "Mirror should reach 60 FPS at 1920x1080" },
+    )
+    .toBe(60);
 });
