@@ -370,9 +370,7 @@ function(configure_llvm_post_project)
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
-    # NOTE: For Release builds, we use LLVM's libc++ to ensure ABI compatibility
-    # with C++ libraries (libdatachannel, WebRTC) that are built with LLVM.
-    # On macOS, we always need LLVM libs because C++ deps are built with LLVM.
+    # Release executables must not retain a dependency on Homebrew's LLVM runtime.
     # On Linux with musl, this is handled separately in Musl.cmake.
     set(_need_llvm_libs FALSE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -381,10 +379,10 @@ function(configure_llvm_post_project)
         # macOS Release with SHARED_DEPS: need LLVM library paths for dynamic linking
         set(_need_llvm_libs TRUE)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release+SHARED_DEPS build (LLVM libc++ for ABI compatibility)")
-    elseif(APPLE AND ASCIICHAT_STATIC_LIBCXX)
-        # macOS Release without SHARED_DEPS: using static libc++, skip dynamic linker flags
+    elseif(APPLE AND NOT ASCIICHAT_SHARED_DEPS)
+        # macOS Release without shared dependencies uses the platform runtimes.
         set(_need_llvm_libs FALSE)
-        message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for macOS Release build (using static libc++)")
+        message(STATUS "${BoldYellow}Skipping${ColorReset} Homebrew LLVM runtime paths for static macOS Release build")
     elseif(APPLE)
         set(_need_llvm_libs TRUE)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release build (static libc++ unavailable)")

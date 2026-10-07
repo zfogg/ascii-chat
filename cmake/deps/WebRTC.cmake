@@ -618,7 +618,7 @@ target_include_directories(webrtc_audio_processing
 # Since we import the static .a files, we need to also link Abseil here for transitive deps
 # For musl builds, skip system Abseil (shared .so files are glibc-linked, incompatible with static musl)
 # and use the musl-built static Abseil from MuslDependencies.cmake instead
-if(NOT USE_MUSL)
+if(NOT USE_MUSL AND NOT (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
     find_package(absl QUIET CONFIG)
 endif()
 if(USE_MUSL)

@@ -333,8 +333,35 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
-    # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
-    # (-L/path/to/lib -lfontconfig), so use it as-is
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        # Use archives so a release executable does not depend on the
+        # developer's Homebrew versions of Fontconfig and its libraries.
+        set(_fontconfig_static_paths)
+        foreach(_dependency fontconfig expat freetype intl png16)
+            set(_brew_package "${_dependency}")
+            if(_dependency STREQUAL "intl")
+                set(_brew_package gettext)
+            elseif(_dependency STREQUAL "png16")
+                set(_brew_package libpng)
+            endif()
+            find_file(_${_dependency}_static_archive NAMES "lib${_dependency}.a"
+                PATHS "${HOMEBREW_PREFIX}/opt/${_brew_package}/lib"
+                      "/usr/local/opt/${_brew_package}/lib"
+                      "/opt/homebrew/opt/${_brew_package}/lib"
+                NO_DEFAULT_PATH)
+            if(NOT _${_dependency}_static_archive)
+                message(FATAL_ERROR "macOS Release requires the static ${_dependency} archive (lib${_dependency}.a)")
+            endif()
+            list(APPEND _fontconfig_static_paths "${_${_dependency}_static_archive}")
+        endforeach()
+        # fontconfig's static pkg-config closure also uses the system math,
+        # compression, and zlib libraries on macOS.
+        list(APPEND _fontconfig_static_paths bz2 z m)
+        set(FONTCONFIG_LINK_LIBRARIES ${_fontconfig_static_paths})
+    else()
+        # pkg_check_modules supplies the normal system linker flags.
+        set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
+    endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 

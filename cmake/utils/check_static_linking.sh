@@ -40,8 +40,8 @@ case "$PLATFORM" in
         fi
         ;;
     macos)
-        # Allow /usr/lib, /System/Library, @rpath, /opt/homebrew (ARM64), and /usr/local (Intel)
-        NON_SYSTEM=$(otool -L "$BINARY" | grep -v '/usr/lib\|/System/Library\|@rpath\|/opt/homebrew\|/usr/local' | tail -n +2)
+        # macOS executables cannot be fully static; allow only Apple system libraries.
+        NON_SYSTEM=$(otool -L "$BINARY" | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/|/Library/Apple/System/Library/)' | tail -n +2)
         if [ -n "$NON_SYSTEM" ]; then
             echo -e "${YELLOW}WARNING: Release build links against non-system libraries!${RESET}"
             echo "$NON_SYSTEM"

@@ -308,8 +308,12 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
-        set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
-        if(NOT ASCIICHAT_STATIC_LIBCXX AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        if(ASCIICHAT_SHARED_DEPS)
+            set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
+        else()
+            set(_release_rpath "@loader_path/../lib")
+        endif()
+        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             list(APPEND _release_rpath "${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
 
@@ -320,12 +324,8 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
             SKIP_RPATH FALSE
         )
         # Use explicit linker flags to enforce EXACTLY our RPATH paths
-        target_link_options(ascii-chat PRIVATE
-            "LINKER:-rpath,@loader_path/../lib"
-            "LINKER:-rpath,/usr/local/lib"
-            "LINKER:-rpath,${HOMEBREW_PREFIX}/lib"
-        )
-        if(NOT ASCIICHAT_STATIC_LIBCXX AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        target_link_options(ascii-chat PRIVATE "LINKER:-rpath,@loader_path/../lib")
+        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             target_link_options(ascii-chat PRIVATE "LINKER:-rpath,${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
         # Post-build: Remove any build-directory RPATH entries that CMake added automatically

@@ -165,6 +165,18 @@ elseif(APPLE)
         find_package(Freetype REQUIRED)
     endif()
 
+    # Homebrew's dylib is versioned to the installed formula and is not a
+    # suitable runtime dependency for a portable Release executable.
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        find_file(FREETYPE_STATIC_ARCHIVE NAMES libfreetype.a
+            PATHS "${HOMEBREW_PREFIX}/opt/freetype/lib" /usr/local/opt/freetype/lib /opt/homebrew/opt/freetype/lib
+            NO_DEFAULT_PATH)
+        if(NOT FREETYPE_STATIC_ARCHIVE)
+            message(FATAL_ERROR "macOS Release requires the static Homebrew FreeType archive (libfreetype.a)")
+        endif()
+        set(FREETYPE_LIBRARIES "${FREETYPE_STATIC_ARCHIVE}")
+    endif()
+
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
 
 elseif(WIN32)
