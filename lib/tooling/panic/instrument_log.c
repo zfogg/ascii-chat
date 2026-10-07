@@ -459,26 +459,12 @@ static void asciichat_instr_runtime_init_once(void) {
   (void)ascii_tls_key_create(&g_runtime_key, asciichat_instr_runtime_tls_destructor);
   const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
   if (output_dir_env != NULL && output_dir_env[0] != '\0') {
-    char *normalized_output_dir = NULL;
-    char probe_path[PATH_MAX];
-    if (platform_is_directory(output_dir_env) &&
-        safe_snprintf(probe_path, sizeof(probe_path), "%s%cascii-instr-probe.log", output_dir_env, PATH_DELIM) <
-            (int)sizeof(probe_path)) {
-      asciichat_error_t validation_result =
-          path_validate_user_path(probe_path, PATH_ROLE_LOG_FILE, &normalized_output_dir);
-      if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
-        char *last_separator = strrchr(normalized_output_dir, PATH_DELIM);
-        if (last_separator != NULL) {
-          *last_separator = '\0';
-          SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
-          g_output_dir[sizeof(g_output_dir) - 1] = '\0';
-          g_output_dir_set = true;
-        }
-      }
+    if (platform_is_directory(output_dir_env) && strlen(output_dir_env) < sizeof(g_output_dir)) {
+      SAFE_STRNCPY(g_output_dir, output_dir_env, sizeof(g_output_dir));
+      g_output_dir_set = true;
     } else {
       log_warn("Ignoring invalid ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR path: %s", output_dir_env);
     }
-    SAFE_FREE(normalized_output_dir);
   }
   const char *coverage_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE");
   g_coverage_enabled = asciichat_instr_env_is_enabled(coverage_env);
