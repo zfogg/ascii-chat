@@ -164,6 +164,24 @@ if(USE_MUSL)
         set(OPENSSL_TARGET "linux-generic64")
     endif()
     set(OPENSSL_LIBDIR "lib")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;zlib=OFF")
+    set(OPENSSL_CONFIG_STAMP "${OPENSSL_BUILD_DIR}/.config-signature")
+
+    # The musl release build does not provide zlib. Keep OpenSSL's optional
+    # compression support disabled so libdatachannel's static OpenSSL target
+    # does not acquire an unavailable ZLIB::ZLIB dependency. Rebuild caches
+    # made with the previous configuration before accepting their archives.
+    set(_OPENSSL_RECONFIGURE_REQUIRED TRUE)
+    if(EXISTS "${OPENSSL_CONFIG_STAMP}")
+        file(READ "${OPENSSL_CONFIG_STAMP}" _OPENSSL_CACHED_SIGNATURE)
+        string(STRIP "${_OPENSSL_CACHED_SIGNATURE}" _OPENSSL_CACHED_SIGNATURE)
+        if(_OPENSSL_CACHED_SIGNATURE STREQUAL "${OPENSSL_CONFIG_SIGNATURE}")
+            set(_OPENSSL_RECONFIGURE_REQUIRED FALSE)
+        endif()
+    endif()
+    if(_OPENSSL_RECONFIGURE_REQUIRED)
+        file(REMOVE_RECURSE "${OPENSSL_SOURCE_DIR}" "${OPENSSL_PREFIX}")
+    endif()
 
     # Build OpenSSL synchronously at configure time if not cached
     if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
@@ -218,6 +236,7 @@ if(USE_MUSL)
                 --prefix=${OPENSSL_PREFIX}
                 --libdir=lib
                 no-shared
+                no-zlib
                 no-tests
                 no-ui-console
                 -fPIC
@@ -254,6 +273,8 @@ if(USE_MUSL)
         if(NOT INSTALL_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to install OpenSSL:\n${INSTALL_ERROR}")
         endif()
+
+        file(WRITE "${OPENSSL_CONFIG_STAMP}" "${OPENSSL_CONFIG_SIGNATURE}\n")
 
         message(STATUS "  ${BoldGreen}OpenSSL${ColorReset} built and cached successfully")
     else()
