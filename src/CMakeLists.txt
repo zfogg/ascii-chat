@@ -361,6 +361,7 @@ endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
+target_include_directories(ascii-chat PRIVATE ${PCRE2_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
 # Add src/common for session headers (allows #include "session/display.h" style)
 target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
 
