@@ -1457,7 +1457,9 @@ add_custom_command(
         -DOBJECT_LIST_FILE=${OBJECT_LIST_FILE}
         -DCMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
         -P ${CMAKE_SOURCE_DIR}/cmake/scripts/create_static_archive.cmake
-    DEPENDS ${STATIC_LIB_MODULES} ${OBJECT_LIST_FILE}
+    # Depend on the object files themselves as well as their object-library
+    # targets so rebuilt objects refresh the combined archive.
+    DEPENDS ${STATIC_LIB_MODULES} ${OBJECT_EXPR_LIST} ${OBJECT_LIST_FILE}
     COMMENT "Creating static archive with unique object names (eliminates duplicates)"
     VERBATIM
 )
