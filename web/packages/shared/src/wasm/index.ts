@@ -3,8 +3,11 @@ export {
   adoptMirrorWasmModule,
   cleanupMirrorWasm,
   convertFrameToAscii,
+  submitAudioVisualizationSamples,
   submitAudioSamples,
   renderAudioVisualization,
+  renderAudioVisualizationFrame,
+  renderAnalyserAudioVisualization,
   isWasmReady,
   getMirrorModule,
   RenderMode,
@@ -12,6 +15,8 @@ export {
   ColorFilter,
 } from "./mirror";
 export type {
+  AudioVisualizationFrameOptions,
+  AudioVisualizationMode,
   AudioVisualizationSource,
   Palette,
   EmscriptenModuleFactory,

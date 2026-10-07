@@ -26,6 +26,7 @@ import {
 } from "../hooks";
 
 export function MirrorPage() {
+  const isTestMode = new URLSearchParams(window.location.search).has("test");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
@@ -222,7 +223,9 @@ export function MirrorPage() {
               />
             }
             controlBar={{
-              title: "Mirror mode",
+              title: isTestMode
+                ? "Mirror mode (synthetic test input)"
+                : "Mirror mode",
               dimensions: terminalDimensions,
               fps,
               targetFps: settings.targetFps,

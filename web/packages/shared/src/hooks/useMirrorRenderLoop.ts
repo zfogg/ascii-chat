@@ -7,8 +7,8 @@ import {
 import {
   isWasmReady,
   convertFrameToAscii,
-  renderAudioVisualization,
-  submitAudioSamples,
+  renderAnalyserAudioVisualization,
+  renderAudioVisualizationFrame,
 } from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components";
 
@@ -113,25 +113,49 @@ export function useMirrorRenderLoop({
       let frame;
       let asciiArt = "";
 
-      if (animationEnabled && (animation === "waveform" || animation === "fft")) {
-        if (!isTestMode && !analyser && streamRef.current?.getAudioTracks().length) {
+      if (
+        animationEnabled &&
+        (animation === "waveform" || animation === "fft")
+      ) {
+        if (
+          !isTestMode &&
+          !analyser &&
+          streamRef.current?.getAudioTracks().length
+        ) {
           audioContext = new AudioContext();
           analyser = audioContext.createAnalyser();
           analyser.fftSize = 2048;
-          audioContext.createMediaStreamSource(streamRef.current).connect(analyser);
+          audioContext
+            .createMediaStreamSource(streamRef.current)
+            .connect(analyser);
         }
         for (let index = 0; index < audioSamples.length; index++) {
           audioSamples[index] = isTestMode
-            ? Math.sin((index / audioSamples.length) * Math.PI * 16 + now / 70) * 0.68 +
-              Math.sin((index / audioSamples.length) * Math.PI * 53 + now / 31) * 0.22
+            ? Math.sin(
+                (index / audioSamples.length) * Math.PI * 16 + now / 70,
+              ) *
+                0.68 +
+              Math.sin(
+                (index / audioSamples.length) * Math.PI * 53 + now / 31,
+              ) *
+                0.22
             : 0;
         }
-        if (!isTestMode && analyser) analyser.getFloatTimeDomainData(audioSamples);
-        submitAudioSamples(audioSamples);
-        asciiArt = renderAudioVisualization(
-          terminalDimensions.cols,
-          terminalDimensions.rows,
-        );
+        asciiArt = isTestMode
+          ? renderAudioVisualizationFrame(
+              audioSamples,
+              terminalDimensions.cols,
+              terminalDimensions.rows,
+              { source: "microphone", mode: animation },
+            )
+          : analyser
+            ? renderAnalyserAudioVisualization(
+                analyser,
+                terminalDimensions.cols,
+                terminalDimensions.rows,
+                { source: "microphone", mode: animation },
+              )
+            : "";
       } else if (isTestMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;

@@ -23,7 +23,7 @@ import { cleanupClientWasm, ConnectionState, PacketType } from "../wasm/client";
 import {
   initMirrorWasm,
   renderAudioVisualization,
-  submitAudioSamples,
+  submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
 import {
   AsciiRenderer,
@@ -445,7 +445,7 @@ export function ClientPage({
               current.animationEnabled &&
               (current.animation === "waveform" || current.animation === "fft")
             ) {
-              submitAudioSamples(samples, "microphone");
+              submitAudioVisualizationSamples(samples, "microphone");
             }
           },
           onPlaybackSamples: (samples) => {
@@ -454,7 +454,7 @@ export function ClientPage({
               current.animationEnabled &&
               (current.animation === "waveform" || current.animation === "fft")
             ) {
-              submitAudioSamples(samples);
+              submitAudioVisualizationSamples(samples);
             }
           },
           onAudioData: (payload) => {
@@ -621,7 +621,7 @@ export function ClientPage({
                 Math.sin((index / samples.length) * Math.PI * 53 + now / 31) *
                   0.22;
             }
-            submitAudioSamples(samples, visualizationSource);
+            submitAudioVisualizationSamples(samples, visualizationSource);
           }
           frameContent = renderAudioVisualization(
             dimensions.cols,

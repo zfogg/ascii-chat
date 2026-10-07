@@ -246,9 +246,8 @@ export function useMirrorWebcam({
     setPermissionGranted(true);
   }, []);
 
-  // Auto-start webcam in development mode
-  // CRITICAL: Wait for terminalDimensions to be set by AsciiRenderer before starting webcam.
-  // If we start before dimensions are available, the render loop will block on 0x0 dimensions.
+  // Test pages use a synthetic input source. Keep that automation scoped to ?test;
+  // a normal mirror page must only request camera or microphone access after a click.
   useEffect(() => {
     const effectTime = performance.now();
     const hasDimensions =
@@ -257,12 +256,16 @@ export function useMirrorWebcam({
       terminalDimensions.rows > 0;
 
     const nodeEnv = import.meta.env["NODE_ENV"];
+    const isTestMode = new URLSearchParams(window.location.search).has(
+      "test",
+    );
     console.log(
-      `[Mirror] AUTO-START EFFECT at ${effectTime.toFixed(0)}ms: NODE_ENV=${nodeEnv}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, webcamRunning=${isWebcamRunning}, alreadyStarted=${devAutoStartRef.current}, hasDims=${hasDimensions}`,
+      `[Mirror] TEST AUTO-START EFFECT at ${effectTime.toFixed(0)}ms: NODE_ENV=${nodeEnv}, testMode=${isTestMode}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, webcamRunning=${isWebcamRunning}, alreadyStarted=${devAutoStartRef.current}, hasDims=${hasDimensions}`,
     );
 
     const shouldStart =
       nodeEnv !== "production" &&
+      isTestMode &&
       wasmInitialized &&
       permissionGranted &&
       !isWebcamRunning &&
@@ -270,13 +273,13 @@ export function useMirrorWebcam({
       hasDimensions;
 
     console.log(
-      `[Mirror] AUTO-START check: shouldStart=${shouldStart} (nodeEnv OK=${nodeEnv !== "production"}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, !webcamRunning=${!isWebcamRunning}, !alreadyStarted=${!devAutoStartRef.current}, hasDims=${hasDimensions})`,
+      `[Mirror] TEST AUTO-START check: shouldStart=${shouldStart} (nodeEnv OK=${nodeEnv !== "production"}, testMode=${isTestMode}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, !webcamRunning=${!isWebcamRunning}, !alreadyStarted=${!devAutoStartRef.current}, hasDims=${hasDimensions})`,
     );
 
     if (shouldStart) {
       devAutoStartRef.current = true;
       console.log(
-        `[Mirror] ✓ AUTO-STARTING webcam at ${performance.now().toFixed(0)}ms with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+        `[Mirror] starting synthetic test input at ${performance.now().toFixed(0)}ms with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
       );
       console.time("[Mirror] startWebcam()");
       void Promise.resolve()

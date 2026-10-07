@@ -15,8 +15,7 @@ import {
   setMatrixRain,
   setWaveform,
   setFft,
-  submitAudioSamples,
-  renderAudioVisualization,
+  renderAnalyserAudioVisualization,
   setTargetFps,
   ColorMode,
   ColorFilter,
@@ -447,11 +446,12 @@ export default function MirrorDemoWidget({
           const renderer = rendererRef.current;
           if (!analyser || !renderer || !isWasmReady()) return;
           try {
-            const samples = new Float32Array(analyser.fftSize);
-            analyser.getFloatTimeDomainData(samples);
-            submitAudioSamples(samples);
             const dims = termDimsRef.current;
-            const frame = renderAudioVisualization(dims.cols, dims.rows);
+            const frame = renderAnalyserAudioVisualization(
+              analyser,
+              dims.cols,
+              dims.rows,
+            );
             if (frame) renderer.writeFrame(frame);
           } catch (error) {
             if (!audioDiagnosticLoggedRef.current) {
@@ -574,10 +574,12 @@ export default function MirrorDemoWidget({
         const analyser = audioAnalyserRef.current;
         if (analyser) {
           const audioSource = source === MediaSourceType.MICROPHONE ? "microphone" : "media";
-          const samples = new Float32Array(analyser.fftSize);
-          analyser.getFloatTimeDomainData(samples);
-          submitAudioSamples(samples, audioSource);
-          const audioFrame = renderAudioVisualization(termDims.cols, termDims.rows, audioSource);
+          const audioFrame = renderAnalyserAudioVisualization(
+            analyser,
+            termDims.cols,
+            termDims.rows,
+            { source: audioSource },
+          );
           if (audioFrame) rendererRef.current.writeFrame(audioFrame);
           return;
         }

@@ -307,7 +307,11 @@ function audioVisualizationSourceId(source: AudioVisualizationSource): number {
   return source === "microphone" ? 0 : 1;
 }
 
-export function submitAudioSamples(
+/**
+ * Feed PCM into the active visualization source. Capture, playback, and demo
+ * callers share this boundary instead of maintaining separate WASM plumbing.
+ */
+export function submitAudioVisualizationSamples(
   samples: Float32Array,
   source: AudioVisualizationSource = "media",
 ): void {
@@ -328,6 +332,9 @@ export function submitAudioSamples(
     wasmModule._free(pointer);
   }
 }
+
+/** @deprecated Use submitAudioVisualizationSamples. */
+export const submitAudioSamples = submitAudioVisualizationSamples;
 
 export function renderAudioVisualization(
   width: number,
@@ -353,6 +360,34 @@ export function renderAudioVisualization(
   } finally {
     wasmModule._mirror_free_string(pointer);
   }
+}
+
+export interface AudioVisualizationFrameOptions {
+  source?: AudioVisualizationSource;
+  mode?: AudioVisualizationMode;
+}
+
+/** Submit one PCM frame and render it with the same source and mode. */
+export function renderAudioVisualizationFrame(
+  samples: Float32Array,
+  width: number,
+  height: number,
+  { source = "media", mode }: AudioVisualizationFrameOptions = {},
+): string {
+  submitAudioVisualizationSamples(samples, source);
+  return renderAudioVisualization(width, height, source, mode);
+}
+
+/** Read a Web Audio analyser and render the resulting visualization frame. */
+export function renderAnalyserAudioVisualization(
+  analyser: AnalyserNode,
+  width: number,
+  height: number,
+  options: AudioVisualizationFrameOptions = {},
+): string {
+  const samples = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(samples);
+  return renderAudioVisualizationFrame(samples, width, height, options);
 }
 
 /**
