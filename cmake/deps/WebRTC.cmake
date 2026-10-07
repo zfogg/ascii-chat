@@ -197,6 +197,11 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             # Pass shared deps preference for Abseil linking
             -DASCIICHAT_SHARED_DEPS=${ASCIICHAT_SHARED_DEPS}
         )
+        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            # Homebrew Abseil is shared-only. AEC3's base target can compile
+            # its small Abseil subset into its static archive instead.
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_DISABLE_FIND_PACKAGE_absl=TRUE")
+        endif()
 
         set(_webrtc_target_arm64 FALSE)
         if(ASCIICHAT_TARGET_ARM64
@@ -666,6 +671,8 @@ elseif(absl_FOUND)
         )
         message(STATUS "  WebRTC AEC3: Linking against system Abseil")
     endif()
+elseif(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    message(STATUS "  WebRTC AEC3: Abseil subset is compiled into the static base archive")
 else()
     # No system Abseil - use bundled Abseil libraries from WebRTC build
     # Collect all absl_absl_*.lib files from the WebRTC build directory
