@@ -240,7 +240,9 @@ jobs:
             For package maintainers (Homebrew, AUR, etc.):
             - `${{ steps.tarball.outputs.tarball }}`
             - SHA256: `${{ steps.tarball.outputs.sha256 }}`
-          draft: false
+          # Keep the release private until every platform package has passed
+          # its static-link audit and uploaded its runtime and development assets.
+          draft: true
           prerelease: false
           files: ${{ steps.tarball.outputs.tarball }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -291,7 +293,7 @@ jobs:
         run: |
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
           # This ensures paths.h has the correct prefix baked in for system config
-          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
@@ -312,6 +314,23 @@ jobs:
           # Run CPack with verbose output to diagnose DEB/RPM generation issues
           cd build_release
           cpack --verbose
+
+      - name: Verify Linux development package contains the static library
+        shell: bash
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "aarch64" ]]; then arch="arm64"; else arch="amd64"; fi
+          archive="build_release/libasciichat-${version}-Linux-${arch}.tar.gz"
+          if [[ ! -f "$archive" ]]; then
+            echo "::error::Missing development archive: $archive"
+            exit 1
+          fi
+          if ! tar -tzf "$archive" | grep -Eq '(^|/)libasciichat\.a$'; then
+            echo "::error::Development archive does not contain static libasciichat.a"
+            exit 1
+          fi
+          echo "Verified static libasciichat.a in $archive"
 
       - name: Print build logs on failure
         if: failure()
@@ -491,7 +510,7 @@ jobs:
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
-          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF"
+          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
@@ -537,6 +556,23 @@ jobs:
             cmake --build build_release --target docs
           fi
           cmake --build build_release --target package
+
+      - name: Verify macOS development package contains the static library
+        shell: bash
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "arm64" ]]; then arch="arm64"; else arch="amd64"; fi
+          archive="build_release/libasciichat-${version}-macOS-${arch}.tar.gz"
+          if [[ ! -f "$archive" ]]; then
+            echo "::error::Missing development archive: $archive"
+            exit 1
+          fi
+          if ! tar -tzf "$archive" | grep -Eq '(^|/)libasciichat\.a$'; then
+            echo "::error::Development archive does not contain static libasciichat.a"
+            exit 1
+          fi
+          echo "Verified static libasciichat.a in $archive"
 
       - name: Print ccache stats
         if: always()
@@ -712,6 +748,7 @@ jobs:
             "-DASCIICHAT_DEFER_TOOL=$deferTool",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DASCIICHAT_ENABLE_NSIS=OFF",
+            "-DASCIICHAT_ENFORCE_STATIC_RELEASE=ON",
             "-DASCIICHAT_TARGET_ARM64=${{ matrix.arch == 'arm64' && 'ON' || 'OFF' }}",
             "-DASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS=${{ matrix.arch == 'arm64' && 'ON' || 'OFF' }}",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
@@ -745,6 +782,32 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           cmake --build build_release --target package
+
+      - name: Verify static Windows release packages
+        shell: pwsh
+        run: |
+          $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
+          $arch = "${{ matrix.arch }}"
+          $runtimeZip = "build_release/ascii-chat-$version-Windows-$arch.zip"
+          $developmentZip = "build_release/libasciichat-$version-Windows-$arch.zip"
+          if (-not (Test-Path $runtimeZip)) { throw "Missing runtime archive: $runtimeZip" }
+          if (-not (Test-Path $developmentZip)) { throw "Missing development archive: $developmentZip" }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
+          try { $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName) }
+          finally { $runtimeArchive.Dispose() }
+          $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })
+          if ($runtimeDlls.Count -gt 0) {
+            throw "Runtime archive contains DLL dependencies: $($runtimeDlls -join ', ')"
+          }
+          $developmentArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $developmentZip))
+          try { $developmentEntries = @($developmentArchive.Entries | ForEach-Object FullName) }
+          finally { $developmentArchive.Dispose() }
+          if (-not ($developmentEntries | Where-Object { $_ -match '(?i)(^|/)libasciichat\.a$' })) {
+            throw "Development archive does not contain the static libasciichat archive. Entries: $($developmentEntries -join ', ')"
+          }
+          Write-Host "Runtime archive contains no DLL dependencies; development archive contains libasciichat.a"
 
       - name: Print ccache stats
         if: always()
@@ -827,20 +890,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+  publish-release:
+    name: Publish verified release
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: [create-release, package-linux, package-macos, package-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Publish release after every package job passes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.version }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
+
   notify:
     name: Send release notification
     if: always() && needs.create-release.result != 'skipped'
-    needs: [create-release, package-linux, package-macos, package-windows]
+    needs: [create-release, package-linux, package-macos, package-windows, publish-release]
     runs-on: ubuntu-latest
 
     steps:
       - name: Determine overall result
         id: result
         run: |
-          if [[ "${{ needs.create-release.result }}" == "failure" || \
-                "${{ needs.package-linux.result }}" == "failure" || \
-                "${{ needs.package-macos.result }}" == "failure" || \
-                "${{ needs.package-windows.result }}" == "failure" ]]; then
+          if [[ "${{ needs.create-release.result }}" != "success" || \
+                "${{ needs.package-linux.result }}" != "success" || \
+                "${{ needs.package-macos.result }}" != "success" || \
+                "${{ needs.package-windows.result }}" != "success" || \
+                "${{ needs.publish-release.result }}" != "success" ]]; then
             echo "status=FAILED" >> $GITHUB_OUTPUT
             echo "emoji=❌" >> $GITHUB_OUTPUT
           else

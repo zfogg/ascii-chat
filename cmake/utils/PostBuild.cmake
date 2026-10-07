@@ -26,7 +26,12 @@
 # vcpkg's applocal.ps1 is disabled via VCPKG_APPLOCAL_DEPS=OFF in Init.cmake
 function(copy_windows_dlls TARGET_NAME)
     if(WIN32)
-        # Copy DLLs for all builds (Debug, Dev, Release all use dynamic libraries)
+        if(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_ENFORCE_STATIC_RELEASE)
+            message(STATUS "Skipping runtime DLL copying for statically linked Release target ${TARGET_NAME}")
+            return()
+        endif()
+
+        # Dynamic builds need their runtime dependencies beside the executable.
 
         include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
@@ -204,23 +209,33 @@ function(check_static_linking TARGET_NAME)
             message(STATUS "Static linking enforcement disabled for Release builds")
             return()
         endif()
-        # Use centralized ASCIICHAT_BASH_EXECUTABLE from FindPrograms.cmake
-        if(ASCIICHAT_BASH_EXECUTABLE)
-            # Determine platform
-            if(UNIX AND NOT APPLE)
-                set(PLATFORM "linux")
-            elseif(WIN32)
-                set(PLATFORM "windows")
-            elseif(APPLE)
-                set(PLATFORM "macos")
-            endif()
-
-            add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                COMMAND ${ASCIICHAT_BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/utils/check_static_linking.sh" "$<TARGET_FILE:${TARGET_NAME}>" "${PLATFORM}"
-                COMMENT "Verifying static linking for Release build"
-                VERBATIM
-            )
+        if(UNIX AND NOT APPLE)
+            set(PLATFORM "linux")
+            set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READELF_EXECUTABLE}")
+        elseif(WIN32)
+            set(PLATFORM "windows")
+            set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READOBJ_EXECUTABLE}")
+        elseif(APPLE)
+            set(PLATFORM "macos")
+            set(STATIC_AUDIT_TOOL "")
         endif()
+
+        if(NOT ASCIICHAT_BASH_EXECUTABLE)
+            message(FATAL_ERROR "Static Release audit requires bash")
+        endif()
+        if((PLATFORM STREQUAL "linux" OR PLATFORM STREQUAL "windows") AND NOT STATIC_AUDIT_TOOL)
+            message(FATAL_ERROR "Static Release audit tool is missing for ${PLATFORM}")
+        endif()
+
+        add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${ASCIICHAT_BASH_EXECUTABLE}
+                "${CMAKE_SOURCE_DIR}/cmake/utils/check_static_linking.sh"
+                "$<TARGET_FILE:${TARGET_NAME}>"
+                "${PLATFORM}"
+                "${STATIC_AUDIT_TOOL}"
+            COMMENT "Verifying static linking for Release build"
+            VERBATIM
+        )
     endif()
 endfunction()
 

@@ -403,10 +403,10 @@ install(CODE "
 # These DLLs are copied to build/bin by vcpkg's applocal.ps1 during linking.
 # We install them to bin/ so the executable can find them at runtime.
 #
-# Release builds with prebuilt shared FFmpeg still need FFmpeg DLLs bundled.
+# Statically linked Release builds do not install runtime DLLs.
 # Debug/Dev builds need all dependency DLLs.
 # =============================================================================
-if(WIN32)
+if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
     install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
         DESTINATION bin
         COMPONENT Runtime

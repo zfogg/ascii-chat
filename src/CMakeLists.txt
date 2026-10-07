@@ -694,6 +694,11 @@ if(WIN32 AND _use_shared_lib)
 endif()
 # Check static linking for Release builds
 check_static_linking(ascii-chat)
+if((WIN32 OR APPLE) AND TARGET ascii-chat-shared)
+    # The shared ABI library is shipped for developers; its third-party
+    # dependencies must still be linked statically in a Release package.
+    check_static_linking(ascii-chat-shared)
+endif()
 
 endif()  # BUILD_EXECUTABLES - close ascii-chat executable block
 

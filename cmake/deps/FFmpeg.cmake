@@ -286,6 +286,17 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
+    # Release Windows packages use a static vcpkg triplet. Prefer its FFmpeg
+    # archives before considering the prebuilt shared FFmpeg fallback.
+    if(USE_VCPKG AND ASCIICHAT_ENFORCE_STATIC_RELEASE)
+        find_package(FFMPEG QUIET)
+        if(FFMPEG_FOUND)
+            message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found via static vcpkg triplet")
+            return()
+        endif()
+        message(FATAL_ERROR "Static FFmpeg libraries are required for this Release build, but vcpkg did not provide them")
+    endif()
+
     # Try prebuilt FFmpeg first (user-provided or auto-downloaded)
     set(_ffmpeg_prebuilt_dir "${ASCIICHAT_FFMPEG_DIR}")
 

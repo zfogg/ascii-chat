@@ -25,6 +25,7 @@
 #   - ASCIICHAT_LLVM_RANLIB_EXECUTABLE: llvm-ranlib archive indexer
 #   - ASCIICHAT_LLVM_NM_EXECUTABLE: llvm-nm symbol table viewer
 #   - ASCIICHAT_LLVM_READELF_EXECUTABLE: llvm-readelf for ELF binary analysis
+#   - ASCIICHAT_LLVM_READOBJ_EXECUTABLE: llvm-readobj for PE import analysis
 #   - ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE: llvm-objdump for binary disassembly/analysis
 #   - ASCIICHAT_LLVM_STRIP_EXECUTABLE: llvm-strip for removing symbols
 #   - ASCIICHAT_LLD_EXECUTABLE: LLD linker
@@ -398,6 +399,7 @@ _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
 _find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
+_find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
 _find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
 _find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
 
