@@ -57,25 +57,22 @@ message(STATUS "Generating .def file: ${OUTPUT_FILE}")
 set(ALL_SYMBOLS "")
 foreach(OBJ_FILE ${OBJ_FILES})
     execute_process(
-        COMMAND ${NM_TOOL} --extern-only --defined-only --print-file-name "${OBJ_FILE}"
+        COMMAND ${NM_TOOL} --format=posix --extern-only --defined-only "${OBJ_FILE}"
         OUTPUT_VARIABLE NM_OUTPUT
         ERROR_QUIET
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-    # Parse nm output one line at a time. On Windows, llvm-nm writes an object
-    # file header on its own line followed by address/type/symbol records.
-    # Treating the complete output as a regex can mistake that header (and its
-    # separator) for an export and emit an invalid .def file.
+    # Parse one POSIX-format record per line. The default Windows llvm-nm
+    # format varies between toolchain versions, including whether the object
+    # filename is printed as a separate record.
     string(REPLACE "\r\n" "\n" NM_OUTPUT "${NM_OUTPUT}")
     string(REPLACE "\r" "\n" NM_OUTPUT "${NM_OUTPUT}")
     string(REPLACE "\n" ";" NM_LINES "${NM_OUTPUT}")
     foreach(NM_LINE ${NM_LINES})
         string(STRIP "${NM_LINE}" NM_LINE)
         set(SYMBOL_NAME "")
-        if(NM_LINE MATCHES "^[0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \t]+)$")
-            set(SYMBOL_NAME "${CMAKE_MATCH_1}")
-        elseif(NM_LINE MATCHES "^.*: [0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \t]+)$")
+        if(NM_LINE MATCHES "^([^ \t]+) [TDBRCStdbrc] [0-9A-Fa-f]+ [0-9A-Fa-f]+$")
             set(SYMBOL_NAME "${CMAKE_MATCH_1}")
         endif()
         if(SYMBOL_NAME)
