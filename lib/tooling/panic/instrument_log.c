@@ -462,7 +462,7 @@ static void asciichat_instr_runtime_init_once(void) {
     char *normalized_output_dir = NULL;
     char probe_path[PATH_MAX];
     if (platform_is_directory(output_dir_env) &&
-        safe_snprintf(probe_path, sizeof(probe_path), "%s%c.ascii-instr-probe.log", output_dir_env, PATH_DELIM) <
+        safe_snprintf(probe_path, sizeof(probe_path), "%s%cascii-instr-probe.log", output_dir_env, PATH_DELIM) <
             (int)sizeof(probe_path)) {
       asciichat_error_t validation_result =
           path_validate_user_path(probe_path, PATH_ROLE_LOG_FILE, &normalized_output_dir);
