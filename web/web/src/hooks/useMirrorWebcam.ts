@@ -21,7 +21,7 @@ import {
   setWaveform,
 } from "@ascii-chat/shared/wasm";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
-import { isTestMode } from "@ascii-chat/shared";
+import { useTestPattern } from "@ascii-chat/shared/hooks";
 
 interface UseMirrorWebcamParams {
   settings: BinarySettingsConfig;
@@ -52,6 +52,7 @@ export function useMirrorWebcam({
   isWebcamRunning,
   terminalDimensions,
 }: UseMirrorWebcamParams) {
+  const testPattern = useTestPattern();
   const devAutoStartRef = useRef(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
@@ -136,7 +137,7 @@ export function useMirrorWebcam({
 
       // Check for test mode via query parameter
       console.log(`[Mirror] Checking test mode at ${performance.now()}`);
-      const testMode = isTestMode();
+      const testMode = testPattern.enabled;
       console.log(`[Mirror] isTestMode=${testMode}`);
 
       if (testMode) {
@@ -249,7 +250,7 @@ export function useMirrorWebcam({
   // stream ref. Do not leave the renderer in a false-running state with no
   // camera or microphone samples to display.
   useEffect(() => {
-    const testMode = isTestMode();
+    const testMode = testPattern.enabled;
     const video = videoRef.current;
     const hasMediaSource =
       streamRef.current !== null ||
@@ -281,7 +282,7 @@ export function useMirrorWebcam({
       terminalDimensions.rows > 0;
 
     const nodeEnv = import.meta.env["NODE_ENV"];
-    const testMode = isTestMode();
+    const testMode = testPattern.enabled;
     console.log(
       `[Mirror] TEST AUTO-START EFFECT at ${effectTime.toFixed(0)}ms: NODE_ENV=${nodeEnv}, testMode=${testMode}, wasmInit=${wasmInitialized}, permGranted=${permissionGranted}, webcamRunning=${isWebcamRunning}, alreadyStarted=${devAutoStartRef.current}, hasDims=${hasDimensions}`,
     );

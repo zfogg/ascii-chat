@@ -107,6 +107,7 @@ struct websocket_server {
   void *user_data;                     ///< User data for handlers
   atomic_t running;                 ///< Server running flag
   int port;                            ///< Listening port
+  bool tls_enabled;                    ///< True when this listener is configured with TLS credentials
   struct thread_pool *handler_pool;    ///< Thread pool for queueing handler work
 };
 

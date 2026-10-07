@@ -24,9 +24,10 @@ import {
   useMirrorWebcam,
   setMirrorWasmDimensions,
 } from "../hooks";
+import { useTestPattern } from "@ascii-chat/shared/hooks";
 
 export function MirrorPage() {
-  const isTestMode = new URLSearchParams(window.location.search).has("test");
+  const testPattern = useTestPattern();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
@@ -223,7 +224,7 @@ export function MirrorPage() {
               />
             }
             controlBar={{
-              title: isTestMode
+              title: testPattern.enabled
                 ? "Mirror mode (synthetic test input)"
                 : "Mirror mode",
               dimensions: terminalDimensions,

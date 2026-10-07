@@ -98,7 +98,8 @@ const fieldNames = [
   "Session name",
   "Session password",
   "Connection route",
-  "STUN/TURN URLs",
+  "STUN URLs",
+  "TURN URLs",
   "TURN username",
   "TURN password",
 ];
@@ -234,8 +235,8 @@ describe("Discovery page", () => {
       "Session name": "  blue-mountain-tiger  ",
       "Session password": "session-secret",
       "Connection route": "relay",
-      "STUN/TURN URLs":
-        " stun:example.com:3478, , turn:relay.example.com:3478 ",
+      "STUN URLs": " stun:example.com:3478, , stun:backup.example.com:3478 ",
+      "TURN URLs": " turn:relay.example.com:3478 ",
       "TURN username": "alice",
       "TURN password": "turn-secret",
     }))
@@ -252,10 +253,8 @@ describe("Discovery page", () => {
       iceTransportPolicy: "relay",
       turnUsername: "alice",
       turnCredential: "turn-secret",
-      iceServers: [
-        { urls: "stun:example.com:3478" },
-        { urls: "turn:relay.example.com:3478" },
-      ],
+      stunServers: ["stun:example.com:3478", "stun:backup.example.com:3478"],
+      turnServers: ["turn:relay.example.com:3478"],
     });
   });
 
@@ -378,16 +377,19 @@ describe("Discovery page", () => {
     ).not.toContainElement(speakers);
   });
 
-  it("preserves the quoted STUN/TURN example and credential help", async () => {
+  it("shows separate STUN and TURN URL guidance plus credential help", async () => {
     await openPage();
     expandConnectionSettings();
     const help = screen.getAllByRole("tooltip", { hidden: true });
     expect(
       help.some((node) =>
         node.textContent?.includes(
-          'Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".',
+          "Example: stun:stun.example.com:3478.",
         ),
       ),
+    ).toBe(true);
+    expect(
+      help.some((node) => node.textContent?.includes("turn: or turns:")),
     ).toBe(true);
     expect(
       help.some((node) =>

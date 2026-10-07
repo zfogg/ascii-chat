@@ -11,11 +11,8 @@ import {
   renderAudioVisualizationFrame,
 } from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components";
-import {
-  drawTestPatternFrame,
-  fillTestPatternAudioSamples,
-  isTestMode,
-} from "../testPattern";
+import { fillTestPatternAudioSamples } from "../testPattern";
+import { useTestPattern } from "./useTestPattern";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;
@@ -50,6 +47,7 @@ export function useMirrorRenderLoop({
   animation,
   animationEnabled,
 }: UseMirrorRenderLoopParams) {
+  const testPattern = useTestPattern();
   const prevDepsRef = useRef<{
     isWebcamRunning: boolean;
     terminalDimensions: { cols: number; rows: number };
@@ -97,7 +95,7 @@ export function useMirrorRenderLoop({
 
     let isActive = true;
     let currentRafHandle = 0;
-    const testMode = isTestMode();
+    const testMode = testPattern.enabled;
     let lastFrameTime = performance.now();
     let lastConversionTime = 0;
     const audioSamples = new Float32Array(1024);
@@ -159,7 +157,7 @@ export function useMirrorRenderLoop({
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
-        drawTestPatternFrame(ctx, canvas.width, canvas.height);
+        testPattern.drawFrame(ctx, canvas.width, canvas.height);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frame = {
@@ -259,5 +257,6 @@ export function useMirrorRenderLoop({
     animation,
     animationEnabled,
     streamRef,
+    testPattern,
   ]);
 }

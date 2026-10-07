@@ -79,7 +79,8 @@ describe("Discovery connection settings", () => {
     sessionName: "blue-mountain-tiger",
     password: "",
     signalingUrl: "ws://localhost:27225",
-    iceServers: [{ urls: ["stun:localhost:3478", "turn:localhost:3478"] }],
+    stunServers: ["stun:localhost:3478"],
+    turnServers: ["turn:localhost:3478"],
   };
   const joined = {
     turnUsername: "discovery-user",
@@ -130,55 +131,51 @@ describe("Discovery connection settings", () => {
   });
   it("keeps STUN when TURN lacks credentials and fails clearly for relay only", () => {
     const empty = { turnUsername: "", turnPassword: "" };
-    expect(discoveryRTCConfiguration(options, empty).iceServers).toEqual([
+    expect(
+      discoveryRTCConfiguration({ ...options, turnServers: [] }, empty)
+        .iceServers,
+    ).toEqual([
       { urls: "stun:localhost:3478" },
     ]);
     expect(() =>
-      discoveryRTCConfiguration(
-        { ...options, iceTransportPolicy: "relay" },
-        empty,
-      ),
-    ).toThrow("Relay only requires");
+      discoveryRTCConfiguration(options, empty),
+    ).toThrow("TURN server requires credentials");
     expect(() =>
       discoveryRTCConfiguration(
         {
           ...options,
-          iceServers: [{ urls: "stun:localhost:3478" }],
+          turnServers: [],
           iceTransportPolicy: "relay",
         },
         joined,
       ),
     ).toThrow("Relay only requires");
   });
-  it("preserves per-server credentials ahead of discovery credentials", () => {
+  it("uses explicit TURN credentials ahead of discovery credentials", () => {
     const config = discoveryRTCConfiguration(
       {
         ...options,
-        iceServers: [
-          {
-            urls: "turns:private:5349?transport=tcp",
-            username: "private",
-            credential: "private-password",
-          },
-        ],
+        turnServers: ["turns:private:5349?transport=tcp"],
+        turnUsername: "private",
+        turnCredential: "private-password",
       },
       joined,
     );
-    expect(config.iceServers?.[0]).toEqual({
+    expect(config.iceServers?.[1]).toEqual({
       urls: "turns:private:5349?transport=tcp",
       username: "private",
       credential: "private-password",
     });
   });
-  it("does not combine an incomplete per-server override with discovery credentials", () => {
+  it("uses discovery credentials when explicit credentials are blank", () => {
     const config = discoveryRTCConfiguration(
       {
         ...options,
-        iceServers: [{ urls: "turn:localhost:3478", username: "incomplete" }],
+        turnServers: ["turn:localhost:3478"],
       },
       joined,
     );
-    expect(config.iceServers?.[0]).toEqual({
+    expect(config.iceServers?.[1]).toEqual({
       urls: "turn:localhost:3478",
       username: joined.turnUsername,
       credential: joined.turnPassword,
@@ -192,7 +189,8 @@ describe("WebRTC signaling reconnects", () => {
       sessionName: "blue-mountain-tiger",
       password: "",
       signalingUrl: "ws://localhost:27225",
-      iceServers: [],
+      stunServers: [],
+      turnServers: [],
     });
 
     expect(signalingHarness.current!.options.applicationEncryption).toBeUndefined();
@@ -204,7 +202,8 @@ describe("WebRTC signaling reconnects", () => {
       sessionName: "blue-mountain-tiger",
       password: "",
       signalingUrl: "ws://localhost:27225",
-      iceServers: [],
+      stunServers: [],
+      turnServers: [],
     };
     const session = new WebRTCSession(options);
     const attempt = session.connect();

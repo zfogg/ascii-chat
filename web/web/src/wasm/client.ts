@@ -329,6 +329,10 @@ function readI32(ptr: number): number {
 export interface ClientInitOptions {
   width?: number;
   height?: number;
+  stunServers?: string[];
+  turnServers?: string[];
+  turnUsername?: string;
+  turnCredential?: string;
 }
 
 export interface ParsedPacket {
@@ -436,7 +440,19 @@ async function initializeClientWasm(
   if (options.height !== undefined) {
     args.push("--height", options.height.toString());
   }
-  const argsString = args.join(" ");
+  if (options.stunServers?.length)
+    args.push("--stun-servers", options.stunServers.join(","));
+  if (options.turnServers?.length)
+    args.push("--turn-servers", options.turnServers.join(","));
+  if (options.turnUsername)
+    args.push("--turn-username", options.turnUsername);
+  if (options.turnCredential)
+    args.push("--turn-credential", options.turnCredential);
+  const argsString = args
+    .map((arg, index) =>
+      index === 0 ? arg : `"${arg.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
+    )
+    .join(" ");
   console.log("[Client WASM] Initializing with args:", argsString);
 
   // Allocate string in WASM memory

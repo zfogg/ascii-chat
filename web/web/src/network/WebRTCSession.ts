@@ -23,7 +23,8 @@ export interface DiscoveryOptions {
   sessionName: string;
   password: string;
   signalingUrl: string;
-  iceServers: RTCIceServer[];
+  stunServers: string[];
+  turnServers: string[];
   iceTransportPolicy?: RTCIceTransportPolicy;
   turnUsername?: string;
   turnCredential?: string;
@@ -38,24 +39,24 @@ export function discoveryRTCConfiguration(
     throw new Error(
       "Provide both TURN username and password, or leave both blank.",
     );
-  const iceServers = options.iceServers.flatMap((server) => {
-    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-    return urls.flatMap((url): RTCIceServer[] => {
-      if (!/^turns?:/i.test(url)) return [{ urls: url }];
-      const credentials = options.turnUsername
-        ? { username: options.turnUsername, credential: options.turnCredential }
-        : server.username && server.credential
-          ? { username: server.username, credential: server.credential }
-          : { username: joined.turnUsername, credential: joined.turnPassword };
-      const { username, credential } = credentials;
-      return username && credential
-        ? [{ urls: url, username, credential }]
-        : [];
-    });
+  const stunServers = options.stunServers.map((url) => {
+    if (!/^stun:|^stuns:/i.test(url))
+      throw new Error(`STUN URL must start with stun: or stuns:: ${url}`);
+    return { urls: url };
   });
+  const turnServers = options.turnServers.map((url) => {
+    if (!/^turn:|^turns:/i.test(url))
+      throw new Error(`TURN URL must start with turn: or turns:: ${url}`);
+    const username = options.turnUsername || joined.turnUsername;
+    const credential = options.turnCredential || joined.turnPassword;
+    if (!username || !credential)
+      throw new Error(`TURN server requires credentials: ${url}`);
+    return { urls: url, username, credential };
+  });
+  const iceServers: RTCIceServer[] = [...stunServers, ...turnServers];
   if (
     options.iceTransportPolicy === "relay" &&
-    !iceServers.some((server) => /^turns?:/i.test(String(server.urls)))
+    turnServers.length === 0
   )
     throw new Error(
       "Relay only requires a TURN server and credentials. Configure them or choose Automatic.",
@@ -115,6 +116,12 @@ export class WebRTCSession implements ClientSession {
       discoveryHandshake: true,
       width,
       height,
+      wasmOptions: {
+        stunServers: options.stunServers,
+        turnServers: options.turnServers,
+        turnUsername: options.turnUsername || "",
+        turnCredential: options.turnCredential || "",
+      },
     });
   }
 

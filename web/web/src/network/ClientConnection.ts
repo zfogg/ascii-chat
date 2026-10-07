@@ -24,6 +24,7 @@ import {
   PacketType,
   packetTypeName,
   type ParsedPacket,
+  type ClientInitOptions,
 } from "../wasm/client";
 
 export interface ClientConnectionOptions {
@@ -32,6 +33,7 @@ export interface ClientConnectionOptions {
   discoveryHandshake?: boolean;
   width?: number;
   height?: number;
+  wasmOptions?: Omit<ClientInitOptions, "width" | "height">;
 }
 
 export type ConnectionStateChangeCallback = (state: ConnectionState) => void;
@@ -70,7 +72,7 @@ export class ClientConnection {
     console.log("[ClientConnection] Initializing WASM client...");
 
     // Initialize WASM module
-    const initOptions: { width?: number; height?: number } = {};
+    const initOptions: ClientInitOptions = { ...this.options.wasmOptions };
     if (this.options.width !== undefined)
       initOptions.width = this.options.width;
     if (this.options.height !== undefined)
@@ -199,7 +201,7 @@ export class ClientConnection {
       const serverHost = url.hostname;
       const serverPort =
         parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
-      const reinitOptions: { width?: number; height?: number } = {};
+      const reinitOptions: ClientInitOptions = { ...this.options.wasmOptions };
       if (this.options.width !== undefined)
         reinitOptions.width = this.options.width;
       if (this.options.height !== undefined)

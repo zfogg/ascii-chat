@@ -9,10 +9,9 @@
 #include "init.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 /**
- * Parse space-separated args_str into argv[]
+ * Parse a shell-style argument string into argv[]
  * Sets *out_args_copy to the strdup'd buffer that must be freed by the caller
  * AFTER argv is no longer needed (since argv points into args_copy).
  *
@@ -27,7 +26,7 @@ int wasm_parse_args(const char *args_str, char **argv, int max_args, char **out_
     return -1;
   }
 
-  // Duplicate the input string (strtok modifies the string)
+  *out_args_copy = NULL;
   char *args_copy = strdup(args_str);
   if (!args_copy) {
     return -1;
@@ -35,21 +34,52 @@ int wasm_parse_args(const char *args_str, char **argv, int max_args, char **out_
 
   *out_args_copy = args_copy;
 
-  // Parse space-separated arguments
+  // Compact each parsed argument in place so quoted values can contain spaces.
   int argc = 0;
-  char *token = strtok(args_copy, " ");
-  while (token != NULL && argc < (max_args - 1)) {
-    argv[argc++] = token;
-    token = strtok(NULL, " ");
+  char *read = args_copy;
+  char *write = args_copy;
+  while (*read != '\0') {
+    while (*read == ' ' || *read == '\t' || *read == '\n' || *read == '\r')
+      read++;
+    if (*read == '\0')
+      break;
+    if (argc >= max_args - 1) {
+      free(args_copy);
+      *out_args_copy = NULL;
+      return -1;
+    }
+
+    argv[argc++] = write;
+    char quote = '\0';
+    while (*read != '\0') {
+      char current = *read++;
+      if (current == '\\' && *read != '\0') {
+        *write++ = *read++;
+        continue;
+      }
+      if (quote != '\0') {
+        if (current == quote)
+          quote = '\0';
+        else
+          *write++ = current;
+        continue;
+      }
+      if (current == '\'' || current == '"') {
+        quote = current;
+      } else if (current == ' ' || current == '\t' || current == '\n' || current == '\r') {
+        break;
+      } else {
+        *write++ = current;
+      }
+    }
+    if (quote != '\0') {
+      free(args_copy);
+      *out_args_copy = NULL;
+      return -1;
+    }
+    *write++ = '\0';
   }
   argv[argc] = NULL;
-
-  // Log for debugging
-  fprintf(stderr, "[wasm_parse_args] Parsed input: %s\n", args_str);
-  fprintf(stderr, "[wasm_parse_args] argc=%d\n", argc);
-  for (int i = 0; i < argc; i++) {
-    fprintf(stderr, "[wasm_parse_args] argv[%d]=%s\n", i, argv[i]);
-  }
 
   return argc;
 }

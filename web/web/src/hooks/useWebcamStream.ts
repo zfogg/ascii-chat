@@ -11,7 +11,7 @@ import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
 import {
   createTestPatternVideoSource,
-  isTestMode,
+  useTestPattern,
   type TestPatternVideoSource,
 } from "@ascii-chat/shared";
 
@@ -45,6 +45,7 @@ interface UseWebcamStreamOptions {
 }
 
 export function useWebcamStream(options: UseWebcamStreamOptions) {
+  const testPattern = useTestPattern();
   const {
     clientRef,
     connectionState,
@@ -460,10 +461,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      const useTestPattern = isTestMode();
       let stream: MediaStream;
-      if (useTestPattern) {
-        const source = createTestPatternVideoSource(settings.targetFps);
+      if (testPattern.enabled) {
+        const source = createTestPatternVideoSource(
+          settings.targetFps,
+          canvasRef.current.width || w,
+          canvasRef.current.height || h,
+          testPattern.mode === "none" ? "test" : testPattern.mode,
+          canvasRef.current,
+        );
         testPatternSourceRef.current = source;
         stream = source.stream;
       } else {
@@ -824,6 +830,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     lastFrameTimeRef,
     frameQueueRef,
     setError,
+    testPattern,
   ]);
 
   const stopWebcam = useCallback(() => {

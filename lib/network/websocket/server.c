@@ -181,7 +181,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
-    client_ctx->is_secure = lws_is_ssl(wsi); // Check if connection is TLS (wss://)
+    // Global SSL initialization does not mean this listener uses TLS. Require
+    // both listener TLS configuration and an SSL connection before skipping
+    // the ACIP handshake.
+    client_ctx->is_secure = server->tls_enabled && lws_is_ssl(wsi) > 0;
     client_ctx->auth_required = false;       // Set by server handler if authentication is required
 
     // Queue handler to thread pool (no pthread_create from callback context)
@@ -869,6 +872,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
 
     info.ssl_cert_filepath = config->tls_cert_path;
     info.ssl_private_key_filepath = config->tls_key_path;
+    server->tls_enabled = true;
     log_info("WebSocket server configured for WSS (TLS): cert=%s, key=%s", config->tls_cert_path, config->tls_key_path);
 #else
     log_warn("WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable");

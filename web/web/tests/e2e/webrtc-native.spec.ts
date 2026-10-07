@@ -29,7 +29,8 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
     await page
       .getByLabel("Session password", { exact: true })
       .fill(process.env["ASCII_CHAT_TEST_PASSWORD"]);
-  await page.getByLabel("STUN/TURN URLs").fill("");
+  await page.getByLabel("STUN URLs").fill("");
+  await page.getByLabel("TURN URLs").fill("");
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),

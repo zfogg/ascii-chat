@@ -73,8 +73,12 @@ export function ClientPage({
   const [signalingUrl, setSignalingUrl] = useState(
     params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
   );
-  const [iceUrls, setIceUrls] = useState(
-    "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302,turn:turn.ascii-chat.com:3478",
+  const [stunUrls, setStunUrls] = useState(
+    params.get("stunUrls") ||
+      "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
+  );
+  const [turnUrls, setTurnUrls] = useState(
+    params.get("turnUrls") || "turn:turn.ascii-chat.com:3478",
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
@@ -133,11 +137,14 @@ export function ClientPage({
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
-            iceServers: iceUrls
+            stunServers: stunUrls
               .split(",")
               .map((url) => url.trim())
-              .filter(Boolean)
-              .map((urls) => ({ urls })),
+              .filter(Boolean),
+            turnServers: turnUrls
+              .split(",")
+              .map((url) => url.trim())
+              .filter(Boolean),
           }
         : undefined,
     [
@@ -145,7 +152,8 @@ export function ClientPage({
       sessionName,
       sessionPassword,
       signalingUrl,
-      iceUrls,
+      stunUrls,
+      turnUrls,
       connectionRoute,
       turnUsername,
       turnCredential,
@@ -976,17 +984,35 @@ export function ClientPage({
                           >
                             <label>
                               <HelpLabel
-                                label="STUN/TURN URLs (comma-separated)"
-                                text={
-                                  'Start each entry with stun:, turn:, or turns:. Optionally add a port with :port, and separate multiple URLs with commas. Example: "stun:stun.example.com, stun:stun.example.com:3478, turn:turn.example.com:3478".'
-                                }
+                                label="STUN URLs"
+                                text="Enter one or more comma-separated STUN URLs, each starting with stun: or stuns:. Example: stun:stun.example.com:3478."
                               />
                               <input
-                                aria-label="STUN/TURN URLs"
+                                aria-label="STUN URLs"
                                 disabled={settingsDisabled}
-                                value={iceUrls}
+                                value={stunUrls}
                                 onChange={(event) =>
-                                  setIceUrls(event.target.value)
+                                  setStunUrls(event.target.value)
+                                }
+                                className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
+                              />
+                            </label>
+                          </Tooltip>
+                          <Tooltip
+                            text={disabledSettingsHelp}
+                            className="contents"
+                          >
+                            <label>
+                              <HelpLabel
+                                label="TURN URLs"
+                                text="Enter one or more comma-separated TURN URLs, each starting with turn: or turns:. TURN uses the manual credentials below, or credentials from the discovery service."
+                              />
+                              <input
+                                aria-label="TURN URLs"
+                                disabled={settingsDisabled}
+                                value={turnUrls}
+                                onChange={(event) =>
+                                  setTurnUrls(event.target.value)
                                 }
                                 className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
                               />
