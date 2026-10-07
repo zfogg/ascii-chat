@@ -16,6 +16,7 @@ export const VIDEO_CODEC_CAP_SUPPORTED = H265Encoder.isSupported()
 export const AUDIO_CODEC_CAP_RAW = 1 << 0; // Bit 0: Raw PCM support
 export const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
 export const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
+const TERM_CAP_MATRIX_RAIN = 0x0020;
 
 export type BrowserColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type BrowserColorFilter =
@@ -116,13 +117,14 @@ export function buildCapabilitiesPacket(
   colorFilter: BrowserColorFilter = "none",
   palette: BrowserPalette = "standard",
   paletteChars?: string,
+  matrixRain = false,
 ): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE);
   const view = new DataView(buf);
   const bytes = new Uint8Array(buf);
 
   // Network byte order (big-endian) - server uses NET_TO_HOST_U32/U16 to read
-  view.setUint32(0, 0x0f, false); // capabilities (color+utf8+etc)
+  view.setUint32(0, 0x0f | (matrixRain ? TERM_CAP_MATRIX_RAIN : 0), false);
   const color = getColorCapabilities(colorMode);
   view.setUint32(4, color.level, false); // color_level
   view.setUint32(8, color.count, false); // color_count

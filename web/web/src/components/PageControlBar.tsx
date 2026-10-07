@@ -12,6 +12,7 @@ export interface PageControlBarProps {
   mediaSource?: MediaSource | undefined;
   onStartWebcam?: (() => void) | undefined;
   onStopWebcam?: (() => void) | undefined;
+  webcamActionLabels?: { start: string; stop: string } | undefined;
   onUploadClick?: (() => void) | undefined;
   videoRef?: RefObject<HTMLVideoElement | null> | undefined;
   showConnectionButton?: boolean | undefined;
@@ -34,6 +35,7 @@ export function PageControlBar({
   mediaSource,
   onStartWebcam,
   onStopWebcam,
+  webcamActionLabels,
   onUploadClick,
   videoRef,
   showConnectionButton = false,
@@ -140,14 +142,14 @@ export function PageControlBar({
                 onClick={onStopWebcam}
                 className="px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
               >
-                Stop
+                {webcamActionLabels?.stop ?? "Stop"}
               </button>
             ) : (
               <button
                 onClick={onStartWebcam}
                 className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
               >
-                Start Webcam
+                {webcamActionLabels?.start ?? "Start Webcam"}
               </button>
             ))}
           {onUploadClick && (

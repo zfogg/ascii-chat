@@ -23,6 +23,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/audio/audio.h>
 
 /**
@@ -125,6 +126,10 @@ typedef struct client_info {
   char client_luminance_palette[256]; // Client's luminance-to-character mapping
   palette_type_t client_palette_type; // Client's palette type
   bool client_palette_initialized;    // Whether client's palette is set up
+
+  // Per-client state for Matrix Rain post-processing of generated ASCII.
+  digital_rain_t *digital_rain;
+  double digital_rain_last_update_time;
 
   // Stream dimensions
   uint16_t width, height;

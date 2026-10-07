@@ -25,6 +25,7 @@ export type Palette =
   | "minimal"
   | "cool"
   | "custom";
+export type Animation = "matrix" | "waveform" | "fft";
 
 export interface BinarySettingsConfig {
   width: number;
@@ -35,6 +36,8 @@ export interface BinarySettingsConfig {
   palette: Palette;
   paletteChars?: string;
   matrixRain?: boolean;
+  animationEnabled?: boolean;
+  animation?: Animation;
   flipX?: boolean;
 }
 
@@ -239,21 +242,51 @@ export function BinarySettings({
           >
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
-                Effects
+                Animation
               </label>
               <button
-                onClick={() => updateConfig({ matrixRain: !config.matrixRain })}
+                onClick={() =>
+                  updateConfig({
+                    animationEnabled: !config.animationEnabled,
+                    matrixRain:
+                      !config.animationEnabled &&
+                      (config.animation ?? "matrix") === "matrix",
+                  })
+                }
                 disabled={disabled}
                 className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  config.matrixRain
+                  config.animationEnabled
                     ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
                     : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
                 }`}
               >
-                {config.matrixRain ? "🟢 Matrix Rain" : "Matrix Rain"}
+                {config.animationEnabled ? "🟢 Animation" : "Animation"}
               </button>
             </div>
           </Tooltip>
+
+          {config.animationEnabled && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Animation Selection
+              </label>
+              <select
+                value={config.animation ?? "matrix"}
+                onChange={(e) =>
+                  updateConfig({
+                    animation: e.target.value as Animation,
+                    matrixRain: e.target.value === "matrix",
+                  })
+                }
+                disabled={disabled}
+                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
+              >
+                <option value="matrix">Matrix Digital Rain</option>
+                <option value="waveform">Audio Waveform</option>
+                <option value="fft">Audio Fast Fourier Transform</option>
+              </select>
+            </div>
+          )}
 
           <Tooltip
             text={

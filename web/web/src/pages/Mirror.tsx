@@ -140,6 +140,9 @@ export function MirrorPage() {
     debugCountRef,
     firstFrameTimeRef,
     frameIntervalRef,
+    streamRef,
+    animation: settings.animation ?? "matrix",
+    animationEnabled: settings.animationEnabled ?? false,
   });
 
   // Webcam start logic and auto-start effects

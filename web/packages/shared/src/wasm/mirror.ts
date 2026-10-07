@@ -28,8 +28,16 @@ interface MirrorModuleExports {
     src_height: number,
   ): number;
   _mirror_free_string(ptr: number): void;
-  _mirror_submit_audio_samples(samples_ptr: number, count: number, source: number): void;
-  _mirror_render_audio_visualization(width: number, height: number, source: number): number;
+  _mirror_submit_audio_samples(
+    samples_ptr: number,
+    count: number,
+    source: number,
+  ): void;
+  _mirror_render_audio_visualization(
+    width: number,
+    height: number,
+    source: number,
+  ): number;
   _get_help_text(mode: number, option_name: number): number;
   // Terminal renderer functions (libvterm + FreeType)
   _term_renderer_create(cfg_ptr: number, out_ptr: number): number;
@@ -293,6 +301,7 @@ export function convertFrameToAscii(
 }
 
 export type AudioVisualizationSource = "microphone" | "media";
+export type AudioVisualizationMode = "waveform" | "fft";
 
 function audioVisualizationSourceId(source: AudioVisualizationSource): number {
   return source === "microphone" ? 0 : 1;
@@ -324,8 +333,15 @@ export function renderAudioVisualization(
   width: number,
   height: number,
   source: AudioVisualizationSource = "media",
+  mode?: AudioVisualizationMode,
 ): string {
   if (!wasmModule) throw new Error("WASM module not initialized");
+  if (mode) {
+    const waveform = mode === "waveform" ? 1 : 0;
+    const fft = mode === "fft" ? 1 : 0;
+    wasmModule._set_waveform?.(waveform);
+    wasmModule._set_fft?.(fft);
+  }
   const pointer = wasmModule._mirror_render_audio_visualization(
     width,
     height,

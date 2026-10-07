@@ -3,6 +3,9 @@ import { getClientModule, PacketType } from "../wasm/client";
 
 export interface AudioPipelineOptions {
   onAudioData?: (payload: Uint8Array) => void;
+  /** Receives microphone PCM synchronously while the capture buffer is valid. */
+  onMicrophoneSamples?: (samples: Float32Array) => void;
+  onPlaybackSamples?: (samples: Float32Array) => void;
   onLevels?: (levels: {
     microphone: number;
     playback: number;
@@ -107,6 +110,7 @@ export class AudioPipeline {
     this.gain.gain.value = 0;
     this.processor.onaudioprocess = (event) => {
       const input = event.inputBuffer.getChannelData(0);
+      this.options.onMicrophoneSamples?.(input);
       this.microphoneLevel = Math.sqrt(
         input.reduce((sum, value) => sum + value * value, 0) / input.length,
       );
@@ -199,6 +203,7 @@ export class AudioPipeline {
     channels: number,
   ): void {
     const context = this.context!;
+    this.options.onPlaybackSamples?.(samples);
     if (this.playback && sampleRate === context.sampleRate) {
       this.playbackLevel = Math.sqrt(
         samples.reduce((sum, value) => sum + value * value, 0) / samples.length,

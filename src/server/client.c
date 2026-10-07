@@ -2876,6 +2876,11 @@ void cleanup_client_media_buffers(client_info_t *client) {
     return;
   }
 
+  if (client->digital_rain) {
+    digital_rain_destroy(client->digital_rain);
+    client->digital_rain = NULL;
+  }
+
   if (client->incoming_video_buffer) {
     video_frame_buffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;

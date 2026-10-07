@@ -58,7 +58,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const startingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const h265EncoderRef = useRef<H265Encoder | null>(null);
-  const webcamCaptureLoopRef = useRef<((drawVideo?: boolean) => void) | null>(null);
+  const webcamCaptureLoopRef = useRef<((drawVideo?: boolean) => void) | null>(
+    null,
+  );
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const testPatternAnimationRef = useRef<number | null>(null);
 
@@ -203,9 +205,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       const videoTrack = streamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
         void videoTrack
-          .applyConstraints({ frameRate: { ideal: settings.targetFps } })
+          .applyConstraints({
+            width: { ideal: settings.width || 1280 },
+            height: { ideal: settings.height || 720 },
+            frameRate: { ideal: settings.targetFps },
+          })
           .catch((error) =>
-            console.warn("[Client] Unable to update webcam frame rate:", error),
+            console.warn("[Client] Unable to update webcam settings:", error),
           );
       }
       const sendInterval = 1000 / settings.targetFps;
@@ -249,7 +255,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 const canvas = canvasRef.current;
                 const context = canvas?.getContext("2d");
                 if (canvas && context && now - lastSentAt >= sendInterval) {
-                  context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                  if (settings.flipX) {
+                    context.save();
+                    context.translate(canvas.width, 0);
+                    context.scale(-1, 1);
+                    context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                    context.restore();
+                  } else {
+                    context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                  }
                   webcamCaptureLoopRef.current?.(false);
                   lastSentAt = now;
                 }
@@ -349,7 +363,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     canvasRef,
     connectionState,
     isWebcamRunning,
+    settings.flipX,
+    settings.height,
     settings.targetFps,
+    settings.width,
     videoRef,
   ]);
 
@@ -845,7 +862,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           buildStreamStartPacket(false),
         );
       } catch (error) {
-        console.debug("[Client] STREAM_STOP skipped while closing capture:", error);
+        console.debug(
+          "[Client] STREAM_STOP skipped while closing capture:",
+          error,
+        );
       }
     }
     // Stop timer (connection state change will also stop it)
@@ -875,13 +895,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     frameQueueRef.current = [];
     setIsWebcamRunning(false);
-  }, [
-    clientRef,
-    connectionState,
-    frameQueueRef,
-    isWebcamRunning,
-    videoRef,
-  ]);
+  }, [clientRef, connectionState, frameQueueRef, isWebcamRunning, videoRef]);
 
   return {
     startWebcam,

@@ -646,7 +646,9 @@ typedef enum {
   /** @brief UTF-8 encoding support (TERM_CAP_UTF8) */
   TERM_CAP_UTF8 = 0x0008,
   /** @brief Background color support (TERM_CAP_BACKGROUND) */
-  TERM_CAP_BACKGROUND = 0x0010
+  TERM_CAP_BACKGROUND = 0x0010,
+  /** @brief Client requests Matrix digital-rain post-processing */
+  TERM_CAP_MATRIX_RAIN = 0x0020
 } terminal_capability_flags_t;
 
 /**

@@ -72,4 +72,24 @@ describe("buildCapabilitiesPacket", () => {
     expect(packet[157]).toBe(45);
     expect(packet[158]).toBe(12); // COLOR_FILTER_RAINBOW
   });
+
+  it("advertises Matrix Rain as a terminal capability", () => {
+    const packet = buildCapabilitiesPacket(
+      80,
+      24,
+      60,
+      "truecolor",
+      "none",
+      "standard",
+      undefined,
+      true,
+    );
+    const view = new DataView(
+      packet.buffer,
+      packet.byteOffset,
+      packet.byteLength,
+    );
+
+    expect(view.getUint32(0, false)).toBe(0x2f);
+  });
 });

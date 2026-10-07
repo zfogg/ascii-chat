@@ -3,8 +3,10 @@ import {
   getColorFilter,
   getColorMode,
   getDimensions,
+  getFft,
   getFlipX,
   getMatrixRain,
+  getWaveform,
   getPalette,
   getPaletteChars,
   getTargetFps,
@@ -13,11 +15,13 @@ import {
   setColorFilter,
   setColorMode,
   setDimensions,
+  setFft,
   setFlipX,
   setMatrixRain,
   setPalette,
   setPaletteChars,
   setTargetFps,
+  setWaveform,
 } from "@ascii-chat/shared/wasm";
 import type {
   BinarySettingsConfig,
@@ -40,6 +44,10 @@ export interface WasmOptionsManager {
   getPaletteChars: () => string;
   setMatrixRain: (enabled: boolean) => void;
   getMatrixRain: () => boolean;
+  setWaveform: (enabled: boolean) => void;
+  getWaveform: () => boolean;
+  setFft: (enabled: boolean) => void;
+  getFft: () => boolean;
   setFlipX: (enabled: boolean) => void;
   getFlipX: () => boolean;
   setTargetFps: (fps: number) => void;
@@ -64,6 +72,10 @@ export function createMirrorWasmOptionsManager(): WasmOptionsManager {
     getPaletteChars,
     setMatrixRain,
     getMatrixRain,
+    setWaveform,
+    getWaveform,
+    setFft,
+    getFft,
     setFlipX,
     getFlipX,
     setDimensions,
@@ -106,6 +118,10 @@ export function createWasmOptionsManager(
   getPaletteCharsFn: () => string,
   setMatrixRainFn: (enabled: boolean) => void,
   getMatrixRainFn: () => boolean,
+  setWaveformFn: (enabled: boolean) => void,
+  getWaveformFn: () => boolean,
+  setFftFn: (enabled: boolean) => void,
+  getFftFn: () => boolean,
   setFlipXFn: (enabled: boolean) => void,
   getFlipXFn: () => boolean,
   setDimensionsFn: (width: number, height: number) => void,
@@ -160,6 +176,10 @@ export function createWasmOptionsManager(
     getPaletteChars: getPaletteCharsFn,
     setMatrixRain: setMatrixRainFn,
     getMatrixRain: getMatrixRainFn,
+    setWaveform: setWaveformFn,
+    getWaveform: getWaveformFn,
+    setFft: setFftFn,
+    getFft: getFftFn,
     setFlipX: setFlipXFn,
     getFlipX: getFlipXFn,
     setTargetFps: setTargetFpsFn,
@@ -194,7 +214,11 @@ export function createWasmOptionsManager(
           "[WasmOptionsManager] Setting matrixRain:",
           settings.matrixRain ?? false,
         );
-        setMatrixRainFn(settings.matrixRain ?? false);
+        const animation = settings.animation ?? "matrix";
+        const enabled = settings.animationEnabled ?? settings.matrixRain ?? false;
+        setMatrixRainFn(enabled && animation === "matrix");
+        setWaveformFn(enabled && animation === "waveform");
+        setFftFn(enabled && animation === "fft");
         console.log(
           "[WasmOptionsManager] Setting flipX:",
           settings.flipX ?? false,

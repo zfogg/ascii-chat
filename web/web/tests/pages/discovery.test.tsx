@@ -191,12 +191,11 @@ describe("Discovery page", () => {
       const slider = screen.getByRole("slider");
       fireEvent.change(slider, { target: { value: "30" } });
       expect(slider).toHaveValue("30");
-      await userEvent.click(
-        screen.getByRole("button", { name: "Matrix Rain" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Animation" }));
       expect(
-        screen.getByRole("button", { name: "🟢 Matrix Rain" }),
+        screen.getByRole("button", { name: "🟢 Animation" }),
       ).toBeInTheDocument();
+      expect(screen.getByText("Matrix Digital Rain")).toBeInTheDocument();
 
       view.unmount();
     },

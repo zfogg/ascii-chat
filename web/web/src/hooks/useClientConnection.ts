@@ -186,6 +186,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   settings.colorFilter,
                   settings.palette,
                   settings.paletteChars,
+                  settings.matrixRain,
                 );
                 console.log(
                   `[Client] Payload size: ${capsPayload.length} bytes`,

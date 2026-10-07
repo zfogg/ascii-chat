@@ -148,6 +148,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/rgba/color_filter.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -835,6 +836,33 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
     time_pretty((uint64_t)((double)convert_duration_ns), -1, duration_str, sizeof(duration_str));
     log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %s took %s to convert %dx%d image to ASCII",
                    target_client_id, duration_str, composite->w, composite->h);
+  }
+
+  const bool matrix_rain = (caps_snapshot.capabilities & TERM_CAP_MATRIX_RAIN) != 0;
+  if (matrix_rain && ascii_frame) {
+    if (!render_client->digital_rain || render_client->digital_rain->num_columns != width ||
+        render_client->digital_rain->num_rows != h) {
+      if (render_client->digital_rain) {
+        digital_rain_destroy(render_client->digital_rain);
+      }
+      render_client->digital_rain = digital_rain_init(width, h);
+      render_client->digital_rain_last_update_time = (double)time_get_ns() / (double)NS_PER_SEC_INT;
+    }
+
+    if (render_client->digital_rain) {
+      const double now = (double)time_get_ns() / (double)NS_PER_SEC_INT;
+      const float elapsed = (float)(now - render_client->digital_rain_last_update_time);
+      render_client->digital_rain_last_update_time = now;
+      digital_rain_set_color_from_filter(render_client->digital_rain, caps_snapshot.color_filter);
+      char *rain_frame = digital_rain_apply(render_client->digital_rain, ascii_frame, elapsed);
+      if (rain_frame) {
+        SAFE_FREE(ascii_frame);
+        ascii_frame = rain_frame;
+      }
+    }
+  } else if (render_client->digital_rain) {
+    digital_rain_destroy(render_client->digital_rain);
+    render_client->digital_rain = NULL;
   }
 
   return ascii_frame;

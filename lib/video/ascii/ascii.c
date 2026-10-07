@@ -20,6 +20,7 @@
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/time.h>
@@ -345,6 +346,16 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                   ">>> Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", black_pixels,
                   total_pixels, total_pixels > 0 ? 100.0 * black_pixels / total_pixels : 0, resized->pixels[0].r,
                   resized->pixels[0].g, resized->pixels[0].b);
+
+  // Apply the target client's filter after resizing, so it is scoped to this
+  // client and never mutates the shared source frame.
+  if (caps->color_filter != COLOR_FILTER_NONE) {
+    const float time_seconds = (float)time_get_ns() / (float)NS_PER_SEC_INT;
+    if (apply_color_filter((uint8_t *)resized->pixels, (uint32_t)resized->w, (uint32_t)resized->h,
+                           (uint32_t)(resized->w * sizeof(rgb_pixel_t)), caps->color_filter, time_seconds) != 0) {
+      log_warn("Failed to apply client color filter %d", caps->color_filter);
+    }
+  }
 
   // Use the capability-aware image printing function with client's palette
   START_TIMER("image_print_with_capabilities");

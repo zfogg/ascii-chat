@@ -20,7 +20,11 @@ declare global {
   }
 }
 import { cleanupClientWasm, ConnectionState, PacketType } from "../wasm/client";
-import { initMirrorWasm } from "@ascii-chat/shared/wasm";
+import {
+  initMirrorWasm,
+  renderAudioVisualization,
+  submitAudioSamples,
+} from "@ascii-chat/shared/wasm";
 import {
   AsciiRenderer,
   BinarySettings,
@@ -71,6 +75,7 @@ export function ClientPage({
     "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302,turn:turn.ascii-chat.com:3478",
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
   const [rendererRequested, setRendererRequested] = useState(!discoveryMode);
@@ -98,6 +103,8 @@ export function ClientPage({
   }, [rendererRequested]);
   const [micEnabled, setMicEnabled] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const settingsRef = useRef<BinarySettingsConfig>(DEFAULT_SETTINGS);
+  const micEnabledRef = useRef(false);
   const audioRef = useRef<AudioPipeline | null>(null);
   const audioStreamStartedRef = useRef(false);
   const onConnectionStateChange = useCallback((state: ConnectionState) => {
@@ -168,12 +175,23 @@ export function ClientPage({
     cols: 0,
     rows: 0,
   });
+  const terminalDimensionsRef = useRef(terminalDimensions);
+  useEffect(() => {
+    terminalDimensionsRef.current = terminalDimensions;
+  }, [terminalDimensions]);
   const [fps, setFps] = useState<number | undefined>();
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
   const [settings, setSettings] =
     useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+  useEffect(() => {
+    micEnabledRef.current = micEnabled;
+  }, [micEnabled]);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<AsciiFrame[]>([]);
@@ -347,7 +365,11 @@ export function ClientPage({
   }, [settings.targetFps]);
 
   // Use shared canvas capture hook
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
+  const { captureFrame } = useCanvasCapture(
+    videoRef,
+    canvasRef,
+    settings.flipX ?? false,
+  );
 
   // Use webcam stream hook
   const { startWebcam, stopWebcam, isWebcamRunning } = useWebcamStream({
@@ -417,6 +439,24 @@ export function ClientPage({
       if (!audioRef.current)
         audioRef.current = new AudioPipeline({
           onLevels: setAudioLevels,
+          onMicrophoneSamples: (samples) => {
+            const current = settingsRef.current;
+            if (
+              current.animationEnabled &&
+              (current.animation === "waveform" || current.animation === "fft")
+            ) {
+              submitAudioSamples(samples, "microphone");
+            }
+          },
+          onPlaybackSamples: (samples) => {
+            const current = settingsRef.current;
+            if (
+              current.animationEnabled &&
+              (current.animation === "waveform" || current.animation === "fft")
+            ) {
+              submitAudioSamples(samples);
+            }
+          },
           onAudioData: (payload) => {
             if (!audioStreamStartedRef.current) return;
             try {
@@ -444,6 +484,7 @@ export function ClientPage({
   const toggleMicrophone = async () => {
     if (micEnabled) {
       audioRef.current?.stopCapture();
+      micEnabledRef.current = false;
       setMicEnabled(false);
       return;
     }
@@ -455,6 +496,7 @@ export function ClientPage({
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
       audioStreamStartedRef.current = true;
       await audioRef.current.startCapture();
+      micEnabledRef.current = true;
       setMicEnabled(true);
     } catch (error) {
       setError(String(error));
@@ -480,6 +522,7 @@ export function ClientPage({
             settings.colorFilter,
             settings.palette,
             settings.paletteChars,
+            settings.matrixRain,
           );
           clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
         } catch (err) {
@@ -513,6 +556,7 @@ export function ClientPage({
           settings.colorFilter,
           settings.palette,
           settings.paletteChars,
+          settings.matrixRain,
         ),
       );
     } catch (err) {
@@ -542,18 +586,56 @@ export function ClientPage({
       frameQueueRef.current.length = 0;
     }
     const frame = latestFrameRef.current;
-    if (frame && rendererRef.current) {
+    if (rendererRef.current) {
       if (renderLoopStartTimeRef.current === 0) {
         renderLoopStartTimeRef.current = performance.now();
       }
 
       {
-        const frameContent = frame.ansiString;
+        const activeSettings = settingsRef.current;
+        const visualAnimation =
+          activeSettings.animationEnabled &&
+          (activeSettings.animation === "waveform" ||
+            activeSettings.animation === "fft");
+        const dimensions = visualAnimation
+          ? terminalDimensionsRef.current
+          : frame
+            ? { cols: frame.header.width, rows: frame.header.height }
+            : null;
+        if (!dimensions || dimensions.cols <= 0 || dimensions.rows <= 0) {
+          return;
+        }
+
+        let frameContent = frame?.ansiString ?? "";
+        if (visualAnimation) {
+          const visualizationSource = micEnabledRef.current
+            ? "microphone"
+            : "media";
+          if (params.has("test")) {
+            const samples = new Float32Array(1024);
+            const now = performance.now();
+            for (let index = 0; index < samples.length; index++) {
+              samples[index] =
+                Math.sin((index / samples.length) * Math.PI * 16 + now / 70) *
+                  0.68 +
+                Math.sin((index / samples.length) * Math.PI * 53 + now / 31) *
+                  0.22;
+            }
+            submitAudioSamples(samples, visualizationSource);
+          }
+          frameContent = renderAudioVisualization(
+            dimensions.cols,
+            dimensions.rows,
+            visualizationSource,
+            activeSettings.animation === "fft" ? "fft" : "waveform",
+          );
+        }
+        if (!frameContent) return;
         const frameHash = hashFrame(frameContent);
         const writeStartedAt = performance.now();
         const drewFrame = rendererRef.current.writeFrame(frameContent, {
-          cols: frame.header.width,
-          rows: frame.header.height,
+          cols: dimensions.cols,
+          rows: dimensions.rows,
         });
         const writeDurationMs = performance.now() - writeStartedAt;
         if (!drewFrame) {
@@ -682,14 +764,25 @@ export function ClientPage({
   useEffect(() => {
     if (connectionState !== ConnectionState.CONNECTED) {
       webcamAutoStartedRef.current = false;
+      setWebcamDisabledByUser(false);
       return;
     }
-    if (!webcamAutoStartedRef.current) {
+    if (!webcamDisabledByUser && !webcamAutoStartedRef.current) {
       webcamAutoStartedRef.current = true;
       console.log("[Client] Connected and ready, auto-starting webcam...");
       void startWebcam();
     }
-  }, [connectionState, isWebcamRunning, startWebcam]);
+  }, [connectionState, isWebcamRunning, startWebcam, webcamDisabledByUser]);
+
+  const disableWebcam = useCallback(() => {
+    setWebcamDisabledByUser(true);
+    stopWebcam();
+  }, [stopWebcam]);
+
+  const enableWebcam = useCallback(() => {
+    setWebcamDisabledByUser(false);
+    void startWebcam();
+  }, [startWebcam]);
 
   const getStatusDotColor = () => {
     switch (connectionState) {
@@ -1046,9 +1139,18 @@ export function ClientPage({
               isWebcamRunning,
               onStartWebcam:
                 connectionState === ConnectionState.CONNECTED
-                  ? startWebcam
+                  ? discoveryMode
+                    ? enableWebcam
+                    : startWebcam
                   : undefined,
-              onStopWebcam: isWebcamRunning ? stopWebcam : undefined,
+              onStopWebcam: isWebcamRunning
+                ? discoveryMode
+                  ? disableWebcam
+                  : stopWebcam
+                : undefined,
+              webcamActionLabels: discoveryMode
+                ? { start: "Enable webcam", stop: "Disable webcam" }
+                : undefined,
               showConnectionButton: false,
               onSettingsClick: () => setShowSettings((open) => !open),
               showSettingsButton: true,

@@ -1716,6 +1716,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                sizeof(client->terminal_caps.palette_custom));
 
   client->terminal_caps.desired_fps = caps->desired_fps;
+  client->terminal_caps.color_filter = (color_filter_t)caps->color_filter;
 
   // Extract wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
   client->terminal_caps.wants_padding = (caps->wants_padding != 0);

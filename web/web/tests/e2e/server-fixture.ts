@@ -185,6 +185,10 @@ export class NativeClientFixture {
     );
     await new Promise<void>((resolve, reject) => {
       const process = this.process;
+      if (!process) {
+        reject(new Error("Native client process did not start"));
+        return;
+      }
       const timer = setTimeout(resolve, 500);
       process.once("exit", (code) => {
         clearTimeout(timer);

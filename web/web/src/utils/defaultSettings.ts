@@ -9,6 +9,8 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   palette: "standard",
   paletteChars: " =#░░▒▒▓▓██",
   matrixRain: false,
+  animationEnabled: false,
+  animation: "matrix",
   flipX: true,
 };
 

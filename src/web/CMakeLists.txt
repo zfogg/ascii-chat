@@ -564,6 +564,10 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_palette_chars
     _set_matrix_rain
     _get_matrix_rain
+    _set_waveform
+    _get_waveform
+    _set_fft
+    _get_fft
     _set_flip_x
     _get_flip_x
     _set_flip_y

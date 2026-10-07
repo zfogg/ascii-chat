@@ -13,10 +13,12 @@ import {
   isWasmReady,
   setColorFilter,
   setColorMode,
+  setFft,
   setFlipX,
   setMatrixRain,
   setPalette,
   setPaletteChars,
+  setWaveform,
 } from "@ascii-chat/shared/wasm";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 
@@ -160,7 +162,9 @@ export function useMirrorWebcam({
           height: { ideal: settings.height },
           facingMode: "user",
         },
-        audio: false,
+        audio: Boolean(
+          settings.animationEnabled && settings.animation !== "matrix",
+        ),
       });
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
       console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
@@ -334,7 +338,11 @@ export function useMirrorWebcam({
             }
           }
           try {
-            setMatrixRain(settings.matrixRain ?? false);
+            const animation = settings.animation ?? "matrix";
+            const enabled = settings.animationEnabled ?? settings.matrixRain ?? false;
+            setMatrixRain(enabled && animation === "matrix");
+            setWaveform(enabled && animation === "waveform");
+            setFft(enabled && animation === "fft");
           } catch (err) {
             console.warn("[Mirror] Failed to set matrix rain:", err);
           }

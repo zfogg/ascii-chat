@@ -4,7 +4,12 @@ import {
   type RefObject,
   type MutableRefObject,
 } from "react";
-import { isWasmReady, convertFrameToAscii } from "../wasm/mirror";
+import {
+  isWasmReady,
+  convertFrameToAscii,
+  renderAudioVisualization,
+  submitAudioSamples,
+} from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components";
 
 interface UseMirrorRenderLoopParams {
@@ -20,6 +25,9 @@ interface UseMirrorRenderLoopParams {
   debugCountRef: MutableRefObject<number>;
   firstFrameTimeRef: MutableRefObject<number | null>;
   frameIntervalRef: MutableRefObject<number>;
+  streamRef: MutableRefObject<MediaStream | null>;
+  animation?: "matrix" | "waveform" | "fft";
+  animationEnabled?: boolean;
 }
 
 let loopCounter = 0;
@@ -33,6 +41,9 @@ export function useMirrorRenderLoop({
   debugCountRef,
   firstFrameTimeRef,
   frameIntervalRef,
+  streamRef,
+  animation,
+  animationEnabled,
 }: UseMirrorRenderLoopParams) {
   const prevDepsRef = useRef<{
     isWebcamRunning: boolean;
@@ -85,6 +96,9 @@ export function useMirrorRenderLoop({
     const isTestMode = new URLSearchParams(window.location.search).has("test");
     let lastFrameTime = performance.now();
     let lastConversionTime = 0;
+    const audioSamples = new Float32Array(1024);
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
@@ -97,8 +111,28 @@ export function useMirrorRenderLoop({
       }
 
       let frame;
+      let asciiArt = "";
 
-      if (isTestMode) {
+      if (animationEnabled && (animation === "waveform" || animation === "fft")) {
+        if (!isTestMode && !analyser && streamRef.current?.getAudioTracks().length) {
+          audioContext = new AudioContext();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 2048;
+          audioContext.createMediaStreamSource(streamRef.current).connect(analyser);
+        }
+        for (let index = 0; index < audioSamples.length; index++) {
+          audioSamples[index] = isTestMode
+            ? Math.sin((index / audioSamples.length) * Math.PI * 16 + now / 70) * 0.68 +
+              Math.sin((index / audioSamples.length) * Math.PI * 53 + now / 31) * 0.22
+            : 0;
+        }
+        if (!isTestMode && analyser) analyser.getFloatTimeDomainData(audioSamples);
+        submitAudioSamples(audioSamples);
+        asciiArt = renderAudioVisualization(
+          terminalDimensions.cols,
+          terminalDimensions.rows,
+        );
+      } else if (isTestMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -130,28 +164,30 @@ export function useMirrorRenderLoop({
         frame = captureFrame();
       }
 
-      if (!frame) {
+      if (!asciiArt && !frame) {
         return;
       }
 
-      // Verify frame dimensions match expected RGBA size
-      const expectedSize = frame.width * frame.height * 4;
-      if (frame.data.length !== expectedSize) {
-        return;
-      }
+      if (!asciiArt) {
+        // Verify frame dimensions match expected RGBA size
+        const expectedSize = frame!.width * frame!.height * 4;
+        if (frame!.data.length !== expectedSize) {
+          return;
+        }
 
-      // If last conversion took > 100ms, skip this frame to prevent blocking
-      if (lastConversionTime > 100) {
-        return;
-      }
+        // If last conversion took > 100ms, skip this frame to prevent blocking
+        if (lastConversionTime > 100) {
+          return;
+        }
 
-      const conversionStartTime = performance.now();
-      const asciiArt = convertFrameToAscii(
-        frame.data,
-        frame.width,
-        frame.height,
-      );
-      lastConversionTime = performance.now() - conversionStartTime;
+        const conversionStartTime = performance.now();
+        asciiArt = convertFrameToAscii(
+          frame!.data,
+          frame!.width,
+          frame!.height,
+        );
+        lastConversionTime = performance.now() - conversionStartTime;
+      }
 
       if (!asciiArt) {
         return;
@@ -202,6 +238,7 @@ export function useMirrorRenderLoop({
       isActive = false;
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
+      void audioContext?.close();
     };
   }, [
     isWebcamRunning,
@@ -212,5 +249,8 @@ export function useMirrorRenderLoop({
     frameIntervalRef,
     canvasRef,
     firstFrameTimeRef,
+    animation,
+    animationEnabled,
+    streamRef,
   ]);
 }
