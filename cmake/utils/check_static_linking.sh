@@ -54,7 +54,7 @@ case "$PLATFORM" in
         while IFS= read -r DLL; do
             LOWER=$(printf '%s' "$DLL" | tr '[:upper:]' '[:lower:]')
             case "$LOWER" in
-                advapi32.dll|bcrypt.dll|bcryptprimitives.dll|cfgmgr32.dll|combase.dll|comctl32.dll|comdlg32.dll|crypt32.dll|dbghelp.dll|dnsapi.dll|gdi32.dll|gdi32full.dll|imm32.dll|iphlpapi.dll|kernel32.dll|kernelbase.dll|mf.dll|mfplat.dll|mfreadwrite.dll|mfuuid.dll|msvcrt.dll|mswsock.dll|normaliz.dll|ntdll.dll|ole32.dll|oleacc.dll|oleaut32.dll|psapi.dll|rpcrt4.dll|secur32.dll|setupapi.dll|shell32.dll|shcore.dll|shlwapi.dll|user32.dll|version.dll|winhttp.dll|winmm.dll|wintrust.dll|wldap32.dll|ws2_32.dll|wsock32.dll|ucrtbase.dll|vcruntime*.dll|msvcp*.dll|api-ms-win-*.dll|ext-ms-win-*.dll)
+                advapi32.dll|bcrypt.dll|bcryptprimitives.dll|cfgmgr32.dll|combase.dll|comctl32.dll|comdlg32.dll|crypt32.dll|dbghelp.dll|dnsapi.dll|gdi32.dll|gdi32full.dll|imm32.dll|iphlpapi.dll|kernel32.dll|kernelbase.dll|mf.dll|mfplat.dll|mfreadwrite.dll|mfuuid.dll|msvcrt.dll|mswsock.dll|normaliz.dll|ntdll.dll|ole32.dll|oleacc.dll|oleaut32.dll|psapi.dll|rpcrt4.dll|secur32.dll|setupapi.dll|shell32.dll|shcore.dll|shlwapi.dll|user32.dll|version.dll|winhttp.dll|winmm.dll|wintrust.dll|wldap32.dll|ws2_32.dll|wsock32.dll|ucrtbase.dll|api-ms-win-*.dll|ext-ms-win-*.dll)
                     ;;
                 *) NON_SYSTEM="${NON_SYSTEM}${DLL}\n" ;;
             esac
