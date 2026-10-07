@@ -63,14 +63,21 @@ foreach(OBJ_FILE ${OBJ_FILES})
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-    # Parse nm output and extract symbol names
-    string(REGEX MATCHALL "[^\n]+ [TDBRCStdbrc] [^\n]+" SYMBOLS "${NM_OUTPUT}")
-    foreach(SYMBOL_LINE ${SYMBOLS})
-        # llvm-nm prints "object: address class symbol". Anchor extraction to
-        # those fields so a compiler-generated string's contents cannot be
-        # mistaken for the symbol name (for example, a literal ending in
-        # "destroy" must not become an export named destroy).
-        string(REGEX REPLACE "^.*: [0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \n]+)$" "\\1" SYMBOL_NAME "${SYMBOL_LINE}")
+    # Parse nm output one line at a time. On Windows, llvm-nm writes an object
+    # file header on its own line followed by address/type/symbol records.
+    # Treating the complete output as a regex can mistake that header (and its
+    # separator) for an export and emit an invalid .def file.
+    string(REPLACE "\r\n" "\n" NM_OUTPUT "${NM_OUTPUT}")
+    string(REPLACE "\r" "\n" NM_OUTPUT "${NM_OUTPUT}")
+    string(REPLACE "\n" ";" NM_LINES "${NM_OUTPUT}")
+    foreach(NM_LINE ${NM_LINES})
+        string(STRIP "${NM_LINE}" NM_LINE)
+        set(SYMBOL_NAME "")
+        if(NM_LINE MATCHES "^[0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \t]+)$")
+            set(SYMBOL_NAME "${CMAKE_MATCH_1}")
+        elseif(NM_LINE MATCHES "^.*: [0-9A-Fa-f]+ [TDBRCStdbrc] ([^ \t]+)$")
+            set(SYMBOL_NAME "${CMAKE_MATCH_1}")
+        endif()
         if(SYMBOL_NAME)
             list(APPEND ALL_SYMBOLS "${SYMBOL_NAME}")
         endif()
