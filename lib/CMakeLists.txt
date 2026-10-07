@@ -1517,6 +1517,9 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     OpenSSL::SSL
     OpenSSL::Crypto
 )
+if(FREETYPE_LIBRARY_DIRS)
+    target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FREETYPE_LIBRARY_DIRS})
+endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
@@ -1560,6 +1563,7 @@ elseif(APPLE)
         ${AUDIOUNIT_FRAMEWORK}
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
+        "-framework IOKit"
         "-framework SystemConfiguration"
         ${ASCIICHAT_STATIC_LIBCXX_LIBS}
     )
