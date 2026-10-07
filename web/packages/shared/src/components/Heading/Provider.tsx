@@ -36,7 +36,14 @@ export function HeadingProvider({ children }: { children: ReactNode }) {
     return candidateId;
   }, []);
 
-  const contextValue = useMemo(() => ({ registerHeading }), [registerHeading]);
+  const unregisterHeading = useCallback((id: string): void => {
+    usedIdsRef.current.delete(id);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ registerHeading, unregisterHeading }),
+    [registerHeading, unregisterHeading],
+  );
 
   return (
     <HeadingContext.Provider value={contextValue}>

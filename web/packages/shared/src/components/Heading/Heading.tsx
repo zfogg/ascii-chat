@@ -15,10 +15,8 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-interface HeadingProps extends Omit<
-  HTMLAttributes<HTMLHeadingElement>,
-  "className"
-> {
+interface HeadingProps
+  extends Omit<HTMLAttributes<HTMLHeadingElement>, "className"> {
   level?: 1 | 2 | 3 | 4;
   className?: string;
   id?: string;
@@ -43,10 +41,15 @@ export function Heading({
 
   // Register with context to ensure uniqueness
   useEffect(() => {
-    if (baseId) {
-      const uniqueId = headingContext.registerHeading(baseId);
-      setFinalId(uniqueId);
+    if (!baseId) {
+      return undefined;
     }
+
+    const uniqueId = headingContext.registerHeading(baseId);
+    setFinalId(uniqueId);
+    return () => {
+      headingContext.unregisterHeading(uniqueId);
+    };
   }, [baseId, headingContext]);
 
   const combinedClassName = `${baseClass} ${className}`.trim();
