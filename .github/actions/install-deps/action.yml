@@ -129,12 +129,12 @@ runs:
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v6" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v7" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v2"
-        echo "  build: ${os}-${arch}-build-v6"
+        echo "  build: ${os}-${arch}-build-v7"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -163,12 +163,12 @@ runs:
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v6"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v7"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
         Write-Host "  ccache: ${os}-${arch}-ccache-v2"
-        Write-Host "  build: ${os}-${arch}-build-v6"
+        Write-Host "  build: ${os}-${arch}-build-v7"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache

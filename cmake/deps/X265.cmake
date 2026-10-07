@@ -217,6 +217,22 @@ endif()
 include(FindPkgConfig)
 pkg_check_modules(X265 REQUIRED x265)
 
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    find_library(X265_STATIC_LIBRARY
+        NAMES libx265.a
+        PATHS ${X265_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(NOT X265_STATIC_LIBRARY)
+        message(FATAL_ERROR "Static x265 is required for portable macOS Release builds")
+    endif()
+    set(X265_LIBRARIES "${X265_STATIC_LIBRARY}")
+    message(STATUS "${BoldGreen}✓${ColorReset} x265 (static): ${X265_STATIC_LIBRARY}")
+else()
+    set(X265_LIBRARIES ${X265_LDFLAGS})
+    message(STATUS "${BoldGreen}✓${ColorReset} x265 found")
+endif()
+
 if(NOT TARGET x265::x265)
     add_library(x265::x265 INTERFACE IMPORTED)
     target_include_directories(x265::x265 SYSTEM INTERFACE ${X265_INCLUDE_DIRS})
@@ -224,4 +240,3 @@ if(NOT TARGET x265::x265)
 endif()
 
 set(X265_FOUND TRUE)
-message(STATUS "${BoldGreen}✓${ColorReset} x265 found")

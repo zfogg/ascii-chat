@@ -224,7 +224,27 @@ elseif(UNIX AND NOT APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2 + fontconfig${ColorReset}")
 
 elseif(APPLE)
-    # macOS: Use system package managers (homebrew or macports)
+    # macOS Release: Link the stable Homebrew static archive so the runtime
+    # package does not depend on a separately installed libvterm dylib.
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(VTERM vterm REQUIRED)
+        find_library(VTERM_STATIC_LIBRARY
+            NAMES libvterm.a
+            PATHS ${VTERM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+        if(NOT VTERM_STATIC_LIBRARY)
+            message(FATAL_ERROR "Static libvterm is required for macOS Release builds")
+        endif()
+        set(VTERM_LDFLAGS "${VTERM_STATIC_LIBRARY}")
+        set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
+        set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
+        message(STATUS "${BoldGreen}✓${ColorReset} libvterm (static): ${VTERM_STATIC_LIBRARY}")
+        return()
+    endif()
+
+    # macOS Debug/Dev and shared-dependency builds: Use system package managers
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(VTERM vterm REQUIRED)
 

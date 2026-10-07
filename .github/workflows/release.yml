@@ -491,7 +491,7 @@ jobs:
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
-          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }}"
+          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"

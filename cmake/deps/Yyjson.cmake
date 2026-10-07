@@ -67,6 +67,15 @@ function(configure_yyjson)
         return()
     endif()
 
+    # Release binaries must not depend on the Homebrew yyjson dylib version
+    # installed on the build host.
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        message(STATUS "Configuring ${BoldBlue}yyjson${ColorReset} from submodule (macOS Release)...")
+        set(YYJSON_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/yyjson")
+        _yyjson_build_from_submodule(YYJSON_SOURCE_DIR "macOS Release")
+        return()
+    endif()
+
     # Non-musl: Try system package first, then submodule fallback
     find_package(yyjson QUIET CONFIG)
 

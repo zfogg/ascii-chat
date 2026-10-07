@@ -321,7 +321,14 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
     set(OPENSSL_NO_ASM OFF)
-    set(OPENSSL_BUILD_SHARED ON)
+    # Release packages should not retain a runtime dependency on the build
+    # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
+    # OpenSSL for faster iteration.
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        set(OPENSSL_BUILD_SHARED OFF)
+    else()
+        set(OPENSSL_BUILD_SHARED ON)
+    endif()
 
     # Detect target architecture for OpenSSL Configure.
     # Important: Check APPLE first so arm64 Macs don't get classified as linux-aarch64.

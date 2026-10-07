@@ -176,6 +176,33 @@ if(USE_MUSL)
     return()
 endif()
 
+# macOS Release: Prefer Homebrew's static archive to avoid a runtime dependency
+# on the build machine's zstd dylib version.
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    include(FindPkgConfig)
+    pkg_check_modules(ZSTD_PKG REQUIRED libzstd)
+    find_library(ZSTD_STATIC_LIBRARY
+        NAMES libzstd.a
+        PATHS ${ZSTD_PKG_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(NOT ZSTD_STATIC_LIBRARY)
+        message(FATAL_ERROR "Static zstd is required for macOS Release builds")
+    endif()
+    set(ZSTD_LIBRARIES "${ZSTD_STATIC_LIBRARY}")
+    set(ZSTD_INCLUDE_DIRS ${ZSTD_PKG_INCLUDE_DIRS})
+    if(NOT TARGET zstd::libzstd)
+        add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
+        set_target_properties(zstd::libzstd PROPERTIES
+            IMPORTED_LOCATION "${ZSTD_STATIC_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIRS}"
+        )
+    endif()
+    set(ZSTD_FOUND TRUE)
+    message(STATUS "${BoldGreen}✓${ColorReset} zstd (static): ${ZSTD_STATIC_LIBRARY}")
+    return()
+endif()
+
 # =============================================================================
 # Non-musl: Use system package or pkg-config
 # =============================================================================

@@ -171,11 +171,10 @@ else()
     # Note: ascii-chat-shared has EXCLUDE_FROM_ALL, so we install it separately
     # (the main install(TARGETS) loop skips EXCLUDE_FROM_ALL targets)
     #
-    # We split the installation into two rules to ensure ALL files go to Development:
-    # 1. Real library + SOVERSION symlink → Development (NAMELINK_SKIP)
-    # 2. Namelink → Development + exported (NAMELINK_ONLY)
-    # This overrides CMake's default behavior of splitting namelink (Development)
-    # and real library (Runtime) when using EXPORT.
+    # Keep the runtime library and SONAME symlink in Runtime so packaged
+    # executables can load libasciichat without installing the development files.
+    # The unversioned linker name remains in Development for consumers building
+    # against the library.
     if(APPLE)
         set(_ascii_chat_shared_label "libasciichat.dylib")
     else()
@@ -183,24 +182,41 @@ else()
     endif()
 
     if(TARGET ascii-chat-shared)
-        # Install the real library file and SOVERSION symlink to Development
-        # (without EXPORT - this prevents CMake from putting it in Runtime component)
-        install(TARGETS ascii-chat-shared
-            LIBRARY DESTINATION lib
-                NAMELINK_SKIP
-                COMPONENT Development
-            ARCHIVE DESTINATION lib
-                COMPONENT Development
-            OPTIONAL
-        )
+        if(APPLE)
+            install(TARGETS ascii-chat-shared
+                LIBRARY DESTINATION lib
+                    NAMELINK_SKIP
+                    COMPONENT Runtime
+                ARCHIVE DESTINATION lib
+                    COMPONENT Development
+                OPTIONAL
+            )
 
-        # Install the namelink to Development
-        install(TARGETS ascii-chat-shared
-            LIBRARY DESTINATION lib
-                NAMELINK_ONLY
-                COMPONENT Development
-            OPTIONAL
-        )
+            install(TARGETS ascii-chat-shared
+                LIBRARY DESTINATION lib
+                    NAMELINK_ONLY
+                    COMPONENT Development
+                OPTIONAL
+            )
+        else()
+            # Linux and other Unix packages currently keep all shared-library
+            # development files together in the Development component.
+            install(TARGETS ascii-chat-shared
+                LIBRARY DESTINATION lib
+                    NAMELINK_SKIP
+                    COMPONENT Development
+                ARCHIVE DESTINATION lib
+                    COMPONENT Development
+                OPTIONAL
+            )
+
+            install(TARGETS ascii-chat-shared
+                LIBRARY DESTINATION lib
+                    NAMELINK_ONLY
+                    COMPONENT Development
+                OPTIONAL
+            )
+        endif()
 
     endif()
 
