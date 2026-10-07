@@ -289,12 +289,28 @@ if(WIN32)
     # Release Windows packages use a static vcpkg triplet. Prefer its FFmpeg
     # archives before considering the prebuilt shared FFmpeg fallback.
     if(USE_VCPKG AND ASCIICHAT_ENFORCE_STATIC_RELEASE)
-        find_package(FFMPEG QUIET)
-        if(FFMPEG_FOUND)
-            message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found via static vcpkg triplet")
-            return()
+        set(_vcpkg_ffmpeg_include "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+        set(_vcpkg_ffmpeg_lib "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+        set(_vcpkg_ffmpeg_static_libraries)
+        foreach(_lib avformat avcodec swresample swscale avutil)
+            if(NOT EXISTS "${_vcpkg_ffmpeg_lib}/${_lib}.lib")
+                message(FATAL_ERROR "Static FFmpeg library not found: ${_vcpkg_ffmpeg_lib}/${_lib}.lib")
+            endif()
+            list(APPEND _vcpkg_ffmpeg_static_libraries "${_vcpkg_ffmpeg_lib}/${_lib}.lib")
+        endforeach()
+        if(NOT EXISTS "${_vcpkg_ffmpeg_include}/libavcodec/avcodec.h")
+            message(FATAL_ERROR "Static FFmpeg headers not found in ${_vcpkg_ffmpeg_include}")
         endif()
-        message(FATAL_ERROR "Static FFmpeg libraries are required for this Release build, but vcpkg did not provide them")
+        set(FFMPEG_FOUND TRUE)
+        set(FFMPEG_INCLUDE_DIRS "${_vcpkg_ffmpeg_include}")
+        set(FFMPEG_LIBRARY_DIRS "${_vcpkg_ffmpeg_lib}")
+        set(FFMPEG_LIBRARIES
+            ${_vcpkg_ffmpeg_static_libraries}
+            secur32 ws2_32 mfuuid strmiids ole32 user32 bcrypt
+        )
+        message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found via static vcpkg triplet")
+        message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
+            return()
     endif()
 
     # Try prebuilt FFmpeg first (user-provided or auto-downloaded)
