@@ -564,8 +564,8 @@ static bool asciichat_instr_build_log_path(asciichat_instr_runtime_t *runtime) {
     }
   }
 
-  // Only validate auto-generated paths (custom paths already validated above)
-  if (!is_custom_path) {
+  // Explicit output directories are validated during initialization and receive a generated filename.
+  if (!is_custom_path && !g_output_dir_set) {
     char *validated_log_path = NULL;
     asciichat_error_t validate_result =
         path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
