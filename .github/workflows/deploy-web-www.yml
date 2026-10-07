@@ -16,13 +16,13 @@ jobs:
       - name: Check out release branch
         uses: actions/checkout@v5
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
 
       - name: Link the existing Vercel project
         env:
