@@ -246,9 +246,15 @@ jobs:
         if: matrix.os == 'Windows'
         shell: pwsh
         run: |
-          $ffmpeg = Get-ChildItem ".deps-cache/Release/ffmpeg-*/bin/ffmpeg.exe" | Select-Object -First 1
-          if (-not $ffmpeg) { throw "FFmpeg executable missing from the selected dependency build" }
-          $env:PATH = "$($ffmpeg.DirectoryName);$env:PATH"
+          # The application links FFmpeg statically, so the vcpkg dependency
+          # build intentionally omits the ffmpeg/ffprobe command-line tools.
+          # Install those separately as test fixtures; this does not affect the
+          # executable's runtime dependency audit.
+          choco install ffmpeg --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Could not install FFmpeg test tools" }
+          $ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
+          $ffprobe = Get-Command ffprobe -ErrorAction SilentlyContinue
+          if (-not $ffmpeg -or -not $ffprobe) { throw "FFmpeg test tools were not added to PATH" }
           python tests/integration/render_file_audio.py build_release/bin/ascii-chat.exe
           if ($LASTEXITCODE -ne 0) { throw "Native Windows call recording regression failed" }
 
