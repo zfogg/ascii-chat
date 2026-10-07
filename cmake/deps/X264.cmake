@@ -46,6 +46,18 @@ if(USE_MUSL)
 
         # Download x264 source
         set(X264_TARBALL "${X264_BUILD_DIR}/x264.tar.bz2")
+        if(EXISTS "${X264_TARBALL}")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar tjf "${X264_TARBALL}"
+                RESULT_VARIABLE X264_ARCHIVE_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(NOT X264_ARCHIVE_RESULT EQUAL 0)
+                message(STATUS "  Removing invalid cached x264 archive")
+                file(REMOVE "${X264_TARBALL}")
+            endif()
+        endif()
         if(NOT EXISTS "${X264_TARBALL}")
             message(STATUS "  Downloading x264...")
             file(DOWNLOAD
