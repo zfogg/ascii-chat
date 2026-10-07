@@ -148,11 +148,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$VERSION^{}" | cut -f1)
           if [[ -n "$EXISTING_TAG" ]]; then
-            if [[ "$EXISTING_TAG" != "$GITHUB_SHA" ]]; then
-              echo "::error::Tag $VERSION already points to $EXISTING_TAG, expected $GITHUB_SHA"
+            CHANGED_FILES=$(git diff --name-only "$EXISTING_TAG" "$GITHUB_SHA")
+            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA" || [[ "$CHANGED_FILES" != ".github/workflows/release.yml" ]]; then
+              echo "::error::Tag $VERSION points to $EXISTING_TAG and the release workflow source contains changes beyond the workflow itself."
               exit 1
             fi
-            echo "Tag $VERSION already points to the tested source commit $GITHUB_SHA; reusing it."
+            echo "Tag $VERSION points to tested source $EXISTING_TAG; only the release workflow changed, so reusing it."
           else
             git tag -a "$VERSION" -m "Release $VERSION"
             git push origin "$VERSION"
