@@ -401,12 +401,23 @@ jobs:
           ls -lh *.asc
 
       - name: Upload Linux packages to release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.create-release.outputs.version }}
-          files: dist/*
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
+              exit 0
+            fi
+
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
+              sleep $((attempt * 5))
+            fi
+          done
+
+          echo "Release upload failed after 3 attempts"
+          exit 1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
   package-macos:
     name: Package macOS installers
@@ -604,12 +615,23 @@ jobs:
           ls -lh *.asc
 
       - name: Upload macOS packages to release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.create-release.outputs.version }}
-          files: dist/*
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
+              exit 0
+            fi
+
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
+              sleep $((attempt * 5))
+            fi
+          done
+
+          echo "Release upload failed after 3 attempts"
+          exit 1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
@@ -782,12 +804,28 @@ jobs:
           Write-Host "All required packages found (runtime + development)"
 
       - name: Upload Windows packages to release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.create-release.outputs.version }}
-          files: dist/*
+        shell: pwsh
+        run: |
+          $version = "${{ needs.create-release.outputs.version }}"
+          $files = @(Get-ChildItem -Path "dist" -File | ForEach-Object { $_.FullName })
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            gh release upload $version @files --clobber
+            if ($LASTEXITCODE -eq 0) {
+              exit 0
+            }
+
+            if ($attempt -lt 3) {
+              $delaySeconds = $attempt * 5
+              Write-Host "Release upload failed; retrying in $delaySeconds seconds (attempt $($attempt + 1)/3)..."
+              Start-Sleep -Seconds $delaySeconds
+            }
+          }
+
+          Write-Error "Release upload failed after 3 attempts"
+          exit 1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
   notify:
     name: Send release notification
