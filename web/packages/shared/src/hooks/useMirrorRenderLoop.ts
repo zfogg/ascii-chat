@@ -220,9 +220,18 @@ export function useMirrorRenderLoop({
 
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
+        // requestAnimationFrame timestamps can fall a fraction of a millisecond
+        // below 1000 / targetFps at a nominal 60 Hz. Requiring a strict interval
+        // then skips that callback and halves the render rate. Keep the cadence
+        // anchored to the deadline while accepting normal timestamp jitter.
+        const tolerance = Math.min(1, interval / 20);
 
-        if (elapsed >= interval) {
-          lastFrameTime = time;
+        if (elapsed + tolerance >= interval) {
+          const intervalsElapsed = Math.max(
+            1,
+            Math.floor((elapsed + tolerance) / interval),
+          );
+          lastFrameTime += intervalsElapsed * interval;
           renderFrame();
         }
 
