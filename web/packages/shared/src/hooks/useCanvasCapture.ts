@@ -18,6 +18,7 @@ export function useCanvasCapture(
   const captureFrame = useCallback(
     (
       drawVideo = true,
+      sourceCanvas?: HTMLCanvasElement,
     ): {
       data: Uint8Array;
       width: number;
@@ -25,7 +26,7 @@ export function useCanvasCapture(
     } | null => {
       const capStartTime = performance.now();
       const video = videoRef.current;
-      const canvas = canvasRef.current;
+      const canvas = sourceCanvas ?? canvasRef.current;
 
       if (!canvas || (drawVideo && !video)) {
         console.warn(

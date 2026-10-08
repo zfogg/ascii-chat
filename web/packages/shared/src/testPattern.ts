@@ -95,11 +95,13 @@ export function createTestPatternVideoSource(
   height = 480,
   mode: Exclude<TestPatternMode, "none"> = "test",
   targetCanvas?: HTMLCanvasElement,
+  onFrame?: (canvas: HTMLCanvasElement) => void,
 ): TestPatternVideoSource {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext("2d");
+  // Frames are read back into CPU memory before being sent over WebRTC.
+  const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Could not create test-pattern canvas");
 
   let animationFrame = 0;
@@ -116,6 +118,7 @@ export function createTestPatternVideoSource(
   };
   const draw = () => {
     drawSelectedTestPatternFrame(mode, context, canvas.width, canvas.height);
+    onFrame?.(canvas);
     animationFrame = requestAnimationFrame(draw);
   };
   draw();

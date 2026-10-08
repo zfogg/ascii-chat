@@ -19,10 +19,6 @@ export class WebRTCBridge implements PacketTransport {
   private receivedPackets = 0;
   private receivedPacketTypes: Record<number, number> = {};
   private lastReceiveReport = performance.now();
-  // A server ASCII frame is a complete display snapshot. Keep only the newest
-  // one until paint, while control and audio packets continue immediately.
-  private latestAsciiFrame: Uint8Array | null = null;
-  private asciiDispatchScheduled = false;
 
   constructor(
     private channel: RTCDataChannel,
@@ -100,23 +96,7 @@ export class WebRTCBridge implements PacketTransport {
     this.receivedPackets++;
     const packetType = new DataView(packet.buffer, packet.byteOffset, packet.byteLength).getUint16(8, false);
     this.receivedPacketTypes[packetType] = (this.receivedPacketTypes[packetType] ?? 0) + 1;
-    if (packetType === 3000) {
-      this.latestAsciiFrame = packet;
-      this.scheduleAsciiDispatch();
-      return;
-    }
     this.onPacket(packet);
-  }
-
-  private scheduleAsciiDispatch(): void {
-    if (this.asciiDispatchScheduled) return;
-    this.asciiDispatchScheduled = true;
-    requestAnimationFrame(() => {
-      this.asciiDispatchScheduled = false;
-      const frame = this.latestAsciiFrame;
-      this.latestAsciiFrame = null;
-      if (frame && !this.closed) this.onPacket(frame);
-    });
   }
 
   send(packet: Uint8Array, replaceable = false): void {
@@ -213,7 +193,6 @@ export class WebRTCBridge implements PacketTransport {
     this.queue = [];
     this.queuedBytes = 0;
     this.pending = new Uint8Array(0);
-    this.latestAsciiFrame = null;
     this.channel.onmessage = null;
     this.channel.onbufferedamountlow = null;
     this.channel.onerror = null;

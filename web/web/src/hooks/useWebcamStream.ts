@@ -30,7 +30,7 @@ interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: BinarySettingsConfig;
-  captureFrame: (drawVideo?: boolean) => {
+  captureFrame: (drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => {
     data: Uint8Array;
     width: number;
     height: number;
@@ -64,9 +64,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const startingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const h265EncoderRef = useRef<H265Encoder | null>(null);
-  const webcamCaptureLoopRef = useRef<((drawVideo?: boolean) => void) | null>(
-    null,
-  );
+  const webcamCaptureLoopRef = useRef<
+    ((drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => void) | null
+  >(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const testPatternSourceRef = useRef<TestPatternVideoSource | null>(null);
 
@@ -82,13 +82,16 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     // Timer-based frame sending to match server render loop (not RAF-based)
     // RAF fires at monitor refresh rate (60+ Hz) regardless of frame send interval
     // Timer ensures we send at exactly the target FPS, matching C client behavior
-    const sendOneFrame = (drawVideo = true) => {
+    const sendOneFrame = (
+      drawVideo = true,
+      sourceCanvas?: HTMLCanvasElement,
+    ) => {
       const now = performance.now();
 
       // Call captureAndSendFrame through ref to get the latest version
       const conn = clientRef.current;
       if (conn && connectionState === ConnectionState.CONNECTED) {
-        const frame = captureFrame(drawVideo);
+        const frame = captureFrame(drawVideo, sourceCanvas);
         if (frame && frame.data) {
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
@@ -147,12 +150,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               // Queue current frame for encoding. This returns immediately,
               // and the encoded data will be available in drain() on the
               // next iteration.
-              if (!canvasRef.current) {
+              const encoderCanvas = sourceCanvas ?? canvasRef.current;
+              if (!encoderCanvas) {
                 throw new Error("Canvas not available for VideoFrame creation");
               }
 
               // Create VideoFrame from canvas for H.265 encoding
-              const videoFrame = new VideoFrame(canvasRef.current, {
+              const videoFrame = new VideoFrame(encoderCanvas, {
                 timestamp: now * 1000, // microseconds
               });
 
@@ -208,6 +212,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       isWebcamRunning &&
       webcamCaptureLoopRef.current
     ) {
+      if (testPatternSourceRef.current) {
+        console.log(
+          "[Client] Sending test-pattern frames directly from the source canvas",
+        );
+        return;
+      }
       const videoTrack = streamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
         void videoTrack
@@ -463,12 +473,27 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
       let stream: MediaStream;
       if (testPattern.enabled) {
+        const frameInterval = 1000 / settings.targetFps;
+        let nextPatternFrameAt = 0;
         const source = createTestPatternVideoSource(
           settings.targetFps,
           canvasRef.current.width || w,
           canvasRef.current.height || h,
           testPattern.mode === "none" ? "test" : testPattern.mode,
           canvasRef.current,
+          (sourceCanvas) => {
+            const now = performance.now();
+            if (nextPatternFrameAt === 0) nextPatternFrameAt = now;
+            const elapsed = now - nextPatternFrameAt;
+            const tolerance = Math.min(1, frameInterval / 20);
+            if (elapsed + tolerance < frameInterval) return;
+            const intervalsElapsed = Math.max(
+              1,
+              Math.floor((elapsed + tolerance) / frameInterval),
+            );
+            nextPatternFrameAt += intervalsElapsed * frameInterval;
+            webcamCaptureLoopRef.current?.(false, sourceCanvas);
+          },
         );
         testPatternSourceRef.current = source;
         stream = source.stream;

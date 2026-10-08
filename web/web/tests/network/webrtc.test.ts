@@ -357,30 +357,25 @@ describe("WebRTC ACIP framing", () => {
     expect(received.mock.calls.map((call) => call[0])).toEqual([first, second]);
     expect(failure).not.toHaveBeenCalled();
   });
-  it("coalesces stale ASCII snapshots without delaying audio", () => {
+  it("dispatches every received ASCII snapshot without waiting for animation frames", () => {
     const dc = channel(),
       received = vi.fn(),
       failure = vi.fn();
-    let dispatch: FrameRequestCallback | undefined;
-    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-      dispatch = callback;
-      return 1;
-    });
+    const requestFrame = vi.fn();
+    vi.stubGlobal("requestAnimationFrame", requestFrame);
     try {
       new WebRTCBridge(dc, received, failure);
-      const staleFrame = packetOfType(3000, 10);
-      const newestFrame = packetOfType(3000, 20);
-      const audio = packetOfType(4001, 12);
+      const firstFrame = packetOfType(3000, 10);
+      const secondFrame = packetOfType(3000, 20);
 
-      dc.onmessage!({ data: staleFrame.buffer } as MessageEvent<ArrayBuffer>);
-      dc.onmessage!({ data: audio.buffer } as MessageEvent<ArrayBuffer>);
-      dc.onmessage!({ data: newestFrame.buffer } as MessageEvent<ArrayBuffer>);
+      dc.onmessage!({ data: firstFrame.buffer } as MessageEvent<ArrayBuffer>);
+      dc.onmessage!({ data: secondFrame.buffer } as MessageEvent<ArrayBuffer>);
 
-      expect(received).toHaveBeenCalledTimes(1);
-      expect(received).toHaveBeenLastCalledWith(audio);
-      dispatch!(0);
-      expect(received).toHaveBeenLastCalledWith(newestFrame);
-      expect(received).not.toHaveBeenCalledWith(staleFrame);
+      expect(received.mock.calls.map(([packet]) => packet)).toEqual([
+        firstFrame,
+        secondFrame,
+      ]);
+      expect(requestFrame).not.toHaveBeenCalled();
       expect(failure).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
