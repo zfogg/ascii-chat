@@ -256,6 +256,11 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             set(_webrtc_cxx_flags "-O3 -target ${WEBRTC_MUSL_TARGET} -stdlib=libc++")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
+            # This nested build only produces static archives. Its compiler ABI
+            # probe must not link an executable with the host GCC runtime: on
+            # native ARM64 runners, clang's musl target does not have the
+            # matching crtbeginS.o/libgcc_s startup files installed.
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY")
             message(STATUS "WebRTC will be built for musl target: ${WEBRTC_MUSL_TARGET}")
         endif()
 
