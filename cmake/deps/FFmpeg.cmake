@@ -176,16 +176,17 @@ if(USE_MUSL)
 
         # Configure FFmpeg
         message(STATUS "  Configuring FFmpeg...")
-        # Find GCC's lib directories for libstdc++/libgcc (needed for x265 C++ link test)
-        execute_process(
-            COMMAND ${REAL_GCC} -print-file-name=libgcc.a
-            OUTPUT_VARIABLE _GCC_LIBGCC_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-        execute_process(
-            COMMAND ${REAL_GCC} -print-file-name=libstdc++.a
-            OUTPUT_VARIABLE _GCC_LIBSTDCXX_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-        get_filename_component(GCC_LIB_DIR "${_GCC_LIBGCC_PATH}" DIRECTORY)
-        get_filename_component(GCC_STDCXX_DIR "${_GCC_LIBSTDCXX_PATH}" REALPATH)
-        get_filename_component(GCC_STDCXX_DIR "${GCC_STDCXX_DIR}" DIRECTORY)
+        # x265 is built against Alpine's musl-compatible libc++. GCC's
+        # libstdc++ and libgcc are built against the runner's glibc and cannot
+        # be used in this musl link (notably on aarch64, where they reference
+        # glibc-only symbols such as __getauxval and __isoc23_strtoul).
+        set(MUSL_LIBCXX_LIB_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
+        foreach(_runtime_archive libc++.a libc++abi.a libunwind.a)
+            if(NOT EXISTS "${MUSL_LIBCXX_LIB_DIR}/${_runtime_archive}")
+                message(FATAL_ERROR
+                    "Missing musl-compatible C++ runtime archive: ${MUSL_LIBCXX_LIB_DIR}/${_runtime_archive}")
+            endif()
+        endforeach()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
                 CC=${MUSL_GCC}
@@ -197,8 +198,8 @@ if(USE_MUSL)
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
-                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
-                "--extra-libs=-lm -Wl,-Bstatic -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
+                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib"
+                "--extra-libs=-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a"
                 --enable-static
                 --disable-shared
                 --enable-pic
