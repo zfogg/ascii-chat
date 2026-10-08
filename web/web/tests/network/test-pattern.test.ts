@@ -39,6 +39,29 @@ describe("shared test animation selection", () => {
     expect(arc.mock.calls[2]?.[0]).toBeLessThan(-radius + 1);
   });
 
+  it("covers the background continuously at every point in its loop", () => {
+    const fillRect = vi.fn();
+    const context = {
+      fillRect,
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      fillText: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    drawTestPatternFrame2(context, 800, 400, 2000);
+
+    const stripeWidth = 800 / 12;
+    const positions = fillRect.mock.calls
+      .slice(1, 14)
+      .map(([x]) => x as number)
+      .sort((left, right) => left - right);
+    expect(positions[0]).toBeLessThanOrEqual(0);
+    for (let index = 1; index < positions.length; index++)
+      expect(positions[index] - positions[index - 1]).toBeCloseTo(stripeWidth);
+    expect(positions.at(-1)! + stripeWidth).toBeGreaterThanOrEqual(800);
+  });
+
   it("keeps the captured source at the target canvas size after resize", () => {
     let animationFrame: FrameRequestCallback | undefined;
     let notifyResize: (() => void) | undefined;

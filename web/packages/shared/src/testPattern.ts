@@ -58,9 +58,12 @@ export function drawTestPatternFrame2(
   context.fillRect(0, 0, width, height);
 
   const stripeWidth = Math.max(8, width / 12);
-  for (let index = 0; index < 12; index++) {
-    const hue = (index * 30 + phase * 360) % 360;
-    const x = (index * stripeWidth + phase * width) % (width + stripeWidth);
+  const stripeOffset = phase * width;
+  const firstStripe = Math.ceil(-stripeOffset / stripeWidth);
+  for (let offset = 0; offset <= 12; offset++) {
+    const index = firstStripe + offset;
+    const hue = ((index % 12) + 12) % 12 * 30;
+    const x = index * stripeWidth + stripeOffset;
     context.fillStyle = `hsl(${hue}, 100%, 55%)`;
     context.fillRect(x - stripeWidth, 0, stripeWidth, height);
   }
