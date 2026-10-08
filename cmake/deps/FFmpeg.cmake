@@ -188,11 +188,13 @@ if(USE_MUSL)
             endif()
         endforeach()
         set(MUSL_FFMPEG_EXTRA_LDFLAGS "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+        set(MUSL_FFMPEG_EXTRA_LIBS "-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a")
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-            # Apply the baseline atomic mode at link time as well as compile
-            # time. Debian's GCC otherwise adds its glibc-specific LSE init
-            # object, which references __getauxval.
-            string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -mno-outline-atomics")
+            # musl-gcc wraps Debian's glibc-targeted GCC. Suppress its default
+            # libraries so it does not inject glibc's LSE initializer, then
+            # provide the required musl libraries and compiler builtins.
+            string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -mno-outline-atomics -nodefaultlibs")
+            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " ${MUSL_LIBGCC_PATH} -lc")
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
@@ -206,7 +208,7 @@ if(USE_MUSL)
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
                 "--extra-ldflags=${MUSL_FFMPEG_EXTRA_LDFLAGS}"
-                "--extra-libs=-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a"
+                "--extra-libs=${MUSL_FFMPEG_EXTRA_LIBS}"
                 --enable-static
                 --disable-shared
                 --enable-pic
