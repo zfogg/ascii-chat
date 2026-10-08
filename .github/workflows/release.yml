@@ -387,6 +387,8 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
 
           # Copy all package artifacts (component-based packaging creates multiple packages)
           # Expected packages per architecture:
@@ -402,6 +404,12 @@ jobs:
           #   - libasciichat-*.sh (development self-extracting installer)
           for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
+            name="${artifact##*/}"
+            # The restored build cache can contain packages from an earlier release.
+            # Keep only this release's versioned outputs and the shared uninstaller.
+            if [[ "$name" != *"-${version}-"* && "$name" != "ascii-chat-uninstall.sh" ]]; then
+              continue
+            fi
             cp "$artifact" dist/
           done
 
@@ -617,6 +625,13 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "arm64" ]]; then
+            arch="arm64"
+          else
+            arch="amd64"
+          fi
 
           # Copy all package artifacts (component-based packaging creates multiple packages)
           # Expected packages per architecture:
@@ -628,20 +643,15 @@ jobs:
           #   - libasciichat-*.sh (development self-extracting installer)
           for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
+            name="${artifact##*/}"
+            # Exclude stale packages restored from the architecture build cache.
+            [[ "$name" == *"-${version}-macOS-${arch}."* ]] || continue
             cp "$artifact" dist/
           done
 
           # Verify required package names, including the release version and architecture.
           echo "Checking for required package names..."
           ls -l dist
-
-          version="${{ needs.create-release.outputs.version }}"
-          version="${version#v}"
-          if [[ "$(uname -m)" == "arm64" ]]; then
-            arch="arm64"
-          else
-            arch="amd64"
-          fi
 
           missing=""
           [[ -f "dist/ascii-chat-${version}-macOS-${arch}.pkg" ]] || missing="$missing ascii-chat.pkg"
@@ -856,14 +866,16 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
+          $arch = "${{ matrix.arch }}"
 
-          # Copy all package artifacts (component-based packaging creates multiple packages)
+          # Copy only this release's package artifacts (component-based packaging creates multiple packages).
           # Expected packages:
           #   - ascii-chat.msi (runtime package - single installer with optional components)
           #   - ascii-chat-*.zip (runtime archive)
           #   - libasciichat-*.zip (development archive)
           # Note: WIX creates a single .msi with selectable components, not separate .msi files
-          $patterns = @("build_release/*.msi", "build_release/*.zip")
+          $patterns = @("build_release/*-$version-Windows-$arch.msi", "build_release/*-$version-Windows-$arch.zip")
           foreach ($pattern in $patterns) {
             foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
               Copy-Item $artifact.FullName dist/
@@ -874,8 +886,6 @@ jobs:
           Write-Host "Checking for required package names..."
           Get-ChildItem dist
 
-          $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
-          $arch = "${{ matrix.arch }}"
           $missing = @()
           # MSI only on amd64 (WiX v3 is x86-only, can't run on ARM64)
           if ($arch -ne "arm64") {
