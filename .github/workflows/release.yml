@@ -765,7 +765,10 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
+          $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
           $args = @("--preset", "windows-release",
+            "-DPROJECT_VERSION_FROM_GIT=$version",
+            "-DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }}",
             "-DASCIICHAT_DEFER_TOOL=$deferTool",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DASCIICHAT_ENABLE_NSIS=OFF",
