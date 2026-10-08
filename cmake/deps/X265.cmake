@@ -179,9 +179,13 @@ if(USE_MUSL)
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
     set(_x265_pc_libs "-L\${libdir} -lx265")
     if(EXISTS "${_alpine_libcxx_dir}/usr/lib/libc++.a")
-        string(APPEND _x265_pc_libs " -L${_alpine_libcxx_dir}/usr/lib -l:libc++.a -l:libc++abi.a")
+        # Use explicit archive paths here. FFmpeg's configure link probe does
+        # not consistently preserve GNU's -l:filename syntax across targets.
+        string(APPEND _x265_pc_libs
+            " ${_alpine_libcxx_dir}/usr/lib/libc++.a"
+            " ${_alpine_libcxx_dir}/usr/lib/libc++abi.a")
         if(EXISTS "${_alpine_libcxx_dir}/usr/lib/libunwind.a")
-            string(APPEND _x265_pc_libs " -l:libunwind.a")
+            string(APPEND _x265_pc_libs " ${_alpine_libcxx_dir}/usr/lib/libunwind.a")
         endif()
     endif()
     file(MAKE_DIRECTORY "${X265_PREFIX}/lib/pkgconfig")
@@ -209,6 +213,18 @@ if(USE_MUSL)
         message(FATAL_ERROR "x265 pkg-config metadata is invalid:\n${X265_PKG_CONFIG_ERROR}\n${_x265_pc}")
     endif()
     message(STATUS "  x265 pkg-config version: ${X265_PKG_CONFIG_VERSION}")
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env "PKG_CONFIG_PATH=${_musl_pkg_config_path}" pkg-config --libs x265
+        RESULT_VARIABLE X265_PKG_CONFIG_LIBS_RESULT
+        OUTPUT_VARIABLE X265_PKG_CONFIG_LIBS
+        ERROR_VARIABLE X265_PKG_CONFIG_LIBS_ERROR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT X265_PKG_CONFIG_LIBS_RESULT EQUAL 0)
+        message(FATAL_ERROR "x265 pkg-config link flags are invalid:\n${X265_PKG_CONFIG_LIBS_ERROR}\n${_x265_pc}")
+    endif()
+    message(STATUS "  x265 pkg-config link flags: ${X265_PKG_CONFIG_LIBS}")
 
     set(X265_LIBRARIES "${X265_PREFIX}/lib/libx265.a")
     set(X265_INCLUDE_DIRS "${X265_PREFIX}/include")

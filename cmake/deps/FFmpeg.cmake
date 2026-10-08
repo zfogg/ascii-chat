@@ -229,7 +229,22 @@ if(USE_MUSL)
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}")
+            set(FFMPEG_CONFIG_LOG "${FFMPEG_SOURCE_DIR}/ffbuild/config.log")
+            set(FFMPEG_CONFIG_LOG_TAIL "")
+            if(EXISTS "${FFMPEG_CONFIG_LOG}")
+                file(STRINGS "${FFMPEG_CONFIG_LOG}" FFMPEG_CONFIG_LOG_LINES)
+                list(LENGTH FFMPEG_CONFIG_LOG_LINES FFMPEG_CONFIG_LOG_LINE_COUNT)
+                if(FFMPEG_CONFIG_LOG_LINE_COUNT GREATER 120)
+                    math(EXPR FFMPEG_CONFIG_LOG_START "${FFMPEG_CONFIG_LOG_LINE_COUNT} - 120")
+                    list(SUBLIST FFMPEG_CONFIG_LOG_LINES ${FFMPEG_CONFIG_LOG_START} 120 FFMPEG_CONFIG_LOG_TAIL_LINES)
+                else()
+                    set(FFMPEG_CONFIG_LOG_TAIL_LINES ${FFMPEG_CONFIG_LOG_LINES})
+                endif()
+                string(JOIN "\n" FFMPEG_CONFIG_LOG_TAIL ${FFMPEG_CONFIG_LOG_TAIL_LINES})
+            endif()
+            message(FATAL_ERROR
+                "Failed to configure FFmpeg:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}\n"
+                "FFmpeg configure log (${FFMPEG_CONFIG_LOG}):\n${FFMPEG_CONFIG_LOG_TAIL}")
         endif()
 
         # Build FFmpeg

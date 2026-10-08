@@ -93,7 +93,13 @@ endif()
 # =============================================================================
 # On Unix systems, PATH is colon-separated. CMake requires semicolon-separated lists.
 # This conversion allows find_program to properly search all PATH directories.
-string(REPLACE ":" ";" _CMAKE_PATH_LIST "$ENV{PATH}")
+if(WIN32)
+    # Windows PATH is already semicolon-separated. Replacing colons here splits
+    # drive prefixes such as C:\LLVM into invalid entries like C and /LLVM.
+    set(_CMAKE_PATH_LIST "$ENV{PATH}")
+else()
+    string(REPLACE ":" ";" _CMAKE_PATH_LIST "$ENV{PATH}")
+endif()
 
 # =============================================================================
 # Platform-specific search paths
