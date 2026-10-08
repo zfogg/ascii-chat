@@ -17,7 +17,7 @@
 
 # Stable snapshot from code.videolan.org (x264 doesn't do versioned releases)
 set(X264_COMMIT "4613ac3c15fd75cebc4b9f65b7fb95e70a3acce1")
-set(X264_HASH "a]")
+set(X264_HASH "44ce79258656d7dbe06165321cb989cc242a66effa308e25d2f0a197b50f8398")
 
 # =============================================================================
 # Windows: x264 not needed (vcpkg FFmpeg is built without libx264)
@@ -45,10 +45,10 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${X264_SOURCE_DIR}")
 
         # Download x264 source
-        set(X264_TARBALL "${X264_BUILD_DIR}/x264.tar.bz2")
+        set(X264_TARBALL "${X264_BUILD_DIR}/x264.tar.gz")
         if(EXISTS "${X264_TARBALL}")
             execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar tjf "${X264_TARBALL}"
+                COMMAND ${CMAKE_COMMAND} -E tar tzf "${X264_TARBALL}"
                 RESULT_VARIABLE X264_ARCHIVE_RESULT
                 OUTPUT_QUIET
                 ERROR_QUIET
@@ -61,8 +61,9 @@ if(USE_MUSL)
         if(NOT EXISTS "${X264_TARBALL}")
             message(STATUS "  Downloading x264...")
             file(DOWNLOAD
-                "https://code.videolan.org/videolan/x264/-/archive/${X264_COMMIT}/x264-${X264_COMMIT}.tar.bz2"
+                "https://codeload.github.com/mirror/x264/tar.gz/${X264_COMMIT}"
                 "${X264_TARBALL}"
+                EXPECTED_HASH SHA256=${X264_HASH}
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -77,7 +78,7 @@ if(USE_MUSL)
         if(NOT EXISTS "${X264_SOURCE_DIR}/configure")
             message(STATUS "  Extracting x264...")
             execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar xjf "${X264_TARBALL}"
+                COMMAND ${CMAKE_COMMAND} -E tar xzf "${X264_TARBALL}"
                 WORKING_DIRECTORY "${X264_BUILD_DIR}"
                 RESULT_VARIABLE EXTRACT_RESULT
             )
