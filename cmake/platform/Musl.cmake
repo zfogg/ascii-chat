@@ -530,11 +530,6 @@ function(configure_musl_post_project)
         endif()
     endfunction()
 
-    # Link musl libc globally (applies to all targets)
-    # For shared libraries: -stdlib=libc++ will find system libc++ with -fPIC
-    # For static executables: Alpine libc++ will be linked via link_alpine_libcxx()
-    link_libraries(c)
-
     add_link_options(
         "${MUSL_LIBDIR}/crtn.o"
     )
