@@ -23,6 +23,7 @@ export interface DiscoveryOptions {
   sessionName: string;
   password: string;
   signalingUrl: string;
+  applicationEncryption?: boolean;
   stunServers: string[];
   turnServers: string[];
   iceTransportPolicy?: RTCIceTransportPolicy;
@@ -111,6 +112,9 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
+      ...(options.applicationEncryption === undefined
+        ? {}
+        : { applicationEncryption: options.applicationEncryption }),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
       discoveryHandshake: true,

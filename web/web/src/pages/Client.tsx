@@ -52,6 +52,11 @@ import {
 import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
 import { AudioPipeline } from "../audio";
+import { getConnectionSecurityLines } from "../network/connectionSecurity";
+import {
+  MEDIA_DEVICE_PREFERENCES_CHANGED,
+  type MediaDevicePreferencesChange,
+} from "../utils/mediaDevicePreferences";
 import type { DiscoveryOptions } from "../network/WebRTCSession";
 // @ts-expect-error - Generated Emscripten factory has no types
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
@@ -74,6 +79,14 @@ export function ClientPage({
   const [signalingUrl, setSignalingUrl] = useState(
     params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
   );
+  const [additionalApplicationEncryption, setAdditionalApplicationEncryption] =
+    useState(false);
+  let signalingUsesWss = false;
+  try {
+    signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
+  } catch {
+    // The URL field will show validation through the normal connection error.
+  }
   const [stunUrls, setStunUrls] = useState(
     params.get("stunUrls") ||
       "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
@@ -135,6 +148,9 @@ export function ClientPage({
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
+            ...(signalingUsesWss && additionalApplicationEncryption
+              ? { applicationEncryption: true }
+              : {}),
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
@@ -153,6 +169,8 @@ export function ClientPage({
       sessionName,
       sessionPassword,
       signalingUrl,
+      signalingUsesWss,
+      additionalApplicationEncryption,
       stunUrls,
       turnUrls,
       connectionRoute,
@@ -180,6 +198,18 @@ export function ClientPage({
     params.get("serverUrl") ||
       params.get("testServerUrl") ||
       "ws://localhost:27226",
+  );
+  let usesWss = false;
+  try {
+    usesWss =
+      new URL(discoveryMode ? signalingUrl : serverUrl).protocol === "wss:";
+  } catch {
+    // The URL field will show validation through the normal connection error.
+  }
+  const connectionSecurityLines = getConnectionSecurityLines(
+    discoveryMode ? signalingUrl : serverUrl,
+    discoveryMode,
+    usesWss ? additionalApplicationEncryption : undefined,
   );
   const [showSettings, setShowSettings] = useState(false);
   const [terminalDimensions, setTerminalDimensions] = useState({
@@ -249,6 +279,9 @@ export function ClientPage({
     handleDisconnect,
   } = useClientConnection({
     autoConnect: requestedConnection,
+    ...(!discoveryMode && usesWss
+      ? { applicationEncryption: additionalApplicationEncryption }
+      : {}),
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
     onConnectionStateChange,
@@ -268,6 +301,37 @@ export function ClientPage({
       // WASM initialized callback
     },
   });
+
+  useEffect(() => {
+    const handleMediaDeviceChange = (event: Event) => {
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      if (!change) return;
+
+      if (
+        change.changedKeys.includes("microphoneId") &&
+        micEnabledRef.current
+      ) {
+        void audioRef.current
+          ?.replaceMicrophone(change.preferences.microphoneId)
+          .catch((error: unknown) => setError(String(error)));
+      }
+      if (change.changedKeys.includes("speakerId")) {
+        void audioRef.current
+          ?.setSpeakerDevice(change.preferences.speakerId)
+          .catch((error: unknown) => setError(String(error)));
+      }
+    };
+
+    window.addEventListener(
+      MEDIA_DEVICE_PREFERENCES_CHANGED,
+      handleMediaDeviceChange,
+    );
+    return () =>
+      window.removeEventListener(
+        MEDIA_DEVICE_PREFERENCES_CHANGED,
+        handleMediaDeviceChange,
+      );
+  }, [setError]);
 
   // A discovery peer receives its initial capabilities as soon as the
   // DataChannel opens. Wait until the renderer has reported a settled size so
@@ -1141,8 +1205,28 @@ export function ClientPage({
                           Connection settings
                         </summary>
                         <div className="mt-2 text-sm text-terminal-8 space-y-1">
-                          <p>Transport: encrypted WebSocket</p>
-                          <p>Crypto: X25519 + XSalsa20-Poly1305 AEAD</p>
+                          {usesWss && (
+                            <label className="flex items-center gap-2 pb-1 text-terminal-fg">
+                              <input
+                                type="checkbox"
+                                checked={additionalApplicationEncryption}
+                                disabled={settingsDisabled}
+                                onChange={(event) =>
+                                  setAdditionalApplicationEncryption(
+                                    event.currentTarget.checked,
+                                  )
+                                }
+                              />
+                              {discoveryMode
+                                ? "Additional application encryption for signaling over TLS"
+                                : "Additional application encryption over TLS"}
+                            </label>
+                          )}
+                          {connectionSecurityLines.map(({ label, value }) => (
+                            <p key={label}>
+                              {label}: {value}
+                            </p>
+                          ))}
                           {publicKey && (
                             <p className="break-all">Client key: {publicKey}</p>
                           )}

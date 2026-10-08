@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Audio device setup</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101515;
+        --panel: #182120;
+        --panel-raised: #202b29;
+        --line: #344340;
+        --muted: #98aaa4;
+        --text: #edf4ee;
+        --green: #b6f36b;
+        --cyan: #6de1ce;
+        --red: #ff7772;
+        --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+        --sans: "Segoe UI", Inter, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(ellipse at 54% -18%, #263a31 0, transparent 48%),
+          var(--bg);
+        font-family: var(--sans);
+      }
+      button, input, select { font: inherit; }
+      button { color: inherit; }
+      .shell { max-width: 1240px; margin: 0 auto; padding: 26px 36px 56px; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+      .brand { display: flex; align-items: center; gap: 12px; font: 700 16px var(--mono); letter-spacing: -.04em; }
+      .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #789c5c; color: var(--green); font-size: 18px; }
+      .top-status { color: var(--muted); font: 12px var(--mono); }
+      .top-status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 9px; box-shadow: 0 0 12px #b6f36b77; }
+      .modebar { display: flex; align-items: center; gap: 7px; margin: 28px 0 48px; }
+      .mode-label { color: var(--muted); font: 11px var(--mono); margin-right: 10px; }
+      .mode-tab { padding: 9px 15px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #aab8b2; cursor: pointer; }
+      .mode-tab:hover { color: var(--text); background: #ffffff09; }
+      .mode-tab[aria-selected="true"] { color: var(--green); border-color: #50654a; background: #b6f36b0d; }
+      .hero { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+      .eyebrow { color: var(--cyan); font: 11px var(--mono); margin: 0 0 12px; }
+      h1 { margin: 0; font-size: clamp(32px, 4.6vw, 54px); line-height: 1.02; letter-spacing: -.055em; font-weight: 620; }
+      .description { margin: 14px 0 0; color: #a9b9b2; font-size: 15px; }
+      .setup-button { display: inline-flex; align-items: center; gap: 10px; padding: 12px 16px; border: 1px solid #768f60; border-radius: 5px; background: #b6f36b; color: #152016; font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: 0 8px 28px #b6f36b16; }
+      .setup-button:hover { background: #c7ff7b; }
+      .setup-button svg { width: 17px; height: 17px; }
+      .stage { border: 1px solid var(--line); background: #121918; border-radius: 7px; padding: 16px; }
+      .stage-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font: 11px var(--mono); padding: 0 2px 13px; }
+      .stage-live { color: var(--green); }
+      .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .tile { min-height: 210px; position: relative; overflow: hidden; border: 1px solid #35403e; border-radius: 4px; background: #18211f; display: grid; place-items: center; }
+      .ascii { color: #b4dc8d; font: 12px/1.06 var(--mono); white-space: pre; opacity: .85; text-shadow: 0 0 10px #b6f36b22; animation: drift 8s linear infinite alternate; }
+      .tile:nth-child(2) .ascii { color: #79dfd1; animation-duration: 6s; }
+      .tile:nth-child(3) .ascii { color: #e4d18d; animation-duration: 9s; }
+      @keyframes drift { from { transform: translate(-8px, 3px); } to { transform: translate(7px, -4px); } }
+      .tile-label { position: absolute; left: 11px; bottom: 10px; color: #e7efe9; background: #101515d9; padding: 5px 7px; border-radius: 3px; font: 11px var(--mono); }
+      .tile-state { position: absolute; right: 11px; bottom: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+      .page-note { margin-top: 16px; color: #80928b; font-size: 12px; }
+      .page-note code { color: #bed796; font-family: var(--mono); }
+
+      .scrim { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 24px; background: #060a09c9; backdrop-filter: blur(7px); }
+      .modal { width: min(920px, 100%); max-height: min(790px, calc(100vh - 48px)); overflow: auto; border: 1px solid #52635d; border-radius: 8px; background: #17201e; box-shadow: 0 28px 100px #000a; animation: appear .16s ease-out; }
+      @keyframes appear { from { opacity: 0; transform: translateY(7px) scale(.99); } to { opacity: 1; transform: none; } }
+      .modal-head { display: flex; justify-content: space-between; align-items: start; padding: 24px 26px 19px; border-bottom: 1px solid var(--line); }
+      .modal-head h2 { margin: 0; font-size: 24px; letter-spacing: -.035em; }
+      .modal-head p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+      .close { border: 0; background: transparent; color: #a8b7b0; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 22px; line-height: 1; }
+      .close:hover { background: #ffffff12; color: white; }
+      .modal-body { display: grid; grid-template-columns: minmax(260px, .92fr) minmax(320px, 1.08fr); gap: 24px; padding: 23px 26px 25px; }
+      .preview { min-height: 220px; position: relative; display: grid; place-items: center; overflow: hidden; border: 1px solid #3d5049; border-radius: 5px; background: #101715; }
+      .preview .ascii { font-size: 11px; color: #c0ed9b; }
+      .preview-tag { position: absolute; top: 10px; left: 10px; color: var(--green); font: 10px var(--mono); }
+      .preview-caption { display: flex; justify-content: space-between; margin-top: 9px; color: #9dad a5; font: 10px var(--mono); }
+      .device-column { min-width: 0; }
+      .field { margin-bottom: 15px; }
+      .field label, .field-label { display: block; margin-bottom: 7px; color: #dce7df; font-size: 12px; font-weight: 600; }
+      select, input[type="text"] { width: 100%; height: 40px; padding: 0 11px; border: 1px solid #40514b; border-radius: 4px; outline: 0; background: #101715; color: var(--text); font-size: 13px; }
+      select:focus, input:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px #6de1ce20; }
+      .select-wrap { position: relative; }
+      .device-icon { position: absolute; right: 11px; top: 11px; color: #92a59c; pointer-events: none; font-size: 14px; }
+      .level-row { display: flex; align-items: center; gap: 12px; }
+      .level-row input { flex: 1; accent-color: var(--green); }
+      .meter { width: 58px; height: 15px; display: flex; align-items: end; gap: 2px; }
+      .meter i { display: block; flex: 1; border-radius: 1px; background: #43554b; height: 28%; }
+      .meter i:nth-child(2), .meter i:nth-child(5) { height: 54%; }
+      .meter i:nth-child(3), .meter i:nth-child(6) { height: 82%; }
+      .meter.active i:nth-child(-n+5) { background: var(--green); }
+      .small-help { color: #91a29b; font-size: 11px; line-height: 1.45; margin-top: 7px; }
+      .test-sound { border: 1px solid #53635d; border-radius: 4px; padding: 8px 10px; background: transparent; color: #dce8df; cursor: pointer; font-size: 11px; white-space: nowrap; }
+      .test-sound:hover { border-color: var(--cyan); }
+      .modal-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 18px 26px 22px; }
+      .actions { display: flex; gap: 9px; }
+      .secondary, .primary { min-height: 39px; border-radius: 4px; padding: 0 15px; cursor: pointer; font-size: 12px; font-weight: 650; }
+      .secondary { border: 1px solid #4a5a54; background: transparent; color: #d4e0d8; }
+      .secondary:hover { background: #ffffff0a; }
+      .primary { border: 1px solid #bddf8d; background: var(--green); color: #182315; }
+      .primary:hover { background: #c8ff7a; }
+      .hidden { display: none !important; }
+      .toast { position: fixed; left: 50%; bottom: 22px; z-index: 10; transform: translateX(-50%); background: #d7f3be; color: #172117; border-radius: 4px; padding: 11px 15px; font-size: 12px; font-weight: 650; box-shadow: 0 8px 30px #0008; }
+      @media (max-width: 740px) {
+        .shell { padding: 18px 16px 38px; }
+        .modebar { margin: 22px 0 36px; overflow-x: auto; }
+        .hero { align-items: start; flex-direction: column; }
+        .tiles { grid-template-columns: 1fr; }
+        .tile { min-height: 170px; }
+        .modal-body { grid-template-columns: 1fr; }
+        .preview { min-height: 175px; }
+        .modal-head, .modal-body { padding-left: 18px; padding-right: 18px; }
+        .modal-foot { padding-left: 18px; padding-right: 18px; }
+        .actions { width: 100%; }
+        .actions button { flex: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">a</span><span>ascii-chat</span></div>
+        <div class="top-status">Media ready</div>
+      </header>
+
+      <nav class="modebar" aria-label="Preview mode">
+        <span class="mode-label">PAGE PREVIEW</span>
+        <button class="mode-tab" data-mode="mirror" aria-selected="false">Mirror</button>
+        <button class="mode-tab" data-mode="client" aria-selected="false">Client</button>
+        <button class="mode-tab" data-mode="discovery" aria-selected="true">Discovery</button>
+      </nav>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow" id="mode-kicker">DISCOVERY · WEBRTC</p>
+          <h1 id="page-title">Meet in a room.</h1>
+          <p class="description" id="page-description">Connect with people using a room name.</p>
+        </div>
+        <button class="setup-button" id="open-setup" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 1 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .9v.2a1.8 1.8 0 1 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.9l-.1.1a1.8 1.8 0 1 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.9-3h-.2a1.8 1.8 0 1 1 0-3.6h.2a1.8 1.8 0 0 0 .9-3l-.1-.1a1.8 1.8 0 1 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.9v-.2a1.8 1.8 0 1 1 3.6 0v.2a1.8 1.8 0 0 0 3 .9l.1-.1a1.8 1.8 0 1 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .9 3h.2a1.8 1.8 0 1 1 0 3.6h-.2a1.8 1.8 0 0 0-.9 3Z"/></svg>
+          Device setup
+        </button>
+      </section>
+
+      <section class="stage" aria-label="ASCII video preview">
+        <div class="stage-head"><span id="stage-title">Room · quiet-copper-fox</span><span class="stage-live">● LIVE PREVIEW</span></div>
+        <div class="tiles">
+          <div class="tile"><pre class="ascii"> .--.       .-.
+(    )     /  |
+ `--'     /   |
+  ||     /    |
+  ||    /     |
+  ||   /      |
+  ||  /       |
+  || /        |
+  ||/         |
+  /           |
+ /            |
+`--------------'</pre><span class="tile-label">you</span><i class="tile-state"></i></div>
+          <div class="tile"><pre class="ascii">      .---.
+   .-'     `-.
+  /  .--. .--. \
+ |  /    Y    \ |
+ | |  .-" "-. | |
+ | | /  .-.  \| |
+  \ \  (   ) / /
+   `-`.___.-' /
+      /     _/
+     /   .-'
+    /  .'
+   /.-'</pre><span class="tile-label">guest 01</span><i class="tile-state"></i></div>
+          <div class="tile"><pre class="ascii">      .----.
+     /      \
+    |  .--.  |
+    | /    \ |
+    | | () | |
+    | \    / |
+     \ `--' /
+   .--`----'--.
+  /  /      \  \
+ /__/        \__\
+    /  /\  \
+   /__/  \__\</pre><span class="tile-label">guest 02</span><i class="tile-state"></i></div>
+        </div>
+      </section>
+      <p class="page-note">Interactive concept only · Switch page modes above, then open <code>Audio &amp; video</code>.</p>
+    </main>
+
+    <div class="scrim" id="scrim">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header class="modal-head">
+          <div><h2 id="modal-title">Audio device setup</h2><p id="modal-description">Choose your devices and check your audio and video.</p></div>
+          <button class="close" id="close-modal" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <div>
+            <div class="preview"><span class="preview-tag">CAMERA PREVIEW</span><pre class="ascii">       .----.
+      /      \
+     |  .--.  |
+     | /    \ |
+     | | () | |
+     | \    / |
+      \ `--' /
+    .--`----'--.
+   /  /      \  \
+  /__/        \__\
+      /  /\  \
+     /__/  \__\</pre></div>
+            <div class="preview-caption"><span>Camera is on</span><span>640 × 480</span></div>
+          </div>
+          <div class="device-column">
+            <div class="field"><label for="camera">Camera</label><div class="select-wrap"><select id="camera"><option>FaceTime HD Camera</option><option>USB Camera</option><option>Test pattern</option></select><span class="device-icon">⌄</span></div></div>
+            <div class="field"><label for="microphone">Microphone</label><div class="select-wrap"><select id="microphone"><option>MacBook Pro Microphone</option><option>USB Audio Device</option><option>No microphone</option></select><span class="device-icon">⌄</span></div></div>
+            <div class="field"><div class="field-label">Microphone level</div><div class="level-row"><div class="meter active" aria-label="Microphone level"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="small-help" style="margin:0">Speak to check your mic</span></div></div>
+            <div class="field"><label for="speaker">Speakers</label><div class="level-row"><div class="select-wrap" style="flex:1"><select id="speaker"><option>System default</option><option>USB Audio Device</option></select><span class="device-icon">⌄</span></div><button class="test-sound" id="test-sound">Test</button></div></div>
+          </div>
+        </div>
+
+        <footer class="modal-foot">
+          <div class="actions"><button class="secondary" id="cancel">Cancel</button><button class="primary" id="save-devices">Done</button></div>
+        </footer>
+      </section>
+    </div>
+    <div class="toast hidden" id="toast" role="status"></div>
+
+    <script>
+      const modes = {
+        mirror: {
+          kicker: "MIRROR · LOCAL PREVIEW",
+          title: "Your camera, in ASCII.",
+          description: "See your video and audio effects before sharing them.",
+          stage: "Local preview · no one else can see you",
+        },
+        client: {
+          kicker: "CLIENT · SERVER CONNECTION",
+          title: "Connect to a server.",
+          description: "Choose your devices, then connect to an ascii-chat server.",
+          stage: "Server · 192.168.1.24:27224",
+        },
+        discovery: {
+          kicker: "DISCOVERY · WEBRTC",
+          title: "Meet in a room.",
+          description: "Connect with people using a room name.",
+          stage: "Room · quiet-copper-fox",
+        },
+      };
+      const scrim = document.getElementById("scrim");
+      const tabButtons = [...document.querySelectorAll(".mode-tab")];
+      let activeMode = "discovery";
+      let lastFocus;
+
+      function setMode(mode) {
+        activeMode = mode;
+        const config = modes[mode];
+        tabButtons.forEach((button) => button.setAttribute("aria-selected", String(button.dataset.mode === mode)));
+        document.getElementById("mode-kicker").textContent = config.kicker;
+        document.getElementById("page-title").textContent = config.title;
+        document.getElementById("page-description").textContent = config.description;
+        document.getElementById("stage-title").textContent = config.stage;
+      }
+      function openModal() {
+        lastFocus = document.activeElement;
+        scrim.classList.remove("hidden");
+        document.getElementById("camera").focus();
+      }
+      function closeModal() {
+        scrim.classList.add("hidden");
+        if (lastFocus instanceof HTMLElement) lastFocus.focus();
+      }
+      tabButtons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+      document.getElementById("open-setup").addEventListener("click", openModal);
+      document.getElementById("close-modal").addEventListener("click", closeModal);
+      document.getElementById("cancel").addEventListener("click", closeModal);
+      scrim.addEventListener("click", (event) => { if (event.target === scrim) closeModal(); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !scrim.classList.contains("hidden")) closeModal(); });
+      document.getElementById("test-sound").addEventListener("click", () => {
+        const toast = document.getElementById("toast");
+        toast.textContent = "Playing a short speaker test";
+        toast.classList.remove("hidden");
+        setTimeout(() => toast.classList.add("hidden"), 1800);
+      });
+      document.getElementById("save-devices").addEventListener("click", () => {
+        const toast = document.getElementById("toast");
+        toast.textContent = "Device settings saved · mockup only";
+        toast.classList.remove("hidden");
+        closeModal();
+        setTimeout(() => toast.classList.add("hidden"), 1800);
+      });
+      setMode(activeMode);
+    </script>
+  </body>
+</html>

@@ -18,6 +18,7 @@ export interface PageControlBarProps {
   showConnectionButton?: boolean | undefined;
   onConnectionClick?: (() => void) | undefined;
   onSettingsClick?: (() => void) | undefined;
+  onDeviceSetupClick?: (() => void) | undefined;
   showSettingsButton?: boolean | undefined;
   settingsOpen?: boolean | undefined;
   compactVerticalSpacing?: boolean | undefined;
@@ -41,6 +42,7 @@ export function PageControlBar({
   showConnectionButton = false,
   onConnectionClick,
   onSettingsClick,
+  onDeviceSetupClick,
   showSettingsButton = true,
   settingsOpen = false,
   compactVerticalSpacing = false,
@@ -175,6 +177,14 @@ export function PageControlBar({
               className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
             >
               Settings
+            </button>
+          )}
+          {onDeviceSetupClick && (
+            <button
+              onClick={onDeviceSetupClick}
+              className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+            >
+              Device setup
             </button>
           )}
         </div>

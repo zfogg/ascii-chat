@@ -2,6 +2,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ConnectionState } from "../wasm/client";
 import { Tooltip } from "./Tooltip";
 import { LOCKED_SETTINGS_HELP } from "./lockedSettings";
+import { getConnectionSecurityLines } from "../network/connectionSecurity";
 
 export interface ConnectionPanelModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export function ConnectionPanelModal({
   onDisconnect,
   isConnected,
 }: ConnectionPanelModalProps) {
+  const connectionSecurityLines = getConnectionSecurityLines(serverUrl);
   const settingsDisabled =
     isConnected ||
     connectionState === ConnectionState.CONNECTING ||
@@ -148,7 +150,11 @@ export function ConnectionPanelModal({
 
             {/* Info */}
             <div className="text-xs text-terminal-8 space-y-1 mb-4">
-              <div>Crypto: X25519 + XSalsa20-Poly1305 AEAD</div>
+              {connectionSecurityLines.map(({ label, value }) => (
+                <div key={label}>
+                  {label}: {value}
+                </div>
+              ))}
               <div>Audio: Opus @ 48kHz mono</div>
             </div>
 

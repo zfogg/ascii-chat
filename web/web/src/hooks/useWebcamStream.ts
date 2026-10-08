@@ -9,6 +9,11 @@ import {
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
+import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
+import {
+  MEDIA_DEVICE_PREFERENCES_CHANGED,
+  type MediaDevicePreferencesChange,
+} from "../utils/mediaDevicePreferences";
 import {
   createTestPatternVideoSource,
   useTestPattern,
@@ -439,9 +444,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
-      const cameraIndexValue = new URLSearchParams(window.location.search).get(
-        "videoDeviceIndex",
-      );
+      const preferredCameraId = getMediaDevicePreferences().cameraId;
+      const cameraIndexValue = preferredCameraId
+        ? null
+        : new URLSearchParams(window.location.search).get("videoDeviceIndex");
       const cameraIndex =
         cameraIndexValue === null ? null : Number(cameraIndexValue);
       let videoConstraints: MediaTrackConstraints = {
@@ -469,6 +475,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         console.log(
           `[Client] Selecting camera ${cameraIndex}: ${camera.label}`,
         );
+      } else if (preferredCameraId) {
+        videoConstraints = {
+          ...videoConstraints,
+          deviceId: { exact: preferredCameraId },
+        };
       }
 
       let stream: MediaStream;
@@ -906,6 +917,46 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     frameQueueRef.current = [];
     setIsWebcamRunning(false);
   }, [clientRef, connectionState, frameQueueRef, isWebcamRunning, videoRef]);
+
+  useEffect(() => {
+    const handleDevicePreferencesChanged = (event: Event) => {
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      if (
+        !change?.changedKeys.includes("cameraId") ||
+        (!streamRef.current && !startingRef.current) ||
+        testPattern.enabled
+      )
+        return;
+
+      const activeCameraId =
+        streamRef.current?.getVideoTracks()[0]?.getSettings().deviceId ?? "";
+      if (
+        streamRef.current &&
+        activeCameraId === change.preferences.cameraId
+      )
+        return;
+
+      stopWebcam();
+      void (async () => {
+        // If a camera request was already in flight, let it observe the stop
+        // generation and release its stream before starting the new device.
+        while (startingRef.current) {
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 10));
+        }
+        await startWebcam();
+      })();
+    };
+
+    window.addEventListener(
+      MEDIA_DEVICE_PREFERENCES_CHANGED,
+      handleDevicePreferencesChanged,
+    );
+    return () =>
+      window.removeEventListener(
+        MEDIA_DEVICE_PREFERENCES_CHANGED,
+        handleDevicePreferencesChanged,
+      );
+  }, [isWebcamRunning, startWebcam, stopWebcam, testPattern.enabled]);
 
   return {
     startWebcam,

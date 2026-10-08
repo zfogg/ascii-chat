@@ -6,6 +6,7 @@ export type {
 } from "@ascii-chat/shared/components";
 export { ConnectionPanelModal } from "./ConnectionPanelModal";
 export type { ConnectionPanelModalProps } from "./ConnectionPanelModal";
+export { DeviceSetupModal } from "./DeviceSetupModal";
 export { DisconnectedOverlay } from "./DisconnectedOverlay";
 export { Footer } from "./Footer";
 export { Header } from "./Header";

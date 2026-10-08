@@ -1,4 +1,8 @@
 import React from "react";
+import {
+  getMediaDevicePreferences,
+  MEDIA_DEVICE_PREFERENCES_CHANGED,
+} from "../utils/mediaDevicePreferences";
 
 interface PageLayoutProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -15,6 +19,29 @@ export function PageLayout({
   renderer,
   modal,
 }: PageLayoutProps) {
+  React.useEffect(() => {
+    const applySpeaker = () => {
+      const speakerId = getMediaDevicePreferences().speakerId;
+      const video = videoRef.current as
+        | (HTMLVideoElement & {
+            setSinkId?: (deviceId: string) => Promise<void>;
+          })
+        | null;
+      if (!video?.setSinkId || !speakerId) return;
+      void video.setSinkId(speakerId).catch((error: unknown) => {
+        console.warn("Unable to route video audio to the selected speaker:", error);
+      });
+    };
+
+    applySpeaker();
+    window.addEventListener(MEDIA_DEVICE_PREFERENCES_CHANGED, applySpeaker);
+    return () =>
+      window.removeEventListener(
+        MEDIA_DEVICE_PREFERENCES_CHANGED,
+        applySpeaker,
+      );
+  }, [videoRef]);
+
   return (
     <div className="flex-1 min-h-0 bg-terminal-bg text-terminal-fg flex flex-col">
       {/* Hidden video and canvas for capture */}

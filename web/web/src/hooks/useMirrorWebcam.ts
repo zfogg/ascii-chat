@@ -22,6 +22,11 @@ import {
 } from "@ascii-chat/shared/wasm";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
+import {
+  getMediaDevicePreferences,
+  MEDIA_DEVICE_PREFERENCES_CHANGED,
+  type MediaDevicePreferencesChange,
+} from "../utils/mediaDevicePreferences";
 
 interface UseMirrorWebcamParams {
   settings: BinarySettingsConfig;
@@ -54,9 +59,11 @@ export function useMirrorWebcam({
 }: UseMirrorWebcamParams) {
   const testPattern = useTestPattern();
   const devAutoStartRef = useRef(false);
+  const startGenerationRef = useRef(0);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   const startWebcam = useCallback(async () => {
+    const generation = ++startGenerationRef.current;
     const clickTime = performance.now();
     console.log(
       `[Mirror] startWebcam CALLED at ${clickTime.toFixed(0)}ms, ${new Date().toISOString()}`,
@@ -156,16 +163,45 @@ export function useMirrorWebcam({
       );
       console.time("[Mirror] getUserMedia (incl browser permission)");
       console.log("[Mirror] Calling getUserMedia...");
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const devicePreferences = getMediaDevicePreferences();
+      const mediaConstraints: MediaStreamConstraints = {
         video: {
           width: { ideal: settings.width },
           height: { ideal: settings.height },
           facingMode: "user",
+          ...(devicePreferences.cameraId
+            ? { deviceId: { exact: devicePreferences.cameraId } }
+            : {}),
         },
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
-        audio: true,
-      });
+        audio: devicePreferences.microphoneId
+          ? { deviceId: { exact: devicePreferences.microphoneId } }
+          : true,
+      };
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      } catch (error) {
+        if (!devicePreferences.cameraId && !devicePreferences.microphoneId)
+          throw error;
+        console.warn(
+          "[Mirror] Saved media device is unavailable; using browser defaults",
+          error,
+        );
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: settings.width },
+            height: { ideal: settings.height },
+            facingMode: "user",
+          },
+          audio: true,
+        });
+      }
+      if (generation !== startGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
       console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
       console.log(
@@ -188,6 +224,11 @@ export function useMirrorWebcam({
       video.srcObject = stream;
       await video.play();
       await metadataReady;
+      if (generation !== startGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        if (video.srcObject === stream) video.srcObject = null;
+        return;
+      }
       console.timeEnd("[Mirror] loadedmetadata");
 
       lastFrameTimeRef.current = performance.now();
@@ -207,6 +248,51 @@ export function useMirrorWebcam({
     setMediaSource,
     setError,
   ]);
+
+  useEffect(() => {
+    const handleDevicePreferencesChanged = (event: Event) => {
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      if (
+        !change ||
+        (!change.changedKeys.includes("cameraId") &&
+          !change.changedKeys.includes("microphoneId"))
+      )
+        return;
+
+      const stream = streamRef.current;
+      if (!stream) return;
+      const activeCameraId =
+        stream.getVideoTracks()[0]?.getSettings().deviceId ?? "";
+      const activeMicrophoneId =
+        stream.getAudioTracks()[0]?.getSettings().deviceId ?? "";
+      if (
+        activeCameraId === change.preferences.cameraId &&
+        activeMicrophoneId === change.preferences.microphoneId
+      )
+        return;
+
+      startGenerationRef.current++;
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (videoRef.current?.srcObject === stream) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+      setIsWebcamRunning(false);
+      setMediaSource(null);
+      window.setTimeout(() => void startWebcam(), 0);
+    };
+
+    window.addEventListener(
+      MEDIA_DEVICE_PREFERENCES_CHANGED,
+      handleDevicePreferencesChanged,
+    );
+    return () =>
+      window.removeEventListener(
+        MEDIA_DEVICE_PREFERENCES_CHANGED,
+        handleDevicePreferencesChanged,
+      );
+  }, [setIsWebcamRunning, setMediaSource, startWebcam, streamRef, videoRef]);
 
   // DISABLED: Permission request on page load was blocking React for 30+ seconds
   // The getUserMedia call would hang waiting for browser permission dialog.

@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { PageControlBar, type PageControlBarProps } from "./PageControlBar";
+import { DeviceSetupModal } from "./DeviceSetupModal";
 
 interface ModeHeaderProps {
   showSettings: boolean;
@@ -20,8 +21,14 @@ export function ModeHeader({
   connectionPanel,
   controlBar,
 }: ModeHeaderProps) {
+  const [deviceSetupOpen, setDeviceSetupOpen] = useState(false);
+
   return (
     <>
+      <DeviceSetupModal
+        open={deviceSetupOpen}
+        onClose={() => setDeviceSetupOpen(false)}
+      />
       {showSettings && settingsPanel}
       {connectionPanel && (
         <div className="px-4 py-4 border-b border-terminal-8">
@@ -35,6 +42,7 @@ export function ModeHeader({
       >
         <PageControlBar
           {...controlBar}
+          onDeviceSetupClick={() => setDeviceSetupOpen(true)}
           compactVerticalSpacing={!!connectionPanel}
         />
       </div>

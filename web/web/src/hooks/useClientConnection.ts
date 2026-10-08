@@ -30,6 +30,7 @@ const hashFrame = (content: string): string => {
 
 interface UseClientConnectionOptions {
   autoConnect?: boolean;
+  applicationEncryption?: boolean;
   discovery?: DiscoveryOptions;
   onAudioPacket?: (type: number, payload: Uint8Array) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
@@ -51,6 +52,7 @@ interface UseClientConnectionOptions {
 export function useClientConnection(options: UseClientConnectionOptions) {
   const {
     autoConnect = false,
+    applicationEncryption,
     serverUrl,
     terminalDimensions,
     settings,
@@ -126,6 +128,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
             )
           : new ClientConnection({
               serverUrl,
+              ...(applicationEncryption === undefined
+                ? {}
+                : { applicationEncryption }),
               width,
               height,
             });
@@ -356,6 +361,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     },
     [
       serverUrl,
+      applicationEncryption,
       terminalDimensions,
       settings,
       rendererRef,

@@ -5,6 +5,7 @@ import {
   isTestMode,
   type TestPatternAudioSource,
 } from "@ascii-chat/shared";
+import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
 
 export interface AudioPipelineOptions {
   onAudioData?: (payload: Uint8Array) => void;
@@ -35,6 +36,8 @@ export class AudioPipeline {
   private playAt = 0;
   private sources = new Set<AudioBufferSourceNode>();
   private generation = 0;
+  private microphoneChangeGeneration = 0;
+  private speakerChangeQueue: Promise<void> = Promise.resolve();
   private sent = 0;
   private played = 0;
   private playedSamples = 0;
@@ -62,6 +65,12 @@ export class AudioPipeline {
   async enablePlayback(): Promise<void> {
     if (!this.context) this.context = new AudioContext({ sampleRate: 48000 });
     await this.context.resume();
+    const speakerId = getMediaDevicePreferences().speakerId;
+    if (speakerId && speakerId !== "default") {
+      await this.setSpeakerDevice(speakerId).catch((error: unknown) =>
+        console.warn("[Audio] Unable to select the saved speaker:", error),
+      );
+    }
     if (this.context.audioWorklet && !this.playbackInit) {
       const context = this.context;
       this.playbackInit = context.audioWorklet
@@ -95,21 +104,46 @@ export class AudioPipeline {
   async startCapture(): Promise<void> {
     const generation = ++this.generation;
     await this.enablePlayback();
+    const microphoneId = getMediaDevicePreferences().microphoneId;
     const stream = isTestMode()
       ? (() => {
           this.testPatternSource = createTestPatternAudioSource(this.context!);
           return this.testPatternSource.stream;
         })()
-      : await navigator.mediaDevices.getUserMedia({
-          audio: {
+      : await (async () => {
+          const audio: MediaTrackConstraints = {
             channelCount: 1,
             sampleRate: 48000,
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-          },
-          video: false,
-        });
+            ...(microphoneId
+              ? { deviceId: { exact: microphoneId } }
+              : {}),
+          };
+          try {
+            return await navigator.mediaDevices.getUserMedia({
+              audio,
+              video: false,
+            });
+          } catch (error) {
+            if (!microphoneId) throw error;
+            console.warn(
+              "[Audio] Saved microphone is unavailable; using browser default",
+              error,
+            );
+            return navigator.mediaDevices.getUserMedia({
+              audio: {
+                channelCount: 1,
+                sampleRate: 48000,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+              video: false,
+            });
+          }
+        })();
     if (generation !== this.generation || !this.context) {
       stream.getTracks().forEach((track) => track.stop());
       this.testPatternSource?.stop();
@@ -151,6 +185,86 @@ export class AudioPipeline {
     this.source.connect(this.processor);
     this.processor.connect(this.gain);
     this.gain.connect(this.context.destination);
+  }
+  async replaceMicrophone(deviceId: string): Promise<void> {
+    if (
+      !this.stream ||
+      !this.processor ||
+      !this.context ||
+      this.testPatternSource
+    )
+      return;
+
+    const generation = this.generation;
+    const requestGeneration = ++this.microphoneChangeGeneration;
+    const audio: MediaTrackConstraints = {
+      channelCount: 1,
+      sampleRate: 48000,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+    };
+    let nextStream: MediaStream;
+    try {
+      nextStream = await navigator.mediaDevices.getUserMedia({
+        audio,
+        video: false,
+      });
+    } catch (error) {
+      if (!deviceId) throw error;
+      console.warn(
+        "[Audio] Selected microphone is unavailable; using browser default",
+        error,
+      );
+      nextStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 48000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+    }
+    if (
+      generation !== this.generation ||
+      requestGeneration !== this.microphoneChangeGeneration ||
+      !this.processor ||
+      !this.context
+    ) {
+      nextStream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+
+    const nextSource = this.context.createMediaStreamSource(nextStream);
+    nextSource.connect(this.processor);
+    const previousSource = this.source;
+    const previousStream = this.stream;
+    this.source = nextSource;
+    this.stream = nextStream;
+    previousSource?.disconnect();
+    previousStream.getTracks().forEach((track) => track.stop());
+  }
+  async setSpeakerDevice(deviceId: string): Promise<void> {
+    if (!this.context || !deviceId) return;
+    const contextWithSink = this.context as AudioContext & {
+      setSinkId?: (sinkId: string) => Promise<void>;
+    };
+    if (!contextWithSink.setSinkId) {
+      if (deviceId !== "default")
+        throw new Error("This browser does not support speaker selection.");
+      return;
+    }
+    const context = this.context;
+    const setSinkId = contextWithSink.setSinkId.bind(contextWithSink);
+    const operation = this.speakerChangeQueue.then(async () => {
+      if (this.context !== context) return;
+      await setSinkId(deviceId);
+    });
+    this.speakerChangeQueue = operation.catch(() => undefined);
+    await operation;
   }
   playPacket(type: number, payload: Uint8Array): void {
     if (!this.context || !this.codec || this.context.state !== "running")
@@ -264,6 +378,7 @@ export class AudioPipeline {
   }
   stopCapture(): void {
     this.generation++;
+    this.microphoneChangeGeneration++;
     if (this.processor) this.processor.onaudioprocess = null;
     this.processor?.disconnect();
     this.source?.disconnect();
