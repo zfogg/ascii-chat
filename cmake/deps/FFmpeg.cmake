@@ -187,6 +187,14 @@ if(USE_MUSL)
                     "Missing musl-compatible C++ runtime archive: ${MUSL_LIBCXX_LIB_DIR}/${_runtime_archive}")
             endif()
         endforeach()
+        set(MUSL_FFMPEG_EXTRA_LDFLAGS "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+            # Debian's AArch64 libgcc calls glibc's private __getauxval symbol
+            # from lse-init.o. Musl provides the equivalent public getauxval.
+            # Alias it for FFmpeg's configure link probes and any GCC runtime
+            # objects they pull in.
+            string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -Wl,--defsym=__getauxval=getauxval")
+        endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
                 CC=${MUSL_GCC}
@@ -198,7 +206,7 @@ if(USE_MUSL)
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
-                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib"
+                "--extra-ldflags=${MUSL_FFMPEG_EXTRA_LDFLAGS}"
                 "--extra-libs=-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a"
                 --enable-static
                 --disable-shared
