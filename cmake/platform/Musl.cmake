@@ -202,6 +202,10 @@ function(configure_musl_post_project)
         OUTPUT_VARIABLE GCC_LIBGCC_PATH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    if(NOT GCC_LIBGCC_PATH OR NOT EXISTS "${GCC_LIBGCC_PATH}")
+        message(FATAL_ERROR "GCC libgcc runtime was not found; it is required for musl static linking")
+    endif()
+    set(MUSL_LIBGCC_PATH "${GCC_LIBGCC_PATH}" CACHE FILEPATH "Compiler runtime archive for musl static executables" FORCE)
     get_filename_component(GCC_LIBDIR "${GCC_LIBGCC_PATH}" DIRECTORY)
 
     # Detect architecture for musl target triple
@@ -514,6 +518,14 @@ function(configure_musl_post_project)
             )
             if(ALPINE_LIBUNWIND_STATIC)
                 target_link_libraries(${TARGET_NAME} PRIVATE "${ALPINE_LIBUNWIND_STATIC}")
+            endif()
+            # AArch64 musl's libc uses IEEE quad-precision conversion helpers
+            # that Clang does not provide in its host compiler-rt archive.
+            # Pull only needed helper objects from GCC's architecture-matched
+            # libgcc archive; do not whole-archive it (that would add glibc's
+            # AArch64 LSE initialization object to the musl executable).
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
+                target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_LIBGCC_PATH}")
             endif()
         endif()
     endfunction()
