@@ -113,6 +113,12 @@ if(USE_MUSL)
         # libc++ include must come BEFORE musl include — libc++ provides wrapper
         # headers (stddef.h, stdint.h, etc.) that #include_next the C versions
         set(_X265_CXX_FLAGS "-fPIC -target ${_X265_MUSL_TARGET} -stdlib=libc++ -nostdinc++ -D_GNU_SOURCE")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+            # Avoid references to Debian GCC's glibc-only LSE initializer in
+            # the musl x265 archive and its FFmpeg link probes.
+            string(APPEND _X265_C_FLAGS " -mno-outline-atomics")
+            string(APPEND _X265_CXX_FLAGS " -mno-outline-atomics")
+        endif()
         if(ALPINE_LIBCXX_INCLUDE_DIR)
             set(_X265_CXX_FLAGS "${_X265_CXX_FLAGS} -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
         endif()
