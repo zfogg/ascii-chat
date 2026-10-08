@@ -336,10 +336,18 @@ jobs:
             echo "::error::Missing development archive: $archive"
             exit 1
           fi
-          if ! tar -tzf "$archive" | grep -Eq '(^|/)libasciichat\.a$'; then
+          archive_contents="$(mktemp)"
+          if ! tar -tzf "$archive" > "$archive_contents"; then
+            rm -f "$archive_contents"
+            echo "::error::Could not list development archive: $archive"
+            exit 1
+          fi
+          if ! grep -Eq '(^|/)libasciichat\.a$' "$archive_contents"; then
+            rm -f "$archive_contents"
             echo "::error::Development archive does not contain static libasciichat.a"
             exit 1
           fi
+          rm -f "$archive_contents"
           echo "Verified static libasciichat.a in $archive"
 
       - name: Print build logs on failure
@@ -353,6 +361,9 @@ jobs:
           echo ""
           echo "=== CMake error log ==="
           cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
+          echo ""
+          echo "=== FFmpeg configure logs ==="
+          find .deps-cache/Release/musl -path '*/ffbuild/config.log' -type f -print -exec tail -n 160 {} \; 2>/dev/null || echo "No FFmpeg configure log"
 
       - name: Print ccache stats
         if: always()
