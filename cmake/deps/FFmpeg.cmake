@@ -192,9 +192,9 @@ if(USE_MUSL)
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
             # musl-gcc wraps Debian's glibc-targeted GCC. Suppress its default
             # libraries so it does not inject glibc's LSE initializer, then
-            # provide the required musl libraries and compiler builtins.
+            # provide the musl libraries required by the configure probes.
             string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -mno-outline-atomics -nodefaultlibs")
-            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " ${MUSL_LIBGCC_PATH} -lc")
+            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " -lc")
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
