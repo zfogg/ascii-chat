@@ -109,6 +109,13 @@ if(KERNEL_HEADER_FOUND)
     endif()
 
     set(MUSL_KERNEL_CFLAGS "-fPIC -I${KERNEL_HEADERS_DIR}")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        # Debian's AArch64 libgcc outlines atomics through lse-init.o, which
+        # calls glibc-only __getauxval. Musl exports getauxval instead. Keep
+        # dependency builds on baseline inline atomics so no glibc-only helper
+        # is pulled into the static musl artifacts.
+        string(APPEND MUSL_KERNEL_CFLAGS " -mno-outline-atomics")
+    endif()
 else()
     message(WARNING "Kernel headers not found in common locations. Install linux-libc-dev or kernel-headers package.")
 endif()
