@@ -488,11 +488,6 @@ if(USE_MUSL)
     # Function defined in Musl.cmake, contains musl-compatible libc++
     link_alpine_libcxx(ascii-chat)
 
-    # Search musl libc after all dependency archives. Its sigsetjmp object
-    # makes a short-range AArch64 branch to setjmp, so an early libc scan can
-    # leave that reference spanning the full dependency link line.
-    target_link_libraries(ascii-chat PRIVATE c)
-
     # Disable RPATH changes for static musl binaries
     # CPack fails when trying to modify RPATH on static-PIE binaries
     set_target_properties(ascii-chat PROPERTIES

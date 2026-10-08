@@ -527,6 +527,9 @@ function(configure_musl_post_project)
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
                 target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_LIBGCC_PATH}")
             endif()
+            # Static musl executables must search libc after all dependency
+            # archives so AArch64 sigsetjmp can branch to setjmp in range.
+            target_link_libraries(${TARGET_NAME} PRIVATE c)
         endif()
     endfunction()
 
