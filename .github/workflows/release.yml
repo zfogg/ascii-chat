@@ -303,7 +303,17 @@ jobs:
         run: |
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
           # This ensures paths.h has the correct prefix baked in for system config
-          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON
+          SIMD_MODE=auto
+          if [[ "$(uname -m)" == "aarch64" ]]; then
+            # Release binaries must run on ARM64 hosts without the build runner's optional SVE ISA.
+            SIMD_MODE=neon
+          fi
+          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE="$SIMD_MODE"
+
+          if [[ "$(uname -m)" == "aarch64" ]]; then
+            grep -qx 'ASCIICHAT_SIMD_MODE:STRING=neon' build_release/CMakeCache.txt
+            grep -q -- '-DSIMD_SUPPORT_SVE=0' build_release/build.ninja
+          fi
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
@@ -320,6 +330,8 @@ jobs:
           cmake --build build_release --target static-lib
           # shared-lib not available on Linux (static FFmpeg can't link into .so)
           cmake --build build_release --target docs
+
+          ./build_release/bin/ascii-chat --version
 
           # Run CPack with verbose output to diagnose DEB/RPM generation issues
           cd build_release
