@@ -173,26 +173,42 @@ if(USE_MUSL)
     endif()
 
     # x265 built with clang -stdlib=libc++ needs libc++ symbols at link time.
-    # Rewrite x265.pc to include the alpine libc++ .a files directly in Libs
-    # so FFmpeg's pkg-config link test can resolve C++ symbols. Clear
-    # Libs.private to avoid musl-gcc trying to find -lc++ by name.
-    # Note: ALPINE_LIBCXX_DIR is function-scoped in Musl.cmake, so derive it here.
-    # x265 built with clang -stdlib=libc++ needs libc++/libc++abi/libunwind
-    # at link time. Rewrite x265.pc every configure to ensure correct paths
-    # (CI caches may have stale paths or missing libraries).
+    # Write known-good pkg-config metadata so FFmpeg sees the cached library
+    # and its complete static link dependencies.
     set(_alpine_libcxx_dir "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx")
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
-    if(EXISTS "${_x265_pc}" AND EXISTS "${_alpine_libcxx_dir}/usr/lib/libc++.a")
-        set(_x265_pc_libs "-L\${libdir} -lx265 -L${_alpine_libcxx_dir}/usr/lib -l:libc++.a -l:libc++abi.a")
+    set(_x265_pc_libs "-L\${libdir} -lx265")
+    if(EXISTS "${_alpine_libcxx_dir}/usr/lib/libc++.a")
+        string(APPEND _x265_pc_libs " -L${_alpine_libcxx_dir}/usr/lib -l:libc++.a -l:libc++abi.a")
         if(EXISTS "${_alpine_libcxx_dir}/usr/lib/libunwind.a")
-            set(_x265_pc_libs "${_x265_pc_libs} -l:libunwind.a")
+            string(APPEND _x265_pc_libs " -l:libunwind.a")
         endif()
-        file(READ "${_x265_pc}" _x265_pc_contents)
-        string(REGEX REPLACE "Libs:[^\n]*" "Libs: ${_x265_pc_libs}" _x265_pc_contents "${_x265_pc_contents}")
-        string(REGEX REPLACE "Libs\\.private:[^\n]*" "Libs.private:" _x265_pc_contents "${_x265_pc_contents}")
-        file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
-        message(STATUS "  Patched x265.pc with alpine libc++ link flags")
     endif()
+    file(MAKE_DIRECTORY "${X265_PREFIX}/lib/pkgconfig")
+    file(WRITE "${_x265_pc}"
+        "prefix=${X265_PREFIX}\n"
+        "exec_prefix=\${prefix}\n"
+        "libdir=\${prefix}/lib\n"
+        "includedir=\${prefix}/include\n"
+        "\n"
+        "Name: x265\n"
+        "Description: H.265/HEVC video encoder\n"
+        "Version: ${X265_VERSION}\n"
+        "Libs: ${_x265_pc_libs}\n"
+        "Cflags: -I\${includedir}\n")
+
+    set(_musl_pkg_config_path "${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env "PKG_CONFIG_PATH=${_musl_pkg_config_path}" pkg-config --modversion x265
+        RESULT_VARIABLE X265_PKG_CONFIG_RESULT
+        OUTPUT_VARIABLE X265_PKG_CONFIG_VERSION
+        ERROR_VARIABLE X265_PKG_CONFIG_ERROR
+        COMMAND_ECHO STDOUT
+    )
+    if(NOT X265_PKG_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "x265 pkg-config metadata is invalid:\n${X265_PKG_CONFIG_ERROR}\n${_x265_pc}")
+    endif()
+    message(STATUS "  x265 pkg-config version: ${X265_PKG_CONFIG_VERSION}")
 
     set(X265_LIBRARIES "${X265_PREFIX}/lib/libx265.a")
     set(X265_INCLUDE_DIRS "${X265_PREFIX}/include")
