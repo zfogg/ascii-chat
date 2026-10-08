@@ -155,7 +155,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
 
     // 2. KEYBOARD SYSTEM - Initialize keyboard input AFTER logging (may fail if stdin/tty not available)
     // Failure is not fatal - keyboard_read_nonblocking() safely handles uninitialized state
-    keyboard_init();
+    if (terminal_is_stdin_tty()) {
+      keyboard_init();
+    }
 
     // 3. PLATFORM - Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {

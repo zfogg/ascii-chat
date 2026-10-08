@@ -48,9 +48,6 @@ struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
 
-  /** @brief Adaptive sleep state for frame rate limiting */
-  adaptive_sleep_state_t sleep_state;
-
   /** @brief FPS tracker for monitoring capture rate */
   fps_t fps_tracker;
 
@@ -68,6 +65,9 @@ struct session_capture_ctx {
 
   /** @brief Start time for FPS calculation (nanoseconds) */
   uint64_t start_time_ns;
+
+  /** @brief Next capture deadline on the monotonic clock (nanoseconds) */
+  uint64_t next_frame_deadline_ns;
 
   /** @brief Audio is enabled for capture */
   bool audio_enabled;
@@ -164,15 +164,6 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
   // Audio and keyboard will be set up separately by callers
   ctx->audio_enabled = false;
   ctx->source = NULL;
-
-  // Initialize adaptive sleep for consistency
-  uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
-  adaptive_sleep_config_t sleep_config = {.baseline_sleep_ns = baseline_sleep_ns,
-                                          .min_speed_multiplier = 0.5,
-                                          .max_speed_multiplier = 2.0,
-                                          .speedup_rate = 0.1,
-                                          .slowdown_rate = 0.1};
-  adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
 
   // Initialize minimal FPS tracker (won't be used but keep structure consistent)
   char *tracker_name = SAFE_MALLOC(32, char *);
@@ -314,18 +305,6 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     }
   }
 
-  // Initialize adaptive sleep for frame rate limiting
-  // Calculate baseline sleep time in nanoseconds from target FPS
-  uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
-  adaptive_sleep_config_t sleep_config = {
-      .baseline_sleep_ns = baseline_sleep_ns,
-      .min_speed_multiplier = 0.5, // Allow slowing down to 50% of baseline
-      .max_speed_multiplier = 2.0, // Allow speeding up to 200% of baseline
-      .speedup_rate = 0.1,         // Adapt by 10% per frame if possible
-      .slowdown_rate = 0.1         // Adapt by 10% per frame if possible
-  };
-  adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
-
   // Initialize FPS tracker
   // Note: Must allocate tracker_name on heap since fps_init stores a pointer to it
   char *tracker_name = SAFE_MALLOC(32, char *);
@@ -463,21 +442,27 @@ void session_capture_sleep_for_fps(session_capture_ctx_t *ctx) {
     return;
   }
 
-  // For file/stdin sources: use direct FPS sleep (no adaptation)
-  // This avoids the adaptive sleep multipliers which cause 2x slowdown
-  media_source_type_t source_type = media_source_get_type(ctx->source);
-  if (source_type == MEDIA_SOURCE_FILE || source_type == MEDIA_SOURCE_STDIN) {
-    uint32_t target_fps = session_capture_get_target_fps(ctx);
-    if (target_fps > 0) {
-      uint64_t sleep_ns = NS_PER_SEC_INT / target_fps;
-      platform_sleep_ns(sleep_ns);
-    }
+  uint64_t frame_interval_ns = NS_PER_SEC_INT / ctx->target_fps;
+  if (frame_interval_ns == 0) {
     return;
   }
 
-  // For network/webcam sources: use adaptive sleep to handle variable network conditions
-  // queue_depth=0, target_depth=0 maintains constant frame rate
-  adaptive_sleep_do(&ctx->sleep_state, 0, 0);
+  uint64_t now_ns = time_get_ns();
+  if (ctx->next_frame_deadline_ns == 0) {
+    ctx->next_frame_deadline_ns = now_ns + frame_interval_ns;
+  } else {
+    ctx->next_frame_deadline_ns += frame_interval_ns;
+  }
+
+  if (now_ns >= ctx->next_frame_deadline_ns) {
+    // Skip missed slots instead of adding another full frame interval to the
+    // work time or attempting a catch-up burst.
+    uint64_t missed_intervals = (now_ns - ctx->next_frame_deadline_ns) / frame_interval_ns + 1;
+    ctx->next_frame_deadline_ns += missed_intervals * frame_interval_ns;
+    return;
+  }
+
+  platform_sleep_ns(ctx->next_frame_deadline_ns - now_ns);
 }
 
 bool session_capture_at_end(session_capture_ctx_t *ctx) {

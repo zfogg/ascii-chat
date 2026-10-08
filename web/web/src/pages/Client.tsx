@@ -6,6 +6,7 @@ declare global {
     __clientFrameMetrics?: {
       rendered: number;
       received: number;
+      changedReceived?: number;
       queueDepth: number;
       uniqueRendered?: number;
       frameHashes?: Record<string, number>;
@@ -222,18 +223,18 @@ export function ClientPage({
 
   // Simple hash function for frame content
   const hashFrame = (content: string): string => {
-    let hash = 0;
-    for (let i = 0; i < content.length; i += 10) {
-      hash = (hash << 5) - hash + content.charCodeAt(i);
-      hash = hash & hash; // Convert to 32bit integer
+    let hash = 2_166_136_261;
+    for (let i = 0; i < content.length; i++) {
+      hash = Math.imul(hash ^ content.charCodeAt(i), 16_777_619);
     }
-    return hash.toString(36);
+    return (hash >>> 0).toString(36);
   };
 
   const diagnosticFrameCountRef = useRef(0);
   const cumulativeUniqueFramesRef = useRef(0);
   const uniqueReceivedFramesRef = useRef<Record<string, number>>({}); // Track unique frames at reception
   const uniqueReceivedFrameCountRef = useRef(0);
+  const changedReceivedFrameCountRef = useRef(0);
   const uniqueReceivedFrameOrderRef = useRef<string[]>([]);
 
   // Use client connection hook
@@ -258,6 +259,7 @@ export function ClientPage({
     frameQueueRef,
     uniqueReceivedFramesRef,
     uniqueReceivedFrameCountRef,
+    changedReceivedFrameCountRef,
     uniqueReceivedFrameOrderRef,
     frameCountRef,
     receivedFrameCountRef,
@@ -578,7 +580,8 @@ export function ClientPage({
   useEffect(() => {
     const metrics = {
       rendered: frameCountRef.current,
-      received: uniqueReceivedFrameCountRef.current,
+      received: receivedFrameCountRef.current,
+      changedReceived: changedReceivedFrameCountRef.current,
       queueDepth: frameQueueRef.current.length,
       uniqueRendered: cumulativeUniqueFramesRef.current,
       frameHashes: uniqueReceivedFramesRef.current,
@@ -694,6 +697,8 @@ export function ClientPage({
         const metrics = window.__clientFrameMetrics;
         if (metrics) {
           metrics.rendered = frameCountRef.current;
+          metrics.received = receivedFrameCountRef.current;
+          metrics.changedReceived = changedReceivedFrameCountRef.current;
           metrics.uniqueRendered = cumulativeUniqueFramesRef.current;
           metrics.queueDepth = frameQueueRef.current.length;
         }

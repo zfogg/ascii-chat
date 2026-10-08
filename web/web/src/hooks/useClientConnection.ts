@@ -21,12 +21,11 @@ const STATE_NAMES: Record<number, string> = {
 
 // Simple hash function for frame content
 const hashFrame = (content: string): string => {
-  let hash = 0;
-  for (let i = 0; i < content.length; i += 10) {
-    hash = (hash << 5) - hash + content.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
+  let hash = 2_166_136_261;
+  for (let i = 0; i < content.length; i++) {
+    hash = Math.imul(hash ^ content.charCodeAt(i), 16_777_619);
   }
-  return hash.toString(36);
+  return (hash >>> 0).toString(36);
 };
 
 interface UseClientConnectionOptions {
@@ -41,6 +40,7 @@ interface UseClientConnectionOptions {
   frameQueueRef: React.MutableRefObject<AsciiFrame[]>;
   uniqueReceivedFramesRef: React.MutableRefObject<Record<string, number>>;
   uniqueReceivedFrameCountRef: React.MutableRefObject<number>;
+  changedReceivedFrameCountRef: React.MutableRefObject<number>;
   uniqueReceivedFrameOrderRef: React.MutableRefObject<string[]>;
   frameCountRef: React.MutableRefObject<number>;
   receivedFrameCountRef: React.MutableRefObject<number>;
@@ -58,6 +58,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     frameQueueRef,
     uniqueReceivedFramesRef,
     uniqueReceivedFrameCountRef,
+    changedReceivedFrameCountRef,
     uniqueReceivedFrameOrderRef,
     frameCountRef,
     receivedFrameCountRef,
@@ -79,6 +80,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   const [wasmInitialized, setWasmInitialized] = useState(false);
 
   const reconnectAttemptRef = useRef<number>(0);
+  const receivedFrameHashRef = useRef<string | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -278,6 +280,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 );
               // Track unique frames at reception (for measuring actual frames from server)
               const frameHash = hashFrame(frame.ansiString);
+              const previousFrameHash =
+                receivedFrameHashRef.current;
+              if (previousFrameHash !== frameHash) {
+                changedReceivedFrameCountRef.current++;
+                receivedFrameHashRef.current = frameHash;
+              }
               if (!uniqueReceivedFramesRef.current[frameHash]) {
                 uniqueReceivedFrameCountRef.current++;
                 uniqueReceivedFrameOrderRef.current.push(frameHash);
@@ -302,7 +310,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
               window.__clientFrameMetrics = {
                 rendered: frameCountRef.current,
-                received: uniqueReceivedFrameCountRef.current,
+                received: receivedFrameCountRef.current,
+                changedReceived: changedReceivedFrameCountRef.current,
                 queueDepth: frameQueueRef.current.length,
                 uniqueRendered:
                   window.__clientFrameMetrics?.uniqueRendered ?? 0,
@@ -353,6 +362,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       frameQueueRef,
       uniqueReceivedFramesRef,
       uniqueReceivedFrameCountRef,
+      changedReceivedFrameCountRef,
       uniqueReceivedFrameOrderRef,
       frameCountRef,
       receivedFrameCountRef,

@@ -107,17 +107,20 @@ export class ServerFixture {
         }
       });
 
-      // Poll for port availability to detect startup
-      // ★ CRITICAL: Wait for BOTH TCP and WebSocket ports - server needs time to init WS
-      const pollInterval = setInterval(async () => {
-        const tcpListening = await isPortListening(tcpPort);
-        const wsListening = await isPortListening(wsPort);
-        if (tcpListening && wsListening) {
-          clearInterval(pollInterval);
+      // Wait for both listeners because WebSocket initialization can lag TCP.
+      void Promise.all([
+        waitForPort(tcpPort, "127.0.0.1"),
+        waitForPort(wsPort, "127.0.0.1"),
+      ]).then(
+        () => {
           clearTimeout(timeout);
           resolve();
-        }
-      }, 100);
+        },
+        (error: unknown) => {
+          clearTimeout(timeout);
+          reject(error);
+        },
+      );
     });
   }
 
@@ -231,28 +234,33 @@ export class NativeClientFixture {
   }
 }
 
-/**
- * Check if a port is listening
- */
-function isPortListening(
+/** Wait until a TCP port accepts connections, or fail after the deadline. */
+export async function waitForPort(
   port: number,
-  host: string = "127.0.0.1",
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ port, host });
-    socket.on("connect", () => {
-      socket.destroy();
-      resolve(true);
+  host: string,
+  options: { timeoutMs?: number; pollIntervalMs?: number } = {},
+): Promise<void> {
+  const deadline = Date.now() + (options.timeoutMs ?? 20_000);
+  const pollIntervalMs = options.pollIntervalMs ?? 100;
+
+  while (Date.now() < deadline) {
+    const listening = await new Promise<boolean>((resolve) => {
+      const socket = net.createConnection({ host, port });
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.once("error", () => resolve(false));
+      socket.setTimeout(500, () => {
+        socket.destroy();
+        resolve(false);
+      });
     });
-    socket.on("error", () => {
-      resolve(false);
-    });
-    socket.setTimeout(500);
-    socket.on("timeout", () => {
-      socket.destroy();
-      resolve(false);
-    });
-  });
+    if (listening) return;
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error(`No TCP listener started on ${host}:${port}`);
 }
 
 /**

@@ -5,6 +5,7 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { expect, test } from "@playwright/test";
+import { waitForPort } from "./server-fixture";
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
@@ -27,9 +28,7 @@ async function unusedTcpPort(): Promise<number> {
   });
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("No TCP port");
-  await new Promise<void>((resolve, reject) =>
-    server.close((error) => (error ? reject(error) : resolve())),
-  );
+  await new Promise<void>((resolve) => server.close(() => resolve()));
   return address.port;
 }
 
@@ -40,9 +39,7 @@ async function unusedUdpPort(): Promise<number> {
     socket.bind(0, "127.0.0.1", resolve);
   });
   const address = socket.address();
-  await new Promise<void>((resolve, reject) =>
-    socket.close((error) => (error ? reject(error) : resolve())),
-  );
+  await new Promise<void>((resolve) => socket.close(resolve));
   return address.port;
 }
 
@@ -223,8 +220,8 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       path.join(root, "acds.log"),
       env,
     );
-    await waitForTcp(acdsTcpPort);
-    await waitForTcp(acdsWsPort);
+    await waitForPort(acdsTcpPort, "127.0.0.1", { timeoutMs: 15_000 });
+    await waitForPort(acdsWsPort, "127.0.0.1", { timeoutMs: 15_000 });
 
     server = new LoggedProcess(
       [
@@ -390,24 +387,3 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
-
-async function waitForTcp(port: number): Promise<void> {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const connected = await new Promise<boolean>((resolve) => {
-      const socket = net.createConnection({ host: "127.0.0.1", port });
-      socket.once("connect", () => {
-        socket.destroy();
-        resolve(true);
-      });
-      socket.once("error", () => resolve(false));
-      socket.setTimeout(250, () => {
-        socket.destroy();
-        resolve(false);
-      });
-    });
-    if (connected) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`No TCP listener started on 127.0.0.1:${port}`);
-}

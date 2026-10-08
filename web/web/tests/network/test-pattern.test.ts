@@ -56,9 +56,10 @@ describe("shared test animation selection", () => {
       .slice(1, 14)
       .map(([x]) => x as number)
       .sort((left, right) => left - right);
-    expect(positions[0]).toBeLessThanOrEqual(0);
+    expect(positions.length).toBeGreaterThan(0);
+    expect(positions[0]!).toBeLessThanOrEqual(0);
     for (let index = 1; index < positions.length; index++)
-      expect(positions[index] - positions[index - 1]).toBeCloseTo(stripeWidth);
+      expect(positions[index]! - positions[index - 1]!).toBeCloseTo(stripeWidth);
     expect(positions.at(-1)! + stripeWidth).toBeGreaterThanOrEqual(800);
   });
 

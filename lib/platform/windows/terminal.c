@@ -13,6 +13,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/platform/windows/getopt.h>
 #include <ascii-chat/log/log.h>
+#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
@@ -28,7 +29,17 @@
  * @return 1 if TTY, 0 if not
  */
 int platform_isatty(int fd) {
-  return _isatty(fd);
+  if (!_isatty(fd)) {
+    return 0;
+  }
+
+  intptr_t os_handle = _get_osfhandle(fd);
+  if (os_handle == -1) {
+    return 0;
+  }
+
+  DWORD console_mode = 0;
+  return GetConsoleMode((HANDLE)os_handle, &console_mode) != 0;
 }
 
 /**

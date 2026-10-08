@@ -151,7 +151,7 @@ static atomic_t g_capture_thread_exited = {0};
 /* ============================================================================
  * Frame Processing Constants
  * ============================================================================ */
-/** Target capture FPS for network transmission (144 FPS for high-refresh displays) */
+/** Fallback capture FPS when no target was configured */
 #define CAPTURE_TARGET_FPS 144
 
 /* Frame processing now handled by session library via session_capture_process_for_transmission() */
@@ -197,7 +197,8 @@ static void *webcam_capture_thread_func(void *arg) {
   static image_t *last_frame = NULL; // Cache last frame to render when paused
   bool force_raw_video = false;
   if (!fps_tracker_initialized) {
-    fps_init(&fps_tracker, CAPTURE_TARGET_FPS, "WEBCAM_TX");
+    int target_fps = (int)session_capture_get_target_fps(g_capture_capture_ctx);
+    fps_init(&fps_tracker, target_fps, "WEBCAM_TX");
     fps_tracker_initialized = true;
   }
 
@@ -443,7 +444,8 @@ int capture_init() {
     config.path = webcam_index_str;
     log_debug("Using webcam device %u", GET_OPTION(webcam_index));
   }
-  config.target_fps = CAPTURE_TARGET_FPS;
+  int configured_fps = GET_OPTION(fps);
+  config.target_fps = configured_fps > 0 ? (uint32_t)configured_fps : CAPTURE_TARGET_FPS;
   config.resize_for_network = true; // Client always resizes for network transmission
 
   // Configure audio capture with fallback to microphone

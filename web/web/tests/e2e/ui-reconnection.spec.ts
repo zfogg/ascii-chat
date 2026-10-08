@@ -2,7 +2,8 @@ import { test } from "@playwright/test";
 
 // Mark this test to run serially (don't run in parallel with other tests)
 test.describe.configure({ mode: "serial" });
-import { spawn, execSync } from "child_process";
+import { spawn } from "child_process";
+import { waitForPort } from "./server-fixture";
 
 test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
   // Use random port to avoid conflicts
@@ -29,21 +30,9 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
       },
     );
 
-    // Wait for server to be ready
-    await new Promise<void>((resolve) => {
-      const checkReady = () => {
-        try {
-          execSync(`nc -z localhost ${wsPort} 2>/dev/null`, {
-            stdio: "ignore",
-          });
-          console.log(`[TEST] Server is ready on WebSocket port ${wsPort}`);
-          setTimeout(resolve, 1000); // Extra wait for server to fully initialize
-        } catch {
-          setTimeout(checkReady, 200);
-        }
-      };
-      setTimeout(checkReady, 500); // Initial delay before checking
-    });
+    await waitForPort(wsPort, "127.0.0.1");
+    console.log(`[TEST] Server is ready on WebSocket port ${wsPort}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   };
 
   const stopServer = async () => {
