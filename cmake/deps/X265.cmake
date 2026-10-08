@@ -129,6 +129,7 @@ if(USE_MUSL)
                 -DCMAKE_CXX_COMPILER=clang++
                 "-DCMAKE_C_FLAGS=${_X265_C_FLAGS}"
                 "-DCMAKE_CXX_FLAGS=${_X265_CXX_FLAGS}"
+                -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
                 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
                 -DCMAKE_CXX_STANDARD=14
                 -DENABLE_SHARED=OFF

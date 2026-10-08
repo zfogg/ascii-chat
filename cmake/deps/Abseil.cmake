@@ -79,6 +79,11 @@ if(USE_MUSL)
 
     set(ABSEIL_PREFIX "${MUSL_DEPS_DIR_STATIC}/abseil")
     set(ABSEIL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/abseil-build")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        set(ABSEIL_MUSL_TARGET "aarch64-linux-musl")
+    else()
+        set(ABSEIL_MUSL_TARGET "x86_64-linux-musl")
+    endif()
 
     # Only add external project if library doesn't exist
     if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
@@ -97,10 +102,11 @@ if(USE_MUSL)
                 -DCMAKE_CXX_STANDARD=17
                 -DCMAKE_BUILD_TYPE=Release
                 -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
+                -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
                 -DBUILD_SHARED_LIBS=OFF
                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                 -DCMAKE_C_FLAGS=-O3\ -fPIC
-                -DCMAKE_CXX_FLAGS=-O3\ -fPIC\ -target\ x86_64-linux-musl\ -stdlib=libc++
+                -DCMAKE_CXX_FLAGS=-O3\ -fPIC\ -target\ ${ABSEIL_MUSL_TARGET}\ -stdlib=libc++
             INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${ABSEIL_PREFIX}
             BUILD_BYPRODUCTS
                 ${ABSEIL_PREFIX}/lib/libabsl_base.a

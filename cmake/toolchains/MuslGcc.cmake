@@ -12,6 +12,7 @@
 # =============================================================================
 
 set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # Use musl-gcc (set by parent via MUSL_GCC_PATH cache variable)
 set(CMAKE_C_COMPILER "${MUSL_GCC_PATH}")
