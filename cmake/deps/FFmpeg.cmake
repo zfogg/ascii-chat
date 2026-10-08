@@ -194,7 +194,7 @@ if(USE_MUSL)
             # libraries so it does not inject glibc's LSE initializer, then
             # provide the musl libraries required by the configure probes.
             string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -mno-outline-atomics -nodefaultlibs")
-            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " -lc")
+            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " ${MUSL_LIBGCC_PATH} -lc")
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env

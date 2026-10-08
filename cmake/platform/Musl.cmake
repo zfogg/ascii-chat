@@ -206,7 +206,6 @@ function(configure_musl_post_project)
         message(FATAL_ERROR "GCC libgcc runtime was not found; it is required for musl static linking")
     endif()
     set(MUSL_LIBGCC_PATH "${GCC_LIBGCC_PATH}" CACHE FILEPATH "Compiler runtime archive for musl static executables" FORCE)
-    get_filename_component(GCC_LIBDIR "${GCC_LIBGCC_PATH}" DIRECTORY)
 
     # Detect architecture for musl target triple
     # CMAKE_SYSTEM_PROCESSOR is available after project()
@@ -299,6 +298,46 @@ function(configure_musl_post_project)
         set(ALPINE_ARCH "armv7")
     else()
         message(FATAL_ERROR "Unsupported architecture for Alpine libc++: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+
+    if(ALPINE_ARCH STREQUAL "aarch64")
+        # Use Alpine's compiler runtime for AArch64 musl. The host Debian
+        # libgcc archive contains an LSE initializer that calls glibc-only
+        # __getauxval; Alpine's archive provides the same helpers against musl.
+        set(ALPINE_GCC_VERSION "14.2.0-r4")
+        set(ALPINE_GCC_RUNTIME_VERSION "14.2.0")
+        set(ALPINE_GCC_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-gcc")
+        set(ALPINE_GCC_PACKAGE "gcc-${ALPINE_GCC_VERSION}.apk")
+        set(ALPINE_LIBGCC_PATH
+            "${ALPINE_GCC_DIR}/usr/lib/gcc/aarch64-alpine-linux-musl/${ALPINE_GCC_RUNTIME_VERSION}/libgcc.a")
+
+        if(NOT EXISTS "${ALPINE_LIBGCC_PATH}")
+            file(MAKE_DIRECTORY "${ALPINE_GCC_DIR}")
+            file(DOWNLOAD
+                "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${ALPINE_GCC_PACKAGE}"
+                "${ALPINE_GCC_DIR}/${ALPINE_GCC_PACKAGE}"
+                EXPECTED_HASH SHA256=f9fa19072d1f1a4f72631f3fd090a85a48b95fa08b2062630ea96813275e130f
+                STATUS ALPINE_GCC_DOWNLOAD_STATUS
+                SHOW_PROGRESS
+            )
+            list(GET ALPINE_GCC_DOWNLOAD_STATUS 0 ALPINE_GCC_DOWNLOAD_CODE)
+            if(NOT ALPINE_GCC_DOWNLOAD_CODE EQUAL 0)
+                list(GET ALPINE_GCC_DOWNLOAD_STATUS 1 ALPINE_GCC_DOWNLOAD_ERROR)
+                message(FATAL_ERROR "Failed to download Alpine AArch64 libgcc: ${ALPINE_GCC_DOWNLOAD_ERROR}")
+            endif()
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xzf "${ALPINE_GCC_PACKAGE}"
+                WORKING_DIRECTORY "${ALPINE_GCC_DIR}"
+                RESULT_VARIABLE ALPINE_GCC_EXTRACT_RESULT
+            )
+            if(NOT ALPINE_GCC_EXTRACT_RESULT EQUAL 0 OR NOT EXISTS "${ALPINE_LIBGCC_PATH}")
+                message(FATAL_ERROR "Failed to extract Alpine AArch64 libgcc from ${ALPINE_GCC_PACKAGE}")
+            endif()
+        endif()
+
+        set(MUSL_LIBGCC_PATH "${ALPINE_LIBGCC_PATH}" CACHE FILEPATH
+            "Musl-compatible AArch64 compiler runtime archive" FORCE)
+        message(STATUS "Using Alpine musl AArch64 compiler runtime: ${MUSL_LIBGCC_PATH}")
     endif()
 
     if(NOT EXISTS "${ALPINE_LIBCXX_DIR}/libc++.a")
@@ -519,11 +558,9 @@ function(configure_musl_post_project)
             if(ALPINE_LIBUNWIND_STATIC)
                 target_link_libraries(${TARGET_NAME} PRIVATE "${ALPINE_LIBUNWIND_STATIC}")
             endif()
-            # AArch64 musl's libc uses IEEE quad-precision conversion helpers
-            # that Clang does not provide in its host compiler-rt archive.
-            # Pull only needed helper objects from GCC's architecture-matched
-            # libgcc archive; do not whole-archive it (that would add glibc's
-            # AArch64 LSE initialization object to the musl executable).
+            # Alpine's musl-compatible AArch64 libgcc provides the quad
+            # conversion and outlined-atomic helpers required by the static
+            # dependencies without introducing glibc-only runtime symbols.
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
                 target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_LIBGCC_PATH}")
             endif()
@@ -545,7 +582,7 @@ function(configure_musl_post_project)
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
     message(STATUS "${BoldBlue}musl${ColorReset} C library enabled (static linking with ${BoldCyan}clang${ColorReset})")
-    message(STATUS "Using ${BoldCyan}GCC ${GCC_VERSION}${ColorReset} libgcc from: ${BoldMagenta}${GCC_LIBDIR}${ColorReset}")
+    message(STATUS "Using compiler runtime for musl: ${BoldMagenta}${MUSL_LIBGCC_PATH}${ColorReset}")
     message(STATUS "")
     message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
