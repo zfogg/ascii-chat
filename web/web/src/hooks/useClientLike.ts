@@ -97,7 +97,7 @@ export function useClientLike(
     cols: 0,
     rows: 0,
   });
-  const [fps, setFps] = useState<number | undefined>();
+  const [fps, setFps] = useState<number | undefined>(0);
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] =

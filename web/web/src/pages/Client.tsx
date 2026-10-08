@@ -220,7 +220,7 @@ export function ClientPage({
   useEffect(() => {
     terminalDimensionsRef.current = terminalDimensions;
   }, [terminalDimensions]);
-  const [fps, setFps] = useState<number | undefined>();
+  const [fps, setFps] = useState<number | undefined>(0);
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
@@ -390,7 +390,7 @@ export function ClientPage({
   // still be rendered at full frame rate when adjacent pixels are identical.
   useEffect(() => {
     if (connectionState !== ConnectionState.CONNECTED) {
-      setFps(undefined);
+      setFps(0);
       return;
     }
 

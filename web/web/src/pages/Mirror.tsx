@@ -99,6 +99,10 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
+  useEffect(() => {
+    if (!isWebcamRunning) setFps(0);
+  }, [isWebcamRunning, setFps]);
+
   // Update wasmModule state immediately when WASM initialization completes
   useEffect(() => {
     const effectTime = performance.now();
