@@ -188,12 +188,28 @@ if(USE_MUSL)
             endif()
         endforeach()
         set(MUSL_FFMPEG_EXTRA_LDFLAGS "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+        set(MUSL_AUXV_COMPAT_OBJECT "")
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
             # Debian's AArch64 libgcc calls glibc's private __getauxval symbol
             # from lse-init.o. Musl provides the equivalent public getauxval.
-            # Alias it for FFmpeg's configure link probes and any GCC runtime
-            # objects they pull in.
-            string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -Wl,--defsym=__getauxval=getauxval")
+            # Provide a small compatibility object for FFmpeg's configure
+            # probes, whose linker evaluates symbol aliases before libc is
+            # searched.
+            set(MUSL_AUXV_COMPAT_SOURCE "${FFMPEG_BUILD_DIR}/musl-auxv-compat.c")
+            set(MUSL_AUXV_COMPAT_OBJECT "${FFMPEG_BUILD_DIR}/musl-auxv-compat.o")
+            file(WRITE "${MUSL_AUXV_COMPAT_SOURCE}"
+                "#include <sys/auxv.h>\n"
+                "__attribute__((weak)) unsigned long __getauxval(unsigned long type) { return getauxval(type); }\n")
+            execute_process(
+                COMMAND "${MUSL_GCC}" -fPIC -c "${MUSL_AUXV_COMPAT_SOURCE}" -o "${MUSL_AUXV_COMPAT_OBJECT}"
+                RESULT_VARIABLE MUSL_AUXV_COMPAT_RESULT
+                OUTPUT_VARIABLE MUSL_AUXV_COMPAT_OUTPUT
+                ERROR_VARIABLE MUSL_AUXV_COMPAT_ERROR
+            )
+            if(NOT MUSL_AUXV_COMPAT_RESULT EQUAL 0)
+                message(FATAL_ERROR
+                    "Failed to compile musl auxv compatibility object:\n${MUSL_AUXV_COMPAT_OUTPUT}\n${MUSL_AUXV_COMPAT_ERROR}")
+            endif()
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
@@ -207,7 +223,7 @@ if(USE_MUSL)
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
                 "--extra-ldflags=${MUSL_FFMPEG_EXTRA_LDFLAGS}"
-                "--extra-libs=-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a"
+                "--extra-libs=-lm ${MUSL_AUXV_COMPAT_OBJECT} ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a"
                 --enable-static
                 --disable-shared
                 --enable-pic
