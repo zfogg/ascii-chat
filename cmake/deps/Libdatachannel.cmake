@@ -518,6 +518,10 @@ if(NOT libdatachannel_POPULATED)
             endif()
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
+            # This nested build produces a static archive; avoid executable
+            # compiler probes that require GCC's glibc startup objects for
+            # the aarch64-linux-musl target.
+            list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY")
 
             # Pass musl-built OpenSSL paths to libdatachannel
             # OPENSSL_ROOT_DIR, OPENSSL_INCLUDE_DIR, etc. are set by MuslDependencies.cmake
