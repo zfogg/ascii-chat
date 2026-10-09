@@ -27,7 +27,7 @@ static screen_t g_screens[UI_SCREEN_COUNT];
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static asciichat_thread_t g_thread;
-static atomic_t g_stop = {0};
+static atomic_t g_presentation_stop_requested = {0};
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local terminal_size_t g_render_size;
@@ -107,7 +107,7 @@ static void *presentation_main(void *unused) {
   g_owner = true;
   uint64_t progress_render_ns = 0;
   g_fps = fps_counter_create();
-  while (!atomic_load_bool(&g_stop)) {
+  while (!atomic_load_bool(&g_presentation_stop_requested)) {
     mutex_lock(&g_mutex);
     int active = -1;
     for (int i = 0; i < UI_SCREEN_COUNT; ++i)
@@ -195,7 +195,7 @@ static void *presentation_main(void *unused) {
 
 static asciichat_error_t controller_start(void) {
   if (lifecycle_init_once(&g_lifecycle)) {
-    atomic_store_bool(&g_stop, false);
+    atomic_store_bool(&g_presentation_stop_requested, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
     g_small = false;
@@ -206,12 +206,12 @@ static asciichat_error_t controller_start(void) {
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI mutex");
     }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
-    NAMED_REGISTER_ATOMIC(&g_stop, "ui_controller_stop", NULL);
+    NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
     if (asciichat_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       NAMED_UNREGISTER(&g_live);
-      NAMED_UNREGISTER(&g_stop);
+      NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
       mutex_destroy(&g_mutex);
@@ -387,7 +387,7 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
 void ui_controller_shutdown(void) {
   if (!lifecycle_destroy_once(&g_lifecycle))
     return;
-  atomic_store_bool(&g_stop, true);
+  atomic_store_bool(&g_presentation_stop_requested, true);
   asciichat_thread_join(&g_thread, NULL);
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     if (g_screens[i].render)
@@ -398,7 +398,7 @@ void ui_controller_shutdown(void) {
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
   NAMED_UNREGISTER(&g_live);
-  NAMED_UNREGISTER(&g_stop);
+  NAMED_UNREGISTER(&g_presentation_stop_requested);
   NAMED_UNREGISTER(&g_blocked);
   NAMED_UNREGISTER(&g_lifecycle.state);
   lifecycle_destroy_commit(&g_lifecycle);
