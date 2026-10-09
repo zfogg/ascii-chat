@@ -2,7 +2,15 @@ import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import sitemap from "vite-plugin-sitemap";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
+
+// Fresh checkouts have only the canonical bundle; publish runtime URLs for
+// development, production builds, and previews without recompiling WASM.
+execFileSync(
+  process.execPath,
+  [path.resolve(__dirname, "scripts/wasm-build.mjs"), "--publish-only"],
+  { stdio: "inherit" },
+);
 
 const getCommitSha = () => {
   // Check deployment platform environment variables in order

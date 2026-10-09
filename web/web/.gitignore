@@ -38,3 +38,6 @@ wasm/build/
 
 playwright-report/
 test-results/
+
+# Runtime copies generated from the tracked src/wasm/dist bundle
+/public/wasm/
