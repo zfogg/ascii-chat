@@ -290,6 +290,7 @@ set(LIB_SRC_COMMON
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
+    ${LIB_ROOT}/video/anim/controller.c
 )
 
 # Mirror-specific sources (not needed by client mode)

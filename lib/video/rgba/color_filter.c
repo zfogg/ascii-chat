@@ -4,6 +4,8 @@
  * @ingroup video
  */
 
+#include <ascii-chat/video/anim/controller.h>
+#include "../anim/backends.h"
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
@@ -346,6 +348,18 @@ int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_
 }
 
 char *rainbow_replace_ansi_colors(const char *ansi_string, float time_seconds) {
+  animation_sample_t sample;
+  animation_config_t config = {.type = ANIMATION_RAINBOW_FILTER, .fps = 60, .speed = 1};
+  if (animation_sample_at(config, time_seconds, &sample) != ASCIICHAT_OK)
+    return NULL;
+  char *output = NULL;
+  animation_target_t target = {.type = ANIMATION_TARGET_ANSI, .ansi = {.input = ansi_string, .out = &output}};
+  if (animation_apply(&sample, &target) != ASCIICHAT_OK)
+    return NULL;
+  return output;
+}
+
+char *rainbow_render_ansi_at(const char *ansi_string, float time_seconds) {
   if (!ansi_string) {
     return NULL;
   }

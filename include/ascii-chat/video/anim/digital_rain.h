@@ -40,6 +40,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/video/anim/controller.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -68,7 +69,9 @@ typedef struct {
  * Maintains state for the entire digital rain effect across frames.
  * Tracks column states and effect parameters.
  */
-typedef struct {
+typedef struct digital_rain {
+  animation_t animation; ///< Producer-owned animation clock
+  uint64_t animation_timestamp_ns;
   digital_rain_column_t *columns; ///< Per-column state array
   int num_columns;                ///< Number of columns in grid
   int num_rows;                   ///< Number of rows in grid

@@ -4,6 +4,7 @@
  * @brief 🖨️ Image processing: format detection, decoding, scaling, and pixel format conversion
  */
 
+#include "../anim/backends.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -36,15 +37,17 @@
 // ansi_fast functions are declared in ansi_fast.h (already included)
 
 asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_counter) {
-  if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !frame_counter) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Test pattern requires a valid image and frame counter");
-  }
+  if (!frame_counter)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Test pattern requires a frame counter");
+  asciichat_error_t err = image_render_test_pattern_phase(image, *frame_counter);
+  if (err == ASCIICHAT_OK)
+    *frame_counter += 5;
+  return err;
+}
 
-  // Advance every generated frame. Discovery's FPS indicator measures visual
-  // changes, so holding each test pattern phase for two frames makes a 60 Hz
-  // source appear to run at only 30 FPS.
-  unsigned int animation_phase = *frame_counter;
-  *frame_counter += 5; // Speed up animation by a factor of five.
+asciichat_error_t image_render_test_pattern_phase(image_t *image, unsigned int animation_phase) {
+  if (!image || !image->pixels || image->w <= 0 || image->h <= 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Test pattern requires a valid image");
 
   for (int y = 0; y < image->h; y++) {
     for (int x = 0; x < image->w; x++) {

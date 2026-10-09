@@ -179,3 +179,40 @@ The `halfblock_cover_uses_cell_geometry` Criterion test verifies that half-block
 sampling does not double the viewport height used for aspect-ratio cropping.
 These longer animation and geometry checks supplement the 131-case interaction
 matrix; that matrix alone does not establish continuous playback across EOF.
+
+## Procedural animation controller
+
+`video/anim/controller.h` provides typed dispatch for splash rainbow, digital rain,
+rainbow filtering, and the generated test pattern. Instances are independent; there
+are no groups or background animation threads in this layer. Existing producers own
+and serialize their instances, registered by name for diagnostics. No new shared
+atomics are needed. Immutable samples can be copied to the presentation thread.
+
+`animation_update()` accepts monotonic timestamps in a caller-selected domain,
+advances the local clock, and returns frame-change and next-deadline information.
+Pause, visibility policy, and speed are per instance. Update at a control-change
+boundary before changing controls; continue ticking suspended instances so hidden
+or paused time is discarded. Call `animation_reset()` before seeking backwards.
+`animation_sample_at()` samples an already-scaled elapsed time without allocating
+an instance; the rainbow adapter uses the renderer's existing timestamps. The test
+source supplies frame indices directly, preserving one phase advance per capture.
+
+`animation_apply()` switches on effect type and validates the target: splash writes
+RGB colors, rainbow writes RGB or allocated ANSI, digital rain writes allocated
+ANSI, and the test pattern fills an image. ANSI outputs belong to the caller and
+must be released with `SAFE_FREE`. Digital rain's target includes its producer-owned
+column state. Application is stateful for rain (brightness smoothing); sample values
+are immutable, but a rain target must not be shared across concurrent renders.
+
+Native and WASM renderers retain their existing public effect entry points, which
+now delegate to this controller. Existing effect ordering, terminal presentation,
+and video/GIF decoding, playback clocks, and audio synchronization are unchanged.
+The presentation scheduler still controls terminal refreshes; deadline metadata is
+available for producers without adding a global animation registry or scheduler.
+
+Validation: `tests/unit/video/animation_test.c` covers clocks, independent instances,
+visibility, reset, typed targets, pattern parity, and rain/rainbow composition.
+`tests/integration/tmux_animations.py` records all four animations and combined
+Matrix/rainbow from real tmux panes before and after resize. Stationary video input
+isolates effect motion from source motion. Captures/reports are generated outside
+Git, not checked into the repository.

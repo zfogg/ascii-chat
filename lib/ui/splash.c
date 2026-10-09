@@ -14,6 +14,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
@@ -59,17 +60,6 @@
 static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
 static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_notification_mutex);
-
-static const rgb_pixel_t g_rainbow_colors[] = {
-    {255, 0, 0},   // Red
-    {255, 165, 0}, // Orange
-    {255, 255, 0}, // Yellow
-    {0, 255, 0},   // Green
-    {0, 255, 255}, // Cyan
-    {0, 0, 255},   // Blue
-    {255, 0, 255}  // Magenta
-};
-#define RAINBOW_COLOR_COUNT 7
 
 // ============================================================================
 // Log Management
@@ -117,49 +107,6 @@ static struct {
 // Helper Functions - Rainbow Rendering
 // ============================================================================
 
-/**
- * @brief Interpolate between two RGB colors
- * @param color1 First color
- * @param color2 Second color
- * @param t Interpolation factor (0.0 = color1, 1.0 = color2)
- * @return Interpolated RGB color
- */
-static rgb_pixel_t interpolate_color(rgb_pixel_t color1, rgb_pixel_t color2, double t) {
-  rgb_pixel_t result;
-  result.r = (uint8_t)(color1.r * (1.0 - t) + color2.r * t);
-  result.g = (uint8_t)(color1.g * (1.0 - t) + color2.g * t);
-  result.b = (uint8_t)(color1.b * (1.0 - t) + color2.b * t);
-  return result;
-}
-
-/**
- * @brief Get RGB color for a position in the rainbow
- * @param position Position in the rainbow (0.0 to 1.0 or beyond for cycling)
- * @return RGB color at that position
- */
-static rgb_pixel_t get_rainbow_color_rgb(double position) {
-  // Normalize position to 0-1 range
-  double norm_pos = position - (long)position;
-  if (norm_pos < 0) {
-    norm_pos += 1.0;
-  }
-
-  // Scale position to color range
-  double color_pos = norm_pos * (RAINBOW_COLOR_COUNT - 1);
-  int color_idx = (int)color_pos;
-  double blend = color_pos - color_idx;
-
-  // Wrap around at the end
-  if (color_idx >= RAINBOW_COLOR_COUNT - 1) {
-    color_idx = RAINBOW_COLOR_COUNT - 1;
-    blend = 0;
-  }
-
-  int next_idx = (color_idx + 1) % RAINBOW_COLOR_COUNT;
-
-  return interpolate_color(g_rainbow_colors[color_idx], g_rainbow_colors[next_idx], blend);
-}
-
 // ============================================================================
 // Header Rendering (callback for terminal_screen)
 // ============================================================================
@@ -168,7 +115,7 @@ static rgb_pixel_t get_rainbow_color_rgb(double position) {
  * @brief Context data for splash header rendering
  */
 typedef struct {
-  int frame;                      // Current animation frame number
+  animation_sample_t animation;   // Immutable sample copied to the presentation thread
   bool use_colors;                // Whether to use rainbow colors
   char update_notification[1024]; // Update notification message (empty if no update)
 } splash_header_ctx_t;
@@ -296,8 +243,10 @@ static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size,
       if (ch == ' ') {
         frame_buffer_printf(buf, " ");
       } else if (ctx->use_colors) {
-        double char_pos = (char_idx + ctx->frame / 5.0) / 30.0;
-        rgb_pixel_t color = get_rainbow_color_rgb(char_pos);
+        rgb_pixel_t color = {0};
+        animation_target_t target = {.type = ANIMATION_TARGET_COLOR,
+                                     .color = {.position = char_idx / 30.0, .out = &color}};
+        animation_apply(&ctx->animation, &target);
         frame_buffer_printf(buf, "\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
         char_idx++;
       } else {
@@ -442,6 +391,11 @@ static void *splash_animation_thread(void *arg) {
     fps = 60;                        // Default to 60 FPS if not specified
   const int anim_speed = 1000 / fps; // milliseconds per frame
   uint64_t loop_start_ns = time_get_ns();
+  animation_t animation;
+  animation_init(
+      &animation, "splash_rainbow",
+      (animation_config_t){
+          .type = ANIMATION_SPLASH_RAINBOW, .fps = (uint32_t)fps, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
   int iteration_count = 0; // Just for logging actual FPS
 
   log_dev("[SPLASH_ANIM_INIT] fps=%d anim_speed=%dms", fps, anim_speed);
@@ -478,7 +432,12 @@ static void *splash_animation_thread(void *arg) {
 
     // Convert elapsed time to animation frame (at target FPS)
     // For 60 FPS target: frame = elapsed_ms / 16.67
-    int frame = (int)(elapsed_ms * fps / 1000);
+    ui_presentation_state_t presentation = ui_controller_state();
+    animation_set_visible(&animation, presentation.screen < 0 ||
+                                          (presentation.screen == UI_SCREEN_SPLASH && !presentation.covered));
+    animation_sample_t sample;
+    animation_update(&animation, now_ns, &sample);
+    int frame = (int)sample.frame;
 
     if (!first_frame) {
       log_dev("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
@@ -509,7 +468,7 @@ static void *splash_animation_thread(void *arg) {
 
     // Set up splash header context for this frame (using TIME-BASED frame value)
     splash_header_ctx_t header_ctx = {
-        .frame = frame,
+        .animation = sample,
         .use_colors = use_colors,
     };
 
@@ -623,6 +582,7 @@ static void *splash_animation_thread(void *arg) {
       iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop),
       shutdown_is_requested());
 
+  animation_destroy(&animation);
   ui_controller_remove(UI_SCREEN_SPLASH);
   atomic_store_bool(&g_splash_state.is_running, false);
   log_dev("[SPLASH_ANIM] Animation thread exiting");

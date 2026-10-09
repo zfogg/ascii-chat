@@ -5,6 +5,7 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/color_filter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/anim/digital_rain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/anim/controller.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webcam/webcam.c
     # H.265 codec (FFmpeg-based) - required for HEVC video support
     ${CMAKE_CURRENT_SOURCE_DIR}/h265/encoder.c

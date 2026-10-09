@@ -3,6 +3,7 @@
  * @brief Unified media source implementation
  */
 
+#include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/media/yt_dlp.h>
@@ -498,8 +499,12 @@ static image_t *read_test_pattern(media_source_t *source) {
     if (!source->test_pattern_frame)
       return NULL;
   }
-  if (image_render_test_pattern(source->test_pattern_frame, &source->test_frame_counter) != ASCIICHAT_OK)
+  // Generated test media advances once per requested frame, preserving capture cadence.
+  animation_sample_t sample = {.type = ANIMATION_TEST_PATTERN, .frame = source->test_frame_counter};
+  animation_target_t target = {.type = ANIMATION_TARGET_IMAGE, .image = source->test_pattern_frame};
+  if (animation_apply(&sample, &target) != ASCIICHAT_OK)
     return NULL;
+  ++source->test_frame_counter;
   return source->test_pattern_frame;
 }
 
