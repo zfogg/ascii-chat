@@ -36,7 +36,14 @@ def probe(library, kind, log):
     response = C.create_string_buffer(128)
     budget = 30 if kind == "mdns" else 10 if kind == "update" else 1
     start = time.monotonic()
-    if kind in ("text", "password", "hidden", "success", "cancel", "auto"):
+    if kind == "guarded-auto":
+        # Match the interactivity guard used by openpgp_decrypt_with_gpg().
+        native.platform_is_interactive.restype = C.c_bool
+        assert native.platform_is_interactive(), "Automated answers must not hide a Windows TTY"
+        opts = PromptOptions(1, False, True, b"*")
+        assert native.platform_prompt_question(b"GPG passphrase", response, len(response), opts) == 0
+        assert response.value == b"answer"
+    elif kind in ("text", "password", "hidden", "success", "cancel", "auto"):
         secret = kind in ("password", "hidden", "auto")
         opts = PromptOptions(1, not secret, True, b"*" if kind != "hidden" and secret else b"\0")
         if kind == "auto":
@@ -84,6 +91,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--binary", type=Path, help="Also verify CLI overwrite actions")
+    parser.add_argument("--case", action="append", help="Run only the named regression case (repeatable)")
     parser.add_argument("--probe")
     parser.add_argument("--log", type=Path)
     args = parser.parse_args()
@@ -115,7 +123,13 @@ def main():
                 finally:
                     term.close()
     with tempfile.TemporaryDirectory(prefix="prompt-timeouts-") as directory:
-        for kind in ("text", "password", "hidden", "yes", "mdns", "update", "success", "cancel", "pipe", "mdns-pipe", "auto"):
+        cases = ["text", "password", "hidden", "yes", "mdns", "update", "success", "cancel", "pipe", "mdns-pipe", "auto"]
+        if os.name == "nt":
+            cases.append("guarded-auto")
+        if args.case:
+            assert set(args.case) <= set(cases), args.case
+            cases = args.case
+        for kind in cases:
             log = Path(directory) / f"{kind}.log"
             cmd = [sys.executable, str(Path(__file__).resolve()), "--library", str(args.library.resolve()),
                    "--probe", kind, "--log", str(log)]
@@ -133,9 +147,18 @@ def main():
                         child.kill()
                 print(out.decode().strip())
                 continue
-            term = Terminal(cmd, rows=40, cols=110)
+            previous_response = os.environ.get("ASCII_CHAT_QUESTION_PROMPT_RESPONSE")
             try:
-                if kind != "update":
+                if kind == "guarded-auto":
+                    os.environ["ASCII_CHAT_QUESTION_PROMPT_RESPONSE"] = "answer"
+                term = Terminal(cmd, rows=40, cols=110)
+            finally:
+                if previous_response is None:
+                    os.environ.pop("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", None)
+                else:
+                    os.environ["ASCII_CHAT_QUESTION_PROMPT_RESPONSE"] = previous_response
+            try:
+                if kind not in ("update", "guarded-auto"):
                     term.expect(lambda s: "Deadline" in s or "Select server" in s, "Prompt missing", timeout=6)
                 if kind in ("password", "hidden"):
                     term.write("partial-secret")
@@ -150,7 +173,7 @@ def main():
                         term.pump(.12)
                 term.expect(lambda s: f"PASS {kind}" in s, "Probe did not finish", timeout=35)
                 output = "".join(term.raw)
-                if kind not in ("success", "cancel"):
+                if kind not in ("success", "cancel", "guarded-auto"):
                     budget = 30 if kind == "mdns" else 10 if kind == "update" else 1
                     assert f"Prompt timed out after {budget} seconds" in output, output
                 assert "partial-secret" not in output

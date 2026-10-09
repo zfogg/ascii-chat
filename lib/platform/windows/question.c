@@ -17,7 +17,8 @@
 #include <string.h>
 
 bool platform_is_interactive(void) {
-  return terminal_can_prompt_user();
+  // Callers may guard prompts before they consume an automated response.
+  return _isatty(_fileno(stdin)) != 0;
 }
 
 int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
