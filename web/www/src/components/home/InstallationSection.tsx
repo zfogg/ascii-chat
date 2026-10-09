@@ -106,6 +106,16 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 first, or download an archive yourself below.
               </p>
             </div>
+            <Heading level={4} className="font-semibold text-cyan-300 mb-2">
+              Download from GitHub
+            </Heading>
+            <p className="text-gray-300 mb-4">
+              GitHub Releases has packages for Windows, macOS, and Linux:
+              Windows MSI installers and ZIP archives, macOS PKG installers, and
+              Linux DEB packages for Debian/Ubuntu and RPM packages for
+              Fedora/RHEL. Linux and macOS tarballs (.tar.gz) are also available
+              if you prefer to unpack the binaries yourself.
+            </p>
             <TrackedLink
               href="https://github.com/zfogg/ascii-chat/releases/latest"
               label="Home - Download Latest Release"
