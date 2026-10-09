@@ -136,7 +136,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
 
   bool binary_stdout = strcmp(output_path, "-") == 0 || strcmp(output_path, "pipe:") == 0;
-  ctx->progress = render_progress_create(!binary_stdout);
+  ctx->progress = render_progress_create(!binary_stdout, output_path);
   *out = ctx;
   return ASCIICHAT_OK;
 }

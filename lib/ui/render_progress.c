@@ -4,6 +4,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <string.h>
@@ -20,6 +21,8 @@ typedef struct {
   bool finalizing;
   bool failed;
   size_t length;
+  size_t destination_length;
+  // The NUL-terminated destination follows the NUL-terminated preview.
   char frame[];
 } progress_snapshot_t;
 
@@ -72,6 +75,13 @@ static void progress_render(terminal_size_t size, const void *data) {
   }
   int col = (size.cols - width) / 2 + 1;
   frame_buffer_printf(buffer, "\033[%d;%dH\033[0;7m%s\033[0m", (size.rows + 1) / 2, col, label);
+  size_t destination_size = snapshot->destination_length + 32;
+  char *destination = SAFE_MALLOC(destination_size, char *);
+  truncate_with_ellipsis(snapshot->frame + snapshot->length + 1, destination, destination_size, size.cols - 4);
+  int destination_width = display_width(destination) + 2;
+  col = (size.cols - destination_width) / 2 + 1;
+  frame_buffer_printf(buffer, "\033[%d;%dH\033[0;7m %s \033[0m", (size.rows + 1) / 2 + 1, col, destination);
+  SAFE_FREE(destination);
   ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   SAFE_FREE(line);
   SAFE_FREE(clipped);
@@ -83,10 +93,11 @@ static void progress_publish(render_progress_t *progress) {
   if (progress->active)
     ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, progress->fd, (terminal_size_t){.cols = 20, .rows = 5},
                          progress_render, progress->snapshot,
-                         sizeof(*progress->snapshot) + progress->snapshot->length + 1);
+                         sizeof(*progress->snapshot) + progress->snapshot->length +
+                             progress->snapshot->destination_length + 2);
 }
 
-render_progress_t *render_progress_create(bool enabled) {
+render_progress_t *render_progress_create(bool enabled, const char *destination) {
   if (!enabled || !terminal_is_stdout_tty())
     return NULL;
   render_progress_t *progress = SAFE_CALLOC(1, sizeof(*progress), render_progress_t *);
@@ -96,7 +107,16 @@ render_progress_t *render_progress_create(bool enabled) {
     return NULL;
   }
   mutex_init(&progress->mutex, "render_progress");
-  progress->snapshot = SAFE_CALLOC(1, sizeof(*progress->snapshot) + 1, progress_snapshot_t *);
+  size_t destination_length = strlen(destination);
+  progress->snapshot = SAFE_CALLOC(1, sizeof(*progress->snapshot) + destination_length + 2, progress_snapshot_t *);
+  progress->snapshot->destination_length = destination_length;
+  char *name = progress->snapshot->frame + 1;
+  memcpy(name, destination, destination_length);
+  // A path must not inject terminal control sequences into the overlay.
+  for (size_t i = 0; i < destination_length; ++i) {
+    if ((unsigned char)name[i] < 0x20 || name[i] == 0x7f)
+      name[i] = '?';
+  }
   progress->snapshot->started_ns = time_get_ns();
   return progress;
 }
@@ -111,10 +131,13 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
   // Oversized frames still encode normally; omit their terminal preview.
   if (length > PREVIEW_MAX_BYTES)
     length = 0;
-  progress_snapshot_t *next = SAFE_CALLOC(1, sizeof(*next) + length + 1, progress_snapshot_t *);
+  progress_snapshot_t *next =
+      SAFE_CALLOC(1, sizeof(*next) + length + progress->snapshot->destination_length + 2, progress_snapshot_t *);
   memcpy(next, progress->snapshot, sizeof(*next));
   next->length = length;
   memcpy(next->frame, preview, length);
+  memcpy(next->frame + length + 1, progress->snapshot->frame + progress->snapshot->length + 1,
+         next->destination_length + 1);
   SAFE_FREE(expanded);
   if (!next->started_ns)
     next->started_ns = time_get_ns();

@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import subprocess
 import time
+from wcwidth import wcswidth
 
 from terminal_ui import Terminal
 
@@ -71,13 +72,21 @@ def main():
             match = re.search(r'([|/\\-]) Rendering file \((\d+):(\d+)\) \(frame (\d+)/(\d+)\)', text)
             if match:
                 labels.append(match.groups())
+                rows = text.splitlines()
+                progress_row = next(i for i, row in enumerate(rows) if 'Rendering file' in row)
+                destination = str(output)
+                if wcswidth(destination) > term.screen.columns - 4:
+                    while wcswidth(destination) > term.screen.columns - 5:
+                        destination = destination[:-1]
+                    destination += '…'
+                assert destination in rows[progress_row + 1], 'Output path missing below progress'
                 previews.setdefault(term.screen.columns, set()).add('\n'.join(line for line in text.splitlines() if 'Rendering file' not in line))
                 if resized:
                     saw_resized_progress = True
                     (root / 'resized.txt').write_text(text, encoding='utf-8')
                 if not resized:
                     (root / 'draining.txt').write_text(text, encoding='utf-8')
-                    term.resize(24, 90)
+                    term.resize(24, 60)
                     resized = True
         assert not term.process.isalive(), 'Recording did not finish and join workers'
         term.pump(.2)
