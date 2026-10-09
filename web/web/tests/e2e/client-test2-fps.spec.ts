@@ -1,87 +1,32 @@
 import { expect, test } from "@playwright/test";
-import { spawn, type ChildProcess } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { getRandomPort, waitForPort } from "./server-fixture";
+import {
+  getRandomPort,
+  NativeClientFixture,
+  ServerFixture,
+} from "./server-fixture";
 
 test.use({ viewport: { width: 1920, height: 1080 } });
-
-async function stopProcess(process: ChildProcess): Promise<void> {
-  if (process.exitCode !== null) return;
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(() => {
-      process.kill("SIGKILL");
-      resolve();
-    }, 5_000);
-    process.once("exit", () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    process.kill("SIGTERM");
-  });
-}
 
 test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at 1920x1080", async ({
   page,
 }) => {
   test.setTimeout(60_000);
   const testStartedAt = Date.now();
-  const port = getRandomPort();
-  const configuredBinary = process.env["ASCII_CHAT_TEST_BINARY"];
-  const binary = configuredBinary
-    ? path.resolve(configuredBinary)
-    : path.resolve(process.cwd(), "../../build/bin/ascii-chat");
-  const serverLog = `C:\\tmp\\ascii-chat-client-test2-${port}.log`;
-  const server = spawn(
-    binary,
-    [
-      "--no-check-update",
-      "--log-level",
-      "info",
-      "--log-file",
-      serverLog,
-      "server",
-      "--port",
-      String(port),
-      "--websocket-port",
-      String(port + 1),
-    ],
-    { stdio: "ignore" },
-  );
-  const appData = fs.mkdtempSync(
-    path.join(os.tmpdir(), "ascii-client-test2-60fps-"),
-  );
-  let peer: ChildProcess | null = null;
-
+  const server = new ServerFixture(getRandomPort());
+  const peer = new NativeClientFixture(server.getPort(), 60);
   try {
-    await Promise.all([
-      waitForPort(port, "127.0.0.1"),
-      waitForPort(port + 1, "127.0.0.1"),
-    ]);
-    peer = spawn(
-      binary,
-      [
-        "--no-check-update",
-        "client",
-        `127.0.0.1:${port}`,
-        "--test-pattern",
-        "--fps",
-        "60",
-      ],
-      { env: { ...process.env, APPDATA: appData }, stdio: "ignore" },
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    await server.start();
+    await peer.start();
 
     await page.goto(
-      `/client?test2&testServerUrl=${encodeURIComponent(`ws://127.0.0.1:${port + 1}`)}`,
+      `/client?test2&testServerUrl=${encodeURIComponent(server.getUrl())}`,
     );
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 20_000,
     });
     await expect
-      .poll(() =>
-        page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
+      .poll(
+        () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
         { timeout: 10_000 },
       )
       .toBeGreaterThan(60);
@@ -100,9 +45,6 @@ test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at
 
     for (let second = 0; second < 15; second++) {
       await page.waitForTimeout(1_000);
-      if (server.exitCode !== null) {
-        throw new Error(`ascii-chat server exited with code ${server.exitCode}`);
-      }
       await expect(page.locator(".status")).toContainText("Connected");
       const current = await page.evaluate(() => ({
         sampledAt: performance.now(),
@@ -135,7 +77,8 @@ test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at
       receivedFps: {
         avg: average(rates("receivedFps")),
         min: Math.min(...rates("receivedFps")),
-        windowsAtLeast55: rates("receivedFps").filter((fps) => fps >= 55).length,
+        windowsAtLeast55: rates("receivedFps").filter((fps) => fps >= 55)
+          .length,
       },
       changingAsciiFps: {
         avg: average(rates("changingAsciiFps")),
@@ -143,23 +86,14 @@ test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at
       },
     };
     console.log("CLIENT_TEST2_60FPS_15S", JSON.stringify(summary));
-    console.log(
-      "CLIENT_TEST2_SERVER_RATES",
-      fs.existsSync(serverLog)
-        ? fs
-            .readFileSync(serverLog, "utf8")
-            .split(/\r?\n/)
-            .filter((line) => /Server video render|Server ASCII delivery|Server image ingress|SEND_THREAD:/.test(line))
-            .slice(-20)
-            .join("\n")
-        : `server log was not created (exitCode=${server.exitCode}, signalCode=${server.signalCode})`,
-    );
     expect(summary.repaintFps.windowsAtLeast55).toBeGreaterThanOrEqual(12);
     expect(summary.receivedFps.windowsAtLeast55).toBeGreaterThanOrEqual(12);
-    expect(summary.changingAsciiFps.avg).toBeGreaterThan(0);
+    expect(summary.changingAsciiFps.avg).toBeGreaterThanOrEqual(55);
+    expect(
+      rates("changingAsciiFps").filter((fps) => fps >= 50).length,
+    ).toBeGreaterThanOrEqual(12);
   } finally {
-    if (peer) await stopProcess(peer);
-    await stopProcess(server);
-    fs.rmSync(appData, { recursive: true, force: true });
+    await peer.stop();
+    await server.stop();
   }
 });

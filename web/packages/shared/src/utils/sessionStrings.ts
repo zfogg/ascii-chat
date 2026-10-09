@@ -1,7 +1,4 @@
-import {
-  adjectives,
-  adjectives_count,
-} from "./sessionStringAdjectives.js";
+import { adjectives, adjectives_count } from "./sessionStringAdjectives.js";
 import { nouns, nouns_count } from "./sessionStringNouns.js";
 
 const UINT32_RANGE = 0x1_0000_0000;
@@ -25,9 +22,9 @@ function randomIndex(length: number): number {
 
 /** Generate a memorable session string in the format adjective-noun-noun. */
 export function generateSessionString(): string {
-  return `${adjectives[randomIndex(adjectives_count)]}-${nouns[randomIndex(
-    nouns_count,
-  )]}-${nouns[randomIndex(nouns_count)]}`;
+  return `${adjectives[randomIndex(adjectives_count)]}-${
+    nouns[randomIndex(nouns_count)]
+  }-${nouns[randomIndex(nouns_count)]}`;
 }
 
 /** Generate the requested number of independent session strings. */

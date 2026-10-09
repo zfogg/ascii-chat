@@ -157,6 +157,9 @@ typedef struct {
  */
 asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[32]);
 
+/** Parse a binary OpenPGP public-key packet stream and extract its Ed25519 key. */
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32]);
+
 /**
  * @brief Parse PGP armored secret key block and extract Ed25519 keypair
  * @param armored_text PGP armored text (-----BEGIN PGP PRIVATE KEY BLOCK-----)
@@ -189,6 +192,10 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
  */
 asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
                                                uint8_t ed25519_sk[32]);
+
+/** Parse an unencrypted binary OpenPGP secret-key packet stream. */
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32],
+                                              uint8_t ed25519_sk[32]);
 
 /** @} */
 

@@ -1,5 +1,9 @@
 import { test } from "@playwright/test";
-import { ServerFixture, getRandomPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  ServerFixture,
+  getRandomPort,
+} from "./server-fixture";
 
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
@@ -46,17 +50,19 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
     }
 
     // Create a fake video stream
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(60);
 
     // Draw animated pattern to simulate video
     let frameCount = 0;
-    setInterval(() => {
+    const draw = () => {
       ctx.fillStyle = `hsl(${(frameCount * 5) % 360}, 100%, 50%)`;
       ctx.fillRect(0, 0, 640, 480);
       ctx.fillStyle = "white";
       ctx.font = "20px Arial";
       ctx.fillText(`Frame: ${frameCount++}`, 20, 30);
-    }, 33);
+      requestAnimationFrame(draw);
+    };
+    draw();
 
     // Mock navigator.mediaDevices.getUserMedia
     if (!navigator.mediaDevices) {
@@ -117,6 +123,7 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
 
   // Wait for webcam to start and send frames
   await page.waitForTimeout(3000);
+  await expectMeaningful60Fps(page, "client", 3_000);
 
   // Try to capture terminal content
   console.log("\n========== CHECKING TERMINAL RENDERING ==========\n");

@@ -3,6 +3,12 @@ packages:
   - "www"
   - "discovery"
   - "web"
+# Vite+ resolves its tools from the workspace before its own dependencies.
+# Expose its bundled versions so ancestor node_modules cannot shadow them.
+publicHoistPattern:
+  - "oxfmt"
+  - "oxlint"
+  - "oxlint-tsgolint"
 allowBuilds:
   core-js: true
   esbuild: true

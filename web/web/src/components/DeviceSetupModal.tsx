@@ -1,6 +1,8 @@
+import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMediaDevicePreferences,
+  getStoredMediaDevicePreferences,
   saveMediaDevicePreferences,
 } from "../utils/mediaDevicePreferences";
 
@@ -23,7 +25,7 @@ const EMPTY_CHOICES: DeviceChoices = {
 
 function getComparableDeviceLabel(label: string): string {
   return label
-    .replace(/^(default|communications)\s*[-:–]\s*/i, "")
+    .replace(/^(default|communications)\s*[-:â€“]\s*/i, "")
     .trim()
     .toLocaleLowerCase();
 }
@@ -45,7 +47,8 @@ function deduplicateDefaultDevice(
   preserveSystemDefault = false,
 ): MediaDeviceInfo[] {
   const isAlias = (device: MediaDeviceInfo) =>
-    device.deviceId === "default" || /^(default|communications)\s*[-:–]\s*/i.test(device.label);
+    device.deviceId === "default" ||
+    /^(default|communications)\s*[-:â€“]\s*/i.test(device.label);
 
   return devices.filter((device) => {
     if (preserveSystemDefault && device.deviceId === "default") return true;
@@ -68,7 +71,10 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const previewGenerationRef = useRef(0);
   const isOpenRef = useRef(open);
   const [choices, setChoices] = useState<DeviceChoices>(EMPTY_CHOICES);
-  const [preferences, setPreferences] = useState(getMediaDevicePreferences);
+  const [preferences, setPreferences] = useUrlState(
+    "mediaDevices",
+    getStoredMediaDevicePreferences,
+  );
   const [level, setLevel] = useState(0);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
@@ -131,7 +137,9 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
-        const cameras = devices.filter((device) => device.kind === "videoinput");
+        const cameras = devices.filter(
+          (device) => device.kind === "videoinput",
+        );
         const microphones = deduplicateDefaultDevice(
           devices.filter((device) => device.kind === "audioinput"),
         );
@@ -149,20 +157,22 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         const actualMicrophoneId =
           stream.getAudioTracks()[0]?.getSettings().deviceId || "";
         setPreferences({
-          cameraId:
-            cameras.some((device) => device.deviceId === actualCameraId)
-              ? actualCameraId
-              : "",
-          microphoneId:
-            microphones.some((device) => device.deviceId === actualMicrophoneId)
-              ? actualMicrophoneId
-              : "",
+          cameraId: cameras.some((device) => device.deviceId === actualCameraId)
+            ? actualCameraId
+            : "",
+          microphoneId: microphones.some(
+            (device) => device.deviceId === actualMicrophoneId,
+          )
+            ? actualMicrophoneId
+            : "",
           speakerId: speakers.some(
             (device) => device.deviceId === nextPreferences.speakerId,
           )
             ? nextPreferences.speakerId
             : speakers.find((device) => device.deviceId === "default")
-                ?.deviceId || speakers[0]?.deviceId || "",
+                ?.deviceId ||
+              speakers[0]?.deviceId ||
+              "",
         });
 
         const audioContext = new AudioContext();
@@ -172,9 +182,15 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
           await audioContext.close().catch(() => undefined);
           return;
         }
-        if (nextPreferences.speakerId && nextPreferences.speakerId !== "default") {
-          await setAudioOutputDevice(audioContext, nextPreferences.speakerId).catch(
-            () => setError("This browser cannot select a speaker output."),
+        if (
+          nextPreferences.speakerId &&
+          nextPreferences.speakerId !== "default"
+        ) {
+          await setAudioOutputDevice(
+            audioContext,
+            nextPreferences.speakerId,
+          ).catch(() =>
+            setError("This browser cannot select a speaker output."),
           );
         }
         const source = audioContext.createMediaStreamSource(stream);
@@ -206,7 +222,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         if (generation === previewGenerationRef.current) setLoading(false);
       }
     },
-    [stopPreview],
+    [stopPreview, setPreferences],
   );
 
   useEffect(() => {
@@ -221,7 +237,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
       isOpenRef.current = false;
       stopPreview();
     };
-  }, [open, startPreview, stopPreview]);
+  }, [open, startPreview, stopPreview, setPreferences]);
 
   if (!open) return null;
 
@@ -271,11 +287,15 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
     gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.7);
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
-    oscillator.addEventListener("ended", () => {
-      oscillator.disconnect();
-      gain.disconnect();
-      setTestingSpeakers(false);
-    }, { once: true });
+    oscillator.addEventListener(
+      "ended",
+      () => {
+        oscillator.disconnect();
+        gain.disconnect();
+        setTestingSpeakers(false);
+      },
+      { once: true },
+    );
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.7);
   };
@@ -311,7 +331,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             onClick={onClose}
             type="button"
           >
-            ×
+            Ã—
           </button>
         </header>
 
@@ -328,7 +348,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               />
               {loading && (
                 <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
-                  Starting camera preview…
+                  Starting camera previewâ€¦
                 </div>
               )}
               {!loading && !streamRef.current?.getVideoTracks().length && (
@@ -385,18 +405,22 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             </label>
             <button
               className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
-              disabled={loading || choices.speakers.length === 0 || testingSpeakers}
+              disabled={
+                loading || choices.speakers.length === 0 || testingSpeakers
+              }
               onClick={() =>
                 void playSpeakerTest().catch((cause: unknown) => {
                   setTestingSpeakers(false);
                   setError(
-                    cause instanceof Error ? cause.message : "Speaker test failed.",
+                    cause instanceof Error
+                      ? cause.message
+                      : "Speaker test failed.",
                   );
                 })
               }
               type="button"
             >
-              {testingSpeakers ? "Playing test tone…" : "Test speakers"}
+              {testingSpeakers ? "Playing test toneâ€¦" : "Test speakers"}
             </button>
 
             <label className="block text-sm">

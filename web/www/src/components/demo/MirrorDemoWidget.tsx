@@ -123,7 +123,9 @@ export default function MirrorDemoWidget({
   const frameCountRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioAnalyserRef = useRef<AnalyserNode | null>(null);
-  const mediaElementSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const mediaElementSourceRef = useRef<MediaElementAudioSourceNode | null>(
+    null,
+  );
   const microphoneSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const audioOutputConnectedRef = useRef(false);
   const audioDiagnosticLoggedRef = useRef(false);
@@ -297,7 +299,8 @@ export default function MirrorDemoWidget({
     if (!video) throw new Error("Demo video is not ready");
     await ensureAudioAnalyzer(true);
     if (!mediaElementSourceRef.current) {
-      const mediaSource = audioContextRef.current!.createMediaElementSource(video);
+      const mediaSource =
+        audioContextRef.current!.createMediaElementSource(video);
       mediaSource.connect(audioAnalyserRef.current!);
       mediaElementSourceRef.current = mediaSource;
     }
@@ -312,10 +315,14 @@ export default function MirrorDemoWidget({
     try {
       registerActiveDemo(stop);
       await initWasm();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
       streamRef.current = stream;
       await ensureAudioAnalyzer(false);
-      microphoneSourceRef.current = audioContextRef.current!.createMediaStreamSource(stream);
+      microphoneSourceRef.current =
+        audioContextRef.current!.createMediaStreamSource(stream);
       microphoneSourceRef.current.connect(audioAnalyserRef.current!);
       applySelectedOption(false);
       if (termDims.cols > 0 && termDims.rows > 0) {
@@ -326,7 +333,9 @@ export default function MirrorDemoWidget({
     } catch (err) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      setError(`Microphone access failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(
+        `Microphone access failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -455,7 +464,9 @@ export default function MirrorDemoWidget({
             if (frame) renderer.writeFrame(frame);
           } catch (error) {
             if (!audioDiagnosticLoggedRef.current) {
-              addDebugLog(`Waveform render error: ${error instanceof Error ? error.message : String(error)}`);
+              addDebugLog(
+                `Waveform render error: ${error instanceof Error ? error.message : String(error)}`,
+              );
               audioDiagnosticLoggedRef.current = true;
             }
           }
@@ -518,7 +529,10 @@ export default function MirrorDemoWidget({
           },
           setMatrixMode,
         );
-        if (source === MediaSourceType.FILE && (option.settings.waveform || option.settings.fft)) {
+        if (
+          source === MediaSourceType.FILE &&
+          (option.settings.waveform || option.settings.fft)
+        ) {
           void startAudioAnalysis().catch((err: unknown) => {
             setError(err instanceof Error ? err.message : String(err));
           });
@@ -573,7 +587,8 @@ export default function MirrorDemoWidget({
       if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
         const analyser = audioAnalyserRef.current;
         if (analyser) {
-          const audioSource = source === MediaSourceType.MICROPHONE ? "microphone" : "media";
+          const audioSource =
+            source === MediaSourceType.MICROPHONE ? "microphone" : "media";
           const audioFrame = renderAnalyserAudioVisualization(
             analyser,
             termDims.cols,
@@ -764,20 +779,24 @@ export default function MirrorDemoWidget({
                     {loading ? "Loading..." : "Microphone"}
                   </button>
                 ) : (
-                    <button
-                      onClick={startWebcam}
-                      disabled={loading}
-                      className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {loading ? "Loading..." : "Webcam"}
-                    </button>
-                  )}
+                  <button
+                    onClick={startWebcam}
+                    disabled={loading}
+                    className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? "Loading..." : "Webcam"}
+                  </button>
+                )}
                 <button
                   onClick={startDemo}
                   disabled={loading}
                   className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? "Loading..." : isAudioVisualization ? "Demo Audio" : "Demo Video"}
+                  {loading
+                    ? "Loading..."
+                    : isAudioVisualization
+                      ? "Demo Audio"
+                      : "Demo Video"}
                 </button>
               </div>
               {error && <p className="text-red-400 text-xs mt-1">{error}</p>}

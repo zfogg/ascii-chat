@@ -64,23 +64,21 @@ it("keeps resize output blank until the server frame matches the new dimensions"
   expect(draw).toHaveBeenCalledTimes(1);
 
   timeout.current = 1 as unknown as ReturnType<typeof setTimeout>;
-  expect(
-    ref.current!.writeFrame("during resize", { cols: 80, rows: 24 }),
-  ).toBe(false);
+  expect(ref.current!.writeFrame("during resize", { cols: 80, rows: 24 })).toBe(
+    false,
+  );
   expect(draw).toHaveBeenCalledTimes(1);
   handle.updateDimensions(60, 20);
   timeout.current = null;
-  expect(ref.current!.writeFrame("stale", { cols: 80, rows: 24 })).toBe(
-    false,
-  );
+  expect(ref.current!.writeFrame("stale", { cols: 80, rows: 24 })).toBe(false);
   expect(ref.current!.writeFrame("wrong rows", { cols: 60, rows: 24 })).toBe(
     false,
   );
   expect(feed).toHaveBeenCalledTimes(1);
   expect(draw).toHaveBeenCalledTimes(1);
-  expect(
-    ref.current!.writeFrame("matching", { cols: 60, rows: 20 }),
-  ).toBe(true);
+  expect(ref.current!.writeFrame("matching", { cols: 60, rows: 20 })).toBe(
+    true,
+  );
   expect(draw).toHaveBeenCalledTimes(2);
 
   handle.updateDimensions(100, 30);

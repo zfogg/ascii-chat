@@ -281,6 +281,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                     ansiBytes: frame.ansiString.length,
                     visibleChars: (
                       frame.ansiString
+                        // Strip ANSI escape sequences before counting visible cells.
+                        // oxlint-disable-next-line no-control-regex
                         .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
                         .match(/\S/g) || []
                     ).length,
@@ -289,8 +291,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 );
               // Track unique frames at reception (for measuring actual frames from server)
               const frameHash = hashFrame(frame.ansiString);
-              const previousFrameHash =
-                receivedFrameHashRef.current;
+              const previousFrameHash = receivedFrameHashRef.current;
               if (previousFrameHash !== frameHash) {
                 changedReceivedFrameCountRef.current++;
                 receivedFrameHashRef.current = frameHash;

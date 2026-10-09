@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useUrlState } from "../hooks/useUrlState";
+import { type ReactNode } from "react";
 import { PageControlBar, type PageControlBarProps } from "./PageControlBar";
 import { DeviceSetupModal } from "./DeviceSetupModal";
 
@@ -21,7 +22,7 @@ export function ModeHeader({
   connectionPanel,
   controlBar,
 }: ModeHeaderProps) {
-  const [deviceSetupOpen, setDeviceSetupOpen] = useState(false);
+  const [deviceSetupOpen, setDeviceSetupOpen] = useUrlState("devices", false);
 
   return (
     <>

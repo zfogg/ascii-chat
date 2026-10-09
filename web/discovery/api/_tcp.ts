@@ -60,7 +60,10 @@ async function checkStunServer({
   }
 }
 
-function checkStunTlsServer({ host, port }: ServerTarget): Promise<ServerResult> {
+function checkStunTlsServer({
+  host,
+  port,
+}: ServerTarget): Promise<ServerResult> {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const request = new Message(methods.BINDING, classes.REQUEST);
@@ -206,7 +209,10 @@ function checkTurnTlsServer(
         const message = parseMessage(messageBytes, integrityKey);
         if (!message) continue;
 
-        if (!authenticatedRequest && message.transactionId.equals(initialRequest.transactionId)) {
+        if (
+          !authenticatedRequest &&
+          message.transactionId.equals(initialRequest.transactionId)
+        ) {
           const [errorCode] = message.getAttributeValue("ERROR-CODE") || [];
           const realm = message.getAttributeValue("REALM");
           const nonce = message.getAttributeValue("NONCE");

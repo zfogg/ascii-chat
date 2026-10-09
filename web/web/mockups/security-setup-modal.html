@@ -19,116 +19,695 @@
         --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
         --sans: "Segoe UI", Inter, system-ui, sans-serif;
       }
-      * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; color: var(--text); background: radial-gradient(ellipse at 54% -18%, #263a31 0, transparent 48%), var(--bg); font-family: var(--sans); }
-      button, input, select, textarea { font: inherit; }
-      button { color: inherit; cursor: pointer; }
-      .shell { max-width: 1240px; margin: auto; padding: 26px 36px 56px; }
-      .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
-      .brand { display: flex; align-items: center; gap: 12px; font: 700 16px var(--mono); letter-spacing: -.04em; }
-      .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #789c5c; color: var(--green); font-size: 18px; }
-      .top-status { color: var(--muted); font: 12px var(--mono); }
-      .modebar { display: flex; gap: 7px; align-items: center; margin: 28px 0 48px; }
-      .mode-label { color: var(--muted); font: 11px var(--mono); margin-right: 10px; }
-      .mode-tab { border: 1px solid transparent; border-radius: 5px; padding: 9px 15px; background: transparent; color: #aab8b2; }
-      .mode-tab[aria-selected="true"] { color: var(--green); border-color: #50654a; background: #b6f36b0d; }
-      .hero { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px; }
-      .eyebrow { color: var(--cyan); font: 11px var(--mono); margin: 0 0 12px; }
-      h1 { margin: 0; font-size: clamp(32px, 4.6vw, 54px); line-height: 1.02; letter-spacing: -.055em; font-weight: 620; }
-      .description { margin: 14px 0 0; color: #a9b9b2; font-size: 15px; }
-      .setup-button { display: inline-flex; align-items: center; gap: 9px; padding: 11px 15px; border: 1px solid #4b5b55; border-radius: 5px; background: #252e2c; color: #e2eae4; font-size: 13px; font-weight: 650; white-space: nowrap; }
-      .setup-button:hover { background: #303b38; border-color: #72817a; }
-      .stage { border: 1px solid var(--line); background: #121918; border-radius: 7px; padding: 16px; }
-      .stage-head { display: flex; justify-content: space-between; color: var(--muted); font: 11px var(--mono); padding: 0 2px 13px; }
-      .stage-live { color: var(--green); }
-      .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-      .tile { min-height: 210px; display: grid; place-items: center; position: relative; overflow: hidden; border: 1px solid #35403e; border-radius: 4px; background: #18211f; }
-      .ascii { color: #b4dc8d; font: 12px/1.06 var(--mono); white-space: pre; opacity: .85; animation: drift 8s linear infinite alternate; }
-      .tile:nth-child(2) .ascii { color: #79dfd1; animation-duration: 6s; }
-      .tile:nth-child(3) .ascii { color: #e4d18d; animation-duration: 9s; }
-      @keyframes drift { from { transform: translate(-8px, 3px); } to { transform: translate(7px, -4px); } }
-      .tile-label { position: absolute; left: 11px; bottom: 10px; background: #101515d9; padding: 5px 7px; border-radius: 3px; font: 11px var(--mono); }
-      .page-note { color: #80928b; font-size: 12px; margin-top: 16px; }
-      .scrim { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 22px; background: #060a09c9; backdrop-filter: blur(7px); }
-      .modal { width: min(820px, 100%); max-height: min(850px, calc(100vh - 44px)); overflow: auto; border: 1px solid #52635d; border-radius: 8px; background: #17201e; box-shadow: 0 28px 100px #000a; }
-      .modal-head { display: flex; justify-content: space-between; align-items: start; padding: 23px 26px 18px; border-bottom: 1px solid var(--line); }
-      .modal-head h2 { margin: 0; font-size: 23px; letter-spacing: -.035em; }
-      .modal-head p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
-      .close { border: 0; border-radius: 4px; padding: 4px 8px; background: transparent; color: #a8b7b0; font-size: 22px; line-height: 1; }
-      .close:hover { background: #ffffff12; color: white; }
-      .scope { display: flex; align-items: center; gap: 10px; margin: 19px 26px 0; padding: 11px 12px; border: 1px solid #39514a; border-radius: 4px; background: #12201b; color: #c6d6cb; font-size: 12px; }
-      .scope-mark { color: var(--green); font-size: 15px; }
-      .modal-body { display: grid; gap: 19px; padding: 19px 26px 22px; }
-      .section { border: 1px solid #34433e; border-radius: 5px; background: #141c1a; }
-      .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; padding: 14px 15px 10px; }
-      .section-head.subsection-head { margin-top: 3px; border-top: 1px solid #34433e; padding-top: 17px; }
-      .section-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
-      .section-head p { margin: 0; color: #8fa199; font-size: 11px; }
-      .section-content { padding: 2px 15px 15px; }
-      .toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 10px 0; border-top: 1px solid #2c3935; }
-      .toggle-copy strong { display: block; font-size: 12px; font-weight: 620; }
-      .toggle-copy small { display: block; margin-top: 4px; max-width: 540px; color: #91a29b; font-size: 11px; line-height: 1.4; }
-      .switch { width: 37px; height: 21px; flex: none; position: relative; border: 1px solid #52615c; border-radius: 12px; background: #29332f; }
-      .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #99aaa2; transition: transform .15s, background .15s; }
-      .switch[aria-checked="true"] { border-color: #a9db70; background: #5d813c; }
-      .switch[aria-checked="true"]::after { transform: translateX(16px); background: #f0ffd8; }
-      .field { margin-top: 13px; }
-      .field label, .field-label { display: block; margin-bottom: 6px; color: #dce7df; font-size: 11px; font-weight: 620; }
-      input[type="text"], input[type="password"], textarea { width: 100%; border: 1px solid #40514b; border-radius: 4px; outline: 0; background: #101715; color: var(--text); font-size: 12px; }
-      input[type="text"], input[type="password"] { height: 37px; padding: 0 10px; }
-      textarea { min-height: 78px; padding: 9px 10px; resize: vertical; font: 11px/1.45 var(--mono); }
-      input:focus, textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px #6de1ce20; }
-      .input-with-action { display: flex; gap: 8px; }
-      .input-with-action input { min-width: 0; flex: 1; }
-      .mini-button { border: 1px solid #53635d; border-radius: 4px; padding: 0 10px; background: #202a27; color: #dce8df; font-size: 11px; white-space: nowrap; }
-      .mini-button:hover { border-color: var(--cyan); }
-      .help { margin: 6px 0 0; color: #8fa199; font-size: 10px; line-height: 1.45; }
-      .details { margin-top: 10px; border-top: 1px solid #2c3935; padding-top: 9px; }
-      .key-list { display: grid; gap: 7px; margin-top: 10px; }
-      .key-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px 9px; border: 1px solid #34433e; border-radius: 4px; background: #101715; }
-      .key-row.is-active { border-color: #66804f; background: #182219; }
-      .key-name { min-width: 0; }
-      .key-name strong { display: block; overflow: hidden; color: #e1e9e3; font-size: 11px; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
-      .key-name small { display: block; margin-top: 4px; color: #8fa199; font: 9px var(--mono); }
-      .key-kind { color: #a8bbb0; font: 9px var(--mono); white-space: nowrap; }
-      .key-row-action { min-height: 28px; border: 1px solid #465650; border-radius: 3px; padding: 0 8px; background: #1d2724; color: #dce8df; font-size: 9px; white-space: nowrap; }
-      .key-row-action:hover { border-color: var(--cyan); }
-      .key-row-action:disabled { border-color: #50644a; background: #24311f; color: var(--green); cursor: default; }
-      .key-row-action.delete { color: #dfaaa4; }
-      .key-actions { display: flex; justify-content: space-between; align-items: center; gap: 9px; margin-top: 10px; }
-      .key-actions.verification-actions { margin-bottom: 14px; }
-      .key-add { border: 1px solid #53635d; border-radius: 4px; padding: 7px 9px; background: #202a27; color: #dce8df; font-size: 10px; }
-      .key-add:hover { border-color: var(--cyan); }
-      .key-entry { margin-top: 10px; padding: 10px; border: 1px solid #33423d; border-radius: 4px; background: #101715; }
-      .key-entry[hidden] { display: none; }
-      .key-entry .input-with-action { margin-top: 8px; }
-      .key-entry input[type="text"] { height: 32px; }
-      .key-entry .key-add { padding: 0 10px; }
-      .validation-message { min-height: 15px; margin: 5px 0 0; color: #ff8d83; font-size: 10px; line-height: 1.4; }
-      .validation-message.valid { color: var(--green); }
-      .key-target { height: 31px; border: 1px solid #40514b; border-radius: 4px; padding: 0 8px; background: #101715; color: var(--text); font-size: 10px; }
-      summary { color: #b5c4bd; font-size: 11px; cursor: pointer; }
-      .warning { display: flex; gap: 9px; margin-top: 12px; padding: 10px 11px; border: 1px solid #665737; border-radius: 4px; background: #282319; color: #ddcfaa; font-size: 10px; line-height: 1.45; }
-      .warning b { color: var(--amber); }
-      .modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 26px 20px; border-top: 1px solid var(--line); }
-      .storage { color: #8fa199; font-size: 10px; line-height: 1.4; }
-      .actions { display: flex; gap: 9px; }
-      .secondary, .primary { min-height: 37px; border-radius: 4px; padding: 0 14px; font-size: 11px; font-weight: 650; }
-      .secondary { border: 1px solid #4a5a54; background: transparent; color: #d4e0d8; }
-      .primary { border: 1px solid #bddf8d; background: var(--green); color: #182315; }
-      .toast { position: fixed; left: 50%; bottom: 22px; z-index: 10; transform: translateX(-50%); background: #d7f3be; color: #172117; border-radius: 4px; padding: 11px 15px; font-size: 12px; font-weight: 650; }
-      .hidden { display: none !important; }
-      @media (max-width: 680px) { .shell { padding: 18px 16px 38px; } .modebar { margin: 22px 0 34px; } .hero { align-items: start; flex-direction: column; } .tiles { grid-template-columns: 1fr; } .tile { min-height: 165px; } .modal-head, .modal-body { padding-left: 17px; padding-right: 17px; } .scope { margin-left: 17px; margin-right: 17px; } .modal-foot { align-items: start; flex-direction: column; padding-left: 17px; padding-right: 17px; } .actions { width: 100%; } .actions button { flex: 1; } .section-head { align-items: start; flex-direction: column; gap: 4px; } }
-      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(ellipse at 54% -18%, #263a31 0, transparent 48%),
+          var(--bg);
+        font-family: var(--sans);
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+      .shell {
+        max-width: 1240px;
+        margin: auto;
+        padding: 26px 36px 56px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 20px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font: 700 16px var(--mono);
+        letter-spacing: -0.04em;
+      }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border: 1px solid #789c5c;
+        color: var(--green);
+        font-size: 18px;
+      }
+      .top-status {
+        color: var(--muted);
+        font: 12px var(--mono);
+      }
+      .modebar {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        margin: 28px 0 48px;
+      }
+      .mode-label {
+        color: var(--muted);
+        font: 11px var(--mono);
+        margin-right: 10px;
+      }
+      .mode-tab {
+        border: 1px solid transparent;
+        border-radius: 5px;
+        padding: 9px 15px;
+        background: transparent;
+        color: #aab8b2;
+      }
+      .mode-tab[aria-selected="true"] {
+        color: var(--green);
+        border-color: #50654a;
+        background: #b6f36b0d;
+      }
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .eyebrow {
+        color: var(--cyan);
+        font: 11px var(--mono);
+        margin: 0 0 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 4.6vw, 54px);
+        line-height: 1.02;
+        letter-spacing: -0.055em;
+        font-weight: 620;
+      }
+      .description {
+        margin: 14px 0 0;
+        color: #a9b9b2;
+        font-size: 15px;
+      }
+      .setup-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 11px 15px;
+        border: 1px solid #4b5b55;
+        border-radius: 5px;
+        background: #252e2c;
+        color: #e2eae4;
+        font-size: 13px;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+      .setup-button:hover {
+        background: #303b38;
+        border-color: #72817a;
+      }
+      .stage {
+        border: 1px solid var(--line);
+        background: #121918;
+        border-radius: 7px;
+        padding: 16px;
+      }
+      .stage-head {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font: 11px var(--mono);
+        padding: 0 2px 13px;
+      }
+      .stage-live {
+        color: var(--green);
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .tile {
+        min-height: 210px;
+        display: grid;
+        place-items: center;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #35403e;
+        border-radius: 4px;
+        background: #18211f;
+      }
+      .ascii {
+        color: #b4dc8d;
+        font: 12px/1.06 var(--mono);
+        white-space: pre;
+        opacity: 0.85;
+        animation: drift 8s linear infinite alternate;
+      }
+      .tile:nth-child(2) .ascii {
+        color: #79dfd1;
+        animation-duration: 6s;
+      }
+      .tile:nth-child(3) .ascii {
+        color: #e4d18d;
+        animation-duration: 9s;
+      }
+      @keyframes drift {
+        from {
+          transform: translate(-8px, 3px);
+        }
+        to {
+          transform: translate(7px, -4px);
+        }
+      }
+      .tile-label {
+        position: absolute;
+        left: 11px;
+        bottom: 10px;
+        background: #101515d9;
+        padding: 5px 7px;
+        border-radius: 3px;
+        font: 11px var(--mono);
+      }
+      .page-note {
+        color: #80928b;
+        font-size: 12px;
+        margin-top: 16px;
+      }
+      .scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        display: grid;
+        place-items: center;
+        padding: 22px;
+        background: #060a09c9;
+        backdrop-filter: blur(7px);
+      }
+      .modal {
+        width: min(820px, 100%);
+        max-height: min(850px, calc(100vh - 44px));
+        overflow: auto;
+        border: 1px solid #52635d;
+        border-radius: 8px;
+        background: #17201e;
+        box-shadow: 0 28px 100px #000a;
+      }
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        padding: 23px 26px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .modal-head h2 {
+        margin: 0;
+        font-size: 23px;
+        letter-spacing: -0.035em;
+      }
+      .modal-head p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .close {
+        border: 0;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background: transparent;
+        color: #a8b7b0;
+        font-size: 22px;
+        line-height: 1;
+      }
+      .close:hover {
+        background: #ffffff12;
+        color: white;
+      }
+      .scope {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 19px 26px 0;
+        padding: 11px 12px;
+        border: 1px solid #39514a;
+        border-radius: 4px;
+        background: #12201b;
+        color: #c6d6cb;
+        font-size: 12px;
+      }
+      .scope-mark {
+        color: var(--green);
+        font-size: 15px;
+      }
+      .modal-body {
+        display: grid;
+        gap: 19px;
+        padding: 19px 26px 22px;
+      }
+      .section {
+        border: 1px solid #34433e;
+        border-radius: 5px;
+        background: #141c1a;
+      }
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 14px 15px 10px;
+      }
+      .section-head.subsection-head {
+        margin-top: 3px;
+        border-top: 1px solid #34433e;
+        padding-top: 17px;
+      }
+      .section-head h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 650;
+      }
+      .section-head p {
+        margin: 0;
+        color: #8fa199;
+        font-size: 11px;
+      }
+      .section-content {
+        padding: 2px 15px 15px;
+      }
+      .toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        padding: 10px 0;
+        border-top: 1px solid #2c3935;
+      }
+      .toggle-copy strong {
+        display: block;
+        font-size: 12px;
+        font-weight: 620;
+      }
+      .toggle-copy small {
+        display: block;
+        margin-top: 4px;
+        max-width: 540px;
+        color: #91a29b;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .switch {
+        width: 37px;
+        height: 21px;
+        flex: none;
+        position: relative;
+        border: 1px solid #52615c;
+        border-radius: 12px;
+        background: #29332f;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: #99aaa2;
+        transition:
+          transform 0.15s,
+          background 0.15s;
+      }
+      .switch[aria-checked="true"] {
+        border-color: #a9db70;
+        background: #5d813c;
+      }
+      .switch[aria-checked="true"]::after {
+        transform: translateX(16px);
+        background: #f0ffd8;
+      }
+      .field {
+        margin-top: 13px;
+      }
+      .field label,
+      .field-label {
+        display: block;
+        margin-bottom: 6px;
+        color: #dce7df;
+        font-size: 11px;
+        font-weight: 620;
+      }
+      input[type="text"],
+      input[type="password"],
+      textarea {
+        width: 100%;
+        border: 1px solid #40514b;
+        border-radius: 4px;
+        outline: 0;
+        background: #101715;
+        color: var(--text);
+        font-size: 12px;
+      }
+      input[type="text"],
+      input[type="password"] {
+        height: 37px;
+        padding: 0 10px;
+      }
+      textarea {
+        min-height: 78px;
+        padding: 9px 10px;
+        resize: vertical;
+        font: 11px/1.45 var(--mono);
+      }
+      input:focus,
+      textarea:focus {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 2px #6de1ce20;
+      }
+      .input-with-action {
+        display: flex;
+        gap: 8px;
+      }
+      .input-with-action input {
+        min-width: 0;
+        flex: 1;
+      }
+      .mini-button {
+        border: 1px solid #53635d;
+        border-radius: 4px;
+        padding: 0 10px;
+        background: #202a27;
+        color: #dce8df;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .mini-button:hover {
+        border-color: var(--cyan);
+      }
+      .help {
+        margin: 6px 0 0;
+        color: #8fa199;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      .details {
+        margin-top: 10px;
+        border-top: 1px solid #2c3935;
+        padding-top: 9px;
+      }
+      .key-list {
+        display: grid;
+        gap: 7px;
+        margin-top: 10px;
+      }
+      .key-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 9px;
+        border: 1px solid #34433e;
+        border-radius: 4px;
+        background: #101715;
+      }
+      .key-row.is-active {
+        border-color: #66804f;
+        background: #182219;
+      }
+      .key-name {
+        min-width: 0;
+      }
+      .key-name strong {
+        display: block;
+        overflow: hidden;
+        color: #e1e9e3;
+        font-size: 11px;
+        font-weight: 620;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .key-name small {
+        display: block;
+        margin-top: 4px;
+        color: #8fa199;
+        font: 9px var(--mono);
+      }
+      .key-kind {
+        color: #a8bbb0;
+        font: 9px var(--mono);
+        white-space: nowrap;
+      }
+      .key-row-action {
+        min-height: 28px;
+        border: 1px solid #465650;
+        border-radius: 3px;
+        padding: 0 8px;
+        background: #1d2724;
+        color: #dce8df;
+        font-size: 9px;
+        white-space: nowrap;
+      }
+      .key-row-action:hover {
+        border-color: var(--cyan);
+      }
+      .key-row-action:disabled {
+        border-color: #50644a;
+        background: #24311f;
+        color: var(--green);
+        cursor: default;
+      }
+      .key-row-action.delete {
+        color: #dfaaa4;
+      }
+      .key-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 9px;
+        margin-top: 10px;
+      }
+      .key-actions.verification-actions {
+        margin-bottom: 14px;
+      }
+      .key-add {
+        border: 1px solid #53635d;
+        border-radius: 4px;
+        padding: 7px 9px;
+        background: #202a27;
+        color: #dce8df;
+        font-size: 10px;
+      }
+      .key-add:hover {
+        border-color: var(--cyan);
+      }
+      .key-entry {
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #33423d;
+        border-radius: 4px;
+        background: #101715;
+      }
+      .key-entry[hidden] {
+        display: none;
+      }
+      .key-entry .input-with-action {
+        margin-top: 8px;
+      }
+      .key-entry input[type="text"] {
+        height: 32px;
+      }
+      .key-entry .key-add {
+        padding: 0 10px;
+      }
+      .validation-message {
+        min-height: 15px;
+        margin: 5px 0 0;
+        color: #ff8d83;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .validation-message.valid {
+        color: var(--green);
+      }
+      .key-target {
+        height: 31px;
+        border: 1px solid #40514b;
+        border-radius: 4px;
+        padding: 0 8px;
+        background: #101715;
+        color: var(--text);
+        font-size: 10px;
+      }
+      summary {
+        color: #b5c4bd;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .warning {
+        display: flex;
+        gap: 9px;
+        margin-top: 12px;
+        padding: 10px 11px;
+        border: 1px solid #665737;
+        border-radius: 4px;
+        background: #282319;
+        color: #ddcfaa;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      .warning b {
+        color: var(--amber);
+      }
+      .modal-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 15px 26px 20px;
+        border-top: 1px solid var(--line);
+      }
+      .storage {
+        color: #8fa199;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .actions {
+        display: flex;
+        gap: 9px;
+      }
+      .secondary,
+      .primary {
+        min-height: 37px;
+        border-radius: 4px;
+        padding: 0 14px;
+        font-size: 11px;
+        font-weight: 650;
+      }
+      .secondary {
+        border: 1px solid #4a5a54;
+        background: transparent;
+        color: #d4e0d8;
+      }
+      .primary {
+        border: 1px solid #bddf8d;
+        background: var(--green);
+        color: #182315;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 22px;
+        z-index: 10;
+        transform: translateX(-50%);
+        background: #d7f3be;
+        color: #172117;
+        border-radius: 4px;
+        padding: 11px 15px;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .hidden {
+        display: none !important;
+      }
+      @media (max-width: 680px) {
+        .shell {
+          padding: 18px 16px 38px;
+        }
+        .modebar {
+          margin: 22px 0 34px;
+        }
+        .hero {
+          align-items: start;
+          flex-direction: column;
+        }
+        .tiles {
+          grid-template-columns: 1fr;
+        }
+        .tile {
+          min-height: 165px;
+        }
+        .modal-head,
+        .modal-body {
+          padding-left: 17px;
+          padding-right: 17px;
+        }
+        .scope {
+          margin-left: 17px;
+          margin-right: 17px;
+        }
+        .modal-foot {
+          align-items: start;
+          flex-direction: column;
+          padding-left: 17px;
+          padding-right: 17px;
+        }
+        .actions {
+          width: 100%;
+        }
+        .actions button {
+          flex: 1;
+        }
+        .section-head {
+          align-items: start;
+          flex-direction: column;
+          gap: 4px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
     </style>
   </head>
   <body>
     <main class="shell">
-      <header class="topbar"><div class="brand"><span class="brand-mark">a</span><span>ascii-chat</span></div><div class="top-status">Connected securely</div></header>
-      <nav class="modebar" aria-label="Page preview"><span class="mode-label">PAGE PREVIEW</span><button class="mode-tab" data-mode="mirror">Mirror</button><button class="mode-tab" data-mode="client" aria-selected="true">Client</button><button class="mode-tab" data-mode="discovery">Discovery</button></nav>
-      <section class="hero"><div><p class="eyebrow" id="kicker">CLIENT · SERVER CONNECTION</p><h1 id="title">Connect to a server.</h1><p class="description">Choose how this browser authenticates and verifies the server.</p></div><button class="setup-button" id="open">♢ &nbsp;Security setup</button></section>
-      <section class="stage"><div class="stage-head"><span>Server · 192.168.1.24:27224</span><span class="stage-live">● LIVE</span></div><div class="tiles">
-        <div class="tile"><pre class="ascii"> .--.       .-.
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">a</span><span>ascii-chat</span>
+        </div>
+        <div class="top-status">Connected securely</div>
+      </header>
+      <nav class="modebar" aria-label="Page preview">
+        <span class="mode-label">PAGE PREVIEW</span
+        ><button class="mode-tab" data-mode="mirror">Mirror</button
+        ><button class="mode-tab" data-mode="client" aria-selected="true">
+          Client</button
+        ><button class="mode-tab" data-mode="discovery">Discovery</button>
+      </nav>
+      <section class="hero">
+        <div>
+          <p class="eyebrow" id="kicker">CLIENT · SERVER CONNECTION</p>
+          <h1 id="title">Connect to a server.</h1>
+          <p class="description">
+            Choose how this browser authenticates and verifies the server.
+          </p>
+        </div>
+        <button class="setup-button" id="open">♢ &nbsp;Security setup</button>
+      </section>
+      <section class="stage">
+        <div class="stage-head">
+          <span>Server · 192.168.1.24:27224</span
+          ><span class="stage-live">● LIVE</span>
+        </div>
+        <div class="tiles">
+          <div class="tile">
+            <pre class="ascii">
+ .--.       .-.
 (    )     /  |
  `--'     /   |
   ||     /    |
@@ -139,8 +718,13 @@
   ||/         |
   /           |
  /            |
-`--------------'</pre><span class="tile-label">you</span></div>
-        <div class="tile"><pre class="ascii">      .---.
+`--------------'</pre
+            >
+            <span class="tile-label">you</span>
+          </div>
+          <div class="tile">
+            <pre class="ascii">
+      .---.
    .-'     `-.
   /  .--. .--. \
  |  /    Y    \ |
@@ -151,8 +735,13 @@
       /     _/
      /   .-'
     /  .'
-   /.-'</pre><span class="tile-label">guest 01</span></div>
-        <div class="tile"><pre class="ascii">      .----.
+   /.-'</pre
+            >
+            <span class="tile-label">guest 01</span>
+          </div>
+          <div class="tile">
+            <pre class="ascii">
+      .----.
      /      \
     |  .--.  |
     | /    \ |
@@ -163,33 +752,256 @@
   /  /      \  \
  /__/        \__\
     /  /\  \
-   /__/  \__\</pre><span class="tile-label">guest 02</span></div>
-      </div></section>
-      <p class="page-note">Security setup is shared by Client and Discovery on this browser.</p>
+   /__/  \__\</pre
+            >
+            <span class="tile-label">guest 02</span>
+          </div>
+        </div>
+      </section>
+      <p class="page-note">
+        Security setup is shared by Client and Discovery on this browser.
+      </p>
     </main>
 
     <div class="scrim" id="scrim">
-      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-        <header class="modal-head"><div><h2 id="dialog-title">Connection security setup</h2><p>Set up ascii-chat encryption, authentication, and server verification.</p></div><button class="close" id="close" aria-label="Close">×</button></header>
-        <div class="scope"><span class="scope-mark">●</span><span><b>Shared browser settings</b> &nbsp;Used by Client and Discovery modes on this site.</span></div>
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+      >
+        <header class="modal-head">
+          <div>
+            <h2 id="dialog-title">Connection security setup</h2>
+            <p>
+              Set up ascii-chat encryption, authentication, and server
+              verification.
+            </p>
+          </div>
+          <button class="close" id="close" aria-label="Close">×</button>
+        </header>
+        <div class="scope">
+          <span class="scope-mark">●</span
+          ><span
+            ><b>Shared browser settings</b> &nbsp;Used by Client and Discovery
+            modes on this site.</span
+          >
+        </div>
         <div class="modal-body">
           <section class="section">
-            <div class="section-head"><h3>Encryption and authentication</h3><p>Controls the ascii-chat security layer</p></div>
-            <div class="section-content">
-              <div class="toggle-row"><div class="toggle-copy"><strong>ascii-chat’s custom end-to-end encryption</strong><small>Encrypt ACIP traffic between this browser and the peer.</small><small>If you’re using WebRTC or WSS, you probably won’t need this for privacy because those transports are already encrypted. You can still use authentication to verify identities.</small></div><button class="switch" role="switch" aria-checked="true" aria-label="ascii-chat’s custom end-to-end encryption"></button></div>
-              <div class="toggle-row"><div class="toggle-copy"><strong>Require authentication</strong><small>Prove identity with a password, an identity key, or both when requested.</small></div><button class="switch" role="switch" aria-checked="true" aria-label="Require authentication"></button></div>
-              <div class="field"><label for="password">Shared password</label><input id="password" type="password" autocomplete="new-password" placeholder="Enter shared password" /><p class="help">Optional. Use the same password as the server. Password plus identity key enables both checks.</p></div>
-              <div class="field"><span class="field-label">Private keys</span><p class="help">Choose which identity this browser presents. Keep multiple keys here and switch without importing again.</p><div class="key-actions"><span class="help" style="margin:0">Active key is shared by Client and Discovery.</span><button class="key-add" id="add-private">＋ Add private key</button></div><div class="key-list" id="private-key-list"></div><div class="key-entry" id="private-entry" hidden><div class="field-label">SSH Ed25519 or supported GPG private key</div><div class="input-with-action"><input id="private-name" type="text" placeholder="Name this key" /><button class="key-add" id="choose-identity">Choose file…</button><input id="identity-file" type="file" accept=".pem,.key,.asc,.gpg" hidden /></div><div class="field"><label for="private-content">Or paste key contents</label><textarea id="private-content" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea><p class="validation-message" id="private-error" role="alert"></p></div><div class="key-actions"><span class="help" id="identity-help" style="margin:0">Key contents stay in this browser profile.</span><button class="key-add" id="save-private">Add to list</button></div></div></div>
-              <div class="warning"><span>◆</span><span><b>Private key storage:</b> saving remembers the key contents in this browser’s local storage so both modes can use them. Anyone with access to this browser profile can read them. Use a dedicated key without a passphrase for this browser.</span></div>
+            <div class="section-head">
+              <h3>Encryption and authentication</h3>
+              <p>Controls the ascii-chat security layer</p>
             </div>
-            <div class="section-head subsection-head"><h3>Verify who you connect to</h3><p>Public keys only</p></div>
             <div class="section-content">
-              <div class="field"><span class="field-label">Server verification keys</span><p class="help">Select the trusted public key for each service. An unmatched identity is rejected.</p><div class="key-actions verification-actions"><span class="help" style="margin:0">Active keys are shared by Client and Discovery.</span><button class="key-add" id="add-server">＋ Add verification key</button></div><div class="key-list" id="server-key-list"></div><div class="key-entry" id="server-entry" hidden><label class="field-label" for="server-target">This key verifies</label><select class="key-target" id="server-target"><option value="chat">Chat server</option><option value="discovery">Discovery service</option></select><div class="field"><label for="server-name">Key name</label><input id="server-name" type="text" placeholder="e.g. Home server" /></div><div class="field"><div class="input-with-action"><label class="field-label" for="server-content" style="flex:1;margin:0">Public key</label><button class="key-add" id="choose-server">Choose file…</button><input id="server-file" type="file" accept=".pub,.asc,.gpg,.key,.txt" hidden /></div><textarea id="server-content" placeholder="Paste public-key contents"></textarea><p class="validation-message" id="server-error" role="alert"></p></div><div class="key-actions"><span class="help" style="margin:0">Choose a file or paste text above.</span><button class="key-add" id="save-server">Add to list</button></div></div></div>
-              <div class="toggle-row"><div class="toggle-copy"><strong>Skip server identity verification</strong><small>Allow connecting without a matching trusted server key. This can expose you to impersonation.</small></div><button class="switch" role="switch" aria-checked="false" aria-label="Skip server identity verification"></button></div>
+              <div class="toggle-row">
+                <div class="toggle-copy">
+                  <strong>ascii-chat’s custom end-to-end encryption</strong
+                  ><small
+                    >Encrypt ACIP traffic between this browser and the
+                    peer.</small
+                  ><small
+                    >If you’re using WebRTC or WSS, you probably won’t need this
+                    for privacy because those transports are already encrypted.
+                    You can still use authentication to verify
+                    identities.</small
+                  >
+                </div>
+                <button
+                  class="switch"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="ascii-chat’s custom end-to-end encryption"
+                ></button>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-copy">
+                  <strong>Require authentication</strong
+                  ><small
+                    >Prove identity with a password, an identity key, or both
+                    when requested.</small
+                  >
+                </div>
+                <button
+                  class="switch"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Require authentication"
+                ></button>
+              </div>
+              <div class="field">
+                <label for="password">Shared password</label
+                ><input
+                  id="password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Enter shared password"
+                />
+                <p class="help">
+                  Optional. Use the same password as the server. Password plus
+                  identity key enables both checks.
+                </p>
+              </div>
+              <div class="field">
+                <span class="field-label">Private keys</span>
+                <p class="help">
+                  Choose which identity this browser presents. Keep multiple
+                  keys here and switch without importing again.
+                </p>
+                <div class="key-actions">
+                  <span class="help" style="margin: 0"
+                    >Active key is shared by Client and Discovery.</span
+                  ><button class="key-add" id="add-private">
+                    ＋ Add private key
+                  </button>
+                </div>
+                <div class="key-list" id="private-key-list"></div>
+                <div class="key-entry" id="private-entry" hidden>
+                  <div class="field-label">
+                    SSH Ed25519 or supported GPG private key
+                  </div>
+                  <div class="input-with-action">
+                    <input
+                      id="private-name"
+                      type="text"
+                      placeholder="Name this key"
+                    /><button class="key-add" id="choose-identity">
+                      Choose file…</button
+                    ><input
+                      id="identity-file"
+                      type="file"
+                      accept=".pem,.key,.asc,.gpg"
+                      hidden
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="private-content">Or paste key contents</label
+                    ><textarea
+                      id="private-content"
+                      placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                    ></textarea>
+                    <p
+                      class="validation-message"
+                      id="private-error"
+                      role="alert"
+                    ></p>
+                  </div>
+                  <div class="key-actions">
+                    <span class="help" id="identity-help" style="margin: 0"
+                      >Key contents stay in this browser profile.</span
+                    ><button class="key-add" id="save-private">
+                      Add to list
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="warning">
+                <span>◆</span
+                ><span
+                  ><b>Private key storage:</b> saving remembers the key contents
+                  in this browser’s local storage so both modes can use them.
+                  Anyone with access to this browser profile can read them. Use
+                  a dedicated key without a passphrase for this browser.</span
+                >
+              </div>
+            </div>
+            <div class="section-head subsection-head">
+              <h3>Verify who you connect to</h3>
+              <p>Public keys only</p>
+            </div>
+            <div class="section-content">
+              <div class="field">
+                <span class="field-label">Server verification keys</span>
+                <p class="help">
+                  Select the trusted public key for each service. An unmatched
+                  identity is rejected.
+                </p>
+                <div class="key-actions verification-actions">
+                  <span class="help" style="margin: 0"
+                    >Active keys are shared by Client and Discovery.</span
+                  ><button class="key-add" id="add-server">
+                    ＋ Add verification key
+                  </button>
+                </div>
+                <div class="key-list" id="server-key-list"></div>
+                <div class="key-entry" id="server-entry" hidden>
+                  <label class="field-label" for="server-target"
+                    >This key verifies</label
+                  ><select class="key-target" id="server-target">
+                    <option value="chat">Chat server</option>
+                    <option value="discovery">Discovery service</option>
+                  </select>
+                  <div class="field">
+                    <label for="server-name">Key name</label
+                    ><input
+                      id="server-name"
+                      type="text"
+                      placeholder="e.g. Home server"
+                    />
+                  </div>
+                  <div class="field">
+                    <div class="input-with-action">
+                      <label
+                        class="field-label"
+                        for="server-content"
+                        style="flex: 1; margin: 0"
+                        >Public key</label
+                      ><button class="key-add" id="choose-server">
+                        Choose file…</button
+                      ><input
+                        id="server-file"
+                        type="file"
+                        accept=".pub,.asc,.gpg,.key,.txt"
+                        hidden
+                      />
+                    </div>
+                    <textarea
+                      id="server-content"
+                      placeholder="Paste public-key contents"
+                    ></textarea>
+                    <p
+                      class="validation-message"
+                      id="server-error"
+                      role="alert"
+                    ></p>
+                  </div>
+                  <div class="key-actions">
+                    <span class="help" style="margin: 0"
+                      >Choose a file or paste text above.</span
+                    ><button class="key-add" id="save-server">
+                      Add to list
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-copy">
+                  <strong>Skip server identity verification</strong
+                  ><small
+                    >Allow connecting without a matching trusted server key.
+                    This can expose you to impersonation.</small
+                  >
+                </div>
+                <button
+                  class="switch"
+                  role="switch"
+                  aria-checked="false"
+                  aria-label="Skip server identity verification"
+                ></button>
+              </div>
             </div>
           </section>
         </div>
-        <footer class="modal-foot"><div class="storage">Saved on this browser · shared by Client and Discovery<br />Private key material is stored as plaintext in localStorage.</div><div class="actions"><button class="secondary" id="cancel">Cancel</button><button class="primary" id="save">Save security settings</button></div></footer>
+        <footer class="modal-foot">
+          <div class="storage">
+            Saved on this browser · shared by Client and Discovery<br />Private
+            key material is stored as plaintext in localStorage.
+          </div>
+          <div class="actions">
+            <button class="secondary" id="cancel">Cancel</button
+            ><button class="primary" id="save">Save security settings</button>
+          </div>
+        </footer>
       </section>
     </div>
     <div class="toast hidden" id="toast" role="status"></div>

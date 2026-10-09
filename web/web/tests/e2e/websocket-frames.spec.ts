@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { getRandomPort, ServerFixture } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  getRandomPort,
+  ServerFixture,
+} from "./server-fixture";
 
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
@@ -29,7 +33,7 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   page,
   context,
 }) => {
-  test.setTimeout(4000);
+  test.setTimeout(30_000);
 
   const encryptedPackets: number[] = [];
   const asciiFrames: number[] = [];
@@ -45,14 +49,16 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
     if (!ctx) {
       throw new Error("Failed to get 2D context from canvas");
     }
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(60);
 
     let frameCount = 0;
-    setInterval(() => {
+    const draw = () => {
       ctx.fillStyle = `hsl(${(frameCount * 5) % 360}, 100%, 50%)`;
       ctx.fillRect(0, 0, 640, 480);
       frameCount++;
-    }, 33);
+      requestAnimationFrame(draw);
+    };
+    draw();
 
     if (!navigator.mediaDevices) {
       Object.defineProperty(navigator, "mediaDevices", {
@@ -121,4 +127,5 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   // CRITICAL: Must receive multiple frames
   expect(encryptedPackets.length).toBeGreaterThan(1);
   expect(asciiFrames.length).toBeGreaterThan(1);
+  await expectMeaningful60Fps(page, "client", 3_000);
 });

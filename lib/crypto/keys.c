@@ -172,10 +172,40 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       return path_result;
     }
 
-    FILE *f = platform_fopen("file_stream", normalized_path, "r");
+    FILE *f = platform_fopen("file_stream", normalized_path, "rb");
     if (f) {
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
+        uint8_t first_packet = (uint8_t)line[0];
+        unsigned int packet_tag = (first_packet & 0x80u)
+                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
+                                                                 : ((first_packet >> 2) & 0x0fu))
+                                      : 0u;
+        bool armored_gpg = strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL;
+        if (armored_gpg || packet_tag == 6u) {
+          if (fseek(f, 0, SEEK_END) != 0) {
+            (void)fclose(f);
+            SAFE_FREE(normalized_path);
+            return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to seek OpenPGP public key file: %s", input);
+          }
+          long file_size = ftell(f);
+          if (file_size <= 0 || file_size > 1024 * 1024 || fseek(f, 0, SEEK_SET) != 0) {
+            (void)fclose(f);
+            SAFE_FREE(normalized_path);
+            return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenPGP public key file size: %ld bytes", file_size);
+          }
+          uint8_t *file_content = SAFE_MALLOC((size_t)file_size, uint8_t *);
+          size_t content_read = fread(file_content, 1, (size_t)file_size, f);
+          (void)fclose(f);
+          SAFE_FREE(normalized_path);
+          if (content_read != (size_t)file_size) {
+            SAFE_FREE(file_content);
+            return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read OpenPGP public key file: %s", input);
+          }
+          asciichat_error_t result = parse_gpg_key_binary(file_content, content_read, key_out);
+          SAFE_FREE(file_content);
+          return result;
+        }
         (void)fclose(f);
         SAFE_FREE(normalized_path);
         // Remove newline
@@ -262,7 +292,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   // Read file content to detect format
-  FILE *f = platform_fopen("file_stream", normalized_path, "r");
+  FILE *f = platform_fopen("file_stream", normalized_path, "rb");
   if (!f) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open private key file: %s", key_path);
@@ -328,6 +358,57 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
 
     log_debug("Loaded unencrypted GPG Ed25519 key from %s", key_path);
+    return ASCIICHAT_OK;
+  }
+
+  uint8_t first_packet = bytes_read > 0 ? (uint8_t)header[0] : 0;
+  unsigned int first_packet_tag = (first_packet & 0x80u)
+                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
+                                                                 : ((first_packet >> 2) & 0x0fu))
+                                      : 0u;
+  if (bytes_read > 0 && first_packet_tag == 5u) {
+    f = platform_fopen("file_stream", normalized_path, "rb");
+    if (!f) {
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open binary OpenPGP key file: %s", key_path);
+    }
+    if (fseek(f, 0, SEEK_END) != 0) {
+      (void)fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to seek binary OpenPGP key file: %s", key_path);
+    }
+    long file_size = ftell(f);
+    if (file_size <= 0 || file_size > 1024 * 1024 || fseek(f, 0, SEEK_SET) != 0) {
+      (void)fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid binary OpenPGP key file size: %ld bytes", file_size);
+    }
+    uint8_t *file_content = SAFE_MALLOC((size_t)file_size, uint8_t *);
+    size_t content_read = fread(file_content, 1, (size_t)file_size, f);
+    (void)fclose(f);
+    if (content_read != (size_t)file_size) {
+      SAFE_FREE(file_content);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read binary OpenPGP key file: %s", key_path);
+    }
+
+    uint8_t ed25519_pk[32];
+    uint8_t ed25519_sk[32];
+    asciichat_error_t openpgp_result =
+        openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
+    sodium_memzero(file_content, content_read);
+    SAFE_FREE(file_content);
+    SAFE_FREE(normalized_path);
+    if (openpgp_result != ASCIICHAT_OK) return openpgp_result;
+
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_gpg_agent = false;
+    key_out->use_ssh_agent = false;
+    memcpy(key_out->key.ed25519, ed25519_sk, 32);
+    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32);
+    memcpy(key_out->public_key, ed25519_pk, 32);
+    safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
+    sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
     return ASCIICHAT_OK;
   }
 
@@ -542,7 +623,7 @@ asciichat_error_t fetch_gitlab_keys(const char *username, char ***keys_out, size
 // =============================================================================
 
 asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys) {
-  if (!path || !keys || !num_keys) {
+  if (!path || !keys || !num_keys || max_keys == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for key file parsing");
   }
 
@@ -559,13 +640,52 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
     return path_result;
   }
 
-  FILE *f = platform_fopen("file_stream", normalized_path, "r");
+  FILE *f = platform_fopen("file_stream", normalized_path, "rb");
   if (!f) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open keys file: %s", path);
   }
 
   char line[BUFFER_SIZE_LARGE];
+  bool has_first_line = fgets(line, sizeof(line), f) != NULL;
+  uint8_t first_packet = has_first_line ? (uint8_t)line[0] : 0;
+  unsigned int first_packet_tag = (first_packet & 0x80u)
+                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
+                                                                 : ((first_packet >> 2) & 0x0fu))
+                                      : 0u;
+  if (has_first_line &&
+      (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
+    if (fseek(f, 0, SEEK_END) != 0) {
+      (void)fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to seek OpenPGP key file: %s", path);
+    }
+    long file_size = ftell(f);
+    if (file_size <= 0 || file_size > 1024 * 1024 || fseek(f, 0, SEEK_SET) != 0) {
+      (void)fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenPGP key file size: %ld bytes", file_size);
+    }
+    char *armored_key = SAFE_MALLOC((size_t)file_size + 1, char *);
+    size_t bytes_read = fread(armored_key, 1, (size_t)file_size, f);
+    (void)fclose(f);
+    SAFE_FREE(normalized_path);
+    if (bytes_read != (size_t)file_size) {
+      SAFE_FREE(armored_key);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read OpenPGP key file: %s", path);
+    }
+    asciichat_error_t result;
+    if (first_packet_tag == 6u) {
+      result = parse_gpg_key_binary((const uint8_t *)armored_key, bytes_read, &keys[0]);
+    } else {
+      armored_key[bytes_read] = '\0';
+      result = parse_public_key(armored_key, &keys[0]);
+    }
+    SAFE_FREE(armored_key);
+    if (result == ASCIICHAT_OK) *num_keys = 1;
+    return result;
+  }
+  rewind(f);
   while (fgets(line, sizeof(line), f) && *num_keys < max_keys) {
     // Remove newline
     line[strcspn(line, "\r\n")] = 0;

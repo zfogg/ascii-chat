@@ -85,7 +85,9 @@ export default function AnimationsEffectsSection() {
           Audio to play the bundled music clip.
         </p>
         <CodeBlock language="bash">
-          {"# Visualize all local and remote audio as a waveform (default source)\nascii-chat client --waveform\n\n# Inspect only other participants in the call\nascii-chat client --audio-source call --fft\n\n# Visualize the microphone or a media file by itself\nascii-chat mirror --audio-source mic --waveform\nascii-chat mirror --file music.mp4 --audio-source media --fft"}
+          {
+            "# Visualize all local and remote audio as a waveform (default source)\nascii-chat client --waveform\n\n# Inspect only other participants in the call\nascii-chat client --audio-source call --fft\n\n# Visualize the microphone or a media file by itself\nascii-chat mirror --audio-source mic --waveform\nascii-chat mirror --file music.mp4 --audio-source media --fft"
+          }
         </CodeBlock>
         <div className="mt-6">
           <MirrorDemoWidget demoOptions={AUDIO_OPTIONS} />

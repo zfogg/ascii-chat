@@ -1,13 +1,14 @@
 /**
  * E2E performance test for Mirror mode rendering
  *
- * Verifies that mirror mode can render with fake webcam and maintains FPS > 15.
+ * Verifies that mirror mode sustains near-60-FPS meaningful ASCII frames.
  * Run with: bun run test:e2e -- tests/e2e/performance-mirror-check.spec.ts
  */
 
 import { test, expect } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 
-const WEB_MIRROR_URL = "http://localhost:3000/mirror";
+const WEB_MIRROR_URL = "http://localhost:3000/mirror?test2";
 const TEST_TIMEOUT = 30000;
 
 // Configure fake webcam for this entire test file
@@ -68,6 +69,7 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
     });
     expect(hasContent).toBeTruthy();
   }).toPass({ timeout: 3000 });
+  await expectMeaningful60Fps(page, "mirror", 3_000);
 
   console.log("✓ Mirror mode rendered ASCII art successfully");
 
@@ -80,7 +82,7 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
   }
 });
 
-test("mirror mode: maintains FPS > 15", async ({ page }) => {
+test("mirror mode: sustains near-60 FPS", async ({ page }) => {
   test.setTimeout(TEST_TIMEOUT);
 
   await page.goto(WEB_MIRROR_URL);
@@ -126,11 +128,8 @@ test("mirror mode: maintains FPS > 15", async ({ page }) => {
 
   console.log(`Mirror FPS from page: ${fps}`);
 
-  if (fps !== null) {
-    expect(fps).toBeGreaterThanOrEqual(15);
-  } else {
-    console.log("⚠ Could not extract FPS from page");
-  }
+  expect(fps).toBe(60);
+  await expectMeaningful60Fps(page, "mirror", 5_000);
 
   // Try to stop
   try {

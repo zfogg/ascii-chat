@@ -35,7 +35,7 @@ function parseWebRtcTarget(entry: string): ServerTarget {
       ? value
       : `wss://${value}`,
   );
-  if (url.protocol !== "ws:" && url.protocol !== "wss:" || !url.hostname) {
+  if ((url.protocol !== "ws:" && url.protocol !== "wss:") || !url.hostname) {
     throw new Error(`Invalid WebRTC server target: ${entry}`);
   }
   return {
@@ -51,7 +51,8 @@ function parseIceTarget(kind: "stun" | "turn", entry: string): ServerTarget {
   const secure = rawValue.toLowerCase().startsWith(`${kind}s:`);
   const value = rawValue.replace(new RegExp(`^${kind}s?:`, "i"), "");
   const url = new URL(`${kind}://${value}`);
-  if (!url.hostname) throw new Error(`Invalid ${kind.toUpperCase()} server target: ${entry}`);
+  if (!url.hostname)
+    throw new Error(`Invalid ${kind.toUpperCase()} server target: ${entry}`);
   return {
     host: url.hostname,
     port: parsePort(url.port || (secure ? "5349" : "3478"), entry),
@@ -64,12 +65,13 @@ export function configuredServerTargets(
   configuredValue?: string,
 ): ServerTarget[] {
   const value = configuredValue?.trim() || DEFAULT_SERVER_LISTS[kind];
-  const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  const entries = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
   if (entries.length === 0) return configuredServerTargets(kind);
   return entries.map((entry) =>
-    kind === "webrtc"
-      ? parseWebRtcTarget(entry)
-      : parseIceTarget(kind, entry),
+    kind === "webrtc" ? parseWebRtcTarget(entry) : parseIceTarget(kind, entry),
   );
 }
 

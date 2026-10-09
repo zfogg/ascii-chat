@@ -3,6 +3,7 @@ import {
   getRandomPort,
   NativeClientFixture,
   ServerFixture,
+  expectMeaningful60Fps,
 } from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
@@ -17,7 +18,7 @@ test.beforeAll(async () => {
   await server.start();
   serverUrl = server.getUrl();
 
-  nativeClientA = new NativeClientFixture(port);
+  nativeClientA = new NativeClientFixture(port, 60);
   await nativeClientA.start();
 });
 
@@ -102,9 +103,8 @@ test("?test auto-connects, renders, sends synthetic video and audio", async ({
   );
   const renderedFps = (framesAfterWindow - framesBeforeWindow) / 5;
 
-  // This validates five seconds of actual ASCII canvas writes. Keep a little
-  // scheduling headroom for loaded CI runners while preserving the 40-60 FPS
-  // contract visible in the browser UI.
-  expect(renderedFps).toBeGreaterThanOrEqual(40);
+  // The native source and browser output should both sustain near-60 FPS.
+  expect(renderedFps).toBeGreaterThanOrEqual(55);
   expect(renderedFps).toBeLessThanOrEqual(61);
+  await expectMeaningful60Fps(page, "client", 5_000);
 });

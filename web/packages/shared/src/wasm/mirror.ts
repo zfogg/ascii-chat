@@ -320,6 +320,8 @@ const AUDIO_PALETTES: Record<Palette, string> = {
   custom: "",
 };
 
+// ANSI truecolor cells are delimited by literal ESC control characters.
+// oxlint-disable-next-line no-control-regex
 const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
 
 function paletteCharacter(red: number, green: number, blue: number): string {

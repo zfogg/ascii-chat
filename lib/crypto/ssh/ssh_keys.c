@@ -975,7 +975,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
 #endif
 
   // Check if file exists and is readable
-  FILE *test_file = platform_fopen("file_stream", validated_path, "r");
+  FILE *test_file = platform_fopen("file_stream", validated_path, "rb");
   if (test_file == NULL) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
@@ -984,11 +984,20 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   // Check if this is an SSH key file or GPG armored key by looking for the header
   char header[BUFFER_SIZE_SMALL];
   bool is_valid_key_file = false;
-  if (fgets(header, sizeof(header), test_file) != NULL) {
+  size_t header_len = fread(header, 1, sizeof(header) - 1, test_file);
+  if (header_len > 0) {
+    header[header_len] = '\0';
     if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
         strstr(header, "BEGIN EC PRIVATE KEY") != NULL || strstr(header, "BEGIN PGP PRIVATE KEY") != NULL ||
         strstr(header, "BEGIN PGP SECRET KEY") != NULL) {
       is_valid_key_file = true;
+    } else {
+      uint8_t first_packet = (uint8_t)header[0];
+      unsigned int packet_tag = (first_packet & 0x80u)
+                                    ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
+                                                               : ((first_packet >> 2) & 0x0fu))
+                                    : 0u;
+      is_valid_key_file = packet_tag == 5u;
     }
   }
   (void)fclose(test_file);

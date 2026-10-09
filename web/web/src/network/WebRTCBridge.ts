@@ -40,8 +40,14 @@ export class WebRTCBridge implements PacketTransport {
         // frames. Avoid copying it into a temporary merged buffer before the
         // next animation frame; at 60 Hz those copies alone can starve the UI.
         if (this.pending.length === 0 && bytes.length >= 22) {
-          const length = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(10, false) + 22;
-          if (length > this.limit) throw new Error("ACIP packet exceeds receive limit");
+          const length =
+            new DataView(
+              bytes.buffer,
+              bytes.byteOffset,
+              bytes.byteLength,
+            ).getUint32(10, false) + 22;
+          if (length > this.limit)
+            throw new Error("ACIP packet exceeds receive limit");
           if (length === bytes.length) {
             this.dispatchCompletePacket(bytes);
             return;
@@ -94,8 +100,13 @@ export class WebRTCBridge implements PacketTransport {
 
   private dispatchCompletePacket(packet: Uint8Array): void {
     this.receivedPackets++;
-    const packetType = new DataView(packet.buffer, packet.byteOffset, packet.byteLength).getUint16(8, false);
-    this.receivedPacketTypes[packetType] = (this.receivedPacketTypes[packetType] ?? 0) + 1;
+    const packetType = new DataView(
+      packet.buffer,
+      packet.byteOffset,
+      packet.byteLength,
+    ).getUint16(8, false);
+    this.receivedPacketTypes[packetType] =
+      (this.receivedPacketTypes[packetType] ?? 0) + 1;
     this.onPacket(packet);
   }
 

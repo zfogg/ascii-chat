@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 30000;
@@ -115,6 +116,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
 
     // Wait for the rainbow filter to take effect and a few frames to render
     await page.waitForTimeout(500);
+    await expectMeaningful60Fps(page, "mirror", 4_000);
 
     // Sample pixel colors from the xterm canvas over 4 seconds.
     // The rainbow filter replaces ALL truecolor ANSI codes with a single

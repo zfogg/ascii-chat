@@ -5,7 +5,11 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { expect, test } from "@playwright/test";
-import { waitForPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  ServerFixture,
+  waitForPort,
+} from "./server-fixture";
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
@@ -152,7 +156,7 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
   fs.mkdirSync(appData, { recursive: true });
   let turnStarted = false;
   let acds: LoggedProcess | undefined;
-  let server: LoggedProcess | undefined;
+  let server: ServerFixture | undefined;
 
   try {
     await run("docker", ["network", "create", "--subnet", subnet, network]);
@@ -223,7 +227,8 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
     await waitForPort(acdsTcpPort, "127.0.0.1", { timeoutMs: 15_000 });
     await waitForPort(acdsWsPort, "127.0.0.1", { timeoutMs: 15_000 });
 
-    server = new LoggedProcess(
+    server = new ServerFixture(
+      tcpPort,
       [
         "server",
         "--port",
@@ -247,10 +252,10 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
         "--password",
         sessionPassword,
       ],
-      path.join(root, "server.log"),
       env,
     );
-    const sessionMatch = await server.waitFor(
+    await server.start();
+    const sessionMatch = await server.waitForLog(
       /Session created: ([a-z]+-[a-z]+-[a-z]+)/i,
       30_000,
     );
@@ -274,7 +279,9 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
         dataChannelBytes: 0,
         maxBufferedAmount: 0,
       };
-      (window as Window & { __webrtcPerfProbe?: typeof probe }).__webrtcPerfProbe = probe;
+      (
+        window as Window & { __webrtcPerfProbe?: typeof probe }
+      ).__webrtcPerfProbe = probe;
       const getImageData = CanvasRenderingContext2D.prototype.getImageData;
       CanvasRenderingContext2D.prototype.getImageData = function (...args) {
         const start = performance.now();
@@ -291,16 +298,25 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       RTCDataChannel.prototype.send = function (data) {
         const start = performance.now();
         try {
-          return (send as (this: RTCDataChannel, value: string | Blob | ArrayBuffer | ArrayBufferView) => void).call(this, data);
+          return (
+            send as (
+              this: RTCDataChannel,
+              value: string | Blob | ArrayBuffer | ArrayBufferView,
+            ) => void
+          ).call(this, data);
         } finally {
           probe.dataChannelSends++;
           probe.dataChannelSendMs += performance.now() - start;
-          probe.dataChannelBytes += typeof data === "string"
-            ? new TextEncoder().encode(data).byteLength
-            : data instanceof Blob
-              ? data.size
-              : data.byteLength;
-          probe.maxBufferedAmount = Math.max(probe.maxBufferedAmount, this.bufferedAmount);
+          probe.dataChannelBytes +=
+            typeof data === "string"
+              ? new TextEncoder().encode(data).byteLength
+              : data instanceof Blob
+                ? data.size
+                : data.byteLength;
+          probe.maxBufferedAmount = Math.max(
+            probe.maxBufferedAmount,
+            this.bufferedAmount,
+          );
         }
       };
     });
@@ -376,15 +392,18 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
         `60fps windows=${nearSixtyWindows}/10; 55+fps windows=${goodWindows}/10; ` +
         `received/unique-art/repaint=${samples.map(({ frameFps, uniqueArtFps, repaintFps }) => `${frameFps}/${uniqueArtFps.toFixed(0)}/${repaintFps.toFixed(0)}`).join(",")}`,
     );
+    await expectMeaningful60Fps(page, "client", 5_000);
     console.log(
       `[discovery-webrtc-test2-fps] page=${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 240)} ` +
         `serverCadence=${(server.logs.match(/Server (?:image ingress|video render|ASCII delivery) .* fps=[\d.]+/g) || []).slice(-15).join(" | ")} ` +
         `relay=${server.logs.match(/selected local candidate:.*typ relay/i)?.[0] ?? "none"}`,
     );
     const browserProbe = await page.evaluate(() => {
-      const probe = (window as Window & {
-        __webrtcPerfProbe?: Record<string, number>;
-      }).__webrtcPerfProbe;
+      const probe = (
+        window as Window & {
+          __webrtcPerfProbe?: Record<string, number>;
+        }
+      ).__webrtcPerfProbe;
       if (!probe) return null;
       const pixelCount = probe["lastReadWidth"]! * probe["lastReadHeight"]!;
       const rgba = new Uint8Array(pixelCount * 4);
@@ -404,12 +423,19 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
         rgbConversionMsPerFrame: (performance.now() - startedAt) / 20,
       };
     });
-    console.log("[discovery-webrtc-test2-fps] browserProbe=" + JSON.stringify(browserProbe));
+    console.log(
+      "[discovery-webrtc-test2-fps] browserProbe=" +
+        JSON.stringify(browserProbe),
+    );
     expect(
       nearSixtyWindows,
-      "received-frame FPS should reach 59+ for at least half the sample",
-    ).toBeGreaterThanOrEqual(5);
-    expect(goodWindows).toBeGreaterThanOrEqual(6);
+      "received-frame FPS should reach 59+ for at least 8 of 10 samples",
+    ).toBeGreaterThanOrEqual(8);
+    expect(goodWindows).toBeGreaterThanOrEqual(9);
+    expect(
+      samples.filter(({ uniqueArtFps }) => uniqueArtFps >= 55).length,
+      "changing ASCII frames should sustain 55+ FPS for at least 8 of 10 samples",
+    ).toBeGreaterThanOrEqual(8);
     await expect(
       page.getByRole("button", { name: "Disconnect", exact: true }),
     ).toBeVisible();
@@ -426,7 +452,7 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
   } catch (error) {
     await testInfo.attach("discovery-test-diagnostics.txt", {
       body: [
-        `server process: ${server?.child.exitCode ?? "running"}`,
+        `server process: ${server?.exitCode ?? "running"}`,
         "--- server log ---",
         server?.logs ?? "not started",
         "--- ACDS log ---",

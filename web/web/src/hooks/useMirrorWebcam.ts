@@ -239,6 +239,7 @@ export function useMirrorWebcam({
       setError(`Failed to start webcam: ${String(err)}`);
     }
   }, [
+    testPattern.enabled,
     settings,
     videoRef,
     canvasRef,
@@ -251,7 +252,8 @@ export function useMirrorWebcam({
 
   useEffect(() => {
     const handleDevicePreferencesChanged = (event: Event) => {
-      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>)
+        .detail;
       if (
         !change ||
         (!change.changedKeys.includes("cameraId") &&
@@ -350,6 +352,7 @@ export function useMirrorWebcam({
       );
     }
   }, [
+    testPattern.enabled,
     isWebcamRunning,
     videoRef,
     streamRef,
@@ -410,6 +413,7 @@ export function useMirrorWebcam({
         });
     }
   }, [
+    testPattern.enabled,
     wasmInitialized,
     permissionGranted,
     isWebcamRunning,

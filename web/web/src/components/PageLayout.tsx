@@ -29,7 +29,10 @@ export function PageLayout({
         | null;
       if (!video?.setSinkId || !speakerId) return;
       void video.setSinkId(speakerId).catch((error: unknown) => {
-        console.warn("Unable to route video audio to the selected speaker:", error);
+        console.warn(
+          "Unable to route video audio to the selected speaker:",
+          error,
+        );
       });
     };
 

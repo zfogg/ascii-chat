@@ -1,4 +1,35 @@
 import { expect, test } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
+
+test("Mirror loads and remains interactive across reloads", async ({
+  page,
+}) => {
+  await page.goto("/mirror", { waitUntil: "domcontentloaded" });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await page.reload({ waitUntil: "domcontentloaded" });
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Boolean(
+            (window as unknown as { asciiChatWasm?: { _wasmModule?: unknown } })
+              .asciiChatWasm?._wasmModule,
+          ),
+        ),
+      )
+      .toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Start Webcam", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Animation", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Animation", exact: true }),
+    ).toBeHidden();
+  }
+});
 
 interface MatrixFrameProbe {
   active: boolean;
@@ -86,6 +117,7 @@ test("Matrix starts green after enabling, restarting, and resizing", async ({
     expect(probe.greenFrames).toBeGreaterThan(0);
     expect(probe.coloredFrames, JSON.stringify(probe)).toBe(0);
     samples.push(probe);
+    await expectMeaningful60Fps(page, "mirror", 1_000);
   };
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.getByRole("button", { name: "Animation", exact: true }).click();

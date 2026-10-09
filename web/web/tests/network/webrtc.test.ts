@@ -87,7 +87,6 @@ describe("Discovery connection settings", () => {
     turnPassword: "discovery-password",
   };
 
-
   it("defaults to automatic routing and discovery credentials", () => {
     expect(discoveryRTCConfiguration(options, joined)).toEqual({
       iceTransportPolicy: "all",
@@ -134,12 +133,10 @@ describe("Discovery connection settings", () => {
     expect(
       discoveryRTCConfiguration({ ...options, turnServers: [] }, empty)
         .iceServers,
-    ).toEqual([
-      { urls: "stun:localhost:3478" },
-    ]);
-    expect(() =>
-      discoveryRTCConfiguration(options, empty),
-    ).toThrow("TURN server requires credentials");
+    ).toEqual([{ urls: "stun:localhost:3478" }]);
+    expect(() => discoveryRTCConfiguration(options, empty)).toThrow(
+      "TURN server requires credentials",
+    );
     expect(() =>
       discoveryRTCConfiguration(
         {
@@ -193,7 +190,9 @@ describe("WebRTC signaling reconnects", () => {
       turnServers: [],
     });
 
-    expect(signalingHarness.current!.options.applicationEncryption).toBeUndefined();
+    expect(
+      signalingHarness.current!.options.applicationEncryption,
+    ).toBeUndefined();
     expect(signalingHarness.current!.options.discoveryHandshake).toBe(true);
   });
 

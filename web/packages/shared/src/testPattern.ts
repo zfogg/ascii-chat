@@ -62,7 +62,7 @@ export function drawTestPatternFrame2(
   const firstStripe = Math.ceil(-stripeOffset / stripeWidth);
   for (let offset = 0; offset <= 12; offset++) {
     const index = firstStripe + offset;
-    const hue = ((index % 12) + 12) % 12 * 30;
+    const hue = (((index % 12) + 12) % 12) * 30;
     const x = index * stripeWidth + stripeOffset;
     context.fillStyle = `hsl(${hue}, 100%, 55%)`;
     context.fillRect(x - stripeWidth, 0, stripeWidth, height);
@@ -70,7 +70,7 @@ export function drawTestPatternFrame2(
 
   const radius = Math.max(12, Math.min(width, height) / 8);
   const x = width + radius - phase * (width + radius * 2);
-  const y = height / 2 + Math.sin(phase * Math.PI * 4) * height / 4;
+  const y = height / 2 + (Math.sin(phase * Math.PI * 4) * height) / 4;
   context.beginPath();
   context.arc(x, y, radius, 0, Math.PI * 2);
   context.fillStyle = "#ffffff";
@@ -78,6 +78,18 @@ export function drawTestPatternFrame2(
   context.fillStyle = "#101820";
   context.font = `${Math.max(18, Math.min(width, height) / 10)}px sans-serif`;
   context.fillText("ascii-chat test2", 24, Math.max(36, height / 8));
+
+  // Encode source-frame cadence as a gray-code bar panel. The stripes and
+  // circle can move without crossing an ASCII cell boundary on every source
+  // frame; one full-height eighth changes on each frame, even after downsampling.
+  const frameNumber = Math.floor(time / (1000 / 60));
+  const frameCode = frameNumber ^ (frameNumber >> 1);
+  const markerWidth = Math.max(2, width / 8);
+  const bitSlots = [3, 4, 2, 5, 1, 6, 0, 7];
+  for (let bit = 0; bit < 8; bit++) {
+    context.fillStyle = frameCode & (1 << bit) ? "#ffffff" : "#000000";
+    context.fillRect(bitSlots[bit]! * markerWidth, 0, markerWidth, height);
+  }
 }
 
 export function drawSelectedTestPatternFrame(
@@ -87,8 +99,7 @@ export function drawSelectedTestPatternFrame(
   height: number,
   time = performance.now(),
 ): void {
-  if (mode === "test2")
-    drawTestPatternFrame2(context, width, height, time);
+  if (mode === "test2") drawTestPatternFrame2(context, width, height, time);
   else drawTestPatternFrame(context, width, height, time);
 }
 
@@ -111,10 +122,7 @@ export function createTestPatternVideoSource(
   const resize = (nextWidth: number, nextHeight: number) => {
     const nextCanvasWidth = Math.max(1, Math.floor(nextWidth));
     const nextCanvasHeight = Math.max(1, Math.floor(nextHeight));
-    if (
-      canvas.width === nextCanvasWidth &&
-      canvas.height === nextCanvasHeight
-    )
+    if (canvas.width === nextCanvasWidth && canvas.height === nextCanvasHeight)
       return;
     canvas.width = nextCanvasWidth;
     canvas.height = nextCanvasHeight;
@@ -125,9 +133,11 @@ export function createTestPatternVideoSource(
     animationFrame = requestAnimationFrame(draw);
   };
   draw();
-  const resizeObserver = targetCanvas ? new MutationObserver(() => {
-    resize(targetCanvas.width || width, targetCanvas.height || height);
-  }) : null;
+  const resizeObserver = targetCanvas
+    ? new MutationObserver(() => {
+        resize(targetCanvas.width || width, targetCanvas.height || height);
+      })
+    : null;
   if (targetCanvas) {
     resize(targetCanvas.width || width, targetCanvas.height || height);
     resizeObserver?.observe(targetCanvas, {

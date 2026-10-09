@@ -40,6 +40,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
@@ -235,6 +236,82 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
   if (!key_line || !public_key_out) return -1;
   CLEAR_ERRNO();
   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+}
+
+/** Parse an armored OpenPGP Ed25519 public key through the shared C parser. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
+  if (!armored_key || !public_key_out) return -1;
+  CLEAR_ERRNO();
+  return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+}
+
+/** Parse a binary OpenPGP Ed25519 public-key packet stream. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
+  if (!key_data || key_data_len == 0 || !public_key_out) return -1;
+  CLEAR_ERRNO();
+  return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+}
+
+/** Parse an unencrypted armored OpenPGP Ed25519 private key through the shared C parser. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
+  if (!armored_key || !secret_key_out) return -1;
+  CLEAR_ERRNO();
+
+  uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+  uint8_t seed[crypto_sign_SEEDBYTES] = {0};
+  uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+  uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
+  int result = -1;
+
+  if (openpgp_parse_armored_seckey(armored_key, public_key, seed) != ASCIICHAT_OK) goto cleanup;
+  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
+      sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
+    goto cleanup;
+  }
+
+  memcpy(secret_key_out, secret_key, sizeof(secret_key));
+  result = 0;
+
+cleanup:
+  sodium_memzero(public_key, sizeof(public_key));
+  sodium_memzero(seed, sizeof(seed));
+  sodium_memzero(derived_public_key, sizeof(derived_public_key));
+  sodium_memzero(secret_key, sizeof(secret_key));
+  return result;
+}
+
+/** Parse an unencrypted binary OpenPGP Ed25519 secret-key packet stream. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
+  if (!key_data || key_data_len == 0 || !secret_key_out) return -1;
+  CLEAR_ERRNO();
+
+  uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+  uint8_t seed[crypto_sign_SEEDBYTES] = {0};
+  uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+  uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
+  int result = -1;
+
+  if (openpgp_parse_binary_seckey(key_data, key_data_len, public_key, seed) != ASCIICHAT_OK) goto cleanup;
+  if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
+      sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
+    goto cleanup;
+  }
+
+  memcpy(secret_key_out, secret_key, sizeof(secret_key));
+  result = 0;
+
+cleanup:
+  sodium_memzero(public_key, sizeof(public_key));
+  sodium_memzero(seed, sizeof(seed));
+  sodium_memzero(derived_public_key, sizeof(derived_public_key));
+  sodium_memzero(secret_key, sizeof(secret_key));
+  return result;
 }
 
 /** Copy the most recent C crypto error into a caller-provided buffer. */

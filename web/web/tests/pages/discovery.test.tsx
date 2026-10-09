@@ -71,6 +71,13 @@ vi.mock("../../src/hooks", () => ({
 vi.mock("@ascii-chat/shared/wasm", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   initMirrorWasm: vi.fn().mockResolvedValue(undefined),
+  adoptMirrorWasmModule: vi.fn(),
+}));
+vi.mock("../../src/wasm/client", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  initClientWasm: vi.fn().mockResolvedValue(undefined),
+  getClientWasmModule: () => ({}),
+  cleanupClientWasm: vi.fn(),
 }));
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
 vi.mock("../../src/components", async () => ({
@@ -154,7 +161,7 @@ describe("Discovery page", () => {
     const view = render(<ClientPage />, { wrapper: HeadingProvider });
     await act(async () => {});
 
-    expect(backend.options?.autoConnect).toBe(true);
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
     view.unmount();
   });
 
@@ -246,7 +253,7 @@ describe("Discovery page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Join session" }));
     await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
     expect(backend.connect).toHaveBeenCalledOnce();
-    expect(backend.options?.discovery).toEqual({
+    expect(backend.options?.discovery).toMatchObject({
       sessionName: "blue-mountain-tiger",
       password: "session-secret",
       signalingUrl: "ws://localhost:28227",
@@ -383,9 +390,7 @@ describe("Discovery page", () => {
     const help = screen.getAllByRole("tooltip", { hidden: true });
     expect(
       help.some((node) =>
-        node.textContent?.includes(
-          "Example: stun:stun.example.com:3478.",
-        ),
+        node.textContent?.includes("Example: stun:stun.example.com:3478."),
       ),
     ).toBe(true);
     expect(
@@ -403,4 +408,38 @@ describe("Discovery page", () => {
       screen.getByLabelText("TURN password", { exact: true }),
     ).toHaveAttribute("type", "password");
   });
+});
+
+it("Connect persists intent, refresh reconnects once, and Disconnect clears it", async () => {
+  history.replaceState({}, "", "/client");
+  const first = render(<ClientPage />, { wrapper: HeadingProvider });
+  await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+  await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  expect(new URLSearchParams(location.search).get("connect")).toBe("true");
+  first.unmount();
+  backend.connect.mockClear();
+  const refreshed = render(<ClientPage />, { wrapper: HeadingProvider });
+  await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  backend.state = ConnectionState.CONNECTED;
+  refreshed.rerender(<ClientPage />);
+  await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+  expect(new URLSearchParams(location.search).has("connect")).toBe(false);
+});
+
+it("a saved discovery session resumes through the renderer-ready path", async () => {
+  history.replaceState(
+    {},
+    "",
+    "/discovery?connect=true&session=blue-mountain-tiger",
+  );
+  await openPage();
+  await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  expect(backend.options?.discovery?.sessionName).toBe("blue-mountain-tiger");
+});
+
+it("connect=false remains disconnected", async () => {
+  history.replaceState({}, "", "/client?connect=false");
+  render(<ClientPage />, { wrapper: HeadingProvider });
+  await act(async () => {});
+  expect(backend.connect).not.toHaveBeenCalled();
 });

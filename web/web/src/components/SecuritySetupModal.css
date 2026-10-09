@@ -177,7 +177,9 @@
   border-radius: 50%;
   background: #99aaa2;
   content: "";
-  transition: transform 0.15s, background 0.15s;
+  transition:
+    transform 0.15s,
+    background 0.15s;
 }
 
 .crypto-switch[aria-checked="true"] {
@@ -226,7 +228,11 @@
   min-height: 78px;
   padding: 9px 10px;
   resize: vertical;
-  font: 11px/1.45 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font:
+    11px/1.45 "Cascadia Code",
+    "SFMono-Regular",
+    Consolas,
+    monospace;
 }
 
 .crypto-modal input:focus,
@@ -245,6 +251,7 @@
 
 .crypto-key-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 9px;
@@ -253,6 +260,20 @@
 
 .crypto-key-actions > .crypto-help {
   margin: 0;
+}
+
+.crypto-key-actions > .crypto-add {
+  margin-left: auto;
+}
+
+.crypto-key-count {
+  color: #8fa199;
+  font:
+    10px "Cascadia Code",
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  white-space: nowrap;
 }
 
 .crypto-key-actions.is-verification-actions {
@@ -271,6 +292,12 @@
 
 .crypto-add:hover {
   border-color: #6de1ce !important;
+}
+
+.crypto-add:disabled,
+.crypto-row-button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .crypto-key-list {
@@ -314,7 +341,11 @@
   overflow: hidden;
   margin-top: 4px;
   color: #8fa199;
-  font: 9px "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font:
+    9px "Cascadia Code",
+    "SFMono-Regular",
+    Consolas,
+    monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

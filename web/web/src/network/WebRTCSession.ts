@@ -57,10 +57,7 @@ export function discoveryRTCConfiguration(
     return { urls: url, username, credential };
   });
   const iceServers: RTCIceServer[] = [...stunServers, ...turnServers];
-  if (
-    options.iceTransportPolicy === "relay" &&
-    turnServers.length === 0
-  )
+  if (options.iceTransportPolicy === "relay" && turnServers.length === 0)
     throw new Error(
       "Relay only requires a TURN server and credentials. Configure them or choose Automatic.",
     );
@@ -117,7 +114,9 @@ export class WebRTCSession implements ClientSession {
       ...(options.applicationEncryption === undefined
         ? {}
         : { applicationEncryption: options.applicationEncryption }),
-      ...(options.cryptoOptions ? { cryptoOptions: options.cryptoOptions } : {}),
+      ...(options.cryptoOptions
+        ? { cryptoOptions: options.cryptoOptions }
+        : {}),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
       discoveryHandshake: true,
@@ -253,7 +252,10 @@ export class WebRTCSession implements ClientSession {
       };
       this.peer.onconnectionstatechange = () => {
         if (this.closed || !this.peer) return;
-        if (this.peer.connectionState === "failed" || this.peer.connectionState === "closed") {
+        if (
+          this.peer.connectionState === "failed" ||
+          this.peer.connectionState === "closed"
+        ) {
           this.fail(
             new Error(
               "WebRTC connection failed. Check STUN/TURN settings and reconnect.",
@@ -265,7 +267,9 @@ export class WebRTCSession implements ClientSession {
           this.disconnectedTimer = setTimeout(() => {
             this.disconnectedTimer = null;
             if (!this.closed && this.peer?.connectionState === "disconnected")
-              this.fail(new Error("WebRTC connectivity was lost; reconnecting."));
+              this.fail(
+                new Error("WebRTC connectivity was lost; reconnecting."),
+              );
           }, 5000);
         } else if (this.peer.connectionState === "connected") {
           if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
@@ -299,11 +303,14 @@ export class WebRTCSession implements ClientSession {
                 if (packet.type === PacketType.ASCII_FRAME) {
                   receivedAsciiFrames++;
                   if (receivedAsciiFrames % 60 === 0)
-                    console.info("[WebRTCSession] ASCII_FRAME dispatch", JSON.stringify({
-                      count: receivedAsciiFrames,
-                      callbackAttached: Boolean(this.packetCallback),
-                      payloadBytes: bytes.length - 22,
-                    }));
+                    console.info(
+                      "[WebRTCSession] ASCII_FRAME dispatch",
+                      JSON.stringify({
+                        count: receivedAsciiFrames,
+                        callbackAttached: Boolean(this.packetCallback),
+                        payloadBytes: bytes.length - 22,
+                      }),
+                    );
                 }
                 // Do not send browser capabilities at DataChannel open: the
                 // native host may still be replacing its peer-manager
@@ -313,7 +320,10 @@ export class WebRTCSession implements ClientSession {
                 // SERVER_STATE. The first valid ASCII frame proves the data
                 // channel and protocol callback are ready, so do not leave
                 // the browser stuck in the connection timeout.
-                if (packet.type === PacketType.SERVER_STATE || packet.type === PacketType.ASCII_FRAME)
+                if (
+                  packet.type === PacketType.SERVER_STATE ||
+                  packet.type === PacketType.ASCII_FRAME
+                )
                   this.completeConnection();
                 this.packetCallback?.(packet, bytes.slice(22));
               }

@@ -1,4 +1,5 @@
 import { useAutoGridSize } from "./useAutoGridSize";
+import { useUrlState } from "./useUrlState";
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import type { BinarySettingsConfig, AsciiRendererHandle } from "../components";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
@@ -100,9 +101,11 @@ export function useClientLike(
   });
   const [fps, setFps] = useState<number | undefined>(0);
   const [wasmInitialized, setWasmInitialized] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] =
-    useState<BinarySettingsConfig>(getDefaultSettings());
+  const [showSettings, setShowSettings] = useUrlState("settings", false);
+  const [settings, setSettings] = useUrlState<BinarySettingsConfig>(
+    "render",
+    getDefaultSettings,
+  );
   useAutoGridSize(setSettings);
 
   // Debug refs

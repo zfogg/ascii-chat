@@ -239,7 +239,9 @@ export class ClientConnection {
       const version = new Uint8Array(16);
       new DataView(version.buffer).setUint16(0, 1, false);
       version[4] = this.usesApplicationEncryption ? 1 : 0;
-      this.socket.send(serializePacket(PacketType.PROTOCOL_VERSION, version, 0));
+      this.socket.send(
+        serializePacket(PacketType.PROTOCOL_VERSION, version, 0),
+      );
     }
 
     if (!this.usesApplicationEncryption) {

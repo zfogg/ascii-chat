@@ -6,6 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 
 const MIRROR_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
@@ -77,6 +78,7 @@ test.describe("Mirror Page Rendering", () => {
       });
       expect(visiblePixels).toBeGreaterThan(0);
     }).toPass({ timeout: 10_000 });
+    await expectMeaningful60Fps(page, "mirror", 3_000);
   });
 
   test("should stop rendering when Stop is clicked", async ({ page }) => {
@@ -90,8 +92,7 @@ test.describe("Mirror Page Rendering", () => {
 
     await ensureMirrorRunning(page);
 
-    // Let it render a few frames
-    await page.waitForTimeout(1000);
+    await expectMeaningful60Fps(page, "mirror", 3_000);
 
     // Stop
     await page.click('button:text("Stop")');

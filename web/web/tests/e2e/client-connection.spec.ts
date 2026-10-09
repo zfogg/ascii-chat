@@ -6,7 +6,11 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { ServerFixture, getRandomPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  ServerFixture,
+  getRandomPort,
+} from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
 
@@ -109,8 +113,7 @@ test.describe("Client Connection to Native Server", () => {
 
           animateTestPattern();
 
-          // Return canvas stream at 30fps
-          return canvas.captureStream(30) as any;
+          return canvas.captureStream(60) as any;
         }
 
         // Fallback to original for audio or other constraints
@@ -133,7 +136,7 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("client successfully connects and sends frames", async ({ page }) => {
-    test.setTimeout(4500);
+    test.setTimeout(30_000);
 
     // Capture console output to analyze packets
     const consoleLogs: string[] = [];
@@ -199,12 +202,13 @@ test.describe("Client Connection to Native Server", () => {
       console.log("⚠️  No ASCII_FRAME packets received from server");
       expect(asciiFrameCount).toBeGreaterThan(0);
     }
+    await expectMeaningful60Fps(page, "client", 3_000);
   });
 
   test("client maintains stable connection with webcam streaming", async ({
     page,
   }) => {
-    test.setTimeout(15000);
+    test.setTimeout(30_000);
 
     // Wait for connection
     await expect(page.locator(".status")).toContainText("Connected", {
@@ -240,5 +244,6 @@ test.describe("Client Connection to Native Server", () => {
     // Verify streaming is active
     expect(renderedDelta).toBeGreaterThan(0);
     expect(uniqueDelta).toBeGreaterThan(0);
+    await expectMeaningful60Fps(page, "client", 3_000);
   });
 });

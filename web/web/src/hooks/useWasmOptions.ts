@@ -222,7 +222,8 @@ export function createWasmOptionsManager(
           settings.matrixRain ?? false,
         );
         const animation = settings.animation ?? "matrix";
-        const enabled = settings.animationEnabled ?? settings.matrixRain ?? false;
+        const enabled =
+          settings.animationEnabled ?? settings.matrixRain ?? false;
         setMatrixRainFn(enabled && animation === "matrix");
         setWaveformFn(enabled && animation === "waveform");
         setFftFn(enabled && animation === "fft");

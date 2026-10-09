@@ -35,7 +35,10 @@ interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: BinarySettingsConfig;
-  captureFrame: (drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => {
+  captureFrame: (
+    drawVideo?: boolean,
+    sourceCanvas?: HTMLCanvasElement,
+  ) => {
     data: Uint8Array;
     width: number;
     height: number;
@@ -916,7 +919,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
   useEffect(() => {
     const handleDevicePreferencesChanged = (event: Event) => {
-      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>)
+        .detail;
       if (
         !change?.changedKeys.includes("cameraId") ||
         (!streamRef.current && !startingRef.current) ||
@@ -926,10 +930,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
       const activeCameraId =
         streamRef.current?.getVideoTracks()[0]?.getSettings().deviceId ?? "";
-      if (
-        streamRef.current &&
-        activeCameraId === change.preferences.cameraId
-      )
+      if (streamRef.current && activeCameraId === change.preferences.cameraId)
         return;
 
       stopWebcam();

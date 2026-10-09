@@ -41,7 +41,7 @@ static void websocket_server_lws_log_callback(int level, const char *line) {
   } else if (level & LLL_NOTICE) {
     log_info("[LWS:server] %.*s", (int)len, msg);
   } else if (level & LLL_INFO) {
-    log_info("[LWS:server] %.*s", (int)len, msg);
+    log_dev("[LWS:server] %.*s", (int)len, msg);
   } else if (level & LLL_DEBUG) {
     log_debug("[LWS:server] %.*s", (int)len, msg);
   }
@@ -78,7 +78,7 @@ static void websocket_client_lws_log_callback(int level, const char *line) {
   } else if (level & LLL_NOTICE) {
     log_info("[LWS:client] %.*s", (int)len, msg);
   } else if (level & LLL_INFO) {
-    log_info("[LWS:client] %.*s", (int)len, msg);
+    log_dev("[LWS:client] %.*s", (int)len, msg);
   } else if (level & LLL_DEBUG) {
     log_debug("[LWS:client] %.*s", (int)len, msg);
   }
@@ -86,24 +86,24 @@ static void websocket_client_lws_log_callback(int level, const char *line) {
 
 void lws_log_init_server(void) {
   // Enable libwebsockets logging with our custom callback
-  // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
-  // In release builds: exclude DEBUG to reduce noise
+  // Keep libwebsockets protocol chatter out of normal logs. NOTICE still
+  // reports lifecycle events; detailed traces remain available in dev builds.
 #ifdef CMAKE_BUILD_TYPE_DEBUG
-  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_DEBUG;
 #else
-  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE;
 #endif
   lws_set_log_level(log_level, websocket_server_lws_log_callback);
 }
 
 void lws_log_init_client(void) {
   // Enable libwebsockets logging with our custom callback
-  // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
-  // In release builds: exclude DEBUG to reduce noise
+  // Keep libwebsockets protocol chatter out of normal logs. NOTICE still
+  // reports lifecycle events; detailed traces remain available in dev builds.
 #ifdef CMAKE_BUILD_TYPE_DEBUG
-  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_DEBUG;
 #else
-  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE;
 #endif
   lws_set_log_level(log_level, websocket_client_lws_log_callback);
 }

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 
 test("joins native discovery over encrypted WS and opens WebRTC", async ({
   page,
@@ -24,7 +25,9 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   await page.getByText("Connection settings", { exact: true }).click();
   await page
     .getByLabel("Discovery service URL")
-    .fill(process.env["ASCII_CHAT_TEST_SIGNALING_URL"] || "ws://127.0.0.1:28227");
+    .fill(
+      process.env["ASCII_CHAT_TEST_SIGNALING_URL"] || "ws://127.0.0.1:28227",
+    );
   if (process.env["ASCII_CHAT_TEST_PASSWORD"])
     await page
       .getByLabel("Session password", { exact: true })
@@ -47,7 +50,12 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
           // bitmaprenderer owns the presentation context in accelerated
           // browsers; rendered-frame telemetry covers that path.
           if (!context) return true;
-          const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+          const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          ).data;
           for (let i = 0; i < pixels.length; i += 4) {
             if (pixels[i]! > 30 || pixels[i + 1]! > 30 || pixels[i + 2]! > 30)
               return true;
@@ -74,6 +82,7 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   // The 15-second smoke window is intentionally short, but it must still
   // demonstrate interactive-rate rendering rather than a merely live channel.
   expect((finalFrames - initialFrames) / 15).toBeGreaterThan(50);
+  await expectMeaningful60Fps(page, "client", 5_000);
   await page.screenshot({
     path: "../../build/webrtc-browser/connected.png",
     fullPage: true,

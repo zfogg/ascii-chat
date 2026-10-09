@@ -70,7 +70,8 @@ export function useAsciiRendererHandle({
       const fps = changedFrameTimesRef.current.length;
       if (lastReportedFpsRef.current === fps) return;
       lastReportedFpsRef.current = fps;
-      if (fpsDisplayRef.current) fpsDisplayRef.current.textContent = String(fps);
+      if (fpsDisplayRef.current)
+        fpsDisplayRef.current.textContent = String(fps);
       onFpsChange?.(fps);
     };
 
@@ -90,9 +91,7 @@ export function useAsciiRendererHandle({
   useImperativeHandle(
     ref,
     () => ({
-      writeFrame(
-        ansiString: string,
-      ): boolean {
+      writeFrame(ansiString: string): boolean {
         lastFrameChangedRef.current = false;
         if (!moduleRef.current || !setupDoneRef.current) {
           return false;
@@ -164,7 +163,11 @@ export function useAsciiRendererHandle({
                 );
                 const rowBytes = w * 4;
                 let imageData = imageDataRef.current;
-                if (!imageData || imageData.width !== w || imageData.height !== h) {
+                if (
+                  !imageData ||
+                  imageData.width !== w ||
+                  imageData.height !== h
+                ) {
                   imageData = new ImageData(w, h);
                   imageDataRef.current = imageData;
                 }

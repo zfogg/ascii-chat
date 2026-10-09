@@ -304,6 +304,7 @@ set(LIB_SRC_CLIENT_CRYPTO
     ${LIB_ROOT}/crypto/handshake/client.c
     ${LIB_ROOT}/crypto/regex.c
     ${LIB_ROOT}/crypto/ssh/ssh_keys.c
+    ${LIB_ROOT}/crypto/gpg/openpgp.c
 )
 
 set(LIB_SRC_CLIENT_NETWORK
@@ -541,6 +542,10 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_configure_crypto_options
     _client_parse_ssh_private_key
     _client_parse_ssh_public_key
+    _client_parse_gpg_private_key
+    _client_parse_gpg_public_key
+    _client_parse_gpg_private_key_binary
+    _client_parse_gpg_public_key_binary
     _client_get_crypto_error_message
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create

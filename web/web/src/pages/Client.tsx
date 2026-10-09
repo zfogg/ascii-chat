@@ -1,4 +1,5 @@
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
+import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Extend Window interface for frame metrics
@@ -11,6 +12,7 @@ declare global {
       queueDepth: number;
       uniqueRendered?: number;
       frameHashes?: Record<string, number>;
+      lastRenderedFrame?: string;
     };
     __webrtcBridgeMetrics?: {
       chunks: number;
@@ -69,8 +71,12 @@ import {
   getActiveVerificationKey,
   loadCryptoSettings,
   saveCryptoSettings,
+  writeCryptoUrl,
 } from "../utils/cryptoSettings";
-import type { CryptoSettings, VerificationKeyTarget } from "../utils/cryptoSettings";
+import type {
+  CryptoSettings,
+  VerificationKeyTarget,
+} from "../utils/cryptoSettings";
 import type { ClientCryptoOptions } from "../wasm/client";
 import {
   MEDIA_DEVICE_PREFERENCES_CHANGED,
@@ -84,20 +90,43 @@ export function ClientPage({
   discoveryMode?: boolean;
 }) {
   const params = new URLSearchParams(window.location.search);
+  const syntheticAudio = params.has("test");
+  const [connectionRequested, setConnectionRequested] = useUrlState(
+    "connect",
+    false,
+  );
   const requestedConnection =
-    !discoveryMode && (params.has("connect") || isTestMode());
-  const [sessionName, setSessionName] = useState(params.get("session") || "");
-  const [sessionPassword, setSessionPassword] = useState("");
-  const [connectionRoute, setConnectionRoute] = useState<"all" | "relay">(
+    (connectionRequested || (!discoveryMode && isTestMode())) &&
+    (!discoveryMode || !!params.get("session")?.trim());
+  const [sessionName, setSessionName] = useUrlState("session", "");
+  const [sessionPassword, setSessionPassword] = useUrlState(
+    "sessionPassword",
+    "",
+    true,
+  );
+  const [connectionRoute, setConnectionRoute] = useUrlState<"all" | "relay">(
+    "connectionRoute",
     "all",
   );
-  const [turnUsername, setTurnUsername] = useState("");
-  const [turnCredential, setTurnCredential] = useState("");
-  const [signalingUrl, setSignalingUrl] = useState(
-    params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
+  const [turnUsername, setTurnUsername] = useUrlState("turnUsername", "");
+  const [turnCredential, setTurnCredential] = useUrlState(
+    "turnCredential",
+    "",
+    true,
   );
-  const [cryptoSettings, setCryptoSettings] = useState<CryptoSettings>(loadCryptoSettings);
-  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [signalingUrl, setSignalingUrl] = useUrlState(
+    "signalingUrl",
+    DISCOVERY_SERVICE_URL,
+  );
+  const [cryptoSettings, setCryptoSettings] =
+    useState<CryptoSettings>(loadCryptoSettings);
+  useEffect(() => {
+    writeCryptoUrl(cryptoSettings);
+  }, [cryptoSettings]);
+  const [securityModalOpen, setSecurityModalOpen] = useUrlState(
+    "crypto",
+    false,
+  );
   let signalingUsesWss = false;
   try {
     signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
@@ -125,19 +154,21 @@ export function ClientPage({
   const discoveryApplicationEncryption =
     (cryptoSettings.customEncryption ?? !signalingUsesWss) ||
     discoveryHasAuthMaterial;
-  const [stunUrls, setStunUrls] = useState(
-    params.get("stunUrls") ||
-      "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
+  const [stunUrls, setStunUrls] = useUrlState(
+    "stunUrls",
+    "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
   );
-  const [turnUrls, setTurnUrls] = useState(
-    params.get("turnUrls") || "turn:turn.ascii-chat.com:3478",
+  const [turnUrls, setTurnUrls] = useUrlState(
+    "turnUrls",
+    "turn:turn.ascii-chat.com:3478",
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
-  const [rendererRequested, setRendererRequested] = useState(requestedConnection);
-  const pendingConnectRef = useRef(false);
+  const [rendererRequested, setRendererRequested] =
+    useState(requestedConnection);
+  const pendingConnectRef = useRef(requestedConnection);
   const discoveryJoinGenerationRef = useRef(0);
   useEffect(() => {
     // The discovery join form does not need the Emscripten renderer. Loading a
@@ -148,12 +179,11 @@ export function ClientPage({
     // The client build exports the same terminal-renderer functions used by
     // AsciiRenderer. Share that initialized pthread runtime with the renderer
     // instead of creating a second WASM module and worker pool on this page.
-    const initializeRenderer = initClientWasm()
-      .then(() => {
-        const module = getClientWasmModule();
-        if (!module) throw new Error("Client WASM module did not initialize");
-        adoptMirrorWasmModule(module as unknown as MirrorModule);
-      });
+    const initializeRenderer = initClientWasm().then(() => {
+      const module = getClientWasmModule();
+      if (!module) throw new Error("Client WASM module did not initialize");
+      adoptMirrorWasmModule(module as unknown as MirrorModule);
+    });
     void initializeRenderer
       .then(() => {
         if (active) setRendererReady(true);
@@ -166,7 +196,7 @@ export function ClientPage({
     };
   }, [rendererRequested]);
   const [micEnabled, setMicEnabled] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState(requestedConnection);
   const settingsRef = useRef<BinarySettingsConfig>(DEFAULT_SETTINGS);
   const micEnabledRef = useRef(false);
   const audioRef = useRef<AudioPipeline | null>(null);
@@ -212,7 +242,6 @@ export function ClientPage({
       sessionName,
       sessionPassword,
       signalingUrl,
-      signalingUsesWss,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
       stunUrls,
@@ -238,10 +267,9 @@ export function ClientPage({
   const receivedFrameCountRef = useRef<number>(0);
   const frameReceiptTimesRef = useRef<number[]>([]);
 
-  const [serverUrl, setServerUrl] = useState<string>(
-    params.get("serverUrl") ||
-      params.get("testServerUrl") ||
-      "ws://localhost:27226",
+  const [serverUrl, setServerUrl] = useUrlState<string>(
+    "serverUrl",
+    params.get("testServerUrl") || "ws://localhost:27226",
   );
   let usesWss = false;
   try {
@@ -278,7 +306,11 @@ export function ClientPage({
     discoveryMode,
     applicationEncryption,
   );
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useUrlState("settings", false);
+  const [connectionSettingsOpen, setConnectionSettingsOpen] = useUrlState(
+    "connectionSettings",
+    false,
+  );
   const [terminalDimensions, setTerminalDimensions] = useState({
     cols: 0,
     rows: 0,
@@ -291,8 +323,10 @@ export function ClientPage({
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
-  const [settings, setSettings] =
-    useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useUrlState<BinarySettingsConfig>(
+    "render",
+    DEFAULT_SETTINGS,
+  );
   useAutoGridSize(setSettings);
 
   useEffect(() => {
@@ -346,7 +380,7 @@ export function ClientPage({
     connectToServer,
     handleDisconnect,
   } = useClientConnection({
-    autoConnect: requestedConnection,
+    autoConnect: false,
     applicationEncryption,
     cryptoOptions: connectionCryptoOptions,
     ...(discovery ? { discovery } : {}),
@@ -371,7 +405,8 @@ export function ClientPage({
 
   useEffect(() => {
     const handleMediaDeviceChange = (event: Event) => {
-      const change = (event as CustomEvent<MediaDevicePreferencesChange>).detail;
+      const change = (event as CustomEvent<MediaDevicePreferencesChange>)
+        .detail;
       if (!change) return;
 
       if (
@@ -400,6 +435,11 @@ export function ClientPage({
       );
   }, [setError]);
 
+  useEffect(() => {
+    if (connectionState === ConnectionState.CONNECTED)
+      setConnectionRequested(true);
+  }, [connectionState, setConnectionRequested]);
+
   // Wait until the renderer reports a settled size before connecting. Discovery
   // sends capabilities as soon as its DataChannel opens, and the direct client
   // also needs the final dimensions before protocol startup.
@@ -421,8 +461,13 @@ export function ClientPage({
 
     const generation = discoveryJoinGenerationRef.current;
     const settledDimensions = { ...terminalDimensions };
+    const joinGeneration = discoveryJoinGenerationRef;
     const timer = window.setTimeout(() => {
-      if (!pendingConnectRef.current || generation !== discoveryJoinGenerationRef.current) return;
+      if (
+        !pendingConnectRef.current ||
+        generation !== discoveryJoinGenerationRef.current
+      )
+        return;
 
       pendingConnectRef.current = false;
       void connectToServer()
@@ -436,10 +481,12 @@ export function ClientPage({
         terminalDimensions.cols !== settledDimensions.cols ||
         terminalDimensions.rows !== settledDimensions.rows
       )
-        discoveryJoinGenerationRef.current++;
+        joinGeneration.current++;
     };
   }, [
     connectToServer,
+    connectionRequested,
+    connecting,
     rendererError,
     rendererReady,
     setError,
@@ -530,6 +577,8 @@ export function ClientPage({
     setMicEnabled(false);
   }, []);
   const disconnectMedia = useCallback(() => {
+    setConnectionRequested(false);
+    setConnecting(false);
     pendingConnectRef.current = false;
     discoveryJoinGenerationRef.current++;
     // Audio callbacks can survive briefly while AudioContext.close() drains.
@@ -538,7 +587,7 @@ export function ClientPage({
     stopWebcam();
     closeAudio();
     handleDisconnect();
-  }, [stopWebcam, closeAudio, handleDisconnect]);
+  }, [stopWebcam, closeAudio, handleDisconnect, setConnectionRequested]);
   useEffect(() => {
     if (
       connectionState === ConnectionState.DISCONNECTED ||
@@ -714,129 +763,133 @@ export function ClientPage({
     window.__clientFrameMetrics = metrics;
   });
 
-  const renderFrame = useCallback((_deltaMs: number) => {
-    // Drain new network frames when they arrive, but keep presenting the most
-    // recent complete frame at the selected display cadence. WebSocket frame
-    // delivery can be bursty; tying canvas writes directly to packet arrival
-    // makes the visible FPS unnecessarily inherit that jitter.
-    if (frameQueueRef.current.length > 0) {
-      latestFrameRef.current = frameQueueRef.current.pop() ?? null;
-      frameQueueRef.current.length = 0;
-    }
-    const frame = latestFrameRef.current;
-    if (rendererRef.current) {
-      if (renderLoopStartTimeRef.current === 0) {
-        renderLoopStartTimeRef.current = performance.now();
+  const renderFrame = useCallback(
+    (_deltaMs: number) => {
+      // Drain new network frames when they arrive, but keep presenting the most
+      // recent complete frame at the selected display cadence. WebSocket frame
+      // delivery can be bursty; tying canvas writes directly to packet arrival
+      // makes the visible FPS unnecessarily inherit that jitter.
+      if (frameQueueRef.current.length > 0) {
+        latestFrameRef.current = frameQueueRef.current.pop() ?? null;
+        frameQueueRef.current.length = 0;
       }
-
-      {
-        const activeSettings = settingsRef.current;
-        const visualAnimation =
-          activeSettings.animationEnabled &&
-          (activeSettings.animation === "waveform" ||
-            activeSettings.animation === "fft");
-        const dimensions = visualAnimation
-          ? terminalDimensionsRef.current
-          : frame
-            ? { cols: frame.header.width, rows: frame.header.height }
-            : null;
-        if (!dimensions || dimensions.cols <= 0 || dimensions.rows <= 0) {
-          return;
-        }
-
-        let frameContent = frame?.ansiString ?? "";
-        if (visualAnimation) {
-          const visualizationSource = micEnabledRef.current
-            ? "microphone"
-            : "media";
-          if (params.has("test")) {
-            const samples = new Float32Array(1024);
-            const now = performance.now();
-            for (let index = 0; index < samples.length; index++) {
-              samples[index] =
-                Math.sin((index / samples.length) * Math.PI * 16 + now / 70) *
-                  0.68 +
-                Math.sin((index / samples.length) * Math.PI * 53 + now / 31) *
-                  0.22;
-            }
-            submitAudioVisualizationSamples(samples, visualizationSource);
-          }
-          frameContent = renderAudioVisualization(
-            dimensions.cols,
-            dimensions.rows,
-            visualizationSource,
-            activeSettings.animation === "fft" ? "fft" : "waveform",
-          );
-        }
-        if (!frameContent) return;
-        const frameHash = hashFrame(frameContent);
-        const writeStartedAt = performance.now();
-        const drewFrame = rendererRef.current.writeFrame(frameContent, {
-          cols: dimensions.cols,
-          rows: dimensions.rows,
-        });
-        const writeDurationMs = performance.now() - writeStartedAt;
-        if (!drewFrame) {
-          return;
-        }
-        renderedFrameCountRef.current++;
-        const timing = renderTimingRef.current;
-        const renderedAt = performance.now();
-        if (!timing.windowStart) timing.windowStart = renderedAt;
-        if (timing.previousFrameAt) {
-          timing.maxFrameGapMs = Math.max(
-            timing.maxFrameGapMs,
-            renderedAt - timing.previousFrameAt,
-          );
-        }
-        timing.previousFrameAt = renderedAt;
-        timing.frames++;
-        timing.totalMs += writeDurationMs;
-        timing.maxMs = Math.max(timing.maxMs, writeDurationMs);
-        if (timing.frames >= 60) {
-          console.info(
-            "[ClientRenderTiming]",
-            JSON.stringify({
-              frames: timing.frames,
-              elapsedMs: Math.round(renderedAt - timing.windowStart),
-              avgWriteMs: Number((timing.totalMs / timing.frames).toFixed(2)),
-              maxWriteMs: Number(timing.maxMs.toFixed(2)),
-              maxFrameGapMs: Number(timing.maxFrameGapMs.toFixed(2)),
-            }),
-          );
-          timing.frames = 0;
-          timing.totalMs = 0;
-          timing.maxMs = 0;
-          timing.windowStart = renderedAt;
-          timing.maxFrameGapMs = 0;
-        }
-        // Track if this is a new unique frame we haven't seen before
-        if (!frameHashesRef.current[frameHash]) {
-          cumulativeUniqueFramesRef.current++;
-        }
-        frameHashesRef.current[frameHash] =
-          (frameHashesRef.current[frameHash] || 0) + 1;
-
-        frameCountRef.current++;
-        diagnosticFrameCountRef.current++;
-        const metrics = window.__clientFrameMetrics;
-        if (metrics) {
-          metrics.rendered = frameCountRef.current;
-          metrics.received = receivedFrameCountRef.current;
-          metrics.changedReceived = changedReceivedFrameCountRef.current;
-          metrics.uniqueRendered = cumulativeUniqueFramesRef.current;
-          metrics.queueDepth = frameQueueRef.current.length;
-        }
-
-        // Log render rate every 60 rendered frames (using diagnostic counter)
-        if (diagnosticFrameCountRef.current % 60 === 0) {
+      const frame = latestFrameRef.current;
+      if (rendererRef.current) {
+        if (renderLoopStartTimeRef.current === 0) {
           renderLoopStartTimeRef.current = performance.now();
-          diagnosticFrameCountRef.current = 0;
-          frameHashesRef.current = {};
+        }
+
+        {
+          const activeSettings = settingsRef.current;
+          const visualAnimation =
+            activeSettings.animationEnabled &&
+            (activeSettings.animation === "waveform" ||
+              activeSettings.animation === "fft");
+          const dimensions = visualAnimation
+            ? terminalDimensionsRef.current
+            : frame
+              ? { cols: frame.header.width, rows: frame.header.height }
+              : null;
+          if (!dimensions || dimensions.cols <= 0 || dimensions.rows <= 0) {
+            return;
+          }
+
+          let frameContent = frame?.ansiString ?? "";
+          if (visualAnimation) {
+            const visualizationSource = micEnabledRef.current
+              ? "microphone"
+              : "media";
+            if (syntheticAudio) {
+              const samples = new Float32Array(1024);
+              const now = performance.now();
+              for (let index = 0; index < samples.length; index++) {
+                samples[index] =
+                  Math.sin((index / samples.length) * Math.PI * 16 + now / 70) *
+                    0.68 +
+                  Math.sin((index / samples.length) * Math.PI * 53 + now / 31) *
+                    0.22;
+              }
+              submitAudioVisualizationSamples(samples, visualizationSource);
+            }
+            frameContent = renderAudioVisualization(
+              dimensions.cols,
+              dimensions.rows,
+              visualizationSource,
+              activeSettings.animation === "fft" ? "fft" : "waveform",
+            );
+          }
+          if (!frameContent) return;
+          const frameHash = hashFrame(frameContent);
+          const writeStartedAt = performance.now();
+          const drewFrame = rendererRef.current.writeFrame(frameContent, {
+            cols: dimensions.cols,
+            rows: dimensions.rows,
+          });
+          const writeDurationMs = performance.now() - writeStartedAt;
+          if (!drewFrame) {
+            return;
+          }
+          renderedFrameCountRef.current++;
+          const timing = renderTimingRef.current;
+          const renderedAt = performance.now();
+          if (!timing.windowStart) timing.windowStart = renderedAt;
+          if (timing.previousFrameAt) {
+            timing.maxFrameGapMs = Math.max(
+              timing.maxFrameGapMs,
+              renderedAt - timing.previousFrameAt,
+            );
+          }
+          timing.previousFrameAt = renderedAt;
+          timing.frames++;
+          timing.totalMs += writeDurationMs;
+          timing.maxMs = Math.max(timing.maxMs, writeDurationMs);
+          if (timing.frames >= 60) {
+            console.info(
+              "[ClientRenderTiming]",
+              JSON.stringify({
+                frames: timing.frames,
+                elapsedMs: Math.round(renderedAt - timing.windowStart),
+                avgWriteMs: Number((timing.totalMs / timing.frames).toFixed(2)),
+                maxWriteMs: Number(timing.maxMs.toFixed(2)),
+                maxFrameGapMs: Number(timing.maxFrameGapMs.toFixed(2)),
+              }),
+            );
+            timing.frames = 0;
+            timing.totalMs = 0;
+            timing.maxMs = 0;
+            timing.windowStart = renderedAt;
+            timing.maxFrameGapMs = 0;
+          }
+          // Track if this is a new unique frame we haven't seen before
+          if (!frameHashesRef.current[frameHash]) {
+            cumulativeUniqueFramesRef.current++;
+          }
+          frameHashesRef.current[frameHash] =
+            (frameHashesRef.current[frameHash] || 0) + 1;
+
+          frameCountRef.current++;
+          diagnosticFrameCountRef.current++;
+          const metrics = window.__clientFrameMetrics;
+          if (metrics) {
+            metrics.rendered = frameCountRef.current;
+            metrics.received = receivedFrameCountRef.current;
+            metrics.changedReceived = changedReceivedFrameCountRef.current;
+            metrics.uniqueRendered = cumulativeUniqueFramesRef.current;
+            metrics.queueDepth = frameQueueRef.current.length;
+            metrics.lastRenderedFrame = frameContent;
+          }
+
+          // Log render rate every 60 rendered frames (using diagnostic counter)
+          if (diagnosticFrameCountRef.current % 60 === 0) {
+            renderLoopStartTimeRef.current = performance.now();
+            diagnosticFrameCountRef.current = 0;
+            frameHashesRef.current = {};
+          }
         }
       }
-    }
-  }, []);
+    },
+    [syntheticAudio],
+  );
 
   const { startRenderLoop } = useRenderLoop(
     renderFrame,
@@ -977,7 +1030,7 @@ export function ClientPage({
             data-underruns={audioLevels.underruns}
             className="self-center text-sm text-terminal-8"
           >
-            Mic {Math.round(audioLevels.microphone * 100)}% · Playback{" "}
+            Mic {Math.round(audioLevels.microphone * 100)}% Â· Playback{" "}
             {Math.round(audioLevels.playback * 100)}%
           </output>
         )}
@@ -1011,6 +1064,7 @@ export function ClientPage({
                     className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
                     onSubmit={(event) => {
                       event.preventDefault();
+                      setConnectionRequested(true);
                       pendingConnectRef.current = true;
                       discoveryJoinGenerationRef.current++;
                       setRendererRequested(true);
@@ -1065,13 +1119,20 @@ export function ClientPage({
                       </label>
                     </Tooltip>
                     <button
+                      type="button"
+                      disabled={settingsDisabled}
+                      onClick={() => setSecurityModalOpen(true)}
+                      className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Crypto
+                    </button>
+                    <button
                       type="submit"
                       disabled={settingsDisabled}
                       className="border border-green-700 bg-green-700 text-white enabled:cursor-pointer enabled:hover:bg-green-800 enabled:hover:border-green-800 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Join session
                     </button>
-                    <button type="button" disabled={settingsDisabled} onClick={() => setSecurityModalOpen(true)} className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Crypto</button>
                     {(connecting ||
                       connectionState === ConnectionState.CONNECTED) && (
                       <button
@@ -1083,7 +1144,13 @@ export function ClientPage({
                       </button>
                     )}
                     <div className="flex items-center gap-3 w-full min-w-0">
-                      <details className="flex-shrink-0">
+                      <details
+                        className="flex-shrink-0"
+                        open={connectionSettingsOpen}
+                        onToggle={(event) =>
+                          setConnectionSettingsOpen(event.currentTarget.open)
+                        }
+                      >
                         <summary className="cursor-pointer">
                           Connection settings
                         </summary>
@@ -1221,6 +1288,7 @@ export function ClientPage({
                     className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
                     onSubmit={(event) => {
                       event.preventDefault();
+                      setConnectionRequested(true);
                       pendingConnectRef.current = true;
                       discoveryJoinGenerationRef.current++;
                       setRendererRequested(true);
@@ -1240,7 +1308,10 @@ export function ClientPage({
                         />
                       </label>
                     </Tooltip>
-                    <Tooltip text="Uses the ascii-chat custom crypto handshake. This must match the server password." className="contents">
+                    <Tooltip
+                      text="Uses the ascii-chat custom crypto handshake. This must match the server password."
+                      className="contents"
+                    >
                       <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
                         Crypto password
                         <input
@@ -1265,6 +1336,14 @@ export function ClientPage({
                         />
                       </label>
                     </Tooltip>
+                    <button
+                      type="button"
+                      disabled={settingsDisabled}
+                      onClick={() => setSecurityModalOpen(true)}
+                      className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Crypto
+                    </button>
                     {connectionState === ConnectionState.CONNECTED ? (
                       <button
                         type="button"
@@ -1290,9 +1369,14 @@ export function ClientPage({
                         Connect
                       </button>
                     )}
-                    <button type="button" disabled={settingsDisabled} onClick={() => setSecurityModalOpen(true)} className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Crypto</button>
                     <div className="flex items-center gap-3 w-full min-w-0">
-                      <details className="flex-shrink-0">
+                      <details
+                        className="flex-shrink-0"
+                        open={connectionSettingsOpen}
+                        onToggle={(event) =>
+                          setConnectionSettingsOpen(event.currentTarget.open)
+                        }
+                      >
                         <summary className="cursor-pointer">
                           Connection settings
                         </summary>
@@ -1372,7 +1456,10 @@ export function ClientPage({
         open={securityModalOpen}
         settings={cryptoSettings}
         defaultEncryptionEnabled={!usesWss}
-        onClose={() => setSecurityModalOpen(false)}
+        onClose={() => {
+          writeCryptoUrl(cryptoSettings);
+          setSecurityModalOpen(false);
+        }}
         onSave={(next) => {
           saveCryptoSettings(next);
           setCryptoSettings(next);

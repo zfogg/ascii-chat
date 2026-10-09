@@ -2,9 +2,19 @@
 <meta charset="utf-8" />
 <title>WASM ANSI-16 renderer test</title>
 <style>
-  body { margin: 24px; background: #10131a; color: #e6e9ef; font: 16px system-ui; }
-  canvas { image-rendering: pixelated; border: 1px solid #65708a; }
-  pre { white-space: pre-wrap; }
+  body {
+    margin: 24px;
+    background: #10131a;
+    color: #e6e9ef;
+    font: 16px system-ui;
+  }
+  canvas {
+    image-rendering: pixelated;
+    border: 1px solid #65708a;
+  }
+  pre {
+    white-space: pre-wrap;
+  }
 </style>
 <h1>WASM ANSI-16 renderer test</h1>
 <canvas id="result"></canvas>
@@ -14,8 +24,13 @@
 
   const status = document.querySelector("#status");
   try {
-    const wasmBinary = await fetch("/wasm/client.wasm").then((r) => r.arrayBuffer());
-    const module = await ClientModuleFactory({ wasmBinary, locateFile: (name) => `/wasm/${name}` });
+    const wasmBinary = await fetch("/wasm/client.wasm").then((r) =>
+      r.arrayBuffer(),
+    );
+    const module = await ClientModuleFactory({
+      wasmBinary,
+      locateFile: (name) => `/wasm/${name}`,
+    });
     const config = module._malloc(544);
     const out = module._malloc(4);
     const view = new DataView(module.HEAPU8.buffer, config, 544);
@@ -29,7 +44,10 @@
     view.setInt32(540, module._get_font_default_size(), true);
     const result = module._term_renderer_create(config, out);
     if (result !== 0) throw new Error(`renderer create failed: ${result}`);
-    const renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(0, true);
+    const renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(
+      0,
+      true,
+    );
     const frame = "\x1b[31mRED   \x1b[32mGREEN   \x1b[34mBLUE";
     const framePtr = module._malloc(frame.length + 1);
     module.stringToUTF8(frame, framePtr, frame.length + 1);
@@ -46,7 +64,10 @@
     const ctx = canvas.getContext("2d");
     const image = ctx.createImageData(width, height);
     for (let y = 0; y < height; y++) {
-      image.data.set(pixels.subarray(y * pitch, y * pitch + width * 4), y * width * 4);
+      image.data.set(
+        pixels.subarray(y * pitch, y * pitch + width * 4),
+        y * width * 4,
+      );
     }
     ctx.putImageData(image, 0, 0);
     const counts = { red: 0, green: 0, blue: 0 };

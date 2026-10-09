@@ -1,3 +1,4 @@
+import { readUrlValue, writeUrlValue } from "./urlState";
 const STORAGE_KEY = "ascii-chat.media-devices";
 
 export interface MediaDevicePreferences {
@@ -22,7 +23,7 @@ const EMPTY_PREFERENCES: MediaDevicePreferences = {
   speakerId: "",
 };
 
-export function getMediaDevicePreferences(): MediaDevicePreferences {
+export function getStoredMediaDevicePreferences(): MediaDevicePreferences {
   if (typeof window === "undefined") return EMPTY_PREFERENCES;
 
   try {
@@ -51,6 +52,12 @@ export function saveMediaDevicePreferences(
 ): void {
   if (typeof window === "undefined") return;
   const previous = getMediaDevicePreferences();
+  writeUrlValue(
+    "mediaDevices",
+    preferences,
+    false,
+    getStoredMediaDevicePreferences(),
+  );
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
   const changedKeys = (
     Object.keys(preferences) as MediaDevicePreferenceKey[]
@@ -61,4 +68,8 @@ export function saveMediaDevicePreferences(
       { detail: { preferences, changedKeys } },
     ),
   );
+}
+
+export function getMediaDevicePreferences(): MediaDevicePreferences {
+  return readUrlValue("mediaDevices", getStoredMediaDevicePreferences());
 }

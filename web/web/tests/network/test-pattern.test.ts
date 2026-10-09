@@ -59,7 +59,9 @@ describe("shared test animation selection", () => {
     expect(positions.length).toBeGreaterThan(0);
     expect(positions[0]!).toBeLessThanOrEqual(0);
     for (let index = 1; index < positions.length; index++)
-      expect(positions[index]! - positions[index - 1]!).toBeCloseTo(stripeWidth);
+      expect(positions[index]! - positions[index - 1]!).toBeCloseTo(
+        stripeWidth,
+      );
     expect(positions.at(-1)! + stripeWidth).toBeGreaterThanOrEqual(800);
   });
 
@@ -69,7 +71,12 @@ describe("shared test animation selection", () => {
     const drawSizes: number[][] = [];
     const gradient = { addColorStop: vi.fn() };
     const context = {
-      createLinearGradient: (_x: number, _y: number, width: number, height: number) => {
+      createLinearGradient: (
+        _x: number,
+        _y: number,
+        width: number,
+        height: number,
+      ) => {
         drawSizes.push([width, height]);
         return gradient;
       },

@@ -287,6 +287,32 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
 // PGP Armored Format Parsing
 // =============================================================================
 
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32]) {
+  if (!data || data_len == 0 || !ed25519_pk) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP public-key parsing");
+  }
+
+  size_t offset = 0;
+  while (offset < data_len) {
+    openpgp_packet_header_t header;
+    asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &header);
+    if (result != ASCIICHAT_OK) return result;
+    if (header.header_len > data_len - offset || header.length > data_len - offset - header.header_len) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Truncated OpenPGP packet in public key");
+    }
+    if (header.tag == OPENPGP_TAG_PUBLIC_KEY) {
+      openpgp_public_key_t pubkey;
+      result = openpgp_parse_public_key_packet(data + offset + header.header_len, header.length, &pubkey);
+      if (result == ASCIICHAT_OK) {
+        memcpy(ed25519_pk, pubkey.pubkey, 32);
+        return ASCIICHAT_OK;
+      }
+    }
+    offset += header.header_len + header.length;
+  }
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 public key found in OpenPGP data");
+}
+
 asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[32]) {
   if (!armored_text || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for armored pubkey parsing");
@@ -339,48 +365,9 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
 
   log_debug("Decoded %zu bytes of OpenPGP packet data", binary_len);
 
-  // Parse OpenPGP packets to find the public key packet (tag 6)
-  size_t offset = 0;
-  bool found_pubkey = false;
-
-  while (offset < binary_len) {
-    openpgp_packet_header_t header;
-    asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &header);
-    if (header_result != ASCIICHAT_OK) {
-      SAFE_FREE(binary_data);
-      return header_result;
-    }
-
-    log_debug("Packet at offset %zu: tag=%u, length=%zu", offset, header.tag, header.length);
-
-    // Check if this is a public key packet (tag 6)
-    if (header.tag == OPENPGP_TAG_PUBLIC_KEY) {
-      openpgp_public_key_t pubkey;
-      asciichat_error_t parse_result =
-          openpgp_parse_public_key_packet(binary_data + offset + header.header_len, header.length, &pubkey);
-
-      if (parse_result == ASCIICHAT_OK) {
-        memcpy(ed25519_pk, pubkey.pubkey, 32);
-        found_pubkey = true;
-        log_debug("Extracted Ed25519 public key from OpenPGP armored block");
-        break;
-      } else {
-        // Not an Ed25519 key, try next packet
-        log_debug("Skipping non-Ed25519 public key packet");
-      }
-    }
-
-    // Move to next packet
-    offset += header.header_len + header.length;
-  }
-
+  asciichat_error_t result = openpgp_parse_binary_pubkey(binary_data, binary_len, ed25519_pk);
   SAFE_FREE(binary_data);
-
-  if (!found_pubkey) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 public key found in PGP armored block");
-  }
-
-  return ASCIICHAT_OK;
+  return result;
 }
 
 // =============================================================================
@@ -473,14 +460,20 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
 
   seckey->is_encrypted = false;
 
-  // For unencrypted keys (S2K usage = 0x00), secret key material follows directly
-  // For Ed25519: 32 bytes of secret key
-  if (offset + 32 > body_len) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Insufficient data for Ed25519 secret key (need 32 bytes)");
+  // The Ed25519 secret scalar is encoded as an OpenPGP MPI (bit count followed by bytes).
+  if (offset + 2 > body_len) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Missing Ed25519 secret-key MPI length");
+  }
+  uint16_t secret_bits = (uint16_t)(((uint16_t)packet_body[offset] << 8) | packet_body[offset + 1]);
+  size_t secret_bytes = (secret_bits + 7u) / 8u;
+  offset += 2;
+  if (secret_bits == 0 || secret_bits > 256 || secret_bytes > sizeof(seckey->seckey) ||
+      offset + secret_bytes + 2 > body_len) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 secret-key MPI length: %u bits", secret_bits);
   }
 
-  // Extract the 32-byte Ed25519 secret key
-  memcpy(seckey->seckey, packet_body + offset, 32);
+  // Ed25519 private material is 32 bytes; left-pad shorter MPIs as specified by OpenPGP.
+  memcpy(seckey->seckey + sizeof(seckey->seckey) - secret_bytes, packet_body + offset, secret_bytes);
 
   log_debug("Extracted Ed25519 secret key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->seckey[0],
             seckey->seckey[1], seckey->seckey[2], seckey->seckey[3], seckey->seckey[4], seckey->seckey[5],
@@ -501,6 +494,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
  * - Automatic cleanup via directory deletion
  * - Better error handling and no race conditions
  */
+#ifndef EMSCRIPTEN_BUILD
 static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char **decrypted_out) {
   if (!armored_text || !decrypted_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for GPG decryption");
@@ -725,6 +719,39 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Successfully decrypted GPG key using passphrase");
   return ASCIICHAT_OK;
 }
+#endif
+
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32],
+                                              uint8_t ed25519_sk[32]) {
+  if (!data || data_len == 0 || !ed25519_pk || !ed25519_sk) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP secret-key parsing");
+  }
+
+  size_t offset = 0;
+  while (offset < data_len) {
+    openpgp_packet_header_t header;
+    asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &header);
+    if (result != ASCIICHAT_OK) return result;
+    if (header.header_len > data_len - offset || header.length > data_len - offset - header.header_len) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Truncated OpenPGP packet in secret key");
+    }
+    if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+      openpgp_secret_key_t seckey;
+      result = openpgp_parse_secret_key_packet(data + offset + header.header_len, header.length, &seckey);
+      if (result == ASCIICHAT_OK) {
+        if (seckey.is_encrypted) {
+          return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                           "Encrypted binary OpenPGP private keys are not supported; use an unencrypted key");
+        }
+        memcpy(ed25519_pk, seckey.pubkey, 32);
+        memcpy(ed25519_sk, seckey.seckey, 32);
+        return ASCIICHAT_OK;
+      }
+    }
+    offset += header.header_len + header.length;
+  }
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "No unencrypted Ed25519 secret key found in OpenPGP data");
+}
 
 asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
                                                uint8_t ed25519_sk[32]) {
@@ -808,6 +835,11 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
       if (parse_result == ASCIICHAT_OK) {
         // Check if key is encrypted
         if (seckey.is_encrypted) {
+#ifdef EMSCRIPTEN_BUILD
+          SAFE_FREE(binary_data);
+          return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                           "Encrypted OpenPGP private keys are not supported in the browser; use an unencrypted key");
+#else
           SAFE_FREE(binary_data);
           log_debug("Detected encrypted GPG key, attempting to decrypt with passphrase");
 
@@ -822,6 +854,7 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
           SAFE_FREE(decrypted_text);
           return recursive_result;
+#endif
         }
 
         // Unencrypted key - extract directly

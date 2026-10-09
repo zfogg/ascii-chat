@@ -5,7 +5,12 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { getRandomPort, ServerFixture, waitForPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  getRandomPort,
+  ServerFixture,
+  waitForPort,
+} from "./server-fixture";
 
 const PASSWORD = "crypto-e2e-password";
 
@@ -96,7 +101,10 @@ class LoggedProcess {
   readonly child: ChildProcess;
   private output = "";
 
-  constructor(args: string[], readonly logPath: string) {
+  constructor(
+    args: string[],
+    readonly logPath: string,
+  ) {
     this.child = spawn(
       binaryPath(),
       ["--log-level", "debug", "--log-file", logPath, ...args],
@@ -123,7 +131,9 @@ class LoggedProcess {
       const match = this.logs.match(pattern);
       if (match) return match;
       if (this.child.exitCode !== null)
-        throw new Error(`ascii-chat exited ${this.child.exitCode}:\n${this.logs}`);
+        throw new Error(
+          `ascii-chat exited ${this.child.exitCode}:\n${this.logs}`,
+        );
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw new Error(`Timed out waiting for ${pattern}:\n${this.logs}`);
@@ -151,7 +161,13 @@ function seedCryptoSettings(
         skipServerVerification: false,
         password: settings.password || "",
         privateKeys: settings.identity
-          ? [{ id: "e2e-identity", name: "E2E identity", contents: settings.identity }]
+          ? [
+              {
+                id: "e2e-identity",
+                name: "E2E identity",
+                contents: settings.identity,
+              },
+            ]
           : [],
         activePrivateKeyId: settings.identity ? "e2e-identity" : null,
         verificationKeys: [
@@ -191,6 +207,7 @@ async function verifyFiveSecondsOfRendering(page: Page): Promise<void> {
     `Expected changing received frames during each of five seconds; deltas=${samples.join(",")}`,
   ).toBe(true);
   expect(previous).toBeGreaterThan(initial);
+  await expectMeaningful60Fps(page, "client", 5_000);
 }
 
 async function runCryptoRenderCase(
@@ -199,7 +216,9 @@ async function runCryptoRenderCase(
   authCase: AuthCase,
 ): Promise<void> {
   test.setTimeout(120_000);
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ascii-crypto-render-e2e-"));
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), "ascii-crypto-render-e2e-"),
+  );
   const fixtureKeys = path.join(process.cwd(), "tests/fixtures/crypto");
   const clientKey = path.join(fixtureKeys, "client-identity");
   const rejectedKey = path.join(fixtureKeys, "rejected-identity");
@@ -222,7 +241,7 @@ async function runCryptoRenderCase(
       : ["--client-keys", `${clientKey}.pub`];
   let fixture: ServerFixture | undefined;
   let acds: LoggedProcess | undefined;
-  let server: LoggedProcess | undefined;
+  let server: ServerFixture | undefined;
   let turnStarted = false;
   let networkCreated = false;
   const network = `ascii-crypto-${process.pid}-${Date.now()}`;
@@ -242,8 +261,7 @@ async function runCryptoRenderCase(
         target: "client-server",
         ...(password ? { password } : {}),
       });
-      const url =
-        `/client?connect&test2&testServerUrl=${encodeURIComponent(fixture.getUrl())}`;
+      const url = `/client?connect&test2&testServerUrl=${encodeURIComponent(fixture.getUrl())}`;
       await page.goto(url);
     } else {
       const ports = await unusedTcpPorts(4);
@@ -260,19 +278,37 @@ async function runCryptoRenderCase(
       networkCreated = true;
       const turnIp = await dockerNetworkIp(network);
       await run("docker", [
-        "run", "--detach", "--name", container,
-        "--network", network, "--ip", turnIp,
-        "--publish", `127.0.0.1:${turnPort}:3478/udp`,
-        "--publish", `127.0.0.1:${turnPort}:3478/tcp`,
-        "--publish", `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
+        "run",
+        "--detach",
+        "--name",
+        container,
+        "--network",
+        network,
+        "--ip",
+        turnIp,
+        "--publish",
+        `127.0.0.1:${turnPort}:3478/udp`,
+        "--publish",
+        `127.0.0.1:${turnPort}:3478/tcp`,
+        "--publish",
+        `127.0.0.1:${relayStart}-${relayEnd}:${relayStart}-${relayEnd}/udp`,
         "coturn/coturn:latest",
-        "--listening-ip=0.0.0.0", "--listening-port=3478",
-        `--relay-ip=${turnIp}`, `--external-ip=127.0.0.1/${turnIp}`,
-        `--min-port=${relayStart}`, `--max-port=${relayEnd}`,
-        "--user=crypto-e2e:crypto-e2e-password", "--realm=ascii-chat.test",
-        "--lt-cred-mech", "--allowed-peer-ip=169.254.0.0-169.254.255.255",
-        "--fingerprint", "--allow-loopback-peers", "--no-cli", "--no-tls",
-        "--log-file=stdout", "--verbose",
+        "--listening-ip=0.0.0.0",
+        "--listening-port=3478",
+        `--relay-ip=${turnIp}`,
+        `--external-ip=127.0.0.1/${turnIp}`,
+        `--min-port=${relayStart}`,
+        `--max-port=${relayEnd}`,
+        "--user=crypto-e2e:crypto-e2e-password",
+        "--realm=ascii-chat.test",
+        "--lt-cred-mech",
+        "--allowed-peer-ip=169.254.0.0-169.254.255.255",
+        "--fingerprint",
+        "--allow-loopback-peers",
+        "--no-cli",
+        "--no-tls",
+        "--log-file=stdout",
+        "--verbose",
       ]);
       turnStarted = true;
       acds = new LoggedProcess(
@@ -295,7 +331,8 @@ async function runCryptoRenderCase(
       );
       await waitForPort(acdsTcpPort, "127.0.0.1");
       await waitForPort(acdsWsPort, "127.0.0.1");
-      server = new LoggedProcess(
+      server = new ServerFixture(
+        serverTcpPort,
         [
           "server",
           "--port",
@@ -320,9 +357,10 @@ async function runCryptoRenderCase(
           serverKey,
           ...serverAuthArgs,
         ],
-        path.join(root, "server.log"),
+        { ...process.env, APPDATA: root },
       );
-      const sessionMatch = await server.waitFor(
+      await server.start();
+      const sessionMatch = await server.waitForLog(
         /Session created: ([a-z]+-[a-z]+-[a-z]+)/i,
         30_000,
       );
@@ -344,11 +382,15 @@ async function runCryptoRenderCase(
       await page.getByLabel("TURN username").fill("crypto-e2e");
       await page.getByLabel("TURN password").fill("crypto-e2e-password");
       if (password) {
-        await page.getByLabel("Session password", { exact: true }).fill(password);
+        await page
+          .getByLabel("Session password", { exact: true })
+          .fill(password);
       }
-      await page.getByRole("button", { name: "Join session", exact: true }).click({
-        force: true,
-      });
+      await page
+        .getByRole("button", { name: "Join session", exact: true })
+        .click({
+          force: true,
+        });
     }
 
     if (rejected) {
@@ -371,7 +413,7 @@ async function runCryptoRenderCase(
     }
   } finally {
     await fixture?.stop();
-    await stopProcess(server?.child);
+    await server?.stop();
     await stopProcess(acds?.child);
     if (turnStarted) {
       await run("docker", ["stop", container]).catch(() => "");
@@ -384,7 +426,11 @@ async function runCryptoRenderCase(
 }
 
 for (const mode of ["client", "discovery"] as const) {
-  for (const authCase of ["authorized-key", "unauthorized-key", "password"] as const) {
+  for (const authCase of [
+    "authorized-key",
+    "unauthorized-key",
+    "password",
+  ] as const) {
     const outcome =
       authCase === "unauthorized-key"
         ? "rejects without rendering for 5s"

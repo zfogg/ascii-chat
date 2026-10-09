@@ -15,8 +15,10 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-interface HeadingProps
-  extends Omit<HTMLAttributes<HTMLHeadingElement>, "className"> {
+interface HeadingProps extends Omit<
+  HTMLAttributes<HTMLHeadingElement>,
+  "className"
+> {
   level?: 1 | 2 | 3 | 4;
   className?: string;
   id?: string;

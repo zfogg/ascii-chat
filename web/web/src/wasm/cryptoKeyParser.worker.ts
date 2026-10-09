@@ -7,6 +7,18 @@ interface ParserModule {
   _free(pointer: number): void;
   _client_parse_ssh_private_key(path: number, output: number): number;
   _client_parse_ssh_public_key(line: number, output: number): number;
+  _client_parse_gpg_private_key(armoredKey: number, output: number): number;
+  _client_parse_gpg_public_key(armoredKey: number, output: number): number;
+  _client_parse_gpg_private_key_binary(
+    data: number,
+    length: number,
+    output: number,
+  ): number;
+  _client_parse_gpg_public_key_binary(
+    data: number,
+    length: number,
+    output: number,
+  ): number;
   _client_get_crypto_error_message(output: number, size: number): number;
   lengthBytesUTF8(value: string): number;
   stringToUTF8(value: string, pointer: number, maximum: number): void;
@@ -17,6 +29,7 @@ interface ParserModule {
 }
 
 let modulePromise: Promise<ParserModule> | null = null;
+const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
 const postMessageToWorker = self.postMessage as unknown as (
   message: unknown,
   transfer?: Transferable[],
@@ -24,7 +37,8 @@ const postMessageToWorker = self.postMessage as unknown as (
 
 async function getParserModule(): Promise<ParserModule> {
   modulePromise ??= ClientModuleFactory({
-    locateFile: (path: string) => new URL(`/wasm/${path}`, self.location.origin).href,
+    locateFile: (path: string) =>
+      new URL(`/wasm/${path}`, self.location.origin).href,
     getRandomValue: () => {
       const value = new Uint32Array(1);
       crypto.getRandomValues(value);
@@ -61,15 +75,20 @@ function getParserError(module: ParserModule): string {
 }
 
 self.onmessage = async (
-  event: MessageEvent<{ id: number; kind: "private" | "public"; contents: string }>,
+  event: MessageEvent<{
+    id: number;
+    kind: "ssh-private" | "ssh-public" | "gpg-private" | "gpg-public";
+    contents: string;
+  }>,
 ) => {
   const { id, kind, contents } = event.data;
   let input = 0;
   let output = 0;
   let path = "";
+  let inputByteLength = 0;
   try {
     const module = await getParserModule();
-    if (kind === "private") {
+    if (kind === "ssh-private") {
       path = `/tmp/ascii-chat-key-${crypto.randomUUID()}`;
       input = allocateUtf8(module, path);
       output = module._malloc(64);
@@ -80,7 +99,7 @@ self.onmessage = async (
       const bytes = new Uint8Array(64);
       bytes.set(module.HEAPU8.subarray(output, output + 64));
       postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
-    } else {
+    } else if (kind === "ssh-public") {
       input = allocateUtf8(module, contents);
       output = module._malloc(32);
       if (!output) throw new Error("Unable to allocate SSH key output buffer");
@@ -89,18 +108,68 @@ self.onmessage = async (
       const bytes = new Uint8Array(32);
       bytes.set(module.HEAPU8.subarray(output, output + 32));
       postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
+    } else {
+      const byteCount = kind === "gpg-private" ? 64 : 32;
+      output = module._malloc(byteCount);
+      if (!output)
+        throw new Error("Unable to allocate OpenPGP key output buffer");
+      let result: number;
+      if (contents.startsWith(BINARY_OPENPGP_KEY_PREFIX)) {
+        const binary = atob(contents.slice(BINARY_OPENPGP_KEY_PREFIX.length));
+        if (!binary.length || binary.length > 1024 * 1024)
+          throw new Error(
+            "Binary OpenPGP key file must be between 1 byte and 1 MiB",
+          );
+        const bytes = Uint8Array.from(binary, (character) =>
+          character.charCodeAt(0),
+        );
+        inputByteLength = bytes.length;
+        input = module._malloc(inputByteLength);
+        if (!input)
+          throw new Error("Unable to allocate binary OpenPGP key input");
+        module.HEAPU8.set(bytes, input);
+        result =
+          kind === "gpg-private"
+            ? module._client_parse_gpg_private_key_binary(
+                input,
+                inputByteLength,
+                output,
+              )
+            : module._client_parse_gpg_public_key_binary(
+                input,
+                inputByteLength,
+                output,
+              );
+        bytes.fill(0);
+      } else {
+        input = allocateUtf8(module, contents);
+        inputByteLength = module.lengthBytesUTF8(contents) + 1;
+        result =
+          kind === "gpg-private"
+            ? module._client_parse_gpg_private_key(input, output)
+            : module._client_parse_gpg_public_key(input, output);
+      }
+      if (result !== 0) throw new Error(getParserError(module));
+      const bytes = new Uint8Array(byteCount);
+      bytes.set(module.HEAPU8.subarray(output, output + byteCount));
+      postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
     }
   } catch (error) {
-    postMessageToWorker({ id, error: error instanceof Error ? error.message : String(error) });
+    postMessageToWorker({
+      id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   } finally {
     const module = modulePromise ? await modulePromise.catch(() => null) : null;
     if (module && output) {
-      const byteCount = kind === "private" ? 64 : 32;
+      const byteCount = kind.endsWith("private") ? 64 : 32;
       module.HEAPU8.fill(0, output, output + byteCount);
       module._free(output);
     }
     if (module && input) {
-      module.HEAPU8.fill(0, input, input + module.lengthBytesUTF8(path || contents) + 1);
+      const length =
+        inputByteLength || module.lengthBytesUTF8(path || contents) + 1;
+      module.HEAPU8.fill(0, input, input + length);
       module._free(input);
     }
     if (module && path) {

@@ -449,8 +449,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
-    log_info("🔵 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
-             (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
+    log_dev("🔵 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
+            (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       SET_ERRNO(ERROR_INVALID_STATE, "Transport snapshot is NULL");
       return -1;
@@ -483,7 +483,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
     log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
-    log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
+    log_dev("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
     atomic_fetch_add_u64(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
@@ -512,8 +512,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // messages and will be fixed with per-connection tracking
     {
       uint64_t frag_num = atomic_load_u64(&g_receive_callback_count);
-      log_info("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
-               is_final);
+      log_dev("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
+              is_final);
     }
 
     websocket_recv_msg_t msg;
@@ -566,8 +566,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // (cond_signal already called above - do not call lws_callback_on_writable here as it
     // interferes with fragmented frame processing in libwebsockets)
 
-    log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-             (unsigned long long)atomic_load_u64(&g_receive_callback_count));
+    log_dev("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
+            (unsigned long long)atomic_load_u64(&g_receive_callback_count));
 
     // Record timing for this callback
     websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns,

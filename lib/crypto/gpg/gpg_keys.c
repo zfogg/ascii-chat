@@ -79,15 +79,19 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
     return ERROR_INVALID_PARAM;
   }
 
-  // Treat as PGP armored text - null-terminate for string operations
-  char *armored_text = SAFE_MALLOC(key_size + 1, char *);
-  memcpy(armored_text, gpg_key_binary, key_size);
-  armored_text[key_size] = '\0';
-
-  // Parse OpenPGP armored format and extract Ed25519 public key
   uint8_t ed25519_pk[32];
-  asciichat_error_t result = openpgp_parse_armored_pubkey(armored_text, ed25519_pk);
-  SAFE_FREE(armored_text);
+  asciichat_error_t result;
+  if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
+      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+             strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) == 0) {
+    char *armored_text = SAFE_MALLOC(key_size + 1, char *);
+    memcpy(armored_text, gpg_key_binary, key_size);
+    armored_text[key_size] = '\0';
+    result = openpgp_parse_armored_pubkey(armored_text, ed25519_pk);
+    SAFE_FREE(armored_text);
+  } else {
+    result = openpgp_parse_binary_pubkey(gpg_key_binary, key_size, ed25519_pk);
+  }
 
   if (result != ASCIICHAT_OK) {
     return result;

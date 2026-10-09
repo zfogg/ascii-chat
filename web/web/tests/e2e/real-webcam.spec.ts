@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { ServerFixture, getRandomPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  ServerFixture,
+  getRandomPort,
+} from "./server-fixture";
 
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
@@ -19,7 +23,7 @@ test.afterAll(async () => {
 });
 
 test("Real webcam animates with server frames", async ({ page, context }) => {
-  test.setTimeout(20000);
+  test.setTimeout(45_000);
 
   // Grant real camera permission - this will use the ACTUAL system webcam
   await context.grantPermissions(["camera", "microphone"]);
@@ -60,4 +64,5 @@ test("Real webcam animates with server frames", async ({ page, context }) => {
   const uniqueChecksums = new Set(frameChecksums);
   expect(frameChecksums.length).toBeGreaterThan(0);
   expect(uniqueChecksums.size).toBeGreaterThan(1);
+  await expectMeaningful60Fps(page, "client", 5_000);
 });

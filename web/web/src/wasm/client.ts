@@ -8,6 +8,36 @@ import {
   cleanupOptions,
 } from "@ascii-chat/shared/wasm";
 
+export const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
+
+/** Preserve binary OpenPGP packet files in browser storage without text decoding. */
+export async function readCryptoKeyFile(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let text: string | undefined;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    // Binary OpenPGP packets are not UTF-8 text.
+  }
+  if (
+    text &&
+    (text.includes("-----BEGIN PGP ") ||
+      text.startsWith("ssh-ed25519 ") ||
+      text.includes("-----BEGIN OPENSSH PRIVATE KEY-----"))
+  ) {
+    return text;
+  }
+
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(offset, offset + chunkSize),
+    );
+  }
+  return `${BINARY_OPENPGP_KEY_PREFIX}${btoa(binary)}`;
+}
+
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
   _wasmModule?: ClientModule;
@@ -385,7 +415,9 @@ export async function ensureWasmModuleLoaded(): Promise<void> {
 }
 
 /** Set browser authentication and identity-verification inputs for the next handshake. */
-export async function configureClientCrypto(options: ClientCryptoOptions): Promise<void> {
+export async function configureClientCrypto(
+  options: ClientCryptoOptions,
+): Promise<void> {
   if (!wasmModule || !clientInitialized)
     throw new Error("Initialize the WASM client before configuring crypto");
 
@@ -406,7 +438,8 @@ export async function configureClientCrypto(options: ClientCryptoOptions): Promi
       const size = wasmModule.lengthBytesUTF8(options.password) + 1;
       passwordBytes = size;
       passwordPtr = wasmModule._malloc(size);
-      if (!passwordPtr) throw new Error("Unable to allocate the crypto password");
+      if (!passwordPtr)
+        throw new Error("Unable to allocate the crypto password");
       wasmModule.stringToUTF8(options.password, passwordPtr, size);
     }
     if (identitySecretKey) {
@@ -416,11 +449,12 @@ export async function configureClientCrypto(options: ClientCryptoOptions): Promi
     }
     if (expectedServerPublicKey) {
       expectedServerPtr = wasmModule._malloc(expectedServerPublicKey.length);
-      if (!expectedServerPtr) throw new Error("Unable to allocate the verification key");
+      if (!expectedServerPtr)
+        throw new Error("Unable to allocate the verification key");
       wasmModule.HEAPU8.set(expectedServerPublicKey, expectedServerPtr);
     }
     if (
-      await wasmModule._client_configure_crypto_options(
+      wasmModule._client_configure_crypto_options(
         passwordPtr,
         identityPtr,
         expectedServerPtr,
@@ -446,33 +480,83 @@ export async function configureClientCrypto(options: ClientCryptoOptions): Promi
   }
 }
 
-/** Validate an SSH private key with ascii-chat's shared C SSH parser. */
-export async function validateSshPrivateKey(contents: string): Promise<Uint8Array> {
-  return parseKeyInWorker("private", contents);
+/** Validate an OpenSSH or unencrypted OpenPGP Ed25519 private key with the shared C parsers. */
+export async function validateSshPrivateKey(
+  contents: string,
+): Promise<Uint8Array> {
+  try {
+    return await parseKeyInWorker("ssh-private", contents);
+  } catch {
+    try {
+      return await parseKeyInWorker("gpg-private", contents);
+    } catch (error) {
+      throw new Error(
+        `Expected an OpenSSH or unencrypted OpenPGP Ed25519 private key: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
+    }
+  }
 }
 
-/** Validate an SSH Ed25519 public key with ascii-chat's shared C parser. */
-export async function validateSshPublicKey(contents: string): Promise<Uint8Array> {
-  return parseKeyInWorker("public", contents);
+/** Validate an SSH or armored OpenPGP Ed25519 public key with the shared C parsers. */
+export async function validateSshPublicKey(
+  contents: string,
+): Promise<Uint8Array> {
+  try {
+    return await parseKeyInWorker("ssh-public", contents);
+  } catch {
+    try {
+      return await parseKeyInWorker("gpg-public", contents);
+    } catch {
+      for (const kind of ["ssh-private", "gpg-private"] as const) {
+        try {
+          const privateKey = await parseKeyInWorker(kind, contents);
+          privateKey.fill(0);
+          throw new Error(
+            "This is a private key. Add it under Private keys; only public keys are accepted here.",
+          );
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.startsWith("This is a private key.")
+          ) {
+            throw error;
+          }
+        }
+      }
+      throw new Error("Expected an SSH or armored OpenPGP Ed25519 public key.");
+    }
+  }
 }
 
-function parseKeyInWorker(kind: "private" | "public", contents: string): Promise<Uint8Array> {
-  const worker = keyParserWorker ?? new Worker(new URL("./cryptoKeyParser.worker.ts", import.meta.url), { type: "module" });
+function parseKeyInWorker(
+  kind: "ssh-private" | "ssh-public" | "gpg-private" | "gpg-public",
+  contents: string,
+): Promise<Uint8Array> {
+  const worker =
+    keyParserWorker ??
+    new Worker(new URL("./cryptoKeyParser.worker.ts", import.meta.url), {
+      type: "module",
+    });
   keyParserWorker = worker;
   const id = nextKeyParserRequestId++;
   return new Promise((resolve, reject) => {
     pendingKeyParserRequests.set(id, { resolve, reject });
-    worker.onmessage = (event: MessageEvent<{ id: number; bytes?: ArrayBuffer; error?: string }>) => {
+    worker.onmessage = (
+      event: MessageEvent<{ id: number; bytes?: ArrayBuffer; error?: string }>,
+    ) => {
       const pending = pendingKeyParserRequests.get(event.data.id);
       if (!pending) return;
       pendingKeyParserRequests.delete(event.data.id);
       if (event.data.error) pending.reject(new Error(event.data.error));
-      else if (event.data.bytes) pending.resolve(new Uint8Array(event.data.bytes));
+      else if (event.data.bytes)
+        pending.resolve(new Uint8Array(event.data.bytes));
       else pending.reject(new Error("SSH key parser returned no result"));
     };
     worker.onerror = (event) => {
       const error = new Error(event.message || "SSH key parser worker failed");
-      for (const request of pendingKeyParserRequests.values()) request.reject(error);
+      for (const request of pendingKeyParserRequests.values())
+        request.reject(error);
       pendingKeyParserRequests.clear();
       keyParserWorker?.terminate();
       keyParserWorker = null;
@@ -536,9 +620,7 @@ export async function initClientWasm(
   }
 }
 
-async function initializeClientWasm(
-  options: ClientInitOptions,
-): Promise<void> {
+async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
   // Ensure WASM module is loaded first (may already be loaded by ensureWasmModuleLoaded)
   await ensureWasmModuleLoaded();
 
@@ -567,13 +649,14 @@ async function initializeClientWasm(
     args.push("--stun-servers", options.stunServers.join(","));
   if (options.turnServers?.length)
     args.push("--turn-servers", options.turnServers.join(","));
-  if (options.turnUsername)
-    args.push("--turn-username", options.turnUsername);
+  if (options.turnUsername) args.push("--turn-username", options.turnUsername);
   if (options.turnCredential)
     args.push("--turn-credential", options.turnCredential);
   const argsString = args
     .map((arg, index) =>
-      index === 0 ? arg : `"${arg.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
+      index === 0
+        ? arg
+        : `"${arg.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
     )
     .join(" ");
   console.log("[Client WASM] Initializing with args:", argsString);
@@ -620,7 +703,9 @@ export function cleanupClientWasm(): void {
     // Recreating it on every WebRTC reconnect leaks worker-backed memories
     // until the browser can no longer allocate another WebAssembly.Memory.
     cleanupOptions();
-    console.error("[cleanupClientWasm] Client state cleaned up; module retained");
+    console.error(
+      "[cleanupClientWasm] Client state cleaned up; module retained",
+    );
   } else {
     console.error("[cleanupClientWasm] No module to cleanup");
   }

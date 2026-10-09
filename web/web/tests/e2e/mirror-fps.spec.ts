@@ -3,12 +3,13 @@
  *
  * Uses test mode (?test) to generate synthetic frames without a webcam.
  * Measures actual rendering FPS for different color filter and color mode
- * configurations. All settings should maintain acceptable FPS (>20).
+ * configurations. Every setting must sustain near-60-FPS meaningful frames.
  *
  * Run with: npx playwright test tests/e2e/mirror-fps.spec.ts --project=chromium
  */
 
 import { test, expect } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 30000;
@@ -156,6 +157,7 @@ test.describe("Mirror FPS Performance", () => {
 
     // Measure baseline: default settings (no filter)
     const defaultResult = await measureFps(page, MEASURE_DURATION_MS);
+    await expectMeaningful60Fps(page, "mirror", MEASURE_DURATION_MS);
     const defaultLen = await getFrameLength(page);
     const defaultTiming = await getTimingAndReset(page);
     console.log(
@@ -165,6 +167,7 @@ test.describe("Mirror FPS Performance", () => {
     // Measure rainbow filter
     await setColorFilter(page, "rainbow");
     const rainbowResult = await measureFps(page, MEASURE_DURATION_MS);
+    await expectMeaningful60Fps(page, "mirror", MEASURE_DURATION_MS);
     const rainbowLen = await getFrameLength(page);
     const rainbowTiming = await getTimingAndReset(page);
     console.log(
@@ -174,6 +177,7 @@ test.describe("Mirror FPS Performance", () => {
     // Measure green filter
     await setColorFilter(page, "green");
     const greenResult = await measureFps(page, MEASURE_DURATION_MS);
+    await expectMeaningful60Fps(page, "mirror", MEASURE_DURATION_MS);
     const greenLen = await getFrameLength(page);
     const greenTiming = await getTimingAndReset(page);
     console.log(
@@ -183,6 +187,7 @@ test.describe("Mirror FPS Performance", () => {
     // Measure no filter again (to check if performance degrades over time)
     await setColorFilter(page, "none");
     const noneResult = await measureFps(page, MEASURE_DURATION_MS);
+    await expectMeaningful60Fps(page, "mirror", MEASURE_DURATION_MS);
     const noneLen = await getFrameLength(page);
     const noneTiming = await getTimingAndReset(page);
     console.log(
@@ -224,8 +229,7 @@ test.describe("Mirror FPS Performance", () => {
       `None filter (2nd) FPS (${noneResult.fps}) below minimum (${MIN_FPS})`,
     ).toBeGreaterThanOrEqual(MIN_FPS);
 
-    // No filter should be dramatically slower than rainbow
-    // (within 3x — if rainbow is 60fps, others should be at least 20fps)
+    // All filters should stay in the same near-refresh-rate range.
     const maxFps = Math.max(
       defaultResult.fps,
       rainbowResult.fps,

@@ -117,9 +117,7 @@ export class AudioPipeline {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-            ...(microphoneId
-              ? { deviceId: { exact: microphoneId } }
-              : {}),
+            ...(microphoneId ? { deviceId: { exact: microphoneId } } : {}),
           };
           try {
             return await navigator.mediaDevices.getUserMedia({

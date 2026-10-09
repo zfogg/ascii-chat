@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { ServerFixture, getRandomPort } from "./server-fixture";
+import {
+  expectMeaningful60Fps,
+  ServerFixture,
+  getRandomPort,
+} from "./server-fixture";
 
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
@@ -27,7 +31,7 @@ test("Client connection persists and renders continuous frames", async ({
   page,
   context,
 }) => {
-  test.setTimeout(TEST_TIMEOUT);
+  test.setTimeout(TEST_TIMEOUT + 10_000);
   test.slow();
 
   const stateChangeLogs: string[] = [];
@@ -43,16 +47,18 @@ test("Client connection persists and renders continuous frames", async ({
     if (!ctx) {
       throw new Error("Failed to get 2D context from canvas");
     }
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(60);
 
     let frameCount = 0;
-    setInterval(() => {
+    const draw = () => {
       ctx.fillStyle = `hsl(${(frameCount * 5) % 360}, 100%, 50%)`;
       ctx.fillRect(0, 0, 640, 480);
       ctx.fillStyle = "white";
       ctx.font = "20px Arial";
       ctx.fillText(`Frame: ${frameCount++}`, 20, 30);
-    }, 33);
+      requestAnimationFrame(draw);
+    };
+    draw();
 
     if (!navigator.mediaDevices) {
       Object.defineProperty(navigator, "mediaDevices", {
@@ -234,6 +240,7 @@ test("Client connection persists and renders continuous frames", async ({
   console.log(
     `\n  - Snapshot hashes: ${Array.from(snapshotHashes).join(", ")}`,
   );
+  await expectMeaningful60Fps(page, "client", 3_000);
   console.log(
     `  - First snapshot length: ${terminalSnapshots[0]?.length || 0} chars`,
   );

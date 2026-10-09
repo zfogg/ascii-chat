@@ -947,8 +947,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     fragment_count++;
     if (frag.len > 100 || fragment_count == 1) {
-      log_info("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
-               frag.len, frag.first, frag.final, assembled_size);
+      log_dev("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
+              frag.len, frag.first, frag.final, assembled_size);
     } else {
       log_debug("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d", fragment_count, frag.len, frag.first,
                 frag.final);
@@ -1057,8 +1057,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
         if (assembled_size >= expected_size) {
           // Complete packet assembled based on header length field
-          log_info("[WS_REASSEMBLE] Complete message by length field: %zu bytes in %d fragments (payload=%u)",
-                   expected_size, fragment_count, msg_payload_len);
+          log_dev_every(1000000, "[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments (payload=%u)",
+                        expected_size, fragment_count, msg_payload_len);
 
           // Check for leftover data after this packet
           size_t leftover_size = assembled_size - expected_size;
@@ -1115,8 +1115,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
         if (assembled_size >= expected_size) {
           // We have a complete ACIP packet
-          log_info("[WS_REASSEMBLE] Complete ACIP packet by WebSocket final fragment: %zu bytes in %d fragments",
-                   expected_size, fragment_count);
+          log_dev_every(1000000, "[WS_REASSEMBLE] Complete ACIP packet: %zu bytes in %d fragments", expected_size,
+                        fragment_count);
 
           // Check for leftover data after this packet
           size_t leftover_size = assembled_size - expected_size;

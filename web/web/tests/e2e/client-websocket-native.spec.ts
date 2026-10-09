@@ -3,15 +3,16 @@ import {
   getRandomPort,
   NativeClientFixture,
   ServerFixture,
+  expectMeaningful60Fps,
 } from "./server-fixture";
 
-test("native CLI producer and browser WebSocket client render 40-60 FPS", async ({
+test("native CLI producer and browser WebSocket client render near 60 FPS", async ({
   page,
   context,
 }) => {
   test.setTimeout(45_000);
   const server = new ServerFixture(getRandomPort());
-  const cli = new NativeClientFixture(server.getPort());
+  const cli = new NativeClientFixture(server.getPort(), 60);
 
   await server.start();
   await cli.start();
@@ -71,9 +72,10 @@ test("native CLI producer and browser WebSocket client render 40-60 FPS", async 
     console.log(
       `[client-websocket-native] rendered ${fps.toFixed(1)} FPS for 5s`,
     );
-    expect(fps).toBeGreaterThanOrEqual(40);
+    expect(fps).toBeGreaterThanOrEqual(55);
     expect(fps).toBeLessThanOrEqual(60);
-    await expect(page.getByText(/FPS: (4\d|5\d|60) \/ 60/)).toBeVisible();
+    await expect(page.getByText(/FPS: (5\d|60) \/ 60/)).toBeVisible();
+    await expectMeaningful60Fps(page, "client", 5_000);
   } finally {
     await cli.stop();
     await server.stop();
