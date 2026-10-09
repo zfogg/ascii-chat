@@ -1,0 +1,49 @@
+name: Request Codex Review
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions: {}
+
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  request-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Use zfogg's personal access token, scoped to this repository with
+      # Pull requests: read and write, so the comment is authored by zfogg.
+      # Do not check out or execute PR code with this secret available.
+      - name: Comment as repository owner
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.CODEX_REVIEW_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::Set the CODEX_REVIEW_TOKEN repository secret to zfogg's personal access token."
+            exit 1
+          fi
+
+          login=$(gh api user --jq .login)
+          if [[ "$login" != "zfogg" ]]; then
+            echo "::error::CODEX_REVIEW_TOKEN must belong to zfogg."
+            exit 1
+          fi
+
+          # Avoid duplicate requests when a workflow run is retried.
+          existing=$(gh api --paginate "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "zfogg" and .body == "@codex review") | .id')
+          if [[ -n "$existing" ]]; then
+            echo "Codex review already requested."
+            exit 0
+          fi
+
+          gh api --method POST "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            -f body='@codex review' --silent
