@@ -545,6 +545,11 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (upnp_requested && ipv4_listener) {
     log_info("UPnP status: discovering (TCP port %d)", port);
     asciichat_error_t upnp_result = nat_upnp_open(port, config->upnp.description, &g_upnp_ctx);
+    if (upnp_result == ASCIICHAT_OK && !nat_upnp_matches_bind_address(g_upnp_ctx, tcp_config.ipv4_address)) {
+      log_warn("NAT: gateway mapping does not target the bound IPv4 listener; removing it");
+      nat_upnp_close(&g_upnp_ctx);
+      upnp_result = ERROR_NETWORK;
+    }
     if (upnp_result == ASCIICHAT_OK && nat_upnp_is_active(g_upnp_ctx)) {
       char public_addr[22];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {

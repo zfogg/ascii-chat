@@ -272,6 +272,26 @@ bool nat_upnp_is_active(const nat_upnp_context_t *ctx) {
   return ctx && ctx->is_mapped && ctx->external_ip[0] && time_get_ns() < ctx->expires_at_ns;
 }
 
+bool nat_upnp_matches_bind_address(const nat_upnp_context_t *ctx, const char *bind_address) {
+  if (!ctx) {
+    return false;
+  }
+  return !bind_address || !bind_address[0] || strcmp(bind_address, "0.0.0.0") == 0 ||
+         (ctx->internal_ip[0] && strcmp(bind_address, ctx->internal_ip) == 0);
+}
+
+asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip, size_t ip_len, uint16_t *port) {
+  if (!ctx || !ip || !port || ip_len < sizeof(ctx->external_ip)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: invalid endpoint output");
+  }
+  if (!nat_upnp_is_active(ctx)) {
+    return SET_ERRNO(ERROR_NETWORK, "NAT: no unexpired mapping to advertise");
+  }
+  SAFE_STRNCPY(ip, ctx->external_ip, ip_len);
+  *port = ctx->mapped_port;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t nat_upnp_refresh(nat_upnp_context_t *ctx) {
   if (!ctx || !ctx->is_mapped) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: cannot refresh without a mapping");

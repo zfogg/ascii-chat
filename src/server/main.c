@@ -1777,6 +1777,13 @@ static asciichat_error_t server_init_fn(void *user_data) {
         SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
       }
       create_params.server_port = port;
+      if (create_params.session_type == SESSION_TYPE_DIRECT_TCP) {
+        if (nat_upnp_get_endpoint(upnp_ctx, create_params.server_address, sizeof(create_params.server_address),
+                                  &create_params.server_port) != ASCIICHAT_OK) {
+          create_params.session_type = SESSION_TYPE_WEBRTC;
+          log_info("ACDS session type: WebRTC (router mapping expired before registration)");
+        }
+      }
 
       // DEBUG: Log what we're sending to ACDS
       log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",

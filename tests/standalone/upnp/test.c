@@ -182,6 +182,16 @@ int main(void) {
   char endpoint[22];
   assert(nat_upnp_get_address(ctx, endpoint, sizeof(endpoint)) == ASCIICHAT_OK);
   assert(strcmp(endpoint, "198.51.100.20:27224") == 0);
+  char endpoint_ip[16];
+  uint16_t endpoint_port = 0;
+  assert(nat_upnp_get_endpoint(ctx, endpoint_ip, sizeof(endpoint_ip), &endpoint_port) == ASCIICHAT_OK);
+  assert(strcmp(endpoint_ip, "198.51.100.20") == 0 && endpoint_port == 27224);
+  assert(nat_upnp_matches_bind_address(ctx, "192.168.1.42"));
+  assert(!nat_upnp_matches_bind_address(ctx, "192.168.2.42"));
+  assert(nat_upnp_matches_bind_address(ctx, "0.0.0.0"));
+  assert(nat_upnp_matches_bind_address(ctx, NULL));
+  assert(nat_upnp_matches_bind_address(ctx, ""));
+  assert(!nat_upnp_matches_bind_address(NULL, "0.0.0.0"));
   now = ctx->refresh_at_ns;
   assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && add_calls == 2);
   assert(ctx->expires_at_ns == now + 3600ULL * NS_PER_SEC_INT);
@@ -193,6 +203,7 @@ int main(void) {
   now = expiry;
   assert(!nat_upnp_is_active(ctx));
   assert(nat_upnp_get_address(ctx, endpoint, sizeof(endpoint)) == ERROR_NETWORK);
+  assert(nat_upnp_get_endpoint(ctx, endpoint_ip, sizeof(endpoint_ip), &endpoint_port) == ERROR_NETWORK);
   add_error = 0;
   assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && nat_upnp_is_active(ctx));
   nat_upnp_close(&ctx);
@@ -262,6 +273,11 @@ int main(void) {
   assert(ctx->is_natpmp && ctx->mapped_port == 30000 && ctx->lease_seconds == 120);
   assert(ctx->refresh_at_ns == now + 60ULL * NS_PER_SEC_INT);
   assert(strcmp(ctx->external_ip, "198.51.100.21") == 0);
+  assert(nat_upnp_get_endpoint(ctx, endpoint_ip, sizeof(endpoint_ip), &endpoint_port) == ASCIICHAT_OK);
+  assert(strcmp(endpoint_ip, "198.51.100.21") == 0 && endpoint_port == 30000);
+  assert(endpoint_port != ctx->internal_port);
+  assert(!nat_upnp_matches_bind_address(ctx, "192.168.1.42"));
+  assert(nat_upnp_matches_bind_address(ctx, "0.0.0.0"));
   now = ctx->refresh_at_ns;
   assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK);
   nat_upnp_close(&ctx);

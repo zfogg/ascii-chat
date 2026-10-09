@@ -88,6 +88,12 @@ void nat_upnp_close(nat_upnp_context_t **ctx);
  */
 bool nat_upnp_is_active(const nat_upnp_context_t *ctx);
 
+/** @brief Whether the mapping targets a specific IPv4 bind address, or any wildcard listener. */
+bool nat_upnp_matches_bind_address(const nat_upnp_context_t *ctx, const char *bind_address);
+
+/** @brief Copy the unexpired mapped IP and external port for discovery advertisement. */
+asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip, size_t ip_len, uint16_t *port);
+
 /**
  * @brief Refresh port mapping (e.g., for long-running servers)
  *
