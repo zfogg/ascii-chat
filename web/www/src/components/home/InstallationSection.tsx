@@ -76,10 +76,6 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 />
                 <p className="text-sm text-gray-400 mt-2">
                   Installs into ~/.local for your user, or /usr/local with sudo.
-                  If needed, a Y/n prompt offers to add it to your Bash and Zsh
-                  profiles. Press Enter to accept. If PATH changes, reload your
-                  shell with <code>exec $SHELL</code> or open a new terminal.
-                  Existing PATH entries are left alone.
                 </p>
               </div>
               <div>
