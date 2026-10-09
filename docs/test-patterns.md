@@ -14,7 +14,7 @@ The browser maps `?test` to pattern zero and `?test2` to pattern one. `?test2&te
 
 ## Implementation
 
-`lib/video/anim/test_pattern.c` owns the RGB animations, bundled-font labels, and optional reusable RGBA output. Each media source/canvas has an independent renderer, cached labels, and reusable image buffers. Its public API takes elapsed milliseconds, making animation speed independent of capture FPS and allowing deterministic comparisons. Native sources use a monotonic clock. Geometry adapts below the former Canvas minimum shape sizes so the minimum 20x10 terminal can still show the shapes and colors.
+`lib/video/anim/test_pattern.c` owns the RGB animations, a high-contrast pixel-lettered `test` label, and optional reusable RGBA output. Each media source/canvas has an independent renderer and reusable image buffers. Its public API takes elapsed milliseconds, making animation speed independent of capture FPS and allowing deterministic comparisons. Native sources use a monotonic clock. Geometry adapts below the former Canvas minimum shape sizes so the minimum 20x10 terminal can still show the shapes and colors.
 
 `src/web/common/test_pattern.c` exposes this same implementation to both WASM modules. TypeScript only copies/uploads the generated RGBA frame and manages source lifetime. The mirror consumes the returned frame without reading the canvas back.
 
@@ -27,7 +27,7 @@ The C/WASM output was compared against the former Canvas implementation before r
 ![Canvas reference and C/WASM gradient](test-pattern-evidence/pattern-0-paired.png)
 ![Canvas reference and C/WASM stripes](test-pattern-evidence/pattern-1-paired.png)
 
-Labels now use bundled DejaVu Sans Mono instead of the previous OS-dependent sans-serif font. The comparisons used the same bundled font on both sides.
+These earlier comparisons used bundled DejaVu Sans Mono labels. The current renderer instead draws a larger lowercase `test` in integer-sized pixel strokes on a black backing, near the top. This keeps the word readable after ASCII conversion; labels are omitted when the source is too small to fit them. Both native and browser sources use the same label.
 
 Both visible patterns sustained approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Application screenshots show the warmed-up counter: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
 

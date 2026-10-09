@@ -2,18 +2,12 @@
 #include "backends.h"
 #include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/font.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
 #include <math.h>
 #include <string.h>
 
 struct test_pattern {
   image_t *image;
   uint8_t *rgba;
-  FT_Library library;
-  FT_Face face;
-  uint8_t *label[2];
 };
 
 static uint8_t channel(double value) {
@@ -67,61 +61,51 @@ asciichat_error_t test_pattern_resize(test_pattern_t *p, int width, int height) 
   image_t *next = image_new(width, height);
   if (!next)
     return SET_ERRNO(ERROR_MEMORY, "Test pattern image allocation failed");
-  uint8_t *labels[2] = {NULL, NULL};
-  // Use the bundled face on every platform, independent of installed system fonts.
-  double size = fmax(18, fmin(width, height) / 10.0);
-  size = fmin(size, fmin(width / 10.0, height / 2.0));
-  if (FT_Set_Char_Size(p->face, 0, (FT_F26Dot6)lround(fmax(1, size) * 64), 72, 72))
-    goto font_error;
-  for (int index = 0; index < 2; index++) {
-    labels[index] = SAFE_CALLOC((size_t)width * height, 1, uint8_t *);
-    const char *text = index ? "ascii-chat test2" : "ascii-chat test";
-    int pen = (width >= 240 ? 24 : width / 20) * 64;
-    int baseline = (int)fmin(fmax(36, height / 8.0), height - 1);
-    for (const char *ch = text; *ch; ch++) {
-      FT_Vector delta = {pen % 64, 0};
-      FT_Set_Transform(p->face, NULL, &delta);
-      if (FT_Load_Char(p->face, (unsigned char)*ch, FT_LOAD_RENDER | FT_LOAD_NO_HINTING))
-        goto font_error;
-      FT_GlyphSlot glyph = p->face->glyph;
-      for (unsigned int y = 0; y < glyph->bitmap.rows; y++) {
-        int py = baseline - glyph->bitmap_top + (int)y;
-        if (py < 0 || py >= height)
-          continue;
-        for (unsigned int x = 0; x < glyph->bitmap.width; x++) {
-          int px = pen / 64 + glyph->bitmap_left + (int)x;
-          if (px >= 0 && px < width)
-            labels[index][(size_t)py * width + px] = glyph->bitmap.buffer[y * glyph->bitmap.pitch + x];
-        }
-      }
-      pen += (int)glyph->advance.x;
-    }
-  }
   if (p->image)
     image_destroy(p->image);
   p->image = next;
   SAFE_FREE(p->rgba);
-  for (int index = 0; index < 2; index++) {
-    SAFE_FREE(p->label[index]);
-    p->label[index] = labels[index];
-  }
   return ASCIICHAT_OK;
-font_error:
-  image_destroy(next);
-  SAFE_FREE(labels[0]);
-  SAFE_FREE(labels[1]);
-  return SET_ERRNO(ERROR_INVALID_STATE, "Could not rasterize test pattern label");
 }
+
+// Integer-sized strokes remain legible after ASCII sampling. A fixed black
+// backing prevents the moving source from changing the letters' contrast.
+static void render_test_label(image_t *image) {
+  static const uint8_t glyphs[4][7] = {
+      {4, 4, 31, 4, 4, 5, 2},     // t
+      {0, 0, 14, 17, 31, 16, 15}, // e
+      {0, 0, 15, 16, 14, 1, 30},  // s
+      {4, 4, 31, 4, 4, 5, 2},     // t
+  };
+  int scale = image->w / 31;
+  if (scale > image->h / 22)
+    scale = image->h / 22;
+  // Below this size a four-letter raster label cannot be read reliably.
+  if (scale < 1)
+    return;
+  int left = scale, top = scale;
+  for (int y = top; y < top + 9 * scale; ++y)
+    for (int x = left; x < left + 25 * scale; ++x)
+      image->pixels[(size_t)y * image->w + x] = (rgb_pixel_t){0, 0, 0};
+  for (int letter = 0; letter < 4; ++letter)
+    for (int row = 0; row < 7; ++row)
+      for (int col = 0; col < 5; ++col) {
+        if (!(glyphs[letter][row] & (1u << (4 - col))))
+          continue;
+        for (int dy = 0; dy < scale; ++dy)
+          for (int dx = 0; dx < scale; ++dx) {
+            int x = left + (1 + letter * 6 + col) * scale + dx;
+            int y = top + (1 + row) * scale + dy;
+            image->pixels[(size_t)y * image->w + x] = (rgb_pixel_t){255, 255, 255};
+          }
+      }
+}
+
 asciichat_error_t test_pattern_create(int width, int height, test_pattern_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing test pattern output");
   *out = NULL;
   test_pattern_t *p = SAFE_CALLOC(1, sizeof(*p), test_pattern_t *);
-  if (FT_Init_FreeType(&p->library) ||
-      FT_New_Memory_Face(p->library, g_font_default, (FT_Long)g_font_default_size, 0, &p->face)) {
-    test_pattern_destroy(p);
-    return SET_ERRNO(ERROR_INVALID_STATE, "Could not initialize test pattern font");
-  }
   asciichat_error_t result = test_pattern_resize(p, width, height);
   if (result != ASCIICHAT_OK) {
     test_pattern_destroy(p);
@@ -136,12 +120,6 @@ void test_pattern_destroy(test_pattern_t *p) {
   if (p->image)
     image_destroy(p->image);
   SAFE_FREE(p->rgba);
-  SAFE_FREE(p->label[0]);
-  SAFE_FREE(p->label[1]);
-  if (p->face)
-    FT_Done_Face(p->face);
-  if (p->library)
-    FT_Done_FreeType(p->library);
   SAFE_FREE(p);
 }
 image_t *test_pattern_image(test_pattern_t *p) {
@@ -257,12 +235,6 @@ asciichat_error_t test_pattern_render_at(test_pattern_t *p, int index, double ti
       for (int x = left; x < right; x++)
         blend(&pixels[(size_t)y * w + x], white, 0.8 * overlap(x, bx, bx + box) * overlap(y, by, by + box));
   }
-  int label_bottom = (int)fmin(fmax(36, h / 8.0) + 2, h);
-  for (int y = 0; y < label_bottom; y++)
-    for (int x = 0; x < w; x++) {
-      size_t pos = (size_t)y * w + x;
-      if (p->label[index][pos])
-        blend(&pixels[pos], dark, p->label[index][pos] / 255.0);
-    }
+  render_test_label(p->image);
   return ASCIICHAT_OK;
 }
