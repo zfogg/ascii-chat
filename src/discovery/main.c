@@ -41,6 +41,7 @@
 #include "session/keyboard_handler.h"
 #include "session/client_like.h"
 #include "session/participant.h"
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/parsing.h>
@@ -274,21 +275,27 @@ static void on_session_ready(const char *session_string, void *user_data) {
   (void)user_data; // Unused
 
   if (session_string && session_string[0]) {
-    log_info("Session ready! Share this with your peer: %s", session_string);
+    const char *requested = GET_OPTION(session_string);
+    splash_set_discovery_session(session_string, requested && requested[0]);
+    log_info("Share this string to connect: %s", session_string);
+    log_info("Run: ascii-chat %s", session_string);
   }
 }
 
-/**
- * @brief Handle discovery errors
- *
- * @param error Error code
- * @param message Error message
- * @param user_data Unused
- */
-static void on_discovery_error(asciichat_error_t error, const char *message, void *user_data) {
-  (void)user_data; // Unused
+typedef struct {
+  mutex_t mutex;
+  char error[512];
+  asciichat_error_t error_code;
+} discovery_ui_state_t;
 
-  log_error("Discovery error (%d): %s", error, message ? message : "Unknown");
+/** Save callback errors for reporting after terminal cleanup. */
+static void on_discovery_error(asciichat_error_t error, const char *message, void *user_data) {
+  discovery_ui_state_t *ui = user_data;
+  mutex_lock(&ui->mutex);
+  SAFE_STRNCPY(ui->error, message ? message : "Unknown discovery error", sizeof(ui->error));
+  ui->error_code = error;
+  mutex_unlock(&ui->mutex);
+  log_error("Discovery error (%d): %s", error, message ? message : "Unknown discovery error");
   signal_exit();
 }
 
@@ -629,6 +636,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     // Don't use capture/display for participant discovery mode
     (void)capture; // Not used
 
+    splash_intro_done();
+    splash_wait_for_animation();
+
     // For participants, destroy the display context to reset terminal state
     // and prevent the discovery framework from rendering anything
     if (display) {
@@ -651,13 +661,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
  * Main Discovery Mode Loop
  * ============================================================================ */
 
-/**
- * @brief Run discovery mode main loop
- *
- * Handles session discovery, host negotiation, and media flow.
- *
- * @return 0 on success, non-zero error code on failure
- */
+static asciichat_error_t discovery_prepare(void *user_data) {
+  (void)user_data;
+  return discovery_session_start(g_discovery);
+}
+
+/** Run discovery mode using the shared splash, media, and terminal lifecycle. */
 int discovery_main(void) {
   log_debug("discovery_main() starting");
 
@@ -683,6 +692,11 @@ int discovery_main(void) {
     }
   }
 
+  discovery_ui_state_t ui = {0};
+  asciichat_error_t ui_result = mutex_init(&ui.mutex, "discovery_ui");
+  if (ui_result != ASCIICHAT_OK)
+    return ui_result;
+
   // Create discovery session configuration
   discovery_config_t discovery_config = {
       .acds_address = GET_OPTION(discovery_server),
@@ -694,7 +708,7 @@ int discovery_main(void) {
       .on_state_change = on_discovery_state_change,
       .on_session_ready = on_session_ready,
       .on_error = on_discovery_error,
-      .callback_user_data = NULL,
+      .callback_user_data = &ui,
       .should_exit_callback = discovery_capture_should_exit_adapter,
       .exit_callback_data = NULL,
   };
@@ -702,19 +716,12 @@ int discovery_main(void) {
   // Create discovery session (stored in global for discovery_run() to access)
   g_discovery = discovery_session_create(&discovery_config);
   if (!g_discovery) {
+    mutex_destroy(&ui.mutex);
     log_fatal("Failed to create discovery session");
     return ERROR_MEMORY;
   }
 
-  // Start discovery session (connects to ACDS, creates/joins, initiates NAT negotiation)
-  log_debug("Discovery: starting discovery session");
-  asciichat_error_t result = discovery_session_start(g_discovery);
-  if (result != ASCIICHAT_OK) {
-    log_fatal("Failed to start discovery session: %d", result);
-    discovery_session_destroy(g_discovery);
-    g_discovery = NULL;
-    return result;
-  }
+  splash_set_discovery_session(session_string, !is_initiator);
 
   // No network interrupt callback needed - discovery session handles its own shutdown
   set_interrupt_callback(NULL);
@@ -739,6 +746,7 @@ int discovery_main(void) {
 
   session_client_like_config_t config = {
       .run_fn = discovery_run,
+      .prepare_fn = discovery_prepare,
       .run_user_data = NULL,
       .kind = SESSION_CLIENT_LIKE_KIND_DISCOVERY,
       .discovery = (void *)g_discovery, // Opaque pointer to discovery session
@@ -765,5 +773,13 @@ int discovery_main(void) {
     g_discovery = NULL;
   }
 
+  splash_clear_discovery_session();
+  if (session_result != ASCIICHAT_OK || ui.error[0]) {
+    log_set_terminal_output(true);
+    log_error("Discovery failed: %s", ui.error[0] ? ui.error : asciichat_error_string(session_result));
+    if (session_result == ASCIICHAT_OK)
+      session_result = ui.error_code;
+  }
+  mutex_destroy(&ui.mutex);
   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
 }

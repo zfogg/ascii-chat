@@ -43,6 +43,7 @@ typedef struct {
   int fixed_header_lines;                  ///< How many lines the header takes (e.g., 4 for status, 8 for splash)
   terminal_screen_header_fn render_header; ///< Callback to draw header content
   void *user_data;                         ///< Passed to render_header callback
+  bool hide_cursor;                        ///< Hide cursor while this screen owns the terminal
   bool show_logs;                          ///< Whether to show log feed below header
 } terminal_screen_config_t;
 

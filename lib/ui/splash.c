@@ -15,6 +15,8 @@
  */
 
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/invitation.h>
+#include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/search.h>
@@ -50,24 +52,51 @@
 // ASCII Art and Constants
 // ============================================================================
 
-#define ASCII_LOGO_LINES 7
-#define ASCII_LOGO_WIDTH 36
-
 // Global update notification (set via splash_set_update_notification)
 static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
 static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_notification_mutex);
 
-static const rgb_pixel_t g_rainbow_colors[] = {
-    {255, 0, 0},   // Red
-    {255, 165, 0}, // Orange
-    {255, 255, 0}, // Yellow
-    {0, 255, 0},   // Green
-    {0, 255, 255}, // Cyan
-    {0, 0, 255},   // Blue
-    {255, 0, 255}  // Magenta
-};
-#define RAINBOW_COLOR_COUNT 7
+typedef struct {
+  bool enabled;
+  bool joining;
+  char session_string[SESSION_STRING_BUFFER_SIZE];
+} discovery_splash_t;
+
+static discovery_splash_t g_discovery_splash;
+static mutex_t g_discovery_splash_mutex;
+static lifecycle_t g_discovery_splash_lifecycle = LIFECYCLE_INIT_MUTEX(&g_discovery_splash_mutex);
+
+static void discovery_splash_init(void) {
+  if (lifecycle_init_once(&g_discovery_splash_lifecycle)) {
+    mutex_init(&g_discovery_splash_mutex, "discovery_splash");
+    lifecycle_init_commit(&g_discovery_splash_lifecycle);
+  }
+}
+
+void splash_set_discovery_session(const char *session, bool joining) {
+  discovery_splash_init();
+  mutex_lock(&g_discovery_splash_mutex);
+  g_discovery_splash.enabled = true;
+  g_discovery_splash.joining = joining;
+  SAFE_STRNCPY(g_discovery_splash.session_string, session ? session : "", sizeof(g_discovery_splash.session_string));
+  mutex_unlock(&g_discovery_splash_mutex);
+}
+
+void splash_clear_discovery_session(void) {
+  discovery_splash_init();
+  mutex_lock(&g_discovery_splash_mutex);
+  memset(&g_discovery_splash, 0, sizeof(g_discovery_splash));
+  mutex_unlock(&g_discovery_splash_mutex);
+}
+
+static discovery_splash_t discovery_splash_snapshot(void) {
+  discovery_splash_init();
+  mutex_lock(&g_discovery_splash_mutex);
+  discovery_splash_t snapshot = g_discovery_splash;
+  mutex_unlock(&g_discovery_splash_mutex);
+  return snapshot;
+}
 
 // ============================================================================
 // Log Management
@@ -108,57 +137,6 @@ static struct {
                     .intro_done_time_ns = {0}};
 
 // ============================================================================
-// Helper Functions - TTY Detection
-// ============================================================================
-
-// ============================================================================
-// Helper Functions - Rainbow Rendering
-// ============================================================================
-
-/**
- * @brief Interpolate between two RGB colors
- * @param color1 First color
- * @param color2 Second color
- * @param t Interpolation factor (0.0 = color1, 1.0 = color2)
- * @return Interpolated RGB color
- */
-static rgb_pixel_t interpolate_color(rgb_pixel_t color1, rgb_pixel_t color2, double t) {
-  rgb_pixel_t result;
-  result.r = (uint8_t)(color1.r * (1.0 - t) + color2.r * t);
-  result.g = (uint8_t)(color1.g * (1.0 - t) + color2.g * t);
-  result.b = (uint8_t)(color1.b * (1.0 - t) + color2.b * t);
-  return result;
-}
-
-/**
- * @brief Get RGB color for a position in the rainbow
- * @param position Position in the rainbow (0.0 to 1.0 or beyond for cycling)
- * @return RGB color at that position
- */
-static rgb_pixel_t get_rainbow_color_rgb(double position) {
-  // Normalize position to 0-1 range
-  double norm_pos = position - (long)position;
-  if (norm_pos < 0) {
-    norm_pos += 1.0;
-  }
-
-  // Scale position to color range
-  double color_pos = norm_pos * (RAINBOW_COLOR_COUNT - 1);
-  int color_idx = (int)color_pos;
-  double blend = color_pos - color_idx;
-
-  // Wrap around at the end
-  if (color_idx >= RAINBOW_COLOR_COUNT - 1) {
-    color_idx = RAINBOW_COLOR_COUNT - 1;
-    blend = 0;
-  }
-
-  int next_idx = (color_idx + 1) % RAINBOW_COLOR_COUNT;
-
-  return interpolate_color(g_rainbow_colors[color_idx], g_rainbow_colors[next_idx], blend);
-}
-
-// ============================================================================
 // Header Rendering (callback for terminal_screen)
 // ============================================================================
 
@@ -166,6 +144,7 @@ static rgb_pixel_t get_rainbow_color_rgb(double position) {
  * @brief Context data for splash header rendering
  */
 typedef struct {
+  discovery_splash_t discovery;
   int frame;                      // Current animation frame number
   bool use_colors;                // Whether to use rainbow colors
   char update_notification[1024]; // Update notification message (empty if no update)
@@ -253,58 +232,15 @@ static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size,
     return;
   }
 
-  // ASCII logo lines (same as help output)
-  const char *ascii_logo[4] = {
-      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
-      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
-  const char *tagline = "Video chat in your terminal";
-  const int logo_width = 52;
-
-  // Line 1: Top border
-  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
-
-  // Lines 2-5: ASCII logo (centered, truncated if too long)
-  for (int logo_line = 0; logo_line < 4; logo_line++) {
-    // Build plain text line first (for width calculation)
-    char plain_line[512];
-    int horiz_pad = (term_size.cols - logo_width) / 2;
-    if (horiz_pad < 0) {
-      horiz_pad = 0;
-    }
-
-    int pos = 0;
-    for (int j = 0; j < horiz_pad && pos < (int)sizeof(plain_line) - 1; j++) {
-      plain_line[pos++] = ' ';
-    }
-    snprintf(plain_line + pos, sizeof(plain_line) - pos, "%s", ascii_logo[logo_line]);
-
-    // Check visible width and truncate if needed
-    int visible_width = display_width(plain_line);
-    if (visible_width < 0) {
-      visible_width = (int)strlen(plain_line);
-    }
-    if (term_size.cols > 0 && visible_width >= term_size.cols) {
-      plain_line[term_size.cols - 1] = '\0';
-    }
-
-    // Print with rainbow colors
-    int char_idx = 0;
-    for (int i = 0; plain_line[i] != '\0'; i++) {
-      char ch = plain_line[i];
-      if (ch == ' ') {
-        frame_buffer_printf(buf, " ");
-      } else if (ctx->use_colors) {
-        double char_pos = (char_idx + ctx->frame / 5.0) / 30.0;
-        rgb_pixel_t color = get_rainbow_color_rgb(char_pos);
-        frame_buffer_printf(buf, "\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
-        char_idx++;
-      } else {
-        frame_buffer_printf(buf, "%c", ch);
-        char_idx++;
-      }
-    }
-    frame_buffer_printf(buf, "\n");
+  if (ctx->discovery.enabled) {
+    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining, ctx->frame,
+                      ctx->use_colors);
+    return;
   }
+
+  const char *tagline = "Video chat in your terminal";
+  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
+  invitation_render_logo(buf, term_size.cols - 1, ctx->frame, ctx->use_colors, false);
 
   // Line 6: Tagline (centered, truncated if too long)
   char plain_tagline[512];
@@ -431,7 +367,7 @@ static void *splash_animation_thread(void *arg) {
 
   // Keyboard is pre-initialized from asciichat_shared_init()
   // Only enable if terminal is interactive (keyboard won't work in non-TTY)
-  bool keyboard_enabled = terminal_is_interactive();
+  bool keyboard_enabled = terminal_is_interactive() && !discovery_splash_snapshot().enabled;
 
   // Animate with rainbow wave effect - TIME-BASED, not frame-based
   // This ensures animation speed is consistent regardless of FPS
@@ -507,6 +443,7 @@ static void *splash_animation_thread(void *arg) {
 
     // Set up splash header context for this frame (using TIME-BASED frame value)
     splash_header_ctx_t header_ctx = {
+        .discovery = discovery_splash_snapshot(),
         .frame = frame,
         .use_colors = use_colors,
     };
@@ -550,7 +487,8 @@ static void *splash_animation_thread(void *arg) {
         .fixed_header_lines = header_lines,
         .render_header = render_splash_header,
         .user_data = &header_ctx,
-        .show_logs = true, // Show live log feed below splash
+        .show_logs = !header_ctx.discovery.enabled,
+        .hide_cursor = header_ctx.discovery.enabled,
     };
 
     // Render the screen (header + logs) only in interactive mode
@@ -644,10 +582,17 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
+  discovery_splash_t discovery = discovery_splash_snapshot();
+  if (discovery.enabled && (!terminal_is_interactive() || !terminal_is_stdout_tty() || GET_OPTION(snapshot_mode))) {
+    return 0;
+  }
+  if (atomic_load_bool(&g_splash_state.thread_created))
+    return 0;
+
   // Check terminal size
   int width = (int)terminal_get_effective_width();
   int height = (int)terminal_get_effective_height();
-  if (width < 50 || height < 20) {
+  if (discovery.enabled ? (width < 2 || height < 2) : (width < 50 || height < 20)) {
     return 0;
   }
 
@@ -663,7 +608,10 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Clear screen and show cursor
   terminal_clear_screen();
-  (void)terminal_cursor_show();
+  if (discovery.enabled)
+    (void)terminal_cursor_hide();
+  else
+    (void)terminal_cursor_show();
 
   // Clear log buffer for clean slate
   splash_log_clear();
@@ -671,6 +619,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   // Set running flag
   atomic_store_bool(&g_splash_state.is_running, true);
   atomic_store_bool(&g_splash_state.should_stop, false);
+  atomic_store_u64(&g_splash_state.intro_done_time_ns, 0);
   g_splash_state.frame = 0;
   g_splash_state.start_time_ns = time_get_ns();
 
@@ -684,6 +633,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread: error=%d", err);
     atomic_store_bool(&g_splash_state.thread_created, false);
+    atomic_store_bool(&g_splash_state.is_running, false);
     return 0;
   }
 
@@ -695,6 +645,8 @@ int splash_intro_done(void) {
   // Animation thread needs time to check the flag and perform cleanup, so this must happen
   // BEFORE we try to access the terminal for frame rendering
   atomic_store_u64(&g_splash_state.intro_done_time_ns, time_get_ns());
+  if (discovery_splash_snapshot().enabled)
+    atomic_store_bool(&g_splash_state.should_stop, true);
 
   // NOTE: Do NOT modify thread_created flag here!
   // splash_wait_for_animation() needs to see thread_created==true to know whether to join the thread.
@@ -732,40 +684,20 @@ void splash_wait_for_animation(void) {
   // Wait for animation thread to fully exit before rendering ASCII art
   // This prevents the splash and ASCII art from appearing simultaneously
   //
-  // The animation thread will exit gracefully when:
-  // - Intro done signal received AND 2 seconds have elapsed, OR
-  // - 30 seconds have elapsed (safety timeout)
-  // - OR a shutdown signal is received
-  //
-  // We block here indefinitely to ensure the splash animation completes before ASCII art starts
+  // Discovery stops immediately on handoff; other intros retain their minimum
+  // display time. Shutdown always asks the animation to stop before joining.
 
   // Only join if we successfully created the thread
   if (atomic_load_bool(&g_splash_state.thread_created)) {
     log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
 
-    // Check if shutdown was requested - handle it specially
-    bool is_shutting_down = shutdown_is_requested();
-    if (is_shutting_down) {
-      log_dev("[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop");
+    if (shutdown_is_requested())
       atomic_store_bool(&g_splash_state.should_stop, true);
-      // During shutdown, use a short timeout (100ms)
-      uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
-      (void)asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ns);
-    } else {
-      // Normal operation: wait indefinitely for the animation thread to finish
-      // This ensures splash animation is 100% done before ASCII art rendering starts
-      asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
-      if (err == ASCIICHAT_OK) {
-        log_dev("[SPLASH_WAIT] Animation thread exited cleanly");
-      } else {
-        log_warn("[SPLASH_WAIT] Animation thread join failed: %s", asciichat_error_string(err));
-        // Force stop the animation thread if join failed
-        atomic_store_bool(&g_splash_state.should_stop, true);
-        // Clear any partial splash output left on screen
-        terminal_clear_screen();
-        terminal_cursor_home(STDOUT_FILENO);
-        terminal_flush(STDOUT_FILENO);
-      }
+    // Never release terminal ownership while the animation can still write.
+    asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+    if (err != ASCIICHAT_OK) {
+      log_warn("Splash animation join failed: %s", asciichat_error_string(err));
+      return;
     }
 
     // Mark that we've joined (safe to call multiple times - only joins once)

@@ -16,6 +16,7 @@
 
 #include "session/host.h"
 #include "session/display.h"
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -741,7 +742,8 @@ static void *receive_loop_thread(void *arg) {
       if (transport_buffer) {
         buffer_pool_free(NULL, transport_buffer, transport_buffer_len);
       } else if (data) {
-        SAFE_FREE(data);
+        // packet_receive returns a pooled payload, just like the transport path.
+        buffer_pool_free(NULL, data, len);
       }
 
       mutex_lock(&host->clients_mutex);
@@ -771,11 +773,34 @@ static void *host_render_thread(void *arg) {
 
   log_info("Host render thread started");
 
+  bool waiting_for_peer = GET_OPTION(detected_mode) == MODE_DISCOVERY && !GET_OPTION(snapshot_mode) &&
+                          GET_OPTION(splash_screen) && terminal_is_interactive() && terminal_is_stdout_tty();
+  bool logging_disabled = false;
+  uint64_t snapshot_first_frame_ns = 0;
   uint64_t last_video_render_ns = 0;
   uint64_t last_audio_render_ns = 0;
 
   while (host->render_thread_running && host->running) {
     uint64_t now_ns = time_get_ns();
+    if (waiting_for_peer) {
+      bool peer_ready = false;
+      mutex_lock(&host->clients_mutex);
+      for (int i = 0; i < host->max_clients; ++i) {
+        session_host_client_t *client = &host->clients[i];
+        // Capabilities establish protocol readiness without requiring camera frames.
+        if (client->active && client->participant_type == PARTICIPANT_TYPE_NETWORK && client->render_width > 0 &&
+            client->render_height > 0) {
+          peer_ready = true;
+          break;
+        }
+      }
+      mutex_unlock(&host->clients_mutex);
+      if (peer_ready) {
+        splash_intro_done();
+        splash_wait_for_animation();
+        waiting_for_peer = false;
+      }
+    }
 
     // VIDEO RENDERING (60 FPS = 16.7ms)
     if (time_elapsed_ns(last_video_render_ns, now_ns) >= NS_PER_MS_INT * 16) {
@@ -903,15 +928,18 @@ static void *host_render_thread(void *arg) {
             }
 
             // Display locally if display context is set
-            if (host->display_context) {
+            if (host->display_context && !waiting_for_peer) {
               // Disable terminal logging on first rendered frame so logs don't
               // interleave with ASCII art output
-              static bool logging_disabled = false;
               if (!logging_disabled) {
                 log_set_terminal_output(false);
                 logging_disabled = true;
               }
               session_display_render_frame(host->display_context, grid_frame);
+              if (GET_OPTION(snapshot_mode) && snapshot_first_frame_ns == 0 &&
+                  session_display_has_first_frame(host->display_context)) {
+                snapshot_first_frame_ns = time_get_ns();
+              }
             }
 
             SAFE_FREE(grid_frame);
@@ -932,6 +960,13 @@ static void *host_render_thread(void *arg) {
       mutex_unlock(&host->clients_mutex);
       log_debug_every(NS_PER_MS_INT, "Video render cycle (%d active)", active_video_count);
       last_video_render_ns = now_ns;
+    }
+
+    // Complete snapshots only after a local frame, outside the client lock.
+    if (snapshot_first_frame_ns > 0 &&
+        (double)(time_get_ns() - snapshot_first_frame_ns) / NS_PER_SEC_INT >= GET_OPTION(snapshot_delay)) {
+      APP_CALLBACK_VOID(signal_exit);
+      break;
     }
 
     // AUDIO RENDERING (100 FPS = 10ms)

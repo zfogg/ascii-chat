@@ -1,0 +1,37 @@
+# Discovery invitation checks
+
+Build with the usual Clang/Ninja preset:
+
+```sh
+cmake --preset default -B build
+cmake --build build --target ascii-chat
+```
+
+The layout tests call the production renderer through the shared library. They
+cover the adjacent session/Run lines, centering, compact terminals, long-string
+wrapping, creating/joining states, animation, and terminal bounds:
+
+```sh
+python tests/ui/test_invitation.py build/bin/asciichat.dll
+```
+
+On Linux/macOS, pass the built `libasciichat.so` or `libasciichat.dylib` instead.
+These tests do not require Criterion.
+
+The Windows integration test uses ConPTY and a local discovery service. Install
+`pywinpty` and `pyte` in a test virtual environment, then run:
+
+```powershell
+python tests/ui/test_discovery_terminal.py build/bin/ascii-chat.exe
+```
+
+It verifies the rendered waiting screen with a local camera test pattern,
+shrinking/growing the terminal, a TCP peer sending capabilities without camera
+frames, a real two-peer WebRTC discovery connection, Ctrl+C, disabled splash,
+piped snapshot output, and connection failure cleanup. The TCP capabilities test
+exercises the host transport directly; it does not test ACDS TCP host negotiation.
+
+The test chooses ephemeral local ports, creates its database under the build
+directory, and cleans up the processes it starts. Terminal transcripts, screen
+text, and logs are saved in `build/invitation-terminal-test/`. The ordinary
+application discovery identity/configuration behavior still applies.

@@ -121,7 +121,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   uint64_t elapsed_ms = (now_ns - g_render_start_time_ns) / 1000000;
 
   // Ensure cursor is visible for log-only UI (splash, status screens)
-  (void)terminal_cursor_show();
+  if (config->hide_cursor) {
+    (void)terminal_cursor_hide();
+  } else {
+    (void)terminal_cursor_show();
+  }
 
   // Update terminal size (cached with 1-second refresh interval)
   // Always check on first call (when still at default 24x80) to get correct dimensions immediately
@@ -158,19 +162,25 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // PRIORITY 2: Options-provided width/height (explicit user settings)
     if (new_size.cols == 0 || new_size.rows == 0) {
       const options_t *opts = options_get();
-      if (opts && opts->width > 0 && opts->height > 0) {
-        new_size.cols = opts->width;
-        new_size.rows = opts->height;
+      if (opts) {
+        if (!opts->auto_width && opts->width > 0)
+          new_size.cols = opts->width;
+        if (!opts->auto_height && opts->height > 0)
+          new_size.rows = opts->height;
       }
     }
 
     // PRIORITY 3: Terminal auto-detection
     if (new_size.cols == 0 || new_size.rows == 0) {
-      if (terminal_get_size(&new_size) != ASCIICHAT_OK) {
-        // If terminal detection fails, use defaults
-        new_size.cols = 80;
-        new_size.rows = 24;
+      terminal_size_t detected = {0};
+      if (terminal_get_size(&detected) != ASCIICHAT_OK) {
+        detected.cols = 80;
+        detected.rows = 24;
       }
+      if (new_size.cols == 0)
+        new_size.cols = detected.cols;
+      if (new_size.rows == 0)
+        new_size.rows = detected.rows;
     }
 
     if (new_size.cols > 0 && new_size.rows > 0) {
