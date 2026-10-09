@@ -33,6 +33,8 @@ interface UseInitAsciiRendererParams {
   wasmModuleReady: boolean | undefined;
   initializeOptions?: boolean;
   matrixMode?: boolean;
+  columns?: number;
+  rows?: number;
 }
 
 export function useInitAsciiRenderer({
@@ -40,6 +42,8 @@ export function useInitAsciiRenderer({
   wasmModuleReady,
   initializeOptions = true,
   matrixMode = false,
+  columns = 0,
+  rows = 0,
 }: UseInitAsciiRendererParams): UseInitAsciiRendererReturn {
   const moduleRef = useRef<MirrorModule | null>(null);
   const setupDoneRef = useRef(false);
@@ -53,6 +57,8 @@ export function useInitAsciiRenderer({
     null,
   );
   const observedContainerSizeRef = useRef({ width: 0, height: 0 });
+  const requestedGridRef = useRef({ columns, rows });
+  requestedGridRef.current = { columns, rows };
   const currentMatrixModeRef = useRef<boolean>(false);
 
   // Rebuild and apply args with current settings from WASM state
@@ -214,14 +220,18 @@ export function useInitAsciiRenderer({
         // BUT: cap container dimensions to prevent cascading resize loops
         const maxContainerHeight = 2000;
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
-        const estimatedCols = Math.max(1, Math.floor(containerWidth / 10));
+        const requested = requestedGridRef.current;
+        const estimatedCols =
+          requested.columns > 0
+            ? Math.min(400, Math.max(1, Math.floor(requested.columns)))
+            : Math.max(1, Math.floor(containerWidth / 10));
 
         // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
         const pixelsPerRow = isMatrixMode ? 32 : 20;
-        const estimatedRows = Math.max(
-          1,
-          Math.floor(effectiveHeight / pixelsPerRow),
-        );
+        const estimatedRows =
+          requested.rows > 0
+            ? Math.min(150, Math.max(1, Math.floor(requested.rows)))
+            : Math.max(1, Math.floor(effectiveHeight / pixelsPerRow));
 
         // Sanity check: ensure grid dimensions are reasonable
         // With capped container height of 2000px:
@@ -229,7 +239,7 @@ export function useInitAsciiRenderer({
         //   - Matrix fonts: 2000px / 32px per row = max 62 rows
         // Cols are typically 80-256 depending on window width
         const maxReasonableCols = 400;
-        const maxReasonableRows = isMatrixMode ? 100 : 150;
+        const maxReasonableRows = 150;
 
         if (
           estimatedCols > maxReasonableCols ||
@@ -416,7 +426,9 @@ export function useInitAsciiRenderer({
         try {
           dims = getRendererDimensions();
           if (dims.pixelWidth <= 0 || dims.pixelHeight <= 0) {
-            throw new Error("replacement renderer has invalid pixel dimensions");
+            throw new Error(
+              "replacement renderer has invalid pixel dimensions",
+            );
           }
         } catch (error) {
           rendererPtrRef.current = oldRendererPtr;
@@ -529,12 +541,7 @@ export function useInitAsciiRenderer({
         }
       }
     },
-    [
-      createConfigStruct,
-      callRendererCreate,
-      getRendererDimensions,
-      reinitializeWithCurrentSettings,
-    ],
+    [createConfigStruct, callRendererCreate, getRendererDimensions],
   );
 
   // Set up ResizeObserver on container
@@ -699,12 +706,12 @@ export function useInitAsciiRenderer({
     }
   }, [handleContainerResize, canvasRef]);
 
-  // Recreate renderer when matrix mode changes
+  // Recreate the grid when its font or requested dimensions change.
   useEffect(() => {
     if (setupDoneRef.current && canvasRef.current) {
       triggerRendererRecreate();
     }
-  }, [matrixMode, triggerRendererRecreate, canvasRef]);
+  }, [matrixMode, columns, rows, triggerRendererRecreate, canvasRef]);
 
   return {
     moduleRef,

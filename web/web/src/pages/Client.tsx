@@ -1,3 +1,4 @@
+import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Extend Window interface for frame metrics
@@ -292,6 +293,7 @@ export function ClientPage({
   // Discovery shares the native server cadence and targets display refresh.
   const [settings, setSettings] =
     useState<BinarySettingsConfig>(DEFAULT_SETTINGS);
+  useAutoGridSize(setSettings);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -1353,6 +1355,8 @@ export function ClientPage({
           rendererRequested ? (
             <AsciiRenderer
               ref={rendererRef}
+              columns={settings.width}
+              rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
               initializeOptions={false}
               {...(discoveryMode ? {} : { onFpsChange: setFps })}

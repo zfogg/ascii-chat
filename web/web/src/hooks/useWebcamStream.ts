@@ -227,8 +227,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (videoTrack) {
         void videoTrack
           .applyConstraints({
-            width: { ideal: settings.width || 1280 },
-            height: { ideal: settings.height || 720 },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
             frameRate: { ideal: settings.targetFps },
           })
           .catch((error) =>
@@ -385,9 +385,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     connectionState,
     isWebcamRunning,
     settings.flipX,
-    settings.height,
     settings.targetFps,
-    settings.width,
     videoRef,
   ]);
 
@@ -436,8 +434,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      const w = settings.width || 1280;
-      const h = settings.height || 720;
+      const w = 1280;
+      const h = 720;
       console.log(`[Client] Requesting webcam stream: ${w}x${h}`);
       console.log(
         `[DEBUG] videoRef.current before getUserMedia:`,
@@ -856,8 +854,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   }, [
     connectionState,
     includeAudio,
-    settings.width,
-    settings.height,
     settings.targetFps,
     videoRef,
     canvasRef,

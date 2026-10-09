@@ -60,6 +60,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       wasmModuleReady,
       initializeOptions = true,
       matrixMode = false,
+      columns = 0,
+      rows = 0,
     },
     ref,
   ) {
@@ -83,6 +85,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       wasmModuleReady,
       initializeOptions,
       matrixMode,
+      columns,
+      rows,
     });
 
     // Set up imperative handle and get updateDimensions + fpsDisplayRef
@@ -113,7 +117,10 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
           }
         `}
         </style>
-        <canvas ref={canvasRef} className="ascii-canvas" />
+        <canvas
+          ref={canvasRef}
+          className="ascii-canvas max-w-full max-h-full shrink-0 object-contain"
+        />
         {/* Connection status overlay - shows when connecting or in handshake */}
         {(connectionState === 1 || connectionState === 2) && (
           <div className="absolute inset-0 flex items-end justify-center pb-8 pointer-events-none">

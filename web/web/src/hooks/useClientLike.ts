@@ -1,3 +1,4 @@
+import { useAutoGridSize } from "./useAutoGridSize";
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import type { BinarySettingsConfig, AsciiRendererHandle } from "../components";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
@@ -102,6 +103,7 @@ export function useClientLike(
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] =
     useState<BinarySettingsConfig>(getDefaultSettings());
+  useAutoGridSize(setSettings);
 
   // Debug refs
   const debugCountRef = useRef(0);

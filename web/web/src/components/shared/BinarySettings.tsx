@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Heading } from "@ascii-chat/shared/components";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
@@ -54,6 +55,7 @@ export function BinarySettings({
   disabled = false,
   mode,
 }: BinarySettingsProps) {
+  const dimensionsId = useId();
   const audioVisualizationSelected =
     config.animationEnabled &&
     (config.animation === "waveform" || config.animation === "fft");
@@ -79,16 +81,25 @@ export function BinarySettings({
             }
           >
             <div className="flex-1 min-w-[100px]">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
-                Width
+              <label
+                htmlFor={`${dimensionsId}-width`}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
+                Width (columns; 0 = auto)
               </label>
               <input
+                id={`${dimensionsId}-width`}
                 type="number"
-                min="1"
-                max="2560"
+                min="0"
+                max="400"
                 value={config.width}
                 onChange={(e) =>
-                  updateConfig({ width: parseInt(e.target.value) || 0 })
+                  updateConfig({
+                    width: Math.min(
+                      400,
+                      Math.max(0, parseInt(e.target.value) || 0),
+                    ),
+                  })
                 }
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
@@ -102,16 +113,25 @@ export function BinarySettings({
             }
           >
             <div className="flex-1 min-w-[100px]">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
-                Height
+              <label
+                htmlFor={`${dimensionsId}-height`}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
+                Height (rows; 0 = auto)
               </label>
               <input
+                id={`${dimensionsId}-height`}
                 type="number"
-                min="1"
-                max="2560"
+                min="0"
+                max="150"
                 value={config.height}
                 onChange={(e) =>
-                  updateConfig({ height: parseInt(e.target.value) || 0 })
+                  updateConfig({
+                    height: Math.min(
+                      150,
+                      Math.max(0, parseInt(e.target.value) || 0),
+                    ),
+                  })
                 }
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"

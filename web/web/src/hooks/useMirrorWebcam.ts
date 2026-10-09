@@ -166,8 +166,8 @@ export function useMirrorWebcam({
       const devicePreferences = getMediaDevicePreferences();
       const mediaConstraints: MediaStreamConstraints = {
         video: {
-          width: { ideal: settings.width },
-          height: { ideal: settings.height },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
           facingMode: "user",
           ...(devicePreferences.cameraId
             ? { deviceId: { exact: devicePreferences.cameraId } }
@@ -191,8 +191,8 @@ export function useMirrorWebcam({
         );
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: settings.width },
-            height: { ideal: settings.height },
+            width: { ideal: 640 },
+            height: { ideal: 480 },
             facingMode: "user",
           },
           audio: true,

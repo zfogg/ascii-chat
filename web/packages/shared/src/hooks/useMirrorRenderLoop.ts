@@ -180,8 +180,9 @@ export function useMirrorRenderLoop({
           return;
         }
 
-        // If last conversion took > 100ms, skip this frame to prevent blocking
+        // Yield one frame after a slow conversion, then allow conversion again.
         if (lastConversionTime > 100) {
+          lastConversionTime = 0;
           return;
         }
 
@@ -211,6 +212,7 @@ export function useMirrorRenderLoop({
     };
 
     let frameCount = 0;
+    let reportedFrameError = false;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
         frameCount++;
@@ -233,13 +235,21 @@ export function useMirrorRenderLoop({
           );
           lastFrameTime += intervalsElapsed * interval;
           renderFrame();
+          reportedFrameError = false;
         }
-
+      } catch (error) {
+        if (!reportedFrameError) {
+          console.warn(
+            "[Mirror] Frame rendering failed; retrying next frame",
+            error,
+          );
+          reportedFrameError = true;
+        }
+      } finally {
+        // A transient capture/conversion failure must not cancel the RAF chain.
         if (isActive) {
           currentRafHandle = requestAnimationFrame(animationFrameRef);
         }
-      } catch {
-        // Silent error catch - don't log in hot loop
       }
     };
 

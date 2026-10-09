@@ -1,8 +1,8 @@
 import type { BinarySettingsConfig } from "../components";
 
 export const DEFAULT_SETTINGS: BinarySettingsConfig = {
-  width: 640,
-  height: 480,
+  width: 0,
+  height: 0,
   targetFps: 60,
   colorMode: "truecolor",
   colorFilter: "none",

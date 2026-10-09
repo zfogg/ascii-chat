@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { MediaSourceType } from "../hooks/useClientLike";
+import { useUrlState } from "../hooks/useUrlState";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getMirrorModule,
   initMirrorWasm,
@@ -28,6 +30,10 @@ import { useTestPattern } from "@ascii-chat/shared/hooks";
 
 export function MirrorPage() {
   const testPattern = useTestPattern();
+  const [playing, setPlaying] = useUrlState("playing", false);
+  const resumePending = useRef(playing);
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
@@ -167,11 +173,45 @@ export function MirrorPage() {
     terminalDimensions,
   });
 
+  useEffect(() => {
+    if (
+      !resumePending.current ||
+      isWebcamRunning ||
+      !wasmInitialized ||
+      terminalDimensions.cols <= 0 ||
+      terminalDimensions.rows <= 0
+    )
+      return;
+    resumePending.current = false;
+    // Synthetic test input already has its own startup path.
+    if (!testPattern.enabled) void startWebcam();
+  }, [
+    wasmInitialized,
+    terminalDimensions,
+    startWebcam,
+    testPattern.enabled,
+    isWebcamRunning,
+  ]);
+
+  useEffect(() => {
+    if (isWebcamRunning && mediaSource === MediaSourceType.WEBCAM)
+      setPlaying(true);
+  }, [isWebcamRunning, mediaSource, setPlaying]);
+
+  const stopPlayback = useCallback(() => {
+    resumePending.current = false;
+    setPlaying(false);
+    stopWebcam();
+  }, [setPlaying, stopWebcam]);
+
   const handleVideoFileSelect = useCallback(
     (file: File) => {
+      // A browser File cannot be reopened from a URL after refresh.
+      resumePending.current = false;
+      setPlaying(false);
       void startVideoFile(file);
     },
-    [startVideoFile],
+    [startVideoFile, setPlaying],
   );
 
   // Sync terminal dimensions to WASM module when they change
@@ -203,6 +243,9 @@ export function MirrorPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Fast Refresh preserves refs but stops the stream through this cleanup.
+      // Re-arm the saved intent so the replacement effects can resume playback.
+      resumePending.current = playingRef.current;
       stopWebcam();
     };
   }, [stopWebcam]);
@@ -237,7 +280,7 @@ export function MirrorPage() {
               isWebcamRunning,
               mediaSource,
               onStartWebcam: startWebcam,
-              onStopWebcam: stopWebcam,
+              onStopWebcam: stopPlayback,
               onUploadClick: () => setShowUploadModal(true),
               videoRef,
               onSettingsClick: () => setShowSettings(!showSettings),
@@ -251,6 +294,8 @@ export function MirrorPage() {
           return (
             <AsciiRenderer
               ref={rendererRef}
+              columns={settings.width}
+              rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
               onFpsChange={setFps}
               error={error}
