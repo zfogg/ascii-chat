@@ -35,3 +35,14 @@ The test chooses ephemeral local ports, creates its database under the build
 directory, and cleans up the processes it starts. Terminal transcripts, screen
 text, and logs are saved in `build/invitation-terminal-test/`. The ordinary
 application discovery identity/configuration behavior still applies.
+
+Splash lifecycle regressions can also be checked against the shared library:
+
+```powershell
+python tests/ui/test_splash_lifecycle.py build/bin/asciichat.dll
+```
+
+This checks that a zero-delay snapshot skips the minimum splash duration and
+that shutdown interrupts a handoff waiting on a full output pipe. Each case
+runs in an isolated subprocess with a timeout. These checks have been verified
+on Windows.

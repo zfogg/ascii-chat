@@ -275,8 +275,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   splash_restore_stderr();
 
   // Discovery keeps the invitation as the only waiting UI.
+  update_banner_wait_for_check();
   if (GET_OPTION(detected_mode) != MODE_DISCOVERY) {
-    update_banner_wait_for_check();
     if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
       bool wants_update = update_banner_show_prompt(display);
       if (wants_update) {
@@ -783,6 +783,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
 cleanup:
+  // Preparation can fail before the normal update check wait above.
+  update_banner_wait_for_check();
   // Stop the terminal writer before restoring output or destroying the display.
   splash_intro_done();
   splash_wait_for_animation();

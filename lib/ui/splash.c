@@ -569,8 +569,8 @@ static void *splash_animation_thread(void *arg) {
   // for the render loop. The splash thread is allowed to READ keyboard input,
   // but should not destroy it. It will be destroyed by the render loop cleanup.
 
-  atomic_store_bool(&g_splash_state.is_running, false);
   log_dev("[SPLASH_ANIM] Animation thread exiting");
+  atomic_store_bool(&g_splash_state.is_running, false);
   return NULL;
 }
 
@@ -645,7 +645,7 @@ int splash_intro_done(void) {
   // Animation thread needs time to check the flag and perform cleanup, so this must happen
   // BEFORE we try to access the terminal for frame rendering
   atomic_store_u64(&g_splash_state.intro_done_time_ns, time_get_ns());
-  if (discovery_splash_snapshot().enabled)
+  if (discovery_splash_snapshot().enabled || (GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0))
     atomic_store_bool(&g_splash_state.should_stop, true);
 
   // NOTE: Do NOT modify thread_created flag here!
@@ -681,28 +681,33 @@ bool splash_is_running(void) {
 }
 
 void splash_wait_for_animation(void) {
-  // Wait for animation thread to fully exit before rendering ASCII art
-  // This prevents the splash and ASCII art from appearing simultaneously
-  //
-  // Discovery stops immediately on handoff; other intros retain their minimum
-  // display time. Shutdown always asks the animation to stop before joining.
+  if (!atomic_load_bool(&g_splash_state.thread_created))
+    return;
 
-  // Only join if we successfully created the thread
-  if (atomic_load_bool(&g_splash_state.thread_created)) {
-    log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
-
-    if (shutdown_is_requested())
+  // Keep terminal ownership until the writer finishes, but allow shutdown to
+  // proceed if an undrained output pipe blocks the animation thread. Polling
+  // also handles shutdown requested after the normal handoff has begun, and
+  // avoids platforms whose timed thread join falls back to a blocking join.
+  uint64_t shutdown_started_ns = 0;
+  while (atomic_load_bool(&g_splash_state.is_running)) {
+    if (shutdown_is_requested()) {
       atomic_store_bool(&g_splash_state.should_stop, true);
-    // Never release terminal ownership while the animation can still write.
-    asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
-    if (err != ASCIICHAT_OK) {
-      log_warn("Splash animation join failed: %s", asciichat_error_string(err));
-      return;
+      uint64_t now = time_get_ns();
+      if (shutdown_started_ns == 0)
+        shutdown_started_ns = now;
+      if (now - shutdown_started_ns >= 100 * NS_PER_MS_INT)
+        return;
     }
-
-    // Mark that we've joined (safe to call multiple times - only joins once)
-    atomic_store_bool(&g_splash_state.thread_created, false);
+    platform_sleep_ms(10);
   }
+
+  // The animation clears is_running after its final output operation.
+  asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+  if (err != ASCIICHAT_OK) {
+    log_warn("Splash animation join failed: %s", asciichat_error_string(err));
+    return;
+  }
+  atomic_store_bool(&g_splash_state.thread_created, false);
 }
 
 void splash_set_update_notification(const char *notification) {

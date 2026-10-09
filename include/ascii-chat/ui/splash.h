@@ -122,7 +122,8 @@ int splash_intro_done(void);
  * to prevent the splash and ASCII art from appearing simultaneously.
  *
  * @note Safe to call multiple times
- * @note Blocks on the animation thread join
+ * @note On shutdown, waits at most 100ms for a blocked writer before returning.
+ *       Normal frame handoff always waits for the writer to finish.
  * @note MUST be called before first display_render_frame() call
  *
  * @ingroup session
