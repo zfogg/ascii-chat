@@ -1750,3 +1750,26 @@ Test(config, invalid_port_skipped) {
   SAFE_FREE(config_path);
   restore_config_options(&backup);
 }
+
+Test(config, test_pattern_boolean_and_integer_values) {
+  config_options_backup_t original;
+  save_config_options(&original);
+  const char *values[] = {"true", "false", "0", "1"};
+  for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+    for (int enabled = 0; enabled <= 1; enabled++) {
+      options_t opts = original;
+      opts.test_pattern = enabled != 0;
+      opts.test_pattern_index = 0;
+      char content[128];
+      safe_snprintf(content, sizeof(content), "[webcam]\ntest_pattern = %s\n", values[i]);
+      char *config_path = create_temp_config(content);
+      cr_assert_not_null(config_path);
+      cr_assert_eq(config_load_and_apply(MODE_MIRROR, config_path, false, &opts), ASCIICHAT_OK);
+      cr_assert_eq(opts.test_pattern, i != 1, "value=%s initial=%d", values[i], enabled);
+      cr_assert_eq(opts.test_pattern_index, i == 3 ? 1 : 0);
+      unlink(config_path);
+      SAFE_FREE(config_path);
+    }
+  }
+  restore_config_options(&original);
+}

@@ -832,6 +832,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
         // Convert integer to string (e.g., port = 8080)
         SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
         has_value = true;
+      } else if (datum.type == TOML_BOOLEAN && meta->field_offset == offsetof(options_t, test_pattern)) {
+        SAFE_STRNCPY(value_str, datum.u.boolean ? "true" : "false", BUFFER_SIZE_MEDIUM);
+        has_value = true;
       }
     } else if (g_type_handlers[meta->type].extract) {
       g_type_handlers[meta->type].extract(datum, value_str, &int_val, &bool_val, &double_val, &has_value);

@@ -31,7 +31,7 @@ Labels now use bundled DejaVu Sans Mono instead of the previous OS-dependent san
 
 Both visible patterns sustained approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Application screenshots show the warmed-up counter: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
 
-Native source images: [pattern zero](test-pattern-evidence/native-pattern-0.png), [pattern one](test-pattern-evidence/native-pattern-1.png). Native CLI and shared-library checks cover selectors/defaults, 30 snapshots, legacy config/environment inputs, palette mapping, independent sources, resize, and invalid input. [Recorded results](test-pattern-evidence/native-results.json).
+Native source images: [pattern zero](test-pattern-evidence/native-pattern-0.png), [pattern one](test-pattern-evidence/native-pattern-1.png). Native CLI and shared-library checks cover selectors/defaults, 30 snapshots, legacy environment inputs, palette mapping, independent sources, resize, and invalid input. The config loader was separately verified with `true`, `false`, `0`, and `1` from both initial enable states (eight cases); the native unit regression calls the loader directly. The previous CLI check only checked exit status and did not establish that the requested config file was loaded. [Recorded results](test-pattern-evidence/native-results.json).
 
 ## Native verification
 

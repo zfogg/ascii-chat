@@ -46,7 +46,9 @@ def library_checks(path, output):
     lib.test_pattern_image.argtypes = [c.c_void_p]; lib.test_pattern_image.restype = c.POINTER(Image)
     lib.test_pattern_destroy.argtypes = [c.c_void_p]
     a,b=c.c_void_p(),c.c_void_p()
+    lib.asciichat_clear_errno()
     assert lib.test_pattern_create(640,480,c.byref(a)) == 0
+    assert lib.asciichat_get_errno() == 0, "successful creation left an error"
     assert lib.test_pattern_create(640,480,c.byref(b)) == 0
     try:
         for index in [0,1]:
@@ -108,13 +110,7 @@ def cli_checks(binary):
     for extra in [{"WEBCAM_DISABLED":"1"},{"WEBCAM_DISABLED":"true"}]:
         assert run(["mirror",*common,"--width","80","--height","24"],extra).returncode == 0
     assert run(["mirror","--test-pattern","0",*common],{"WEBCAM_DISABLED":"0"}).returncode == 0
-    with tempfile.TemporaryDirectory() as tmp:
-        config=Path(tmp)/"config.toml"
-        for value in ["true","0","1"]:
-            config.write_text(f"[webcam]\ntest_pattern = {value}\n")
-            r=run(["--config",str(config),"mirror",*common,"--width","80","--height","24"])
-            assert r.returncode == 0, (value,r.stderr[-500:])
-    return {"cli_snapshots":cases,"invalid_selectors":5,"legacy_environment":True,"config":True}
+    return {"cli_snapshots":cases,"invalid_selectors":5,"legacy_environment":True}
 
 
 if __name__ == "__main__":

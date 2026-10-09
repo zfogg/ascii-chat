@@ -95,7 +95,8 @@ asciichat_error_t test_pattern_resize(test_pattern_t *p, int width, int height) 
       pen += (int)glyph->advance.x;
     }
   }
-  image_destroy(p->image);
+  if (p->image)
+    image_destroy(p->image);
   p->image = next;
   SAFE_FREE(p->rgba);
   for (int index = 0; index < 2; index++) {
@@ -130,7 +131,8 @@ asciichat_error_t test_pattern_create(int width, int height, test_pattern_t **ou
 void test_pattern_destroy(test_pattern_t *p) {
   if (!p)
     return;
-  image_destroy(p->image);
+  if (p->image)
+    image_destroy(p->image);
   SAFE_FREE(p->rgba);
   SAFE_FREE(p->label[0]);
   SAFE_FREE(p->label[1]);

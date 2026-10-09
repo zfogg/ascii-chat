@@ -10,7 +10,9 @@ TestSuite(webcam);
 
 Test(webcam, test_pattern_deterministic_and_independent) {
   test_pattern_t *a = NULL, *b = NULL;
+  CLEAR_ERRNO();
   cr_assert_eq(test_pattern_create(320, 240, &a), ASCIICHAT_OK);
+  cr_assert_eq(GET_ERRNO(), ASCIICHAT_OK);
   cr_assert_eq(test_pattern_create(320, 240, &b), ASCIICHAT_OK);
   for (int index = 0; index < 2; index++) {
     cr_assert_eq(test_pattern_render(a, index, 2000, false), ASCIICHAT_OK);
