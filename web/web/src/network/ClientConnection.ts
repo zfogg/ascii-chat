@@ -20,17 +20,20 @@ import {
   parsePacket,
   serializePacket,
   getConnectionState,
+  configureClientCrypto,
   ConnectionState,
   PacketType,
   packetTypeName,
   type ParsedPacket,
   type ClientInitOptions,
+  type ClientCryptoOptions,
 } from "../wasm/client";
 
 export interface ClientConnectionOptions {
   serverUrl: string;
   applicationEncryption?: boolean;
   discoveryHandshake?: boolean;
+  cryptoOptions?: ClientCryptoOptions;
   width?: number;
   height?: number;
   wasmOptions?: Omit<ClientInitOptions, "width" | "height">;
@@ -79,6 +82,7 @@ export class ClientConnection {
       initOptions.height = this.options.height;
     await initClientWasm(initOptions);
     if (this.isUserDisconnecting) return;
+    await configureClientCrypto(this.options.cryptoOptions || {});
     console.log("[ClientConnection] WASM init complete");
 
     // Register callback so WASM can send raw packets back through WebSocket
@@ -209,6 +213,7 @@ export class ClientConnection {
 
       try {
         await initClientWasm(reinitOptions);
+        await configureClientCrypto(this.options.cryptoOptions || {});
         this.clientPublicKey = await generateKeypair();
         setServerAddress(serverHost, serverPort);
         registerSendPacketCallback((rawPacket: Uint8Array) => {
@@ -332,11 +337,20 @@ export class ClientConnection {
         return;
       }
 
-      if (parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE) {
+      if (
+        parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE ||
+        parsed.type === PacketType.CRYPTO_SERVER_AUTH_RESP ||
+        parsed.type === PacketType.CRYPTO_AUTH_FAILED
+      ) {
         // console.error(
         //   `[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`,
         // );
-        handleHandshakeComplete(rawPacket);
+        try {
+          handleHandshakeComplete(rawPacket);
+        } catch (error) {
+          this.onStateChangeCallback?.(ConnectionState.ERROR);
+          throw error;
+        }
         // console.error(
         //   `[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`,
         // );

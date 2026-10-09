@@ -5,6 +5,7 @@
 
 #include <ascii-chat/discovery/identity.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -42,18 +43,41 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open identity file: %s", path);
   }
 
-  // Read secret key (64 bytes)
-  size_t read = fread(secret_key, 1, 64, fp);
-  if (read != 64) {
-    fclose(fp);
-    return SET_ERRNO(ERROR_CONFIG, "Identity file corrupted (expected 64 bytes, got %zu): %s", read, path);
+  // Preserve the original raw libsodium identity format while accepting the
+  // OpenSSH Ed25519 private keys used by the rest of ascii-chat.
+  uint8_t raw_secret[crypto_sign_SECRETKEYBYTES];
+  const size_t raw_bytes = fread(raw_secret, 1, sizeof(raw_secret), fp);
+  const int trailing_byte = fgetc(fp);
+  fclose(fp);
+  if (raw_bytes == sizeof(raw_secret) && trailing_byte == EOF) {
+    uint8_t derived_public[crypto_sign_PUBLICKEYBYTES];
+    if (crypto_sign_ed25519_sk_to_pk(derived_public, raw_secret) != 0) {
+      sodium_memzero(raw_secret, sizeof(raw_secret));
+      return SET_ERRNO(ERROR_CONFIG, "Identity file contains an invalid Ed25519 secret key: %s", path);
+    }
+    memcpy(secret_key, raw_secret, sizeof(raw_secret));
+    memcpy(public_key, derived_public, sizeof(derived_public));
+    sodium_memzero(raw_secret, sizeof(raw_secret));
+    log_info("Loaded raw Ed25519 identity from %s", path);
+    return ASCIICHAT_OK;
+  }
+  sodium_memzero(raw_secret, sizeof(raw_secret));
+
+  private_key_t parsed_key = {0};
+  asciichat_error_t parse_result = parse_ssh_private_key(path, &parsed_key);
+  if (parse_result != ASCIICHAT_OK) {
+    sodium_memzero(&parsed_key, sizeof(parsed_key));
+    return parse_result;
+  }
+  if (parsed_key.type != KEY_TYPE_ED25519) {
+    sodium_memzero(&parsed_key, sizeof(parsed_key));
+    return SET_ERRNO(ERROR_CONFIG, "Discovery identity key must be Ed25519: %s", path);
   }
 
-  // Extract public key from secret key (last 32 bytes of Ed25519 secret key)
-  memcpy(public_key, secret_key + 32, 32);
-
-  fclose(fp);
-  log_info("Loaded identity from %s", path);
+  memcpy(secret_key, parsed_key.key.ed25519, crypto_sign_SECRETKEYBYTES);
+  memcpy(public_key, parsed_key.public_key, crypto_sign_PUBLICKEYBYTES);
+  sodium_memzero(&parsed_key, sizeof(parsed_key));
+  log_info("Loaded OpenSSH Ed25519 identity from %s", path);
   return ASCIICHAT_OK;
 }
 

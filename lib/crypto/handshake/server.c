@@ -102,13 +102,13 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     memcpy(extended_packet, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size);
 
     // Copy identity public key
-    memcpy(extended_packet + ctx->crypto_ctx.public_key_size, ctx->server_private_key.public_key,
+    memcpy(extended_packet + ctx->crypto_ctx.public_key_size, ctx->server_public_key.key,
            ctx->crypto_ctx.auth_public_key_size);
 
     // DEBUG: Print identity key being sent
     char hex[HEX_STRING_SIZE_32];
     for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
-      safe_snprintf(hex + i * 2, 3, "%02x", ctx->server_private_key.public_key[i]);
+      safe_snprintf(hex + i * 2, 3, "%02x", ctx->server_public_key.key[i]);
     }
     hex[HEX_STRING_SIZE_32 - 1] = '\0';
 
@@ -119,7 +119,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     char hex_ephemeral[65], hex_identity[65];
     for (int i = 0; i < 32; i++) {
       safe_snprintf(hex_ephemeral + i * 2, 3, "%02x", ctx->crypto_ctx.public_key[i]);
-      safe_snprintf(hex_identity + i * 2, 3, "%02x", ctx->server_private_key.public_key[i]);
+      safe_snprintf(hex_identity + i * 2, 3, "%02x", ctx->server_public_key.key[i]);
     }
     hex_ephemeral[64] = hex_identity[64] = '\0';
     log_debug("SERVER: Ephemeral key (32 bytes): %s", hex_ephemeral);

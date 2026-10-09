@@ -35,6 +35,7 @@
 // Forward declarations
 static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out,
                                                size_t *blob_len);
+#ifndef EMSCRIPTEN_BUILD
 static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len,
                                                      const char *passphrase, const uint8_t *salt, size_t salt_len,
                                                      uint32_t rounds, const char *cipher_name, uint8_t **decrypted_out,
@@ -132,6 +133,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
 
   return ASCIICHAT_OK;
 }
+#endif
 
 // Base64 decode SSH key blob
 static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64_len, uint8_t **blob_out,
@@ -208,6 +210,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p, key_out=%p", key_path, key_out);
   }
 
+#ifndef EMSCRIPTEN_BUILD
   // First, check if we can get the key from ssh-agent (password-free)
   // This requires reading the public key from the .pub file
   char pub_key_path[BUFFER_SIZE_LARGE];
@@ -239,6 +242,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     fclose(pub_f);
   }
+#endif
 
   // Validate the SSH key file first
   asciichat_error_t validation_result = validate_ssh_key_file(key_path);
@@ -375,6 +379,11 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Handle encrypted keys
   if (is_encrypted) {
+#ifdef EMSCRIPTEN_BUILD
+    SAFE_FREE(key_blob);
+    SAFE_FREE(file_content);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Passphrase-protected SSH keys are not supported in the browser");
+#else
     // Parse the cipher name from the stored position
     char ciphername[32] = {0};
     if (ciphername_len > 0 && ciphername_len < sizeof(ciphername)) {
@@ -699,6 +708,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
 
     return ASCIICHAT_OK;
+#endif
   }
 
   // Read number of keys
@@ -941,6 +951,16 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
   }
 
+#ifdef EMSCRIPTEN_BUILD
+  // Browser callers stage imported key text at this private virtual-FS path;
+  // native path expansion and whitelist checks do not apply to that sandbox.
+  static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
+  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid browser SSH key path");
+  }
+  const char *validated_path = key_path;
+  char *normalized_path = NULL;
+#else
   if (!path_looks_like_path(key_path)) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key path: %s", key_path);
   }
@@ -951,9 +971,11 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     SAFE_FREE(normalized_path);
     return path_result;
   }
+  const char *validated_path = normalized_path;
+#endif
 
   // Check if file exists and is readable
-  FILE *test_file = platform_fopen("file_stream", normalized_path, "r");
+  FILE *test_file = platform_fopen("file_stream", validated_path, "r");
   if (test_file == NULL) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
@@ -979,7 +1001,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   // Check permissions for SSH key files (should be 600 or 400)
 #ifndef _WIN32
   struct stat st;
-  if (stat(normalized_path, &st) == 0) {
+  if (stat(validated_path, &st) == 0) {
     if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
       log_error("SSH key file %s has overly permissive permissions: %o", key_path, st.st_mode & 0777);
       log_error("Run 'chmod 600 %s' to fix this", key_path);
@@ -1038,6 +1060,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Key is not an Ed25519 key");
   }
 
+ #ifndef EMSCRIPTEN_BUILD
   // If using GPG agent, delegate signing to GPG agent
   if (key->use_gpg_agent) {
     log_debug("Using GPG agent for Ed25519 signing (keygrip: %.40s)", key->gpg_keygrip);
@@ -1114,6 +1137,11 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     log_debug("Successfully signed message with SSH agent (64 bytes)");
     return ASCIICHAT_OK;
   }
+ #else
+  if (key->use_gpg_agent || key->use_ssh_agent) {
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "External SSH and GPG agents are not available in the browser");
+  }
+ #endif
 
   // Sign the message with Ed25519 (in-memory key)
   if (crypto_sign_detached(signature, NULL, message, message_len, key->key.ed25519) != 0) {
@@ -1135,6 +1163,7 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
     return ASCIICHAT_OK;
   }
 
+#ifndef EMSCRIPTEN_BUILD
   // If standard verification fails, try GPG fallback (for GPG-signed messages)
   // Use provided gpg_key_id if available, otherwise check environment variable (for tests)
   const char *key_id_to_use = gpg_key_id;
@@ -1157,6 +1186,7 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
     }
     log_debug("GPG verification also failed");
   }
+#endif
 
   return SET_ERRNO(ERROR_CRYPTO, "Ed25519 signature verification failed (tried both libsodium and GPG)");
 }

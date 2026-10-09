@@ -103,6 +103,11 @@ export function adoptMirrorWasmModule(module: MirrorModule): void {
   wasmModule = module;
 }
 
+/** Clear a client module reference before its owning client runtime is cleaned up. */
+export function resetAdoptedMirrorWasmModule(): void {
+  wasmModule = null;
+}
+
 /**
  * Initialize the WASM module (call once at app start)
  * @param moduleFactory - Emscripten module factory function (from mirror.js)

@@ -263,6 +263,47 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
       turnUrls: `turn:127.0.0.1:${turnPort}`,
       test2: "",
     });
+    await page.addInitScript(() => {
+      const probe = {
+        reads: 0,
+        readMs: 0,
+        lastReadWidth: 0,
+        lastReadHeight: 0,
+        dataChannelSends: 0,
+        dataChannelSendMs: 0,
+        dataChannelBytes: 0,
+        maxBufferedAmount: 0,
+      };
+      (window as Window & { __webrtcPerfProbe?: typeof probe }).__webrtcPerfProbe = probe;
+      const getImageData = CanvasRenderingContext2D.prototype.getImageData;
+      CanvasRenderingContext2D.prototype.getImageData = function (...args) {
+        const start = performance.now();
+        try {
+          return getImageData.apply(this, args);
+        } finally {
+          probe.reads++;
+          probe.readMs += performance.now() - start;
+          probe.lastReadWidth = args[2];
+          probe.lastReadHeight = args[3];
+        }
+      };
+      const send = RTCDataChannel.prototype.send;
+      RTCDataChannel.prototype.send = function (data) {
+        const start = performance.now();
+        try {
+          return (send as (this: RTCDataChannel, value: string | Blob | ArrayBuffer | ArrayBufferView) => void).call(this, data);
+        } finally {
+          probe.dataChannelSends++;
+          probe.dataChannelSendMs += performance.now() - start;
+          probe.dataChannelBytes += typeof data === "string"
+            ? new TextEncoder().encode(data).byteLength
+            : data instanceof Blob
+              ? data.size
+              : data.byteLength;
+          probe.maxBufferedAmount = Math.max(probe.maxBufferedAmount, this.bufferedAmount);
+        }
+      };
+    });
     await page.goto(`/discovery?${query.toString()}`);
     await page
       .getByLabel("Session password", { exact: true })
@@ -337,9 +378,33 @@ test("Discovery WebRTC test2 sustains 55+ FPS on a 1920x1080 canvas through TURN
     );
     console.log(
       `[discovery-webrtc-test2-fps] page=${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 240)} ` +
-        `serverIngress=${(server.logs.match(/Server image ingress .* fps=[\d.]+/g) || []).slice(-5).join(" | ")} ` +
+        `serverCadence=${(server.logs.match(/Server (?:image ingress|video render|ASCII delivery) .* fps=[\d.]+/g) || []).slice(-15).join(" | ")} ` +
         `relay=${server.logs.match(/selected local candidate:.*typ relay/i)?.[0] ?? "none"}`,
     );
+    const browserProbe = await page.evaluate(() => {
+      const probe = (window as Window & {
+        __webrtcPerfProbe?: Record<string, number>;
+      }).__webrtcPerfProbe;
+      if (!probe) return null;
+      const pixelCount = probe["lastReadWidth"]! * probe["lastReadHeight"]!;
+      const rgba = new Uint8Array(pixelCount * 4);
+      const output = new Uint8Array(pixelCount * 3);
+      const startedAt = performance.now();
+      for (let repeat = 0; repeat < 20; repeat++) {
+        let dstIdx = 0;
+        for (let index = 0; index < pixelCount; index++) {
+          const srcIdx = index * 4;
+          output[dstIdx++] = rgba[srcIdx]!;
+          output[dstIdx++] = rgba[srcIdx + 1]!;
+          output[dstIdx++] = rgba[srcIdx + 2]!;
+        }
+      }
+      return {
+        ...probe,
+        rgbConversionMsPerFrame: (performance.now() - startedAt) / 20,
+      };
+    });
+    console.log("[discovery-webrtc-test2-fps] browserProbe=" + JSON.stringify(browserProbe));
     expect(
       nearSixtyWindows,
       "received-frame FPS should reach 59+ for at least half the sample",

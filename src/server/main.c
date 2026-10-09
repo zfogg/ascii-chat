@@ -1208,8 +1208,12 @@ static void *websocket_client_handler(void *arg) {
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
+  const options_t *opts = options_get();
+  const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
   asciichat_error_t handshake_init_result =
-      crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
+      password[0] != '\0'
+          ? crypto_handshake_init_with_password(crypto_name, &client->crypto_handshake_ctx, true, password)
+          : crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   if (handshake_init_result != ASCIICHAT_OK) {
@@ -1227,6 +1231,27 @@ static void *websocket_client_handler(void *arg) {
 
   log_debug("Initialized crypto handshake context for WebSocket client %s", client->client_id);
   log_debug("[WS_HANDLER] crypto_initialized now = %d", client->crypto_initialized);
+
+  // WebSocket clients use the same authentication policy and server identity
+  // as TCP clients. Initializing only the ephemeral handshake context silently
+  // downgraded browser connections to unauthenticated encryption.
+  if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+    memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_private_key, sizeof(private_key_t));
+    client->crypto_handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
+    memcpy(client->crypto_handshake_ctx.server_public_key.key, g_server_private_key.public_key,
+           ED25519_PUBLIC_KEY_SIZE);
+    log_debug("Server identity configured for WebSocket client %s", client->client_id);
+  }
+  if (g_num_whitelisted_clients > 0) {
+    client->crypto_handshake_ctx.require_client_auth = true;
+    client->crypto_handshake_ctx.client_whitelist = g_client_whitelist;
+    client->crypto_handshake_ctx.num_whitelisted_clients = g_num_whitelisted_clients;
+    log_info("WebSocket client whitelist enabled: %zu authorized keys", g_num_whitelisted_clients);
+  }
+  if (GET_OPTION(require_server_verify)) {
+    client->crypto_handshake_ctx.require_client_auth = true;
+    log_info("--require-server-verify enabled for WebSocket client %s", client->client_id);
+  }
 
   // STEP 3: Send CRYPTO_PARAMETERS then KEY_EXCHANGE_INIT to start the handshake
   // The receive thread is already running, but it will use the properly initialized context

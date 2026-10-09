@@ -20,12 +20,20 @@ declare global {
     };
   }
 }
-import { cleanupClientWasm, ConnectionState, PacketType } from "../wasm/client";
 import {
-  initMirrorWasm,
+  cleanupClientWasm,
+  ConnectionState,
+  PacketType,
+  initClientWasm,
+  getClientWasmModule,
+} from "../wasm/client";
+import {
+  adoptMirrorWasmModule,
+  resetAdoptedMirrorWasmModule,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
+import type { MirrorModule } from "@ascii-chat/shared/wasm";
 import {
   AsciiRenderer,
   BinarySettings,
@@ -53,13 +61,21 @@ import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
 import { AudioPipeline } from "../audio";
 import { getConnectionSecurityLines } from "../network/connectionSecurity";
+import { SecuritySetupModal } from "../components/SecuritySetupModal";
+import {
+  getActivePassword,
+  getActivePrivateKey,
+  getActiveVerificationKey,
+  loadCryptoSettings,
+  saveCryptoSettings,
+} from "../utils/cryptoSettings";
+import type { CryptoSettings, VerificationKeyTarget } from "../utils/cryptoSettings";
+import type { ClientCryptoOptions } from "../wasm/client";
 import {
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
 } from "../utils/mediaDevicePreferences";
 import type { DiscoveryOptions } from "../network/WebRTCSession";
-// @ts-expect-error - Generated Emscripten factory has no types
-import MirrorModuleFactory from "../wasm/dist/mirror.js";
 
 export function ClientPage({
   discoveryMode = false,
@@ -79,14 +95,35 @@ export function ClientPage({
   const [signalingUrl, setSignalingUrl] = useState(
     params.get("signalingUrl") || DISCOVERY_SERVICE_URL,
   );
-  const [additionalApplicationEncryption, setAdditionalApplicationEncryption] =
-    useState(false);
+  const [cryptoSettings, setCryptoSettings] = useState<CryptoSettings>(loadCryptoSettings);
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
   let signalingUsesWss = false;
   try {
     signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
   } catch {
     // The URL field will show validation through the normal connection error.
   }
+  const discoveryCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+    const options: ClientCryptoOptions = {};
+    if (cryptoSettings.authenticationEnabled) {
+      const password = getActivePassword(cryptoSettings);
+      const identity = getActivePrivateKey(cryptoSettings);
+      if (password) options.password = password;
+      if (identity) options.identityPrivateKeyText = identity;
+    }
+    const expected = cryptoSettings.skipServerVerification
+      ? undefined
+      : getActiveVerificationKey(cryptoSettings, "discovery-service");
+    if (expected) options.expectedServerPublicKeyText = expected;
+    return options;
+  }, [cryptoSettings]);
+  const discoveryHasAuthMaterial =
+    !!discoveryCryptoOptions.password ||
+    !!discoveryCryptoOptions.identityPrivateKeyText ||
+    !!discoveryCryptoOptions.expectedServerPublicKeyText;
+  const discoveryApplicationEncryption =
+    (cryptoSettings.customEncryption ?? !signalingUsesWss) ||
+    discoveryHasAuthMaterial;
   const [stunUrls, setStunUrls] = useState(
     params.get("stunUrls") ||
       "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
@@ -98,8 +135,8 @@ export function ClientPage({
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
-  const [rendererRequested, setRendererRequested] = useState(!discoveryMode);
-  const pendingDiscoveryJoinRef = useRef(false);
+  const [rendererRequested, setRendererRequested] = useState(requestedConnection);
+  const pendingConnectRef = useRef(false);
   const discoveryJoinGenerationRef = useRef(0);
   useEffect(() => {
     // The discovery join form does not need the Emscripten renderer. Loading a
@@ -107,9 +144,15 @@ export function ClientPage({
     // monopolize the browser main thread before a session even exists.
     if (!rendererRequested) return;
     let active = true;
-    const initializeRenderer = initMirrorWasm(MirrorModuleFactory, {
-      locateFile: (path) => `/wasm/${path}`,
-    });
+    // The client build exports the same terminal-renderer functions used by
+    // AsciiRenderer. Share that initialized pthread runtime with the renderer
+    // instead of creating a second WASM module and worker pool on this page.
+    const initializeRenderer = initClientWasm()
+      .then(() => {
+        const module = getClientWasmModule();
+        if (!module) throw new Error("Client WASM module did not initialize");
+        adoptMirrorWasmModule(module as unknown as MirrorModule);
+      });
     void initializeRenderer
       .then(() => {
         if (active) setRendererReady(true);
@@ -148,9 +191,8 @@ export function ClientPage({
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
-            ...(signalingUsesWss && additionalApplicationEncryption
-              ? { applicationEncryption: true }
-              : {}),
+            applicationEncryption: discoveryApplicationEncryption,
+            cryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
@@ -170,7 +212,8 @@ export function ClientPage({
       sessionPassword,
       signalingUrl,
       signalingUsesWss,
-      additionalApplicationEncryption,
+      discoveryApplicationEncryption,
+      discoveryCryptoOptions,
       stunUrls,
       turnUrls,
       connectionRoute,
@@ -206,10 +249,33 @@ export function ClientPage({
   } catch {
     // The URL field will show validation through the normal connection error.
   }
+  const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
+    ? "discovery-service"
+    : "client-server";
+  const connectionCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+    const options: ClientCryptoOptions = {};
+    if (cryptoSettings.authenticationEnabled) {
+      const password = getActivePassword(cryptoSettings);
+      const identity = getActivePrivateKey(cryptoSettings);
+      if (password) options.password = password;
+      if (identity) options.identityPrivateKeyText = identity;
+    }
+    const expected = cryptoSettings.skipServerVerification
+      ? undefined
+      : getActiveVerificationKey(cryptoSettings, connectionCryptoTarget);
+    if (expected) options.expectedServerPublicKeyText = expected;
+    return options;
+  }, [cryptoSettings, connectionCryptoTarget]);
+  const connectionHasAuthMaterial =
+    !!connectionCryptoOptions.password ||
+    !!connectionCryptoOptions.identityPrivateKeyText ||
+    !!connectionCryptoOptions.expectedServerPublicKeyText;
+  const applicationEncryption =
+    (cryptoSettings.customEncryption ?? !usesWss) || connectionHasAuthMaterial;
   const connectionSecurityLines = getConnectionSecurityLines(
     discoveryMode ? signalingUrl : serverUrl,
     discoveryMode,
-    usesWss ? additionalApplicationEncryption : undefined,
+    applicationEncryption,
   );
   const [showSettings, setShowSettings] = useState(false);
   const [terminalDimensions, setTerminalDimensions] = useState({
@@ -279,9 +345,8 @@ export function ClientPage({
     handleDisconnect,
   } = useClientConnection({
     autoConnect: requestedConnection,
-    ...(!discoveryMode && usesWss
-      ? { applicationEncryption: additionalApplicationEncryption }
-      : {}),
+    applicationEncryption,
+    cryptoOptions: connectionCryptoOptions,
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
     onConnectionStateChange,
@@ -333,15 +398,14 @@ export function ClientPage({
       );
   }, [setError]);
 
-  // A discovery peer receives its initial capabilities as soon as the
-  // DataChannel opens. Wait until the renderer has reported a settled size so
-  // that setup sends one authoritative capability packet instead of racing its
-  // creation and ResizeObserver updates against the protocol startup.
+  // Wait until the renderer reports a settled size before connecting. Discovery
+  // sends capabilities as soon as its DataChannel opens, and the direct client
+  // also needs the final dimensions before protocol startup.
   useEffect(() => {
-    if (!discoveryMode || !pendingDiscoveryJoinRef.current) return;
+    if (!pendingConnectRef.current) return;
 
     if (rendererError) {
-      pendingDiscoveryJoinRef.current = false;
+      pendingConnectRef.current = false;
       setError(rendererError);
       setConnecting(false);
       return;
@@ -356,13 +420,9 @@ export function ClientPage({
     const generation = discoveryJoinGenerationRef.current;
     const settledDimensions = { ...terminalDimensions };
     const timer = window.setTimeout(() => {
-      if (
-        !pendingDiscoveryJoinRef.current ||
-        generation !== discoveryJoinGenerationRef.current
-      )
-        return;
+      if (!pendingConnectRef.current || generation !== discoveryJoinGenerationRef.current) return;
 
-      pendingDiscoveryJoinRef.current = false;
+      pendingConnectRef.current = false;
       void connectToServer()
         .catch(() => {})
         .finally(() => setConnecting(false));
@@ -378,7 +438,6 @@ export function ClientPage({
     };
   }, [
     connectToServer,
-    discoveryMode,
     rendererError,
     rendererReady,
     setError,
@@ -469,7 +528,7 @@ export function ClientPage({
     setMicEnabled(false);
   }, []);
   const disconnectMedia = useCallback(() => {
-    pendingDiscoveryJoinRef.current = false;
+    pendingConnectRef.current = false;
     discoveryJoinGenerationRef.current++;
     // Audio callbacks can survive briefly while AudioContext.close() drains.
     // Stop them from sending into a DataChannel that disconnect() just closed.
@@ -792,6 +851,7 @@ export function ClientPage({
         clientRef.current.disconnect();
         clientRef.current = null;
       }
+      resetAdoptedMirrorWasmModule();
       cleanupClientWasm();
     };
     // Note: stopWebcam is NOT in deps array to avoid circular dependency issues
@@ -949,7 +1009,7 @@ export function ClientPage({
                     className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
                     onSubmit={(event) => {
                       event.preventDefault();
-                      pendingDiscoveryJoinRef.current = true;
+                      pendingConnectRef.current = true;
                       discoveryJoinGenerationRef.current++;
                       setRendererRequested(true);
                       setConnecting(true);
@@ -1009,6 +1069,7 @@ export function ClientPage({
                     >
                       Join session
                     </button>
+                    <button type="button" disabled={settingsDisabled} onClick={() => setSecurityModalOpen(true)} className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Crypto</button>
                     {(connecting ||
                       connectionState === ConnectionState.CONNECTED) && (
                       <button
@@ -1158,7 +1219,10 @@ export function ClientPage({
                     className={`flex flex-wrap gap-3 items-end ${settingsDisabled ? "settings-locked" : ""}`}
                     onSubmit={(event) => {
                       event.preventDefault();
-                      void connectToServer();
+                      pendingConnectRef.current = true;
+                      discoveryJoinGenerationRef.current++;
+                      setRendererRequested(true);
+                      setConnecting(true);
                     }}
                   >
                     <Tooltip text={disabledSettingsHelp} className="contents">
@@ -1170,6 +1234,31 @@ export function ClientPage({
                           value={serverUrl}
                           onChange={(event) => setServerUrl(event.target.value)}
                           placeholder="ws://localhost:27226"
+                          className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
+                        />
+                      </label>
+                    </Tooltip>
+                    <Tooltip text="Uses the ascii-chat custom crypto handshake. This must match the server password." className="contents">
+                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                        Crypto password
+                        <input
+                          aria-label="Crypto password"
+                          type="password"
+                          autoComplete="current-password"
+                          minLength={8}
+                          maxLength={255}
+                          disabled={settingsDisabled}
+                          value={cryptoSettings.password}
+                          onChange={(event) => {
+                            const next = {
+                              ...cryptoSettings,
+                              password: event.target.value,
+                              authenticationEnabled: true,
+                            };
+                            saveCryptoSettings(next);
+                            setCryptoSettings(next);
+                          }}
+                          placeholder="Server --password"
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
                         />
                       </label>
@@ -1199,29 +1288,13 @@ export function ClientPage({
                         Connect
                       </button>
                     )}
+                    <button type="button" disabled={settingsDisabled} onClick={() => setSecurityModalOpen(true)} className="border-0 bg-terminal-8 text-terminal-fg enabled:cursor-pointer enabled:hover:bg-terminal-7 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Crypto</button>
                     <div className="flex items-center gap-3 w-full min-w-0">
                       <details className="flex-shrink-0">
                         <summary className="cursor-pointer">
                           Connection settings
                         </summary>
                         <div className="mt-2 text-sm text-terminal-8 space-y-1">
-                          {usesWss && (
-                            <label className="flex items-center gap-2 pb-1 text-terminal-fg">
-                              <input
-                                type="checkbox"
-                                checked={additionalApplicationEncryption}
-                                disabled={settingsDisabled}
-                                onChange={(event) =>
-                                  setAdditionalApplicationEncryption(
-                                    event.currentTarget.checked,
-                                  )
-                                }
-                              />
-                              {discoveryMode
-                                ? "Additional application encryption for signaling over TLS"
-                                : "Additional application encryption over TLS"}
-                            </label>
-                          )}
                           {connectionSecurityLines.map(({ label, value }) => (
                             <p key={label}>
                               {label}: {value}
@@ -1281,6 +1354,7 @@ export function ClientPage({
             <AsciiRenderer
               ref={rendererRef}
               onDimensionsChange={handleDimensionsChange}
+              initializeOptions={false}
               {...(discoveryMode ? {} : { onFpsChange: setFps })}
               error={discoveryMode ? rendererError : error || rendererError}
               showFps={isWebcamRunning}
@@ -1289,6 +1363,17 @@ export function ClientPage({
             />
           ) : undefined
         }
+      />
+      <SecuritySetupModal
+        open={securityModalOpen}
+        settings={cryptoSettings}
+        defaultEncryptionEnabled={!usesWss}
+        onClose={() => setSecurityModalOpen(false)}
+        onSave={(next) => {
+          saveCryptoSettings(next);
+          setCryptoSettings(next);
+          setSecurityModalOpen(false);
+        }}
       />
     </>
   );

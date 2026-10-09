@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
+import type { ClientCryptoOptions } from "../wasm/client";
 import {
   ClientConnection,
   parseAsciiFrame,
@@ -31,6 +32,7 @@ const hashFrame = (content: string): string => {
 interface UseClientConnectionOptions {
   autoConnect?: boolean;
   applicationEncryption?: boolean;
+  cryptoOptions?: ClientCryptoOptions;
   discovery?: DiscoveryOptions;
   onAudioPacket?: (type: number, payload: Uint8Array) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
@@ -53,6 +55,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   const {
     autoConnect = false,
     applicationEncryption,
+    cryptoOptions,
     serverUrl,
     terminalDimensions,
     settings,
@@ -131,6 +134,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               ...(applicationEncryption === undefined
                 ? {}
                 : { applicationEncryption }),
+              ...(cryptoOptions ? { cryptoOptions } : {}),
               width,
               height,
             });
@@ -362,6 +366,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     [
       serverUrl,
       applicationEncryption,
+      cryptoOptions,
       terminalDimensions,
       settings,
       rendererRef,

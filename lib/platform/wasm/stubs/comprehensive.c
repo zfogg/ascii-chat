@@ -310,33 +310,6 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACDS not supported in WASM");
 }
 
-/* ===== Crypto stubs ===== */
-
-asciichat_error_t parse_private_key(const char *key_data, size_t key_len) {
-  (void)key_data;
-  (void)key_len;
-  return SET_ERRNO(ERROR_CRYPTO_KEY, "Private key parsing not supported in WASM");
-}
-
-bool validate_ssh_key_file(const char *path) {
-  (void)path;
-  return false;
-}
-
-asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
-  (void)acds_server;
-  (void)key_spec;
-  (void)pubkey_out;
-  return SET_ERRNO(ERROR_CRYPTO_KEY, "discovery_keys_verify not supported in WASM");
-}
-
-void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
-  (void)pubkey;
-  if (hex_out) {
-    hex_out[0] = '\0';
-  }
-}
-
 /* ===== Thread pool stubs ===== */
 
 asciichat_error_t thread_pool_spawn(void *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,

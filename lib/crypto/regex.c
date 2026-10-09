@@ -129,6 +129,15 @@ static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
   return asciichat_pcre2_singleton_get_code(g_gpg_keygrip_regex);
 }
 
+static int crypto_regex_match(pcre2_code *regex, PCRE2_SPTR subject, PCRE2_SIZE length,
+                              pcre2_match_data *match_data) {
+  int result = pcre2_jit_match(regex, subject, length, 0, 0, match_data, NULL);
+  if (result == PCRE2_ERROR_JIT_BADOPTION) {
+    result = pcre2_match(regex, subject, length, 0, 0, match_data, NULL);
+  }
+  return result;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * PUBLIC API IMPLEMENTATION
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -151,10 +160,7 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
     return false;
   }
 
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                           0,                                        /* options */
-                           match_data, NULL);                        /* mcontext */
+  int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -198,10 +204,7 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
     return false;
   }
 
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                           0,                                        /* options */
-                           match_data, NULL);                        /* mcontext */
+  int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -241,10 +244,7 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
     return false;
   }
 
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), 0, /* startoffset */
-                           0,                                                        /* options */
-                           match_data, NULL);                                        /* mcontext */
+  int rc = crypto_regex_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), match_data);
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -276,10 +276,7 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
     return false;
   }
 
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                           0,                                        /* options */
-                           match_data, NULL);                        /* mcontext */
+  int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);

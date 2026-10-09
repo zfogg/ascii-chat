@@ -104,7 +104,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/filesystem.c  # Provides filesystem stubs (platform_write removed)
     ${LIB_ROOT}/platform/wasm/stubs/video.c
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
-    ${LIB_ROOT}/platform/wasm/stubs/crypto.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
     ${LIB_ROOT}/platform/wasm/stubs/log.c
     ${LIB_ROOT}/platform/wasm/stubs/audio.c
@@ -299,10 +298,11 @@ set(LIB_SRC_MIRROR_ONLY
 )
 
 # Client-specific sources (crypto + network)
-# Note: Only minimal crypto handshake for web client (no SSH keys, known_hosts, etc.)
 set(LIB_SRC_CLIENT_CRYPTO
     ${LIB_ROOT}/crypto/handshake/common.c
     ${LIB_ROOT}/crypto/handshake/client.c
+    ${LIB_ROOT}/crypto/regex.c
+    ${LIB_ROOT}/crypto/ssh/ssh_keys.c
 )
 
 set(LIB_SRC_CLIENT_NETWORK
@@ -431,6 +431,7 @@ apply_sanitizers_to_target(mirror-web)
 set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
+    ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/crypto.c
@@ -536,6 +537,10 @@ set(EXPORTED_FUNCTIONS_MIRROR
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
     _client_acds_join_request
+    _client_configure_crypto_options
+    _client_parse_ssh_private_key
+    _client_parse_ssh_public_key
+    _client_get_crypto_error_message
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
     _term_renderer_feed
@@ -583,7 +588,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_MIRROR_CSV "${EXPORTED_FUNCTIONS_MIRROR}")
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIENT}")
 
-set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,HEAP16")
+set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,HEAP16,FS")
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
@@ -600,6 +605,7 @@ target_link_options(mirror-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
+    -sASSERTIONS=1
     -msimd128
     -O3
     --no-entry
@@ -613,7 +619,7 @@ target_link_options(client-web PRIVATE
     "-sEXPORT_NAME=ClientModule"
     "-sEXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS_CLIENT_CSV}"
     "-sEXPORTED_RUNTIME_METHODS=${EXPORTED_RUNTIME_METHODS_CSV}"
-    -sENVIRONMENT=web
+    -sENVIRONMENT=web,worker
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=256MB
@@ -621,6 +627,7 @@ target_link_options(client-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
+    -sASSERTIONS=1
     -msimd128
     -O3
     --no-entry

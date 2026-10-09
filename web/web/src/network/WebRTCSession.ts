@@ -18,12 +18,14 @@ import {
   serializePacket,
   type ParsedPacket,
 } from "../wasm/client";
+import type { ClientCryptoOptions } from "../wasm/client";
 
 export interface DiscoveryOptions {
   sessionName: string;
   password: string;
   signalingUrl: string;
   applicationEncryption?: boolean;
+  cryptoOptions?: ClientCryptoOptions;
   stunServers: string[];
   turnServers: string[];
   iceTransportPolicy?: RTCIceTransportPolicy;
@@ -115,6 +117,7 @@ export class WebRTCSession implements ClientSession {
       ...(options.applicationEncryption === undefined
         ? {}
         : { applicationEncryption: options.applicationEncryption }),
+      ...(options.cryptoOptions ? { cryptoOptions: options.cryptoOptions } : {}),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
       discoveryHandshake: true,

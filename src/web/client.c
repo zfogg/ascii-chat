@@ -39,6 +39,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
@@ -120,6 +121,11 @@ static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, 
 static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
 static bool g_initialized = false;
 static bool g_handshake_complete = false;
+static char g_crypto_password[256] = {0};
+static uint8_t g_client_identity_key[crypto_sign_SECRETKEYBYTES] = {0};
+static uint8_t g_expected_server_identity_key[crypto_sign_PUBLICKEYBYTES] = {0};
+static bool g_has_client_identity_key = false;
+static bool g_has_expected_server_identity_key = false;
 
 // Opus codec state
 static OpusEncoder *g_opus_encoder = NULL;
@@ -135,6 +141,111 @@ typedef enum {
 } connection_state_t;
 
 static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
+
+static int apply_client_crypto_options(void) {
+  crypto_handshake_context_t *ctx = &g_crypto_handshake_ctx;
+  if (ctx->state != CRYPTO_HANDSHAKE_INIT) return -1;
+
+  if (g_crypto_password[0] != '\0') {
+    crypto_result_t result = crypto_derive_password_key(&ctx->crypto_ctx, g_crypto_password);
+    if (result != CRYPTO_OK) return -1;
+    ctx->crypto_ctx.has_password = true;
+    ctx->has_password = true;
+    SAFE_STRNCPY(ctx->password, g_crypto_password, sizeof(ctx->password) - 1);
+  }
+
+  if (g_has_client_identity_key) {
+    ctx->client_private_key.type = KEY_TYPE_ED25519;
+    memcpy(ctx->client_private_key.key.ed25519, g_client_identity_key, sizeof(g_client_identity_key));
+    memcpy(ctx->client_private_key.public_key, g_client_identity_key + crypto_sign_SEEDBYTES,
+           crypto_sign_PUBLICKEYBYTES);
+    memcpy(ctx->client_public_key.key, g_client_identity_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES);
+    ctx->client_public_key.type = KEY_TYPE_ED25519;
+  }
+
+  if (g_has_expected_server_identity_key) {
+    memcpy(ctx->expected_server_key_bytes, g_expected_server_identity_key, sizeof(ctx->expected_server_key_bytes));
+    ctx->expected_server_key_bytes_set = true;
+    ctx->verify_server_key = true;
+  }
+  return 0;
+}
+
+/** Configure browser-provided authentication material for the next handshake. */
+EMSCRIPTEN_KEEPALIVE
+int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
+                                    const uint8_t *expected_server_public_key) {
+  if (!g_initialized) return -1;
+
+  sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
+  sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
+  sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
+  g_has_client_identity_key = false;
+  g_has_expected_server_identity_key = false;
+
+  if (password && password[0] != '\0') {
+    size_t length = strnlen(password, sizeof(g_crypto_password));
+    if (length < 8 || length >= sizeof(g_crypto_password)) return -1;
+    SAFE_STRNCPY(g_crypto_password, password, sizeof(g_crypto_password) - 1);
+  }
+
+  if (identity_secret_key) {
+    uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES];
+    if (crypto_sign_ed25519_sk_to_pk(derived_public_key, identity_secret_key) != 0 ||
+        sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES,
+                      crypto_sign_PUBLICKEYBYTES) != 0) {
+      sodium_memzero(derived_public_key, sizeof(derived_public_key));
+      return -1;
+    }
+    memcpy(g_client_identity_key, identity_secret_key, sizeof(g_client_identity_key));
+    sodium_memzero(derived_public_key, sizeof(derived_public_key));
+    g_has_client_identity_key = true;
+  }
+
+  if (expected_server_public_key) {
+    memcpy(g_expected_server_identity_key, expected_server_public_key, sizeof(g_expected_server_identity_key));
+    g_has_expected_server_identity_key = true;
+  }
+  return 0;
+}
+
+/** Parse an OpenSSH Ed25519 private-key file through the shared SSH parser. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
+  if (!key_path || !secret_key_out) return -1;
+  CLEAR_ERRNO();
+#ifdef EMSCRIPTEN_BUILD
+  static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
+  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) return -1;
+#endif
+  private_key_t key = {0};
+  asciichat_error_t result = parse_ssh_private_key(key_path, &key);
+  if (result != ASCIICHAT_OK || key.type != KEY_TYPE_ED25519 || key.use_ssh_agent || key.use_gpg_agent) {
+    sodium_memzero(&key, sizeof(key));
+    return -1;
+  }
+  memcpy(secret_key_out, key.key.ed25519, crypto_sign_SECRETKEYBYTES);
+  sodium_memzero(&key, sizeof(key));
+  return 0;
+}
+
+/** Parse an OpenSSH Ed25519 public-key line through the shared SSH parser. */
+EMSCRIPTEN_KEEPALIVE
+int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
+  if (!key_line || !public_key_out) return -1;
+  CLEAR_ERRNO();
+  return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+}
+
+/** Copy the most recent C crypto error into a caller-provided buffer. */
+EMSCRIPTEN_KEEPALIVE
+int client_get_crypto_error_message(char *output, size_t output_size) {
+  if (!output || output_size == 0) return -1;
+  asciichat_error_context_t context = {0};
+  if (!HAS_ERRNO(&context) || !context.context_message) return -1;
+  safe_snprintf(output, output_size, "%s", context.context_message);
+  return 0;
+}
 
 // ============================================================================
 // Initialization
@@ -199,6 +310,11 @@ void client_cleanup(void) {
   g_handshake_complete = false;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   g_initialized = false;
+  sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
+  sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
+  sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
+  g_has_client_identity_key = false;
+  g_has_expected_server_identity_key = false;
   options_state_destroy();
   platform_destroy();
 }
@@ -261,6 +377,11 @@ int client_generate_keypair(void) {
   // Initialize crypto handshake context
   asciichat_error_t result = crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false /* is_server */);
   if (result != ASCIICHAT_OK) {
+    return -1;
+  }
+  if (apply_client_crypto_options() != 0) {
+    crypto_handshake_destroy(&g_crypto_handshake_ctx);
+    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
     return -1;
   }
 
@@ -347,6 +468,7 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
     if (init_result != ASCIICHAT_OK) {
       return -1;
     }
+    if (apply_client_crypto_options() != 0) return -1;
   }
 
   if (!packet || packet_len == 0) {
@@ -414,6 +536,7 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
     if (crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false) != ASCIICHAT_OK) {
       return -1;
     }
+    if (apply_client_crypto_options() != 0) return -1;
   }
 
   // Extract packet type and payload

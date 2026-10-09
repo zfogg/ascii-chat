@@ -160,8 +160,18 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       log_debug("Server signature verified successfully");
     }
 
-    // Verify server identity against expected key if --server-key is specified
-    if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
+    // Verify server identity against a browser-provided raw key before falling
+    // back to the native file, URL, and key-list parser.
+    if (ctx->verify_server_key && ctx->expected_server_key_bytes_set) {
+      if (sodium_memcmp(server_identity_key, ctx->expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE) != 0) {
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
+        return SET_ERRNO(ERROR_CRYPTO_VERIFICATION,
+                         "Server identity key does not match the active browser verification key");
+      }
+      log_info("Server identity key verified against active browser key");
+    } else if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
       // Parse ALL expected server keys (github:/gitlab: may have multiple keys)
       public_key_t expected_keys[MAX_CLIENTS];
       size_t num_expected_keys = 0;

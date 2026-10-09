@@ -97,7 +97,14 @@ export function useCanvasCapture(
           return null;
         }
 
-        const rgbaData = new Uint8Array(imageData.data);
+        // ImageData owns a fresh pixel buffer for this capture. A Uint8Array
+        // view preserves the C-compatible byte type without copying every
+        // RGBA byte once more before packet construction.
+        const rgbaData = new Uint8Array(
+          imageData.data.buffer,
+          imageData.data.byteOffset,
+          imageData.data.byteLength,
+        );
 
         // Verify RGBA data before returning
         const expectedSize = canvas.width * canvas.height * 4;

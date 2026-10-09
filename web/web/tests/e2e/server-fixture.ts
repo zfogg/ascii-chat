@@ -19,7 +19,7 @@ export class ServerFixture {
   private wsUrl: string;
   private logStream: fs.WriteStream | null = null;
 
-  constructor(port: number) {
+  constructor(port: number, private readonly serverArgs: string[] = []) {
     this.port = port;
     // WebSocket port is TCP port + 1
     this.wsUrl = `ws://127.0.0.1:${port + 1}`;
@@ -55,6 +55,7 @@ export class ServerFixture {
         tcpPort.toString(),
         "--websocket-port",
         wsPort.toString(),
+        ...this.serverArgs,
       ]);
 
       this.process.stdout?.on("data", (data) => {

@@ -12,20 +12,8 @@
 #include <stdbool.h>
 #include <string.h>
 
-// Ed25519 signature stubs (not needed for basic handshake)
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64], const char *gpg_key_id) {
-  // Server identity verification not supported in WASM (no known_hosts file)
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[64]) {
-  // Client authentication not supported in WASM (no client keys)
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Ed25519 signing not supported in WASM");
-}
-
-// Public key parsing stubs
+// Public-key list parsing and TOFU prompts are unavailable in browser builds;
+// browser-configured key material uses the shared SSH parser and raw-key pinning.
 asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
   // Key file parsing not supported in WASM
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "Public key file parsing not supported in WASM");

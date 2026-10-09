@@ -18,6 +18,13 @@ interface AsciiChatWasmExports {
 interface ClientModuleExports {
   _client_init_with_args(args_string: number): number;
   _client_cleanup(): void;
+  _client_configure_crypto_options(
+    password: number,
+    identity_secret_key: number,
+    expected_server_public_key: number,
+  ): number;
+  _client_parse_ssh_private_key(path: number, output: number): number;
+  _client_parse_ssh_public_key(line: number, output: number): number;
   _client_generate_keypair(): number;
   _client_set_server_address(server_host: number, server_port: number): number;
   _client_get_public_key_hex(): number;
@@ -123,6 +130,13 @@ interface ClientModule {
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
   _client_init_with_args: ClientModuleExports["_client_init_with_args"];
   _client_cleanup: ClientModuleExports["_client_cleanup"];
+  _client_configure_crypto_options: ClientModuleExports["_client_configure_crypto_options"];
+  _client_parse_ssh_private_key: ClientModuleExports["_client_parse_ssh_private_key"];
+  _client_parse_ssh_public_key: ClientModuleExports["_client_parse_ssh_public_key"];
+  FS: {
+    writeFile(path: string, data: string, options?: { mode?: number }): void;
+    unlink(path: string): void;
+  };
   _client_generate_keypair: ClientModuleExports["_client_generate_keypair"];
   _client_set_server_address: ClientModuleExports["_client_set_server_address"];
   _client_get_public_key_hex: ClientModuleExports["_client_get_public_key_hex"];
@@ -158,6 +172,12 @@ interface ClientModule {
   _get_help_text: ClientModuleExports["_get_help_text"];
   _malloc: ClientModuleExports["_malloc"];
   _free: ClientModuleExports["_free"];
+}
+
+export interface ClientCryptoOptions {
+  password?: string;
+  identityPrivateKeyText?: string;
+  expectedServerPublicKeyText?: string;
 }
 
 // Enums matching libasciichat definitions
@@ -307,6 +327,12 @@ import ClientModuleFactory from "./dist/client.js";
 
 let wasmModule: ClientModule | null = null;
 let moduleLoading: Promise<void> | null = null;
+let keyParserWorker: Worker | null = null;
+let nextKeyParserRequestId = 1;
+const pendingKeyParserRequests = new Map<
+  number,
+  { resolve: (result: Uint8Array) => void; reject: (error: Error) => void }
+>();
 let clientInitialized = false;
 let clientInitialization: Promise<void> | null = null;
 
@@ -358,6 +384,103 @@ export async function ensureWasmModuleLoaded(): Promise<void> {
   }
 }
 
+/** Set browser authentication and identity-verification inputs for the next handshake. */
+export async function configureClientCrypto(options: ClientCryptoOptions): Promise<void> {
+  if (!wasmModule || !clientInitialized)
+    throw new Error("Initialize the WASM client before configuring crypto");
+
+  let identitySecretKey: Uint8Array | undefined;
+  let expectedServerPublicKey: Uint8Array | undefined;
+  let passwordPtr = 0;
+  let identityPtr = 0;
+  let expectedServerPtr = 0;
+  let passwordBytes = 0;
+  try {
+    identitySecretKey = options.identityPrivateKeyText
+      ? await validateSshPrivateKey(options.identityPrivateKeyText)
+      : undefined;
+    expectedServerPublicKey = options.expectedServerPublicKeyText
+      ? await validateSshPublicKey(options.expectedServerPublicKeyText)
+      : undefined;
+    if (options.password) {
+      const size = wasmModule.lengthBytesUTF8(options.password) + 1;
+      passwordBytes = size;
+      passwordPtr = wasmModule._malloc(size);
+      if (!passwordPtr) throw new Error("Unable to allocate the crypto password");
+      wasmModule.stringToUTF8(options.password, passwordPtr, size);
+    }
+    if (identitySecretKey) {
+      identityPtr = wasmModule._malloc(identitySecretKey.length);
+      if (!identityPtr) throw new Error("Unable to allocate the identity key");
+      wasmModule.HEAPU8.set(identitySecretKey, identityPtr);
+    }
+    if (expectedServerPublicKey) {
+      expectedServerPtr = wasmModule._malloc(expectedServerPublicKey.length);
+      if (!expectedServerPtr) throw new Error("Unable to allocate the verification key");
+      wasmModule.HEAPU8.set(expectedServerPublicKey, expectedServerPtr);
+    }
+    if (
+      await wasmModule._client_configure_crypto_options(
+        passwordPtr,
+        identityPtr,
+        expectedServerPtr,
+      ) !== 0
+    ) {
+      throw new Error("WASM rejected the configured crypto settings");
+    }
+  } finally {
+    if (passwordPtr) {
+      wasmModule.HEAPU8.fill(0, passwordPtr, passwordPtr + passwordBytes);
+      wasmModule._free(passwordPtr);
+    }
+    if (identityPtr) {
+      wasmModule.HEAPU8.fill(0, identityPtr, identityPtr + 64);
+      wasmModule._free(identityPtr);
+    }
+    if (expectedServerPtr) {
+      wasmModule.HEAPU8.fill(0, expectedServerPtr, expectedServerPtr + 32);
+      wasmModule._free(expectedServerPtr);
+    }
+    identitySecretKey?.fill(0);
+    expectedServerPublicKey?.fill(0);
+  }
+}
+
+/** Validate an SSH private key with ascii-chat's shared C SSH parser. */
+export async function validateSshPrivateKey(contents: string): Promise<Uint8Array> {
+  return parseKeyInWorker("private", contents);
+}
+
+/** Validate an SSH Ed25519 public key with ascii-chat's shared C parser. */
+export async function validateSshPublicKey(contents: string): Promise<Uint8Array> {
+  return parseKeyInWorker("public", contents);
+}
+
+function parseKeyInWorker(kind: "private" | "public", contents: string): Promise<Uint8Array> {
+  const worker = keyParserWorker ?? new Worker(new URL("./cryptoKeyParser.worker.ts", import.meta.url), { type: "module" });
+  keyParserWorker = worker;
+  const id = nextKeyParserRequestId++;
+  return new Promise((resolve, reject) => {
+    pendingKeyParserRequests.set(id, { resolve, reject });
+    worker.onmessage = (event: MessageEvent<{ id: number; bytes?: ArrayBuffer; error?: string }>) => {
+      const pending = pendingKeyParserRequests.get(event.data.id);
+      if (!pending) return;
+      pendingKeyParserRequests.delete(event.data.id);
+      if (event.data.error) pending.reject(new Error(event.data.error));
+      else if (event.data.bytes) pending.resolve(new Uint8Array(event.data.bytes));
+      else pending.reject(new Error("SSH key parser returned no result"));
+    };
+    worker.onerror = (event) => {
+      const error = new Error(event.message || "SSH key parser worker failed");
+      for (const request of pendingKeyParserRequests.values()) request.reject(error);
+      pendingKeyParserRequests.clear();
+      keyParserWorker?.terminate();
+      keyParserWorker = null;
+    };
+    worker.postMessage({ id, kind, contents });
+  });
+}
+
 async function loadWasmModule(): Promise<void> {
   if (!globalThis.crossOriginIsolated) {
     throw new Error(
@@ -368,7 +491,7 @@ async function loadWasmModule(): Promise<void> {
   console.log("[WASM] Loading module for help text...");
   wasmModule = await ClientModuleFactory({
     locateFile: (path: string) =>
-      new URL(`/wasm/${path}`, window.location.origin).href,
+      new URL(`/wasm/${path}`, globalThis.location.origin).href,
     getRandomValue: function () {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);

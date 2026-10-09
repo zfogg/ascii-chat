@@ -83,6 +83,8 @@ typedef struct crypto_handshake_context_t {
   public_key_t client_public_key;   /**< Client's Ed25519 public key (for authentication) */
   private_key_t client_private_key; /**< Client's Ed25519 private key (for signing challenges) */
   char expected_server_key[256];    /**< Expected server key fingerprint (client only, for known_hosts) */
+  uint8_t expected_server_key_bytes[32]; /**< Expected Ed25519 identity key supplied by a browser client */
+  bool expected_server_key_bytes_set; /**< Whether expected_server_key_bytes is configured */
   char client_gpg_key_id[41]; /**< Client's GPG key ID (8/16/40 hex chars + null terminator, for server verification) */
 
   /** Connection info for known_hosts */

@@ -89,6 +89,10 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   result = acds_identity_load(acds_key_path, public_key, secret_key);
 
   if (result != ASCIICHAT_OK) {
+    if (platform_access(acds_key_path, PLATFORM_ACCESS_EXISTS) == 0) {
+      log_error("Failed to load discovery identity key from %s", acds_key_path);
+      return result;
+    }
     log_info("Identity key not found, generating new key...");
 
     result = acds_identity_generate(public_key, secret_key);
@@ -244,16 +248,17 @@ static asciichat_error_t acds_init_fn(void *user_data) {
     return ASCIICHAT_OK;
   }
 
-  // Copy identity keys to server struct (needed by handlers for handshake)
-  memcpy(g_server.identity_public, public_key, 32);
-  memcpy(g_server.identity_secret, secret_key, 64);
-
   // Initialize server (DB, rate limiter, worker pool — TCP server comes from server_like)
   result = acds_server_init(&g_server, &config);
   if (result != ASCIICHAT_OK) {
     log_error("Server initialization failed");
     return result;
   }
+
+  // acds_server_init clears the server struct, so install the identity only
+  // after initialization. WebSocket crypto handshakes sign with these keys.
+  memcpy(g_server.identity_public, public_key, sizeof(g_server.identity_public));
+  memcpy(g_server.identity_secret, secret_key, sizeof(g_server.identity_secret));
 
   // Check again after server init in case SIGTERM arrived during init
   if (session_server_like_shutdown_requested()) {
