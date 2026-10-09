@@ -252,6 +252,8 @@ Test(recording, audio_only_file_uses_test_pattern_without_opening_webcam) {
   webcam_starts = 0;
   options_t options = *options_get();
   options.test_pattern = true;
+  options.width = 320;
+  options.height = 120;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
   char path[1024];
   create_audio_fixture(path, sizeof(path));

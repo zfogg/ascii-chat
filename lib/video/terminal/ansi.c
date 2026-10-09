@@ -358,24 +358,35 @@ char *append_256color_bg(char *dst, uint8_t color_index) {
 
 // Convert RGB to closest 256-color palette index
 uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
-  // Map to 6x6x6 color cube (216 colors) + grayscale ramp
-
-  // Check if it's close to grayscale
-  int avg = (r + g + b) / 3;
-  int gray_diff = abs(r - avg) + abs(g - avg) + abs(b - avg);
-
-  if (gray_diff < 30) {
-    // Use grayscale ramp (colors 232-255)
-    int gray_level = (avg * 23) / 255;
-    return (uint8_t)(232 + gray_level);
+  // Xterm cube levels are nonuniform. Compare the nearest cube entry with
+  // the nearest gray, including cube black/white rather than clipping them.
+  static const int levels[] = {0, 95, 135, 175, 215, 255};
+  int values[] = {r, g, b}, cube[3], error = 0;
+  for (int c = 0; c < 3; c++) {
+    cube[c] = 0;
+    for (int i = 1; i < 6; i++)
+      if (abs(values[c] - levels[i]) < abs(values[c] - levels[cube[c]])) cube[c] = i;
+    int delta = values[c] - levels[cube[c]];
+    error += delta * delta;
   }
+  int gray = ((int)r + g + b - 9) / 30;
+  if (gray < 0) gray = 0;
+  if (gray > 23) gray = 23;
+  int level = 8 + 10 * gray;
+  int dr = r - level, dg = g - level, db = b - level;
+  if (dr * dr + dg * dg + db * db < error) return (uint8_t)(232 + gray);
+  return (uint8_t)(16 + cube[0] * 36 + cube[1] * 6 + cube[2]);
+}
 
-  // Use 6x6x6 color cube (colors 16-231)
-  int r6 = (r * 5) / 255;
-  int g6 = (g * 5) / 255;
-  int b6 = (b * 5) / 255;
-
-  return (uint8_t)(16 + (r6 * 36) + (g6 * 6) + b6);
+// Expand a standard xterm palette index to truecolor. The first 16 entries
+// use the same reference palette as rgb_to_16color (terminal themes may vary).
+void get_256color_rgb(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b) {
+  if (!r || !g || !b) { SET_ERRNO(ERROR_INVALID_PARAM, "Missing palette RGB output"); return; }
+  if (index < 16) { get_16color_rgb(index, r, g, b); return; }
+  if (index >= 232) { *r = *g = *b = (uint8_t)(8 + (index - 232) * 10); return; }
+  static const uint8_t levels[] = {0, 95, 135, 175, 215, 255};
+  int cube = index - 16;
+  *r = levels[cube / 36]; *g = levels[(cube / 6) % 6]; *b = levels[cube % 6];
 }
 
 /* ===== 16-COLOR FUNCTIONS ===== */

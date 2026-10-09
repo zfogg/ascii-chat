@@ -707,6 +707,14 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
     return;
   }
 
+  if (meta->field_offset == offsetof(options_t, test_pattern)) {
+    const options_t *opts = (const options_t *)(field_ptr - offsetof(options_t, test_pattern));
+    if (opts->test_pattern)
+      SAFE_SNPRINTF(buf, bufsize, "%d", opts->test_pattern_index);
+    else
+      SAFE_SNPRINTF(buf, bufsize, "false");
+    return;
+  }
   if (meta->field_offset == offsetof(options_t, log_file) ||
       meta->field_offset == offsetof(options_t, palette_custom) ||
       meta->field_offset == offsetof(options_t, yt_dlp_options)) {
@@ -824,6 +832,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
         // Convert integer to string (e.g., port = 8080)
         SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
         has_value = true;
+      } else if (datum.type == TOML_BOOLEAN && meta->field_offset == offsetof(options_t, test_pattern)) {
+        SAFE_STRNCPY(value_str, datum.u.boolean ? "true" : "false", BUFFER_SIZE_MEDIUM);
+        has_value = true;
       }
     } else if (g_type_handlers[meta->type].extract) {
       g_type_handlers[meta->type].extract(datum, value_str, &int_val, &bool_val, &double_val, &has_value);
@@ -878,6 +889,14 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
         // When no_encrypt is enabled, automatically disable encrypt_enabled
         opts->encrypt_enabled = false;
       }
+      option_set_flags[i] = true;
+      continue;
+    }
+
+    // Preserve boolean test_pattern config files; integers select an animation.
+    if (meta->field_offset == offsetof(options_t, test_pattern) &&
+        (strcmp(value_str, "true") == 0 || strcmp(value_str, "false") == 0)) {
+      opts->test_pattern = strcmp(value_str, "true") == 0;
       option_set_flags[i] = true;
       continue;
     }

@@ -48,6 +48,7 @@ typedef struct {
   int fixed_header_lines;                  ///< How many lines the header takes (e.g., 4 for status, 8 for splash)
   terminal_screen_header_fn render_header; ///< Callback to draw header content
   void *user_data;                         ///< Passed to render_header callback
+  bool hide_cursor;                        ///< Hide cursor while this screen owns the terminal
   bool show_logs;                          ///< Whether to show log feed below header
 } terminal_screen_config_t;
 
@@ -76,6 +77,8 @@ void terminal_screen_render(const terminal_screen_config_t *config);
  *
  * Destroys the internal static frame buffer allocated by terminal_screen_render().
  * Call at program exit or when terminal screen rendering is no longer needed.
+ * If a render is active, destruction is deferred until that render returns;
+ * cleanup never waits for blocked terminal output.
  */
 void terminal_screen_cleanup(void);
 

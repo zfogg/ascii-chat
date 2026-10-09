@@ -72,9 +72,9 @@ void splash_log_append(const char *message);
  *
  * **Display Requirements:**
  * - stdin AND stdout must be TTY (platform_isatty())
- * - --no-intro-screen option must not be set
+ * - --splash-screen=false must not be set
  * - Not in snapshot mode (--snapshot)
- * - Terminal must be large enough (min 50 cols x 20 rows)
+ * - Startup layout needs 50 columns x 20 rows; discovery uses a compact layout below that.
  *
  * **Behavior:**
  * - Starts animated rainbow border with "ascii-chat" logo
@@ -122,7 +122,8 @@ int splash_intro_done(void);
  * to prevent the splash and ASCII art from appearing simultaneously.
  *
  * @note Safe to call multiple times
- * @note Blocks on the animation thread join
+ * @note On shutdown, waits at most 100ms for a blocked writer before returning.
+ *       Normal frame handoff always waits for the writer to finish.
  * @note MUST be called before first display_render_frame() call
  *
  * @ingroup session
@@ -217,3 +218,9 @@ void splash_notify_first_frame(void);
  * @ingroup session
  */
 bool splash_is_running(void);
+
+/** Store discovery presentation before or during splash startup. The string is copied. */
+void splash_set_discovery_session(const char *session_string, bool joining);
+
+/** Reset discovery presentation after the animation has been joined. */
+void splash_clear_discovery_session(void);

@@ -1,3 +1,5 @@
+import { getMirrorModule } from "./wasm/mirror";
+
 export interface TestPatternVideoSource {
   stream: MediaStream;
   resize: (width: number, height: number) => void;
@@ -23,73 +25,22 @@ export function isTestMode(search = window.location.search): boolean {
   return getTestPatternMode(search) !== "none";
 }
 
-export function drawTestPatternFrame(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  time = performance.now(),
-): void {
-  const phase = (time % 10000) / 10000;
-  const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, `hsl(${phase * 360}, 100%, 50%)`);
-  gradient.addColorStop(1, `hsl(${((phase + 0.5) % 1) * 360}, 100%, 50%)`);
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-
-  const boxSize = Math.max(32, Math.min(width, height) / 4);
-  const x = ((time / 11) % (width + boxSize)) - boxSize;
-  const y = ((time / 17) % (height + boxSize)) - boxSize;
-  context.fillStyle = "rgba(255, 255, 255, 0.8)";
-  context.fillRect(x, y, boxSize, boxSize);
-  context.fillStyle = "#101820";
-  context.font = `${Math.max(18, Math.min(width, height) / 10)}px sans-serif`;
-  context.fillText("ascii-chat test", 24, Math.max(36, height / 8));
-}
-
-/** The second deterministic animation used to compare frame delivery paths. */
-export function drawTestPatternFrame2(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  time = performance.now(),
-): void {
-  const phase = (time % 4000) / 4000;
-  context.fillStyle = "#101820";
-  context.fillRect(0, 0, width, height);
-
-  const stripeWidth = Math.max(8, width / 12);
-  const stripeOffset = phase * width;
-  const firstStripe = Math.ceil(-stripeOffset / stripeWidth);
-  for (let offset = 0; offset <= 12; offset++) {
-    const index = firstStripe + offset;
-    const hue = (((index % 12) + 12) % 12) * 30;
-    const x = index * stripeWidth + stripeOffset;
-    context.fillStyle = `hsl(${hue}, 100%, 55%)`;
-    context.fillRect(x - stripeWidth, 0, stripeWidth, height);
+// Each canvas owns its C renderer and releases it when its source stops.
+const renderers = new WeakMap<
+  CanvasRenderingContext2D,
+  {
+    module: NonNullable<ReturnType<typeof getMirrorModule>>;
+    pointer: number;
+    image: ImageData;
   }
+>();
 
-  const radius = Math.max(12, Math.min(width, height) / 8);
-  const x = width + radius - phase * (width + radius * 2);
-  const y = height / 2 + (Math.sin(phase * Math.PI * 4) * height) / 4;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fillStyle = "#ffffff";
-  context.fill();
-  context.fillStyle = "#101820";
-  context.font = `${Math.max(18, Math.min(width, height) / 10)}px sans-serif`;
-  context.fillText("ascii-chat test2", 24, Math.max(36, height / 8));
-
-  // Encode source-frame cadence as a gray-code bar panel. The stripes and
-  // circle can move without crossing an ASCII cell boundary on every source
-  // frame; one full-height eighth changes on each frame, even after downsampling.
-  const frameNumber = Math.floor(time / (1000 / 60));
-  const frameCode = frameNumber ^ (frameNumber >> 1);
-  const markerWidth = Math.max(2, width / 8);
-  const bitSlots = [3, 4, 2, 5, 1, 6, 0, 7];
-  for (let bit = 0; bit < 8; bit++) {
-    context.fillStyle = frameCode & (1 << bit) ? "#ffffff" : "#000000";
-    context.fillRect(bitSlots[bit]! * markerWidth, 0, markerWidth, height);
-  }
+export function releaseTestPatternFrame(
+  context: CanvasRenderingContext2D,
+): void {
+  const state = renderers.get(context);
+  if (state) state.module._wasm_test_pattern_destroy(state.pointer);
+  renderers.delete(context);
 }
 
 export function drawSelectedTestPatternFrame(
@@ -98,9 +49,37 @@ export function drawSelectedTestPatternFrame(
   width: number,
   height: number,
   time = performance.now(),
-): void {
-  if (mode === "test2") drawTestPatternFrame2(context, width, height, time);
-  else drawTestPatternFrame(context, width, height, time);
+  cadence = new URLSearchParams(window.location.search).has("testCadence"),
+): ImageData | undefined {
+  const module = getMirrorModule();
+  if (!module) return; // Initialization completes before the next animation frame.
+  let state = renderers.get(context);
+  if (state && state.module !== module) {
+    releaseTestPatternFrame(context);
+    state = undefined;
+  }
+  if (!state) {
+    const pointer = module._wasm_test_pattern_create(width, height);
+    if (!pointer) throw new Error("Could not create C test pattern");
+    state = { module, pointer, image: context.createImageData(width, height) };
+    renderers.set(context, state);
+  }
+  if (state.image.width !== width || state.image.height !== height)
+    state.image = context.createImageData(width, height);
+  const pixels = module._wasm_test_pattern_render_rgba(
+    state.pointer,
+    width,
+    height,
+    mode === "test2" ? 1 : 0,
+    time,
+    cadence ? 1 : 0,
+  );
+  if (!pixels) throw new Error("Could not render C test pattern");
+  const source = module.HEAPU8;
+  const target = state.image.data;
+  target.set(source.subarray(pixels, pixels + target.length));
+  context.putImageData(state.image, 0, 0);
+  return state.image;
 }
 
 export function createTestPatternVideoSource(
@@ -152,6 +131,7 @@ export function createTestPatternVideoSource(
     stop: () => {
       resizeObserver?.disconnect();
       cancelAnimationFrame(animationFrame);
+      releaseTestPatternFrame(context);
     },
   };
 }

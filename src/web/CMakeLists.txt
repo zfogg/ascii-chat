@@ -279,6 +279,8 @@ set(LIB_SRC_COMMON
 
     # Video/image handling (needed by webcam and ffmpeg backends)
     ${LIB_ROOT}/video/rgba/image.c
+    ${LIB_ROOT}/video/anim/test_pattern.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/test_pattern.c
 
     # UI components (splash screen, status screen, keyboard help)
     ${LIB_ROOT}/ui/splash.c
@@ -485,6 +487,7 @@ apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
+    _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     # Frame processing for JavaScript control
     _mirror_init_with_args
     _mirror_cleanup
@@ -539,6 +542,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _client_acds_join_request
     _client_configure_crypto_options
     _client_parse_ssh_private_key

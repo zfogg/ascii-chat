@@ -1020,6 +1020,7 @@ typedef struct options_state {
   // ============================================================================
   int webcam_index;    ///< Webcam device index (0 = first)
   bool test_pattern;   ///< Use test pattern instead of webcam
+  int test_pattern_index; ///< Synthetic pattern selector (0 or 1)
   bool no_audio_mixer; ///< Disable audio mixer (debug)
 
   // ============================================================================

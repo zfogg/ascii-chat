@@ -27,6 +27,8 @@
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/options/options.h"
 #include "ascii-chat/common.h"
+#include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -35,6 +37,16 @@
 
 // Module-level static frame buffer (reused across renders to avoid malloc per frame)
 static frame_buffer_t *g_frame_buf = NULL;
+
+// Cleanup never waits for terminal I/O. An active renderer retains ownership
+// until it returns, then services any deferred cleanup request.
+enum { SCREEN_IDLE, SCREEN_RENDERING, SCREEN_CLEANUP_PENDING, SCREEN_CLEANING };
+static atomic_t g_screen_state = {0};
+
+static void terminal_screen_free_buffer(void) {
+  frame_buffer_destroy(g_frame_buf);
+  g_frame_buf = NULL;
+}
 
 // Module-level static session log buffer (owned by this module)
 static session_log_buffer_t *g_session_log_buffer = NULL;
@@ -102,7 +114,7 @@ static void terminal_screen_clear_cache(void) {
 
 static uint64_t g_render_start_time_ns = 0;
 
-static void terminal_screen_render_owned(const terminal_screen_config_t *config) {
+static void terminal_screen_render_impl(const terminal_screen_config_t *config) {
   // Validate config
   if (!config || !config->render_header) {
     return;
@@ -119,7 +131,7 @@ static void terminal_screen_render_owned(const terminal_screen_config_t *config)
   uint64_t elapsed_ms = (now_ns - g_render_start_time_ns) / 1000000;
 
   // Ensure cursor is visible for log-only UI (splash, status screens)
-  (void)ui_controller_write(frame_buffer_get_screen_output_fd(), "\033[?25h", 6);
+  (void)ui_controller_write(frame_buffer_get_screen_output_fd(), config->hide_cursor ? "\033[?25l" : "\033[?25h", 6);
 
   g_cached_term_size = ui_controller_size();
 
@@ -409,10 +421,35 @@ static void terminal_screen_render_owned(const terminal_screen_config_t *config)
   SAFE_FREE(log_entries);
 }
 
+static void terminal_screen_render_owned(const terminal_screen_config_t *config) {
+  int expected = SCREEN_IDLE;
+  if (!atomic_cas_int(&g_screen_state, &expected, SCREEN_RENDERING))
+    return;
+
+  terminal_screen_render_impl(config);
+
+  expected = SCREEN_RENDERING;
+  if (!atomic_cas_int(&g_screen_state, &expected, SCREEN_IDLE)) {
+    // Cleanup requested ownership while we were rendering or blocked in write.
+    // Keep other renderers out until the buffer is released.
+    terminal_screen_free_buffer();
+    atomic_store_int(&g_screen_state, SCREEN_IDLE);
+  }
+}
+
 void terminal_screen_cleanup(void) {
-  if (g_frame_buf) {
-    frame_buffer_destroy(g_frame_buf);
-    g_frame_buf = NULL;
+  for (;;) {
+    int state = atomic_load_int(&g_screen_state);
+    if (state == SCREEN_CLEANUP_PENDING || state == SCREEN_CLEANING)
+      return;
+    int next = state == SCREEN_RENDERING ? SCREEN_CLEANUP_PENDING : SCREEN_CLEANING;
+    if (!atomic_cas_int(&g_screen_state, &state, next))
+      continue;
+    if (next == SCREEN_CLEANING) {
+      terminal_screen_free_buffer();
+      atomic_store_int(&g_screen_state, SCREEN_IDLE);
+    }
+    return;
   }
 }
 
@@ -421,6 +458,7 @@ session_log_buffer_t *terminal_screen_log_init(void) {
     return g_session_log_buffer; // Already initialized
   }
 
+  NAMED_REGISTER_ATOMIC(&g_screen_state, "terminal_screen_state", NULL);
   g_session_log_buffer = session_log_buffer_create();
   return g_session_log_buffer;
 }
@@ -428,6 +466,7 @@ session_log_buffer_t *terminal_screen_log_init(void) {
 void terminal_screen_log_destroy(void) {
   ui_controller_remove(UI_SCREEN_STATUS);
   ui_controller_remove(UI_SCREEN_SPLASH);
+  NAMED_UNREGISTER(&g_screen_state);
   if (g_session_log_buffer) {
     session_log_buffer_destroy(g_session_log_buffer);
     g_session_log_buffer = NULL;

@@ -333,7 +333,9 @@ static bool webrtc_transport_is_connected_impl(webrtc_transport_data_t *wrtc) {
     return false;
   }
 
-  if (state == WEBRTC_STATE_CONNECTED) {
+  // The DataChannel open callback can precede the peer connection's CONNECTED
+  // callback. An open channel is already usable during that event ordering.
+  if (state == WEBRTC_STATE_CONNECTED || state == WEBRTC_STATE_CONNECTING) {
     if (!connected || !webrtc_datachannel_is_open(wrtc->data_channel)) {
       return false;
     }

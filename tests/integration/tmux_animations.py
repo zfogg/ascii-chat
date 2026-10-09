@@ -26,12 +26,13 @@ results = []
 for name, flags in [("splash", []), ("matrix", ["--matrix"]),
                     ("rainbow", ["--color-filter", "rainbow"]),
                     ("matrix-rainbow", ["--matrix", "--color-filter", "rainbow"]),
-                    ("test-pattern", ["--test-pattern"])]:
+                    ("test-pattern-0", ["--test-pattern=0"]),
+                    ("test-pattern-1", ["--test-pattern=1"])]:
     directory = root / ("anim-" + name)
     directory.mkdir(parents=True, exist_ok=True)
     base = [str(args.binary.resolve()), "--no-check-update", "--log-level", "warn",
             "--log-file", str(directory / "application.log")]
-    source = ["--test-pattern"] if name == "test-pattern" else ["--file", str(video), "--loop", *flags]
+    source = flags if name.startswith("test-pattern-") else ["--file", str(video), "--loop", *flags]
     argv = ([str(args.probe.resolve()), "splash", str(directory / "application.log")] if name == "splash" else
             base + ["mirror", "--fps", "20", "--audio=false", "--splash-screen=false",
                     "--color-mode", "truecolor", "--render-mode", "foreground", *source])

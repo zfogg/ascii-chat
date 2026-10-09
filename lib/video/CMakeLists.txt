@@ -1,6 +1,7 @@
 # lib/video - Video processing and SIMD
 
 set(VIDEO_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/anim/test_pattern.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/video_frame.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/color_filter.c

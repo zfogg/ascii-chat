@@ -52,7 +52,8 @@ asciichat_error_t animation_update(animation_t *animation, uint64_t timestamp_ns
 asciichat_error_t animation_sample_at(animation_config_t config, double seconds, animation_sample_t *out);
 
 struct digital_rain;
-typedef enum { ANIMATION_TARGET_COLOR, ANIMATION_TARGET_ANSI, ANIMATION_TARGET_IMAGE } animation_target_type_t;
+struct test_pattern;
+typedef enum { ANIMATION_TARGET_COLOR, ANIMATION_TARGET_ANSI, ANIMATION_TARGET_TEST_PATTERN } animation_target_type_t;
 typedef struct {
   animation_target_type_t type;
   union {
@@ -66,7 +67,11 @@ typedef struct {
       char **out;
       struct digital_rain *rain;
     } ansi;
-    image_t *image;
+    struct {
+      struct test_pattern *context;
+      int index;
+      bool cadence;
+    } test_pattern;
   };
 } animation_target_t;
 asciichat_error_t animation_apply(const animation_sample_t *sample, animation_target_t *target);

@@ -121,9 +121,10 @@ asciichat_error_t animation_apply(const animation_sample_t *s, animation_target_
     *t->ansi.out = digital_rain_render_at(t->ansi.rain, t->ansi.input, (float)s->seconds);
     return *t->ansi.out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Digital rain output allocation failed");
   case ANIMATION_TEST_PATTERN:
-    if (t->type != ANIMATION_TARGET_IMAGE)
+    if (t->type != ANIMATION_TARGET_TEST_PATTERN || !t->test_pattern.context)
       break;
-    return image_render_test_pattern_phase(t->image, (unsigned int)(s->frame * 5));
+    return test_pattern_render_at(t->test_pattern.context, t->test_pattern.index, s->seconds * 1000.0,
+                                  t->test_pattern.cadence);
   }
   return SET_ERRNO(ERROR_INVALID_PARAM, "Animation type does not support this target");
 }

@@ -32,6 +32,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/terminal_screen.c
     ${LIB_DIR}/ui/keyboard_help.c
     ${LIB_DIR}/ui/splash.c
+    ${LIB_DIR}/ui/invitation.c
     ${LIB_DIR}/ui/status.c
     ${LIB_DIR}/ui/update_banner.c
     ${LIB_DIR}/ui/mdns.c

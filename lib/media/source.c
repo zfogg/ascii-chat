@@ -4,6 +4,7 @@
  */
 
 #include <ascii-chat/video/anim/controller.h>
+#include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/media/yt_dlp.h>
@@ -60,8 +61,8 @@ struct media_source_t {
   void *audio_ctx; ///< Audio context for clearing buffers on seek (opaque)
 
   // Test pattern state (for MEDIA_SOURCE_TEST)
-  image_t *test_pattern_frame;     ///< Reusable 320x240 frame buffer for test pattern
-  unsigned int test_frame_counter; ///< Animation phase counter for test pattern
+  test_pattern_t *test_pattern; ///< Independent reusable synthetic renderer
+  uint64_t test_start_ns; ///< Monotonic animation origin
 };
 
 /* ============================================================================
@@ -398,8 +399,8 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     // Test pattern state is encapsulated in media_source_t
     source->webcam_index = 0;
     source->webcam_ctx = NULL;         // No context needed for test pattern
-    source->test_pattern_frame = NULL; // Allocated lazily on first read
-    source->test_frame_counter = 0;
+    source->test_pattern = NULL;
+    source->test_start_ns = 0;
 
     log_debug("Media source: Test pattern");
     break;
@@ -476,10 +477,8 @@ void media_source_destroy(media_source_t *source) {
   SAFE_FREE(source->original_youtube_url);
 
   // Clean up test pattern frame
-  if (source->test_pattern_frame) {
-    image_destroy(source->test_pattern_frame);
-    source->test_pattern_frame = NULL;
-  }
+  test_pattern_destroy(source->test_pattern);
+  source->test_pattern = NULL;
 
   // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
@@ -494,18 +493,18 @@ void media_source_destroy(media_source_t *source) {
  * ============================================================================ */
 
 static image_t *read_test_pattern(media_source_t *source) {
-  if (!source->test_pattern_frame) {
-    source->test_pattern_frame = image_new(320, 240);
-    if (!source->test_pattern_frame)
-      return NULL;
-  }
-  // Generated test media advances once per requested frame, preserving capture cadence.
-  animation_sample_t sample = {.type = ANIMATION_TEST_PATTERN, .frame = source->test_frame_counter};
-  animation_target_t target = {.type = ANIMATION_TARGET_IMAGE, .image = source->test_pattern_frame};
-  if (animation_apply(&sample, &target) != ASCIICHAT_OK)
+  int width = GET_OPTION(width), height = GET_OPTION(height);
+  // Preserve a useful source resolution when terminal dimensions are automatic.
+  width = width > 0 ? width : 320;
+  height = height > 0 ? height * 2 : 240;
+  if (!source->test_pattern) {
+    if (test_pattern_create(width, height, &source->test_pattern) != ASCIICHAT_OK) return NULL;
+    source->test_start_ns = time_get_ns();
+  } else if (test_pattern_resize(source->test_pattern, width, height) != ASCIICHAT_OK) return NULL;
+  double elapsed = (double)time_elapsed_ns(source->test_start_ns, time_get_ns()) / 1000000.0;
+  if (test_pattern_render(source->test_pattern, GET_OPTION(test_pattern_index), elapsed, false) != ASCIICHAT_OK)
     return NULL;
-  ++source->test_frame_counter;
-  return source->test_pattern_frame;
+  return test_pattern_image(source->test_pattern);
 }
 
 asciichat_error_t media_source_start_video(media_source_t *source) {

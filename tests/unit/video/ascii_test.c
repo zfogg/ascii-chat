@@ -7,6 +7,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/util/string.h>
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {
@@ -990,4 +991,40 @@ Test(ascii, halfblock_cover_uses_cell_geometry) {
   cr_assert_null(strstr(square, "38;2;0;255;0m"));
   SAFE_FREE(square);
   image_destroy(img);
+}
+
+Test(ascii, ascii_create_grid_colored_single_source) {
+  const char *frame = "\033[38;2;255;0;0mABCDEF\033[0m\n";
+  ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
+  size_t size = 0;
+  char *grid = ascii_create_grid(&source, 1, 12, 3, &size);
+  cr_assert_not_null(grid);
+  cr_assert_eq(size, strlen(grid));
+  cr_assert_not_null(strstr(grid, "\033[38;2;255;0;0mABCDEF"));
+  char plain[128];
+  strip_ansi_codes(grid, plain, sizeof(plain));
+  cr_assert_str_eq(plain, "            \r\n   ABCDEF   \r\n            ");
+  SAFE_FREE(grid);
+}
+
+Test(ascii, ascii_create_grid_colored_rows_do_not_overlap) {
+  const char *left = "\033[38;2;255;0;0mAAAAAAAAAA\033[0m\n";
+  const char *right = "\033[38;2;0;255;0mBBBBBBBBBB\033[0m\n";
+  char left_frame[256] = "", right_frame[256] = "";
+  for (int row = 0; row < 6; ++row) {
+    strcat(left_frame, left);
+    strcat(right_frame, right);
+  }
+  ascii_frame_source_t sources[] = {{left_frame, strlen(left_frame)}, {right_frame, strlen(right_frame)}};
+  size_t size = 0;
+  char *grid = ascii_create_grid(sources, 2, 21, 6, &size);
+  cr_assert_not_null(grid);
+  cr_assert_eq(size, strlen(grid));
+  char plain[256];
+  strip_ansi_codes(grid, plain, sizeof(plain));
+  cr_assert_str_eq(plain, "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
+                          "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
+                          "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB");
+  cr_assert_eq(grid[size - 1], 'm'); // Ends with a complete reset, without a scrolling newline.
+  SAFE_FREE(grid);
 }

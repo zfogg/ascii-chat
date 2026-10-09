@@ -840,6 +840,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   if (was_first_frame) {
     // Stop splash screen when first frame is ready
     splash_intro_done();
+    splash_wait_for_animation();
   }
 
   // Output routing logic

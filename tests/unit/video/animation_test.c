@@ -1,3 +1,4 @@
+#include <ascii-chat/video/anim/test_pattern.h>
 #include <criterion/criterion.h>
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/digital_rain.h>
@@ -78,20 +79,24 @@ Test(animation, deterministic_color_and_invalid_targets) {
   cr_assert_neq(animation_sample_at(config(ANIMATION_RAINBOW_FILTER), NAN, &s), ASCIICHAT_OK);
 }
 
-Test(animation, test_pattern_frames_match_legacy_and_change) {
-  image_t *a = image_new(80, 60), *b = image_new(80, 60);
-  unsigned phase = 0;
-  animation_target_t t = {.type = ANIMATION_TARGET_IMAGE, .image = a};
-  for (uint64_t frame = 0; frame < 4; ++frame) {
-    animation_sample_t s = {.type = ANIMATION_TEST_PATTERN, .frame = frame};
-    cr_assert_eq(animation_apply(&s, &t), ASCIICHAT_OK);
-    if (frame)
-      cr_assert(memcmp(a->pixels, b->pixels, 80 * 60 * sizeof(rgb_pixel_t)) != 0);
-    image_render_test_pattern(b, &phase);
-    cr_assert_eq(memcmp(a->pixels, b->pixels, 80 * 60 * sizeof(rgb_pixel_t)), 0);
+Test(animation, shared_test_patterns_are_deterministic_and_animated) {
+  test_pattern_t *pattern = NULL;
+  cr_assert_eq(test_pattern_create(80, 60, &pattern), ASCIICHAT_OK);
+  rgb_pixel_t previous[80 * 60], repeat[80 * 60];
+  animation_target_t target = {.type = ANIMATION_TARGET_TEST_PATTERN, .test_pattern = {.context = pattern}};
+  for (int index = 0; index < 2; ++index) {
+    target.test_pattern.index = index;
+    animation_sample_t sample = {.type = ANIMATION_TEST_PATTERN};
+    cr_assert_eq(animation_apply(&sample, &target), ASCIICHAT_OK);
+    memcpy(previous, test_pattern_image(pattern)->pixels, sizeof(previous));
+    sample.seconds = 1;
+    cr_assert_eq(animation_apply(&sample, &target), ASCIICHAT_OK);
+    cr_assert_neq(memcmp(previous, test_pattern_image(pattern)->pixels, sizeof(previous)), 0);
+    memcpy(repeat, test_pattern_image(pattern)->pixels, sizeof(repeat));
+    cr_assert_eq(animation_apply(&sample, &target), ASCIICHAT_OK);
+    cr_assert_eq(memcmp(repeat, test_pattern_image(pattern)->pixels, sizeof(repeat)), 0);
   }
-  image_destroy(a);
-  image_destroy(b);
+  test_pattern_destroy(pattern);
 }
 
 Test(animation, rain_clock_reset_and_rainbow_composition) {

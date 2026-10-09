@@ -40,7 +40,10 @@ function sourceHash() {
 }
 
 const manifestPath = resolve(output, "manifest.json");
-if (process.env.ASCII_CHAT_WASM_USE_PREBUILT === "1") {
+if (
+  process.env.ASCII_CHAT_WASM_USE_PREBUILT === "1" ||
+  process.argv.includes("--publish-only")
+) {
   if (!existsSync(manifestPath))
     throw new Error(
       "Prebuilt WASM requires a manifest from a successful WASM build.",
