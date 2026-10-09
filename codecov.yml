@@ -5,8 +5,7 @@
 codecov:
   # Use the default branch from Git
   branch: master
-  # Reject reports older than 12 hours
-  max_report_age: "12h"
+  # Use Codecov's default relative age limit; "12h" is parsed as noon.
   # Wait for unit, integration, and performance coverage uploads
   notify:
     # Enable GitHub PR comments with coverage details
