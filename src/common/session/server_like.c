@@ -22,6 +22,8 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <signal.h>
 #include <string.h>
 
@@ -39,6 +41,31 @@ static bool g_websocket_thread_started = false;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
+static nat_upnp_context_t *g_ws_upnp_ctx = NULL;
+static asciichat_thread_t g_upnp_thread;
+static bool g_upnp_thread_started = false;
+static atomic_t g_upnp_stop = {0};
+static atomic_t g_upnp_ready = {0};
+
+// The worker is the sole mapping writer after mode initialization. Shutdown
+// joins it before freeing the context or issuing the delete request.
+static void *upnp_renewal_thread(void *unused) {
+  (void)unused;
+  while (!atomic_load_bool(&g_upnp_stop)) {
+    if (atomic_load_bool(&g_upnp_ready)) {
+      nat_upnp_context_t *mappings[] = {g_upnp_ctx, g_ws_upnp_ctx};
+      for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
+        if (mappings[i] && time_get_ns() >= mappings[i]->refresh_at_ns) {
+          if (nat_upnp_refresh(mappings[i]) != ASCIICHAT_OK) {
+            LOG_ERRNO_IF_SET("Router mapping renewal failed");
+          }
+        }
+      }
+    }
+    time_sleep_ns(100 * NS_PER_MS_INT);
+  }
+  return NULL;
+}
 
 static asciichat_thread_t g_status_screen_thread;
 static bool g_status_screen_thread_started = false;
@@ -312,6 +339,10 @@ asciichat_error_t session_server_like_mdns_advertise(const char *name, const cha
  * Accessors (shutdown state and network resources)
  * ============================================================================ */
 
+void session_server_like_request_shutdown(void) {
+  server_like_signal_handler(SIGINT);
+}
+
 bool session_server_like_shutdown_requested(void) {
   return (bool)atomic_load_u64(&g_shutdown_requested);
 }
@@ -508,19 +539,34 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   /* === 5. UPnP port mapping === */
 
-  if (config->upnp.enabled && GET_OPTION(enable_upnp)) {
+  bool upnp_requested = config->upnp.enabled && GET_OPTION(enable_upnp);
+  bool ipv4_loopback = ipv4_has_value && is_localhost_ipv4(address);
+  bool ipv4_listener = tcp_config.bind_ipv4 && !ipv4_loopback;
+  if (upnp_requested && ipv4_listener) {
+    log_info("UPnP status: discovering (TCP port %d)", port);
     asciichat_error_t upnp_result = nat_upnp_open(port, config->upnp.description, &g_upnp_ctx);
-
-    if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
+    if (upnp_result == ASCIICHAT_OK && !nat_upnp_matches_bind_address(g_upnp_ctx, tcp_config.ipv4_address)) {
+      log_warn("NAT: gateway mapping does not target the bound IPv4 listener; removing it");
+      nat_upnp_close(&g_upnp_ctx);
+      upnp_result = ERROR_NETWORK;
+    }
+    if (upnp_result == ASCIICHAT_OK && nat_upnp_is_active(g_upnp_ctx)) {
       char public_addr[22];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        char msg[256];
-        safe_snprintf(msg, sizeof(msg), "Public endpoint: %s (direct TCP)", public_addr);
-        log_console(LOG_INFO, msg);
-        log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+        log_info("UPnP status: mapped at %s (external reachability unverified)", public_addr);
       }
     } else {
-      log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
+      log_warn("UPnP status: unavailable. Listener remains enabled; for Internet access, "
+               "check router support or manually forward TCP port %d. External reachability is unverified.",
+               port);
+    }
+  } else if (upnp_requested) {
+    log_info("UPnP status: disabled (requires a non-loopback IPv4 listener)");
+  } else {
+    log_info("UPnP status: disabled");
+    if (ipv4_listener && (!ipv4_has_value || strcmp(address, "0.0.0.0") == 0 || is_lan_ipv4(address))) {
+      log_info("For connections from outside your LAN, try --port-forwarding or forward TCP port %d on your router.",
+               port);
     }
   }
 
@@ -579,6 +625,25 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
+  if (upnp_requested && g_websocket_thread_started) {
+    // WebSocket binds independently of the raw TCP listener's address.
+    if (nat_upnp_open((uint16_t)GET_OPTION(websocket_port), "ascii-chat WebSocket", &g_ws_upnp_ctx) != ASCIICHAT_OK) {
+      log_warn("WebSocket mapping unavailable; manually forward TCP port %d if needed", GET_OPTION(websocket_port));
+    }
+  }
+
+  if (g_upnp_ctx || g_ws_upnp_ctx) {
+    atomic_store_bool(&g_upnp_stop, false);
+    atomic_store_bool(&g_upnp_ready, false);
+    if (asciichat_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
+      g_upnp_thread_started = true;
+    } else {
+      log_warn("NAT: could not start lease renewal; removing the temporary mapping");
+      nat_upnp_close(&g_upnp_ctx);
+      nat_upnp_close(&g_ws_upnp_ctx);
+    }
+  }
+
   /* === 9. Status screen === */
 
   if (config->status_fn) {
@@ -604,6 +669,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
+  atomic_store_bool(&g_upnp_ready, true);
+
   /* === 10. TCP accept loop (blocks) === */
 
   log_info("Server accepting connections on port %d", port);
@@ -616,6 +683,19 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
 cleanup:
   g_config = NULL;
+  if (g_upnp_thread_started) {
+    atomic_store_bool(&g_upnp_stop, true);
+    asciichat_thread_join(&g_upnp_thread, NULL);
+    g_upnp_thread_started = false;
+  }
+
+  // Remove the mapping before mode teardown, which can wait on other services.
+  if (g_upnp_ctx) {
+    nat_upnp_close(&g_upnp_ctx);
+    log_debug("UPnP port mapping closed");
+  }
+
+  nat_upnp_close(&g_ws_upnp_ctx);
 
   /* 11. Stop status screen */
   if (g_status_screen_thread_started) {
@@ -658,12 +738,6 @@ cleanup:
     tcp_server_destroy(&g_tcp_server);
     g_tcp_server_initialized = false;
     log_debug("TCP server destroyed");
-  }
-
-  /* 16. UPnP cleanup */
-  if (g_upnp_ctx) {
-    nat_upnp_close(&g_upnp_ctx);
-    log_debug("UPnP port mapping closed");
   }
 
   /* 17. mDNS cleanup */

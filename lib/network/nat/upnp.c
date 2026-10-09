@@ -1,327 +1,332 @@
 /**
  * @file nat/upnp.c
- * @brief UPnP/NAT-PMP port mapping implementation
- *
- * Strategy for enabling direct TCP without WebRTC:
- * 1. Try UPnP discovery (works on ~90% of consumer routers)
- * 2. Fall back to NAT-PMP if UPnP fails (Apple/Time Capsule)
- * 3. If both fail, client falls back to ACDS + WebRTC
- *
- * This pragmatic approach provides direct connectivity for most home users
- * while maintaining compatibility with stricter NATs via WebRTC fallback.
+ * @brief Router mapping lifecycle for TCP listeners and UDP transports.
  */
-
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/util/time.h>
 
-#ifdef __APPLE__
-// Only include natpmp if we're on Apple and miniupnpc is available
-#ifdef HAVE_MINIUPNPC
-#include <natpmp.h>
-#endif
-#endif
-
-// miniupnpc is conditionally included based on CMake detection
-// If not found, HAVE_MINIUPNPC will not be defined
-// The build system defines HAVE_MINIUPNPC=1 in compile definitions if miniupnpc is found
 #ifdef HAVE_MINIUPNPC
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #include <miniupnpc/upnperrors.h>
+#ifdef __APPLE__
+#include <natpmp.h>
+#endif
 #endif
 
-/**
- * @brief Try UPnP port mapping
- *
- * @return ASCIICHAT_OK on success, ERROR_NETWORK_* on failure
- */
+#define MAPPING_LEASE_SECONDS 3600U
+#define MAPPING_RETRY_NS (30ULL * NS_PER_SEC_INT)
+
 #ifdef HAVE_MINIUPNPC
-static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *description, nat_upnp_context_t *ctx) {
-  struct UPNPDev *device_list = NULL;
-  struct UPNPUrls urls;
-  struct IGDdatas data;
-  int upnp_result = 0;
-  char port_str[10];
-  char external_addr[40];
+static const char *mapping_protocol(const nat_upnp_context_t *ctx) {
+  return ctx->protocol == NAT_UPNP_UDP ? "UDP" : "TCP";
+}
 
-  memset(&urls, 0, sizeof(urls));
-  memset(&data, 0, sizeof(data));
-
-  // Step 1: Discover UPnP devices (2 second timeout for faster fallback)
-  log_debug("UPnP: Starting discovery (2 second timeout)...");
-  device_list = upnpDiscover(2000,  // timeout in milliseconds
-                             NULL,  // multicast interface
-                             NULL,  // minissdpdpath
-                             0,     // sameport
-                             0,     // ipv6
-                             2,     // ttl
-                             NULL); // error pointer
-
-  if (!device_list) {
-    SET_ERRNO(ERROR_NETWORK, "UPnP: No devices found (router may not support UPnP)");
-    return ERROR_NETWORK;
-  }
-
-  log_debug("UPnP: Found %d device(s)", 1); // device_list is a linked list, just log 1 for now
-
-  // Step 2: Find the Internet Gateway Device (IGD)
-  // Note: UPNP_GetValidIGD signature changed in miniupnpc API version 14
-  // API < 14:  UPNP_GetValidIGD(devlist, urls, data, external_addr, len) - 5 args
-  // API >= 14: UPNP_GetValidIGD(devlist, urls, data, external_addr, len, lanaddr, lanaddr_len) - 7 args
-  // MINIUPNPC_GETVALIDIGD_7ARG is set by CMake's check_c_source_compiles to detect the actual signature
-#ifdef MINIUPNPC_GETVALIDIGD_7ARG
-  upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr), NULL, 0);
-#else
-  upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr));
-#endif
-
-  if (upnp_result != 1) { // 1 = UPNP_IGD_VALID_CONNECTED (value may vary between versions)
-    SET_ERRNO(ERROR_NETWORK, "UPnP: No valid Internet Gateway found");
-    freeUPNPDevlist(device_list);
-    FreeUPNPUrls(&urls);
-    return ERROR_NETWORK;
-  }
-
-  log_debug("UPnP: Found valid IGD, external address: %s", external_addr);
-
-  // Step 3: Get external IP
-  upnp_result = UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, external_addr);
-
-  if (upnp_result != UPNPCOMMAND_SUCCESS) {
-    SET_ERRNO(ERROR_NETWORK, "UPnP: Failed to get external IP: %s", strupnperror(upnp_result));
-    freeUPNPDevlist(device_list);
-    FreeUPNPUrls(&urls);
-    return ERROR_NETWORK;
-  }
-
-  SAFE_STRNCPY(ctx->external_ip, external_addr, sizeof(ctx->external_ip));
-  log_info("UPnP: External IP detected: %s", ctx->external_ip);
-
-  // Step 4: Request port mapping
-  safe_snprintf(port_str, sizeof(port_str), "%u", internal_port);
-
-  log_debug("UPnP: Requesting port mapping for port %u (%s)...", internal_port, description);
-
-  upnp_result = UPNP_AddPortMapping(urls.controlURL,        // controlURL
-                                    data.first.servicetype, // servicetype
-                                    port_str,               // extPort (external port, same as internal for now)
-                                    port_str,               // inPort (internal port)
-                                    "127.0.0.1",            // inClient (internal IP - gets resolved by router)
-                                    description,            // description
-                                    "TCP",                  // protocol
-                                    NULL,                   // remoteHost (any)
-                                    "3600");                // leaseDuration (1 hour)
-
-  if (upnp_result != UPNPCOMMAND_SUCCESS) {
-    SET_ERRNO(ERROR_NETWORK, "UPnP: Failed to add port mapping: %s", strupnperror(upnp_result));
-    freeUPNPDevlist(device_list);
-    FreeUPNPUrls(&urls);
-    return ERROR_NETWORK;
-  }
-
-  log_info("UPnP: ✓ Port %u successfully mapped on %s", internal_port, urls.controlURL);
-
-  // Store device description for logging
-  SAFE_STRNCPY(ctx->device_description, urls.controlURL, sizeof(ctx->device_description));
-  ctx->internal_port = internal_port;
-  ctx->mapped_port = internal_port;
-  ctx->is_natpmp = false;
+static void mapping_set_lease(nat_upnp_context_t *ctx, uint32_t seconds) {
+  uint64_t now = time_get_ns();
+  ctx->lease_seconds = seconds;
+  ctx->expires_at_ns = now + (uint64_t)seconds * NS_PER_SEC_INT;
+  ctx->refresh_at_ns = now + (uint64_t)seconds * NS_PER_SEC_INT / 2;
   ctx->is_mapped = true;
+}
 
-  // Cleanup UPnP structures
-  freeUPNPDevlist(device_list);
-  FreeUPNPUrls(&urls);
-
+static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
+  char internal_port[6], external_port[6];
+  safe_snprintf(internal_port, sizeof(internal_port), "%u", ctx->internal_port);
+  safe_snprintf(external_port, sizeof(external_port), "%u", ctx->mapped_port);
+  int result = UPNP_AddPortMapping(ctx->control_url, ctx->service_type, external_port, internal_port, ctx->internal_ip,
+                                   ctx->description, mapping_protocol(ctx), NULL, "3600");
+  if (result != UPNPCOMMAND_SUCCESS) {
+    return SET_ERRNO(ERROR_NETWORK, "UPnP: mapping request failed: %s", strupnperror(result));
+  }
+  // Some gateways silently shorten the requested lease. Read it back on every renewal.
+  char client[40] = {0}, port[6] = {0}, description[80] = {0}, enabled[4] = {0}, lease[16] = {0};
+  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx),
+                                            NULL, client, port, description, enabled, lease);
+  uint32_t seconds = 60;
+  if (result == UPNPCOMMAND_SUCCESS && lease[0] >= '0' && lease[0] <= '9') {
+    char *end = NULL;
+    unsigned long granted = strtoul(lease, &end, 10);
+    if (*end == '\0' && granted <= MAPPING_LEASE_SECONDS) {
+      // A permanent mapping can still be refreshed periodically.
+      seconds = granted ? (uint32_t)granted : MAPPING_LEASE_SECONDS;
+    } else if (*end == '\0' && granted > MAPPING_LEASE_SECONDS) {
+      seconds = MAPPING_LEASE_SECONDS;
+    }
+  }
+  mapping_set_lease(ctx, seconds);
   return ASCIICHAT_OK;
 }
+
+static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
+  struct UPNPUrls urls = {0};
+  struct IGDdatas data = {0};
+  char lan_address[16] = {0};
+  char external_address[16] = {0};
+  struct UPNPDev *devices = upnpDiscover(2000, NULL, NULL, 0, 0, 2, NULL);
+  if (!devices) {
+    return SET_ERRNO(ERROR_NETWORK, "UPnP: no gateway discovered (unsupported or disabled)");
+  }
+#ifdef MINIUPNPC_GETVALIDIGD_7ARG
+  int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address), external_address,
+                                sizeof(external_address));
 #else
-// Stub implementation when miniupnpc is not available
-static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *description, nat_upnp_context_t *ctx) {
-  (void)internal_port;
-  (void)description;
+  int result = UPNP_GetValidIGD(devices, &urls, &data, lan_address, sizeof(lan_address));
+#endif
+  asciichat_error_t error = ERROR_NETWORK;
+  bool connected = result == 1;
+  bool private_wan = false;
+#ifdef UPNP_PRIVATEIP_IGD
+  // A connected gateway behind another NAT can still map its own listener.
+  private_wan = result == UPNP_PRIVATEIP_IGD;
+  connected = connected || private_wan;
+#endif
+  if (!connected || !urls.controlURL || !lan_address[0] || strncmp(lan_address, "127.", 4) == 0 ||
+      strcmp(lan_address, "0.0.0.0") == 0) {
+    SET_ERRNO(ERROR_NETWORK, "UPnP: no connected gateway with a usable LAN address (IGD result %d)", result);
+    goto cleanup;
+  }
+  result = UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, external_address);
+  if (result != UPNPCOMMAND_SUCCESS || !external_address[0]) {
+    SET_ERRNO(ERROR_NETWORK, "UPnP: could not obtain gateway external address");
+    goto cleanup;
+  }
+  SAFE_STRNCPY(ctx->internal_ip, lan_address, sizeof(ctx->internal_ip));
+  SAFE_STRNCPY(ctx->external_ip, external_address, sizeof(ctx->external_ip));
+  SAFE_STRNCPY(ctx->service_type, data.first.servicetype, sizeof(ctx->service_type));
+  SAFE_STRNCPY(ctx->device_description, urls.controlURL, sizeof(ctx->device_description));
+  SAFE_STRDUP(ctx->control_url, urls.controlURL);
+  if (!ctx->control_url) {
+    error = SET_ERRNO(ERROR_MEMORY, "UPnP: could not retain gateway control URL");
+    goto cleanup;
+  }
+  error = upnp_map(ctx);
+  if (error == ASCIICHAT_OK) {
+    ctx->external_is_private = private_wan;
+  }
+cleanup:
+  freeUPNPDevlist(devices);
+  FreeUPNPUrls(&urls);
+  if (error != ASCIICHAT_OK) {
+    SAFE_FREE(ctx->control_url);
+    ctx->control_url = NULL;
+  }
+  return error;
+}
+#else
+static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
   (void)ctx;
-  SET_ERRNO(ERROR_NETWORK, "miniupnpc not installed (UPnP disabled)");
-  return ERROR_NETWORK;
+  return SET_ERRNO(ERROR_NETWORK, "UPnP: support unavailable in this build");
 }
 #endif
 
-/**
- * @brief Try NAT-PMP port mapping (fallback for Apple routers)
- *
- * @return ASCIICHAT_OK on success, ERROR_NETWORK_* on failure
- */
-static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, nat_upnp_context_t *ctx) {
-#if !defined(__APPLE__) || !defined(HAVE_MINIUPNPC)
-  (void)internal_port;
-  (void)ctx;
-#ifndef __APPLE__
-  SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Not available on this platform (Apple only)");
-#else
-  SET_ERRNO(ERROR_NETWORK, "NAT-PMP: libnatpmp not available (install miniupnpc)");
-#endif
-  return ERROR_NETWORK;
-#else  // __APPLE__ && HAVE_MINIUPNPC
-  natpmp_t natpmp;
-  natpmpresp_t response;
-  int result;
-  char external_ip_str[16];
+#if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
+// libnatpmp returns TRYAGAIN while waiting and scheduling retransmissions.
+static asciichat_error_t natpmp_wait(natpmp_t *pmp, natpmpresp_t *response, uint16_t type) {
+  uint64_t deadline = time_get_ns() + 2ULL * NS_PER_SEC_INT;
+  do {
+    int result = readnatpmpresponseorretry(pmp, response);
+    if (result == 0) {
+      if (response->type == type && response->resultcode == 0) {
+        return ASCIICHAT_OK;
+      }
+      return SET_ERRNO(ERROR_NETWORK, "NAT-PMP: unexpected response");
+    }
+    if (result != NATPMP_TRYAGAIN) {
+      return SET_ERRNO(ERROR_NETWORK, "NAT-PMP: gateway request failed (%d)", result);
+    }
+    time_sleep_ns(10ULL * NS_PER_MS_INT);
+  } while (time_get_ns() < deadline);
+  return SET_ERRNO(ERROR_NETWORK, "NAT-PMP: gateway response timed out");
+}
 
-  log_debug("NAT-PMP: Initializing (fallback)...");
-
-  // Initialize NAT-PMP
-  result = initnatpmp(&natpmp, 0, 0);
-  if (result < 0) {
-    SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Failed to initialize (%d)", result);
-    return ERROR_NETWORK;
+static asciichat_error_t natpmp_map(nat_upnp_context_t *ctx, uint32_t lifetime, bool discover) {
+  natpmp_t pmp;
+  natpmpresp_t response = {0};
+  if (initnatpmp(&pmp, discover ? 0 : 1, ctx->gateway) < 0) {
+    return SET_ERRNO(ERROR_NETWORK, "NAT-PMP: could not initialize gateway connection");
   }
-
-  // Get external IP
-  result = sendpublicaddressrequest(&natpmp);
-  if (result < 0) {
-    closenatpmp(&natpmp);
-    SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Failed to request public address");
-    return ERROR_NETWORK;
+  asciichat_error_t error = ERROR_NETWORK;
+  if (discover) {
+    if (sendpublicaddressrequest(&pmp) < 0) {
+      SET_ERRNO(ERROR_NETWORK, "NAT-PMP: public address request failed");
+      goto cleanup;
+    }
+    error = natpmp_wait(&pmp, &response, NATPMP_RESPTYPE_PUBLICADDRESS);
+    if (error != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    const unsigned char *ip = (const unsigned char *)&response.pnu.publicaddress.addr;
+    safe_snprintf(ctx->external_ip, sizeof(ctx->external_ip), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    ctx->gateway = pmp.gateway;
   }
-
-  // Wait for response
-  memset(&response, 0, sizeof(response));
-  result = readnatpmpresponseorretry(&natpmp, &response);
-  if (result != NATPMP_TRYAGAIN && response.type == NATPMP_RESPTYPE_PUBLICADDRESS) {
-    unsigned char *ipv4 = (unsigned char *)&response.pnu.publicaddress.addr;
-    safe_snprintf(external_ip_str, sizeof(external_ip_str), "%u.%u.%u.%u", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);
-    SAFE_STRNCPY(ctx->external_ip, external_ip_str, sizeof(ctx->external_ip));
-    log_info("NAT-PMP: External IP detected: %s", ctx->external_ip);
+  if (sendnewportmappingrequest(&pmp, ctx->protocol == NAT_UPNP_UDP ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP,
+                                ctx->internal_port, ctx->mapped_port, lifetime) < 0) {
+    error = SET_ERRNO(ERROR_NETWORK, "NAT-PMP: mapping request failed");
+    goto cleanup;
   }
-
-  // Request port mapping
-  result = sendnewportmappingrequest(&natpmp, NATPMP_PROTOCOL_TCP, internal_port, internal_port,
-                                     3600); // 1 hour lease
-  if (result < 0) {
-    closenatpmp(&natpmp);
-    SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Failed to send port mapping request");
-    return ERROR_NETWORK;
-  }
-
-  // Wait for mapping response
-  memset(&response, 0, sizeof(response));
-  result = readnatpmpresponseorretry(&natpmp, &response);
-  if (result != NATPMP_TRYAGAIN && response.type == NATPMP_RESPTYPE_TCPPORTMAPPING) {
-    log_info("NAT-PMP: ✓ Port %u successfully mapped", internal_port);
-    ctx->internal_port = internal_port;
+  error = natpmp_wait(&pmp, &response,
+                      ctx->protocol == NAT_UPNP_UDP ? NATPMP_RESPTYPE_UDPPORTMAPPING : NATPMP_RESPTYPE_TCPPORTMAPPING);
+  if (error == ASCIICHAT_OK && lifetime != 0) {
+    if (!response.pnu.newportmapping.lifetime || !response.pnu.newportmapping.mappedpublicport ||
+        response.pnu.newportmapping.privateport != ctx->internal_port) {
+      error = SET_ERRNO(ERROR_NETWORK, "NAT-PMP: invalid granted mapping");
+      goto cleanup;
+    }
     ctx->mapped_port = response.pnu.newportmapping.mappedpublicport;
     ctx->is_natpmp = true;
-    ctx->is_mapped = true;
-    SAFE_STRNCPY(ctx->device_description, "Time Capsule/Apple AirPort", sizeof(ctx->device_description));
-  } else {
-    closenatpmp(&natpmp);
-    SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Failed to map port");
-    return ERROR_NETWORK;
+    mapping_set_lease(ctx, response.pnu.newportmapping.lifetime);
   }
-
-  closenatpmp(&natpmp);
-  return ASCIICHAT_OK;
-#endif // __APPLE__ && HAVE_MINIUPNPC
+cleanup:
+  closenatpmp(&pmp);
+  return error;
 }
-
-// ============================================================================
-// Public API Implementation
-// ============================================================================
+#endif
 
 asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description, nat_upnp_context_t **ctx) {
-  if (!ctx || !description) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "nat_upnp_open: Invalid arguments");
+  return nat_upnp_open_protocol(internal_port, description, NAT_UPNP_TCP, ctx);
+}
+
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
+                                         nat_upnp_context_t **ctx) {
+  if (!ctx) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: missing mapping output");
   }
-
-  // Allocate context
-  *ctx = SAFE_MALLOC(sizeof(nat_upnp_context_t), nat_upnp_context_t *);
-  if (!(*ctx)) {
-    return ERROR_MEMORY;
+  *ctx = NULL;
+  if (!internal_port || !description || (protocol != NAT_UPNP_TCP && protocol != NAT_UPNP_UDP)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: a listening port and description are required");
   }
-
-  memset(*ctx, 0, sizeof(nat_upnp_context_t));
-
-  // Try UPnP first (works on ~90% of home routers)
-  log_info("NAT: Attempting UPnP port mapping for port %u...", internal_port);
-  asciichat_error_t result = upnp_try_map_port(internal_port, description, *ctx);
-
+  *ctx = SAFE_CALLOC(1, sizeof(nat_upnp_context_t), nat_upnp_context_t *);
+  if (!*ctx) {
+    return SET_ERRNO(ERROR_MEMORY, "NAT: could not allocate mapping context");
+  }
+  (*ctx)->protocol = protocol;
+  (*ctx)->internal_port = internal_port;
+  (*ctx)->mapped_port = internal_port;
+  SAFE_STRNCPY((*ctx)->description, description, sizeof((*ctx)->description));
+  log_info("UPnP: discovering a gateway for %s port %u", protocol == NAT_UPNP_UDP ? "UDP" : "TCP", internal_port);
+  asciichat_error_t result = upnp_try_map_port(*ctx);
+#if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
+  if (result != ASCIICHAT_OK) {
+    log_debug("UPnP unavailable; trying NAT-PMP");
+    result = natpmp_map(*ctx, MAPPING_LEASE_SECONDS, true);
+  }
+#endif
   if (result == ASCIICHAT_OK) {
-    log_info("NAT: ✓ UPnP port mapping successful!");
+    log_info("NAT: mapping created for %s:%u (external reachability unverified)", (*ctx)->external_ip,
+             (*ctx)->mapped_port);
     return ASCIICHAT_OK;
   }
-
-  log_info("NAT: UPnP failed, trying NAT-PMP fallback...");
-  result = natpmp_try_map_port(internal_port, *ctx);
-
-  if (result == ASCIICHAT_OK) {
-    log_info("NAT: ✓ NAT-PMP port mapping successful!");
-    return ASCIICHAT_OK;
-  }
-
-  // Both UPnP and NAT-PMP failed - this is OK, not fatal
-  log_warn("NAT: Both UPnP and NAT-PMP failed. Direct TCP won't work, will use ACDS + WebRTC.");
-  log_warn("NAT: This is normal for strict NATs. No action required.");
-
+  LOG_ERRNO_IF_SET("Automatic router mapping unavailable");
+  SAFE_FREE((*ctx)->control_url);
   SAFE_FREE(*ctx);
   *ctx = NULL;
-
-  return SET_ERRNO(ERROR_NETWORK, "NAT: No automatic port mapping available (will use WebRTC)");
+  return SET_ERRNO(ERROR_NETWORK, "NAT: automatic mapping unavailable; direct connectivity may still work");
 }
 
 void nat_upnp_close(nat_upnp_context_t **ctx) {
-  if (!ctx || !(*ctx)) {
+  if (!ctx || !*ctx) {
     return;
   }
-
   if ((*ctx)->is_mapped) {
-    // Note: In a real implementation, we'd remove the port mapping from the gateway.
-    // For MVP, we just log and let the lease expire naturally (typically 1 hour).
-    log_debug("NAT: Port mapping will expire in ~1 hour (cleanup handled by router)");
+    asciichat_error_t error = ERROR_NETWORK;
+#if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
+    if ((*ctx)->is_natpmp) {
+      error = natpmp_map(*ctx, 0, false);
+    } else
+#endif
+    {
+#ifdef HAVE_MINIUPNPC
+      char port[6];
+      safe_snprintf(port, sizeof(port), "%u", (*ctx)->mapped_port);
+      int result =
+          UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), NULL);
+      // Fios gateways require an explicit wildcard when deleting an unrestricted mapping.
+      if (result == 402) {
+        result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), "*");
+      }
+      if (result != UPNPCOMMAND_SUCCESS && result != 714) {
+        log_debug("UPnP: deletion failed: %s (%d)", strupnperror(result), result);
+      }
+      // An already expired mapping needs no further cleanup.
+      error = (result == UPNPCOMMAND_SUCCESS || result == 714) ? ASCIICHAT_OK : ERROR_NETWORK;
+#endif
+    }
+    if (error != ASCIICHAT_OK) {
+      log_warn("NAT: could not remove mapping for port %u; its lease will expire", (*ctx)->mapped_port);
+    } else {
+      log_info("NAT: removed mapping for port %u", (*ctx)->mapped_port);
+    }
   }
-
+  SAFE_FREE((*ctx)->control_url);
   SAFE_FREE(*ctx);
   *ctx = NULL;
 }
 
 bool nat_upnp_is_active(const nat_upnp_context_t *ctx) {
+  return ctx && ctx->is_mapped && ctx->external_ip[0] && time_get_ns() < ctx->expires_at_ns;
+}
+
+bool nat_upnp_matches_bind_address(const nat_upnp_context_t *ctx, const char *bind_address) {
   if (!ctx) {
     return false;
   }
-  return ctx->is_mapped && ctx->external_ip[0] != '\0';
+  return !bind_address || !bind_address[0] || strcmp(bind_address, "0.0.0.0") == 0 ||
+         (ctx->internal_ip[0] && strcmp(bind_address, ctx->internal_ip) == 0);
+}
+
+asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip, size_t ip_len, uint16_t *port) {
+  if (!ctx || !ip || !port || ip_len < sizeof(ctx->external_ip)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: invalid endpoint output");
+  }
+  if (!nat_upnp_is_active(ctx)) {
+    return SET_ERRNO(ERROR_NETWORK, "NAT: no unexpired mapping to advertise");
+  }
+  SAFE_STRNCPY(ip, ctx->external_ip, ip_len);
+  *port = ctx->mapped_port;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t nat_upnp_refresh(nat_upnp_context_t *ctx) {
   if (!ctx || !ctx->is_mapped) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: Cannot refresh - no active mapping");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: cannot refresh without a mapping");
   }
-
-  log_debug("NAT: Refreshing port mapping (would extend lease in full implementation)");
-
-  // In a real implementation, we'd re-register the port mapping to extend the lease.
-  // For now, we just return success since the lease is 1 hour anyway.
+  asciichat_error_t result = ERROR_NETWORK;
+#if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
+  if (ctx->is_natpmp) {
+    result = natpmp_map(ctx, MAPPING_LEASE_SECONDS, false);
+  } else
+#endif
+  {
+#ifdef HAVE_MINIUPNPC
+    result = upnp_map(ctx);
+#endif
+  }
+  if (result != ASCIICHAT_OK) {
+    ctx->refresh_at_ns = time_get_ns() + MAPPING_RETRY_NS;
+    log_warn("NAT: mapping renewal failed; %s; retrying in 30 seconds",
+             nat_upnp_is_active(ctx) ? "previous lease has not expired" : "mapping lease expired");
+    return result;
+  }
+  log_info("NAT: mapping renewed for %s:%u", ctx->external_ip, ctx->mapped_port);
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t nat_upnp_get_address(const nat_upnp_context_t *ctx, char *addr, size_t addr_len) {
   if (!ctx || !addr || addr_len < 22) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: Invalid arguments for get_address");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: invalid arguments for get_address");
   }
-
-  if (!ctx->is_mapped || ctx->external_ip[0] == '\0') {
-    return SET_ERRNO(ERROR_NETWORK, "NAT: No active mapping to advertise");
+  if (!nat_upnp_is_active(ctx)) {
+    return SET_ERRNO(ERROR_NETWORK, "NAT: no unexpired mapping to advertise");
   }
-
-  // Format as "IP:port" (e.g., "203.0.113.42:27224")
   int written = safe_snprintf(addr, addr_len, "%s:%u", ctx->external_ip, ctx->mapped_port);
-
   if (written < 0 || (size_t)written >= addr_len) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: Address buffer too small");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: address buffer too small");
   }
-
   return ASCIICHAT_OK;
 }

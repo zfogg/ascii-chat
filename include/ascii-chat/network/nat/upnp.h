@@ -1,15 +1,11 @@
 /**
  * @file nat/upnp.h
- * @brief UPnP/NAT-PMP port mapping for direct TCP connectivity
+ * @brief UPnP/NAT-PMP port mapping for TCP and UDP connectivity
  * @ingroup nat
  *
- * Enables automatic port forwarding on home routers using UPnP/NAT-PMP,
- * making direct TCP connections work for ~70% of home users without WebRTC.
- *
- * **Quick Win Strategy:**
- * - Try UPnP first (works on ~90% of home routers)
- * - Fall back to NAT-PMP (Apple/Time Capsule)
- * - If both fail, client connects via ACDS discovery + WebRTC
+ * Requests router mappings for TCP listeners and UDP transports. Mapping success does not
+ * prove Internet reachability (for example, behind another NAT).
+ * The owner must refresh the lease and close the mapping on shutdown.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
@@ -21,6 +17,8 @@
 #include <stdbool.h>
 #include "../../common.h"
 
+typedef enum { NAT_UPNP_TCP, NAT_UPNP_UDP } nat_upnp_protocol_t;
+
 /** @brief Handle to UPnP context */
 typedef struct nat_upnp_context {
   char external_ip[16];         ///< Detected external/public IP (e.g., "203.0.113.42")
@@ -28,7 +26,17 @@ typedef struct nat_upnp_context {
   uint16_t internal_port;       ///< Internal port we're binding to
   char device_description[256]; ///< Device name for logging (e.g., "TP-Link Archer C7")
   bool is_natpmp;               ///< true if NAT-PMP was used, false if UPnP
+  char internal_ip[16];         ///< LAN address used by the gateway to reach us
+  char *control_url;            ///< Owned UPnP control URL
+  char service_type[128];       ///< UPnP service used to create the mapping
+  char description[128];        ///< Mapping description reused on renewal
+  uint32_t gateway;             ///< NAT-PMP gateway, in network byte order
+  uint32_t lease_seconds;       ///< Granted/requested lease duration
+  uint64_t expires_at_ns;       ///< Monotonic lease expiry
+  uint64_t refresh_at_ns;       ///< Next renewal or retry deadline
   bool is_mapped;               ///< true if port mapping is currently active
+  nat_upnp_protocol_t protocol; ///< Transport of this mapping
+  bool external_is_private;    ///< Gateway reported an upstream NAT; mapping remains locally usable
 } nat_upnp_context_t;
 
 /**
@@ -42,7 +50,7 @@ typedef struct nat_upnp_context {
  * @param[out] ctx Context handle (must be freed with nat_upnp_close())
  *
  * @return ASCIICHAT_OK if port was successfully mapped
- * @return ERROR_NETWORK_* if discovery or mapping failed (not fatal, fallback to WebRTC)
+ * @return ERROR_NETWORK_* if discovery or mapping failed (does not determine listener reachability)
  *
  * **Example:**
  * ```c
@@ -55,6 +63,10 @@ typedef struct nat_upnp_context {
  * ```
  */
 asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description, nat_upnp_context_t **ctx);
+
+/** @brief Open an owned TCP or UDP mapping; close with nat_upnp_close(). */
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
+                                         nat_upnp_context_t **ctx);
 
 /**
  * @brief Close port mapping and clean up
@@ -69,18 +81,24 @@ void nat_upnp_close(nat_upnp_context_t **ctx);
 /**
  * @brief Check if port mapping is still active
  *
- * Useful for long-running servers to verify the mapping hasn't expired.
+ * Checks the locally tracked lease; does not probe Internet reachability.
  *
  * @param ctx Context handle
- * @return true if port is still mapped on the gateway
+ * @return true if the locally tracked mapping lease has not expired
  */
 bool nat_upnp_is_active(const nat_upnp_context_t *ctx);
+
+/** @brief Whether the mapping targets a specific IPv4 bind address, or any wildcard listener. */
+bool nat_upnp_matches_bind_address(const nat_upnp_context_t *ctx, const char *bind_address);
+
+/** @brief Copy the unexpired mapped IP and external port for discovery advertisement. */
+asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip, size_t ip_len, uint16_t *port);
 
 /**
  * @brief Refresh port mapping (e.g., for long-running servers)
  *
- * Some gateways may expire mappings. Call periodically (e.g., every hour)
- * to ensure the mapping stays active.
+ * Call from one owning thread when refresh_at_ns is reached. Renewal is
+ * scheduled halfway through the lease; failures schedule a bounded retry.
  *
  * @param ctx Context handle
  * @return ASCIICHAT_OK if refresh succeeded

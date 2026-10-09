@@ -1522,9 +1522,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
   // Point server context at the server_like-owned TCP server
   g_server_ctx.tcp_server = tcp;
 
-  // UPnP success check for ACDS session type decision
+  // A local mapping behind upstream NAT must not suppress WebRTC discovery.
   nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
-  bool upnp_succeeded = (upnp_ctx != NULL);
+  bool upnp_succeeded = nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private &&
+                        is_internet_ipv4(upnp_ctx->external_ip);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
@@ -1760,11 +1761,11 @@ static asciichat_error_t server_init_fn(void *user_data) {
       } else if (upnp_succeeded) {
         // UPnP port mapping worked - can use direct TCP
         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-        log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
+        log_info("ACDS session type: Direct TCP (router mapping created; external reachability unverified)");
       } else {
         // UPnP failed and not on public IP - use WebRTC for NAT traversal
         create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (UPnP failed, server behind NAT)");
+        log_info("ACDS session type: WebRTC (no router mapping or direct connection type selected)");
       }
 
       // Server connection information (where clients should connect)
@@ -1776,6 +1777,13 @@ static asciichat_error_t server_init_fn(void *user_data) {
         SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
       }
       create_params.server_port = port;
+      if (create_params.session_type == SESSION_TYPE_DIRECT_TCP) {
+        if (nat_upnp_get_endpoint(upnp_ctx, create_params.server_address, sizeof(create_params.server_address),
+                                  &create_params.server_port) != ASCIICHAT_OK) {
+          create_params.session_type = SESSION_TYPE_WEBRTC;
+          log_info("ACDS session type: WebRTC (router mapping expired before registration)");
+        }
+      }
 
       // DEBUG: Log what we're sending to ACDS
       log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",

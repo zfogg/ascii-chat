@@ -61,7 +61,8 @@ void nat_quality_init(nat_quality_t *quality);
 /**
  * @brief Detect NAT quality using all available methods
  *
- * Runs STUN probe, UPnP check, and gathers ICE candidates in parallel.
+ * Runs an observational STUN probe and records configured candidate support.
+ * Does not create router mappings; those belong to the listening server.
  * Results are stored in the provided nat_quality_t structure.
  *
  * @param quality Output structure for results

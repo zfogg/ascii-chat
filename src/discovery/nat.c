@@ -10,7 +10,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -298,36 +297,11 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
   nat_quality_init(quality);
   log_info("Starting NAT quality detection (local_port=%u)", local_port);
 
-  // Try UPnP/NAT-PMP first
-  nat_upnp_context_t *upnp = NULL;
-  asciichat_error_t upnp_result = nat_upnp_open(local_port, "ascii-chat", &upnp);
-  if (upnp_result == ASCIICHAT_OK && upnp && nat_upnp_is_active(upnp)) {
-    quality->upnp_available = true;
-    quality->upnp_mapped_port = upnp->mapped_port;
+  // Quality probes run before a listener exists (often with port zero).
+  // Only the listening server lifecycle may create, renew, and remove mappings.
 
-    char addr_buf[64];
-    if (nat_upnp_get_address(upnp, addr_buf, sizeof(addr_buf)) == ASCIICHAT_OK) {
-      // Parse IP:port
-      char *colon = strchr(addr_buf, ':');
-      if (colon) {
-        size_t ip_len = (size_t)(colon - addr_buf);
-        if (ip_len < sizeof(quality->public_address)) {
-          memcpy(quality->public_address, addr_buf, ip_len);
-          quality->public_address[ip_len] = '\0';
-        }
-      } else {
-        SAFE_STRNCPY(quality->public_address, addr_buf, sizeof(quality->public_address));
-      }
-    }
-
-    log_info("UPnP: mapped port %u, external IP %s", quality->upnp_mapped_port, quality->public_address);
-    quality->nat_type = ACIP_NAT_TYPE_FULL_CONE; // UPnP implies at least full-cone equivalent
-  } else {
-    log_debug("UPnP: not available or mapping failed");
-  }
-
-  // Try STUN probe if provided and UPnP didn't succeed
-  if (!quality->upnp_available && stun_server && stun_server[0]) {
+  // Probe STUN when configured.
+  if (stun_server && stun_server[0]) {
     asciichat_error_t stun_result = nat_stun_probe(quality, stun_server, local_port);
     if (stun_result == ASCIICHAT_OK) {
       // Successfully got reflexive address via STUN
@@ -363,11 +337,6 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
   quality->detection_complete = true;
   log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s", nat_compute_tier(quality),
            quality->upnp_available, quality->has_public_ip, nat_type_to_string(quality->nat_type));
-
-  if (upnp) {
-    // Keep UPnP mapping active for the session
-    // Don't close it here - caller is responsible for cleanup
-  }
 
   return ASCIICHAT_OK;
 }

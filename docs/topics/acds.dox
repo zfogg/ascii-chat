@@ -319,10 +319,29 @@
  *
  * @subsection acds_upnp UPnP (Universal Plug and Play)
  *
- * - Works on ~70% of home routers
  * - Automatic port forwarding via miniupnpc library
  * - Enables direct TCP connections (lowest latency)
- * - Server registers with `--upnp` flag
+ * - Opt in with `--port-forwarding` in server, discovery-service, client, or discovery modes
+ * - Maps active TCP and WebSocket listeners to the gateway-selected LAN address
+ * - Maps a reserved UDP port for each native WebRTC peer before ICE gathering
+ * - Requests a one-hour lease, renews halfway through the granted lease, and removes mappings on clean shutdown
+ * - Reports disabled, discovering, mapped, or unavailable status in the logs
+ * - Loopback-only and IPv6-only listeners do not request IPv4 mappings
+ *
+ * A mapping is not an external reachability test. Double NAT, CGNAT, or a host
+ * firewall may still prevent incoming connections. Conversely, mapping failure
+ * does not prevent direct connections through an existing manual forwarding rule.
+ * The discovery service itself still needs a reachable TCP/WebSocket endpoint;
+ * it does not gain a WebRTC fallback merely because router mapping failed.
+ * Private-WAN mappings remain locally usable but do not select Direct TCP for
+ * discovery; those sessions retain WebRTC setup.
+ * Quality probes made before discovery host selection do not modify the router.
+ * Listener mappings share the server lifecycle; UDP mappings belong to their WebRTC
+ * peer connection and are removed when it closes. Native WebRTC binds its ICE socket
+ * to the mapped IPv4 interface and port. STUN discovers and advertises that endpoint;
+ * normal ICE checks still select the connection path. Mapping failure leaves normal
+ * ICE/STUN/TURN available. Relay-only peers skip mapping. Browser peers do not create
+ * router mappings themselves. Recreate the peer connection after changing networks.
  *
  * @subsection acds_nat_pmp NAT-PMP (NAT Port Mapping Protocol)
  *
@@ -432,7 +451,7 @@
  * - `--turn-username USER`: Username for TURN server authentication
  * - `--turn-credential PASS`: Credential/password for TURN server authentication
  * - `--turn-secret SECRET`: Shared secret for dynamic TURN credential generation (HMAC-SHA1)
- * - `--upnp`: Enable UPnP/NAT-PMP for automatic router port mapping
+ * - `--port-forwarding`: Enable UPnP/NAT-PMP for automatic router port mapping
  *
  * @subsection acds_examples Usage Examples
  *
@@ -639,7 +658,7 @@
  * - Implement monitoring and alerting for session activity
  *
  * **For Server Hosts**:
- * - Enable `--upnp` for automatic port forwarding
+ * - Enable `--port-forwarding` for automatic port forwarding
  * - Use identity keys for server authentication
  * - Consider password-protecting sensitive sessions
  * - Don't expose IP publicly unless necessary

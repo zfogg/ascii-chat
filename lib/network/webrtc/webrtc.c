@@ -20,6 +20,11 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -35,6 +40,11 @@
  * Manages ICE state, connection state, and data channels.
  */
 struct webrtc_peer_connection {
+  nat_upnp_context_t *mapping; ///< Owned UDP mapping
+  socket_t port_reservation;   ///< Held until ICE starts binding
+  asciichat_thread_t mapping_thread;
+  atomic_t mapping_stop;
+  bool mapping_thread_started;
   int rtc_id;                               ///< libdatachannel peer connection ID
   webrtc_config_t config;                   ///< Configuration with callbacks
   atomic_t state;                     ///< Current connection state
@@ -62,6 +72,95 @@ struct webrtc_data_channel {
                           void *user_data); ///< Message callback
   void *user_data;                          ///< User data for per-channel callbacks
 };
+
+// Reserve a free UDP port until the first operation that constructs the ICE transport.
+// The port range forces libdatachannel to use the mapped port; a competing bind fails
+// negotiation rather than silently gathering on an unmapped socket.
+static void webrtc_release_port(webrtc_peer_connection_t *pc) {
+  if (pc->port_reservation != INVALID_SOCKET_VALUE) {
+    socket_close(pc->port_reservation);
+    pc->port_reservation = INVALID_SOCKET_VALUE;
+  }
+}
+
+static void *webrtc_mapping_worker(void *arg) {
+  webrtc_peer_connection_t *pc = arg;
+  while (!atomic_load_bool(&pc->mapping_stop)) {
+    if (time_get_ns() >= pc->mapping->refresh_at_ns && nat_upnp_refresh(pc->mapping) != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("WebRTC UDP mapping renewal failed");
+    }
+    time_sleep_ns(100 * NS_PER_MS_INT);
+  }
+  return NULL;
+}
+
+static void webrtc_mapping_close(webrtc_peer_connection_t *pc) {
+  if (pc->mapping_thread_started) {
+    atomic_store_bool(&pc->mapping_stop, true);
+    asciichat_thread_join(&pc->mapping_thread, NULL);
+    pc->mapping_thread_started = false;
+  }
+  nat_upnp_close(&pc->mapping);
+  webrtc_release_port(pc);
+}
+
+static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguration *rtc_config) {
+  if (!pc->config.port_forwarding || pc->config.relay_only) {
+    return;
+  }
+  const char *bind_address = pc->config.bind_address;
+  bool specific = bind_address && bind_address[0] && strcmp(bind_address, "0.0.0.0") != 0;
+  if (specific && (!is_valid_ipv4(bind_address) || is_localhost_ipv4(bind_address))) {
+    log_info("WebRTC UDP mapping skipped for loopback or IPv6-only binding");
+    return;
+  }
+  pc->port_reservation = socket_create("webrtc_mapping_reservation", AF_INET, SOCK_DGRAM, 0);
+  if (pc->port_reservation == INVALID_SOCKET_VALUE) {
+    return;
+  }
+  struct sockaddr_in addr = {0};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  socklen_t length = sizeof(addr);
+  if (socket_bind(pc->port_reservation, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
+      socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) != 0) {
+    webrtc_release_port(pc);
+    return;
+  }
+  uint16_t port = ntohs(addr.sin_port);
+  if (nat_upnp_open_protocol(port, "ascii-chat WebRTC", NAT_UPNP_UDP, &pc->mapping) != ASCIICHAT_OK) {
+    log_warn("WebRTC UDP mapping unavailable; continuing with normal ICE/STUN/TURN");
+    webrtc_release_port(pc);
+    return;
+  }
+  if (pc->mapping->is_natpmp) {
+    pc->mapping->internal_ip[0] = '\0';
+    struct sockaddr_in gateway = {0};
+    gateway.sin_family = AF_INET;
+    gateway.sin_port = htons(5351);
+    gateway.sin_addr.s_addr = pc->mapping->gateway;
+    if (socket_connect(pc->port_reservation, (struct sockaddr *)&gateway, sizeof(gateway)) == 0 &&
+        socket_getsockname(pc->port_reservation, (struct sockaddr *)&addr, &length) == 0) {
+      inet_ntop(AF_INET, &addr.sin_addr, pc->mapping->internal_ip, sizeof(pc->mapping->internal_ip));
+    }
+  }
+  if (!pc->mapping->internal_ip[0] || (specific && strcmp(bind_address, pc->mapping->internal_ip) != 0)) {
+    // Do not map a different interface from the one selected by the caller.
+    webrtc_mapping_close(pc);
+    return;
+  }
+  atomic_store_bool(&pc->mapping_stop, false);
+  if (asciichat_thread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
+    webrtc_mapping_close(pc);
+    return;
+  }
+  pc->mapping_thread_started = true;
+  rtc_config->portRangeBegin = port;
+  rtc_config->portRangeEnd = port;
+  rtc_config->bindAddress = pc->mapping->internal_ip;
+  log_info("WebRTC UDP mapping ready before ICE gathering: %s:%u -> %s:%u", pc->mapping->external_ip,
+           pc->mapping->mapped_port, pc->mapping->internal_ip, port);
+}
 
 // ============================================================================
 // Global State
@@ -435,6 +534,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer connection");
   }
 
+  pc->port_reservation = INVALID_SOCKET_VALUE;
   pc->config = *config; // Copy config
   atomic_store_u64(&pc->state, WEBRTC_STATE_NEW);
   pc->dc = NULL;
@@ -494,6 +594,8 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     log_info("Binding WebRTC ICE sockets to %s", rtc_config.bindAddress);
   }
 
+  webrtc_mapping_prepare(pc, &rtc_config);
+
   // Create peer connection
   int pc_id = rtcCreatePeerConnection(&rtc_config);
   SAFE_FREE(turn_urls);
@@ -504,6 +606,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   }
 
   if (pc_id < 0) {
+    webrtc_mapping_close(pc);
     SAFE_FREE(pc);
     return SET_ERRNO(ERROR_NETWORK, "Failed to create peer connection (rtc error %d)", pc_id);
   }
@@ -546,6 +649,7 @@ void webrtc_close_peer_connection(webrtc_peer_connection_t *pc) {
 
   // Close peer connection
   rtcDeletePeerConnection(pc->rtc_id);
+  webrtc_mapping_close(pc);
   log_debug("Closed WebRTC peer connection (id=%d)", pc->rtc_id);
 
   SAFE_FREE(pc);
@@ -612,6 +716,7 @@ asciichat_error_t webrtc_create_offer(webrtc_peer_connection_t *pc) {
   }
 
   // Set local description with NULL type to trigger offer generation
+  webrtc_release_port(pc);
   int result = rtcSetLocalDescription(pc->rtc_id, NULL);
   if (result != RTC_ERR_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to create SDP offer (rtc error %d)", result);
@@ -626,6 +731,7 @@ asciichat_error_t webrtc_set_remote_description(webrtc_peer_connection_t *pc, co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
+  webrtc_release_port(pc);
   int result = rtcSetRemoteDescription(pc->rtc_id, sdp, type);
   if (result != RTC_ERR_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to set remote SDP (rtc error %d)", result);
@@ -683,6 +789,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
 
   // Native peers use DCEP. Browser offers advertise the separately negotiated
   // ACIP channel and are handled in webrtc_set_remote_description().
+  webrtc_release_port(pc);
   int dc_id = rtcCreateDataChannel(pc->rtc_id, label);
   if (dc_id < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to create data channel (rtc error %d)", dc_id);
@@ -887,6 +994,7 @@ void webrtc_peer_connection_close(webrtc_peer_connection_t *pc) {
   }
 
   rtcClose(pc->rtc_id);
+  webrtc_mapping_close(pc);
   log_debug("Closed peer connection (pc_id=%d)", pc->rtc_id);
 }
 
@@ -898,6 +1006,7 @@ void webrtc_peer_connection_destroy(webrtc_peer_connection_t *pc) {
 
   // Close and delete peer connection
   rtcDeletePeerConnection(pc->rtc_id);
+  webrtc_mapping_close(pc);
   log_debug("Destroyed peer connection (pc_id=%d)", pc->rtc_id);
 
   SAFE_FREE(pc);
