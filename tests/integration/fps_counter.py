@@ -17,10 +17,12 @@ class Pane(BasePane):
         tmux_rendering.tmux("send-keys", "-t", self.name, "-l", "--", text)
 
     def close(self):
-        if "Keyboard Shortcuts" in self.capture():
-            self.text("?")
-            self.expect(lambda s: "Keyboard Shortcuts" not in s, "closing-help")
-        super().close()
+        try:
+            if "Keyboard Shortcuts" in self.capture():
+                self.text("?")
+                self.expect(lambda s: "Keyboard Shortcuts" not in s, "closing-help")
+        finally:
+            super().close()
 
 
 def fps(text):
