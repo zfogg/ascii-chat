@@ -100,6 +100,7 @@ terminal_size_t ui_controller_size(void) {
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
+  uint64_t progress_render_ns = 0;
   while (!atomic_load_bool(&g_stop)) {
     mutex_lock(&g_mutex);
     int active = -1;
@@ -110,7 +111,7 @@ static void *presentation_main(void *unused) {
     g_active = active;
     if (active < 0)
       atomic_store_bool(&g_blocked, false);
-    if (active >= 0 && !shutdown_is_requested()) {
+    if (active >= 0 && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       screen_t *screen = &g_screens[active];
       terminal_size_t size = {0};
       // Measure the physical output device, never --width/--height or environment overrides.
@@ -154,8 +155,15 @@ static void *presentation_main(void *unused) {
           if (GET_OPTION(auto_height))
             options_set_int("height", size.rows);
         }
-        if (screen->dirty || transition || active != UI_SCREEN_MEDIA)
+        uint64_t now = time_get_ns();
+        bool animate = active != UI_SCREEN_MEDIA;
+        if (active == UI_SCREEN_RENDER_PROGRESS)
+          animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
+        if (screen->dirty || transition || animate) {
           screen->render(size, screen->snapshot);
+          if (active == UI_SCREEN_RENDER_PROGRESS)
+            progress_render_ns = now;
+        }
       }
       g_small = small;
       screen->dirty = false;
@@ -213,7 +221,7 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     mutex_unlock(&g_mutex);
   }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if ((!live && !platform_isatty(fd)) || GET_OPTION(snapshot_mode)) {
+  if ((!live && !platform_isatty(fd)) || (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
@@ -387,7 +395,6 @@ asciichat_error_t ui_controller_printf(int fd, const char *format, ...) {
   size_t bytes = (size_t)len < sizeof(buffer) ? (size_t)len : sizeof(buffer) - 1;
   return ui_controller_write(fd, buffer, bytes);
 }
-
 
 void ui_controller_restore_terminal(void) {
   ui_controller_shutdown();

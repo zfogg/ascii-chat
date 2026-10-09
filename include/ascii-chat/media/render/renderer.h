@@ -69,5 +69,8 @@ void render_file_set_live_timing(render_file_ctx_t *ctx);
 // Set actual wall-clock duration for snapshot mode (passes through to encoder).
 void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec);
 
+// Show terminal progress while accepted frames drain. Safe alongside frame writes.
+void render_file_begin_drain(render_file_ctx_t *ctx, uint64_t total, bool total_known);
+
 // Flush encoder and close file.  Always frees *ctx regardless of error.
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx);

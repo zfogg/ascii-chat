@@ -747,8 +747,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);
   if (ret < 0) {
-    log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_send_frame failed");
-    return ASCIICHAT_OK; // Continue anyway
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot encode recording frame: %d", ret);
   }
 
   // Receive packets from encoder and write to file
@@ -759,8 +758,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
       break;
     if (ret < 0) {
-      log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_receive_packet failed");
-      break;
+      return SET_ERRNO(ERROR_MEDIA_INIT, "ffmpeg: avcodec_receive_packet failed: %d", ret);
     }
 
     write_frame_pkt_count++;
@@ -800,8 +798,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
     if (ret < 0) {
-      log_warn_every(5 * 1000000000LL, "ffmpeg: av_interleaved_write_frame failed");
-      break;
+      return SET_ERRNO(ERROR_FILE_OPERATION, "ffmpeg: av_interleaved_write_frame failed: %d", ret);
     }
 
     // Flush output buffer for stdout to ensure frames are written immediately
@@ -848,7 +845,7 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
       // Send frame to encoder
       int ret = avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
       if (ret < 0) {
-        log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_send_frame for audio failed");
+        return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot encode recording audio: %d", ret);
       } else {
         // Receive and write packets
         while (ret >= 0) {
@@ -856,8 +853,7 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
           if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
             break;
           if (ret < 0) {
-            log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_receive_packet for audio failed");
-            break;
+            return SET_ERRNO(ERROR_MEDIA_INIT, "ffmpeg: avcodec_receive_packet for audio failed: %d", ret);
           }
 
           // Rescale timestamp and write
@@ -866,8 +862,7 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
           ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
           av_packet_unref(enc->pkt);
           if (ret < 0) {
-            log_warn_every(5 * 1000000000LL, "ffmpeg: av_interleaved_write_frame for audio failed");
-            break;
+            return SET_ERRNO(ERROR_FILE_OPERATION, "ffmpeg: av_interleaved_write_frame for audio failed: %d", ret);
           }
         }
       }
@@ -905,6 +900,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   if (!enc)
     return ASCIICHAT_OK;
 
+  asciichat_error_t result = ASCIICHAT_OK;
   NAMED_UNREGISTER(enc);
 
   // In snapshot mode, calculate the FPS needed to match the target duration
@@ -927,13 +923,17 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   // Flush delayed video packets. Encoders such as VP9 may buffer every short
   // snapshot frame until this point.
   LOG_IO("ffmpeg", {
-    avcodec_send_frame(enc->codec_ctx, NULL);
+    int flush_ret = avcodec_send_frame(enc->codec_ctx, NULL);
+    if (flush_ret < 0 && flush_ret != AVERROR_EOF)
+      result = SET_ERRNO(ERROR_MEDIA_INIT, "Cannot flush video encoder: %d", flush_ret);
     while (1) {
       int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
         break;
-      if (ret < 0)
+      if (ret < 0) {
+        result = SET_ERRNO(ERROR_MEDIA_INIT, "Cannot receive final video packet: %d", ret);
         break;
+      }
 
       // Set packet duration in codec time base if not already set
       if (enc->pkt->duration == 0) {
@@ -942,7 +942,9 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
       av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
       enc->pkt->stream_index = enc->stream->index;
-      av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+      int write_ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+      if (write_ret < 0)
+        result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write final video packet: %d", write_ret);
       av_packet_unref(enc->pkt);
     }
   });
@@ -958,22 +960,30 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       enc->audio_frame->linesize[0] = enc->audio_frame_size * sizeof(float);
       enc->audio_frame->nb_samples = enc->audio_frame_size;
       enc->audio_frame->pts = enc->audio_pts;
-      avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
+      int pad_ret = avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
+      if (pad_ret < 0)
+        result = SET_ERRNO(ERROR_MEDIA_INIT, "Cannot flush partial audio: %d", pad_ret);
     }
 
     // Flush any remaining packets (capture FFmpeg audio codec logs)
     LOG_IO("ffmpeg", {
-      avcodec_send_frame(enc->audio_codec_ctx, NULL);
+      int flush_ret = avcodec_send_frame(enc->audio_codec_ctx, NULL);
+      if (flush_ret < 0 && flush_ret != AVERROR_EOF)
+        result = SET_ERRNO(ERROR_MEDIA_INIT, "Cannot flush audio encoder: %d", flush_ret);
       while (1) {
         int ret = avcodec_receive_packet(enc->audio_codec_ctx, enc->pkt);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
           break;
-        if (ret < 0)
+        if (ret < 0) {
+          result = SET_ERRNO(ERROR_MEDIA_INIT, "Cannot receive final audio packet: %d", ret);
           break;
+        }
 
         av_packet_rescale_ts(enc->pkt, enc->audio_codec_ctx->time_base, enc->audio_stream->time_base);
         enc->pkt->stream_index = enc->audio_stream->index;
-        av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+        int write_ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+        if (write_ret < 0)
+          result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write final audio packet: %d", write_ret);
         av_packet_unref(enc->pkt);
       }
     });
@@ -1049,17 +1059,26 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   }
 
   // Write trailer (capture FFmpeg muxer logs and final frame statistics)
-  LOG_IO("ffmpeg", { av_write_trailer(enc->fmt_ctx); });
+  LOG_IO("ffmpeg", {
+    int trailer_ret = av_write_trailer(enc->fmt_ctx);
+    if (trailer_ret < 0)
+      result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot finalize recording: %d", trailer_ret);
+  });
 
   // Flush output buffer for stdout/pipes before closing
   if (enc->fmt_ctx && enc->fmt_ctx->pb) {
     avio_flush(enc->fmt_ctx->pb);
+    if (enc->fmt_ctx->pb->error < 0)
+      result = SET_ERRNO(ERROR_FILE_OPERATION, "Recording output failed: %d", enc->fmt_ctx->pb->error);
     log_debug("ffmpeg_encoder_destroy: Flushed output buffer");
   }
 
   // Close output file
-  if (enc->fmt_ctx && !(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE))
-    avio_closep(&enc->fmt_ctx->pb);
+  if (enc->fmt_ctx && !(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+    int close_ret = avio_closep(&enc->fmt_ctx->pb);
+    if (close_ret < 0)
+      result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot close recording: %d", close_ret);
+  }
 
   // Cleanup
   sws_freeContext(enc->sws_ctx);
@@ -1081,7 +1100,7 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
   log_debug("ffmpeg_encoder_destroy: wrote %d frames", enc->frame_count);
   SAFE_FREE(enc);
-  return ASCIICHAT_OK;
+  return result;
 }
 
 void ffmpeg_encoder_set_live_timing(ffmpeg_encoder_t *enc) {

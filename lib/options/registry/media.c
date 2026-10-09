@@ -176,7 +176,8 @@ const registry_entry_t g_media_entries[] = {
      "",
      sizeof(((options_t *)0)->render_file),
      "Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: "
-     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg.",
+     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg. Named files retain ASCII on stdout and show terminal "
+     "progress while finishing; redirect stdout to hide it.",
      "MEDIA",
      "PATH",
      false,
