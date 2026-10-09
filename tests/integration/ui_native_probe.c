@@ -1,5 +1,6 @@
 /** Deterministic native UI entry points for Docker/tmux integration tests. */
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -44,7 +45,15 @@ int main(int argc, char **argv) {
     return 5;
   char answer[128] = {0};
   bool ok = false;
-  if (signal_fixture) {
+  if (!strcmp(kind, "capture-render")) {
+    log_io_t capture = log_io_start();
+    const char frame[] = "CAPTURE FRAME";
+    ok = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = 20, .rows = 10},
+                               frame, sizeof(frame) - 1) == ASCIICHAT_OK;
+    ui_controller_redraw();
+    platform_sleep_ns(5 * NS_PER_SEC_INT);
+    log_io_stop(capture, "capture-render");
+  } else if (signal_fixture) {
     float samples[4800];
     for (size_t i = 0; i < 4800; ++i)
       samples[i] = 0.7f * sinf((float)i * 6.2831853f * 440.0f / 48000.0f);

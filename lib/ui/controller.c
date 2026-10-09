@@ -28,6 +28,7 @@ static mutex_t g_mutex;
 static asciichat_thread_t g_thread;
 static atomic_t g_stop = {0};
 static _Thread_local bool g_owner;
+static _Thread_local int g_render_fd = -1;
 static _Thread_local terminal_size_t g_render_size;
 static terminal_size_t g_size = {.cols = 80, .rows = 24};
 static int g_active = -1;
@@ -45,7 +46,9 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   // renderer callback here. Live screens already capture logs in their model.
   if (!g_owner && atomic_load_bool(&g_live) && platform_isatty(fd))
     return ASCIICHAT_OK;
-  return platform_write_all(fd, data, len) == (ssize_t)len ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
+  if (g_owner && g_render_fd >= 0)
+    fd = g_render_fd;
+  return platform_write_all(fd, data, len) == len ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
@@ -54,6 +57,8 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
     mutex_lock(&g_mutex);
     g_finished = true;
     for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
+      if (g_screens[i].render)
+        platform_close(g_screens[i].fd);
       SAFE_FREE(g_screens[i].snapshot);
       memset(&g_screens[i], 0, sizeof(screen_t));
     }
@@ -127,6 +132,7 @@ static void *presentation_main(void *unused) {
       g_last_minimum = screen->minimum;
       bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
       g_redraw = false;
+      g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
       if (small) {
         if (transition || !g_small) {
@@ -154,6 +160,7 @@ static void *presentation_main(void *unused) {
       g_small = small;
       screen->dirty = false;
     }
+    g_render_fd = -1;
     mutex_unlock(&g_mutex);
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
@@ -198,17 +205,27 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
+  // A live slot retains its terminal even while LOG_IO redirects process stdio.
+  bool live = false;
+  if (lifecycle_is_initialized(&g_lifecycle)) {
+    mutex_lock(&g_mutex);
+    live = g_screens[screen].render != NULL;
+    mutex_unlock(&g_mutex);
+  }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if (!platform_isatty(fd) || GET_OPTION(snapshot_mode)) {
+  if ((!live && !platform_isatty(fd)) || GET_OPTION(snapshot_mode)) {
     bool previous_owner = g_owner;
+    int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
     if (terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
       detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
     g_render_size = detected;
     g_owner = true;
+    g_render_fd = fd;
     frame_buffer_set_screen_output_fd(fd);
     render(g_render_size, snapshot);
     g_owner = previous_owner;
+    g_render_fd = previous_fd;
     return ASCIICHAT_OK;
   }
   asciichat_error_t err = controller_start();
@@ -225,9 +242,15 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     return ASCIICHAT_OK;
   }
   screen_t *slot = &g_screens[screen];
+  int output_fd = slot->render ? slot->fd : platform_dup(fd);
+  if (output_fd < 0) {
+    mutex_unlock(&g_mutex);
+    SAFE_FREE(copy);
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
+  }
   SAFE_FREE(slot->snapshot);
   atomic_store_bool(&g_live, true);
-  *slot = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = fd, .dirty = true};
+  *slot = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
   mutex_unlock(&g_mutex);
   return ASCIICHAT_OK;
 }
@@ -237,6 +260,8 @@ void ui_controller_remove(ui_screen_t screen) {
     return;
   if (!g_owner)
     mutex_lock(&g_mutex);
+  if (g_screens[screen].render)
+    platform_close(g_screens[screen].fd);
   SAFE_FREE(g_screens[screen].snapshot);
   memset(&g_screens[screen], 0, sizeof(screen_t));
   bool live = false;
@@ -275,7 +300,7 @@ typedef struct {
 
 static void render_text(terminal_size_t size, const void *data) {
   const text_snapshot_t *text = data;
-  if (!text->media || GET_OPTION(snapshot_mode) || !platform_isatty(text->fd) ||
+  if (!text->media || GET_OPTION(snapshot_mode) || !platform_isatty(g_render_fd >= 0 ? g_render_fd : text->fd) ||
       (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows)) {
     ui_controller_write(text->fd, text->text, text->len);
     return;
@@ -337,6 +362,8 @@ void ui_controller_shutdown(void) {
   atomic_store_bool(&g_stop, true);
   asciichat_thread_join(&g_thread, NULL);
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
+    if (g_screens[i].render)
+      platform_close(g_screens[i].fd);
     SAFE_FREE(g_screens[i].snapshot);
     memset(&g_screens[i], 0, sizeof(screen_t));
   }

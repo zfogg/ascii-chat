@@ -139,3 +139,26 @@ Expected refusal exit codes are checked explicitly. Interactive client shutdown
 currently returns 1 for an interrupted connection. Sanitizers remain enabled;
 the harness treats any sanitizer report as a failure and retains previous-run
 logs when retrying a case.
+
+### Stdio capture regression
+
+Live screens retain a duplicate of their output descriptor until removal. Media
+libraries temporarily redirect process stdout/stderr through `LOG_IO`; presentation
+uses the retained terminal for geometry and writes, and keeps accepting snapshots
+as live output during capture. This prevents a one-time size warning from being
+captured as a diagnostic instead of displayed. Keyboard initialization also retries
+when stdout is temporarily redirected, rather than committing an unconfigured
+keyboard.
+
+The additional deterministic fixture holds `LOG_IO` active for five seconds and
+requires both the small-terminal warning and restored frame before capture ends:
+
+```sh
+python tests/integration/tmux_capture.py --probe /tmp/ui-native-probe \
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence --count 40 --color-mode 16
+```
+
+Startup stress defaults to warning-level logging so debug logging does not mask
+initialization races. These checks supplement the 131-case matrix above.

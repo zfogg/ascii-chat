@@ -68,7 +68,7 @@ def main():
         time.sleep(.2)
         pane.capture("grep")
         pane.key("Escape")
-        pane.expect(lambda s: not s.rstrip().endswith("/"), "grep-cancelled")
+        pane.expect(lambda s: not s.splitlines()[-1].startswith("/"), "grep-cancelled")
         pane.resize(2, 2)
         time.sleep(.2)
         pane.capture("tiny")

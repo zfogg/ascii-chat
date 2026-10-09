@@ -63,7 +63,7 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 // Console logs never draw over a live screen, even from its rendering callback.
 static void log_terminal_printf(int fd, const char *format, ...) {
-  if (ui_controller_is_presenting() && platform_isatty(fd))
+  if (ui_controller_is_presenting() && (ui_controller_is_owner() || platform_isatty(fd)))
     return;
   char buffer[16384];
   va_list args;
@@ -2146,7 +2146,7 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
   }
 
   // Presentation owns terminal output, but never changes the caller's logging preference.
-  if (ui_controller_is_presenting() && platform_isatty(fd)) {
+  if (ui_controller_is_presenting() && (ui_controller_is_owner() || platform_isatty(fd))) {
     return;
   }
 
