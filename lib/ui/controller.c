@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -38,6 +39,7 @@ static bool g_finished;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static terminal_size_t g_last_minimum;
+static _Thread_local fps_counter_t *g_fps;
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
@@ -48,7 +50,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     return ASCIICHAT_OK;
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
-  return platform_write_all(fd, data, len) == len ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
+  fps_counter_write_begin(g_fps);
+  bool complete = platform_write_all(fd, data, len) == len;
+  fps_counter_write_end(g_fps, complete);
+  return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
@@ -100,6 +105,7 @@ terminal_size_t ui_controller_size(void) {
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
+  g_fps = fps_counter_create();
   while (!atomic_load_bool(&g_stop)) {
     mutex_lock(&g_mutex);
     int active = -1;
@@ -131,6 +137,10 @@ static void *presentation_main(void *unused) {
           screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
       g_last_minimum = screen->minimum;
       bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
+      bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
+      transition |= fps_counter_set_visible(g_fps, show_fps);
+      if (changed || small || g_small)
+        fps_counter_reset(g_fps);
       g_redraw = false;
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
@@ -154,8 +164,13 @@ static void *presentation_main(void *unused) {
           if (GET_OPTION(auto_height))
             options_set_int("height", size.rows);
         }
-        if (screen->dirty || transition || active != UI_SCREEN_MEDIA)
+        bool rendered = screen->dirty || transition || active != UI_SCREEN_MEDIA;
+        if (rendered) {
+          fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
           screen->render(size, screen->snapshot);
+          fps_counter_frame_end(g_fps, time_get_ns());
+        }
+        fps_counter_render(g_fps, screen->fd, size.cols, rendered);
       }
       g_small = small;
       screen->dirty = false;
@@ -164,6 +179,8 @@ static void *presentation_main(void *unused) {
     mutex_unlock(&g_mutex);
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
+  fps_counter_destroy(g_fps);
+  g_fps = NULL;
   g_owner = false;
   return NULL;
 }
