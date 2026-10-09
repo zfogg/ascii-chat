@@ -4,6 +4,7 @@
  * @brief Implementation of options validation functions
  */
 
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/validation.h>
 
 #include <limits.h>
@@ -143,19 +144,19 @@ int validate_opt_color_mode(const char *value_str, char *error_msg, size_t error
     return -1;
   }
 
-  if (strcmp(value_str, "auto") == 0) {
+  if (strcmp(value_str, OPT_VALUE_AUTO) == 0) {
     return COLOR_MODE_AUTO;
   }
-  if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
+  if (strcmp(value_str, OPT_COLOR_MODE_NONE) == 0 || strcmp(value_str, OPT_COLOR_MODE_MONO) == 0) {
     return COLOR_MODE_NONE;
   }
-  if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
+  if (strcmp(value_str, OPT_COLOR_MODE_16) == 0 || strcmp(value_str, "16color") == 0) {
     return COLOR_MODE_16_COLOR;
   }
-  if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
+  if (strcmp(value_str, OPT_COLOR_MODE_256) == 0 || strcmp(value_str, "256color") == 0) {
     return COLOR_MODE_256_COLOR;
   }
-  if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
+  if (strcmp(value_str, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(value_str, "24bit") == 0) {
     return COLOR_MODE_TRUECOLOR;
   }
   if (error_msg) {
@@ -177,13 +178,13 @@ int validate_opt_render_mode(const char *value_str, char *error_msg, size_t erro
     return -1;
   }
 
-  if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
+  if (strcmp(value_str, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_FG) == 0) {
     return RENDER_MODE_FOREGROUND;
   }
-  if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
+  if (strcmp(value_str, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_BG) == 0) {
     return RENDER_MODE_BACKGROUND;
   }
-  if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
+  if (strcmp(value_str, OPT_RENDER_MODE_HALF_BLOCK) == 0 || strcmp(value_str, "halfblock") == 0) {
     return RENDER_MODE_HALF_BLOCK;
   }
   if (error_msg) {
@@ -205,17 +206,17 @@ int validate_opt_palette(const char *value_str, char *error_msg, size_t error_ms
     return -1;
   }
 
-  if (strcmp(value_str, "standard") == 0) {
+  if (strcmp(value_str, OPT_PALETTE_STANDARD) == 0) {
     return PALETTE_STANDARD;
-  } else if (strcmp(value_str, "blocks") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_BLOCKS) == 0) {
     return PALETTE_BLOCKS;
-  } else if (strcmp(value_str, "digital") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_DIGITAL) == 0) {
     return PALETTE_DIGITAL;
-  } else if (strcmp(value_str, "minimal") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_MINIMAL) == 0) {
     return PALETTE_MINIMAL;
-  } else if (strcmp(value_str, "cool") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_COOL) == 0) {
     return PALETTE_COOL;
-  } else if (strcmp(value_str, "custom") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_CUSTOM) == 0) {
     return PALETTE_CUSTOM;
   } else {
     if (error_msg) {
@@ -239,17 +240,17 @@ int validate_opt_log_level(const char *value_str, char *error_msg, size_t error_
     return -1;
   }
 
-  if (platform_strcasecmp(value_str, "dev") == 0) {
+  if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_DEV) == 0) {
     return LOG_DEV;
-  } else if (platform_strcasecmp(value_str, "debug") == 0) {
+  } else if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_DEBUG) == 0) {
     return LOG_DEBUG;
-  } else if (platform_strcasecmp(value_str, "info") == 0) {
+  } else if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_INFO) == 0) {
     return LOG_INFO;
-  } else if (platform_strcasecmp(value_str, "warn") == 0) {
+  } else if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_WARN) == 0) {
     return LOG_WARN;
-  } else if (platform_strcasecmp(value_str, "error") == 0) {
+  } else if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_ERROR) == 0) {
     return LOG_ERROR;
-  } else if (platform_strcasecmp(value_str, "fatal") == 0) {
+  } else if (platform_strcasecmp(value_str, OPT_LOG_LEVEL_FATAL) == 0) {
     return LOG_FATAL;
   } else {
     if (error_msg) {
@@ -402,7 +403,7 @@ int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_si
  * Validate reconnect value (off, auto, 0, -1, or 1-999)
  * Returns:
  *   0 for "off" (no retries)
- *  -1 for "auto" (unlimited retries)
+ *  -1 for OPT_VALUE_AUTO (unlimited retries)
  *   1-999 for specific retry count
  *  INT_MIN on parse error
  */
@@ -418,7 +419,7 @@ int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_
   if (platform_strcasecmp(value_str, "off") == 0) {
     return 0; // No retries
   }
-  if (platform_strcasecmp(value_str, "auto") == 0) {
+  if (platform_strcasecmp(value_str, OPT_VALUE_AUTO) == 0) {
     return -1; // Unlimited retries
   }
 

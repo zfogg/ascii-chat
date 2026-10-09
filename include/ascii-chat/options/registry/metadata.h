@@ -68,3 +68,5 @@ extern const char *g_webcam_examples[];
 extern const char *g_mic_examples[];
 extern const char *g_speakers_examples[];
 extern const char *g_seek_examples[];
+
+extern const char *g_completion_shell_values[];

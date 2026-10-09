@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/options/config.h>
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/validation.h>
@@ -259,7 +260,7 @@ static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool
   if (datum.type == TOML_BOOLEAN) {
     *bool_val = datum.u.boolean;
     // Also set value_str for parse_validate phase
-    SAFE_STRNCPY(value_str, *bool_val ? "true" : "false", BUFFER_SIZE_MEDIUM);
+    SAFE_STRNCPY(value_str, *bool_val ? OPT_VALUE_TRUE : OPT_VALUE_FALSE, BUFFER_SIZE_MEDIUM);
     *has_value = true;
   }
 }
@@ -312,7 +313,7 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
     is_enum = true;
   } else if (meta->field_offset == offsetof(options_t, color_filter)) {
     color_filter_t filter = color_filter_from_cli_name(value_str);
-    if (filter != COLOR_FILTER_NONE || strcmp(value_str, "none") == 0) {
+    if (filter != COLOR_FILTER_NONE || strcmp(value_str, OPT_COLOR_FILTER_NONE) == 0) {
       enum_val = (int)filter;
     } else {
       SAFE_SNPRINTF(error_msg, error_size, "Invalid color filter '%s'", value_str);
@@ -410,9 +411,9 @@ static asciichat_error_t parse_validate_bool(const char *value_str, const config
   (void)error_msg;
   (void)error_size;
 
-  // Parse boolean from string representation ("true" or "false")
+  // Parse boolean from string representation (OPT_VALUE_TRUE or OPT_VALUE_FALSE)
   parsed->bool_value =
-      value_str && (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
+      value_str && (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
   return ASCIICHAT_OK;
 }
 
@@ -611,22 +612,22 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
 
   // Emit symbolic names for enum-backed values in generated config.
   if (meta && meta->field_offset == offsetof(options_t, color_mode)) {
-    const char *name = "auto";
+    const char *name = OPT_VALUE_AUTO;
     if (int_value == COLOR_MODE_NONE) {
-      name = "none";
+      name = OPT_COLOR_MODE_NONE;
     } else if (int_value == COLOR_MODE_16_COLOR) {
-      name = "16";
+      name = OPT_COLOR_MODE_16;
     } else if (int_value == COLOR_MODE_256_COLOR) {
-      name = "256";
+      name = OPT_COLOR_MODE_256;
     } else if (int_value == COLOR_MODE_TRUECOLOR) {
-      name = "truecolor";
+      name = OPT_COLOR_MODE_TRUECOLOR;
     }
     SAFE_SNPRINTF(buf, bufsize, "\"%s\"", name);
     return;
   }
 
   if (meta && meta->field_offset == offsetof(options_t, color_filter)) {
-    const char *name = "none";
+    const char *name = OPT_COLOR_FILTER_NONE;
     if (int_value > COLOR_FILTER_NONE && int_value < COLOR_FILTER_COUNT) {
       const color_filter_def_t *def = color_filter_get_metadata((color_filter_t)int_value);
       if (def && def->cli_name) {
@@ -638,11 +639,11 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
   }
 
   if (meta && meta->field_offset == offsetof(options_t, render_mode)) {
-    const char *name = "foreground";
+    const char *name = OPT_RENDER_MODE_FOREGROUND;
     if (int_value == RENDER_MODE_BACKGROUND) {
-      name = "background";
+      name = OPT_RENDER_MODE_BACKGROUND;
     } else if (int_value == RENDER_MODE_HALF_BLOCK) {
-      name = "half-block";
+      name = OPT_RENDER_MODE_HALF_BLOCK;
     }
     SAFE_SNPRINTF(buf, bufsize, "\"%s\"", name);
     return;
@@ -673,7 +674,7 @@ static void format_bool(const char *field_ptr, size_t field_size, const config_o
   if (is_inverted_no_splash) {
     bool_value = !bool_value;
   }
-  SAFE_SNPRINTF(buf, bufsize, "%s", bool_value ? "true" : "false");
+  SAFE_SNPRINTF(buf, bufsize, "%s", bool_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
 }
 
 /**
@@ -859,9 +860,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     // The TOML key is "security.no_encrypt" (from SECURITY group, no-encrypt option)
     if (strcmp(meta->toml_key, "security.no_encrypt") == 0) {
       bool no_encrypt_val = false;
-      if (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0) {
+      if (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0) {
         no_encrypt_val = true;
-      } else if (strcmp(value_str, "false") == 0 || strcmp(value_str, "0") == 0) {
+      } else if (strcmp(value_str, OPT_VALUE_FALSE) == 0 || strcmp(value_str, "0") == 0) {
         no_encrypt_val = false;
       } else {
         CONFIG_WARN("Invalid no_encrypt value '%s' (expected true/false), skipping", value_str);
@@ -1571,7 +1572,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     bool file_strict = is_user_config ? strict : false;
 
     CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no",
-                 file_strict ? "true" : "false");
+                 file_strict ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
 
     asciichat_error_t load_result = config_load_and_apply(detected_mode, file->path, file_strict, opts);
 

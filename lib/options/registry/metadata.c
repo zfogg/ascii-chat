@@ -40,7 +40,7 @@ const char *g_log_level_descs[] = {"Development (most verbose, includes function
 // Color Setting Metadata (--color flag values)
 // ============================================================================
 
-const char *g_color_setting_values[] = {"auto", "true", "false", NULL};
+const char *g_color_setting_values[] = {OPT_VALUE_AUTO, OPT_VALUE_TRUE, OPT_VALUE_FALSE, NULL};
 const int g_color_setting_integers[] = {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE, COLOR_SETTING_FALSE};
 const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not piping/CLAUDECODE)",
                                        "Force colors ON (override TTY/pipe/CLAUDECODE)",
@@ -50,7 +50,7 @@ const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not p
 // UTF-8 Setting Metadata (--utf8 flag values)
 // ============================================================================
 
-const char *g_utf8_setting_values[] = {"auto", "true", "false", NULL};
+const char *g_utf8_setting_values[] = {OPT_VALUE_AUTO, OPT_VALUE_TRUE, OPT_VALUE_FALSE, NULL};
 const int g_utf8_setting_integers[] = {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE, UTF8_SETTING_FALSE};
 const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal capabilities",
                                       "Force UTF-8 ON (always use UTF-8 regardless of terminal)",
@@ -60,12 +60,14 @@ const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal c
 // Color Mode Metadata
 // ============================================================================
 
-const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE,      OPT_COLOR_MODE_16,
+const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_MONO,
+                                     OPT_COLOR_MODE_16,
                                      OPT_COLOR_MODE_256,  OPT_COLOR_MODE_TRUECOLOR, NULL};
-const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256,
+const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256,
                                      TERM_COLOR_TRUECOLOR};
 const char *g_color_mode_descs[] = {"Auto-detect from terminal",
                                     "Monochrome only",
+                                    "Monochrome only (alias)",
                                     "16 colors (ANSI)",
                                     "256 colors (xterm)",
                                     "24-bit truecolor (modern terminals)",
@@ -142,7 +144,7 @@ const char *g_render_descs[] = {"Render using foreground characters only",
 // Render-file theme metadata
 // ============================================================================
 
-const char *g_render_theme_values[] = {"dark", "light", "auto", NULL};
+const char *g_render_theme_values[] = {OPT_RENDER_THEME_DARK, OPT_RENDER_THEME_LIGHT, OPT_RENDER_THEME_AUTO, NULL};
 const int g_render_theme_integers[] = {0, 1, 2}; // 0=dark, 1=light, 2=auto
 const char *g_render_theme_descs[] = {"Dark background (black), light text", "Light background (white), dark text",
                                       "Auto-detect based on system (macOS) or terminal setting (Linux)", NULL};
@@ -158,16 +160,18 @@ const char *g_audio_source_descs[] = {"Local microphone, local media, and other 
                                       "Audio received from other call participants", "Local microphone only",
                                       "Local media playback only", NULL};
 
-const char *g_audio_capture_source_values[] = {OPT_AUDIO_CAPTURE_SOURCE_AUTO, OPT_AUDIO_CAPTURE_SOURCE_MIC,
-                                               OPT_AUDIO_CAPTURE_SOURCE_MEDIA, OPT_AUDIO_CAPTURE_SOURCE_BOTH,
+const char *g_audio_capture_source_values[] = {OPT_AUDIO_CAPTURE_SOURCE_AUTO,   OPT_AUDIO_CAPTURE_SOURCE_MIC,
+                                               OPT_AUDIO_CAPTURE_SOURCE_MEDIA,  OPT_AUDIO_CAPTURE_SOURCE_BOTH,
                                                OPT_AUDIO_CAPTURE_SOURCE_REMOTE, NULL};
 const int g_audio_capture_source_integers[] = {AUDIO_CAPTURE_SOURCE_AUTO, AUDIO_CAPTURE_SOURCE_MIC,
                                                AUDIO_CAPTURE_SOURCE_MEDIA, AUDIO_CAPTURE_SOURCE_BOTH,
                                                AUDIO_CAPTURE_SOURCE_REMOTE};
 const char *g_audio_capture_source_descs[] = {"Microphone when no media is playing; media only otherwise (default)",
-                                              "Capture microphone only", "Play media audio only",
+                                              "Capture microphone only",
+                                              "Play media audio only",
                                               "Capture microphone and play media audio simultaneously",
-                                              "Do not capture local audio", NULL};
+                                              "Do not capture local audio",
+                                              NULL};
 
 // ============================================================================
 // Log Format Output Type Metadata (--log-format flag values)
@@ -187,3 +191,6 @@ const char *g_webcam_examples[] = {"0", "1", "2", NULL};
 const char *g_mic_examples[] = {"-1", "0", "1", NULL};
 const char *g_speakers_examples[] = {"-1", "0", "1", NULL};
 const char *g_seek_examples[] = {"0", "60", "3:45", NULL};
+
+const char *g_completion_shell_values[] = {OPT_COMPLETION_SHELL_BASH, OPT_COMPLETION_SHELL_FISH,
+                                         OPT_COMPLETION_SHELL_ZSH, OPT_COMPLETION_SHELL_POWERSHELL, NULL};

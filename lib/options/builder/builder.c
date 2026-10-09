@@ -4,6 +4,7 @@
  * @ingroup options
  */
 
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
@@ -51,15 +52,15 @@ const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
 
   // For callback options, check if it's a boolean based on enum values
   if (desc->type == OPTION_TYPE_CALLBACK && desc->metadata.enum_values) {
-    // Check if enum values contain "true" and "false" (boolean-like)
+    // Check if enum values contain OPT_VALUE_TRUE and OPT_VALUE_FALSE (boolean-like)
     const char *const *values = desc->metadata.enum_values;
     bool has_true = false, has_false = false;
 
     for (int i = 0; values[i] != NULL; i++) {
-      if (strcmp(values[i], "true") == 0 || strcmp(values[i], "yes") == 0 || strcmp(values[i], "on") == 0) {
+      if (strcmp(values[i], OPT_VALUE_TRUE) == 0 || strcmp(values[i], "yes") == 0 || strcmp(values[i], "on") == 0) {
         has_true = true;
       }
-      if (strcmp(values[i], "false") == 0 || strcmp(values[i], "no") == 0 || strcmp(values[i], "off") == 0) {
+      if (strcmp(values[i], OPT_VALUE_FALSE) == 0 || strcmp(values[i], "no") == 0 || strcmp(values[i], "off") == 0) {
         has_false = true;
       }
     }
@@ -1021,7 +1022,7 @@ static int find_descriptor_in_builder(const options_builder_t *builder, const ch
 
 void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
                                      const char **descriptions) {
-  if (!builder || !option_name || !values || !descriptions) {
+  if (!builder || !option_name || !values) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
     return;
   }
@@ -1630,17 +1631,16 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // For optional arguments, pass NULL to the parser
       opt_value = NULL;
     }
-  } else if (desc->type == OPTION_TYPE_BOOL && (desc->optional_arg || strcmp(desc->long_name, "splash-screen") == 0 ||
-                                                strcmp(desc->long_name, "status-screen") == 0)) {
-    // Boolean options with optional_arg support can accept value from --flag=value or --flag value
+  } else if (desc->type == OPTION_TYPE_BOOL) {
+    // All booleans accept explicit values; other following words remain positional.
     if (long_opt_value) {
       // Value came from --name=value
       opt_value = long_opt_value;
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value
       const char *next_arg = argv[argv_index + 1];
-      if (strcasecmp(next_arg, "true") == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 ||
-          strcasecmp(next_arg, "on") == 0 || strcasecmp(next_arg, "false") == 0 || strcasecmp(next_arg, "no") == 0 ||
+      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 ||
+          strcasecmp(next_arg, "on") == 0 || strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
           strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
         // Next argument is a boolean value, consume it
         opt_value = next_arg;

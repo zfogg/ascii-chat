@@ -78,30 +78,15 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
                                                  entry->optional_arg, &entry->metadata);
       break;
     case OPTION_TYPE_ACTION:
-      // Actions are now registered as options with help text
-      // Look up the corresponding action function based on option name
-      if (strcmp(entry->long_name, "list-webcams") == 0) {
-        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_webcams, entry->help_text,
-                                   entry->group);
-      } else if (strcmp(entry->long_name, "list-microphones") == 0) {
-        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_microphones,
-                                   entry->help_text, entry->group);
-      } else if (strcmp(entry->long_name, "list-speakers") == 0) {
-        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_speakers, entry->help_text,
-                                   entry->group);
-      } else if (strcmp(entry->long_name, "show-capabilities") == 0) {
-        options_builder_add_action(builder, entry->long_name, entry->short_name, action_show_capabilities,
-                                   entry->help_text, entry->group);
-      } else if (strcmp(entry->long_name, "check-update") == 0) {
-        options_builder_add_action(builder, entry->long_name, entry->short_name, action_check_update, entry->help_text,
-                                   entry->group);
-      } else if (strcmp(entry->long_name, "help") == 0 || strcmp(entry->long_name, "version") == 0) {
-        // Help and version are handled specially in options.c, just add them for help display
-        // They don't have actual action functions - pass a dummy one
-        options_builder_add_action(builder, entry->long_name, entry->short_name, NULL, entry->help_text, entry->group);
-      }
+      options_builder_add_action(builder, entry->long_name, entry->short_name,
+                                 options_action_callback(entry->long_name, false), entry->help_text, entry->group);
       break;
     }
+
+    if (entry->metadata.enum_values)
+      options_builder_set_enum_values(builder, entry->long_name, entry->metadata.enum_values,
+                                      entry->metadata.enum_descriptions);
+    options_builder_set_input_type(builder, entry->long_name, entry->metadata.input_type);
 
     // Set mode bitmask on the last added descriptor
     options_builder_set_mode_bitmask(builder, entry->mode_bitmask);
@@ -155,26 +140,8 @@ const option_descriptor_t *options_registry_find_by_name(const char *long_name) 
     return NULL;
   }
 
-  /* Create descriptor from registry entry */
   static option_descriptor_t desc;
-  desc.long_name = entry->long_name;
-  desc.short_name = entry->short_name;
-  desc.type = entry->type;
-  desc.offset = entry->offset;
-  desc.help_text = entry->help_text;
-  desc.group = entry->group;
-  desc.hide_from_mode_help = false;
-  desc.hide_from_binary_help = false;
-  desc.default_value = entry->default_value;
-  desc.required = entry->required;
-  desc.env_var_name = entry->env_var_name;
-  desc.validate = entry->validate_fn;
-  desc.parse_fn = entry->parse_fn;
-  desc.action_fn = NULL;
-  desc.owns_memory = entry->owns_memory;
-  desc.optional_arg = entry->optional_arg;
-  desc.mode_bitmask = entry->mode_bitmask;
-
+  desc = registry_entry_to_descriptor(entry);
   return &desc;
 }
 
@@ -192,26 +159,8 @@ const option_descriptor_t *options_registry_find_by_short(char short_name) {
     return NULL;
   }
 
-  /* Create descriptor from registry entry */
   static option_descriptor_t desc;
-  desc.long_name = entry->long_name;
-  desc.short_name = entry->short_name;
-  desc.type = entry->type;
-  desc.offset = entry->offset;
-  desc.help_text = entry->help_text;
-  desc.group = entry->group;
-  desc.hide_from_mode_help = false;
-  desc.hide_from_binary_help = false;
-  desc.default_value = entry->default_value;
-  desc.required = entry->required;
-  desc.env_var_name = entry->env_var_name;
-  desc.validate = entry->validate_fn;
-  desc.parse_fn = entry->parse_fn;
-  desc.action_fn = NULL;
-  desc.owns_memory = entry->owns_memory;
-  desc.optional_arg = entry->optional_arg;
-  desc.mode_bitmask = entry->mode_bitmask;
-
+  desc = registry_entry_to_descriptor(entry);
   return &desc;
 }
 

@@ -1081,30 +1081,13 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         break; // Unreachable, but for clarity
       }
-      if (strcmp(argv[i], "--list-webcams") == 0) {
-        has_action = true;
-        action_list_webcams();
-        // action_list_webcams() calls _Exit(), so we don't reach here
-        break;
-      }
-      if (strcmp(argv[i], "--list-microphones") == 0) {
-        has_action = true;
-        action_list_microphones();
-        // action_list_microphones() calls _Exit(), so we don't reach here
-        break;
-      }
-      if (strcmp(argv[i], "--list-speakers") == 0) {
-        has_action = true;
-        action_list_speakers();
-        // action_list_speakers() calls _Exit(), so we don't reach here
-        break;
-      }
-      // Check for --show-capabilities (binary-level action)
-      if (strcmp(argv[i], "--show-capabilities") == 0) {
-        has_action = true;
-        action_show_capabilities_immediate();
-        // action_show_capabilities_immediate() calls _Exit(), so we don't reach here
-        break;
+      if (strncmp(argv[i], "--", 2) == 0) {
+        option_action_fn action = options_action_callback(argv[i] + 2, true);
+        if (action) {
+          has_action = true;
+          action();
+          break;
+        }
       }
     }
   }

@@ -31,7 +31,7 @@ const registry_entry_t g_database_entries[] = { // DATABASE GROUP - ACDS Server 
      false,
      false,
      OPTION_MODE_DISCOVERY_SVC,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
 
     REGISTRY_TERMINATOR()};

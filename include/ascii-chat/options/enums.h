@@ -25,9 +25,9 @@ extern "C" {
  * @brief Enum value mapping with description for shell completions
  */
 typedef struct {
-  int enum_value;      ///< The numeric enum value
-  const char *string;  ///< The string representation of that enum value
-  const char *desc;    ///< Description for shell completion
+  int enum_value;     ///< The numeric enum value
+  const char *string; ///< The string representation of that enum value
+  const char *desc;   ///< Description for shell completion
 } enum_to_string_entry_t;
 
 /**
@@ -46,7 +46,7 @@ typedef struct {
  *
  * @param option_name Option long name (e.g., "log-level")
  * @param entry_count OUTPUT: Number of entries returned
- * @return Array of enum entries, or NULL if not an enum option
+ * @return Allocated array (caller uses SAFE_FREE), or NULL. Strings are borrowed.
  */
 const enum_to_string_entry_t *options_get_enum_entries(const char *option_name, size_t *entry_count);
 
@@ -55,7 +55,7 @@ const enum_to_string_entry_t *options_get_enum_entries(const char *option_name, 
  *
  * @param option_name Option long name (e.g., "log-level")
  * @param value_count OUTPUT: Number of values returned
- * @return Array of valid string values, or NULL if not an enum option
+ * @return Allocated NULL-terminated array (caller uses SAFE_FREE), or NULL. Strings are borrowed.
  */
 const char **options_get_enum_values(const char *option_name, size_t *value_count);
 
@@ -71,6 +71,18 @@ bool options_is_enum_option(const char *option_name);
  * Enum Value Constants - Used throughout the codebase
  * ═════════════════════════════════════════════════════════════════════════ */
 
+/* Shared scalar values */
+#define OPT_VALUE_AUTO "auto"
+#define OPT_VALUE_TRUE "true"
+#define OPT_VALUE_FALSE "false"
+#define OPT_COMPLETION_SHELL_BASH "bash"
+#define OPT_COMPLETION_SHELL_FISH "fish"
+#define OPT_COMPLETION_SHELL_ZSH "zsh"
+#define OPT_COMPLETION_SHELL_POWERSHELL "powershell"
+#define OPT_RENDER_THEME_DARK "dark"
+#define OPT_RENDER_THEME_LIGHT "light"
+#define OPT_RENDER_THEME_AUTO OPT_VALUE_AUTO
+
 /* log-level values */
 #define OPT_LOG_LEVEL_DEV    "dev"
 #define OPT_LOG_LEVEL_DEBUG  "debug"
@@ -82,6 +94,7 @@ bool options_is_enum_option(const char *option_name);
 /* color-mode values */
 #define OPT_COLOR_MODE_AUTO      "auto"
 #define OPT_COLOR_MODE_NONE      "none"
+#define OPT_COLOR_MODE_MONO      "mono"
 #define OPT_COLOR_MODE_16        "16"
 #define OPT_COLOR_MODE_256       "256"
 #define OPT_COLOR_MODE_TRUECOLOR "truecolor"

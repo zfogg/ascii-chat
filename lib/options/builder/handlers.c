@@ -11,6 +11,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/string.h>
@@ -137,7 +138,7 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
 
   bool value = false;
   if (env_value) {
-    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, "true") == 0 || strcmp(env_value, "yes") == 0 ||
+    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, OPT_VALUE_TRUE) == 0 || strcmp(env_value, "yes") == 0 ||
              strcmp(env_value, "on") == 0);
   } else if (desc && desc->default_value) {
     unsigned char default_byte = 0;
@@ -241,8 +242,8 @@ static void apply_env_action(void *field, const char *env_value, const option_de
 
 // --- apply_cli handlers ---
 // Helper function to parse boolean value from string
-// Accepts: "true", "1", "yes", "on" → true
-//          "false", "0", "no", "off" → false
+// Accepts: OPT_VALUE_TRUE, "1", "yes", "on" → true
+//          OPT_VALUE_FALSE, "0", "no", "off" → false
 // Returns ERROR_USAGE if value is invalid
 static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value, const option_descriptor_t *desc) {
   if (!value_str || value_str[0] == '\0') {
@@ -251,14 +252,14 @@ static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value
   }
 
   // Check for true values
-  if (strcasecmp(value_str, "true") == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 ||
+  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 ||
       strcasecmp(value_str, "on") == 0) {
     *out_value = true;
     return ASCIICHAT_OK;
   }
 
   // Check for false values
-  if (strcasecmp(value_str, "false") == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 ||
+  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 ||
       strcasecmp(value_str, "off") == 0) {
     *out_value = false;
     return ASCIICHAT_OK;

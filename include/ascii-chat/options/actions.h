@@ -216,3 +216,7 @@ void action_check_update(void);
  * Exits with code 0 on success, 1 on error.
  */
 void action_check_update_immediate(void);
+
+/** Return the registered callback for a no-argument action, or NULL. */
+typedef void (*option_action_fn)(void);
+option_action_fn options_action_callback(const char *name, bool immediate);

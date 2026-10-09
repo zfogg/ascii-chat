@@ -7,6 +7,7 @@
  * option parsing modules (client.c, server.c, mirror.c).
  */
 
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/common.h>
 
 #include <ascii-chat/asciichat_errno.h>
@@ -387,16 +388,16 @@ asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts
     return ERROR_INVALID_PARAM;
   }
 
-  if (strcmp(value_str, "auto") == 0 || strcmp(value_str, "a") == 0) {
+  if (strcmp(value_str, OPT_VALUE_AUTO) == 0 || strcmp(value_str, "a") == 0) {
     opts->color_mode = COLOR_MODE_AUTO;
-  } else if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_NONE) == 0 || strcmp(value_str, OPT_COLOR_MODE_MONO) == 0) {
     opts->color_mode = COLOR_MODE_NONE;
-  } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0 || strcmp(value_str, "ansi") == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_16) == 0 || strcmp(value_str, "16color") == 0 || strcmp(value_str, "ansi") == 0) {
     opts->color_mode = COLOR_MODE_16_COLOR;
-  } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_256) == 0 || strcmp(value_str, "256color") == 0) {
     opts->color_mode = COLOR_MODE_256_COLOR;
-  } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0 || strcmp(value_str, "tc") == 0 ||
-             strcmp(value_str, "rgb") == 0 || strcmp(value_str, "true") == 0) {
+  } else if (strcmp(value_str, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(value_str, "24bit") == 0 || strcmp(value_str, "tc") == 0 ||
+             strcmp(value_str, "rgb") == 0 || strcmp(value_str, OPT_VALUE_TRUE) == 0) {
     opts->color_mode = COLOR_MODE_TRUECOLOR;
   } else {
     log_error("Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor", value_str);
@@ -411,11 +412,11 @@ asciichat_error_t parse_render_mode_option(const char *value_str, options_t *opt
     return ERROR_INVALID_PARAM;
   }
 
-  if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
+  if (strcmp(value_str, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_FG) == 0) {
     opts->render_mode = RENDER_MODE_FOREGROUND;
-  } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
+  } else if (strcmp(value_str, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_BG) == 0) {
     opts->render_mode = RENDER_MODE_BACKGROUND;
-  } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
+  } else if (strcmp(value_str, OPT_RENDER_MODE_HALF_BLOCK) == 0 || strcmp(value_str, "halfblock") == 0) {
     opts->render_mode = RENDER_MODE_HALF_BLOCK;
   } else {
     log_error("Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
@@ -430,17 +431,17 @@ asciichat_error_t parse_palette_option(const char *value_str, options_t *opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  if (strcmp(value_str, "standard") == 0) {
+  if (strcmp(value_str, OPT_PALETTE_STANDARD) == 0) {
     opts->palette_type = PALETTE_STANDARD;
-  } else if (strcmp(value_str, "blocks") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_BLOCKS) == 0) {
     opts->palette_type = PALETTE_BLOCKS;
-  } else if (strcmp(value_str, "digital") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_DIGITAL) == 0) {
     opts->palette_type = PALETTE_DIGITAL;
-  } else if (strcmp(value_str, "minimal") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_MINIMAL) == 0) {
     opts->palette_type = PALETTE_MINIMAL;
-  } else if (strcmp(value_str, "cool") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_COOL) == 0) {
     opts->palette_type = PALETTE_COOL;
-  } else if (strcmp(value_str, "custom") == 0) {
+  } else if (strcmp(value_str, OPT_PALETTE_CUSTOM) == 0) {
     opts->palette_type = PALETTE_CUSTOM;
   } else {
     log_error("Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
@@ -580,7 +581,7 @@ int options_format_default_value(option_type_t type, const void *default_value, 
 
   switch (type) {
   case OPTION_TYPE_BOOL:
-    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? "true" : "false");
+    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
   case OPTION_TYPE_INT: {
     int int_val = 0;
     memcpy(&int_val, default_value, sizeof(int));

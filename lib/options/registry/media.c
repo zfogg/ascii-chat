@@ -53,7 +53,7 @@ const registry_entry_t g_media_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
     {"url",
      'u',
@@ -186,7 +186,7 @@ const registry_entry_t g_media_entries[] = {
      false,
      false,
      RENDER_FILE_MODES,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
 
     {"render-theme",
@@ -226,7 +226,7 @@ const registry_entry_t g_media_entries[] = {
      false,
      false,
      RENDER_FILE_MODES,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
 
     {"render-font-size",

@@ -4,6 +4,7 @@
  * @ingroup options
  */
 
+#include <ascii-chat/options/enums.h>
 #include <string.h>
 #include <ctype.h>
 #include <ascii-chat/options/completions/completions.h>
@@ -39,13 +40,13 @@ asciichat_error_t completions_generate_for_shell(completion_format_t format, FIL
 const char *completions_get_shell_name(completion_format_t format) {
   switch (format) {
   case COMPLETION_FORMAT_BASH:
-    return "bash";
+    return OPT_COMPLETION_SHELL_BASH;
   case COMPLETION_FORMAT_FISH:
-    return "fish";
+    return OPT_COMPLETION_SHELL_FISH;
   case COMPLETION_FORMAT_ZSH:
-    return "zsh";
+    return OPT_COMPLETION_SHELL_ZSH;
   case COMPLETION_FORMAT_POWERSHELL:
-    return "powershell";
+    return OPT_COMPLETION_SHELL_POWERSHELL;
   default:
     return "unknown";
   }
@@ -67,13 +68,13 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
     lower[i] = tolower((unsigned char)shell_name[i]);
   }
 
-  if (strcmp(lower, "bash") == 0) {
+  if (strcmp(lower, OPT_COMPLETION_SHELL_BASH) == 0) {
     return COMPLETION_FORMAT_BASH;
-  } else if (strcmp(lower, "fish") == 0) {
+  } else if (strcmp(lower, OPT_COMPLETION_SHELL_FISH) == 0) {
     return COMPLETION_FORMAT_FISH;
-  } else if (strcmp(lower, "zsh") == 0) {
+  } else if (strcmp(lower, OPT_COMPLETION_SHELL_ZSH) == 0) {
     return COMPLETION_FORMAT_ZSH;
-  } else if (strcmp(lower, "powershell") == 0 || strcmp(lower, "ps") == 0) {
+  } else if (strcmp(lower, OPT_COMPLETION_SHELL_POWERSHELL) == 0 || strcmp(lower, "ps") == 0) {
     return COMPLETION_FORMAT_POWERSHELL;
   }
 

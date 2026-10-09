@@ -1,18 +1,16 @@
 /**
  * @file zsh.c
- * @brief Zsh shell completion script generator with category grouping
+ * @brief Zsh shell completion script generator with described values
  * @ingroup options
  */
 
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/mode_defaults.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/util/utf8.h>
 
 /**
  * Escape special characters in completion descriptions for zsh
@@ -28,6 +26,7 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       // Escape single quotes: end quote, escaped quote, start quote
       fprintf(output, "'\\''");
       break;
+    case ':':
     case '|':
     case '[':
     case ']':
@@ -48,163 +47,93 @@ static void zsh_escape_desc(FILE *output, const char *text) {
   }
 }
 
-/**
- * Collect unique group names from options and sort them
- */
-static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
-  if (!opts || count == 0) {
-    *out_group_count = 0;
-    return NULL;
-  }
-
-  // Allocate array for unique groups (worst case: count groups)
-  const char **groups = SAFE_MALLOC(count * sizeof(const char *), const char **);
-  size_t group_count = 0;
-
-  // Collect unique groups
-  for (size_t i = 0; i < count; i++) {
-    const char *group = opts[i].group;
-    if (!group)
-      continue;
-
-    // Check if we already have this group
-    bool found = false;
-    for (size_t j = 0; j < group_count; j++) {
-      if (strcmp(groups[j], group) == 0) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      groups[group_count++] = group;
-    }
-  }
-
-  // Sort groups alphabetically for consistent ordering
-  for (size_t i = 0; i < group_count; i++) {
-    for (size_t j = i + 1; j < group_count; j++) {
-      if (strcmp(groups[i], groups[j]) > 0) {
-        const char *tmp = groups[i];
-        groups[i] = groups[j];
-        groups[j] = tmp;
-      }
-    }
-  }
-
-  *out_group_count = group_count;
-  return groups;
-}
-
-/**
- * Write value completion case blocks for enum, boolean, and device index options
- *
- * Uses $prev to check if we're completing a value, then shows suggestions with descriptions.
- * Falls back to full option list if not in value completion mode.
- */
-static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opts, size_t count) {
+/** Emit option specifications from the same descriptors used by help and parsing. */
+static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opts, size_t count, bool modes) {
   if (!opts || count == 0)
     return;
 
   fprintf(output, "  local -a args=(\n");
 
   for (size_t i = 0; i < count; i++) {
-    fprintf(output, "    '");
+    for (int spelling = 0; spelling < (opts[i].short_name ? 2 : 1); ++spelling) {
+      fprintf(output, "    '");
+      char name[256];
+      if (spelling == 0)
+        SAFE_SNPRINTF(name, sizeof(name), "--%s", opts[i].long_name);
+      else
+        SAFE_SNPRINTF(name, sizeof(name), "-%c", opts[i].short_name);
 
-    // Device index options: call helper functions
-    if (strcmp(opts[i].long_name, "webcam-index") == 0) {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:device index:_ascii_chat_webcam_indices'\n");
-    } else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:device index:_ascii_chat_microphone_indices'\n");
-    } else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:device index:_ascii_chat_speakers_indices'\n");
-    }
-    // Enum options: full spec with values and descriptions
-    else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:%s:((\\\n", opts[i].long_name);
-
-      for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        fprintf(output, "      %s", opts[i].metadata.enum_values[j]);
-        if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
-          fprintf(output, "\\:\"");
-          zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
-          fprintf(output, "\"");
-        }
-        fprintf(output, "\\\n");
+      // Device index options: call helper functions
+      if (strcmp(opts[i].long_name, "webcam-index") == 0) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]:device index:_ascii_chat_webcam_indices'\n");
+      } else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]:device index:_ascii_chat_microphone_indices'\n");
+      } else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]:device index:_ascii_chat_speakers_indices'\n");
       }
-      fprintf(output, "    ))'\n");
-    }
-    // Boolean options with values
-    else if (opts[i].type == OPTION_TYPE_BOOL) {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:value:((true\\:\"enable\" false\\:\"disable\"))'\n");
-    }
-    // Action options (no value)
-    else if (opts[i].type == OPTION_TYPE_ACTION) {
-      fprintf(output, "--%s[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]'\n");
-    }
-    // Other options
-    else {
-      fprintf(output, "--%s=[", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:value:'\n");
+      // Enum options: full spec with values and descriptions
+      else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]%s%s:((\\\n", opts[i].optional_arg ? "::" : ":", opts[i].long_name);
+
+        for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
+          fprintf(output, "      %s", opts[i].metadata.enum_values[j]);
+          if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
+            fprintf(output, "\\:\"");
+            zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
+            fprintf(output, "\"");
+          }
+          fprintf(output, "\\\n");
+        }
+        fprintf(output, "    ))'\n");
+      }
+      // Boolean options with values
+      else if (opts[i].type == OPTION_TYPE_BOOL) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]::value:((" OPT_VALUE_TRUE "\\:\"enable\" " OPT_VALUE_FALSE "\\:\"disable\"))'\n");
+      }
+      // Action options (no value)
+      else if (opts[i].type == OPTION_TYPE_ACTION) {
+        fprintf(output, "%s[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]'\n");
+      } else if (opts[i].metadata.input_type == OPTION_INPUT_FILEPATH ||
+                 (opts[i].arg_placeholder && strstr(opts[i].arg_placeholder, "FILE"))) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]:file:_files'\n");
+      } else if (opts[i].metadata.examples) {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]%svalue:(", opts[i].optional_arg ? "::" : ":");
+        for (size_t j = 0; opts[i].metadata.examples[j]; ++j) {
+          if (j)
+            fputc(' ', output);
+          zsh_escape_desc(output, opts[i].metadata.examples[j]);
+        }
+        fprintf(output, ")'\n");
+      }
+      // Other options
+      else {
+        fprintf(output, "%s=[", name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]%svalue:'\n", opts[i].optional_arg ? "::" : ":");
+      }
     }
   }
-
   fprintf(output, "  )\n\n");
-  fprintf(output, "  _arguments -C -s -S : $args && return\n\n");
-}
-
-/**
- * Write options grouped by category using _describe for proper group headers
- */
-// NOLINTNEXTLINE(unused-function) - May be used for future completion improvements
-__attribute__((unused)) static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts,
-                                                              size_t count, const char *func_prefix) {
-  if (!opts || count == 0)
-    return;
-
-  size_t group_count = 0;
-  const char **groups = zsh_collect_groups(opts, count, &group_count);
-
-  // First pass: declare arrays for each group
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
-
-    // Write all options in this group (long options only to avoid "corrections" duplicates)
-    for (size_t i = 0; i < count; i++) {
-      if (!opts[i].group || strcmp(opts[i].group, group) != 0)
-        continue;
-
-      // Long option only (short options are less discoverable via TAB)
-      fprintf(output, "    '--%s:", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "'\n");
-    }
-
-    fprintf(output, "  )\n");
-  }
-
-  // Second pass: call _describe for each group (with lowercase display)
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  _describe -t %s '", group);
-    utf8_write_lowercase(output, group);
-    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
-  }
-
-  SAFE_FREE(groups);
+  fprintf(output, "  _arguments -C -s -S \"${args[@]}\" ");
+  if (modes)
+    fprintf(output, "'1:mode:_ascii_chat_modes' ");
+  fprintf(output, "'*:argument:'\n\n");
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
@@ -212,18 +141,9 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
-  /* Load binary-level and discovery options for binary-level completion.
-   * Binary-level completion (options before mode name like --color-mode) uses
-   * _arguments with -n -S flags to establish proper zsh completion context.
-   * Without _arguments, completion functions fail with "can only be called from
-   * completion function" error, causing zsh to display "corrections (errors: N)"
-   * messages. The -n flag disables defaults and -S disables short option
-   * processing, allowing safe context establishment. */
+  // Before a mode, expose the complete registry; after a mode, use its own options.
   size_t binary_count = 0;
   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
-
-  size_t discovery_count = 0;
-  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
   fprintf(output, "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
@@ -266,51 +186,47 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  _describe 'speakers' indices\n"
                   "}\n"
                   "\n"
-                  "_ascii_chat_binary() {\n"
-                  "  local -a binary_opts=(\n");
-
-  /* Add discovery options to binary-level completion */
-  if (discovery_opts) {
-    for (size_t i = 0; i < discovery_count; i++) {
-      fprintf(output, "    '--%s:", discovery_opts[i].long_name);
-      zsh_escape_desc(output, discovery_opts[i].help_text);
-      fprintf(output, "'\n");
-    }
-  }
-
-  fprintf(output, "  )\n"
-                  "  _values 'option' \"${binary_opts[@]}\"\n"
-                  "}\n"
-                  "\n"
                   "_ascii_chat_binary_grouped() {\n"
                   "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
                   "  local -A opt_args\n\n");
 
   /* Write binary-level options in grouped format */
   if (binary_opts) {
-    zsh_write_combined_args(output, binary_opts, binary_count);
+    zsh_write_combined_args(output, binary_opts, binary_count, true);
   }
 
-  fprintf(output, "}\n"
-                  "\n"
-                  "_ascii_chat() {\n"
-                  "  if [[ ${words[2]} == -* ]]; then\n"
-                  "    # Binary-level options: show both binary and discovery mode options\n"
-                  "    # (since discovery is the default mode that runs at binary level)\n"
-                  "    _ascii_chat_binary_grouped\n"
-                  "    _ascii_chat_discovery\n"
-                  "    return\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Mode routing: check words[2] to determine which mode function to call\n"
-                  "  case $words[2] in\n"
+  fprintf(output, "}\n\n_ascii_chat() {\n"
+                  "  local i mode=''\n"
+                  "  for (( i=2; i<CURRENT; ++i )); do\n"
+                  "    case $words[i] in\n"
+                  "      --) break ;;\n"
+                  "      --*=*) continue ;;\n");
+  // Skip required option values so a file called 'mirror' is not a mode.
+  for (size_t i = 0; i < binary_count; ++i) {
+    const option_descriptor_t *opt = &binary_opts[i];
+    if (opt->type == OPTION_TYPE_ACTION || opt->type == OPTION_TYPE_BOOL || opt->optional_arg)
+      continue;
+    fprintf(output, "      --%s", opt->long_name);
+    if (opt->short_name)
+      fprintf(output, "|-%c", opt->short_name);
+    fprintf(output, ") (( ++i )) ;;\n");
+  }
+  fprintf(output, "      server|client|mirror|discovery-service|acds)\n"
+                  "        mode=$words[i]\n"
+                  "        words=(\"$words[1]\" \"${(@)words[i+1,-1]}\")\n"
+                  "        (( CURRENT -= i - 1 ))\n"
+                  "        break ;;\n"
+                  "    esac\n"
+                  "  done\n"
+                  "  case $mode in\n"
                   "    # Server-like modes\n"
                   "    server)\n"
                   "      _ascii_chat_server\n"
                   "      return\n"
                   "      ;;\n"
-                  "    discovery-service)\n"
+                  "    discovery-service|acds)\n"
                   "      _ascii_chat_discovery_service\n"
                   "      return\n"
                   "      ;;\n"
@@ -324,14 +240,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "      _ascii_chat_mirror\n"
                   "      return\n"
                   "      ;;\n"
-                  "    # Default/unknown input - show mode selection only if truly empty, otherwise discovery\n"
-                  "    *)\n"
-                  "      # If words[2] is empty AND we're at position 2, show mode selection\n"
-                  "      # Otherwise (even for partial input like 'disc'), use discovery mode (the default)\n"
-                  "      if [[ -z \"${words[2]}\" && $CURRENT -eq 2 ]]; then\n"
-                  "        # Completing the mode name itself - show available modes\n"
-                  "        local -a server_modes client_modes\n"
-                  "        server_modes=(\n");
+                  "    *) _ascii_chat_binary_grouped ;;\n"
+                  "  esac\n"
+                  "}\n\n"
+                  "_ascii_chat_modes() {\n"
+                  "  local -a server_modes client_modes\n"
+                  "  server_modes=(\n");
 
   /* Generate server-like modes from registry */
   size_t mode_server_count = 0;
@@ -363,18 +277,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   fprintf(output, "        )\n"
                   "        _describe -t server-modes 'server-like modes' server_modes\n"
                   "        _describe -t client-modes 'client-like modes' client_modes\n"
-                  "      else\n"
-                  "        # Default mode (discovery) - complete its options\n"
-                  "        _ascii_chat_discovery\n"
-                  "      fi\n"
-                  "      ;;\n"
-                  "  esac\n"
-                  "}\n"
-                  "\n"
+                  "}\n\n"
                   "# Server-like modes: handle incoming connections and stream management\n"
                   "_ascii_chat_server() {\n"
                   "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
                   "  local -A opt_args\n\n");
 
   /* Server options - grouped by category */
@@ -382,7 +290,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
-    zsh_write_combined_args(output, server_opts, server_count);
+    zsh_write_combined_args(output, server_opts, server_count, false);
     SAFE_FREE(server_opts);
   }
 
@@ -390,7 +298,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat_discovery_service() {\n"
                   "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
                   "  local -A opt_args\n\n");
 
   /* Discovery-service options - grouped by category */
@@ -399,7 +308,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
-    zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count);
+    zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count, false);
     SAFE_FREE(discovery_svc_opts);
   }
 
@@ -408,7 +317,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# Client-like modes: connect to servers or render local media\n"
                   "_ascii_chat_client() {\n"
                   "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
                   "  local -A opt_args\n\n");
 
   /* Client options - grouped by category */
@@ -416,7 +326,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
-    zsh_write_combined_args(output, client_opts, client_count);
+    zsh_write_combined_args(output, client_opts, client_count, false);
     SAFE_FREE(client_opts);
   }
 
@@ -424,7 +334,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat_mirror() {\n"
                   "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
                   "  local -A opt_args\n\n");
 
   /* Mirror options - grouped by category */
@@ -432,21 +343,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
-    zsh_write_combined_args(output, mirror_opts, mirror_count);
+    zsh_write_combined_args(output, mirror_opts, mirror_count, false);
     SAFE_FREE(mirror_opts);
-  }
-
-  fprintf(output, "}\n"
-                  "\n"
-                  "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
-                  "_ascii_chat_discovery() {\n"
-                  "  local curcontext=$curcontext\n"
-                  "  local -a context line state state_descr args\n"
-                  "  local -A opt_args\n\n");
-
-  /* Discovery options - grouped by category (reuse already-loaded options) */
-  if (discovery_opts) {
-    zsh_write_combined_args(output, discovery_opts, discovery_count);
   }
 
   fprintf(output, "}\n"
@@ -456,7 +354,6 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "compdef _ascii_chat 'build/bin/ascii-chat'\n");
 
   SAFE_FREE(binary_opts);
-  SAFE_FREE(discovery_opts);
 
   return ASCIICHAT_OK;
 }

@@ -15,6 +15,7 @@
 #include <ascii-chat/options/strings.h>
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/enums.h>
+#include <ascii-chat/options/registry.h>
 #include <ascii-chat/platform/terminal.h>   // For term_color_level_t
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
@@ -131,15 +132,15 @@ const char *asciichat_suggest_mode(const char *input) {
 const char *color_mode_to_string(terminal_color_mode_t mode) {
   switch (mode) {
   case TERM_COLOR_AUTO:
-    return "auto";
+    return OPT_COLOR_MODE_AUTO;
   case TERM_COLOR_NONE:
-    return "none";
+    return OPT_COLOR_MODE_NONE;
   case TERM_COLOR_16:
-    return "16";
+    return OPT_COLOR_MODE_16;
   case TERM_COLOR_256:
-    return "256";
+    return OPT_COLOR_MODE_256;
   case TERM_COLOR_TRUECOLOR:
-    return "truecolor";
+    return OPT_COLOR_MODE_TRUECOLOR;
   default:
     return "unknown";
   }
@@ -152,11 +153,11 @@ const char *color_mode_to_string(terminal_color_mode_t mode) {
 const char *render_mode_to_string(render_mode_t mode) {
   switch (mode) {
   case RENDER_MODE_FOREGROUND:
-    return "foreground";
+    return OPT_RENDER_MODE_FOREGROUND;
   case RENDER_MODE_BACKGROUND:
-    return "background";
+    return OPT_RENDER_MODE_BACKGROUND;
   case RENDER_MODE_HALF_BLOCK:
-    return "half-block";
+    return OPT_RENDER_MODE_HALF_BLOCK;
   default:
     return "unknown";
   }
@@ -169,17 +170,17 @@ const char *render_mode_to_string(render_mode_t mode) {
 const char *palette_type_to_string(palette_type_t type) {
   switch (type) {
   case PALETTE_STANDARD:
-    return "standard";
+    return OPT_PALETTE_STANDARD;
   case PALETTE_BLOCKS:
-    return "blocks";
+    return OPT_PALETTE_BLOCKS;
   case PALETTE_DIGITAL:
-    return "digital";
+    return OPT_PALETTE_DIGITAL;
   case PALETTE_MINIMAL:
-    return "minimal";
+    return OPT_PALETTE_MINIMAL;
   case PALETTE_COOL:
-    return "cool";
+    return OPT_PALETTE_COOL;
   case PALETTE_CUSTOM:
-    return "custom";
+    return OPT_PALETTE_CUSTOM;
   default:
     return "unknown";
   }
@@ -195,18 +196,6 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
   }
 
   size_t value_count = 0;
-  const char **values = options_get_enum_values(option_name, &value_count);
-
-  if (!values || value_count == 0) {
-    return NULL;
-  }
-
-  // Create NULL-terminated array for levenshtein_find_similar
-  static const char *null_terminated[64]; // Max 64 enum values
-  for (size_t i = 0; i < value_count && i < 63; i++) {
-    null_terminated[i] = values[i];
-  }
-  null_terminated[value_count] = NULL;
-
-  return levenshtein_find_similar(input, null_terminated);
+  const char **values = options_registry_get_enum_values(option_name, NULL, &value_count);
+  return values ? levenshtein_find_similar(input, values) : NULL;
 }

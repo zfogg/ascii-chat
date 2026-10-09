@@ -226,7 +226,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   // Monochrome/None
-  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, "mono") == 0 || strcmp(lower, "monochrome") == 0 ||
+  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, OPT_COLOR_MODE_MONO) == 0 || strcmp(lower, "monochrome") == 0 ||
       strcmp(lower, "0") == 0) {
     *color_mode = TERM_COLOR_NONE;
     return true;
@@ -356,19 +356,19 @@ bool parse_render_theme(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Dark theme
-  if (strcmp(lower, "dark") == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_RENDER_THEME_DARK) == 0 || strcmp(lower, "0") == 0) {
     *theme = 0; // TERM_RENDERER_THEME_DARK
     return true;
   }
 
   // Light theme
-  if (strcmp(lower, "light") == 0 || strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_RENDER_THEME_LIGHT) == 0 || strcmp(lower, "1") == 0) {
     *theme = 1; // TERM_RENDERER_THEME_LIGHT
     return true;
   }
 
   // Auto theme
-  if (strcmp(lower, "auto") == 0 || strcmp(lower, "2") == 0) {
+  if (strcmp(lower, OPT_VALUE_AUTO) == 0 || strcmp(lower, "2") == 0) {
     *theme = 2; // TERM_RENDERER_THEME_AUTO
     return true;
   }

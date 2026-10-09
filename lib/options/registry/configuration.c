@@ -11,6 +11,7 @@
  */
 
 #include <ascii-chat/options/registry/common.h>
+#include <ascii-chat/options/registry/metadata.h>
 
 // ============================================================================
 // CONFIGURATION CATEGORY - Configuration file options
@@ -33,7 +34,7 @@ const registry_entry_t g_configuration_entries[] = {
      false,
      false,
      OPTION_MODE_BINARY,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
     {"config-create",
      '\0',
@@ -51,7 +52,7 @@ const registry_entry_t g_configuration_entries[] = {
      false,
      false,
      OPTION_MODE_BINARY,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
     {"completions",
      '\0',
@@ -69,7 +70,7 @@ const registry_entry_t g_configuration_entries[] = {
      false,
      false,
      OPTION_MODE_BINARY,
-     {0},
+     {.enum_values = g_completion_shell_values, .input_type = OPTION_INPUT_ENUM},
      NULL},
     {"man-page-create",
      '\0',
@@ -87,7 +88,7 @@ const registry_entry_t g_configuration_entries[] = {
      false,
      false,
      OPTION_MODE_BINARY,
-     {0},
+     {.input_type = OPTION_INPUT_FILEPATH},
      NULL},
 
     REGISTRY_TERMINATOR()};
