@@ -84,4 +84,14 @@ void fps_counter_reset(fps_counter_t *counter);
 void fps_counter_tick_at(fps_counter_t *counter, uint64_t now);
 float fps_counter_get_at(fps_counter_t *counter, uint64_t now);
 
+/** Presentation hooks. All calls for a counter must run on its owning thread. */
+bool fps_counter_set_visible(fps_counter_t *counter, bool visible);
+void fps_counter_frame_begin(fps_counter_t *counter, bool measure);
+void fps_counter_write_begin(fps_counter_t *counter);
+void fps_counter_write_end(fps_counter_t *counter, bool complete);
+/** Finish at the supplied monotonic timestamp; failed or empty presentations do not count. */
+void fps_counter_frame_end(fps_counter_t *counter, uint64_t now);
+/** Draw the overlay if visible and changed, and periodically report output timing. */
+void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redrawn);
+
 /** @} */

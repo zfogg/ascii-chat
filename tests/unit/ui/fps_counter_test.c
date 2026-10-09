@@ -34,3 +34,30 @@ Test(fps_counter, inactivity_and_clock_reset) {
   cr_assert_eq(fps_counter_get_at(counter, 1), 0);
   fps_counter_destroy(counter);
 }
+
+
+Test(fps_counter, presentation_counts_only_complete_frames) {
+  fps_counter_t *counter = fps_counter_create();
+  // Two writes are one presentation, and a failed second write invalidates it.
+  for (unsigned i = 0; i < 5; i++) {
+    fps_counter_frame_begin(counter, i != 3);
+    if (i != 2) {
+      fps_counter_write_begin(counter);
+      fps_counter_write_end(counter, true);
+      fps_counter_write_begin(counter);
+      fps_counter_write_end(counter, i != 1);
+    }
+    fps_counter_frame_end(counter, i * 10000000ULL);
+  }
+  cr_assert_float_eq(fps_counter_get_at(counter, 40000000), 25, 0.01);
+  // Writes outside a presentation (including the overlay) must not count.
+  fps_counter_write_begin(counter);
+  fps_counter_write_end(counter, true);
+  fps_counter_frame_end(counter, 50000000);
+  cr_assert_float_eq(fps_counter_get_at(counter, 50000000), 25, 0.01);
+  cr_assert(fps_counter_set_visible(counter, true));
+  fps_counter_reset(counter);
+  cr_assert_not(fps_counter_set_visible(counter, true));
+  cr_assert(fps_counter_set_visible(counter, false));
+  fps_counter_destroy(counter);
+}
