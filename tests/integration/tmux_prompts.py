@@ -2,9 +2,10 @@
 """Exercise native prompt/TUI entry points in a real tmux PTY (synthetic identities)."""
 import argparse
 import json
+import shlex
 from pathlib import Path
 import time
-from tmux_rendering import Pane
+from tmux_rendering import Pane, tmux
 
 
 CASES = [
@@ -36,6 +37,7 @@ def main():
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--filter", default="")
+    parser.add_argument("--redirect-stderr", action="store_true")
     args = parser.parse_args()
     root = args.artifacts.resolve()
     results = []
@@ -45,8 +47,18 @@ def main():
         name = "prompt-" + kind
         pane = None
         try:
-            pane = Pane(name, [str(args.probe.resolve()), kind, str(root / name / "application.log")], root, 100, 45)
+            argv = [str(args.probe.resolve()), kind, str(root / name / "application.log")]
+            if args.redirect_stderr:
+                argv = ["sh", "-c", 'exec "$@" 2>' + shlex.quote(str(root / name / "stderr.log")), "prompt", *argv]
+            pane = Pane(name, argv, root, 100, 45)
+            raw = pane.directory / "terminal.raw"
+            tmux("pipe-pane", "-t", pane.name, "cat > " + shlex.quote(str(raw)))
             pane.expect(lambda s: label in s and len(s.strip()) > 5, "normal")
+            if kind in {"text", "password", "unknown-host"}:
+                time.sleep(.2)
+                before = raw.read_bytes().count(b"\x1b[2J")
+                time.sleep(.3)
+                assert raw.read_bytes().count(b"\x1b[2J") == before, "Idle prompt repeatedly clears the screen"
             pane.resize(20, 6)
             pane.expect(lambda s: "Terminal too small" in s, "small")
             pane.text("ignored")
@@ -64,6 +76,9 @@ def main():
                     pane.key("Left", "BSpace")
                     pane.text("c")
                     pane.key("End")
+                    pane.key("BSpace", "BSpace")
+                    pane.expect(lambda s: any(line.rstrip() == "> ali" for line in s.splitlines()), "deleted-tail")
+                    pane.text("ce")
                 else:
                     pane.text(answer)
                 time.sleep(.2)

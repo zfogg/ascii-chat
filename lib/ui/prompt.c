@@ -44,9 +44,9 @@ static void render_prompt(terminal_size_t size, const void *data) {
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   if (!buffer)
     return;
-  frame_buffer_append(buffer, "\033[0m\033[2J\033[H", 11);
+  frame_buffer_append(buffer, "\033[0m\033[H", 7);
   int row = layout(buffer, snapshot->text, size.cols, 1) + 2;
-  frame_buffer_printf(buffer, "\033[%d;1H> ", row);
+  frame_buffer_printf(buffer, "\033[%d;1H\033[2K> ", row);
   // Keep the editable line within the terminal and scroll with the cursor.
   size_t start = snapshot->cursor > (size_t)(size.cols - 4) ? snapshot->cursor - (size.cols - 4) : 0;
   while (start > 0 && ((unsigned char)visible[start] & 0xc0) == 0x80)
@@ -70,6 +70,10 @@ static void render_prompt(terminal_size_t size, const void *data) {
   frame_buffer_destroy(buffer);
 }
 
+static int prompt_fd(void) {
+  return platform_isatty(STDERR_FILENO) ? STDERR_FILENO : STDOUT_FILENO;
+}
+
 asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor) {
   size_t prompt_bytes = strlen(prompt) + 1;
   size_t visible_bytes = strlen(visible) + 1;
@@ -82,7 +86,7 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
   memcpy(snapshot->text + prompt_bytes, visible, visible_bytes);
   // Height is measured at the minimum width, so every larger terminal fits.
   terminal_size_t minimum = {.cols = 40, .rows = layout(NULL, prompt, 40, 1) + 3};
-  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, STDERR_FILENO, minimum, render_prompt, snapshot,
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), minimum, render_prompt, snapshot,
                                                   sizeof(*snapshot) + prompt_bytes + visible_bytes);
   SAFE_FREE(snapshot);
   return result;
@@ -91,5 +95,5 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
 void ui_prompt_remove(void) {
   ui_controller_remove(UI_SCREEN_PROMPT);
   if (ui_controller_state().screen < 0)
-    ui_controller_write(STDERR_FILENO, "\r\n", 2);
+    ui_controller_write(prompt_fd(), "\r\n", 2);
 }
