@@ -1524,7 +1524,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
 
   // UPnP success check for ACDS session type decision
   nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
-  bool upnp_succeeded = (upnp_ctx != NULL);
+  bool upnp_succeeded = nat_upnp_is_active(upnp_ctx);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
@@ -1760,11 +1760,11 @@ static asciichat_error_t server_init_fn(void *user_data) {
       } else if (upnp_succeeded) {
         // UPnP port mapping worked - can use direct TCP
         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-        log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
+        log_info("ACDS session type: Direct TCP (router mapping created; external reachability unverified)");
       } else {
         // UPnP failed and not on public IP - use WebRTC for NAT traversal
         create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (UPnP failed, server behind NAT)");
+        log_info("ACDS session type: WebRTC (no router mapping or direct connection type selected)");
       }
 
       // Server connection information (where clients should connect)

@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <errno.h>
 
+#include "../main.h"
 #include "discovery-service/main.h"
 #include "discovery-service/server.h"
 #include "common/session/server_like.h"
@@ -328,5 +329,10 @@ int acds_main(void) {
       .fd_limit_target = 65536,
   };
 
-  return session_server_like_run(&config);
+  // Native Windows console events reach signal_exit(), not the CRT signal handler.
+  // Route them through the owner so the listener stops and its mapping is removed.
+  set_interrupt_callback(session_server_like_request_shutdown);
+  asciichat_error_t result = session_server_like_run(&config);
+  set_interrupt_callback(NULL);
+  return result;
 }

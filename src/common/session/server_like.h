@@ -264,12 +264,12 @@ typedef struct session_server_like_config {
  * - Mode-specific init can check session_server_like_shutdown_requested() for early shutdowns
  *
  * ## Cleanup (always runs, in order, guarded against partial init)
- * 12. Join status screen and keyboard threads
- * 13. Stop WebSocket server (only if thread was started, atomic stop, cancel, join with 500ms timeout)
- * 14. Mode-specific cleanup_fn() (TCP registry still available, guarded by mode state flags)
- * 15. Destroy WebSocket server (only if successfully initialized)
- * 16. Destroy TCP server
- * 17. Close UPnP port mapping
+ * 12. Join UPnP renewal worker and remove its mapping
+ * 13. Join status screen and keyboard threads
+ * 14. Stop WebSocket server (only if thread was started, atomic stop, cancel, join with 500ms timeout)
+ * 15. Mode-specific cleanup_fn() (TCP registry still available, guarded by mode state flags)
+ * 16. Destroy WebSocket server (only if successfully initialized)
+ * 17. Destroy TCP server
  * 18. Destroy mDNS context
  * 19. Disable keepawake
  *
@@ -315,7 +315,9 @@ ASCIICHAT_API asciichat_mdns_t *session_server_like_get_mdns_ctx(void);
  *
  * READINESS GUARANTEE: Available from step 5 onward (during init_fn and after).
  * Use for querying the public address. NULL if port mapping failed or was disabled.
- * Failure to map UPnP is non-fatal; WebRTC fallback will be used.
+ * Failure to map UPnP is non-fatal and does not determine external reachability.
+ * The returned context is for mode initialization only; do not access it once
+ * the accept loop and renewal worker have started.
  *
  * @return Pointer to UPnP context, or NULL if not initialized or disabled
  */
@@ -383,3 +385,6 @@ ASCIICHAT_API asciichat_error_t session_server_like_handshake(crypto_handshake_c
  * @return true if SIGINT or SIGTERM was received, false otherwise
  */
 ASCIICHAT_API bool session_server_like_shutdown_requested(void);
+
+/** Request shutdown through the shared lifecycle (also used by native console events). */
+ASCIICHAT_API void session_server_like_request_shutdown(void);

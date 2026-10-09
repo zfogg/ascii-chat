@@ -319,10 +319,22 @@
  *
  * @subsection acds_upnp UPnP (Universal Plug and Play)
  *
- * - Works on ~70% of home routers
  * - Automatic port forwarding via miniupnpc library
  * - Enables direct TCP connections (lowest latency)
- * - Server registers with `--upnp` flag
+ * - Opt in with `--port-forwarding` in server and discovery-service modes
+ * - Maps the TCP listener to the LAN address returned by the gateway
+ * - Renews the one-hour lease halfway through and removes the mapping on clean shutdown
+ * - Reports disabled, discovering, mapped, or unavailable status in the logs
+ * - Loopback-only and IPv6-only listeners do not request IPv4 mappings
+ *
+ * A mapping is not an external reachability test. Double NAT, CGNAT, or a host
+ * firewall may still prevent incoming connections. Conversely, mapping failure
+ * does not prevent direct connections through an existing manual forwarding rule.
+ * The discovery service itself still needs a reachable TCP/WebSocket endpoint;
+ * it does not gain a WebRTC fallback merely because router mapping failed.
+ * Quality probes made before discovery host selection do not modify the router.
+ * Only the server listener owns automatic mappings. WebSocket ports are not mapped
+ * by this TCP-listener option and must be made reachable separately.
  *
  * @subsection acds_nat_pmp NAT-PMP (NAT Port Mapping Protocol)
  *
@@ -432,7 +444,7 @@
  * - `--turn-username USER`: Username for TURN server authentication
  * - `--turn-credential PASS`: Credential/password for TURN server authentication
  * - `--turn-secret SECRET`: Shared secret for dynamic TURN credential generation (HMAC-SHA1)
- * - `--upnp`: Enable UPnP/NAT-PMP for automatic router port mapping
+ * - `--port-forwarding`: Enable UPnP/NAT-PMP for automatic router port mapping
  *
  * @subsection acds_examples Usage Examples
  *
@@ -639,7 +651,7 @@
  * - Implement monitoring and alerting for session activity
  *
  * **For Server Hosts**:
- * - Enable `--upnp` for automatic port forwarding
+ * - Enable `--port-forwarding` for automatic port forwarding
  * - Use identity keys for server authentication
  * - Consider password-protecting sensitive sessions
  * - Don't expose IP publicly unless necessary
