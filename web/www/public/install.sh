@@ -7,7 +7,7 @@ ascii_chat_configure_path() (
   case ":$PATH:" in *":$bin_dir:"*) return 0 ;; esac
   # sudo must not edit root's profiles on behalf of the invoking user.
   if [ -n "${SUDO_USER:-}" ] || ! { exec 3<>/dev/tty; } 2>/dev/null; then
-    printf '\nAdd this to your shell profile, then open a new terminal:\n  export PATH=%q:"$PATH"\n' "$bin_dir"
+    printf '\nAdd this to your shell profile:\n  export PATH=%q:"$PATH"\nThen reload your shell with exec $SHELL, or open a new terminal.\n' "$bin_dir"
     return 0
   fi
   updated=0
@@ -68,7 +68,7 @@ ascii_chat_configure_path() (
     done
   done
   if [ "$updated" = 1 ]; then
-    printf '\nOpen a new terminal to use the updated PATH.\n'
+    printf '\nPATH configuration changed. Reload your shell with:\n  exec $SHELL\nOr open a new terminal to use the updated PATH.\n'
   fi
   printf '\nFor this terminal, run:\n  export PATH=%q:"$PATH"\n' "$bin_dir"
 )

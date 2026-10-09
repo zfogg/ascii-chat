@@ -74,7 +74,7 @@
         }
         if ($binDir -notin ($env:Path -split ';')) { $env:Path += ";$binDir" }
         $committed = $true
-        & $gum style --foreground 86 "Installed $tag -> $binDir" 'Ready to chat: ascii-chat' 'Open a new terminal to refresh PATH in other windows.'
+        & $gum style --foreground 86 "Installed $tag -> $binDir" 'Ready to chat: ascii-chat' 'If PATH changed, open a new Windows terminal to load the updated PATH. This PowerShell session is already updated.'
     }
     finally {
         # Only these exact installer-owned paths can be removed.

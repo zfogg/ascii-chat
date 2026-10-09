@@ -72,9 +72,10 @@ export default function InstallationSection() {
                 />
                 <p className="text-sm text-gray-400 mt-2">
                   Installs into ~/.local. If needed, a Y/n prompt offers to add
-                  it to your Bash and Zsh profiles. Press Enter to accept, then
-                  open a new terminal. Existing PATH entries are left alone. For
-                  everyone on this computer, install into /usr/local:
+                  it to your Bash and Zsh profiles. Press Enter to accept. If
+                  PATH changes, reload your shell with <code>exec $SHELL</code>{" "}
+                  or open a new terminal. Existing PATH entries are left alone.
+                  For everyone on this computer, install into /usr/local:
                 </p>
                 <InstallCommand
                   language="bash"
@@ -92,7 +93,9 @@ export default function InstallationSection() {
                 <p className="text-sm text-gray-400 mt-2">
                   Run in PowerShell 5.1 or newer. Installs for your user and
                   adds ascii-chat to PATH. Run PowerShell as Administrator for a
-                  system-wide install in Program Files.
+                  system-wide install in Program Files. If PATH changes, open a
+                  new Windows terminal to load it. The PowerShell session
+                  running the installer is updated immediately.
                 </p>
               </div>
               <p className="text-sm text-gray-400">

@@ -36,11 +36,13 @@ release. Set `ASCII_CHAT_VERSION=v0.12.17` to select a specific release.
   defaulting to `.bash_profile`; Zsh uses `${ZDOTDIR:-$HOME}/.zshrc`.
   Marked, guarded blocks prevent duplicate edits and duplicate PATH entries
   when profiles are sourced again. Symlinked profiles are left for manual edits.
-  Open a new terminal afterward, or run the printed command in the current one.
+  If PATH changes, reload the shell with `exec $SHELL`, open a new terminal,
+  or run the printed export command in the current one.
   Noninteractive and sudo installs print instructions without editing profiles.
 - PowerShell defaults to `%LOCALAPPDATA%\Programs\ascii-chat`, or
   `%ProgramFiles%\ascii-chat` in an Administrator shell. It updates User or
-  Machine PATH respectively, plus the current session.
+  Machine PATH respectively, plus the current session. If PATH changes, open a
+  new Windows terminal to load it in other sessions.
   `ASCII_CHAT_INSTALL_DIR` overrides the installation directory.
 - The whole archive is retained, including bundled documentation and examples.
   Config files in the user's home are untouched. An ownership marker protects
