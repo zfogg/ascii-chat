@@ -94,4 +94,5 @@
             }
         }
     }
+    Write-Host "Binary: $(Join-Path $binDir 'ascii-chat.exe')"
 }

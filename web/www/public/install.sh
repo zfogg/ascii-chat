@@ -171,5 +171,6 @@ ascii_chat_install() (
   committed=1
   "$gum" style --foreground 86 "Installed $tag → $link" 'Ready to chat: ascii-chat'
   ascii_chat_configure_path "$prefix/bin"
+  printf '\nBinary: %s\n' "$link"
 )
 ascii_chat_install
