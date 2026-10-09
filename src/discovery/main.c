@@ -774,11 +774,17 @@ int discovery_main(void) {
   }
 
   splash_clear_discovery_session();
-  if (session_result != ASCIICHAT_OK || ui.error[0]) {
+  char discovery_error[sizeof(ui.error)];
+  mutex_lock(&ui.mutex);
+  SAFE_STRNCPY(discovery_error, ui.error, sizeof(discovery_error));
+  asciichat_error_t discovery_error_code = ui.error_code;
+  mutex_unlock(&ui.mutex);
+
+  if (session_result != ASCIICHAT_OK || discovery_error[0]) {
     log_set_terminal_output(true);
-    log_error("Discovery failed: %s", ui.error[0] ? ui.error : asciichat_error_string(session_result));
+    log_error("Discovery failed: %s", discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
     if (session_result == ASCIICHAT_OK)
-      session_result = ui.error_code;
+      session_result = discovery_error_code;
   }
   mutex_destroy(&ui.mutex);
   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
