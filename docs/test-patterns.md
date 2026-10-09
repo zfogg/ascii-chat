@@ -29,7 +29,7 @@ The C/WASM output was compared against the former Canvas implementation before r
 
 Labels now use bundled DejaVu Sans Mono instead of the previous OS-dependent sans-serif font. The comparisons used the same bundled font on both sides.
 
-Both visible patterns sustained approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Recorded results: [pattern one](test-pattern-evidence/test2-cadence.json). Application screenshots show the warmed-up counter: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
+Both visible patterns sustained approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Application screenshots show the warmed-up counter: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
 
 Native source images: [pattern zero](test-pattern-evidence/native-pattern-0.png), [pattern one](test-pattern-evidence/native-pattern-1.png). Native CLI and shared-library checks cover selectors/defaults, 30 snapshots, legacy config/environment inputs, palette mapping, independent sources, resize, and invalid input. [Recorded results](test-pattern-evidence/native-results.json).
 
