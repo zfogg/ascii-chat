@@ -2,6 +2,7 @@
  * @file nat/upnp.c
  * @brief Router mapping lifecycle for direct TCP listeners.
  */
+#include <stdlib.h>
 #include <string.h>
 
 #include <ascii-chat/network/nat/upnp.h>
@@ -39,7 +40,22 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
   if (result != UPNPCOMMAND_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: mapping request failed: %s", strupnperror(result));
   }
-  mapping_set_lease(ctx, MAPPING_LEASE_SECONDS);
+  // Some gateways silently shorten the requested lease. Read it back on every renewal.
+  char client[40] = {0}, port[6] = {0}, description[80] = {0}, enabled[4] = {0}, lease[16] = {0};
+  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, "TCP", NULL, client,
+                                            port, description, enabled, lease);
+  uint32_t seconds = 60;
+  if (result == UPNPCOMMAND_SUCCESS && lease[0] >= '0' && lease[0] <= '9') {
+    char *end = NULL;
+    unsigned long granted = strtoul(lease, &end, 10);
+    if (*end == '\0' && granted <= MAPPING_LEASE_SECONDS) {
+      // A permanent mapping can still be refreshed periodically.
+      seconds = granted ? (uint32_t)granted : MAPPING_LEASE_SECONDS;
+    } else if (*end == '\0' && granted > MAPPING_LEASE_SECONDS) {
+      seconds = MAPPING_LEASE_SECONDS;
+    }
+  }
+  mapping_set_lease(ctx, seconds);
   return ASCIICHAT_OK;
 }
 
@@ -212,6 +228,13 @@ void nat_upnp_close(nat_upnp_context_t **ctx) {
       char port[6];
       safe_snprintf(port, sizeof(port), "%u", (*ctx)->mapped_port);
       int result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, "TCP", NULL);
+      // Fios gateways require an explicit wildcard when deleting an unrestricted mapping.
+      if (result == 402) {
+        result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, "TCP", "*");
+      }
+      if (result != UPNPCOMMAND_SUCCESS && result != 714) {
+        log_debug("UPnP: deletion failed: %s (%d)", strupnperror(result), result);
+      }
       // An already expired mapping needs no further cleanup.
       error = (result == UPNPCOMMAND_SUCCESS || result == 714) ? ASCIICHAT_OK : ERROR_NETWORK;
 #endif

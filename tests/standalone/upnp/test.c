@@ -10,6 +10,8 @@ void time_sleep_ns(uint64_t ns) {
   now += ns;
 }
 static int discover_calls, add_calls, delete_calls, add_error, delete_error;
+static const char *granted_lease = "3600";
+static int query_error, wildcard_deletes;
 static bool discover_ok = true, bad_lan, bad_external;
 static char target[16], description[128];
 static struct UPNPDev device;
@@ -59,12 +61,32 @@ int UPNP_AddPortMapping(const char *url, const char *service, const char *extern
   add_calls++;
   return add_error;
 }
+int UPNP_GetSpecificPortMappingEntry(const char *url, const char *service, const char *external, const char *proto,
+                                     const char *remote, char *client, char *port, char *desc, char *enabled,
+                                     char *lease) {
+  (void)url;
+  (void)service;
+  (void)external;
+  (void)proto;
+  (void)remote;
+  (void)client;
+  (void)port;
+  (void)desc;
+  (void)enabled;
+  snprintf(lease, 16, "%s", granted_lease);
+  return query_error;
+}
 int UPNP_DeletePortMapping(const char *url, const char *service, const char *port, const char *proto,
                            const char *remote) {
   assert(strcmp(url, "http://192.168.1.1/control") == 0);
   assert(strcmp(service, "urn:test:WANIPConnection:1") == 0);
-  assert(strcmp(port, "27224") == 0 && strcmp(proto, "TCP") == 0 && !remote);
+  assert(strcmp(port, "27224") == 0 && strcmp(proto, "TCP") == 0);
   delete_calls++;
+  if (remote) {
+    assert(strcmp(remote, "*") == 0 && delete_error == 402);
+    wildcard_deletes++;
+    return 0;
+  }
   return delete_error;
 }
 void freeUPNPDevlist(struct UPNPDev *dev) {
@@ -174,6 +196,25 @@ int main(void) {
   assert(ctx == NULL && delete_calls == 1);
   nat_upnp_close(&ctx);
   assert(delete_calls == 1);
+  granted_lease = "1200";
+  assert(nat_upnp_open(27224, "short lease", &ctx) == ASCIICHAT_OK);
+  assert(ctx->lease_seconds == 1200 && ctx->refresh_at_ns == now + 600ULL * NS_PER_SEC_INT);
+  granted_lease = "600";
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK);
+  assert(ctx->expires_at_ns == now + 600ULL * NS_PER_SEC_INT);
+  assert(ctx->refresh_at_ns == now + 300ULL * NS_PER_SEC_INT);
+  query_error = 501;
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && ctx->lease_seconds == 60);
+  query_error = 0;
+  granted_lease = "invalid";
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && ctx->lease_seconds == 60);
+  granted_lease = "0";
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && ctx->lease_seconds == 3600);
+  delete_error = 402;
+  nat_upnp_close(&ctx);
+  assert(!ctx && wildcard_deletes == 1);
+  delete_error = 0;
+  granted_lease = "3600";
 #ifdef UPNP_PRIVATEIP_IGD
   igd_result = UPNP_PRIVATEIP_IGD;
   assert(nat_upnp_open(27224, "double NAT", &ctx) == ASCIICHAT_OK);
