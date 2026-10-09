@@ -299,7 +299,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   if (use_aspect_ratio && !stretch) {
-    image_resize_cover(original, resized, resized_width, resized_height);
+    // Crop using terminal cells; half-block pixel height is only the sampling resolution.
+    image_resize_cover(original, resized, width, height);
   } else {
     image_resize(original, resized);
   }

@@ -162,3 +162,20 @@ python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
 
 Startup stress defaults to warning-level logging so debug logging does not mask
 initialization races. These checks supplement the 131-case matrix above.
+
+### Half-block geometry and playback regression
+
+`tmux_animation.py` samples 36 ANSI frames over more than 14 seconds from the
+10-second `testsrc2` fixture above. It requires changing frames before resize,
+after restoration, and after the loop boundary. Run it with the ordinary fixture
+and again with an `-an -c:v copy` video-only copy to cover both decoder layouts.
+
+```sh
+python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence
+```
+
+The `halfblock_cover_uses_cell_geometry` Criterion test verifies that half-block
+sampling does not double the viewport height used for aspect-ratio cropping.
+These longer animation and geometry checks supplement the 131-case interaction
+matrix; that matrix alone does not establish continuous playback across EOF.
