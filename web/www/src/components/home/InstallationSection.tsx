@@ -68,19 +68,19 @@ export default function InstallationSection() {
                 </Heading>
                 <InstallCommand
                   language="bash"
-                  command="(set -o pipefail; curl -fsSL https://ascii-chat.com/install.sh | bash)"
+                  command={`# regular user install
+curl -fsSL https://ascii-chat.com/install.sh | bash
+
+# system-wide admin install
+curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 />
                 <p className="text-sm text-gray-400 mt-2">
-                  Installs into ~/.local. If needed, a Y/n prompt offers to add
-                  it to your Bash and Zsh profiles. Press Enter to accept. If
-                  PATH changes, reload your shell with <code>exec $SHELL</code>{" "}
-                  or open a new terminal. Existing PATH entries are left alone.
-                  For everyone on this computer, install into /usr/local:
+                  Installs into ~/.local for your user, or /usr/local with sudo.
+                  If needed, a Y/n prompt offers to add it to your Bash and Zsh
+                  profiles. Press Enter to accept. If PATH changes, reload your
+                  shell with <code>exec $SHELL</code> or open a new terminal.
+                  Existing PATH entries are left alone.
                 </p>
-                <InstallCommand
-                  language="bash"
-                  command="(set -o pipefail; curl -fsSL https://ascii-chat.com/install.sh | sudo bash)"
-                />
               </div>
               <div>
                 <Heading level={4} className="font-semibold text-teal-300 mb-2">

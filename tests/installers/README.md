@@ -81,11 +81,6 @@ idempotent reruns and repeated sourcing, paths needing shell quoting, Bash login
 profile selection, ZDOTDIR, and noninteractive/sudo behavior. They require
 Python 3 and Zsh; they do not download releases or edit the user's real profiles.
 
-Run `python3 tests/installers/pipelines.py web/www/src/components/home/InstallationSection.tsx`
-to verify that both displayed Bash commands propagate failed downloads and failed
-installer execution under Bash and Zsh. The website enables pipefail in a subshell
-so it does not change the user's interactive shell options.
-
 `cleanup.ps1` tests the real installer cleanup block against an exclusively locked
 Windows file, covering warnings after commit, errors before commit, and successful
 cleanup after the lock is released. Run it with both PowerShell 5.1 and 7.
