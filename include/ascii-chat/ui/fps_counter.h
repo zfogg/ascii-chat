@@ -30,6 +30,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Opaque FPS counter handle
@@ -71,7 +72,16 @@ void fps_counter_tick(fps_counter_t *counter);
  *
  * Returns a rolling-window average FPS based on the last 30 frames.
  * Stable FPS reading after at least 2 frames have been recorded.
+ * Returns zero after two seconds without a completed frame. The next tick
+ * starts a fresh window so pauses do not distort resumed playback.
  */
 float fps_counter_get(fps_counter_t *counter);
+
+/** Clear samples when the displayed screen changes. Single-owner API. */
+void fps_counter_reset(fps_counter_t *counter);
+
+/** Record/read using an explicit monotonic timestamp, in nanoseconds. */
+void fps_counter_tick_at(fps_counter_t *counter, uint64_t now);
+float fps_counter_get_at(fps_counter_t *counter, uint64_t now);
 
 /** @} */

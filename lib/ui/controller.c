@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -38,6 +39,11 @@ static bool g_finished;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static terminal_size_t g_last_minimum;
+// Only the presentation thread collects writes belonging to a screen redraw.
+static _Thread_local bool g_measure_frame;
+static _Thread_local bool g_frame_failed;
+static _Thread_local bool g_frame_written;
+static _Thread_local uint64_t g_frame_write_ns;
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
@@ -48,7 +54,14 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     return ASCIICHAT_OK;
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
-  return platform_write_all(fd, data, len) == len ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
+  uint64_t start = g_measure_frame ? time_get_ns() : 0;
+  bool complete = platform_write_all(fd, data, len) == len;
+  if (g_measure_frame) {
+    g_frame_write_ns += time_get_ns() - start;
+    g_frame_failed |= !complete;
+    g_frame_written |= complete;
+  }
+  return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
@@ -100,6 +113,10 @@ terminal_size_t ui_controller_size(void) {
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
+  fps_counter_t *fps = fps_counter_create();
+  bool overlay_visible = false;
+  int last_fps = -1;
+  uint64_t report_start = time_get_ns(), report_writes = 0, report_frames = 0;
   while (!atomic_load_bool(&g_stop)) {
     mutex_lock(&g_mutex);
     int active = -1;
@@ -131,6 +148,10 @@ static void *presentation_main(void *unused) {
           screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
       g_last_minimum = screen->minimum;
       bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
+      bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
+      transition |= show_fps != overlay_visible;
+      if (changed || small || g_small)
+        fps_counter_reset(fps);
       g_redraw = false;
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
@@ -154,9 +175,37 @@ static void *presentation_main(void *unused) {
           if (GET_OPTION(auto_height))
             options_set_int("height", size.rows);
         }
-        if (screen->dirty || transition || active != UI_SCREEN_MEDIA)
+        bool rendered = screen->dirty || transition || active != UI_SCREEN_MEDIA;
+        if (rendered) {
+          g_frame_failed = g_frame_written = false;
+          g_frame_write_ns = 0;
+          g_measure_frame = active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP;
           screen->render(size, screen->snapshot);
+          g_measure_frame = false;
+          if (g_frame_written && !g_frame_failed) {
+            fps_counter_tick(fps);
+            report_writes += g_frame_write_ns;
+            report_frames++;
+          }
+        }
+        float measured = fps_counter_get(fps);
+        int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
+        if (show_fps && size.cols >= 7 && (rendered || value != last_fps)) {
+          // Save/restore the cursor so an overlay at the right margin cannot wrap the next write.
+          ui_controller_printf(screen->fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", size.cols - 6, value);
+          last_fps = value;
+        }
+        uint64_t now = time_get_ns();
+        if (now - report_start >= 3 * NS_PER_SEC_INT) {
+          if (report_frames)
+            log_debug("FPS_OUTPUT: frames=%llu elapsed_ms=%.3f write_ms=%.3f",
+                      (unsigned long long)report_frames, (double)(now - report_start) / NS_PER_MS_INT,
+                      (double)report_writes / NS_PER_MS_INT);
+          report_start = now;
+          report_writes = report_frames = 0;
+        }
       }
+      overlay_visible = show_fps;
       g_small = small;
       screen->dirty = false;
     }
@@ -164,6 +213,7 @@ static void *presentation_main(void *unused) {
     mutex_unlock(&g_mutex);
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
+  fps_counter_destroy(fps);
   g_owner = false;
   return NULL;
 }

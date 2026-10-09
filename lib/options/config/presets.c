@@ -324,7 +324,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_custom_section(b, "KEYBINDINGS",
                                      "Available in ascii-chat client, mirror, and discovery modes. "
                                      "While rendering, press '?' to display a keyboard shortcuts help menu showing:\n"
-                                     "  - Available keybindings (?, Space, arrows, m, c, f, r)\n"
+                                     "  - Available keybindings (?, Space, arrows, m, c, f, r, -)\n"
+                                     "  - Press - to toggle the FPS counter (always visible in keyboard help).\n"
                                      "  - Current settings (volume, color mode, audio status, etc.)",
                                      OPTION_MODE_CLIENT_LIKE);
 

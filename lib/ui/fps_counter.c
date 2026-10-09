@@ -55,12 +55,27 @@ void fps_counter_destroy(fps_counter_t *counter) {
  * ============================================================================ */
 
 void fps_counter_tick(fps_counter_t *counter) {
+  fps_counter_tick_at(counter, time_get_ns());
+}
+
+void fps_counter_reset(fps_counter_t *counter) {
+  if (counter)
+    memset(counter, 0, sizeof(*counter));
+}
+
+void fps_counter_tick_at(fps_counter_t *counter, uint64_t now) {
   if (!counter) {
     return;
   }
 
+  if (counter->count) {
+    uint64_t previous = counter->frame_times[(counter->head + FPS_WINDOW_SIZE - 1) % FPS_WINDOW_SIZE];
+    if (now <= previous || now - previous >= 2000000000ULL)
+      fps_counter_reset(counter);
+  }
+
   // Record current time at head position
-  counter->frame_times[counter->head] = time_get_ns();
+  counter->frame_times[counter->head] = now;
 
   // Advance head pointer with wraparound
   counter->head = (counter->head + 1) % FPS_WINDOW_SIZE;
@@ -72,6 +87,10 @@ void fps_counter_tick(fps_counter_t *counter) {
 }
 
 float fps_counter_get(fps_counter_t *counter) {
+  return fps_counter_get_at(counter, time_get_ns());
+}
+
+float fps_counter_get_at(fps_counter_t *counter, uint64_t now) {
   if (!counter || counter->count < 2) {
     return 0.0f;
   }
@@ -83,6 +102,8 @@ float fps_counter_get(fps_counter_t *counter) {
   // Get the elapsed time between oldest and newest frames
   uint64_t oldest_time = counter->frame_times[oldest_idx];
   uint64_t newest_time = counter->frame_times[newest_idx];
+  if (now < newest_time || now - newest_time >= 2000000000ULL)
+    return 0.0f;
   uint64_t elapsed_ns = newest_time - oldest_time;
 
   // Avoid division by zero
