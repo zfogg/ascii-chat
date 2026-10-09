@@ -1,0 +1,58 @@
+[
+  {
+    "case": "controls-foreground",
+    "status": "pass"
+  },
+  {
+    "case": "controls-background",
+    "status": "pass"
+  },
+  {
+    "case": "controls-half-block",
+    "status": "pass"
+  },
+  {
+    "case": "benchmark-120x40",
+    "fps": 58.485009637264206,
+    "mean_write_ms": 0.7387798861480076,
+    "samples": [
+      [
+        175,
+        3008.718,
+        134.712
+      ],
+      [
+        176,
+        3001.45,
+        127.465
+      ],
+      [
+        176,
+        3000.688,
+        127.16
+      ]
+    ]
+  },
+  {
+    "case": "benchmark-160x50",
+    "fps": 52.97017513181041,
+    "mean_write_ms": 2.453627615062761,
+    "samples": [
+      [
+        160,
+        3003.292,
+        379.518
+      ],
+      [
+        156,
+        3015.806,
+        409.75
+      ],
+      [
+        162,
+        3004.848,
+        383.566
+      ]
+    ]
+  }
+]

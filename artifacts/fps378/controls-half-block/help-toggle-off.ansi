@@ -1,0 +1,50 @@
+                                                                                                                 [7mFPS: 49
+
+
+
+
+
+
+[0m                                    ╔══════════════════════════════════════════════╗
+                                    ║  ascii-chat Keyboard Shortcuts               ║
+                                    ╠══════════════════════════════════════════════╣
+                                    ║  Navigation & Control:                       ║
+                                    ║  ─────────────────────                       ║
+                                    ║  ?       Toggle this help screen             ║
+                                    ║  Esc     Close help / Quit app               ║
+                                    ║  Space   Play/Pause (files only)             ║
+                                    ║  ← / →   Seek backward/forward 30s           ║
+                                    ║  m / M   Mute/Unmute audio                   ║
+                                    ║  ↑ / ↓   Volume up/down (10%)                ║
+                                    ║  c / C   Cycle color mode                    ║
+                                    ║  f / F   Cycle color filter                  ║
+                                    ║  x / X   Flip webcam horizontally            ║
+                                    ║  y / Y   Flip webcam vertically              ║
+                                    ║  r / R   Cycle render mode                   ║
+                                    ║  -       Toggle FPS counter                  ║
+                                    ║  `       Print current sync primitive state  ║
+                                    ║                                              ║
+                                    ║  Current Settings:                           ║
+                                    ║  ───────────────                             ║
+                                    ║  Audio  : [38;2;232;93;111mX[39m                                  ║
+                                    ║  Volume : [==========] 100%                  ║
+                                    ║  Color  : Truecolor                          ║
+                                    ║  Filter : None                               ║
+                                    ║  Render : Half-block                         ║
+                                    ║  Flip   : rows=[38;2;232;93;111mX[39m cols=[38;2;232;93;111mX[39m                      ║
+                                    ║                                              ║
+                                    ║  Animations (number key toggle):             ║
+                                    ║  ───────────────────────────────             ║
+                                    ║  (0) Matrix "Digital Rain" : [38;2;232;93;111mX[39m               ║
+                                    ║  (-) FPS Counter : [38;2;232;93;111mX[39m                         ║
+                                    ║                                              ║
+                                    ║  Press ? to close                            ║
+                                    ╚══════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
