@@ -10,6 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/buffer_pool.h>
@@ -262,6 +263,9 @@ void asciichat_shared_destroy(void) {
 
   // 9. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
   keyboard_destroy();
+
+  // Workers have stopped; restore argv/environment before releasing title storage.
+  platform_process_title_destroy();
 
   // 10. Timer system - cleanup timers (may still log!)
   timer_system_destroy();

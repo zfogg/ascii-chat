@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include "api.h"
 #include "../asciichat_errno.h"
 
 // ============================================================================
@@ -54,6 +55,31 @@ extern "C" {
  * @ingroup platform
  */
 pid_t platform_get_pid(void);
+
+/**
+ * @brief Reserve process-title storage before option parsing or environment use.
+ * @param argc Original main argument count.
+ * @param argv Original main argument vector, replaced with a preserved copy on Unix.
+ * @note Call once on the main thread, after allocation tracking is initialized
+ * but before starting workers. Keep the returned argv alive until destroy.
+ * Windows and WASM require no storage. Failure leaves argv unchanged.
+ */
+ASCIICHAT_API asciichat_error_t platform_process_title_init(int argc, char ***argv);
+
+/**
+ * @brief Set the Unix ps command line or Windows console title.
+ * @note Main-thread only. Never writes to stdout. WASM is a no-op.
+ * Unix titles exceeding the reserved storage fail without changing the title.
+ * Does not rename the executable or guarantee Activity Monitor/comm names.
+ */
+ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
+
+/**
+ * @brief Restore Unix argument storage and release title allocations.
+ * @note Call after workers stop, before the final memory report. Idempotent.
+ * The copied argv becomes invalid; g_argv is restored automatically.
+ */
+ASCIICHAT_API void platform_process_title_destroy(void);
 
 /**
  * @brief Execute a command and return a file stream for reading/writing
