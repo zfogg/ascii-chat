@@ -157,11 +157,14 @@ export function useMirrorRenderLoop({
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
-        testPattern.drawFrame(ctx, canvas.width, canvas.height);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imageData = testPattern.drawFrame(
+          ctx,
+          canvas.width,
+          canvas.height,
+        );
+        if (!imageData) return;
         frame = {
-          data: new Uint8Array(imageData.data),
+          data: new Uint8Array(imageData.data.buffer),
           width: canvas.width,
           height: canvas.height,
         };

@@ -1616,7 +1616,10 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     if (long_opt_value) {
       // Value came from --name=value
       opt_value = long_opt_value;
-    } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
+    } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1]) &&
+               !(strcmp(desc->long_name, "test-pattern") == 0 &&
+                 strspn(argv[argv_index + 1], "0123456789") != strlen(argv[argv_index + 1]))) {
+      // An optional numeric selector must not consume a positional host/session.
       // Value from next argument
       opt_value = argv[argv_index + 1];
       *consumed_count = 2;

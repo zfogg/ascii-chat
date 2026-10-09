@@ -1,0 +1,9 @@
+{
+  "cli_snapshots": 30,
+  "invalid_selectors": 5,
+  "legacy_environment": true,
+  "config_loader_cases": 8,
+  "palette_entries": 256,
+  "independent_sources": true,
+  "resize_and_validation": true
+}

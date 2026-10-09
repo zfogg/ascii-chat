@@ -7,7 +7,7 @@ import {
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
-test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at 1920x1080", async ({
+test("/client?test2&testCadence sustains near-60-FPS video delivery and rendering for 15s at 1920x1080", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -19,7 +19,7 @@ test("/client?test2 sustains near-60-FPS video delivery and rendering for 15s at
     await peer.start();
 
     await page.goto(
-      `/client?test2&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+      `/client?test2&testCadence&testServerUrl=${encodeURIComponent(server.getUrl())}`,
     );
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 20_000,

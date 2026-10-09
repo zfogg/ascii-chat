@@ -62,6 +62,17 @@ interface MirrorModuleExports {
 }
 
 export interface MirrorModule extends WasmModule {
+  _wasm_test_pattern_create(width: number, height: number): number;
+  _wasm_test_pattern_render(
+    pointer: number,
+    width: number,
+    height: number,
+    index: number,
+    time: number,
+    cadence: number,
+  ): number;
+  _wasm_test_pattern_render_rgba: MirrorModule["_wasm_test_pattern_render"];
+  _wasm_test_pattern_destroy(pointer: number): void;
   canvas?: HTMLCanvasElement;
   _mirror_init_with_args?: MirrorModuleExports["_mirror_init_with_args"];
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];

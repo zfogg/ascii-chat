@@ -7,6 +7,7 @@
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stddef.h>
+#include <string.h>
 
 // Action functions not supported in WASM mirror mode
 void action_completions(const char *shell_name, const char *output_path) {
@@ -80,4 +81,25 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
 void keyboard_destroy(void) {
   // No-op - no keyboard to destroy in WASM
+}
+
+option_action_fn options_action_callback(const char *name, bool immediate) {
+  static const struct {
+    const char *name;
+    option_action_fn callback;
+    option_action_fn early_callback;
+  } actions[] = {
+      {"list-webcams", action_list_webcams, action_list_webcams},
+      {"list-microphones", action_list_microphones, action_list_microphones},
+      {"list-speakers", action_list_speakers, action_list_speakers},
+      {"show-capabilities", action_show_capabilities, action_show_capabilities_immediate},
+      {"check-update", action_check_update, action_check_update_immediate},
+  };
+  if (!name)
+    return NULL;
+  for (size_t i = 0; i < sizeof(actions) / sizeof(actions[0]); ++i) {
+    if (strcmp(name, actions[i].name) == 0)
+      return immediate ? actions[i].early_callback : actions[i].callback;
+  }
+  return NULL;
 }

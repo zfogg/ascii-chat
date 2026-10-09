@@ -35,59 +35,6 @@
 
 // ansi_fast functions are declared in ansi_fast.h (already included)
 
-asciichat_error_t image_render_test_pattern(image_t *image, unsigned int *frame_counter) {
-  if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !frame_counter) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Test pattern requires a valid image and frame counter");
-  }
-
-  // Advance every generated frame. Discovery's FPS indicator measures visual
-  // changes, so holding each test pattern phase for two frames makes a 60 Hz
-  // source appear to run at only 30 FPS.
-  unsigned int animation_phase = *frame_counter;
-  *frame_counter += 5; // Speed up animation by a factor of five.
-
-  for (int y = 0; y < image->h; y++) {
-    for (int x = 0; x < image->w; x++) {
-      rgb_pixel_t *pixel = &image->pixels[y * image->w + x];
-
-      // Animated color bars that shift based on frame counter
-      int animated_x = (x + animation_phase) % image->w;
-      int grid_x = animated_x / 40;
-
-      // Base pattern: color bars that animate horizontally
-      switch (grid_x % 3) {
-      case 0: // Red
-        pixel->r = 255;
-        pixel->g = 0;
-        pixel->b = 0;
-        break;
-      case 1: // Green
-        pixel->r = 0;
-        pixel->g = 255;
-        pixel->b = 0;
-        break;
-      case 2: // Blue
-      default:
-        pixel->r = 0;
-        pixel->g = 0;
-        pixel->b = 255;
-        break;
-      }
-
-      // Add animated grid lines. The phase alternates the cell pattern each
-      // generated frame so a downsampled terminal client still has a visible
-      // frame-to-frame change when --test-pattern is used for cadence tests.
-      if (animated_x % 40 == 0 || y % 30 == 0 || (((x / 10) + (y / 10) + animation_phase) & 1) == 0) {
-        pixel->r = 0;
-        pixel->g = 0;
-        pixel->b = 0;
-      }
-    }
-  }
-
-  return ASCIICHAT_OK;
-}
-
 image_t *image_new(size_t width, size_t height) {
   image_t *p;
 

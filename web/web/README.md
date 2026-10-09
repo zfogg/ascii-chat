@@ -56,7 +56,10 @@ etc).
 Configure the Emscripten CMake build before running this command. Set
 `ASCII_CHAT_WASM_BUILD_DIR` to its build directory; the default is `../../build`.
 The build compiles both modules and copies their JavaScript and WASM into
-`src/wasm/dist` and `public/wasm`. A SHA-256 manifest records artifacts and C
+`src/wasm/dist` and `public/wasm`. Only `src/wasm/dist` is committed;
+`public/wasm` is ignored and regenerated from that canonical bundle when Vite
+starts for development, a build, or a preview. This includes the public JS
+loaders used by the website demo. A SHA-256 manifest records artifacts and C
 sources. `ASCII_CHAT_WASM_USE_PREBUILT=1` explicitly uses verified prebuilt
 artifacts; a stale source hash fails the build.
 

@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect, useRef } from "react";
 import {
   drawSelectedTestPatternFrame,
+  releaseTestPatternFrame,
   getTestPatternMode,
   type TestPatternMode,
 } from "../testPattern";
@@ -14,8 +15,16 @@ export function useTestPattern(search = window.location.search): {
     width: number,
     height: number,
     time?: number,
-  ) => void;
+  ) => ImageData | undefined;
 } {
+  const contexts = useRef(new Set<CanvasRenderingContext2D>());
+  useEffect(
+    () => () => {
+      for (const context of contexts.current) releaseTestPatternFrame(context);
+      contexts.current.clear();
+    },
+    [],
+  );
   const mode = useMemo(() => getTestPatternMode(search), [search]);
   const drawFrame = useCallback(
     (
@@ -24,8 +33,10 @@ export function useTestPattern(search = window.location.search): {
       height: number,
       time?: number,
     ) => {
+      contexts.current.add(context);
       if (mode !== "none")
-        drawSelectedTestPatternFrame(mode, context, width, height, time);
+        return drawSelectedTestPatternFrame(mode, context, width, height, time);
+      return undefined;
     },
     [mode],
   );

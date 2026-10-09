@@ -9,7 +9,7 @@ test("Mirror test pattern sustains near-refresh-rate ASCII rendering", async ({
 }) => {
   test.setTimeout(30_000);
 
-  await page.goto("/mirror?test2");
+  await page.goto("/mirror?test2&testCadence");
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
   ).toBeVisible({

@@ -1,106 +1,81 @@
 #include <criterion/criterion.h>
-#include <string.h>
-
+#include <ascii-chat/tests/common.h>
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/video/anim/test_pattern.h>
+#include <ascii-chat/video/terminal/ansi.h>
+#include <string.h>
+#include <math.h>
 
 TestSuite(webcam);
 
-static media_source_t *create_test_source(void) {
-  media_source_t *source = media_source_create(MEDIA_SOURCE_TEST, NULL);
-  cr_assert_not_null(source);
-  return source;
-}
-
-static rgb_pixel_t test_pattern_pixel(unsigned int x, unsigned int y, unsigned int phase) {
-  unsigned int animated_x = (x + phase) % 320;
-  rgb_pixel_t pixel = {0};
-
-  switch ((animated_x / 40) % 3) {
-  case 0:
-    pixel.r = 255;
-    break;
-  case 1:
-    pixel.g = 255;
-    break;
-  default:
-    pixel.b = 255;
-    break;
+Test(webcam, test_pattern_deterministic_and_independent) {
+  test_pattern_t *a = NULL, *b = NULL;
+  CLEAR_ERRNO();
+  cr_assert_eq(test_pattern_create(320, 240, &a), ASCIICHAT_OK);
+  cr_assert_eq(GET_ERRNO(), ASCIICHAT_OK);
+  cr_assert_eq(test_pattern_create(320, 240, &b), ASCIICHAT_OK);
+  for (int index = 0; index < 2; index++) {
+    cr_assert_eq(test_pattern_render(a, index, 2000, false), ASCIICHAT_OK);
+    cr_assert_eq(test_pattern_render(b, index, 2000, false), ASCIICHAT_OK);
+    image_t *ia = test_pattern_image(a), *ib = test_pattern_image(b);
+    cr_assert_neq(ia->pixels, ib->pixels);
+    cr_assert_eq(memcmp(ia->pixels, ib->pixels, 320 * 240 * sizeof(rgb_pixel_t)), 0);
+    cr_assert_eq(test_pattern_render(b, index, 2500, false), ASCIICHAT_OK);
+    cr_assert_neq(memcmp(ia->pixels, ib->pixels, 320 * 240 * sizeof(rgb_pixel_t)), 0);
   }
+  test_pattern_destroy(a);
+  test_pattern_destroy(b);
+}
 
-  if (animated_x % 40 == 0 || y % 30 == 0 || (((x / 10) + (y / 10) + phase) & 1) == 0) {
-    pixel.r = 0;
-    pixel.g = 0;
-    pixel.b = 0;
+Test(webcam, test_pattern_resize_and_invalid_input) {
+  test_pattern_t *p = NULL;
+  cr_assert_eq(test_pattern_create(1, 1, &p), ASCIICHAT_OK);
+  for (int index = 0; index < 2; index++)
+    cr_assert_eq(test_pattern_render(p, index, 0, false), ASCIICHAT_OK);
+  cr_assert_eq(test_pattern_resize(p, 80, 48), ASCIICHAT_OK);
+  image_t *image = test_pattern_image(p);
+  cr_assert_eq(test_pattern_resize(p, 80, 48), ASCIICHAT_OK);
+  cr_assert_eq(test_pattern_image(p), image);
+  cr_assert_neq(test_pattern_render(p, 2, 0, false), ASCIICHAT_OK);
+  cr_assert_neq(test_pattern_render(p, 0, NAN, false), ASCIICHAT_OK);
+  cr_assert_neq(test_pattern_render(p, 0, -1, false), ASCIICHAT_OK);
+  cr_assert_neq(test_pattern_resize(p, 0, 48), ASCIICHAT_OK);
+  test_pattern_destroy(p);
+  test_pattern_destroy(NULL);
+}
+
+Test(webcam, test_pattern_circle_wraps_and_cadence_is_opt_in) {
+  test_pattern_t *p = NULL;
+  cr_assert_eq(test_pattern_create(800, 400, &p), ASCIICHAT_OK);
+  cr_assert_eq(test_pattern_render(p, 1, 2000, false), ASCIICHAT_OK);
+  image_t *image = test_pattern_image(p);
+  rgb_pixel_t center = image->pixels[200 * 800 + 400];
+  cr_assert_eq(center.r, 255);
+  cr_assert_eq(center.g, 255);
+  cr_assert_eq(center.b, 255);
+  cr_assert_eq(test_pattern_render(p, 1, 0, false), ASCIICHAT_OK);
+  rgb_pixel_t edge = image->pixels[200 * 800 + 799];
+  cr_assert(edge.r != 255 || edge.g != 255 || edge.b != 255);
+  cr_assert_eq(test_pattern_render(p, 1, 0, true), ASCIICHAT_OK);
+  for (int i = 0; i < 800 * 400; i++)
+    cr_assert_eq(image->pixels[i].r, 0);
+  test_pattern_destroy(p);
+}
+
+Test(webcam, palette_round_trip_and_endpoints) {
+  for (int i = 16; i < 256; i++) {
+    uint8_t r, g, b, rr, gg, bb;
+    get_256color_rgb((uint8_t)i, &r, &g, &b);
+    get_256color_rgb(rgb_to_256color(r, g, b), &rr, &gg, &bb);
+    cr_assert_eq(r, rr);
+    cr_assert_eq(g, gg);
+    cr_assert_eq(b, bb);
   }
-  return pixel;
-}
-
-Test(webcam, test_pattern_dimensions_and_colors) {
-  media_source_t *source = create_test_source();
-  image_t *frame = media_source_read_video(source);
-  cr_assert_not_null(frame);
-  cr_assert_eq(frame->w, 320);
-  cr_assert_eq(frame->h, 240);
-  cr_assert_not_null(frame->pixels);
-  // Choose positions inside the bars and outside the animated checkerboard.
-  cr_assert_eq(frame->pixels[320 + 10].r, 255);
-  cr_assert_eq(frame->pixels[320 + 50].g, 255);
-  cr_assert_eq(frame->pixels[320 + 90].b, 255);
-  cr_assert_eq(frame->pixels[320 + 40].r, 0);
-  cr_assert_eq(frame->pixels[320 + 40].g, 0);
-  cr_assert_eq(frame->pixels[320 + 40].b, 0);
-  cr_assert(media_source_has_video(source));
-  cr_assert_not(media_source_has_audio(source));
-  media_source_destroy(source);
-}
-
-Test(webcam, test_pattern_reuses_buffer_and_animates_five_times_faster) {
-  media_source_t *source = create_test_source();
-  image_t *frame = media_source_read_video(source);
-  cr_assert_not_null(frame);
-  rgb_pixel_t *pixels = frame->pixels;
-  // Every generated frame advances the pattern by five pixels.
-  for (unsigned int index = 1; index <= 10; index++) {
-    image_t *next = media_source_read_video(source);
-    cr_assert_eq(next, frame);
-    cr_assert_eq(next->pixels, pixels);
-    unsigned int phase = index * 5;
-    for (unsigned int x = 0; x < 320; x++) {
-      rgb_pixel_t expected = test_pattern_pixel(x, 1, phase);
-      cr_assert_eq(memcmp(&next->pixels[320 + x], &expected, sizeof(expected)), 0);
-    }
+  cr_assert_eq(rgb_to_256color(0, 0, 0), 16);
+  cr_assert_eq(rgb_to_256color(255, 255, 255), 231);
+  for (int i = 0; i < 16; i++) {
+    uint8_t r, g, b;
+    get_16color_rgb((uint8_t)i, &r, &g, &b);
+    cr_assert_eq(rgb_to_16color(r, g, b), i);
   }
-  media_source_destroy(source);
-}
-
-Test(webcam, test_pattern_sources_have_independent_state) {
-  media_source_t *first = create_test_source();
-  media_source_t *second = create_test_source();
-  image_t *first_frame = media_source_read_video(first);
-  cr_assert_not_null(first_frame);
-  rgb_pixel_t initial_row[320];
-  memcpy(initial_row, first_frame->pixels + 320, sizeof(initial_row));
-  media_source_read_video(first);
-  image_t *second_frame = media_source_read_video(second);
-  cr_assert_not_null(second_frame);
-  cr_assert_neq(first_frame, second_frame);
-  cr_assert_neq(first_frame->pixels, second_frame->pixels);
-  cr_assert_eq(memcmp(second_frame->pixels + 320, initial_row, sizeof(initial_row)), 0);
-  media_source_destroy(first);
-  cr_assert_not_null(media_source_read_video(second));
-  media_source_destroy(second);
-}
-
-Test(webcam, test_pattern_recreate_resets_animation) {
-  for (int cycle = 0; cycle < 3; cycle++) {
-    media_source_t *source = create_test_source();
-    image_t *frame = media_source_read_video(source);
-    cr_assert_not_null(frame);
-    cr_assert_eq(frame->pixels[320 + 39].r, 255);
-    cr_assert_eq(frame->pixels[320 + 39].g, 0);
-    cr_assert_not_null(media_source_read_video(source));
-    media_source_destroy(source);
-  }
-  media_source_destroy(NULL);
 }
