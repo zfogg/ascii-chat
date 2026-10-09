@@ -5,6 +5,7 @@
  * Accumulates terminal output into a growable buffer and flushes atomically.
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/platform/abstraction.h"
 #include <ascii-chat/util/display.h>
@@ -151,7 +152,7 @@ void frame_buffer_clear_screen(frame_buffer_t *buf) {
 }
 
 // Global configuration for terminal screen output FD (used by splash/status screens)
-static int g_terminal_screen_output_fd = STDOUT_FILENO;
+static _Thread_local int g_terminal_screen_output_fd = STDOUT_FILENO;
 
 void frame_buffer_flush(frame_buffer_t *buf) {
   if (!buf || buf->len == 0 || !buf->data) {
@@ -190,7 +191,7 @@ void frame_buffer_flush(frame_buffer_t *buf) {
     }
   }
 
-  platform_write_all(g_terminal_screen_output_fd, output, output_len);
+  ui_controller_write(g_terminal_screen_output_fd, output, output_len);
   SAFE_FREE(output);
 }
 

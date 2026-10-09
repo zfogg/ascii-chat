@@ -229,6 +229,19 @@ void terminal_stop_resize_detection(void) {
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
  */
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+  if (!size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  *size = (terminal_size_t){0};
+  CONSOLE_SCREEN_BUFFER_INFO info;
+  HANDLE handle = (HANDLE)_get_osfhandle(fd);
+  if (!GetConsoleScreenBufferInfo(handle, &info))
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot query terminal descriptor %d", fd);
+  size->cols = info.srWindow.Right - info.srWindow.Left + 1;
+  size->rows = info.srWindow.Bottom - info.srWindow.Top + 1;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);

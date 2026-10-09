@@ -4,6 +4,7 @@
  * @ingroup session
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "session/keyboard_handler.h"
 #include "session/capture.h"
 #include "session/display.h"
@@ -128,7 +129,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     if (display && keyboard_help_is_active(display)) {
       // Close help screen if it's active
       keyboard_help_toggle(display);
-      terminal_clear_screen();
+      ui_controller_remove(UI_SCREEN_HELP);
     } else {
       // If help screen is not active, quit the app (like Ctrl-C)
       // The signal handler will gracefully shutdown all modes (client, server, mirror, etc.)

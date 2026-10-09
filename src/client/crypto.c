@@ -709,7 +709,10 @@ int client_crypto_handshake(acip_transport_t *transport) {
       log_unlock_terminal(previous_terminal_state);
 
       // Prompt user - default is No since this will likely fail
-      if (!platform_prompt_yes_no("Do you want to continue anyway (this will likely fail)", false)) {
+      if (!platform_prompt_yes_no("CLIENT AUTHENTICATION REQUIRED\nThe server requires a client identity key, but "
+                                  "--key was not supplied.\nGenerate an Ed25519 key and have its public key added to "
+                                  "the server client-keys list.\n\nContinue without a key (this will likely fail)",
+                                  false)) {
         log_plain("Connection aborted by user.");
         exit(0); // User declined - exit cleanly
       }

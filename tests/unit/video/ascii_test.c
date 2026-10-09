@@ -968,6 +968,31 @@ ParameterizedTest(ascii_stress_test_case_t *tc, ascii, stress_tests) {
   }
 }
 
+Test(ascii, halfblock_cover_uses_cell_geometry) {
+  image_t *img = image_new(8, 4);
+  cr_assert_not_null(img);
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 8; ++x) {
+      img->pixels[y * 8 + x] = x < 2 ? (rgb_pixel_t){255, 0, 0}
+                                     : x >= 6 ? (rgb_pixel_t){0, 255, 0} : (rgb_pixel_t){0, 0, 255};
+    }
+  }
+  terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_HALF_BLOCK};
+  // Eight columns by two double-height cells have the source's 2:1 aspect.
+  char *wide = ascii_convert_with_capabilities(img, 8, 2, &caps, true, false, " .#");
+  cr_assert_not_null(wide);
+  cr_assert_not_null(strstr(wide, "38;2;255;0;0m"), "Left edge was incorrectly cropped");
+  cr_assert_not_null(strstr(wide, "38;2;0;255;0m"), "Right edge was incorrectly cropped");
+  SAFE_FREE(wide);
+  // A square physical viewport should crop both edge bands, preserving cover semantics.
+  char *square = ascii_convert_with_capabilities(img, 8, 4, &caps, true, false, " .#");
+  cr_assert_not_null(square);
+  cr_assert_null(strstr(square, "38;2;255;0;0m"));
+  cr_assert_null(strstr(square, "38;2;0;255;0m"));
+  SAFE_FREE(square);
+  image_destroy(img);
+}
+
 Test(ascii, ascii_create_grid_colored_single_source) {
   const char *frame = "\033[38;2;255;0;0mABCDEF\033[0m\n";
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};

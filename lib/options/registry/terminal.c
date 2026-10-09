@@ -10,6 +10,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
 
@@ -37,7 +38,7 @@ const registry_entry_t g_terminal_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.numeric_range = {20, 1024, 0}, .examples = g_width_examples, .input_type = OPTION_INPUT_NUMERIC},
+     {.numeric_range = {UI_MEDIA_MIN_COLS, 1024, 0}, .examples = g_width_examples, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"height",
      'y',
@@ -56,7 +57,7 @@ const registry_entry_t g_terminal_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.numeric_range = {10, 1024, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC},
+     {.numeric_range = {UI_MEDIA_MIN_ROWS, 1024, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"color-mode",
      '\0',

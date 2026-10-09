@@ -12,6 +12,11 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
 
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+  (void)fd;
+  return terminal_get_size(size);
+}
+
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
   (void)size;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "Terminal operations not supported in WASM");

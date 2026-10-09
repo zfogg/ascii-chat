@@ -184,6 +184,8 @@ typedef struct {
  * @ingroup platform_terminal
  */
 asciichat_error_t terminal_get_size(terminal_size_t *size);
+/** Query physical dimensions of an output descriptor without option fallbacks. */
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size);
 
 /**
  * @brief Set terminal to raw mode

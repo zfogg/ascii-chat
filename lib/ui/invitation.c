@@ -1,54 +1,16 @@
+#include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/discovery/strings.h>
 #include <stdio.h>
 #include <string.h>
 
-static const rgb_pixel_t g_rainbow_colors[] = {
-    {255, 0, 0},   // Red
-    {255, 165, 0}, // Orange
-    {255, 255, 0}, // Yellow
-    {0, 255, 0},   // Green
-    {0, 255, 255}, // Cyan
-    {0, 0, 255},   // Blue
-    {255, 0, 255}  // Magenta
-};
-#define RAINBOW_COLOR_COUNT 7
-
-static rgb_pixel_t interpolate_color(rgb_pixel_t color1, rgb_pixel_t color2, double t) {
-  rgb_pixel_t result;
-  result.r = (uint8_t)(color1.r * (1.0 - t) + color2.r * t);
-  result.g = (uint8_t)(color1.g * (1.0 - t) + color2.g * t);
-  result.b = (uint8_t)(color1.b * (1.0 - t) + color2.b * t);
-  return result;
-}
-
-/**
- * @brief Get RGB color for a position in the rainbow
- * @param position Position in the rainbow (0.0 to 1.0 or beyond for cycling)
- * @return RGB color at that position
- */
 static rgb_pixel_t get_rainbow_color_rgb(double position) {
-  // Normalize position to 0-1 range
-  double norm_pos = position - (long)position;
-  if (norm_pos < 0) {
-    norm_pos += 1.0;
-  }
-
-  // Scale position to color range
-  double color_pos = norm_pos * (RAINBOW_COLOR_COUNT - 1);
-  int color_idx = (int)color_pos;
-  double blend = color_pos - color_idx;
-
-  // Wrap around at the end
-  if (color_idx >= RAINBOW_COLOR_COUNT - 1) {
-    color_idx = RAINBOW_COLOR_COUNT - 1;
-    blend = 0;
-  }
-
-  int next_idx = (color_idx + 1) % RAINBOW_COLOR_COUNT;
-
-  return interpolate_color(g_rainbow_colors[color_idx], g_rainbow_colors[next_idx], blend);
+  animation_sample_t sample = {.type = ANIMATION_SPLASH_RAINBOW};
+  rgb_pixel_t color = {0};
+  animation_target_t target = {.type = ANIMATION_TARGET_COLOR, .color = {.position = position, .out = &color}};
+  animation_apply(&sample, &target);
+  return color;
 }
 
 static void centered_line(frame_buffer_t *buf, const char *text, int len, int cols, int frame, bool colors) {

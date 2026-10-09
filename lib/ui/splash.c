@@ -14,6 +14,9 @@
  * @date February 2026
  */
 
+#include <ascii-chat/video/anim/controller.h>
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/discovery/strings.h>
@@ -145,7 +148,7 @@ static struct {
  */
 typedef struct {
   discovery_splash_t discovery;
-  int frame;                      // Current animation frame number
+  animation_sample_t animation;   // Immutable sample copied to the presentation thread
   bool use_colors;                // Whether to use rainbow colors
   char update_notification[1024]; // Update notification message (empty if no update)
 } splash_header_ctx_t;
@@ -233,14 +236,14 @@ static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size,
   }
 
   if (ctx->discovery.enabled) {
-    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining, ctx->frame,
+    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining, (int)(ctx->animation.seconds * 60),
                       ctx->use_colors);
     return;
   }
 
   const char *tagline = "Video chat in your terminal";
   frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
-  invitation_render_logo(buf, term_size.cols - 1, ctx->frame, ctx->use_colors, false);
+  invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
 
   // Line 6: Tagline (centered, truncated if too long)
   char plain_tagline[512];
@@ -376,6 +379,11 @@ static void *splash_animation_thread(void *arg) {
     fps = 60;                        // Default to 60 FPS if not specified
   const int anim_speed = 1000 / fps; // milliseconds per frame
   uint64_t loop_start_ns = time_get_ns();
+  animation_t animation;
+  animation_init(
+      &animation, "splash_rainbow",
+      (animation_config_t){
+          .type = ANIMATION_SPLASH_RAINBOW, .fps = (uint32_t)fps, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
   int iteration_count = 0; // Just for logging actual FPS
 
   log_dev("[SPLASH_ANIM_INIT] fps=%d anim_speed=%dms", fps, anim_speed);
@@ -412,7 +420,12 @@ static void *splash_animation_thread(void *arg) {
 
     // Convert elapsed time to animation frame (at target FPS)
     // For 60 FPS target: frame = elapsed_ms / 16.67
-    int frame = (int)(elapsed_ms * fps / 1000);
+    ui_presentation_state_t presentation = ui_controller_state();
+    animation_set_visible(&animation, presentation.screen < 0 ||
+                                          (presentation.screen == UI_SCREEN_SPLASH && !presentation.covered));
+    animation_sample_t sample;
+    animation_update(&animation, now_ns, &sample);
+    int frame = (int)sample.frame;
 
     if (!first_frame) {
       log_dev("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
@@ -424,7 +437,7 @@ static void *splash_animation_thread(void *arg) {
       log_dev("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
     }
     if (keyboard_enabled) {
-      keyboard_key_t key = keyboard_read_nonblocking();
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
       if (key == KEY_ESCAPE) {
         // Escape key: cancel grep if active, otherwise cancel splash
         if (log_search_is_active()) {
@@ -444,7 +457,7 @@ static void *splash_animation_thread(void *arg) {
     // Set up splash header context for this frame (using TIME-BASED frame value)
     splash_header_ctx_t header_ctx = {
         .discovery = discovery_splash_snapshot(),
-        .frame = frame,
+        .animation = sample,
         .use_colors = use_colors,
     };
 
@@ -484,7 +497,11 @@ static void *splash_animation_thread(void *arg) {
 
     // Configure terminal screen with splash header callback
     terminal_screen_config_t screen_config = {
-        .fixed_header_lines = header_lines,
+        .screen = UI_SCREEN_SPLASH,
+        .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+        .user_data_size = sizeof(header_ctx),
+        .minimum_cols = header_ctx.discovery.enabled ? 2 : 52,
+        .fixed_header_lines = header_ctx.discovery.enabled ? 0 : header_lines,
         .render_header = render_splash_header,
         .user_data = &header_ctx,
         .show_logs = !header_ctx.discovery.enabled,
@@ -555,20 +572,8 @@ static void *splash_animation_thread(void *arg) {
       iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop),
       shutdown_is_requested());
 
-  // If shutdown was requested, clear the screen immediately to prevent splash from
-  // appearing briefly during exit
-  if (shutdown_is_requested()) {
-    log_dev("[SPLASH_ANIM] Shutdown detected, clearing screen before exit");
-    terminal_clear_screen();
-    terminal_cursor_home(STDOUT_FILENO);
-    terminal_flush(STDOUT_FILENO);
-  }
-
-  // NOTE: Do NOT call keyboard_destroy() here!
-  // Keyboard was initialized by asciichat_shared_init() and needs to persist
-  // for the render loop. The splash thread is allowed to READ keyboard input,
-  // but should not destroy it. It will be destroyed by the render loop cleanup.
-
+  animation_destroy(&animation);
+  ui_controller_remove(UI_SCREEN_SPLASH);
   log_dev("[SPLASH_ANIM] Animation thread exiting");
   atomic_store_bool(&g_splash_state.is_running, false);
   return NULL;
@@ -589,13 +594,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   if (atomic_load_bool(&g_splash_state.thread_created))
     return 0;
 
-  // Check terminal size
-  int width = (int)terminal_get_effective_width();
-  int height = (int)terminal_get_effective_height();
-  if (discovery.enabled ? (width < 2 || height < 2) : (width < 50 || height < 20)) {
-    return 0;
-  }
-
   // Redirect splash screen to stderr when stdout is piped (not a TTY).
   // This keeps stdout clean for frame data while splash goes to stderr.
   // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
@@ -605,13 +603,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Initialize log buffer (same pattern as server_status)
   splash_log_init();
-
-  // Clear screen and show cursor
-  terminal_clear_screen();
-  if (discovery.enabled)
-    (void)terminal_cursor_hide();
-  else
-    (void)terminal_cursor_show();
 
   // Clear log buffer for clean slate
   splash_log_clear();

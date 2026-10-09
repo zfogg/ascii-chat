@@ -4,6 +4,7 @@
  * @brief Matrix-style digital rain effect implementation
  */
 
+#include "backends.h"
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/debug/memory.h>
@@ -147,6 +148,12 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   rain->first_frame = true;
   rain->time = 0.0f;
 
+  animation_init(
+      &rain->animation, "digital_rain",
+      (animation_config_t){
+          .type = ANIMATION_DIGITAL_RAIN, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_CONTINUE});
+  animation_sample_t initial;
+  animation_update(&rain->animation, 0, &initial);
   log_info("Digital rain initialized: %dx%d grid", num_columns, num_rows);
   return rain;
 }
@@ -156,6 +163,7 @@ void digital_rain_destroy(digital_rain_t *rain) {
     return;
   }
 
+  animation_destroy(&rain->animation);
   SAFE_FREE(rain->columns);
   SAFE_FREE(rain->previous_brightness);
   SAFE_FREE(rain);
@@ -166,6 +174,10 @@ void digital_rain_reset(digital_rain_t *rain) {
     return;
   }
 
+  animation_reset(&rain->animation);
+  rain->animation_timestamp_ns = 0;
+  animation_sample_t initial;
+  animation_update(&rain->animation, 0, &initial);
   rain->time = 0.0f;
   rain->first_frame = true;
 
@@ -367,13 +379,31 @@ static int generate_modulated_color(char *buf, size_t buf_size, int r, int g, in
 }
 
 char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_time) {
+  if (!rain || !frame || !isfinite(delta_time) || delta_time < 0 ||
+      (double)delta_time * 1e9 >= (double)(UINT64_MAX - rain->animation_timestamp_ns))
+    return NULL;
+  if (animation_set_speed(&rain->animation, rain->animation_speed) != ASCIICHAT_OK)
+    return NULL;
+  uint64_t now = rain->animation_timestamp_ns + (uint64_t)((double)delta_time * 1e9);
+  animation_sample_t sample;
+  if (animation_update(&rain->animation, now, &sample) != ASCIICHAT_OK)
+    return NULL;
+  rain->animation_timestamp_ns = now;
+  char *output = NULL;
+  animation_target_t target = {.type = ANIMATION_TARGET_ANSI, .ansi = {.input = frame, .out = &output, .rain = rain}};
+  if (animation_apply(&sample, &target) != ASCIICHAT_OK)
+    return NULL;
+  return output;
+}
+
+char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seconds) {
   if (!rain || !frame) {
     log_error("digital_rain_apply: NULL parameter");
     return NULL;
   }
 
   // Update time
-  rain->time += delta_time * rain->animation_speed;
+  rain->time = seconds;
   float sim_time = rain->time;
 
   // Update rainbow color if rainbow mode is enabled

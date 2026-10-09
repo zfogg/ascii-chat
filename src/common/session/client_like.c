@@ -4,6 +4,7 @@
  * @brief Shared initialization and teardown for client-like modes
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "session/client_like.h"
 #include "session/capture.h"
 #include "session/display.h"
@@ -284,7 +285,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         result = ASCIICHAT_OK;
         goto cleanup;
       }
-      terminal_clear_screen();
+      ui_controller_redraw();
     }
   }
 
@@ -853,7 +854,7 @@ cleanup:
   if (config->print_newline_on_tty_exit && terminal_is_stdout_tty()) {
     log_debug("Writing newline");
     const char newline = '\n';
-    (void)platform_write_all(STDOUT_FILENO, &newline, 1);
+    (void)ui_controller_write(STDOUT_FILENO, &newline, 1);
   }
 
   log_set_terminal_output(false);

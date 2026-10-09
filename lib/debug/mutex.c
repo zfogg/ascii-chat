@@ -664,6 +664,30 @@ void mutex_stack_detect_deadlocks(void) {
 
 #define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
 
+typedef struct {
+  uint64_t waiting_count;
+  uint64_t last_wait_time_ns;
+  uint64_t last_signal_time_ns;
+  uintptr_t last_waiting_key;
+  const char *last_wait_file;
+  int last_wait_line;
+  const char *last_wait_func;
+  const mutex_t *last_wait_mutex;
+} cond_deadlock_snapshot_t;
+
+static void copy_cond_deadlock_state(uintptr_t key, void *data) {
+  const cond_t *cond = (const cond_t *)key;
+  cond_deadlock_snapshot_t *snapshot = data;
+  snapshot->waiting_count = atomic_load_u64(&cond->waiting_count);
+  snapshot->last_wait_time_ns = cond->last_wait_time_ns;
+  snapshot->last_signal_time_ns = cond->last_signal_time_ns;
+  snapshot->last_waiting_key = cond->last_waiting_key;
+  snapshot->last_wait_file = cond->last_wait_file;
+  snapshot->last_wait_line = cond->last_wait_line;
+  snapshot->last_wait_func = cond->last_wait_func;
+  snapshot->last_wait_mutex = cond->last_wait_mutex;
+}
+
 /**
  * @brief Callback for checking condition variable deadlocks
  * @param key Registry key of the primitive
@@ -673,13 +697,13 @@ void mutex_stack_detect_deadlocks(void) {
 static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *user_data) {
   (void)user_data; // Unused
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "cond") != 0) {
+  cond_deadlock_snapshot_t snapshot;
+  if (!named_registry_read(key, "cond", copy_cond_deadlock_state, &snapshot)) {
     return;
   }
 
-  const cond_t *cond = (const cond_t *)key;
-  if (atomic_load_u64(&cond->waiting_count) == 0) {
+  const cond_deadlock_snapshot_t *cond = &snapshot;
+  if (cond->waiting_count == 0) {
     return; // No threads waiting, nothing to check
   }
 

@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: MIT
 /**
  * @file memory.c
  * @ingroup debug_util
  * @brief 🧠 Memory debugging implementation for ascii-chat debug builds
  */
 
+#include <ascii-chat/ui/controller.h>
+// SPDX-License-Identifier: MIT
 #include <stdbool.h>
 
 #ifdef DEBUG_MEMORY
@@ -906,7 +907,7 @@ void debug_memory_report(void) {
 #define REPORT_BUFFER_SIZE (256 * 1024) // 256KB for full memory report
     char *report_buffer = malloc(REPORT_BUFFER_SIZE);
     if (!report_buffer) {
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Failed to allocate memory for report buffer\n"));
+      SAFE_IGNORE_PRINTF_RESULT(ui_controller_printf(STDERR_FILENO, "Failed to allocate memory for report buffer\n"));
       return;
     }
     size_t report_len = 0;
@@ -1293,7 +1294,7 @@ void debug_memory_report(void) {
     // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
 
     // Write to stderr (colored output)
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", report_buffer));
+    SAFE_IGNORE_PRINTF_RESULT(ui_controller_write(STDERR_FILENO, report_buffer, strlen(report_buffer)));
 
     // Write to log file (for SIGUSR2 debugging persistence) - strip ANSI codes
     char *stripped = ansi_strip_escapes(report_buffer, report_len);

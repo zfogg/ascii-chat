@@ -20,6 +20,20 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+int platform_dup(int fd) {
+#ifdef _WIN32
+  return _dup(fd);
+#else
+  return dup(fd);
+#endif
+}
+
 // Forward declaration for filesystem functions
 extern bool check_binary_in_path_uncached(const char *bin_name);
 

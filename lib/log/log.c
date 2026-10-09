@@ -4,6 +4,7 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
@@ -60,6 +61,21 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+// Console logs never draw over a live screen, even from its rendering callback.
+static void log_terminal_printf(int fd, const char *format, ...) {
+  if (ui_controller_is_presenting() && (ui_controller_is_owner() || platform_isatty(fd)))
+    return;
+  char buffer[16384];
+  va_list args;
+  va_start(args, format);
+  int length = vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  if (length > 0) {
+    size_t bytes = (size_t)length < sizeof(buffer) ? (size_t)length : sizeof(buffer) - 1;
+    ui_controller_write(fd, buffer, bytes);
+  }
+}
+
 static struct log_system_t {
   /* Core logging I/O and state */
   atomic_t file;                      /* File descriptor (atomic for safe access) */
@@ -172,8 +188,8 @@ const char *get_level_string_padded(log_level_t level) {
   }
   // Verify length
   if (strlen(result) != 5) {
-    fprintf(stderr, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n", result,
-            strlen(result));
+    log_terminal_printf(STDERR_FILENO, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n",
+                         result, strlen(result));
   }
   return result;
 }
@@ -190,7 +206,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -202,7 +218,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -323,8 +339,8 @@ static void validate_log_message_utf8(const char *message, const char *source) {
   if (!utf8_is_valid(message)) {
     // Use fprintf instead of log_warn to avoid infinite recursion
     // (this function is called from log_msg, which would create a loop)
-    safe_fprintf(stderr, "[WARN] Invalid UTF-8 detected in %s\n", source);
-    safe_fprintf(stderr, "[DEBUG] Invalid UTF-8 data: %s\n", message);
+    log_terminal_printf(STDERR_FILENO, "[WARN] Invalid UTF-8 detected in %s\n", source);
+    log_terminal_printf(STDERR_FILENO, "[DEBUG] Invalid UTF-8 data: %s\n", message);
   }
 }
 
@@ -577,7 +593,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
       } else {
         // Mmap failed - use stderr only (atomic writes, lock-free)
         if (preserve_terminal_output) {
-          safe_fprintf(stderr, "Mmap logging failed for %s, using stderr only (lock-free)\n", filename);
+          log_terminal_printf(STDERR_FILENO, "Mmap logging failed for %s, using stderr only (lock-free)\n", filename);
         }
         atomic_store_int(&g_log.file, STDERR_FILENO);
         g_log.filename[0] = '\0';
@@ -588,7 +604,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
       atomic_store_int(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
       if (fd < 0) {
         if (preserve_terminal_output) {
-          safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
+          log_terminal_printf(STDERR_FILENO, "Failed to open log file: %s\n", filename);
         }
         g_log.filename[0] = '\0';
       }
@@ -973,8 +989,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Handle message formatting errors for terminal output
   if (msg_len <= 0 || msg_len >= (int)sizeof(msg_buffer)) {
     // Message formatting failed - skip filtering and try direct output
-    (void)vfprintf(output_stream, fmt, args);
-    safe_fprintf(output_stream, "\n");
+    /* A failed format is omitted; args may already have been consumed. */
+    log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "\n");
     (void)fflush(output_stream);
     return;
   }
@@ -983,7 +999,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (colored_len <= 0 || colored_len >= (int)sizeof(colored_log_line) || plain_len <= 0 ||
       plain_len >= (int)sizeof(plain_log_line)) {
     // Formatting failed - try to output something
-    safe_fprintf(output_stream, "%s\n", clean_msg);
+    log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", clean_msg);
     (void)fflush(output_stream);
     return;
   }
@@ -1003,14 +1019,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     if (match_len > 0 && colors != NULL) {
       // Apply highlighting to the full line, respecting existing ANSI codes
       const char *highlighted_line = grep_highlight_colored(colored_log_line, plain_log_line, match_start, match_len);
-      safe_fprintf(output_stream, "%s\n", highlighted_line);
+      log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", highlighted_line);
     } else {
       // No grep match - output colored line as-is
-      safe_fprintf(output_stream, "%s\n", colored_log_line);
+      log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", colored_log_line);
     }
   } else {
     // No colors - output plain line
-    safe_fprintf(output_stream, "%s\n", plain_log_line);
+    log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", plain_log_line);
   }
 
   (void)fflush(output_stream);
@@ -1084,13 +1100,15 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
           const char *colorized_msg = colorize_log_message(msg_buffer);
           const char **colors = log_get_color_array();
           if (colors) {
-            safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
-                         colors[LOG_COLOR_RESET]);
+            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s%s%s\n", header_buffer,
+                                 colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
           } else {
-            safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
+            log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
+                                 colorized_msg);
           }
         } else {
-          safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+          log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
+                               msg_buffer);
         }
         (void)fflush(output_stream);
       }
@@ -1289,9 +1307,9 @@ void log_plain_msg(const char *fmt, ...) {
     // Apply colorization for TTY output
     if (terminal_should_color_output(fd)) {
       const char *colorized_msg = colorize_log_message(log_buffer);
-      safe_fprintf(output_stream, "%s\n", colorized_msg);
+      log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", colorized_msg);
     } else {
-      safe_fprintf(output_stream, "%s\n", log_buffer);
+      log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s\n", log_buffer);
     }
     (void)fflush(output_stream);
   }
@@ -1351,9 +1369,9 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
 
   // Write to stderr without colorization (plain output)
   if (add_newline) {
-    safe_fprintf(stderr, "%s\n", log_buffer);
+    log_terminal_printf(STDERR_FILENO, "%s\n", log_buffer);
   } else {
-    safe_fprintf(stderr, "%s", log_buffer);
+    log_terminal_printf(STDERR_FILENO, "%s", log_buffer);
   }
   (void)fflush(stderr);
 }
@@ -1444,9 +1462,9 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
 
   // Write to stdout without colorization (plain output)
   if (add_newline) {
-    safe_fprintf(stdout, "%s\n", log_buffer);
+    log_terminal_printf(STDOUT_FILENO, "%s\n", log_buffer);
   } else {
-    safe_fprintf(stdout, "%s", log_buffer);
+    log_terminal_printf(STDOUT_FILENO, "%s", log_buffer);
   }
 }
 
@@ -2127,6 +2145,11 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
     return;
   }
 
+  // Presentation owns terminal output, but never changes the caller's logging preference.
+  if (ui_controller_is_presenting() && (ui_controller_is_owner() || platform_isatty(fd))) {
+    return;
+  }
+
   // Check if JSON output is enabled (json_file >= 0 means enabled)
   int json_fd = atomic_load_int(&g_log.json_file);
   bool use_json = (json_fd >= 0);
@@ -2137,9 +2160,9 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
   } else {
     // Text output to console using platform_write_all to handle partial writes
     size_t msg_len = strlen(message);
-    platform_write_all(fd, (const uint8_t *)message, msg_len);
+    ui_controller_write(fd, message, msg_len);
     if (msg_len == 0 || message[msg_len - 1] != '\n') {
-      platform_write_all(fd, (const uint8_t *)"\n", 1);
+      ui_controller_write(fd, "\n", 1);
     }
   }
 }

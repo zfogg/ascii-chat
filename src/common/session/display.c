@@ -10,6 +10,8 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/controller.h>
 #include "session/display.h"
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
@@ -25,6 +27,8 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/rle.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/image.h>
@@ -59,6 +63,7 @@ typedef struct session_display_ctx {
 
   /** @brief Detected terminal capabilities */
   terminal_capabilities_t caps;
+  int visualization_color_mode;
 
   /** @brief Palette character string for rendering */
   char palette_chars[256];
@@ -197,11 +202,14 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
 
-  // Determine if we have a valid TTY
-  // Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped).
-  // If stdout is piped/redirected, never perform terminal operations regardless of other fds.
-  if (ctx->tty_info.fd >= 0) {
-    ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && terminal_is_stdout_tty();
+  // Presentation follows stdout. Opening a separate controlling terminal can
+  // fail under ConPTY even though stdout is an interactive console.
+  ctx->has_tty = terminal_is_stdout_tty();
+  if (ctx->has_tty && (ctx->tty_info.fd < 0 || !platform_isatty(ctx->tty_info.fd))) {
+    if (ctx->tty_info.owns_fd && ctx->tty_info.fd >= 0)
+      platform_close(ctx->tty_info.fd);
+    ctx->tty_info.fd = STDOUT_FILENO;
+    ctx->tty_info.owns_fd = false;
   }
 
   // In piped mode, force all logs to stderr to prevent frame data corruption
@@ -217,6 +225,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
+  // Resolve the theme before rendering; OSC queries consume terminal input.
+  ctx->visualization_color_mode =
+      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
 
   // Set wants_padding based on terminal output mode
   // Enable padding for all rendering modes (including snapshot) to center output
@@ -308,6 +319,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   }
 
   ctx->initialized = true;
+  if (ctx->has_tty && !ctx->snapshot_mode) {
+    const char initial[] = "\033[H";
+    (void)ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
+                                (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, initial,
+                                sizeof(initial) - 1);
+  }
+
   return ctx;
 }
 
@@ -316,6 +334,9 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
+
+  ui_controller_remove(UI_SCREEN_HELP);
+  ui_controller_remove(UI_SCREEN_MEDIA);
 
   // Cleanup ASCII rendering if we had a TTY
   // Don't reset terminal in snapshot mode to preserve the rendered output
@@ -691,15 +712,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * Session Display Rendering Functions
  * ============================================================================ */
 
-/* Forward declaration for FPS overlay rendering */
-void session_display_render_fps_overlay(session_display_ctx_t *ctx);
-
 static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
   bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  int color_mode =
-      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
+  int color_mode = ctx->visualization_color_mode;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIX;
   if (selected_audio == AUDIO_SOURCE_MEDIA)
@@ -804,25 +821,26 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     }
   }
 
+  char *plain_frame = NULL;
+  if (GET_OPTION(strip_ansi)) {
+    // Expand REP before stripping escapes so repeated cells are preserved.
+    char *expanded = ansi_expand_rle(display_frame, frame_len);
+    if (expanded) {
+      size_t capacity = strlen(expanded) + 1;
+      plain_frame = SAFE_MALLOC(capacity, char *);
+      strip_ansi_codes(expanded, plain_frame, capacity);
+      SAFE_FREE(expanded);
+      display_frame = plain_frame;
+      frame_len = strlen(plain_frame);
+    }
+  }
+
   // Handle first frame - perform initial terminal reset and splash cleanup
   bool was_first_frame = atomic_exchange_bool(&ctx->first_frame, false);
   if (was_first_frame) {
     // Stop splash screen when first frame is ready
     splash_intro_done();
     splash_wait_for_animation();
-
-    // Perform initial terminal reset
-    if (ctx->has_tty && !ctx->render_file) {
-      (void)terminal_reset(STDOUT_FILENO);
-      (void)terminal_clear_screen();
-      (void)terminal_cursor_home(STDOUT_FILENO);
-      (void)terminal_clear_scrollback(STDOUT_FILENO);
-      (void)terminal_cursor_show();
-      if (!ctx->snapshot_mode) {
-        (void)terminal_cursor_hide();
-      }
-      (void)terminal_flush(STDOUT_FILENO);
-    }
   }
 
   // Output routing logic
@@ -840,16 +858,29 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
     size_t cursor_seq_len = 7;
-    size_t total_size = cursor_seq_len + frame_len;
+    char overlay[64] = {0};
+    size_t overlay_len = 0;
+    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
+      int cols = ui_controller_size().cols;
+      int n = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", cols > 7 ? cols - 6 : 1,
+                       fps_counter_get(ctx->fps_counter));
+      if (n > 0 && n < (int)sizeof(overlay))
+        overlay_len = (size_t)n;
+    }
+    size_t total_size = cursor_seq_len + frame_len + overlay_len;
 
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+      memcpy(frame_buffer + cursor_seq_len + frame_len, overlay, overlay_len);
 
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
-      ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+      asciichat_error_t presented = ui_controller_present(
+          UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+          frame_buffer, total_size);
+      ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
       // Start snapshot timer on first ASCII frame rendered
@@ -873,17 +904,13 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
 
-    // Render FPS counter overlay if enabled
-    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
-      session_display_render_fps_overlay(ctx);
-    }
   } else if (terminal_is_interactive()) {
     // Piped to interactive terminal: output ASCII frames with newline
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+      (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
       SAFE_FREE(write_buf);
     }
 
@@ -900,7 +927,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       if (write_buf) {
         memcpy(write_buf, display_frame, frame_len);
         write_buf[frame_len] = '\n';
-        (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+        (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
 
         // Start snapshot timer on first ASCII frame rendered
         if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
@@ -932,6 +959,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
 
   // Clean up digital rain result if allocated
+  SAFE_FREE(plain_frame);
   if (rain_result) {
     SAFE_FREE(rain_result);
   }
@@ -1005,91 +1033,25 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
   }
 
   // Write all data with automatic retry on transient errors
-  (void)platform_write_all(fd, data, len);
+  (void)ui_controller_write(fd, data, len);
 
   // Flush immediately after write to TTY to ensure data is sent
   (void)terminal_flush(fd);
 }
 
-void session_display_render_fps_overlay(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->fps_counter || !ctx->initialized) {
-    return;
-  }
-
-  // Only render overlay in TTY mode
-  if (!ctx->has_tty) {
-    return;
-  }
-
-  // Get current FPS value from counter
-  float fps = fps_counter_get(ctx->fps_counter);
-
-  // Get terminal width for right-alignment
-  int term_cols = (int)terminal_get_effective_width();
-
-  // Position at row 1, right side of screen
-  // Column = term_cols - 7 (to fit "FPS:144" which is 7 chars)
-  // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
-  char overlay[64];
-  int overlay_len = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", term_cols - 6, fps);
-
-  if (overlay_len > 0 && overlay_len < (int)sizeof(overlay)) {
-    // Write overlay to TTY
-    int fd = (ctx->has_tty && ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-    (void)platform_write_all(fd, overlay, overlay_len);
-
-    // Flush to ensure overlay appears immediately
-    (void)terminal_flush(fd);
-  }
-}
-
 void session_display_reset(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Skip terminal reset in snapshot mode to preserve rendered output
-  if (ctx->snapshot_mode) {
-    return;
-  }
-
-  // Only perform terminal operations if we have a valid TTY
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_reset(ctx->tty_info.fd);
-    (void)terminal_cursor_show();
-    (void)terminal_flush(ctx->tty_info.fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 void session_display_clear(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Skip terminal clear in snapshot mode to preserve rendered output
-  if (ctx->snapshot_mode) {
-    return;
-  }
-
-  // Only perform terminal operations when we have a valid TTY (not when piping)
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_clear_screen();
-    (void)terminal_cursor_home(ctx->tty_info.fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 void session_display_cursor_home(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  int fd = ctx->has_tty ? ctx->tty_info.fd : STDOUT_FILENO;
-  if (fd >= 0) {
-    (void)terminal_cursor_home(fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
@@ -1166,6 +1128,8 @@ void keyboard_help_toggle(session_display_ctx_t *ctx) {
 
   bool current = atomic_load_bool(&ctx->keyboard_help_active);
   atomic_store_bool(&ctx->keyboard_help_active, !current);
+  if (current)
+    ui_controller_remove(UI_SCREEN_HELP);
 }
 
 /**
@@ -1228,21 +1192,11 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
 // if help is active even in snapshot mode)
 bool keyboard_help_is_active_global(void) {
   session_display_ctx_t *ctx = get_current_display_ctx();
-  if (!ctx) {
-    platform_write_all(STDERR_FILENO, "[DEBUG: ctx is NULL]\n", 20);
-    return false;
-  }
-  bool active = atomic_load_bool(&ctx->keyboard_help_active);
-  const char *msg = active ? "[DEBUG: help active]\n" : "[DEBUG: help inactive]\n";
-  platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
-  return active;
+  return ctx && !ui_controller_is_blocked() && atomic_load_bool(&ctx->keyboard_help_active);
 }
 
 void keyboard_help_toggle_global(void) {
-  session_display_ctx_t *ctx = get_current_display_ctx();
-  if (ctx) {
-    keyboard_help_toggle(ctx);
-  }
+  keyboard_help_signal_cancel();
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {

@@ -4,6 +4,7 @@
  * @ingroup session
  */
 
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include "session/display.h"
 #include <ascii-chat/common.h>
@@ -316,17 +317,33 @@ static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SI
 /**
  * @brief Render keyboard help centered on terminal
  */
+typedef struct {
+  session_display_ctx_t *display;
+  int rows;
+} help_snapshot_t;
+static _Thread_local int g_help_rows;
+static void render_help_snapshot(terminal_size_t size, const void *data) {
+  (void)size;
+  const help_snapshot_t *snapshot = data;
+  g_help_rows = snapshot->rows;
+  session_display_ctx_t *display = snapshot->display;
+  keyboard_help_render(display);
+}
+
 void keyboard_help_render(session_display_ctx_t *ctx) {
   if (!ctx) {
     log_error("keyboard_help_render: ctx is NULL!");
     return;
   }
 
+  if (!keyboard_help_is_active(ctx))
+    return;
+
   log_info("keyboard_help_render: STARTING");
 
   // Get terminal dimensions
-  int term_width = (int)terminal_get_effective_width();
-  int term_height = (int)terminal_get_effective_height();
+  int term_width = ui_controller_size().cols;
+  int term_height = ui_controller_size().rows;
   log_info("keyboard_help_render: term_width=%d, term_height=%d", term_width, term_height);
 
   // Use available terminal width, capped at preferred width
@@ -344,11 +361,11 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   }
 
   // Calculate box height dynamically based on content
-  // With animations separator line added, the standard help screen is 25 rows
-  int box_height = 25;
+  // The submitted layout carries the height measured while building its rows.
+  int box_height = g_help_rows ? g_help_rows : term_height;
 
   // Vertical centering with dynamic box height
-  int start_row = (term_height - box_height) / 2 - 3; // -3 offset for proper vertical centering
+  int start_row = (term_height - box_height) / 2;
   if (start_row < 0) {
     start_row = 0;
   }
@@ -578,7 +595,14 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
 
   log_info("keyboard_help_render: buffer prepared, buf_pos=%zu", buf_pos);
 
-  // Write buffer to terminal
+  if (!ui_controller_is_owner() && !GET_OPTION(snapshot_mode)) {
+    help_snapshot_t snapshot = {.display = ctx, .rows = current_row};
+    (void)ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = current_row},
+                               render_help_snapshot, &snapshot, sizeof(snapshot));
+    SAFE_FREE(buffer);
+    return;
+  }
+  // Reposition a layout taller than its old preferred height at the top.
   session_display_write_raw(ctx, buffer, buf_pos);
   log_info("keyboard_help_render: buffer written to terminal");
 

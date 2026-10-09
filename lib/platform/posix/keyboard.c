@@ -57,10 +57,8 @@ asciichat_error_t keyboard_init(void) {
   // tcsetattr() can hang when stdout is piped in tmux, so we skip it entirely for piped output
   if (terminal_is_piped_output()) {
     log_info("keyboard_init: Skipping (output is piped, non-interactive mode)");
-    // Mark as initialized anyway so keyboard_read_nonblocking() knows not to try
-    if (!lifecycle_init(&g_keyboard_lc, "keyboard")) {
-      return ASCIICHAT_OK; // Another thread initialized
-    }
+    // LOG_IO may redirect stdout temporarily. Retry initialization on the
+    // next poll instead of permanently committing an unconfigured keyboard.
     return ASCIICHAT_OK;
   }
 
@@ -212,8 +210,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  log_info("keyboard_read_nonblocking: Read char 0x%02x (%c) from fd=%d", ch, (ch >= 32 && ch < 127) ? ch : '?',
-           read_fd);
 
   // Handle special characters first
   if (ch == ' ') {

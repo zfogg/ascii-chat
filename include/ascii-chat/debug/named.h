@@ -980,6 +980,14 @@ void named_registry_register_packet_types(void);
 void named_registry_for_each(named_iter_callback_t callback, void *user_data);
 
 /**
+ * Read a registered object while preventing concurrent unregistration.
+ * The callback must only copy data: no logging, allocation, or registry calls.
+ * Owners must unregister before freeing the object. Returns false if absent
+ * or if the registered type does not match.
+ */
+bool named_registry_read(uintptr_t key, const char *type, void (*read_object)(uintptr_t, void *), void *user_data);
+
+/**
  * @brief Register a libwebsockets context with automatic format specifier
  * @param context LWS context pointer (struct lws_context *)
  * @param name Base name string (e.g., "ws_server" or "ws_client")

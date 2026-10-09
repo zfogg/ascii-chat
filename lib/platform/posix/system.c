@@ -1189,9 +1189,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     // Child process: execute the command
     // argv[0] is conventionally the program name
     execvp(executable, (char *const *)argv);
-    // If execvp returns, an error occurred
-    log_error("Failed to execute %s: %s", executable, SAFE_STRERROR(errno));
-    exit(127); // Standard convention for command not found
+    // The forked child must not run inherited log locks or atexit handlers.
+    _exit(127); // Standard convention for command not found
   }
 
   // Parent process: wait for child to complete

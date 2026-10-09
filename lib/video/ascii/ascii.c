@@ -1,9 +1,11 @@
-
 /**
  * @file video/ascii.c
  * @ingroup video
  * @brief 🖼️ Image-to-ASCII conversion with SIMD acceleration, color matching, and terminal optimization
  */
+
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/too_small.h>
 
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdint.h>
@@ -92,8 +94,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // 1. reset_terminal is true (caller wants terminal reset)
   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
   if (reset_terminal && terminal_should_use_control_sequences(fd)) {
-    console_clear(fd);
-    cursor_reset(fd);
+    ui_controller_redraw();
 
     // Disable echo using platform abstraction
     if (terminal_set_echo(false) != 0) {
@@ -101,7 +102,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
       return ERROR_TERMINAL;
     }
     // Hide cursor using platform abstraction
-    if (terminal_cursor_hide() != 0) {
+    if (ui_controller_write(fd, "\033[?25l", 6) != ASCIICHAT_OK) {
       log_warn("Failed to hide cursor");
     }
   }
@@ -299,7 +300,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   if (use_aspect_ratio && !stretch) {
-    image_resize_cover(original, resized, resized_width, resized_height);
+    // Crop using terminal cells; half-block pixel height is only the sampling resolution.
+    image_resize_cover(original, resized, width, height);
   } else {
     image_resize(original, resized);
   }
@@ -424,20 +426,19 @@ asciichat_error_t ascii_write(const char *frame) {
     return ERROR_INVALID_PARAM;
   }
 
-  // Only reset cursor if output is connected to a TTY (not piped/redirected)
-  if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
-    cursor_reset(STDOUT_FILENO);
-  }
-
-  size_t frame_len = strlen(frame);
-  // Write all frame data with automatic retry on transient errors
-  platform_write_all(STDOUT_FILENO, frame, frame_len);
-
-  // Flush C stdio buffer and terminal to ensure piped output is written immediately
-  (void)fflush(stdout);
-  terminal_flush(STDOUT_FILENO);
-
-  return ASCIICHAT_OK;
+  if (!terminal_should_use_control_sequences(STDOUT_FILENO))
+    return ui_controller_write(STDOUT_FILENO, frame, strlen(frame));
+  size_t len = strlen(frame);
+  char *output = SAFE_MALLOC(len + 3, char *);
+  if (!output)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate ASCII presentation");
+  memcpy(output, "\033[H", 3);
+  memcpy(output + 3, frame, len);
+  asciichat_error_t result =
+      ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
+                            (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, output, len + 3);
+  SAFE_FREE(output);
+  return result;
 }
 
 void ascii_write_destroy(int fd, bool reset_terminal) {
@@ -451,7 +452,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
   if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     // Show cursor using platform abstraction
-    if (terminal_cursor_show() != 0) {
+    if (ui_controller_write(fd, "\033[?25h", 6) != ASCIICHAT_OK) {
       log_warn("Failed to show cursor");
     }
 

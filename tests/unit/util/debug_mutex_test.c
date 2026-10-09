@@ -2,6 +2,10 @@
 #include <stdatomic.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/cond.h>
+#include <ascii-chat/debug/named.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/atomic.h>
 
 #ifndef NDEBUG
 static atomic_bool stack_stress_running;
@@ -39,5 +43,31 @@ Test(debug_mutex, concurrent_stack_snapshots) {
   atomic_store(&stack_stress_running, false);
   for (int i = 0; i < 4; i++)
     cr_assert_eq(asciichat_thread_join(&writers[i], NULL), ASCIICHAT_OK);
+}
+
+static atomic_t cond_stress_running = {0};
+
+static void *inspect_conditions(void *unused) {
+  (void)unused;
+  while (atomic_load_bool(&cond_stress_running))
+    debug_sync_check_cond_deadlocks();
+  return NULL;
+}
+
+Test(debug_mutex, concurrent_condition_destruction) {
+  // The monitor must not dereference a condition after unregistration frees it.
+  NAMED_REGISTER_ATOMIC(&cond_stress_running, "cond_stress_running", NULL);
+  atomic_store_bool(&cond_stress_running, true);
+  asciichat_thread_t monitor;
+  cr_assert_eq(asciichat_thread_create(&monitor, "cond_monitor", inspect_conditions, NULL), ASCIICHAT_OK);
+  for (int i = 0; i < 5000; ++i) {
+    cond_t *cond = SAFE_CALLOC(1, sizeof(*cond), cond_t *);
+    cr_assert_eq(cond_init(cond, "condition_lifetime"), 0);
+    cr_assert_eq(cond_destroy(cond), 0);
+    SAFE_FREE(cond);
+  }
+  atomic_store_bool(&cond_stress_running, false);
+  cr_assert_eq(asciichat_thread_join(&monitor, NULL), ASCIICHAT_OK);
+  NAMED_UNREGISTER(&cond_stress_running);
 }
 #endif

@@ -10,6 +10,8 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/controller.h>
 #include "session/render.h"
 #include "session/capture.h"
 #include "session/display.h"
@@ -133,13 +135,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
   // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
 
-  // Help screen state tracking for clear-screen transition
-  bool help_was_active = false;
-
-  // Terminal resize tracking (for auto_width/auto_height mode)
-  unsigned short int last_terminal_width = terminal_get_effective_width();
-  unsigned short int last_terminal_height = terminal_get_effective_height();
-
   log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f",
            (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
@@ -245,36 +240,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Event-driven mode: increment frame count
     frame_count++;
 
-    // Check for terminal resize (if auto_width or auto_height is enabled)
-    // This allows the render to adapt immediately when the user resizes the terminal
-    bool auto_width = GET_OPTION(auto_width);
-    bool auto_height = GET_OPTION(auto_height);
-    if (auto_width || auto_height) {
-      unsigned short int current_width = 0;
-      unsigned short int current_height = 0;
-
-      asciichat_error_t size_err = get_terminal_size(&current_width, &current_height);
-      if (size_err == ASCIICHAT_OK) {
-        bool width_changed = auto_width && (current_width != last_terminal_width);
-        bool height_changed = auto_height && (current_height != last_terminal_height);
-
-        if (width_changed || height_changed) {
-          if (width_changed) {
-            options_set_int("width", current_width);
-            log_info("Terminal width changed: %u → %u", last_terminal_width, current_width);
-            last_terminal_width = current_width;
-          }
-          if (height_changed) {
-            options_set_int("height", current_height);
-            log_info("Terminal height changed: %u → %u", last_terminal_height, current_height);
-            last_terminal_height = current_height;
-          }
-          // Clear screen when terminal is resized to avoid visual artifacts
-          terminal_clear_screen();
-        }
-      }
-    }
-
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
     pre_convert_ns = time_get_ns();
@@ -328,13 +293,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
         bool help_is_active = display && keyboard_help_is_active(display);
 
-        // Detect transition from help to ASCII art rendering
-        // When help closes, clear the screen before rendering ASCII art
-        if (help_was_active && !help_is_active) {
-          terminal_clear_screen();
-          log_debug_every(1 * NS_PER_SEC_INT, "Cleared screen when transitioning from help to ASCII art");
-        }
-
         if (help_is_active) {
           keyboard_help_render(display);
         } else {
@@ -350,8 +308,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                          frames_rendered_since_first);
         }
 
-        // Update help state for next iteration
-        help_was_active = help_is_active;
 
         STOP_TIMER("render_frame");
       }
@@ -362,7 +318,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // when tcsetattr() modifies the tty line discipline
       if (keyboard_enabled && keyboard_handler) {
         START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
-        keyboard_key_t key = keyboard_read_nonblocking();
+        keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
         double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
@@ -415,7 +371,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // last row without an \n here. We only need this \n in stdout when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
           if (terminal_is_interactive()) {
-            printf("\n");
+            ui_controller_printf(STDOUT_FILENO, "\n");
           }
           snapshot_done = true;
         }
@@ -508,12 +464,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Re-enable console logging after rendering completes
   log_set_terminal_output(true);
   if (!snapshot_mode && terminal_is_interactive()) {
-    printf("\n");
+    ui_controller_printf(STDOUT_FILENO, "\n");
   }
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
-    keyboard_destroy();
+    ui_controller_remove(UI_SCREEN_HELP);
+    ui_controller_remove(UI_SCREEN_MEDIA);
     log_debug_every(2 * NS_PER_SEC_INT, "Keyboard input disabled");
   }
 

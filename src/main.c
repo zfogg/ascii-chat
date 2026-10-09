@@ -20,6 +20,7 @@
  * Test: Running macOS builds with WebRTC Threads fix
  */
 
+#include <ascii-chat/ui/controller.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -334,7 +335,6 @@ static void common_handle_sigusr2(int sig) {
   (void)sig;
   // Log to stderr directly since we're in signal context
   // (avoid logging system which uses mutexes)
-  write(STDERR_FILENO, "[SIGUSR2 received]\n", 19);
   debug_memory_trigger_report();
 }
 #endif
@@ -456,14 +456,8 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
-/**
- * @brief atexit() wrapper for terminal_cursor_show()
- *
- * atexit() expects void (*)(void) but terminal_cursor_show() returns
- * asciichat_error_t. This wrapper ignores the return value.
- */
 static void on_exit_show_cursor(void) {
-  (void)terminal_cursor_show();
+  ui_controller_restore_terminal();
 }
 
 /* ============================================================================
@@ -512,7 +506,8 @@ int main(int argc, char *argv[]) {
   (void)atexit(platform_process_title_destroy);
 
   // Show cursor early in case a previous session crashed with it hidden.
-  (void)terminal_cursor_show();
+  if (platform_isatty(STDOUT_FILENO))
+    (void)ui_controller_write(STDOUT_FILENO, "\033[?25h", 6);
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors

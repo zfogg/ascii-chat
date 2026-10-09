@@ -64,9 +64,6 @@ void *asciichat_thread_wrapper_impl(void *arg) {
 
   log_debug("[THREAD] User function returned, cleaning up mutex stacks");
 
-  // Perform cleanup before thread exit
-  mutex_stack_cleanup_current_thread();
-
   // Cleanup thread-local path resources
   path_cleanup_thread_locals();
 
@@ -75,6 +72,8 @@ void *asciichat_thread_wrapper_impl(void *arg) {
   SAFE_FREE(wrapper);
 
   log_debug("[THREAD] Wrapper freed, thread exiting");
+  // Logging and tracked frees take mutexes; release their TLS stack last.
+  mutex_stack_cleanup_current_thread();
   return result;
 }
 

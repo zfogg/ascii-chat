@@ -54,6 +54,18 @@ const char *platform_ttyname(int fd) {
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
  */
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+  if (!size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  *size = (terminal_size_t){0};
+  struct winsize ws = {0};
+  if (ioctl(fd, TIOCGWINSZ, &ws) != 0)
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot query terminal descriptor %d", fd);
+  size->cols = ws.ws_col;
+  size->rows = ws.ws_row;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
@@ -292,22 +304,13 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  // For TTY devices, use tcdrain() to wait for output to complete, then tcflush()
-  // For regular files/pipes, use fsync() to flush kernel buffers
-  // This is critical for smooth animation where each frame must appear before the next
-
-  // For TTY: Wait for all output to be transmitted, then flush
-  // tcdrain() blocks until all queued output has been transmitted
+  // Drain output without discarding bytes queued concurrently by presentation.
+  // TCOFLUSH would drop a frame written between tcdrain() and tcflush().
   if (tcdrain(fd) == 0) {
-    // Successfully drained - now flush the terminal buffer
-    tcflush(fd, TCOFLUSH);
     return ASCIICHAT_OK;
   }
 
-  // tcdrain failed (probably not a TTY), try tcflush anyway
-  tcflush(fd, TCOFLUSH);
-
-  // If tcflush also failed (not a TTY), try fsync for regular files
+  // Non-terminal files may support fsync; pipes need no additional operation.
   if (fsync(fd) < 0) {
     // ENOTSUP: not supported, EINVAL: not a regular file (pipes), EBADF: bad fd
     // These are OK - just means this fd type doesn't support flushing

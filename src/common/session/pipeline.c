@@ -4,6 +4,8 @@
  * @ingroup session
  */
 
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/controller.h>
 #include "pipeline.h"
 #include "capture.h"
 #include "display.h"
@@ -16,6 +18,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 /* ============================================================================
@@ -77,7 +80,7 @@ static bool frame_queue_push(frame_queue_t *q, void *item, uint64_t timeout_ns) 
       mutex_unlock(&q->mu);
       return false;
     }
-    if (!cond_timedwait(&q->not_full, &q->mu, timeout_ns)) {
+    if (cond_timedwait(&q->not_full, &q->mu, timeout_ns) != 0) {
       mutex_unlock(&q->mu);
       return false; // timeout
     }
@@ -98,7 +101,7 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
       // Block forever
       cond_wait(&q->not_empty, &q->mu);
     } else {
-      if (!cond_timedwait(&q->not_empty, &q->mu, timeout_ns)) {
+      if (cond_timedwait(&q->not_empty, &q->mu, timeout_ns) != 0) {
         mutex_unlock(&q->mu);
         return NULL; // timeout
       }
@@ -195,6 +198,7 @@ struct session_pipeline_s {
   session_display_ctx_t *display;
 
   atomic_t stop;
+  atomic_t capture_finished;
   atomic_t first_frame_ns;
   bool has_render_file; // Track if render_file was set at creation time
 };
@@ -347,6 +351,7 @@ static void *pipeline_capture_thread(void *arg) {
     }
   }
 
+  atomic_store_bool(&pipeline->capture_finished, true);
   log_info("[PIPELINE_CAPTURE] Capture thread exiting");
   return NULL;
 }
@@ -363,17 +368,13 @@ static void *pipeline_encode_thread(void *arg) {
   bool received_eof = false;
 
   while (!received_eof) {
-    // Pop with indefinite wait while we haven't received EOF
-    // The stop flag does NOT exit the loop - only EOF sentinel does
-    // This ensures all queued frames are processed before thread exits
+    // Drain queued frames before exiting, even when capture was interrupted.
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->encode_queue, 100 * NS_PER_MS_INT);
 
     if (!frame) {
-      // Timeout - check if stop flag is set AND queue is empty
-      // Only exit timeout loop if stop flag is true (capture thread has finished)
-      if (atomic_load_bool(&pipeline->stop)) {
-        log_debug("[PIPELINE_ENCODE] Stop flag set and frame pop timed out, continuing to wait for EOF");
-      }
+      // An empty queue is final only after the producer has exited.
+      if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->encode_queue) == 0)
+        break; // No producer remains and the queue has drained.
       log_debug_every(1 * NS_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)",
                       (unsigned long long)frames_processed);
       continue; // timeout, keep waiting
@@ -445,12 +446,15 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
            p->has_render_file ? 1 : 0);
 
   atomic_store_bool(&p->stop, false);
+  atomic_store_bool(&p->capture_finished, false);
+  NAMED_REGISTER_ATOMIC(&p->capture_finished, "pipeline_capture_finished", p);
   atomic_store_u64(&p->first_frame_ns, 0);
 
   // Start capture thread
   if (asciichat_thread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
     frame_queue_destroy(p->display_queue);
     frame_queue_destroy(p->encode_queue);
+    NAMED_UNREGISTER(&p->capture_finished);
     SAFE_FREE(p);
     return SET_ERRNO(ERROR_INIT, "session_pipeline_create: failed to start capture thread");
   }
@@ -462,6 +466,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
       asciichat_thread_join(&p->capture_tid, NULL);
       frame_queue_destroy(p->display_queue);
       frame_queue_destroy(p->encode_queue);
+      NAMED_UNREGISTER(&p->capture_finished);
       SAFE_FREE(p);
       return SET_ERRNO(ERROR_INIT, "session_pipeline_create: failed to start encode thread");
     }
@@ -495,7 +500,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     // Pause stops frame production, so keep polling the keyboard on queue
     // timeouts or there would be no way to resume playback.
     if (keyboard_handler) {
-      keyboard_key_t key = keyboard_read_nonblocking();
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
       if (key != KEY_NONE) {
         log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
         keyboard_handler(pipeline->capture, (int)key, user_data);
@@ -579,28 +584,24 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
-  // Drain and wait for capture thread with 1 second timeout
+  // A timeout must never let the owner free memory still referenced by a worker.
+  // Capture observes stop; encode drains its queue and exits once capture is done.
   if (asciichat_thread_is_initialized(&pipeline->capture_tid)) {
-    int join_result = asciichat_thread_join_timeout(&pipeline->capture_tid, NULL, 1000 * NS_PER_MS_INT);
-    if (join_result != 0) {
-      log_warn("[PIPELINE] Capture thread join timed out or failed (result=%d)", join_result);
-    }
+    if (asciichat_thread_join(&pipeline->capture_tid, NULL) != 0)
+      return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline capture thread");
   }
-
-  // Drain and wait for encode thread with 1 second timeout
   if (asciichat_thread_is_initialized(&pipeline->encode_tid)) {
-    int join_result = asciichat_thread_join_timeout(&pipeline->encode_tid, NULL, 1000 * NS_PER_MS_INT);
-    if (join_result != 0) {
-      log_warn("[PIPELINE] Encode thread join timed out or failed (result=%d)", join_result);
-    }
+    if (asciichat_thread_join(&pipeline->encode_tid, NULL) != 0)
+      return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline encode thread");
   }
 
   // Flush queues to free any remaining frames
   frame_queue_flush(pipeline->display_queue, free_frame_generic);
   frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
-  // Don't free queue structures - debug_sync monitoring thread may still be accessing
-  // the condition variables. Queues will be cleaned up with the pipeline structure.
+  frame_queue_destroy(pipeline->display_queue);
+  frame_queue_destroy(pipeline->encode_queue);
+  NAMED_UNREGISTER(&pipeline->capture_finished);
   SAFE_FREE(pipeline);
 
   log_info("[PIPELINE] Pipeline destroyed");

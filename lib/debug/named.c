@@ -435,6 +435,19 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
   }
 }
 
+bool named_registry_read(uintptr_t key, const char *type, void (*read_object)(uintptr_t, void *), void *user_data) {
+  if (!type || !read_object || !lifecycle_is_initialized(&g_named_registry.lifecycle))
+    return false;
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+  bool found = entry && entry->type && strcmp(entry->type, type) == 0;
+  if (found)
+    read_object(key, user_data);
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return found;
+}
+
 const char *named_search_by_type_id(const char *type, void *id) {
   (void)type;
   (void)id;

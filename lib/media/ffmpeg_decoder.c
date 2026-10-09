@@ -5,6 +5,7 @@
 
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
@@ -110,7 +111,7 @@ struct ffmpeg_decoder_t {
   bool buffer_b_in_use;         ///< Whether prefetch_image_b is being read by main thread
 
   // State flags
-  bool eof_reached;    ///< Whether end of file was reached
+  atomic_t eof_reached; ///< Whether end of file was reached
   bool is_stdin;       ///< Whether reading from stdin
   bool video_draining; ///< Whether EOF was sent to the video decoder
 
@@ -328,10 +329,17 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     mutex_lock(&decoder->prefetch_mutex);
 
     // Check if thread should stop
-    bool should_stop = decoder->prefetch_should_stop || decoder->eof_reached;
+    bool should_stop = decoder->prefetch_should_stop;
     if (should_stop) {
       mutex_unlock(&decoder->prefetch_mutex);
       break;
+    }
+
+    // EOF is temporary for looping files; keep the worker available for rewind.
+    if (atomic_load_bool(&decoder->eof_reached)) {
+      mutex_unlock(&decoder->prefetch_mutex);
+      platform_sleep_us(1 * US_PER_MS_INT);
+      continue;
     }
 
     // Pause if seek is in progress - wait for signal to continue
@@ -363,6 +371,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
+    bool reached_eof = false;
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
     mutex_unlock(&decoder->prefetch_mutex);
@@ -374,7 +383,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       if (decoder->video_draining) {
         ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
         if (ret == AVERROR_EOF) {
-          decoder->eof_reached = true;
+          atomic_store_bool(&decoder->eof_reached, true);
+          reached_eof = true;
           break;
         }
         if (ret < 0) {
@@ -395,7 +405,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
           ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
           if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
-            decoder->eof_reached = true;
+            atomic_store_bool(&decoder->eof_reached, true);
+            reached_eof = true;
             break;
           }
           if (ret < 0) {
@@ -567,8 +578,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;
-    } else {
-      // EOF or error - exit thread
+    } else if (!reached_eof) {
+      // A decoder error terminates prefetch; EOF waits for rewind above.
       break;
     }
   }
@@ -856,6 +867,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   char decoder_name[256];
   snprintf(decoder_name, sizeof(decoder_name), "%s", path);
   NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name, NULL);
+  NAMED_REGISTER_ATOMIC(&decoder->eof_reached, "ffmpeg_eof", decoder);
 
   return decoder;
 }
@@ -1109,6 +1121,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
   NAMED_REGISTER_FFMPEG_DECODER(decoder, "stdin", NULL);
+  NAMED_REGISTER_ATOMIC(&decoder->eof_reached, "ffmpeg_eof", decoder);
 
   return decoder;
 }
@@ -1118,6 +1131,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
     return;
   }
 
+  NAMED_UNREGISTER(&decoder->eof_reached);
   NAMED_UNREGISTER(decoder);
 
   // Stop prefetch thread (signal it to stop and wait for it to finish)
@@ -1393,7 +1407,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
     if (ret < 0) {
       if (ret == AVERROR_EOF) {
-        decoder->eof_reached = true;
+        atomic_store_bool(&decoder->eof_reached, true);
       }
       break;
     }
@@ -1463,7 +1477,7 @@ audio_read_done:
 
   // Flush resampler buffer if we haven't filled the full request
   // The resampler may have buffered samples that need to be output
-  if (samples_written < num_samples && decoder->eof_reached) {
+  if (samples_written < num_samples && atomic_load_bool(&decoder->eof_reached)) {
     int remaining_space = (int)(num_samples - samples_written);
     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
     int flushed = swr_convert(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
@@ -1495,6 +1509,11 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
   }
 
+  // Serialize the seek and codec reset with packet decoding.
+  bool has_video = decoder->video_stream_idx >= 0;
+  if (has_video)
+    mutex_lock(&decoder->read_frame_mutex);
+
   // Flush codec buffers
   if (decoder->video_codec_ctx) {
     avcodec_flush_buffers(decoder->video_codec_ctx);
@@ -1505,16 +1524,20 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
 
   // Seek to beginning
   if (av_seek_frame(decoder->format_ctx, -1, 0, AVSEEK_FLAG_BACKWARD) < 0) {
+    if (has_video)
+      mutex_unlock(&decoder->read_frame_mutex);
     return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to beginning");
   }
 
-  decoder->eof_reached = false;
   decoder->video_draining = false;
   decoder->audio_buffer_offset = 0;
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
   decoder->audio_samples_read = 0; // Reset sample counter to 0
 
+  atomic_store_bool(&decoder->eof_reached, false);
+  if (has_video)
+    mutex_unlock(&decoder->read_frame_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -1560,7 +1583,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   }
 
   // Reset state
-  decoder->eof_reached = false;
+  atomic_store_bool(&decoder->eof_reached, false);
   decoder->video_draining = false;
   decoder->audio_buffer_offset = 0;
   // Clear any stale audio data in buffer
@@ -1591,7 +1614,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
 }
 
 bool ffmpeg_decoder_at_end(ffmpeg_decoder_t *decoder) {
-  return decoder && decoder->eof_reached;
+  return decoder && atomic_load_bool(&decoder->eof_reached);
 }
 
 double ffmpeg_decoder_get_duration(ffmpeg_decoder_t *decoder) {

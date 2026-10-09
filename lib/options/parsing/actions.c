@@ -591,7 +591,9 @@ void action_completions(const char *shell_name, const char *output_path) {
       // File exists - ask user if they want to overwrite
       log_plain("Completions file already exists: %s", output_path);
 
-      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      char question[4096];
+      safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
+      bool overwrite = platform_prompt_yes_no(question, false); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
         action_exit(0);

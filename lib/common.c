@@ -7,6 +7,8 @@
  */
 
 // Platform abstraction includes memory sizing functions
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
@@ -203,6 +205,9 @@ void asciichat_shared_destroy(void) {
   }
   shutdown_done = true;
 
+  ui_input_shutdown();
+  ui_controller_shutdown();
+  keyboard_destroy();
   symbol_cache_destroy();
 
   // Cleanup in reverse order of initialization (LIFO)

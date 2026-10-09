@@ -31,8 +31,9 @@ def run_case(library, case):
         header_fn = c.CFUNCTYPE(None, c.c_void_p, Size, c.c_void_p)
 
         class Config(c.Structure):
-            _fields_ = [("lines", c.c_int), ("header", header_fn), ("user", c.c_void_p),
-                        ("hide_cursor", c.c_bool), ("show_logs", c.c_bool)]
+            _fields_ = [("screen", c.c_int), ("output_fd", c.c_int), ("user_data_size", c.c_size_t),
+                        ("minimum_cols", c.c_int), ("lines", c.c_int), ("header", header_fn),
+                        ("user", c.c_void_p), ("hide_cursor", c.c_bool), ("show_logs", c.c_bool)]
 
         entered, release = threading.Event(), threading.Event()
         lib.frame_buffer_append.argtypes = [c.c_void_p, c.c_char_p, c.c_size_t]
@@ -45,7 +46,8 @@ def run_case(library, case):
             # invalidate it while the callback is still composing the frame.
             lib.frame_buffer_append(buf, b"lifetime-ok", 11)
 
-        config = Config(1, header, None, False, False)
+        data = c.c_ubyte(0)
+        config = Config(2, 1, 1, 2, 1, header, c.addressof(data), False, False)
         worker = threading.Thread(target=lambda: lib.terminal_screen_render(c.byref(config)))
         worker.start()
         assert entered.wait(2)

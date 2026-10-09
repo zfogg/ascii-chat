@@ -3,6 +3,7 @@
  * @brief Unified media source implementation
  */
 
+#include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
@@ -811,7 +812,7 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     return ASCIICHAT_OK; // No-op for webcam
 
   case MEDIA_SOURCE_FILE:
-    if (!source->video_decoder || !source->audio_decoder) {
+    if (!source->video_decoder && !source->audio_decoder) {
       return ERROR_INVALID_PARAM;
     }
 
@@ -821,7 +822,7 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     }
 
     // Rewind video decoder
-    asciichat_error_t video_result = ffmpeg_decoder_rewind(source->video_decoder);
+    asciichat_error_t video_result = source->video_decoder ? ffmpeg_decoder_rewind(source->video_decoder) : ASCIICHAT_OK;
     if (video_result != ASCIICHAT_OK) {
       if (source->is_shared_decoder) {
         mutex_unlock(&source->decoder_mutex);
@@ -832,7 +833,7 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     // For YouTube (shared decoder), don't rewind audio separately
     // For local files (separate decoders), rewind audio too
     asciichat_error_t result = ASCIICHAT_OK;
-    if (!source->is_shared_decoder) {
+    if (!source->is_shared_decoder && source->audio_decoder) {
       result = ffmpeg_decoder_rewind(source->audio_decoder);
     }
 
