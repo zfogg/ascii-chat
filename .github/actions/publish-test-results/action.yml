@@ -67,7 +67,7 @@ runs:
             find "$xml_dir" -name "*.xml" -type f -exec basename {} \;
 
             # Show sample of first XML file
-            first_xml=$(find "$xml_dir" -name "*.xml" -type f | head -1)
+            first_xml=$(find "$xml_dir" -name "*.xml" -type f -print -quit)
             if [ -n "$first_xml" ]; then
               echo "Sample from $(basename $first_xml):"
               head -10 "$first_xml"
@@ -96,7 +96,7 @@ runs:
         else
           echo "Criterion XML directory not found: $xml_dir"
           echo "Looking for XML files:"
-          find . -name "*.xml" -type f 2>/dev/null | head -10
+          find . -name "*.xml" -type f 2>/dev/null | sed -n '1,10p'
         fi
 
     # Publish test results to GitHub checks (Linux)
