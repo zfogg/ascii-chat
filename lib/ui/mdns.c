@@ -6,6 +6,9 @@
  * Provides interactive terminal UI for server selection and address resolution.
  */
 
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/common/shutdown.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/ui/mdns.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
@@ -82,6 +85,8 @@ void ui_mdns_free_results(ui_mdns_server_t *servers) {
  * @brief Interactive server selection
  */
 int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
+  if (terminal_is_interactive())
+    return ui_mdns_select(servers, count);
   if (!servers || count <= 0) {
     return -1;
   }
@@ -136,95 +141,73 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
  * @param count Number of servers
  * @return 0-based index of selected server, or -1 to cancel
  */
-int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
-  if (!servers || count <= 0) {
-    // No servers found - return special code
-    // Message will be printed at exit in client main
-    return -1;
-  }
-
-  // Lock terminal to prevent concurrent logging from overwriting TUI
-  bool prev_lock_state = log_lock_terminal();
-
-  // Clear terminal
-  log_plain("\033[2J\033[H");
-
-  // Display header
-  log_plain("\n");
-  log_plain("\033[1m╭─ 🔍 ascii-chat Server Discovery ────────────╮\033[0m\n");
-  log_plain("\033[1m│\033[0m\n");
-  char found_buf[64];
-  snprintf(found_buf, sizeof(found_buf), "Found %d server%s on your local network:", count, count == 1 ? "" : "s");
-  log_plain("\033[1m│\033[0m %s\n", colored_string(LOG_COLOR_INFO, found_buf));
-  log_plain("\033[1m│\033[0m\n");
-
-  // Display server list with formatting
-  for (int i = 0; i < count; i++) {
-    const ui_mdns_server_t *srv = &servers[i];
-    const char *addr = ui_mdns_get_best_address(srv);
-
-    char idx_buf[8];
-    snprintf(idx_buf, sizeof(idx_buf), "[%d]", i + 1);
-    char addr_buf[128];
-    snprintf(addr_buf, sizeof(addr_buf), "%s:%u", addr, srv->port);
-
-    log_plain("\033[1m│\033[0m  %s %-30s %s\n", colored_string(LOG_COLOR_DEBUG, idx_buf), srv->name,
-              colored_string(LOG_COLOR_WARN, addr_buf));
-  }
-
-  log_plain("\033[1m│\033[0m\n");
-  log_plain("\033[1m╰────────────────────────────────────────────╯\033[0m\n");
-
-  // Prompt for selection
-  log_plain("\n");
-  log_plain("Enter server number (1-%d) or press Enter to cancel: ", count);
-  fflush(stdout);
-
-  // Unlock before waiting for input (user might take time)
-  log_unlock_terminal(prev_lock_state);
-
-  // Read user input
+typedef struct {
+  int count;
   char input[32];
-  if (fgets(input, sizeof(input), stdin) == NULL) {
+  ui_mdns_server_t servers[];
+} mdns_snapshot_t;
+
+static void render_mdns_selection(terminal_size_t size, const void *data) {
+  const mdns_snapshot_t *snapshot = data;
+  frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+  if (!buffer)
+    return;
+  frame_buffer_printf(buffer, "\033[H\033[2Jascii-chat Server Discovery\n\n");
+  for (int i = 0; i < snapshot->count; ++i) {
+    char line[512], clipped[512];
+    snprintf(line, sizeof(line), "[%d] %s (%s:%u)", i + 1, snapshot->servers[i].name,
+             ui_mdns_get_best_address(&snapshot->servers[i]), snapshot->servers[i].port);
+    truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 1);
+    frame_buffer_printf(buffer, "%s\n", clipped);
+  }
+  frame_buffer_printf(buffer, "\nSelect server: %s\033[K", snapshot->input);
+  frame_buffer_flush(buffer);
+  frame_buffer_destroy(buffer);
+}
+
+int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
+  if (!servers || count <= 0)
     return -1;
-  }
-
-  // Check for empty input (Enter pressed)
-  if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
+  if (!terminal_is_interactive())
+    return ui_mdns_prompt_selection(servers, count);
+  size_t bytes = sizeof(mdns_snapshot_t) + (size_t)count * sizeof(*servers);
+  mdns_snapshot_t *snapshot = SAFE_CALLOC(1, bytes, mdns_snapshot_t *);
+  if (!snapshot)
     return -1;
+  snapshot->count = count;
+  memcpy(snapshot->servers, servers, (size_t)count * sizeof(*servers));
+  bool logging = log_get_terminal_output();
+  log_set_terminal_output(false);
+  int selection = -1;
+  size_t length = 0;
+  while (!shutdown_is_requested()) {
+    if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 5},
+                             render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
+      break;
+    keyboard_key_t key = ui_controller_wait_key(UI_SCREEN_MDNS, 100);
+    if (key == KEY_ESCAPE)
+      break;
+    if (key == '\r' || key == '\n') {
+      if (!length)
+        break;
+      long value = strtol(snapshot->input, NULL, 10);
+      if (value >= 1 && value <= count) {
+        selection = (int)value - 1;
+        break;
+      }
+      length = 0;
+      snapshot->input[0] = '\0';
+    } else if ((key == 8 || key == 127) && length) {
+      snapshot->input[--length] = '\0';
+    } else if (key >= '0' && key <= '9' && length < sizeof(snapshot->input) - 1) {
+      snapshot->input[length++] = (char)key;
+      snapshot->input[length] = '\0';
+    }
   }
-
-  // Parse input as number
-  char *endptr;
-  long selection = strtol(input, &endptr, 10);
-
-  // Validate input
-  if (selection < 1 || selection > count) {
-    char err_buf[64];
-    snprintf(err_buf, sizeof(err_buf), "Please enter a number between 1 and %d", count);
-    printf("%s\n\n", colored_string(LOG_COLOR_WARN, err_buf));
-    return ui_mdns_select(servers, count); // Re-prompt
-  }
-
-  // Lock terminal again for final output
-  prev_lock_state = log_lock_terminal();
-
-  // Clear screen and show connection status
-  log_plain("\033[2J\033[H");
-  log_plain("\n");
-  char connect_buf[128];
-  snprintf(connect_buf, sizeof(connect_buf), "🔗 Connecting to %s...", servers[selection - 1].name);
-  log_plain("%s\n", colored_string(LOG_COLOR_INFO, connect_buf));
-  log_plain("\n");
-  fflush(stdout);
-
-  // Brief delay so user can see the selection before logs overwrite it
-  platform_sleep_ms(200);
-
-  // Unlock terminal now that TUI is complete
-  log_unlock_terminal(prev_lock_state);
-
-  return (int)(selection - 1); // Convert to 0-based index
+  ui_controller_remove(UI_SCREEN_MDNS);
+  log_set_terminal_output(logging);
+  SAFE_FREE(snapshot);
+  return selection;
 }
 
 /**

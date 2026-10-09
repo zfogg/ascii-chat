@@ -23,6 +23,8 @@ set(CORE_SRCS
     ${LIB_DIR}/log/io.c
     ${LIB_DIR}/log/asan.c
     # ui/
+    ${LIB_DIR}/ui/controller.c
+    ${LIB_DIR}/ui/too_small.c
     ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/fps_counter.c
     ${LIB_DIR}/ui/terminal_screen.c
@@ -930,6 +932,11 @@ add_library(ascii-chat-shared SHARED
         # Convert list to string for passing to script
         string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
 
+        set(_export_object_dependencies)
+        foreach(_module IN LISTS MODULE_TARGETS)
+            list(APPEND _export_object_dependencies $<TARGET_OBJECTS:${_module}>)
+        endforeach()
+
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             COMMAND ${CMAKE_COMMAND}
@@ -939,7 +946,7 @@ add_library(ascii-chat-shared SHARED
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
                 -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            DEPENDS ${MODULE_TARGETS} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
+            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
             COMMENT "Generating Windows .def file from object files"
             VERBATIM
         )

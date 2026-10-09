@@ -69,6 +69,7 @@
  * @version 2.0
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "display.h"
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -329,7 +330,7 @@ void display_render_frame(const char *frame_data) {
 
     // Still poll keyboard for interactive controls while help is visible
     if (g_keyboard_enabled) {
-      keyboard_key_t key = keyboard_read_nonblocking();
+      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_MEDIA);
       if (key != KEY_NONE) {
         session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
       }
@@ -345,7 +346,7 @@ void display_render_frame(const char *frame_data) {
   //   (seek, pause, play, volume, color mode, flip)
   // - If client mode is network-only, pass NULL (volume, color mode, flip work; seek/pause ignored)
   if (g_keyboard_enabled) {
-    keyboard_key_t key = keyboard_read_nonblocking();
+    keyboard_key_t key = ui_controller_read_key(UI_SCREEN_MEDIA);
     if (key != KEY_NONE) {
       session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
     }
@@ -363,7 +364,8 @@ void display_render_frame(const char *frame_data) {
 void display_cleanup() {
   // Cleanup keyboard input if it was initialized
   if (g_keyboard_enabled) {
-    keyboard_destroy();
+    ui_controller_remove(UI_SCREEN_HELP);
+    ui_controller_remove(UI_SCREEN_MEDIA);
     g_keyboard_enabled = false;
   }
 

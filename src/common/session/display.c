@@ -10,6 +10,8 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/controller.h>
 #include "session/display.h"
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
@@ -197,11 +199,14 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
 
-  // Determine if we have a valid TTY
-  // Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped).
-  // If stdout is piped/redirected, never perform terminal operations regardless of other fds.
-  if (ctx->tty_info.fd >= 0) {
-    ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && terminal_is_stdout_tty();
+  // Presentation follows stdout. Opening a separate controlling terminal can
+  // fail under ConPTY even though stdout is an interactive console.
+  ctx->has_tty = terminal_is_stdout_tty();
+  if (ctx->has_tty && (ctx->tty_info.fd < 0 || !platform_isatty(ctx->tty_info.fd))) {
+    if (ctx->tty_info.owns_fd && ctx->tty_info.fd >= 0)
+      platform_close(ctx->tty_info.fd);
+    ctx->tty_info.fd = STDOUT_FILENO;
+    ctx->tty_info.owns_fd = false;
   }
 
   // In piped mode, force all logs to stderr to prevent frame data corruption
@@ -308,6 +313,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   }
 
   ctx->initialized = true;
+  if (ctx->has_tty && !ctx->snapshot_mode) {
+    const char initial[] = "\033[H";
+    (void)ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
+                                (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, initial,
+                                sizeof(initial) - 1);
+  }
+
   return ctx;
 }
 
@@ -316,6 +328,9 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
+
+  ui_controller_remove(UI_SCREEN_HELP);
+  ui_controller_remove(UI_SCREEN_MEDIA);
 
   // Cleanup ASCII rendering if we had a TTY
   // Don't reset terminal in snapshot mode to preserve the rendered output
@@ -809,19 +824,6 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   if (was_first_frame) {
     // Stop splash screen when first frame is ready
     splash_intro_done();
-
-    // Perform initial terminal reset
-    if (ctx->has_tty && !ctx->render_file) {
-      (void)terminal_reset(STDOUT_FILENO);
-      (void)terminal_clear_screen();
-      (void)terminal_cursor_home(STDOUT_FILENO);
-      (void)terminal_clear_scrollback(STDOUT_FILENO);
-      (void)terminal_cursor_show();
-      if (!ctx->snapshot_mode) {
-        (void)terminal_cursor_hide();
-      }
-      (void)terminal_flush(STDOUT_FILENO);
-    }
   }
 
   // Output routing logic
@@ -839,16 +841,29 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
     size_t cursor_seq_len = 7;
-    size_t total_size = cursor_seq_len + frame_len;
+    char overlay[64] = {0};
+    size_t overlay_len = 0;
+    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
+      int cols = ui_controller_size().cols;
+      int n = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", cols > 7 ? cols - 6 : 1,
+                       fps_counter_get(ctx->fps_counter));
+      if (n > 0 && n < (int)sizeof(overlay))
+        overlay_len = (size_t)n;
+    }
+    size_t total_size = cursor_seq_len + frame_len + overlay_len;
 
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+      memcpy(frame_buffer + cursor_seq_len + frame_len, overlay, overlay_len);
 
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
-      ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+      asciichat_error_t presented = ui_controller_present(
+          UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+          frame_buffer, total_size);
+      ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
       // Start snapshot timer on first ASCII frame rendered
@@ -872,10 +887,6 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
 
-    // Render FPS counter overlay if enabled
-    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
-      session_display_render_fps_overlay(ctx);
-    }
   } else if (terminal_is_interactive()) {
     // Piped to interactive terminal: output ASCII frames with newline
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
@@ -1043,52 +1054,18 @@ void session_display_render_fps_overlay(session_display_ctx_t *ctx) {
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Skip terminal reset in snapshot mode to preserve rendered output
-  if (ctx->snapshot_mode) {
-    return;
-  }
-
-  // Only perform terminal operations if we have a valid TTY
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_reset(ctx->tty_info.fd);
-    (void)terminal_cursor_show();
-    (void)terminal_flush(ctx->tty_info.fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 void session_display_clear(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Skip terminal clear in snapshot mode to preserve rendered output
-  if (ctx->snapshot_mode) {
-    return;
-  }
-
-  // Only perform terminal operations when we have a valid TTY (not when piping)
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_clear_screen();
-    (void)terminal_cursor_home(ctx->tty_info.fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 void session_display_cursor_home(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  int fd = ctx->has_tty ? ctx->tty_info.fd : STDOUT_FILENO;
-  if (fd >= 0) {
-    (void)terminal_cursor_home(fd);
-  }
+  if (ctx && !ctx->snapshot_mode)
+    ui_controller_redraw();
 }
 
 bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
@@ -1165,6 +1142,8 @@ void keyboard_help_toggle(session_display_ctx_t *ctx) {
 
   bool current = atomic_load_bool(&ctx->keyboard_help_active);
   atomic_store_bool(&ctx->keyboard_help_active, !current);
+  if (current)
+    ui_controller_remove(UI_SCREEN_HELP);
 }
 
 /**
@@ -1227,21 +1206,11 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
 // if help is active even in snapshot mode)
 bool keyboard_help_is_active_global(void) {
   session_display_ctx_t *ctx = get_current_display_ctx();
-  if (!ctx) {
-    platform_write_all(STDERR_FILENO, "[DEBUG: ctx is NULL]\n", 20);
-    return false;
-  }
-  bool active = atomic_load_bool(&ctx->keyboard_help_active);
-  const char *msg = active ? "[DEBUG: help active]\n" : "[DEBUG: help inactive]\n";
-  platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
-  return active;
+  return ctx && !ui_controller_is_blocked() && atomic_load_bool(&ctx->keyboard_help_active);
 }
 
 void keyboard_help_toggle_global(void) {
-  session_display_ctx_t *ctx = get_current_display_ctx();
-  if (ctx) {
-    keyboard_help_toggle(ctx);
-  }
+  keyboard_help_signal_cancel();
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {

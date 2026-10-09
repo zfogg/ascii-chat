@@ -3,6 +3,7 @@
  * @brief Status screen display with live log feed at FPS rate
  */
 
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
@@ -221,6 +222,10 @@ void ui_status_display(const ui_status_t *status) {
 
   // Use terminal_screen abstraction for rendering
   terminal_screen_config_t config = {
+      .screen = UI_SCREEN_STATUS,
+      .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+      .user_data_size = sizeof(*status),
+      .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = render_ui_status_header,
       .user_data = (void *)status,
@@ -262,6 +267,10 @@ bool ui_status_display_interactive(const ui_status_t *status) {
 
   // Use terminal_screen abstraction for rendering
   terminal_screen_config_t config = {
+      .screen = UI_SCREEN_STATUS,
+      .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+      .user_data_size = sizeof(*status),
+      .minimum_cols = 20,
       .fixed_header_lines = 4,
       .render_header = render_ui_status_header,
       .user_data = (void *)status,
@@ -273,7 +282,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // Poll keyboard for Escape to exit or for interactive grep
   bool should_exit_status = false;
   if (keyboard_enabled) {
-    keyboard_key_t key = keyboard_read_nonblocking();
+    keyboard_key_t key = ui_controller_read_key(UI_SCREEN_STATUS);
     if (key == KEY_ESCAPE) {
       // Escape key: cancel grep if active, otherwise exit status screen
       if (log_search_is_active()) {

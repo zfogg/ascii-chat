@@ -54,6 +54,18 @@ const char *platform_ttyname(int fd) {
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
  */
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+  if (!size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  *size = (terminal_size_t){0};
+  struct winsize ws = {0};
+  if (ioctl(fd, TIOCGWINSZ, &ws) != 0)
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot query terminal descriptor %d", fd);
+  size->cols = ws.ws_col;
+  size->rows = ws.ws_row;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {

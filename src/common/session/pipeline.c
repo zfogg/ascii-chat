@@ -4,6 +4,7 @@
  * @ingroup session
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "pipeline.h"
 #include "capture.h"
 #include "display.h"
@@ -77,7 +78,7 @@ static bool frame_queue_push(frame_queue_t *q, void *item, uint64_t timeout_ns) 
       mutex_unlock(&q->mu);
       return false;
     }
-    if (!cond_timedwait(&q->not_full, &q->mu, timeout_ns)) {
+    if (cond_timedwait(&q->not_full, &q->mu, timeout_ns) != 0) {
       mutex_unlock(&q->mu);
       return false; // timeout
     }
@@ -98,7 +99,7 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
       // Block forever
       cond_wait(&q->not_empty, &q->mu);
     } else {
-      if (!cond_timedwait(&q->not_empty, &q->mu, timeout_ns)) {
+      if (cond_timedwait(&q->not_empty, &q->mu, timeout_ns) != 0) {
         mutex_unlock(&q->mu);
         return NULL; // timeout
       }
@@ -495,7 +496,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     // Pause stops frame production, so keep polling the keyboard on queue
     // timeouts or there would be no way to resume playback.
     if (keyboard_handler) {
-      keyboard_key_t key = keyboard_read_nonblocking();
+      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_MEDIA);
       if (key != KEY_NONE) {
         log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
         keyboard_handler(pipeline->capture, (int)key, user_data);

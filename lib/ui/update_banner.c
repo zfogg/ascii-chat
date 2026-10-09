@@ -7,6 +7,8 @@
  * info and upgrade instructions. Blocks for user input (Y/Enter or N/Esc).
  */
 
+#include <ascii-chat/common/shutdown.h>
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/splash.h>
 #include "session/display.h"
@@ -163,16 +165,8 @@ static void append_border(char *buffer, size_t *buf_pos, size_t buf_size, int st
   (*current_row)++;
 }
 
-bool update_banner_show_prompt(session_display_ctx_t *ctx) {
-  if (!ctx) {
-    return false;
-  }
-
-  // Get a copy of the result under mutex
-  update_check_result_t result;
-  mutex_lock(&g_update_result_mutex);
-  memcpy(&result, &g_update_result, sizeof(result));
-  mutex_unlock(&g_update_result_mutex);
+static void render_update_prompt(terminal_size_t size, const void *data) {
+  update_check_result_t result = *(const update_check_result_t *)data;
 
   // Get upgrade suggestion
   install_method_t method = update_check_detect_install_method();
@@ -180,8 +174,8 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
 
   // Terminal dimensions
-  int term_width = (int)terminal_get_effective_width();
-  int term_height = (int)terminal_get_effective_height();
+  int term_width = size.cols;
+  int term_height = size.rows;
 
   // Box sizing
   int box_width = 52;
@@ -293,21 +287,33 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
 #undef APPEND
 
   // Write to terminal
-  session_display_write_raw(ctx, buffer, buf_pos);
+  platform_write_all(STDOUT_FILENO, buffer, buf_pos);
   terminal_flush(STDOUT_FILENO);
   SAFE_FREE(buffer);
+}
 
-  // Block for user input
-  while (true) {
-    keyboard_key_t key = keyboard_read_with_timeout(60000); // 60s timeout, re-loop
+bool update_banner_show_prompt(session_display_ctx_t *ctx) {
+  if (!ctx)
+    return false;
+  update_check_result_t result;
+  mutex_lock(&g_update_result_mutex);
+  result = g_update_result;
+  mutex_unlock(&g_update_result_mutex);
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 16},
+                           render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
+    return false;
+  bool update = false;
+  while (!shutdown_is_requested()) {
+    keyboard_key_t key = ui_controller_wait_key(UI_SCREEN_UPDATE, 100);
     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
-      return true;
+      update = true;
+      break;
     }
-    if (key == 'n' || key == 'N' || key == KEY_ESCAPE) {
-      return false;
-    }
-    // Ignore other keys (including KEY_NONE on timeout — just re-render/wait)
+    if (key == 'n' || key == 'N' || key == KEY_ESCAPE)
+      break;
   }
+  ui_controller_remove(UI_SCREEN_UPDATE);
+  return update;
 }
 
 void update_banner_print_instructions(void) {

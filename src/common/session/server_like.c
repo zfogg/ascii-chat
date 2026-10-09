@@ -7,6 +7,7 @@
  * and signal handling. Modes plug in via callbacks.
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "server_like.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
@@ -97,54 +98,6 @@ static void server_like_signal_handler(int sig) {
  * Keyboard Queue (lock-free SPSC ring buffer)
  * ============================================================================ */
 
-#define KEYBOARD_QUEUE_SIZE 256
-static keyboard_key_t g_keyboard_queue[KEYBOARD_QUEUE_SIZE];
-static atomic_t g_keyboard_queue_head = {0};
-static atomic_t g_keyboard_queue_tail = {0};
-
-static bool keyboard_queue_push(keyboard_key_t key) {
-  size_t head = atomic_load_u64(&g_keyboard_queue_head);
-  size_t next_head = (head + 1) % KEYBOARD_QUEUE_SIZE;
-  if (next_head == atomic_load_u64(&g_keyboard_queue_tail)) {
-    return false;
-  }
-  g_keyboard_queue[head] = key;
-  atomic_store_u64(&g_keyboard_queue_head, next_head);
-  return true;
-}
-
-static keyboard_key_t keyboard_queue_pop(void) {
-  size_t tail = atomic_load_u64(&g_keyboard_queue_tail);
-  if (tail == atomic_load_u64(&g_keyboard_queue_head)) {
-    return KEY_NONE;
-  }
-  keyboard_key_t key = g_keyboard_queue[tail];
-  atomic_store_u64(&g_keyboard_queue_tail, (tail + 1) % KEYBOARD_QUEUE_SIZE);
-  return key;
-}
-
-/* ============================================================================
- * Keyboard Thread
- * ============================================================================ */
-
-static asciichat_thread_t g_keyboard_thread;
-static atomic_t g_keyboard_thread_running = {0};
-
-static void *keyboard_thread_func(void *arg) {
-  (void)arg;
-  log_debug("Keyboard thread started (polling mode, 100ms interval)");
-
-  while (atomic_load_u64(&g_keyboard_thread_running)) {
-    keyboard_key_t key = keyboard_read_with_timeout(100);
-    if (key != KEY_NONE) {
-      keyboard_queue_push(key);
-    }
-  }
-
-  log_debug("Keyboard thread exiting");
-  return NULL;
-}
-
 /* ============================================================================
  * Status Screen Thread
  * ============================================================================ */
@@ -166,31 +119,7 @@ static void *status_screen_thread_func(void *arg) {
   // Redirect stderr to /dev/null to prevent async logs from disrupting display
   platform_stderr_redirect_handle_t stderr_redirect = platform_stderr_redirect_to_null();
 
-  // Register keyboard atomics with debug registry
-  static bool keyboard_atomics_registered = false;
-  if (!keyboard_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_keyboard_thread_running, "server_like_keyboard_thread_running", NULL);
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_head, "server_like_keyboard_queue_head", NULL);
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_tail, "server_like_keyboard_queue_tail", NULL);
-    keyboard_atomics_registered = true;
-  }
-
-  // Start keyboard thread if terminal is interactive
-  bool keyboard_enabled = false;
-  if (terminal_is_interactive()) {
-    log_info("Terminal is interactive, starting keyboard thread...");
-    atomic_store_u64(&g_keyboard_thread_running, true);
-    if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
-      keyboard_enabled = true;
-      log_info("Keyboard thread started - press '/' to activate grep");
-    } else {
-      log_warn("Failed to create keyboard thread");
-      atomic_store_u64(&g_keyboard_thread_running, false);
-      keyboard_destroy();
-    }
-  } else {
-    log_warn("Terminal is NOT interactive, keyboard disabled");
-  }
+  bool keyboard_enabled = terminal_is_interactive();
 
   bool skip_next_slash = false;
   bool grep_was_just_cancelled = false;
@@ -208,11 +137,11 @@ static void *status_screen_thread_func(void *arg) {
     if (keyboard_enabled) {
       grep_was_just_cancelled = false;
 
-      keyboard_key_t key = keyboard_queue_pop();
+      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_STATUS);
       while (key != KEY_NONE && !grep_was_just_cancelled) {
         if (skip_next_slash && key == '/') {
           skip_next_slash = false;
-          key = keyboard_queue_pop();
+          key = ui_controller_read_key(UI_SCREEN_STATUS);
           continue;
         }
         skip_next_slash = false;
@@ -233,7 +162,7 @@ static void *status_screen_thread_func(void *arg) {
           }
         }
 
-        key = keyboard_queue_pop();
+        key = ui_controller_read_key(UI_SCREEN_STATUS);
       }
     }
 
@@ -254,14 +183,7 @@ static void *status_screen_thread_func(void *arg) {
     }
   }
 
-  // Stop keyboard thread
-  if (keyboard_enabled) {
-    log_debug("Stopping keyboard thread...");
-    atomic_store_u64(&g_keyboard_thread_running, false);
-    asciichat_thread_join(&g_keyboard_thread, NULL);
-    log_debug("Keyboard thread stopped");
-    keyboard_destroy();
-  }
+  ui_controller_remove(UI_SCREEN_STATUS);
 
   platform_stderr_restore(stderr_redirect);
 

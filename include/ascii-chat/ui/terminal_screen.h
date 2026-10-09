@@ -5,13 +5,14 @@
  * Provides a common pattern for rendering terminal screens with:
  * - Fixed header area (caller-defined via callback)
  * - Scrolling log feed below header (automatically managed)
- * - Terminal size caching to avoid error log spam
+ * - Physical terminal dimensions supplied by the UI controller
  * - ANSI-aware line wrapping using display_width()
  * - Latest log at bottom (standard terminal behavior)
  */
 
 #pragma once
 
+#include <ascii-chat/ui/controller.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <ascii-chat/platform/terminal.h>
@@ -24,7 +25,7 @@ typedef struct session_log_buffer session_log_buffer_t;
  * @brief Callback to render the fixed header portion of the screen
  *
  * @param buf Frame buffer to write header content into (via frame_buffer_printf, etc.)
- * @param term_size Current terminal dimensions (cached, refreshed every 1 second)
+ * @param term_size Current physical terminal dimensions
  * @param user_data Caller-provided context data
  *
  * The callback should:
@@ -40,6 +41,10 @@ typedef void (*terminal_screen_header_fn)(frame_buffer_t *buf, terminal_size_t t
  * @brief Configuration for terminal screen rendering
  */
 typedef struct {
+  ui_screen_t screen;
+  int output_fd;
+  size_t user_data_size;
+  int minimum_cols;
   int fixed_header_lines;                  ///< How many lines the header takes (e.g., 4 for status, 8 for splash)
   terminal_screen_header_fn render_header; ///< Callback to draw header content
   void *user_data;                         ///< Passed to render_header callback
@@ -61,8 +66,8 @@ typedef struct {
  *
  * @param config Screen configuration (header callback, line count, etc.)
  *
- * Terminal size is cached internally with 1-second refresh interval to avoid
- * flooding error logs if terminal size checks fail repeatedly.
+ * Copies the header data and submits it to the UI controller. The controller
+ * owns size checks, terminal writes, and resize refreshes.
  */
 void terminal_screen_render(const terminal_screen_config_t *config);
 

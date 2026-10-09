@@ -151,7 +151,7 @@ void frame_buffer_clear_screen(frame_buffer_t *buf) {
 }
 
 // Global configuration for terminal screen output FD (used by splash/status screens)
-static int g_terminal_screen_output_fd = STDOUT_FILENO;
+static _Thread_local int g_terminal_screen_output_fd = STDOUT_FILENO;
 
 void frame_buffer_flush(frame_buffer_t *buf) {
   if (!buf || buf->len == 0 || !buf->data) {

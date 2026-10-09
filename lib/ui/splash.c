@@ -14,6 +14,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
@@ -488,7 +489,7 @@ static void *splash_animation_thread(void *arg) {
       log_dev("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
     }
     if (keyboard_enabled) {
-      keyboard_key_t key = keyboard_read_nonblocking();
+      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_SPLASH);
       if (key == KEY_ESCAPE) {
         // Escape key: cancel grep if active, otherwise cancel splash
         if (log_search_is_active()) {
@@ -547,6 +548,10 @@ static void *splash_animation_thread(void *arg) {
 
     // Configure terminal screen with splash header callback
     terminal_screen_config_t screen_config = {
+        .screen = UI_SCREEN_SPLASH,
+        .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+        .user_data_size = sizeof(header_ctx),
+        .minimum_cols = 52,
         .fixed_header_lines = header_lines,
         .render_header = render_splash_header,
         .user_data = &header_ctx,
@@ -617,20 +622,7 @@ static void *splash_animation_thread(void *arg) {
       iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop),
       shutdown_is_requested());
 
-  // If shutdown was requested, clear the screen immediately to prevent splash from
-  // appearing briefly during exit
-  if (shutdown_is_requested()) {
-    log_dev("[SPLASH_ANIM] Shutdown detected, clearing screen before exit");
-    terminal_clear_screen();
-    terminal_cursor_home(STDOUT_FILENO);
-    terminal_flush(STDOUT_FILENO);
-  }
-
-  // NOTE: Do NOT call keyboard_destroy() here!
-  // Keyboard was initialized by asciichat_shared_init() and needs to persist
-  // for the render loop. The splash thread is allowed to READ keyboard input,
-  // but should not destroy it. It will be destroyed by the render loop cleanup.
-
+  ui_controller_remove(UI_SCREEN_SPLASH);
   atomic_store_bool(&g_splash_state.is_running, false);
   log_dev("[SPLASH_ANIM] Animation thread exiting");
   return NULL;
@@ -644,13 +636,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  // Check terminal size
-  int width = (int)terminal_get_effective_width();
-  int height = (int)terminal_get_effective_height();
-  if (width < 50 || height < 20) {
-    return 0;
-  }
-
   // Redirect splash screen to stderr when stdout is piped (not a TTY).
   // This keeps stdout clean for frame data while splash goes to stderr.
   // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
@@ -660,10 +645,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Initialize log buffer (same pattern as server_status)
   splash_log_init();
-
-  // Clear screen and show cursor
-  terminal_clear_screen();
-  (void)terminal_cursor_show();
 
   // Clear log buffer for clean slate
   splash_log_clear();
@@ -761,10 +742,6 @@ void splash_wait_for_animation(void) {
         log_warn("[SPLASH_WAIT] Animation thread join failed: %s", asciichat_error_string(err));
         // Force stop the animation thread if join failed
         atomic_store_bool(&g_splash_state.should_stop, true);
-        // Clear any partial splash output left on screen
-        terminal_clear_screen();
-        terminal_cursor_home(STDOUT_FILENO);
-        terminal_flush(STDOUT_FILENO);
       }
     }
 

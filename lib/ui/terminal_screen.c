@@ -84,10 +84,7 @@ static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
   dst[pos] = '\0';
 }
 
-// Cached terminal size (to avoid flooding logs with terminal_get_size errors)
 static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
-static uint64_t g_last_term_size_check_us = UINT64_MAX; // Force check on first call
-#define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT      // Check terminal size max once per second
 
 // Cache of previously rendered log lines for diff-based rendering.
 // Only rewrite lines whose content actually changed.
@@ -104,7 +101,7 @@ static void terminal_screen_clear_cache(void) {
 
 static uint64_t g_render_start_time_ns = 0;
 
-void terminal_screen_render(const terminal_screen_config_t *config) {
+static void terminal_screen_render_owned(const terminal_screen_config_t *config) {
   // Validate config
   if (!config || !config->render_header) {
     return;
@@ -123,61 +120,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Ensure cursor is visible for log-only UI (splash, status screens)
   (void)terminal_cursor_show();
 
-  // Update terminal size (cached with 1-second refresh interval)
-  // Always check on first call (when still at default 24x80) to get correct dimensions immediately
-  uint64_t now_us = platform_get_monotonic_time_us();
-  bool should_check = (g_cached_term_size.rows == 24 && g_cached_term_size.cols == 80) ||
-                      (now_us - g_last_term_size_check_us >= TERM_SIZE_CHECK_INTERVAL_US);
-
-  if (should_check) {
-    terminal_size_t new_size = {0};
-
-    // PRIORITY 1: COLUMNS and ROWS environment variables (most reliable, user-controlled)
-    const char *cols_env = SAFE_GETENV("COLUMNS");
-    const char *rows_env = SAFE_GETENV("ROWS");
-    if (cols_env && rows_env) {
-      char *endptr;
-      errno = 0;
-      long cols_val = strtol(cols_env, &endptr, 10);
-      if (*endptr == '\0' && errno == 0 && cols_val > 0 && cols_val <= INT_MAX) {
-        int cols = (int)cols_val;
-        errno = 0;
-        long rows_val = strtol(rows_env, &endptr, 10);
-        if (*endptr == '\0' && errno == 0 && rows_val > 0 && rows_val <= INT_MAX) {
-          int rows = (int)rows_val;
-          new_size.cols = cols;
-          new_size.rows = rows;
-        } else {
-          log_error("terminal_screen_render: Invalid ROWS value: %s", rows_env);
-        }
-      } else {
-        log_error("terminal_screen_render: Invalid COLUMNS value: %s", cols_env);
-      }
-    }
-
-    // PRIORITY 2: Options-provided width/height (explicit user settings)
-    if (new_size.cols == 0 || new_size.rows == 0) {
-      const options_t *opts = options_get();
-      if (opts && opts->width > 0 && opts->height > 0) {
-        new_size.cols = opts->width;
-        new_size.rows = opts->height;
-      }
-    }
-
-    // PRIORITY 3: Terminal auto-detection
-    if (new_size.cols == 0 || new_size.rows == 0) {
-      if (terminal_get_size(&new_size) != ASCIICHAT_OK) {
-        // If terminal detection fails, use defaults
-        new_size.cols = 80;
-        new_size.rows = 24;
-      }
-    }
-
-    if (new_size.cols > 0 && new_size.rows > 0) {
-      g_cached_term_size = new_size;
-    }
-    g_last_term_size_check_us = now_us;
-  }
+  g_cached_term_size = ui_controller_size();
 
   bool grep_entering = log_search_is_entering();
 
@@ -444,17 +387,19 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       int cursor_pos = log_search_get_cursor_position();
 
       // Render grep input line at bottom of screen
-      printf("\x1b[%d;1H/", g_cached_term_size.rows);
+      frame_buffer_reset(g_frame_buf);
+      frame_buffer_printf(g_frame_buf, "\x1b[%d;1H/", g_cached_term_size.rows);
       if (pattern_len > 0 && pattern) {
-        printf("%.*s", pattern_len, pattern);
+        frame_buffer_printf(g_frame_buf, "%.*s", pattern_len, pattern);
       }
 
       // Position cursor at current edit position
       int cursor_offset = pattern_len - cursor_pos;
       if (cursor_offset > 0) {
-        printf("\x1b[%dD", cursor_offset);
+        frame_buffer_printf(g_frame_buf, "\x1b[%dD", cursor_offset);
       }
-      fflush(stdout);
+      platform_write_all(frame_buffer_get_screen_output_fd(), frame_buffer_get_content(g_frame_buf),
+                         frame_buffer_get_length(g_frame_buf));
 
       mutex_unlock(grep_mutex);
     }
@@ -480,6 +425,8 @@ session_log_buffer_t *terminal_screen_log_init(void) {
 }
 
 void terminal_screen_log_destroy(void) {
+  ui_controller_remove(UI_SCREEN_STATUS);
+  ui_controller_remove(UI_SCREEN_SPLASH);
   if (g_session_log_buffer) {
     session_log_buffer_destroy(g_session_log_buffer);
     g_session_log_buffer = NULL;
@@ -498,4 +445,30 @@ session_log_buffer_t *terminal_screen_get_log_buffer(void) {
 
 void terminal_screen_set_output_fd(int fd) {
   frame_buffer_set_screen_output_fd(fd);
+}
+
+typedef struct {
+  terminal_screen_config_t config;
+  unsigned char header[];
+} screen_snapshot_t;
+static void render_screen_snapshot(terminal_size_t size, const void *data) {
+  (void)size;
+  const screen_snapshot_t *snapshot = data;
+  terminal_screen_config_t config = snapshot->config;
+  config.user_data = (void *)snapshot->header;
+  terminal_screen_render_owned(&config);
+}
+void terminal_screen_render(const terminal_screen_config_t *config) {
+  if (!config || !config->render_header || !config->user_data || !config->user_data_size)
+    return;
+  size_t bytes = sizeof(screen_snapshot_t) + config->user_data_size;
+  screen_snapshot_t *snapshot = SAFE_MALLOC(bytes, screen_snapshot_t *);
+  if (!snapshot)
+    return;
+  snapshot->config = *config;
+  memcpy(snapshot->header, config->user_data, config->user_data_size);
+  terminal_size_t minimum = {.cols = config->minimum_cols,
+                             .rows = config->fixed_header_lines + (log_search_is_entering() ? 4 : 2)};
+  (void)ui_controller_submit(config->screen, config->output_fd, minimum, render_screen_snapshot, snapshot, bytes);
+  SAFE_FREE(snapshot);
 }

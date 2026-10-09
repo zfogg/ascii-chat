@@ -1,0 +1,346 @@
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/atomic.h>
+#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/shutdown.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/options/options.h>
+#include <string.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/debug/named.h>
+
+typedef struct {
+  void *snapshot;
+  ui_render_fn render;
+  terminal_size_t minimum;
+  int fd;
+  bool dirty;
+} screen_t;
+
+static screen_t g_screens[UI_SCREEN_COUNT];
+static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
+static mutex_t g_mutex;
+static asciichat_thread_t g_thread;
+static atomic_t g_stop = {0};
+static _Thread_local bool g_owner;
+static _Thread_local terminal_size_t g_render_size;
+static terminal_size_t g_size = {.cols = 80, .rows = 24};
+static int g_active = -1;
+static keyboard_key_t g_keys[64];
+static size_t g_key_count;
+static bool g_small;
+static bool g_redraw;
+static atomic_t g_blocked = {0};
+static bool g_saved_logging;
+static terminal_size_t g_last_minimum;
+
+bool ui_controller_is_blocked(void) {
+  return atomic_load_bool(&g_blocked);
+}
+
+bool ui_controller_is_owner(void) {
+  return g_owner;
+}
+
+terminal_size_t ui_controller_size(void) {
+  if (g_owner)
+    return g_render_size;
+  terminal_size_t size = {.cols = 80, .rows = 24};
+  if (lifecycle_is_initialized(&g_lifecycle)) {
+    mutex_lock(&g_mutex);
+    size = g_size;
+    mutex_unlock(&g_mutex);
+  } else {
+    terminal_size_t detected = {0};
+    if (terminal_get_size(&detected) == ASCIICHAT_OK && detected.cols > 0 && detected.rows > 0)
+      size = detected;
+  }
+  return size;
+}
+
+static void *presentation_main(void *unused) {
+  (void)unused;
+  g_owner = true;
+  while (!atomic_load_bool(&g_stop)) {
+    mutex_lock(&g_mutex);
+    int active = -1;
+    for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+      if (g_screens[i].render)
+        active = i;
+    bool changed = active != g_active;
+    if (g_active < 0 && active >= 0)
+      g_saved_logging = log_get_terminal_output();
+    if (active >= 0)
+      log_set_terminal_output(false);
+    else if (g_active >= 0)
+      log_set_terminal_output(g_saved_logging);
+    if (changed)
+      g_key_count = 0;
+    g_active = active;
+    if (active < 0)
+      atomic_store_bool(&g_blocked, false);
+    if (active >= 0 && !shutdown_is_requested()) {
+      screen_t *screen = &g_screens[active];
+      terminal_size_t size = {0};
+      // Measure the physical output device, never --width/--height or environment overrides.
+      if (terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 || size.rows <= 0) {
+        // A minimized or detached terminal has no usable drawing area.
+        atomic_store_bool(&g_blocked, true);
+        g_small = true;
+        g_key_count = 0;
+        if (terminal_is_stdin_tty())
+          for (int i = 0; i < 64 && keyboard_read_nonblocking() != KEY_NONE; ++i) {
+          }
+        mutex_unlock(&g_mutex);
+        platform_sleep_ns(16 * NS_PER_MS_INT);
+        continue;
+      }
+      bool resized = size.cols != g_size.cols || size.rows != g_size.rows;
+      g_size = size;
+      g_render_size = size;
+      bool small = ui_too_small(size, screen->minimum);
+      atomic_store_bool(&g_blocked, small);
+      bool requirement_changed =
+          screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
+      g_last_minimum = screen->minimum;
+      bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
+      g_redraw = false;
+      if (small || transition)
+        g_key_count = 0;
+      // Read even while covered, so controls cannot replay when the window grows.
+      if (terminal_is_stdin_tty()) {
+        for (int i = 0; i < 64; ++i) {
+          keyboard_key_t key = keyboard_read_nonblocking();
+          if (key == KEY_NONE)
+            break;
+          if (!small && !g_small && g_key_count < 64)
+            g_keys[g_key_count++] = key;
+        }
+      }
+      frame_buffer_set_screen_output_fd(screen->fd);
+      if (small) {
+        if (transition || !g_small) {
+          frame_buffer_t *buffer = frame_buffer_create(3, 96);
+          if (buffer) {
+            ui_too_small_render(buffer, size, screen->minimum);
+            platform_write_all(screen->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+            frame_buffer_destroy(buffer);
+          }
+        }
+      } else {
+        if (transition) {
+          const char reset[] = "\033[0m\033[2J\033[H";
+          platform_write_all(screen->fd, reset, sizeof(reset) - 1);
+        }
+        if ((resized || changed) && active == UI_SCREEN_MEDIA) {
+          if (GET_OPTION(auto_width))
+            options_set_int("width", size.cols);
+          if (GET_OPTION(auto_height))
+            options_set_int("height", size.rows);
+        }
+        if (screen->dirty || transition || active != UI_SCREEN_MEDIA)
+          screen->render(size, screen->snapshot);
+      }
+      g_small = small;
+      screen->dirty = false;
+    }
+    mutex_unlock(&g_mutex);
+    platform_sleep_ns(16 * NS_PER_MS_INT);
+  }
+  if (g_active >= 0)
+    log_set_terminal_output(g_saved_logging);
+  g_owner = false;
+  return NULL;
+}
+
+static asciichat_error_t controller_start(void) {
+  if (lifecycle_init_once(&g_lifecycle)) {
+    atomic_store_bool(&g_stop, false);
+    atomic_store_bool(&g_blocked, false);
+    g_active = -1;
+    g_key_count = 0;
+    g_small = false;
+    g_redraw = false;
+    if (mutex_init(&g_mutex, "ui_controller") != 0) {
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI mutex");
+    }
+    NAMED_REGISTER_ATOMIC(&g_stop, "ui_controller_stop", NULL);
+    NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
+    NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
+    if (asciichat_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+      NAMED_UNREGISTER(&g_stop);
+      NAMED_UNREGISTER(&g_blocked);
+      NAMED_UNREGISTER(&g_lifecycle.state);
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
+    }
+    lifecycle_init_commit(&g_lifecycle);
+  }
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    return SET_ERRNO(ERROR_INVALID_STATE, "UI controller initialization is not complete");
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
+                                       const void *snapshot, size_t bytes) {
+  if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
+      minimum.rows <= 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
+  // Batch output and finite snapshots retain their synchronous output semantics.
+  if (!platform_isatty(fd) || GET_OPTION(snapshot_mode)) {
+    bool previous_owner = g_owner;
+    terminal_size_t detected = {0};
+    if (terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
+      detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
+    g_render_size = detected;
+    g_owner = true;
+    frame_buffer_set_screen_output_fd(fd);
+    render(g_render_size, snapshot);
+    g_owner = previous_owner;
+    return ASCIICHAT_OK;
+  }
+  asciichat_error_t err = controller_start();
+  if (err != ASCIICHAT_OK)
+    return err;
+  void *copy = SAFE_MALLOC(bytes, void *);
+  if (!copy)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot copy UI snapshot");
+  memcpy(copy, snapshot, bytes);
+  mutex_lock(&g_mutex);
+  screen_t *slot = &g_screens[screen];
+  SAFE_FREE(slot->snapshot);
+  *slot = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = fd, .dirty = true};
+  mutex_unlock(&g_mutex);
+  return ASCIICHAT_OK;
+}
+
+void ui_controller_remove(ui_screen_t screen) {
+  if (screen < 0 || screen >= UI_SCREEN_COUNT || !lifecycle_is_initialized(&g_lifecycle))
+    return;
+  if (!g_owner)
+    mutex_lock(&g_mutex);
+  SAFE_FREE(g_screens[screen].snapshot);
+  memset(&g_screens[screen], 0, sizeof(screen_t));
+  g_key_count = 0;
+  if (!g_owner)
+    mutex_unlock(&g_mutex);
+}
+
+keyboard_key_t ui_controller_read_key(ui_screen_t screen) {
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    return keyboard_read_nonblocking();
+  mutex_lock(&g_mutex);
+  keyboard_key_t key = KEY_NONE;
+  bool owns_input = g_active == (int)screen || (screen == UI_SCREEN_MEDIA && g_active == UI_SCREEN_HELP);
+  terminal_size_t size = {0};
+  bool blocked = g_small;
+  if (owns_input)
+    blocked = blocked || terminal_get_size_fd(g_screens[g_active].fd, &size) != ASCIICHAT_OK || size.cols <= 0 ||
+              size.rows <= 0 || ui_too_small(size, g_screens[g_active].minimum);
+  if (blocked)
+    g_key_count = 0;
+  if (owns_input && !blocked && g_key_count) {
+    key = g_keys[0];
+    memmove(g_keys, g_keys + 1, --g_key_count * sizeof(*g_keys));
+  }
+  mutex_unlock(&g_mutex);
+  return key;
+}
+
+keyboard_key_t ui_controller_wait_key(ui_screen_t screen, unsigned timeout_ms) {
+  uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
+  do {
+    keyboard_key_t key = ui_controller_read_key(screen);
+    if (key != KEY_NONE || shutdown_is_requested())
+      return key;
+    platform_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() < deadline);
+  return KEY_NONE;
+}
+
+typedef struct {
+  int fd;
+  bool media;
+  terminal_size_t dimensions;
+  size_t len;
+  char text[];
+} text_snapshot_t;
+
+static void render_text(terminal_size_t size, const void *data) {
+  const text_snapshot_t *text = data;
+  if (!text->media || GET_OPTION(snapshot_mode) || !platform_isatty(text->fd) ||
+      (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows)) {
+    platform_write_all(text->fd, text->text, text->len);
+    return;
+  }
+  // A paused frame can outlive its original dimensions. Clip its rows instead
+  // of letting old-sized content wrap and scroll after a terminal resize.
+  frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+  char *line = SAFE_MALLOC(text->len + 1, char *);
+  char *clipped = SAFE_MALLOC(text->len + 32, char *);
+  if (buffer && line && clipped) {
+    const char *cursor = text->text;
+    const char *end = cursor + text->len;
+    for (int row = 1; row <= size.rows && cursor < end; ++row) {
+      const char *newline = memchr(cursor, '\n', (size_t)(end - cursor));
+      size_t length = (size_t)((newline ? newline : end) - cursor);
+      memcpy(line, cursor, length);
+      line[length] = '\0';
+      truncate_with_ellipsis(line, clipped, text->len + 32, size.cols - 1);
+      frame_buffer_printf(buffer, "\033[%d;1H\033[2K", row);
+      frame_buffer_append(buffer, clipped, strlen(clipped));
+      cursor += length + (newline ? 1 : 0);
+    }
+    platform_write_all(text->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+  }
+  if (buffer)
+    frame_buffer_destroy(buffer);
+  SAFE_FREE(line);
+  SAFE_FREE(clipped);
+}
+
+void ui_controller_redraw(void) {
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    return;
+  mutex_lock(&g_mutex);
+  g_redraw = true;
+  mutex_unlock(&g_mutex);
+}
+
+asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                        size_t len) {
+  if (!data || !len || len > 16 * 1024 * 1024)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
+  text_snapshot_t *text = SAFE_MALLOC(sizeof(*text) + len, text_snapshot_t *);
+  if (!text)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate UI frame");
+  text->fd = fd;
+  text->media = screen == UI_SCREEN_MEDIA;
+  text->dimensions = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
+  text->len = len;
+  memcpy(text->text, data, len);
+  asciichat_error_t err = ui_controller_submit(screen, fd, minimum, render_text, text, sizeof(*text) + len);
+  SAFE_FREE(text);
+  return err;
+}
+
+void ui_controller_shutdown(void) {
+  if (!lifecycle_destroy_once(&g_lifecycle))
+    return;
+  atomic_store_bool(&g_stop, true);
+  asciichat_thread_join(&g_thread, NULL);
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
+    SAFE_FREE(g_screens[i].snapshot);
+    memset(&g_screens[i], 0, sizeof(screen_t));
+  }
+  mutex_destroy(&g_mutex);
+  NAMED_UNREGISTER(&g_stop);
+  NAMED_UNREGISTER(&g_blocked);
+  NAMED_UNREGISTER(&g_lifecycle.state);
+  lifecycle_destroy_commit(&g_lifecycle);
+}
