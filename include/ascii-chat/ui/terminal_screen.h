@@ -72,6 +72,8 @@ void terminal_screen_render(const terminal_screen_config_t *config);
  *
  * Destroys the internal static frame buffer allocated by terminal_screen_render().
  * Call at program exit or when terminal screen rendering is no longer needed.
+ * If a render is active, destruction is deferred until that render returns;
+ * cleanup never waits for blocked terminal output.
  */
 void terminal_screen_cleanup(void);
 

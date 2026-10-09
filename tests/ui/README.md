@@ -43,9 +43,10 @@ python tests/ui/test_splash_lifecycle.py build/bin/asciichat.dll
 ```
 
 This checks that a zero-delay snapshot skips the minimum splash duration and
-that shutdown interrupts a handoff waiting on a full output pipe. Each case
-runs in an isolated subprocess with a timeout. These checks have been verified
-on Windows.
+that shutdown interrupts a handoff waiting on a full output pipe. Cleanup is also
+requested while a renderer still holds its frame buffer, verifying deferred
+destruction and subsequent reuse. Each case runs in an isolated subprocess with
+a timeout. These checks pass on Windows and Linux with AddressSanitizer.
 
 On Linux with tmux installed, run the native call test (also suitable for Docker):
 
