@@ -177,7 +177,7 @@ int main(void) {
   assert(nat_upnp_open(27224, "test listener", &ctx) == ASCIICHAT_OK);
   assert(strcmp(target, "192.168.1.42") == 0);
   assert(strcmp(description, "test listener") == 0);
-  assert(nat_upnp_is_active(ctx));
+  assert(nat_upnp_is_active(ctx) && !ctx->external_is_private);
   assert(ctx->refresh_at_ns == now + 1800ULL * NS_PER_SEC_INT);
   char endpoint[22];
   assert(nat_upnp_get_address(ctx, endpoint, sizeof(endpoint)) == ASCIICHAT_OK);
@@ -221,6 +221,12 @@ int main(void) {
 #ifdef UPNP_PRIVATEIP_IGD
   igd_result = UPNP_PRIVATEIP_IGD;
   assert(nat_upnp_open(27224, "double NAT", &ctx) == ASCIICHAT_OK);
+  assert(nat_upnp_is_active(ctx) && ctx->external_is_private);
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK && ctx->external_is_private);
+  nat_upnp_close(&ctx);
+  igd_result = 1;
+  assert(nat_upnp_open(27224, "public WAN", &ctx) == ASCIICHAT_OK);
+  assert(!ctx->external_is_private);
   nat_upnp_close(&ctx);
 #endif
   expected_protocol = "UDP";

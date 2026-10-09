@@ -36,6 +36,7 @@ typedef struct nat_upnp_context {
   uint64_t refresh_at_ns;       ///< Next renewal or retry deadline
   bool is_mapped;               ///< true if port mapping is currently active
   nat_upnp_protocol_t protocol; ///< Transport of this mapping
+  bool external_is_private;    ///< Gateway reported an upstream NAT; mapping remains locally usable
 } nat_upnp_context_t;
 
 /**

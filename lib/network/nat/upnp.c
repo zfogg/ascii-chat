@@ -80,9 +80,11 @@ static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
 #endif
   asciichat_error_t error = ERROR_NETWORK;
   bool connected = result == 1;
+  bool private_wan = false;
 #ifdef UPNP_PRIVATEIP_IGD
   // A connected gateway behind another NAT can still map its own listener.
-  connected = connected || result == UPNP_PRIVATEIP_IGD;
+  private_wan = result == UPNP_PRIVATEIP_IGD;
+  connected = connected || private_wan;
 #endif
   if (!connected || !urls.controlURL || !lan_address[0] || strncmp(lan_address, "127.", 4) == 0 ||
       strcmp(lan_address, "0.0.0.0") == 0) {
@@ -104,6 +106,9 @@ static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
     goto cleanup;
   }
   error = upnp_map(ctx);
+  if (error == ASCIICHAT_OK) {
+    ctx->external_is_private = private_wan;
+  }
 cleanup:
   freeUPNPDevlist(devices);
   FreeUPNPUrls(&urls);

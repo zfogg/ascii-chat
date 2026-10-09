@@ -1522,9 +1522,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
   // Point server context at the server_like-owned TCP server
   g_server_ctx.tcp_server = tcp;
 
-  // UPnP success check for ACDS session type decision
+  // A local mapping behind upstream NAT must not suppress WebRTC discovery.
   nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
-  bool upnp_succeeded = nat_upnp_is_active(upnp_ctx);
+  bool upnp_succeeded = nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private &&
+                        is_internet_ipv4(upnp_ctx->external_ip);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {

@@ -333,6 +333,8 @@
  * does not prevent direct connections through an existing manual forwarding rule.
  * The discovery service itself still needs a reachable TCP/WebSocket endpoint;
  * it does not gain a WebRTC fallback merely because router mapping failed.
+ * Private-WAN mappings remain locally usable but do not select Direct TCP for
+ * discovery; those sessions retain WebRTC setup.
  * Quality probes made before discovery host selection do not modify the router.
  * Listener mappings share the server lifecycle; UDP mappings belong to their WebRTC
  * peer connection and are removed when it closes. Native WebRTC binds its ICE socket
