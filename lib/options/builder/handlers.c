@@ -223,6 +223,12 @@ static void apply_env_callback(void *field, const char *env_value, const option_
   if (!env_value || !desc || !desc->parse_fn) {
     return;
   }
+  // The legacy environment variable remains a boolean enable switch.
+  if (strcmp(desc->long_name, "test-pattern") == 0) {
+    *(bool *)field = strcmp(env_value, "1") == 0 || strcasecmp(env_value, "true") == 0 ||
+                     strcasecmp(env_value, "yes") == 0 || strcasecmp(env_value, "on") == 0;
+    return;
+  }
   char *error_msg = NULL;
   bool ok = desc->parse_fn(env_value, field, &error_msg);
   if (!ok) {

@@ -338,12 +338,10 @@ Test(ansi_fast, rgb_to_256color_grayscale) {
 
   // Test grayscale conversion
   result = rgb_to_256color(0, 0, 0); // Black
-  cr_assert(result >= 232, "Black should map to grayscale ramp (232-255)");
-  cr_assert(result <= 255, "Black should map to grayscale ramp (232-255)");
+  cr_assert_eq(result, 16, "Black should use exact cube black");
 
   result = rgb_to_256color(255, 255, 255); // White
-  cr_assert(result >= 232, "White should map to grayscale ramp (232-255)");
-  cr_assert(result <= 255, "White should map to grayscale ramp (232-255)");
+  cr_assert_eq(result, 231, "White should use exact cube white");
 
   result = rgb_to_256color(128, 128, 128); // Gray
   cr_assert(result >= 232, "Gray should map to grayscale ramp (232-255)");
@@ -355,10 +353,10 @@ Test(ansi_fast, rgb_to_256color_edge_cases) {
 
   // Test edge cases
   result = rgb_to_256color(1, 1, 1); // Near black
-  cr_assert(result >= 232, "Near black should map to grayscale");
+  cr_assert_eq(result, 16, "Near black should use the nearest cube endpoint");
 
   result = rgb_to_256color(254, 254, 254); // Near white
-  cr_assert(result >= 232, "Near white should map to grayscale");
+  cr_assert_eq(result, 231, "Near white should use the nearest cube endpoint");
 
   result = rgb_to_256color(255, 0, 1); // Not grayscale
   cr_assert(result >= 16, "Non-grayscale should map to color cube");

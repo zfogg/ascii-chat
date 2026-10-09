@@ -220,6 +220,9 @@ char *append_256color_bg(char *dst, uint8_t color_index);
  */
 uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b);
 
+/** Expand an xterm 256-color palette entry to RGB. */
+void get_256color_rgb(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b);
+
 /* ===== 16-Color Functions ===== */
 
 /**
