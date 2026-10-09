@@ -29,10 +29,11 @@ fixture = r'''
 #define ERROR_MEDIA_INIT 1
 #define ERROR_FILE_OPERATION 2
 #define SET_ERRNO(code, ...) (code)
-#define LOG_IO(name, ...) do { __VA_ARGS__ } while (0)
+static int log_depth;
+#define LOG_IO(name, ...) do { ++log_depth; __VA_ARGS__ --log_depth; } while (0)
 typedef int asciichat_error_t;
 typedef struct { int pending, draining, pad_calls, flush_calls, writes, unrefs;
-                 int reject_flush, fail_write; int time_base; } AVCodecContext;
+                 int reject_flush, fail_write, fail_send, fail_receive; int time_base; } AVCodecContext;
 typedef struct { unsigned char *data[1]; int linesize[1], nb_samples, pts; } AVFrame;
 typedef struct { int time_base, index; } AVStream;
 typedef struct { int stream_index; } AVPacket;
@@ -41,6 +42,7 @@ typedef struct { AVCodecContext *audio_codec_ctx, *fmt_ctx; AVFrame *audio_frame
                  int has_audio_stream, audio_partial_len, audio_frame_size, audio_pts; } ffmpeg_encoder_t;
 static AVCodecContext *active;
 static int avcodec_send_frame(AVCodecContext *ctx, const AVFrame *frame) {
+  if (ctx->fail_send) return -2000;
   if (frame) ++ctx->pad_calls; else ++ctx->flush_calls;
   assert(ctx->pad_calls + ctx->flush_calls < 10);
   if (!frame && ctx->reject_flush) { ctx->reject_flush = 0; ++ctx->pending; }
@@ -55,6 +57,7 @@ static int avcodec_send_frame(AVCodecContext *ctx, const AVFrame *frame) {
 }
 static int avcodec_receive_packet(AVCodecContext *ctx, AVPacket *pkt) {
   (void)pkt;
+  if (ctx->fail_receive) return -2000;
   if (ctx->pending) { --ctx->pending; return 0; }
   return ctx->draining ? AVERROR_EOF : AVERROR(EAGAIN);
 }
@@ -67,16 +70,20 @@ static void av_packet_unref(AVPacket *pkt) { (void)pkt; ++active->unrefs; }
 '''
 main = r'''
 int main(void) {
-  for (int scenario = 0; scenario < 4; ++scenario) {
+  for (int scenario = 0; scenario < 6; ++scenario) {
     AVCodecContext ctx = {0};
     ctx.pending = scenario == 1;
     ctx.reject_flush = scenario == 2;
     ctx.fail_write = scenario == 3;
+    ctx.fail_send = scenario == 4;
+    ctx.fail_receive = scenario == 5;
     active = &ctx;
     AVFrame frame = {0}; AVPacket packet = {0}; AVStream stream = {1, 7};
     float samples[4] = {0.5f, 1, 1, 1};
     ffmpeg_encoder_t enc = {&ctx, &ctx, &frame, &stream, &packet, samples, 1, 1, 4, 12};
     int result = finalize(&enc);
+    assert(log_depth == 0);
+    if (scenario >= 4) { assert(result == ERROR_MEDIA_INIT); continue; }
     assert(result == (scenario == 3 ? ERROR_FILE_OPERATION : ASCIICHAT_OK));
     assert(ctx.draining && ctx.pending == 0);
     assert(ctx.pad_calls == (scenario == 1 ? 2 : 1));
