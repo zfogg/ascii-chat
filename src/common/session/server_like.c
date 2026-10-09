@@ -117,10 +117,15 @@ static void *status_screen_thread_func(void *arg) {
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
-  // Redirect stderr to /dev/null to prevent async logs from disrupting display
-  platform_stderr_redirect_handle_t stderr_redirect = platform_stderr_redirect_to_null();
+  int output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
+  bool keyboard_enabled = platform_isatty(STDIN_FILENO) && platform_isatty(output_fd);
 
-  bool keyboard_enabled = terminal_is_interactive();
+  // Stderr is the status output when stdout is redirected; retain it in that
+  // case. The presentation controller suppresses competing terminal log writes.
+  platform_stderr_redirect_handle_t stderr_redirect = {.original_fd = -1, .devnull_fd = -1};
+  if (output_fd != STDERR_FILENO) {
+    stderr_redirect = platform_stderr_redirect_to_null();
+  }
 
   bool skip_next_slash = false;
   bool grep_was_just_cancelled = false;

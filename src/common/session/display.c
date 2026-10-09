@@ -12,6 +12,7 @@
 
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
@@ -81,6 +82,9 @@ typedef struct session_display_ctx {
 
   /** @brief First frame flag for logging control */
   atomic_t first_frame;
+
+  /** @brief Stop submitting frames after the output consumer disappears */
+  atomic_t output_failed;
 
   /** @brief Context is fully initialized */
   bool initialized;
@@ -190,6 +194,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_ctx = config->audio_ctx;
   ctx->render_fps = config->render_fps;
   atomic_store_bool(&ctx->first_frame, true);
+  atomic_store_bool(&ctx->output_failed, false);
   atomic_store_bool(&ctx->keyboard_help_active, false);
 
   // Get TTY info for direct terminal access
@@ -754,6 +759,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     return;
   }
 
+  // Shutdown is asynchronous; queued frames must not retry a failed output.
+  if (atomic_load_bool(&ctx->output_failed)) {
+    return;
+  }
+
   if (!ascii) {
     SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is NULL");
     return;
@@ -882,7 +892,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-      (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
+      if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+        atomic_store_bool(&ctx->output_failed, true);
+        APP_CALLBACK_VOID(signal_exit);
+        SAFE_FREE(write_buf);
+        goto cleanup_frame;
+      }
       SAFE_FREE(write_buf);
     }
 
@@ -899,7 +914,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       if (write_buf) {
         memcpy(write_buf, display_frame, frame_len);
         write_buf[frame_len] = '\n';
-        (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
+        if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+          atomic_store_bool(&ctx->output_failed, true);
+          APP_CALLBACK_VOID(signal_exit);
+          SAFE_FREE(write_buf);
+          goto cleanup_frame;
+        }
 
         // Start snapshot timer on first ASCII frame rendered
         if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
@@ -927,6 +947,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     }
   }
 
+cleanup_frame:
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
 

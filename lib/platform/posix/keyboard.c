@@ -206,7 +206,11 @@ keyboard_key_t keyboard_read_nonblocking(void) {
   unsigned char ch;
   ssize_t n = read(read_fd, &ch, 1);
   if (n <= 0) {
-    log_warn("keyboard_read_nonblocking: read() returned %zd, errno=%d", n, errno);
+    // EOF is normal for redirected stdin. A paused session can poll this path
+    // every millisecond; do not turn absent input into a stream of warnings.
+    if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+      log_warn_every(US_PER_SEC_INT, "keyboard_read_nonblocking: read() failed, errno=%d", errno);
+    }
     return KEY_NONE;
   }
 
