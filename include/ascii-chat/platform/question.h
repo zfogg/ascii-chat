@@ -29,9 +29,10 @@ extern "C" {
  * @brief Options for text prompts
  */
 typedef struct {
-  bool echo;      /**< Whether to echo input (false for passwords) */
-  bool same_line; /**< If true, answer on same line after prompt; if false, answer on next line */
-  char mask_char; /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
+  unsigned timeout_seconds; /**< Zero selects the default for this prompt type. */
+  bool echo;                /**< Whether to echo input (false for passwords) */
+  bool same_line;           /**< If true, answer on same line after prompt; if false, answer on next line */
+  char mask_char;           /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
 } prompt_opts_t;
 
 /**
@@ -64,7 +65,8 @@ typedef struct {
  * When echo=false, input is hidden and optionally masked with mask_char.
  *
  * @note Acquires terminal lock during prompting to prevent log interleaving.
- * @note Returns -1 if stdin is not a TTY (non-interactive mode).
+ * @note Returns -1 if stdin is not a TTY (unless an explicit automated answer is available).
+ * @note Deadline defaults to 30 seconds for text and 60 seconds for secrets. Timeout clears the buffer.
  *
  * @ingroup platform
  */
@@ -89,6 +91,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
  * @ingroup platform
  */
 bool platform_prompt_yes_no(const char *prompt, bool default_yes);
+bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsigned timeout_seconds);
 
 /**
  * @brief Check if interactive prompting is available

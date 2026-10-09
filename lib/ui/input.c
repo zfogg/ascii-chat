@@ -12,6 +12,33 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
 
+#include <ascii-chat/options/options.h>
+
+unsigned ui_input_timeout_seconds(unsigned default_seconds) {
+  int configured = GET_OPTION(prompt_timeout);
+  return configured > 0 ? (unsigned)configured : default_seconds;
+}
+
+uint64_t ui_input_deadline(unsigned default_seconds) {
+  return time_get_ns() + (uint64_t)ui_input_timeout_seconds(default_seconds) * NS_PER_SEC_INT;
+}
+
+bool ui_input_expired(uint64_t deadline) {
+  return time_get_ns() >= deadline;
+}
+
+void ui_input_timeout_report(unsigned seconds, const char *consequence) {
+  char message[512];
+  int length = snprintf(message, sizeof(message),
+                        "\nPrompt timed out after %u seconds; %s. "
+                        "Use --prompt-timeout SECONDS to allow more time.\n",
+                        seconds, consequence);
+  // This diagnostic must remain visible even while a background screen owns the terminal.
+  if (length > 0)
+    platform_write_all(STDERR_FILENO, message, (size_t)length < sizeof(message) ? (size_t)length : sizeof(message) - 1);
+  SET_ERRNO(ERROR_PROMPT_TIMEOUT, "Prompt timed out after %u seconds: %s", seconds, consequence);
+}
+
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static mutex_t g_prompt_mutex;
@@ -93,8 +120,16 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
   mutex_lock(&g_prompt_mutex);
   size_t len = 0, cursor = 0;
   buffer[0] = '\0';
+  unsigned seconds = ui_input_timeout_seconds(opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60));
+  uint64_t deadline = ui_input_deadline(seconds);
+  char timed_prompt[8192];
+  snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
   while (!shutdown_is_requested()) {
+    if (ui_input_expired(deadline)) {
+      result = ERROR_PROMPT_TIMEOUT;
+      break;
+    }
     size_t display_cursor = cursor;
     if (opts.echo) {
       memcpy(visible, buffer, len + 1);
@@ -109,10 +144,14 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
       if (!opts.mask_char)
         display_cursor = 0;
     }
-    result = ui_prompt_present(prompt, visible, display_cursor);
+    result = ui_prompt_present(timed_prompt, visible, display_cursor);
     if (result != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
+    if (ui_input_expired(deadline)) {
+      result = ERROR_PROMPT_TIMEOUT;
+      break;
+    }
     if (key == KEY_NONE)
       continue;
     if (key == '\r' || key == '\n')
@@ -158,6 +197,8 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
   ui_prompt_remove();
   mutex_unlock(&g_prompt_mutex);
   SAFE_FREE(visible);
+  if (result == ERROR_PROMPT_TIMEOUT)
+    ui_input_timeout_report(seconds, opts.echo ? "answer declined" : "password entry cancelled");
   if (result != ASCIICHAT_OK)
     memset(buffer, 0, max_len);
   return result;

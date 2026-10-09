@@ -484,7 +484,8 @@ typedef struct {
   int color;                    // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
   bool json;                    // JSON logging format - binary-level option
   bool log_format_console_only; // Apply log template only to console - binary-level option
-  bool no_check_update;         // Disable the startup update check
+  int prompt_timeout;
+  bool no_check_update; // Disable the startup update check
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -503,6 +504,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
   binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
   binary.no_check_update = opts->no_check_update;
+  binary.prompt_timeout = opts->prompt_timeout;
   return binary;
 }
 
@@ -521,6 +523,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
   opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
   opts->no_check_update = binary->no_check_update;
+  opts->prompt_timeout = binary->prompt_timeout;
 }
 
 options_t options_t_new(void) {
@@ -878,6 +881,31 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_error_t rcu_init_result = options_state_init();
   if (rcu_init_result != ASCIICHAT_OK) {
     return rcu_init_result;
+  }
+
+  // Action prompts run before normal parsing, so publish their deadline first.
+  const char *prompt_timeout_text = SAFE_GETENV("ASCII_CHAT_PROMPT_TIMEOUT");
+  for (int i = 1; i < argc; ++i) {
+    if (!strcmp(argv[i], "--"))
+      break;
+    if (!strncmp(argv[i], "--prompt-timeout=", 17))
+      prompt_timeout_text = argv[i] + 17;
+    else if (!strcmp(argv[i], "--prompt-timeout")) {
+      if (++i >= argc)
+        return SET_ERRNO(ERROR_USAGE, "--prompt-timeout requires seconds");
+      prompt_timeout_text = argv[i];
+    }
+  }
+  if (prompt_timeout_text) {
+    char *end = NULL;
+    long seconds = strtol(prompt_timeout_text, &end, 10);
+    if (end == prompt_timeout_text || *end || seconds < 0 || seconds > 86400)
+      return SET_ERRNO(ERROR_USAGE, "--prompt-timeout must be 0..86400 seconds (0 selects defaults)");
+    options_t early = *options_get();
+    early.prompt_timeout = (int)seconds;
+    asciichat_error_t result = options_state_set(&early);
+    if (result != ASCIICHAT_OK)
+      return result;
   }
 
   // ========================================================================

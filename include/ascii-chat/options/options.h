@@ -1126,6 +1126,7 @@ typedef struct options_state {
   bool webrtc_relay_only;        ///< --webrtc-relay-only: Require TURN relay candidates
   bool webrtc_disable_turn;      ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
   bool webrtc_skip_host;         ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
+  int prompt_timeout; ///< --prompt-timeout: seconds; zero selects per-prompt defaults
   int webrtc_ice_timeout_ms;     ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
   int webrtc_reconnect_attempts; ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
 

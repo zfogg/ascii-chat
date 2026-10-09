@@ -15,7 +15,28 @@
 // ============================================================================
 // GENERAL CATEGORY - General-purpose options
 // ============================================================================
+static const int default_prompt_timeout = 0;
+
 const registry_entry_t g_general_entries[] = {
+    {"prompt-timeout",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, prompt_timeout),
+     &default_prompt_timeout,
+     sizeof(int),
+     "Prompt deadline in seconds (0: defaults of 10/30/60/120 seconds by prompt type).",
+     "GENERAL",
+     NULL,
+     false,
+     "ASCII_CHAT_PROMPT_TIMEOUT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
+     {.numeric_range = {0, 86400, 1}, .input_type = OPTION_INPUT_NUMERIC},
+     NULL},
     // GENERAL GROUP (binary-level + all modes)
     {"help",
      'h',

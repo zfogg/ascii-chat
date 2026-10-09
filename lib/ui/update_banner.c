@@ -278,7 +278,8 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Prompt (grey)
   {
     char line[256];
-    snprintf(line, sizeof(line), "\033[90m[Y/Enter] exit to update  [N/Esc] continue\033[0m");
+    snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m",
+             ui_input_timeout_seconds(10));
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 
@@ -294,7 +295,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
 }
 
 bool update_banner_show_prompt(session_display_ctx_t *ctx) {
-  if (!ctx)
+  if (!ctx || !terminal_can_prompt_user())
     return false;
   update_check_result_t result;
   mutex_lock(&g_update_result_mutex);
@@ -304,8 +305,14 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
                            render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
     return false;
   bool update = false;
+  uint64_t deadline = ui_input_deadline(10);
+  bool timed_out = false;
   while (!shutdown_is_requested()) {
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
+    if (ui_input_expired(deadline)) {
+      timed_out = true;
+      break;
+    }
     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
       update = true;
       break;
@@ -314,6 +321,8 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
       break;
   }
   ui_controller_remove(UI_SCREEN_UPDATE);
+  if (timed_out)
+    ui_input_timeout_report(ui_input_timeout_seconds(10), "update notice dismissed; continuing normally");
   return update;
 }
 

@@ -265,7 +265,7 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
                 "This may indicate key rotation or a man-in-the-middle attack.\n"
                 "Verify the new fingerprint with the operator before accepting.\n\nAccept new ACDS server key",
                 acds_server, old_fingerprint, new_fingerprint);
-  bool accepted = platform_prompt_yes_no(question, false);
+  bool accepted = platform_prompt_yes_no_timeout(question, false, 120);
   if (!accepted) {
     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "User rejected ACDS key change for: %s", acds_server);
   }
