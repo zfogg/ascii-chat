@@ -46,3 +46,23 @@ This checks that a zero-delay snapshot skips the minimum splash duration and
 that shutdown interrupts a handoff waiting on a full output pipe. Each case
 runs in an isolated subprocess with a timeout. These checks have been verified
 on Windows.
+
+On Linux with tmux installed, run the native call test (also suitable for Docker):
+
+```sh
+python tests/ui/test_discovery_tmux.py build/bin/ascii-chat build/tmux-validation
+```
+
+It runs a local ACDS and two default-mode discovery peers in private 80x24 tmux
+terminals. No transport override is used. It checks the adjacent Run line,
+50x12 resize and restore, disappearance of the invitation on both peers, and
+changing two-participant call grids for 15 seconds. Audio is disabled; both
+cameras use generated video. Plain and ANSI-colored captures are saved alongside
+logs in the output directory. Each test owns and cleans up its tmux server.
+
+Colored grid composition regressions are covered by the focused Criterion suite:
+
+```sh
+cmake --build build --target test_unit_video_ascii
+build/bin/test_unit_video_ascii --filter '*ascii_create_grid*'
+```

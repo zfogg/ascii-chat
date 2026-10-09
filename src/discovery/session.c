@@ -547,13 +547,11 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
     // Set session type (only for first key)
     if (key_idx == 0) {
-      if (opts && (opts->prefer_webrtc || opts->webrtc_relay_only)) {
-        log_info("DISCOVERY: WebRTC preferred, using SESSION_TYPE_WEBRTC");
-        create_msg.session_type = SESSION_TYPE_WEBRTC;
-      } else {
-        log_info("DISCOVERY: Using direct TCP (SESSION_TYPE_DIRECT_TCP)");
-        create_msg.session_type = SESSION_TYPE_DIRECT_TCP;
-      }
+      // Discovery-created sessions keep the host address private. Direct TCP
+      // cannot connect with the empty address returned by ACDS, so use peer-ID
+      // signaling and WebRTC for the default session-string flow.
+      create_msg.session_type = SESSION_TYPE_WEBRTC;
+      log_info("DISCOVERY: Using WebRTC for private session discovery");
 
       create_msg.has_password = 0;
       create_msg.expose_ip_publicly = 0;
