@@ -252,6 +252,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_set_terminal_output(false);
   }
 
+  if (config->prepare_fn) {
+    result = config->prepare_fn(config->run_user_data);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+  }
+
   // Detect if we're using media vs webcam (needed for splash timing)
   const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
@@ -268,15 +274,18 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // This allows logs to appear on screen again after this point
   splash_restore_stderr();
 
-  // Wait for background update check to finish and show prompt if update available
+  // Discovery keeps the invitation as the only waiting UI.
   update_banner_wait_for_check();
-  if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
-    bool wants_update = update_banner_show_prompt(display);
-    if (wants_update) {
-      update_banner_print_instructions();
-      return ASCIICHAT_OK;
+  if (GET_OPTION(detected_mode) != MODE_DISCOVERY) {
+    if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
+      bool wants_update = update_banner_show_prompt(display);
+      if (wants_update) {
+        update_banner_print_instructions();
+        result = ASCIICHAT_OK;
+        goto cleanup;
+      }
+      terminal_clear_screen();
     }
-    terminal_clear_screen();
   }
 
   // ============================================================================
@@ -774,6 +783,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
 cleanup:
+  // Preparation can fail before the normal update check wait above.
+  update_banner_wait_for_check();
+  // Stop the terminal writer before restoring output or destroying the display.
+  splash_intro_done();
+  splash_wait_for_animation();
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 
@@ -827,27 +841,6 @@ cleanup:
   if (probe_source) {
     media_source_destroy(probe_source);
     probe_source = NULL;
-  }
-
-  // Stop splash animation and enforce minimum display time (even on error path)
-  // But skip completely if shutting down - don't interact with splash at all during shutdown
-  // The animation thread will exit on its own when it detects shutdown_is_requested()
-  // For discovery mode, keep the splash running - it stays visible while waiting for peers
-  if (config->discovery != NULL) {
-    log_debug("[CLEANUP] Discovery mode: keeping splash alive for peer waiting UI");
-  } else if (!APP_CALLBACK_BOOL(should_exit)) {
-    log_debug("[CLEANUP] About to call splash_intro_done()");
-    splash_intro_done();
-    log_debug("[CLEANUP] splash_intro_done() returned");
-
-    // Wait for animation thread to exit before cleanup
-    log_debug("[CLEANUP] About to call splash_wait_for_animation()");
-    splash_wait_for_animation();
-    log_debug("[CLEANUP] splash_wait_for_animation() returned");
-  } else {
-    log_debug("[CLEANUP] Skipping all splash operations (shutdown in progress)");
-    // During shutdown, don't interact with splash - let animation thread exit naturally
-    // and don't wait for it (prevents blocking on signals)
   }
 
   // Disable keepawake (re-allow OS to sleep)

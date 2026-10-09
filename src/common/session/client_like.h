@@ -117,6 +117,9 @@ typedef struct session_client_like_config {
   /** Mode-specific main loop callback (required, never NULL) */
   session_client_like_run_fn run_fn;
 
+  /** Optional preparation after splash startup, before media initialization; receives run_user_data. */
+  asciichat_error_t (*prepare_fn)(void *user_data);
+
   /** User data passed to run_fn */
   void *run_user_data;
 
