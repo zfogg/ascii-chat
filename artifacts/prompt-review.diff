@@ -1,0 +1,652 @@
+diff --git a/include/ascii-chat/common/error_codes.h b/include/ascii-chat/common/error_codes.h
+index 9f668f928..e70d77064 100644
+--- a/include/ascii-chat/common/error_codes.h
++++ b/include/ascii-chat/common/error_codes.h
+@@ -111,6 +111,7 @@ typedef enum {
+   ERROR_RESOURCE_EXHAUSTED = 88, /**< System resources exhausted */
+   ERROR_FORMAT = 89,             /**< String formatting operation failed */
+   ERROR_STRING = 90,             /**< String manipulation operation failed */
++  ERROR_PROMPT_TIMEOUT = 92,     /**< Interactive prompt deadline expired */
+   ERROR_NOT_FOUND = 91,          /**< Resource not found in registry or lookup */
+ 
+   /* Signal/Crash handlers (100-127) */
+@@ -151,6 +152,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
+   switch (code) {
+   case ASCIICHAT_OK:
+     return "Success";
++  case ERROR_PROMPT_TIMEOUT:
++    return "Prompt timed out";
+   case ERROR_GENERAL:
+     return "General error";
+   case ERROR_USAGE:
+diff --git a/include/ascii-chat/options/options.h b/include/ascii-chat/options/options.h
+index 3e05bbdb1..c3000f10a 100644
+--- a/include/ascii-chat/options/options.h
++++ b/include/ascii-chat/options/options.h
+@@ -1126,6 +1126,7 @@ typedef struct options_state {
+   bool webrtc_relay_only;        ///< --webrtc-relay-only: Require TURN relay candidates
+   bool webrtc_disable_turn;      ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
+   bool webrtc_skip_host;         ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
++  int prompt_timeout; ///< --prompt-timeout: seconds; zero selects per-prompt defaults
+   int webrtc_ice_timeout_ms;     ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
+   int webrtc_reconnect_attempts; ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
+ 
+diff --git a/include/ascii-chat/platform/question.h b/include/ascii-chat/platform/question.h
+index 2699644c3..d01c1ada4 100644
+--- a/include/ascii-chat/platform/question.h
++++ b/include/ascii-chat/platform/question.h
+@@ -29,9 +29,10 @@ extern "C" {
+  * @brief Options for text prompts
+  */
+ typedef struct {
+-  bool echo;      /**< Whether to echo input (false for passwords) */
+-  bool same_line; /**< If true, answer on same line after prompt; if false, answer on next line */
+-  char mask_char; /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
++  unsigned timeout_seconds; /**< Zero selects the default for this prompt type. */
++  bool echo;                /**< Whether to echo input (false for passwords) */
++  bool same_line;           /**< If true, answer on same line after prompt; if false, answer on next line */
++  char mask_char;           /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
+ } prompt_opts_t;
+ 
+ /**
+@@ -64,7 +65,8 @@ typedef struct {
+  * When echo=false, input is hidden and optionally masked with mask_char.
+  *
+  * @note Acquires terminal lock during prompting to prevent log interleaving.
+- * @note Returns -1 if stdin is not a TTY (non-interactive mode).
++ * @note Returns -1 if stdin is not a TTY (unless an explicit automated answer is available).
++ * @note Deadline defaults to 30 seconds for text and 60 seconds for secrets. Timeout clears the buffer.
+  *
+  * @ingroup platform
+  */
+@@ -89,6 +91,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+  * @ingroup platform
+  */
+ bool platform_prompt_yes_no(const char *prompt, bool default_yes);
++bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsigned timeout_seconds);
+ 
+ /**
+  * @brief Check if interactive prompting is available
+diff --git a/include/ascii-chat/ui/input.h b/include/ascii-chat/ui/input.h
+index 802840b34..adb1d74f5 100644
+--- a/include/ascii-chat/ui/input.h
++++ b/include/ascii-chat/ui/input.h
+@@ -9,4 +9,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen);
+ keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms);
+ void ui_input_shutdown(void);
+ 
++/** Absolute monotonic deadline; user activity never extends it. */
++unsigned ui_input_timeout_seconds(unsigned default_seconds);
++uint64_t ui_input_deadline(unsigned default_seconds);
++bool ui_input_expired(uint64_t deadline);
++void ui_input_timeout_report(unsigned seconds, const char *consequence);
++
+ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);
+diff --git a/lib/crypto/discovery_keys.c b/lib/crypto/discovery_keys.c
+index 53f3229d7..d79f2e0d7 100644
+--- a/lib/crypto/discovery_keys.c
++++ b/lib/crypto/discovery_keys.c
+@@ -265,7 +265,7 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
+                 "This may indicate key rotation or a man-in-the-middle attack.\n"
+                 "Verify the new fingerprint with the operator before accepting.\n\nAccept new ACDS server key",
+                 acds_server, old_fingerprint, new_fingerprint);
+-  bool accepted = platform_prompt_yes_no(question, false);
++  bool accepted = platform_prompt_yes_no_timeout(question, false, 120);
+   if (!accepted) {
+     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "User rejected ACDS key change for: %s", acds_server);
+   }
+diff --git a/lib/crypto/known_hosts.c b/lib/crypto/known_hosts.c
+index f8af79c24..4d69fc70f 100644
+--- a/lib/crypto/known_hosts.c
++++ b/lib/crypto/known_hosts.c
+@@ -632,7 +632,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
+                 "Ed25519 key fingerprint: SHA256:%s\n\n"
+                 "Are you sure you want to continue connecting",
+                 ip_with_port, fingerprint);
+-  if (platform_prompt_yes_no(question, false)) {
++  if (platform_prompt_yes_no_timeout(question, false, 120)) {
+     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
+     return true;
+   }
+@@ -811,7 +811,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
+                 "Use --key on the server and --server-key on the client to verify identity.\n\n"
+                 "Are you sure you want to continue connecting",
+                 ip_with_port);
+-  if (platform_prompt_yes_no(question, false)) {
++  if (platform_prompt_yes_no_timeout(question, false, 120)) {
+     log_warn("Warning: Proceeding with unverified connection.\n"
+              "Your data may be intercepted by attackers!\n"
+              "\n");
+diff --git a/lib/options/options.c b/lib/options/options.c
+index 6b533c36e..160499e65 100644
+--- a/lib/options/options.c
++++ b/lib/options/options.c
+@@ -484,7 +484,8 @@ typedef struct {
+   int color;                    // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
+   bool json;                    // JSON logging format - binary-level option
+   bool log_format_console_only; // Apply log template only to console - binary-level option
+-  bool no_check_update;         // Disable the startup update check
++  int prompt_timeout;
++  bool no_check_update; // Disable the startup update check
+ } binary_level_opts_t;
+ 
+ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
+@@ -503,6 +504,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
+   binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
+   binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
+   binary.no_check_update = opts->no_check_update;
++  binary.prompt_timeout = opts->prompt_timeout;
+   return binary;
+ }
+ 
+@@ -521,6 +523,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
+   opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
+   opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
+   opts->no_check_update = binary->no_check_update;
++  opts->prompt_timeout = binary->prompt_timeout;
+ }
+ 
+ options_t options_t_new(void) {
+@@ -880,6 +883,31 @@ asciichat_error_t options_init(int argc, char **argv) {
+     return rcu_init_result;
+   }
+ 
++  // Action prompts run before normal parsing, so publish their deadline first.
++  const char *prompt_timeout_text = SAFE_GETENV("ASCII_CHAT_PROMPT_TIMEOUT");
++  for (int i = 1; i < argc; ++i) {
++    if (!strcmp(argv[i], "--"))
++      break;
++    if (!strncmp(argv[i], "--prompt-timeout=", 17))
++      prompt_timeout_text = argv[i] + 17;
++    else if (!strcmp(argv[i], "--prompt-timeout")) {
++      if (++i >= argc)
++        return SET_ERRNO(ERROR_USAGE, "--prompt-timeout requires seconds");
++      prompt_timeout_text = argv[i];
++    }
++  }
++  if (prompt_timeout_text) {
++    char *end = NULL;
++    long seconds = strtol(prompt_timeout_text, &end, 10);
++    if (end == prompt_timeout_text || *end || seconds < 0 || seconds > 86400)
++      return SET_ERRNO(ERROR_USAGE, "--prompt-timeout must be 0..86400 seconds (0 selects defaults)");
++    options_t early = *options_get();
++    early.prompt_timeout = (int)seconds;
++    asciichat_error_t result = options_state_set(&early);
++    if (result != ASCIICHAT_OK)
++      return result;
++  }
++
+   // ========================================================================
+   // STAGE 1: Mode Detection and Binary-Level Option Handling
+   // ========================================================================
+diff --git a/lib/options/parsing/actions.c b/lib/options/parsing/actions.c
+index 7952cc4c4..758b0e7b5 100644
+--- a/lib/options/parsing/actions.c
++++ b/lib/options/parsing/actions.c
+@@ -596,7 +596,8 @@ void action_completions(const char *shell_name, const char *output_path) {
+       bool overwrite = platform_prompt_yes_no(question, false); // Default to No
+       if (!overwrite) {
+         log_plain("Completions generation cancelled.");
+-        action_exit(0);
++        asciichat_error_context_t context;
++        action_exit(HAS_ERRNO(&context) && context.code == ERROR_PROMPT_TIMEOUT ? ERROR_PROMPT_TIMEOUT : 0);
+       }
+ 
+       log_plain("Overwriting existing completions file...");
+diff --git a/lib/options/registry/general.c b/lib/options/registry/general.c
+index c8e6fb7c5..ec6a58a96 100644
+--- a/lib/options/registry/general.c
++++ b/lib/options/registry/general.c
+@@ -15,7 +15,28 @@
+ // ============================================================================
+ // GENERAL CATEGORY - General-purpose options
+ // ============================================================================
++static const int default_prompt_timeout = 0;
++
+ const registry_entry_t g_general_entries[] = {
++    {"prompt-timeout",
++     '\0',
++     OPTION_TYPE_INT,
++     offsetof(options_t, prompt_timeout),
++     &default_prompt_timeout,
++     sizeof(int),
++     "Prompt deadline in seconds (0: defaults of 10/30/60/120 seconds by prompt type).",
++     "GENERAL",
++     NULL,
++     false,
++     "ASCII_CHAT_PROMPT_TIMEOUT",
++     NULL,
++     NULL,
++     false,
++     false,
++     OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC |
++         OPTION_MODE_DISCOVERY,
++     {.numeric_range = {0, 86400, 1}, .input_type = OPTION_INPUT_NUMERIC},
++     NULL},
+     // GENERAL GROUP (binary-level + all modes)
+     {"help",
+      'h',
+diff --git a/lib/platform/posix/question.c b/lib/platform/posix/question.c
+index c48287465..7600f86d1 100644
+--- a/lib/platform/posix/question.c
++++ b/lib/platform/posix/question.c
+@@ -26,8 +26,8 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+     return -1;
+   }
+ 
+-  // Check for testing environment variable override for password prompts
+-  if (opts.mask_char != 0) {
++  // Consume explicit answers before checking terminal availability.
++  {
+     char test_password[256];
+     if (env_pop_prompt_response(test_password, sizeof(test_password))) {
+       size_t len = strlen(test_password);
+@@ -42,6 +42,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+ 
+   // Check for non-interactive mode
+   if (!platform_is_interactive()) {
++    log_error("Cannot answer prompt without an interactive terminal: %s", prompt);
+     return -1;
+   }
+ 
+@@ -49,6 +50,10 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+ }
+ 
+ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
++  return platform_prompt_yes_no_timeout(prompt, default_yes, 30);
++}
++
++bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsigned timeout_seconds) {
+   if (!prompt) {
+     return false;
+   }
+@@ -68,10 +73,13 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
+   if (platform_is_interactive()) {
+     char question[4096];
+     snprintf(question, sizeof(question), "%s %s", prompt, default_yes ? "(Y/n)?" : "(y/N)?");
+-    if (ui_input_prompt(question, response, sizeof(response), PROMPT_OPTS_INLINE) != ASCIICHAT_OK)
++    prompt_opts_t opts = PROMPT_OPTS_INLINE;
++    opts.timeout_seconds = timeout_seconds;
++    if (ui_input_prompt(question, response, sizeof(response), opts) != ASCIICHAT_OK)
+       return false;
+   } else {
+-    return default_yes;
++    log_error("Cannot answer prompt without an interactive terminal: %s", prompt);
++    return false;
+   }
+   if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0)
+     return true;
+diff --git a/lib/platform/wasm/stubs/util.c b/lib/platform/wasm/stubs/util.c
+index e5bd697fe..58e55b4b7 100644
+--- a/lib/platform/wasm/stubs/util.c
++++ b/lib/platform/wasm/stubs/util.c
+@@ -85,6 +85,11 @@ bool platform_prompt_yes_no(const char *question, bool default_yes) {
+   return default_yes; // Always return default in WASM
+ }
+ 
++bool platform_prompt_yes_no_timeout(const char *question, bool default_yes, unsigned timeout_seconds) {
++  (void)timeout_seconds;
++  return platform_prompt_yes_no(question, default_yes);
++}
++
+ // Error handling stub
+ int platform_get_last_error(void) {
+   return 0; // No system error in WASM
+diff --git a/lib/platform/windows/question.c b/lib/platform/windows/question.c
+index c0c603746..93e196b38 100644
+--- a/lib/platform/windows/question.c
++++ b/lib/platform/windows/question.c
+@@ -17,7 +17,7 @@
+ #include <string.h>
+ 
+ bool platform_is_interactive(void) {
+-  return _isatty(_fileno(stdin)) != 0;
++  return terminal_can_prompt_user();
+ }
+ 
+ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
+@@ -25,8 +25,8 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+     return -1;
+   }
+ 
+-  // Check for testing environment variable override for password prompts
+-  if (opts.mask_char != 0) {
++  // Consume explicit answers before checking terminal availability.
++  {
+     char test_password[256];
+     if (env_pop_prompt_response(test_password, sizeof(test_password))) {
+       size_t len = strlen(test_password);
+@@ -41,6 +41,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+ 
+   // Check for non-interactive mode
+   if (!platform_is_interactive()) {
++    log_error("Cannot answer prompt without an interactive terminal: %s", prompt);
+     return -1;
+   }
+ 
+@@ -48,6 +49,10 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
+ }
+ 
+ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
++  return platform_prompt_yes_no_timeout(prompt, default_yes, 30);
++}
++
++bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsigned timeout_seconds) {
+   if (!prompt) {
+     return false;
+   }
+@@ -67,12 +72,13 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
+   if (platform_is_interactive()) {
+     char question[4096];
+     snprintf(question, sizeof(question), "%s %s", prompt, default_yes ? "(Y/n)?" : "(y/N)?");
+-    if (ui_input_prompt(question, response, sizeof(response), PROMPT_OPTS_INLINE) != ASCIICHAT_OK)
++    prompt_opts_t opts = PROMPT_OPTS_INLINE;
++    opts.timeout_seconds = timeout_seconds;
++    if (ui_input_prompt(question, response, sizeof(response), opts) != ASCIICHAT_OK)
+       return false;
+   } else {
+-    if (!fgets(response, sizeof(response), stdin))
+-      return default_yes;
+-    response[strcspn(response, "\r\n")] = '\0';
++    log_error("Cannot answer prompt without an interactive terminal: %s", prompt);
++    return false;
+   }
+   if (_stricmp(response, "yes") == 0 || _stricmp(response, "y") == 0)
+     return true;
+diff --git a/lib/ui/input.c b/lib/ui/input.c
+index 1f48ca667..0a95155e5 100644
+--- a/lib/ui/input.c
++++ b/lib/ui/input.c
+@@ -12,6 +12,33 @@
+ #include <ascii-chat/debug/named.h>
+ #include <ascii-chat/atomic.h>
+ 
++#include <ascii-chat/options/options.h>
++
++unsigned ui_input_timeout_seconds(unsigned default_seconds) {
++  int configured = GET_OPTION(prompt_timeout);
++  return configured > 0 ? (unsigned)configured : default_seconds;
++}
++
++uint64_t ui_input_deadline(unsigned default_seconds) {
++  return time_get_ns() + (uint64_t)ui_input_timeout_seconds(default_seconds) * NS_PER_SEC_INT;
++}
++
++bool ui_input_expired(uint64_t deadline) {
++  return time_get_ns() >= deadline;
++}
++
++void ui_input_timeout_report(unsigned seconds, const char *consequence) {
++  char message[512];
++  int length = snprintf(message, sizeof(message),
++                        "\nPrompt timed out after %u seconds; %s. "
++                        "Use --prompt-timeout SECONDS to allow more time.\n",
++                        seconds, consequence);
++  // This diagnostic must remain visible even while a background screen owns the terminal.
++  if (length > 0)
++    platform_write_all(STDERR_FILENO, message, (size_t)length < sizeof(message) ? (size_t)length : sizeof(message) - 1);
++  SET_ERRNO(ERROR_PROMPT_TIMEOUT, "Prompt timed out after %u seconds: %s", seconds, consequence);
++}
++
+ static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
+ static mutex_t g_mutex;
+ static mutex_t g_prompt_mutex;
+@@ -93,8 +120,16 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
+   mutex_lock(&g_prompt_mutex);
+   size_t len = 0, cursor = 0;
+   buffer[0] = '\0';
++  unsigned seconds = ui_input_timeout_seconds(opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60));
++  uint64_t deadline = ui_input_deadline(seconds);
++  char timed_prompt[8192];
++  snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
+   asciichat_error_t result = ASCIICHAT_OK;
+   while (!shutdown_is_requested()) {
++    if (ui_input_expired(deadline)) {
++      result = ERROR_PROMPT_TIMEOUT;
++      break;
++    }
+     size_t display_cursor = cursor;
+     if (opts.echo) {
+       memcpy(visible, buffer, len + 1);
+@@ -109,10 +144,14 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
+       if (!opts.mask_char)
+         display_cursor = 0;
+     }
+-    result = ui_prompt_present(prompt, visible, display_cursor);
++    result = ui_prompt_present(timed_prompt, visible, display_cursor);
+     if (result != ASCIICHAT_OK)
+       break;
+     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
++    if (ui_input_expired(deadline)) {
++      result = ERROR_PROMPT_TIMEOUT;
++      break;
++    }
+     if (key == KEY_NONE)
+       continue;
+     if (key == '\r' || key == '\n')
+@@ -158,6 +197,8 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
+   ui_prompt_remove();
+   mutex_unlock(&g_prompt_mutex);
+   SAFE_FREE(visible);
++  if (result == ERROR_PROMPT_TIMEOUT)
++    ui_input_timeout_report(seconds, opts.echo ? "answer declined" : "password entry cancelled");
+   if (result != ASCIICHAT_OK)
+     memset(buffer, 0, max_len);
+   return result;
+diff --git a/lib/ui/mdns.c b/lib/ui/mdns.c
+index 30ea80524..d2c83c935 100644
+--- a/lib/ui/mdns.c
++++ b/lib/ui/mdns.c
+@@ -86,47 +86,14 @@ void ui_mdns_free_results(ui_mdns_server_t *servers) {
+  * @brief Interactive server selection
+  */
+ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
+-  if (terminal_is_interactive())
++  if (terminal_can_prompt_user())
+     return ui_mdns_select(servers, count);
+   if (!servers || count <= 0) {
+     return -1;
+   }
+ 
+-  // Display available servers
+-  ui_controller_printf(STDOUT_FILENO, "\nAvailable ascii-chat servers on LAN:\n");
+-  for (int i = 0; i < count; i++) {
+-    const ui_mdns_server_t *srv = &servers[i];
+-    const char *addr = ui_mdns_get_best_address(srv);
+-    ui_controller_printf(STDOUT_FILENO, "  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
+-  }
+-
+-  // Prompt for selection
+-  ui_controller_printf(STDOUT_FILENO, "\nSelect server (1-%d) or press Enter to cancel: ", count);
+-  fflush(stdout);
+-
+-  // Read user input
+-  char input[32];
+-  if (fgets(input, sizeof(input), stdin) == NULL) {
+-    ui_controller_printf(STDOUT_FILENO, "\n");
+-    return -1; // EOF or error
+-  }
+-
+-  // Check for empty input (Enter pressed)
+-  if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
+-    return -1; // User cancelled
+-  }
+-
+-  // Parse input as number
+-  char *endptr;
+-  long selection = strtol(input, &endptr, 10);
+-
+-  // Validate input
+-  if (selection < 1 || selection > count) {
+-    ui_controller_printf(STDOUT_FILENO, "⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
+-    return ui_mdns_prompt_selection(servers, count); // Re-prompt
+-  }
+-
+-  return (int)(selection - 1); // Convert to 0-based index
++  log_error("Cannot select a discovered server without an interactive terminal; specify a server address.");
++  return -1;
+ }
+ 
+ /**
+@@ -161,7 +128,8 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
+     truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 1);
+     frame_buffer_printf(buffer, "%s\n", clipped);
+   }
+-  frame_buffer_printf(buffer, "\nSelect server: %s\033[K", snapshot->input);
++  frame_buffer_printf(buffer, "\nTimeout: %us (cancel)\nSelect server: %s\033[K",
++                      ui_input_timeout_seconds(30), snapshot->input);
+   frame_buffer_flush(buffer);
+   frame_buffer_destroy(buffer);
+ }
+@@ -169,7 +137,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
+ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
+   if (!servers || count <= 0)
+     return -1;
+-  if (!terminal_is_interactive())
++  if (!terminal_can_prompt_user())
+     return ui_mdns_prompt_selection(servers, count);
+   size_t bytes = sizeof(mdns_snapshot_t) + (size_t)count * sizeof(*servers);
+   mdns_snapshot_t *snapshot = SAFE_CALLOC(1, bytes, mdns_snapshot_t *);
+@@ -181,11 +149,17 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
+   log_set_terminal_output(false);
+   int selection = -1;
+   size_t length = 0;
++  uint64_t deadline = ui_input_deadline(30);
++  bool timed_out = false;
+   while (!shutdown_is_requested()) {
+-    if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 5},
++    if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 6},
+                              render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
+       break;
+     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_MDNS, 100);
++    if (ui_input_expired(deadline)) {
++      timed_out = true;
++      break;
++    }
+     if (key == KEY_ESCAPE)
+       break;
+     if (key == '\r' || key == '\n') {
+@@ -208,6 +182,9 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
+   ui_controller_remove(UI_SCREEN_MDNS);
+   log_set_terminal_output(logging);
+   SAFE_FREE(snapshot);
++  if (timed_out)
++    ui_input_timeout_report(ui_input_timeout_seconds(30),
++                            "server selection cancelled; specify a server address for unattended use");
+   return selection;
+ }
+ 
+diff --git a/lib/ui/update_banner.c b/lib/ui/update_banner.c
+index 59f823011..cd0f91562 100644
+--- a/lib/ui/update_banner.c
++++ b/lib/ui/update_banner.c
+@@ -278,7 +278,8 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
+   // Prompt (grey)
+   {
+     char line[256];
+-    snprintf(line, sizeof(line), "\033[90m[Y/Enter] exit to update  [N/Esc] continue\033[0m");
++    snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m",
++             ui_input_timeout_seconds(10));
+     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
+   }
+ 
+@@ -294,7 +295,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
+ }
+ 
+ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
+-  if (!ctx)
++  if (!ctx || !terminal_can_prompt_user())
+     return false;
+   update_check_result_t result;
+   mutex_lock(&g_update_result_mutex);
+@@ -304,8 +305,14 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
+                            render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
+     return false;
+   bool update = false;
++  uint64_t deadline = ui_input_deadline(10);
++  bool timed_out = false;
+   while (!shutdown_is_requested()) {
+     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
++    if (ui_input_expired(deadline)) {
++      timed_out = true;
++      break;
++    }
+     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
+       update = true;
+       break;
+@@ -314,6 +321,8 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
+       break;
+   }
+   ui_controller_remove(UI_SCREEN_UPDATE);
++  if (timed_out)
++    ui_input_timeout_report(ui_input_timeout_seconds(10), "update notice dismissed; continuing normally");
+   return update;
+ }
+ 
+diff --git a/lib/util/password.c b/lib/util/password.c
+index b561e14c8..04a681b4a 100644
+--- a/lib/util/password.c
++++ b/lib/util/password.c
+@@ -17,11 +17,6 @@ int prompt_password(const char *prompt, char *password, size_t max_len) {
+     return -1;
+   }
+ 
+-  // Check for non-interactive mode first
+-  if (!platform_is_interactive()) {
+-    return -1;
+-  }
+-
+   // The prompt renderer owns its header and masked input as one snapshot.
+   int result = platform_prompt_question(prompt, password, max_len, PROMPT_OPTS_PASSWORD);
+ 
+@@ -38,11 +33,6 @@ int prompt_password_simple(const char *prompt, char *password, size_t max_len) {
+     return -1;
+   }
+ 
+-  // Check for non-interactive mode first
+-  if (!platform_is_interactive()) {
+-    return -1;
+-  }
+-
+   // Build prompt with colon suffix, using byte-length for memcpy
+   char full_prompt[BUFFER_SIZE_SMALL];
+   size_t prompt_byte_len = strlen(prompt);
+diff --git a/src/server/client.c b/src/server/client.c
+index 7411041ea..5bdcfe3ad 100644
+--- a/src/server/client.c
++++ b/src/server/client.c
+@@ -918,7 +918,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
+     log_info("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
+     // Set timeout for crypto handshake to prevent indefinite blocking
+     // This prevents clients from connecting but never completing the handshake
+-    const uint64_t HANDSHAKE_TIMEOUT_NS = 30ULL * NS_PER_SEC_INT;
++    // Allow two peer prompts plus transport overhead; configure both peers for longer overrides.
++    const unsigned prompt_seconds = GET_OPTION(prompt_timeout) > 0 ? (unsigned)GET_OPTION(prompt_timeout) : 120;
++    const uint64_t HANDSHAKE_TIMEOUT_NS = ((uint64_t)prompt_seconds * 2 + 30) * NS_PER_SEC_INT;
+     asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
+     if (timeout_result != ASCIICHAT_OK) {
+       log_warn("Failed to set handshake timeout for client %s: %s", new_client_id,
+diff --git a/tests/integration/terminal_prompt.py b/tests/integration/terminal_prompt.py
+index 7720915fb..ea49ad0e0 100644
+--- a/tests/integration/terminal_prompt.py
++++ b/tests/integration/terminal_prompt.py
+@@ -21,16 +21,16 @@ def probe(library, log):
+         _fields_ = [("rows", ctypes.c_int), ("cols", ctypes.c_int)]
+ 
+     class PromptOptions(ctypes.Structure):
+-        _fields_ = [("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char)]
++        _fields_ = [("timeout_seconds", ctypes.c_uint), ("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char)]
+ 
+     native.ui_controller_present.argtypes = [ctypes.c_int, ctypes.c_int, Size, ctypes.c_char_p, ctypes.c_size_t]
+     background = b"BACKGROUND MEDIA"
+     assert native.ui_controller_present(1, 1, Size(10, 20), background, len(background)) == 0
+     native.platform_prompt_question.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t, PromptOptions]
+     response = ctypes.create_string_buffer(128)
+-    assert native.platform_prompt_question(b"Account name", response, len(response), PromptOptions(True, True, b"\0")) == 0
++    assert native.platform_prompt_question(b"Account name", response, len(response), PromptOptions(0, True, True, b"\0")) == 0
+     assert response.value == b"alice", response.value
+-    assert native.platform_prompt_question(b"Test passphrase", response, len(response), PromptOptions(False, True, b"*")) == 0
++    assert native.platform_prompt_question(b"Test passphrase", response, len(response), PromptOptions(0, False, True, b"*")) == 0
+     assert response.value == b"s3cret", "Password edit result differs"
+     native.platform_prompt_yes_no.argtypes = [ctypes.c_char_p, ctypes.c_bool]
+     native.platform_prompt_yes_no.restype = ctypes.c_bool
