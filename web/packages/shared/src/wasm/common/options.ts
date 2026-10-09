@@ -65,7 +65,6 @@ let options: OptionAccessor | null = null;
 // Known bugs (WASM only, don't appear in terminal):
 // 1. --palette passed to mirror_init_with_args returns different values each time
 // 2. --flip-x didn't work correctly (needs investigation, may require querying C struct first)
-// 3. --matrix doesn't render green on first frame after resize (renders truecolor instead)
 // These issues don't occur in the terminal version, suggesting WASM-specific state handling.
 
 // Cache for values since WASM getters may not track set values reliably

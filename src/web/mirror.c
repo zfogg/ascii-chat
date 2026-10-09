@@ -250,11 +250,12 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     // Update color from active filter (allows filter changes after initialization)
     digital_rain_set_color_from_filter(g_digital_rain, filter);
 
-    // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
+    // Render immediately when the cache is empty after enabling or resizing.
+    // Only subsequent frames wait for the animation update interval.
     double current_time = emscripten_get_now();
     double elapsed_ms = current_time - g_last_rain_update_time;
 
-    if (elapsed_ms >= RAIN_UPDATE_INTERVAL_MS) {
+    if (!g_last_rain_output || elapsed_ms >= RAIN_UPDATE_INTERVAL_MS) {
       // Calculate actual delta time in seconds
       float delta_time = (float)(elapsed_ms / 1000.0);
       g_last_rain_update_time = current_time;

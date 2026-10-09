@@ -383,11 +383,6 @@ export function useInitAsciiRenderer({
       }
 
       try {
-        // TODO: Fix truecolor flash on resize with matrix mode enabled.
-        // Even after reinitializing WASM with --matrix flag, the first frame
-        // after resize renders in truecolor instead of matrix green. The renderer
-        // appears to lose its settings state during the resize/recreation cycle.
-
         // Skip reinitialization during rapid resizes to avoid "Too many string options" errors.
         // Only reinitialize once per resize debounce cycle to preserve WASM options state.
         // The new renderer will use whatever settings were last applied.
