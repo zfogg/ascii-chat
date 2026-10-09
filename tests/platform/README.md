@@ -3,10 +3,24 @@
 Native mode dispatch sets `ascii-chat: <canonical-mode> mode - <arguments>`. The
 executable and explicit mode token are omitted from the argument list; implicit
 discovery keeps its session string. With no arguments, the separator is omitted.
-Linux and macOS
-update the command line visible in `ps -ww -p PID -o args=`; Windows updates the
-console title. This does not rename the executable, Linux `comm`, or the macOS
-Activity Monitor process name. Browser/WASM builds do nothing.
+The same platform API updates all supported naming surfaces:
+
+- Linux: full command line in `ps -ww -p PID -o args=`, plus `/proc/PID/comm`
+  and `ps -o comm=`. The 15-byte comm limit uses distinct names: `ascii:server`,
+  `ascii:client`, `ascii:mirror`, `ascii:discovery`, and `ascii:acds`.
+- macOS: full command line, main-thread name, and the full sanitized Launch
+  Services display name used by Activity Monitor. Dynamic private API lookup
+  lets naming fail gracefully when Launch Services is unavailable. Registration
+  uses `LSUIElement` so a terminal process does not acquire a Dock icon.
+- Windows: console title via the terminal wrapper.
+- Browser/WASM: no-op.
+
+This does not rename the executable file or Windows Task Manager image name.
+Raw `platform_process_title_set()` calls update all naming surfaces too, using
+the supplied title as the short name (subject to OS length limits). The
+mode-aware call chooses the compact names above. Both setters are main-thread
+only. If the extra native naming operation fails, the updated Unix command line
+remains in place and the API returns an error for the caller to handle.
 
 Unix initialization preserves argument and environment strings before option
 parsing. Shutdown restores their original storage. The argument formatter
@@ -34,6 +48,9 @@ CC=musl-clang CFLAGS=-static python3 tests/platform/process_title_smoke.py
 
 These compile the production backend using lightweight allocation/error shims,
 then inspect each child's actual `ps` command line for all five title strings.
+Linux also checks `/proc/PID/comm` and `ps -o comm=`. On macOS an independent
+AppKit probe reads `NSRunningApplication.localizedName` and checks that the
+activation policy is not a regular Dock application.
 They also check secret redaction, quoting, preserved argv/environment values,
 setenv/unsetenv after initialization, invalid/oversized titles, repeated updates,
 and cleanup. They

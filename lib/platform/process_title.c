@@ -10,6 +10,7 @@
 #include <string.h>
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#include "process_title_internal.h"
 #include <stdint.h>
 #ifdef __APPLE__
 #include <crt_externs.h>
@@ -76,7 +77,7 @@ asciichat_error_t platform_process_title_init(int argc, char ***argv) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t platform_process_title_set(const char *title) {
+static asciichat_error_t process_title_apply(const char *title, const char *short_name) {
   if (!title) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Process title must not be NULL");
   }
@@ -92,7 +93,7 @@ asciichat_error_t platform_process_title_set(const char *title) {
   for (int i = 1; i < original_argc; ++i) {
     original_argv[i] = title_area + title_capacity - 1;
   }
-  return ASCIICHAT_OK;
+  return platform_process_title_native_set(title, short_name);
 }
 
 void platform_process_title_destroy(void) {
@@ -132,7 +133,8 @@ asciichat_error_t platform_process_title_init(int argc, char ***argv) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t platform_process_title_set(const char *title) {
+static asciichat_error_t process_title_apply(const char *title, const char *short_name) {
+  (void)short_name;
   if (!title) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Process title must not be NULL");
   }
@@ -145,6 +147,10 @@ asciichat_error_t platform_process_title_set(const char *title) {
 
 void platform_process_title_destroy(void) {}
 #endif
+
+asciichat_error_t platform_process_title_set(const char *title) {
+  return process_title_apply(title, title);
+}
 
 // Bound the Windows title and avoid allocating in proportion to untrusted argv.
 #define PROCESS_TITLE_MAX 32768
@@ -260,7 +266,12 @@ asciichat_error_t platform_process_title_set_args(const char *mode, int argc, ch
       title_append_argument(&writer, argv[i]);
     }
   }
-  asciichat_error_t result = platform_process_title_set(title);
+  // Linux comm has only 15 visible bytes. Keep every native mode distinct.
+  char short_name[64];
+  title_writer_t short_writer = {.data = short_name, .length = 0, .capacity = sizeof(short_name)};
+  title_append(&short_writer, "ascii:");
+  title_append(&short_writer, strcmp(mode, "discovery-service") == 0 ? "acds" : mode);
+  asciichat_error_t result = process_title_apply(title, short_name);
   SAFE_FREE(title);
   return result;
 }

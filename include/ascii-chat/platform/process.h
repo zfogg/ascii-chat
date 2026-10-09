@@ -67,10 +67,16 @@ pid_t platform_get_pid(void);
 ASCIICHAT_API asciichat_error_t platform_process_title_init(int argc, char ***argv);
 
 /**
- * @brief Set the Unix ps command line or Windows console title.
+ * @brief Update the OS process naming surfaces through one platform API.
  * @note Main-thread only. Never writes to stdout. WASM is a no-op.
  * Unix titles exceeding the reserved storage fail without changing the title.
- * Does not rename the executable or guarantee Activity Monitor/comm names.
+ * Linux updates argv and the main thread's comm (15 visible bytes). macOS
+ * updates argv, the main-thread name, and the Launch Services display name
+ * used by Activity Monitor. Windows updates the console title.
+ * Does not rename the executable file or Windows Task Manager image name.
+ * A native-name failure returns an error after the Unix argv title is updated;
+ * the command-line update is retained, including when macOS Launch Services
+ * is unavailable. The caller may treat this as a nonfatal cosmetic failure.
  */
 ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
 
@@ -85,6 +91,8 @@ ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
  * Only supplied CLI arguments are shown, never environment/config values.
  * Sanitized output is truncated to available storage; raw arguments are never
  * used as a fallback. No separator is added if there are no remaining arguments.
+ * Also sets a compact main-thread/comm name: ascii:server, ascii:client,
+ * ascii:mirror, ascii:discovery, or ascii:acds for discovery-service.
  */
 ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *mode, int argc, char **argv,
                                                               int mode_arg_index);
