@@ -256,6 +256,9 @@ export function MirrorPage() {
               error={error}
               showFps={isWebcamRunning}
               wasmModuleReady={!!wasmModule}
+              // initMirrorWasm already initialized the C options; initializing
+              // them again here can abort the WASM allocator during page load.
+              initializeOptions={false}
               matrixMode={settings.matrixRain ?? false}
             />
           );
