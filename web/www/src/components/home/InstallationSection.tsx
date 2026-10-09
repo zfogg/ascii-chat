@@ -92,6 +92,49 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                   system-wide install in Program Files.
                 </p>
               </div>
+              <div className="text-sm text-gray-400">
+                <Heading level={4} className="font-semibold text-cyan-300 mb-2">
+                  Environment variables
+                </Heading>
+                <p className="mb-2">
+                  Both scripts support environment variables to choose a release
+                  and customize where ascii-chat is installed. Set them before
+                  running the install command.
+                </p>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>
+                    <code className="text-gray-200">ASCII_CHAT_VERSION</code>{" "}
+                    (both scripts): install a specific release tag, such as
+                    <code className="text-gray-200"> v0.12.17</code>, instead of
+                    the latest release.
+                  </li>
+                  <li>
+                    <code className="text-gray-200">
+                      ASCII_CHAT_INSTALL_PREFIX
+                    </code>{" "}
+                    (Bash): use an absolute installation prefix instead of
+                    ~/.local or /usr/local. The executable is linked into its
+                    <code className="text-gray-200"> bin</code> directory.
+                  </li>
+                  <li>
+                    <code className="text-gray-200">
+                      ASCII_CHAT_INSTALL_DIR
+                    </code>{" "}
+                    (PowerShell): use an absolute installation directory instead
+                    of the default user or system location. Its
+                    <code className="text-gray-200"> bin</code> directory is
+                    added to PATH.
+                  </li>
+                </ul>
+                <p className="mt-3">
+                  For example, run{" "}
+                  <code>export ASCII_CHAT_VERSION=v0.12.17</code> in Bash, or{" "}
+                  <code>$env:ASCII_CHAT_VERSION = 'v0.12.17'</code> in
+                  PowerShell, then run the installer above. With sudo, pass
+                  overrides to the receiving command, for example
+                  <code> sudo env ASCII_CHAT_VERSION=v0.12.17 bash</code>.
+                </p>
+              </div>
               <p className="text-sm text-gray-400">
                 Then run <code className="text-gray-200">ascii-chat</code>.
                 Rerun to update; old installer-managed files and temporary
