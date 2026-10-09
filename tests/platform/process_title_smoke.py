@@ -39,6 +39,7 @@ static inline void *test_alloc(size_t count, size_t size) {
 #define SAFE_FREE(p) do { if (p) { free(p); --allocations; (p) = NULL; } } while (0)
 asciichat_error_t platform_process_title_init(int argc, char ***argv);
 asciichat_error_t platform_process_title_set(const char *title);
+asciichat_error_t platform_process_title_set_args(const char *mode, int argc, char **argv, int mode_arg_index);
 void platform_process_title_destroy(void);
 """
 
@@ -47,7 +48,7 @@ HARNESS = r"""
 char **g_argv;
 int allocations;
 int main(int argc, char **argv) {
-  assert(argc == 3);
+  assert(argc >= 3);
   char **original = argv;
   char mode[64], title[128];
   snprintf(mode, sizeof(mode), "%s", argv[1]);
@@ -72,6 +73,14 @@ int main(int argc, char **argv) {
   assert(setenv("TITLE_TEST_CHANGED", "changed", 1) == 0);
   assert(setenv("TITLE_TEST_NEW", "new", 1) == 0);
   assert(unsetenv("TITLE_TEST_REMOVED") == 0);
+  char *large_argument = calloc(65536, 1);
+  assert(large_argument);
+  memset(large_argument, 'x', 65535);
+  char *large_argv[] = {argv[0], "--password", "do-not-display", large_argument};
+  assert(platform_process_title_set_args(mode, 4, large_argv, -1) == ASCIICHAT_OK);
+  free(large_argument);
+  assert(platform_process_title_set_args(mode, argc, argv, 1) == ASCIICHAT_OK);
+  assert(strcmp(argv[6], "split-secret") == 0);
   puts("ready");
   fflush(stdout);
   assert(getchar() == '\n');
@@ -110,11 +119,13 @@ def main():
         wasm = "--wasm" in sys.argv
         noop_harness = r'''
 #include <ascii-chat/platform/process.h>
+int allocations;
 int main(int argc, char **argv) {
   char **original = argv;
   assert(platform_process_title_init(argc, &argv) == ASCIICHAT_OK);
   assert(argv == original);
   assert(platform_process_title_set("ascii-chat: mirror mode") == ASCIICHAT_OK);
+  assert(platform_process_title_set_args("mirror", argc, argv, -1) == ASCIICHAT_OK);
   assert(platform_process_title_set(NULL) == ERROR_INVALID_PARAM);
   platform_process_title_destroy();
   puts("PASS: WASM no-op backend");
@@ -136,8 +147,17 @@ int main(int argc, char **argv) {
             return
         environment = dict(os.environ, TITLE_TEST_ORIGINAL="environment-preserved",
                            TITLE_TEST_CHANGED="original", TITLE_TEST_REMOVED="remove")
+        arguments = ["argument-preserved", "--port", "27224", "--password", "split-secret",
+                     "--password=inline-secret", "--websocket-tls-key-password", "tls-secret",
+                     "--turn-credential=turn-secret", "--turn-secret", "shared-secret",
+                     "--key", "/keys/id_ed25519", "--key", "-----BEGIN OPENSSH PRIVATE KEY-----",
+                     "two words", "", "line\nbreak"]
+        expected_args = ('argument-preserved --port 27224 --password [redacted] '
+                         '--password=[redacted] --websocket-tls-key-password [redacted] '
+                         '--turn-credential=[redacted] --turn-secret [redacted] '
+                         '--key /keys/id_ed25519 --key [redacted] "two words" "" "line\\x0abreak"')
         for mode in ("server", "client", "mirror", "discovery-service", "discovery"):
-            with subprocess.Popen([str(executable), mode, "argument-preserved"],
+            with subprocess.Popen([str(executable), mode] + arguments,
                                   env=environment, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   text=True) as child:
@@ -147,7 +167,7 @@ int main(int argc, char **argv) {
                     observed = subprocess.check_output(
                         ["ps", "-ww", "-p", str(child.pid), "-o", "args="], text=True
                     ).strip()
-                    assert observed == f"ascii-chat: {mode} mode", repr(observed)
+                    assert observed == f"ascii-chat: {mode} mode - {expected_args}", repr(observed)
                     stdout, stderr = child.communicate("\n", timeout=10)
                     assert child.returncode == 0, (child.returncode, stderr)
                     assert stdout == "passed\n", repr(stdout)

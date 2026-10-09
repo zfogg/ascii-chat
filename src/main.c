@@ -1023,12 +1023,10 @@ int main(int argc, char *argv[]) {
 
   // Call the mode-specific entry point
   // Mode entry points use options_get() to access parsed options
-  char process_title[64];
-  safe_snprintf(process_title, sizeof(process_title), "ascii-chat: %s mode", mode->name);
   if (title_init_result == ASCIICHAT_OK) {
-    asciichat_error_t title_result = platform_process_title_set(process_title);
+    asciichat_error_t title_result = platform_process_title_set_args(mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
-      log_debug("Could not set process title: %s", process_title);
+      log_debug("Could not set process title for %s mode", mode->name);
       CLEAR_ERRNO();
     }
   } else {

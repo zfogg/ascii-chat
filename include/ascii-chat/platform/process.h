@@ -75,6 +75,21 @@ ASCIICHAT_API asciichat_error_t platform_process_title_init(int argc, char ***ar
 ASCIICHAT_API asciichat_error_t platform_process_title_set(const char *title);
 
 /**
+ * @brief Set "ascii-chat: <mode> mode - <arguments>" with secret values redacted.
+ * @param mode Canonical mode name.
+ * @param argc Original argument count.
+ * @param argv Preserved application arguments (not modified).
+ * @param mode_arg_index Explicit mode token to omit, or -1 for implicit mode.
+ * @note Password, TLS password, TURN credential/secret values and inline private
+ * key blocks are redacted. Arguments are quoted/escaped for display, not execution.
+ * Only supplied CLI arguments are shown, never environment/config values.
+ * Sanitized output is truncated to available storage; raw arguments are never
+ * used as a fallback. No separator is added if there are no remaining arguments.
+ */
+ASCIICHAT_API asciichat_error_t platform_process_title_set_args(const char *mode, int argc, char **argv,
+                                                              int mode_arg_index);
+
+/**
  * @brief Restore Unix argument storage and release title allocations.
  * @note Call after workers stop, before the final memory report. Idempotent.
  * The copied argv becomes invalid; g_argv is restored automatically.
