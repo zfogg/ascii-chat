@@ -21,16 +21,16 @@ def probe(library, log):
         _fields_ = [("rows", ctypes.c_int), ("cols", ctypes.c_int)]
 
     class PromptOptions(ctypes.Structure):
-        _fields_ = [("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char)]
+        _fields_ = [("timeout_seconds", ctypes.c_uint), ("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char)]
 
     native.ui_controller_present.argtypes = [ctypes.c_int, ctypes.c_int, Size, ctypes.c_char_p, ctypes.c_size_t]
     background = b"BACKGROUND MEDIA"
     assert native.ui_controller_present(1, 1, Size(10, 20), background, len(background)) == 0
     native.platform_prompt_question.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t, PromptOptions]
     response = ctypes.create_string_buffer(128)
-    assert native.platform_prompt_question(b"Account name", response, len(response), PromptOptions(True, True, b"\0")) == 0
+    assert native.platform_prompt_question(b"Account name", response, len(response), PromptOptions(0, True, True, b"\0")) == 0
     assert response.value == b"alice", response.value
-    assert native.platform_prompt_question(b"Test passphrase", response, len(response), PromptOptions(False, True, b"*")) == 0
+    assert native.platform_prompt_question(b"Test passphrase", response, len(response), PromptOptions(0, False, True, b"*")) == 0
     assert response.value == b"s3cret", "Password edit result differs"
     native.platform_prompt_yes_no.argtypes = [ctypes.c_char_p, ctypes.c_bool]
     native.platform_prompt_yes_no.restype = ctypes.c_bool

@@ -596,7 +596,8 @@ void action_completions(const char *shell_name, const char *output_path) {
       bool overwrite = platform_prompt_yes_no(question, false); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
-        action_exit(0);
+        asciichat_error_context_t context;
+        action_exit(HAS_ERRNO(&context) && context.code == ERROR_PROMPT_TIMEOUT ? ERROR_PROMPT_TIMEOUT : 0);
       }
 
       log_plain("Overwriting existing completions file...");

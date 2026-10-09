@@ -85,6 +85,11 @@ bool platform_prompt_yes_no(const char *question, bool default_yes) {
   return default_yes; // Always return default in WASM
 }
 
+bool platform_prompt_yes_no_timeout(const char *question, bool default_yes, unsigned timeout_seconds) {
+  (void)timeout_seconds;
+  return platform_prompt_yes_no(question, default_yes);
+}
+
 // Error handling stub
 int platform_get_last_error(void) {
   return 0; // No system error in WASM

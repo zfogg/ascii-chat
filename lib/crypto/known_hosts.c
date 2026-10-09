@@ -632,7 +632,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
                 "Ed25519 key fingerprint: SHA256:%s\n\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port, fingerprint);
-  if (platform_prompt_yes_no(question, false)) {
+  if (platform_prompt_yes_no_timeout(question, false, 120)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
@@ -811,7 +811,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
                 "Use --key on the server and --server-key on the client to verify identity.\n\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port);
-  if (platform_prompt_yes_no(question, false)) {
+  if (platform_prompt_yes_no_timeout(question, false, 120)) {
     log_warn("Warning: Proceeding with unverified connection.\n"
              "Your data may be intercepted by attackers!\n"
              "\n");

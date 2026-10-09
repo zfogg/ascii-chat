@@ -17,11 +17,6 @@ int prompt_password(const char *prompt, char *password, size_t max_len) {
     return -1;
   }
 
-  // Check for non-interactive mode first
-  if (!platform_is_interactive()) {
-    return -1;
-  }
-
   // The prompt renderer owns its header and masked input as one snapshot.
   int result = platform_prompt_question(prompt, password, max_len, PROMPT_OPTS_PASSWORD);
 
@@ -35,11 +30,6 @@ int prompt_password(const char *prompt, char *password, size_t max_len) {
 
 int prompt_password_simple(const char *prompt, char *password, size_t max_len) {
   if (!prompt || !password || max_len < 2) {
-    return -1;
-  }
-
-  // Check for non-interactive mode first
-  if (!platform_is_interactive()) {
     return -1;
   }
 
