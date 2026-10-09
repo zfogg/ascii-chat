@@ -36,7 +36,6 @@ static bool g_redraw;
 static bool g_finished;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
-static bool g_saved_logging;
 static terminal_size_t g_last_minimum;
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
@@ -69,6 +68,10 @@ bool ui_controller_is_blocked(void) {
   return atomic_load_bool(&g_blocked);
 }
 
+bool ui_controller_is_presenting(void) {
+  return atomic_load_bool(&g_live);
+}
+
 bool ui_controller_is_owner(void) {
   return g_owner;
 }
@@ -99,12 +102,6 @@ static void *presentation_main(void *unused) {
       if (g_screens[i].render)
         active = i;
     bool changed = active != g_active;
-    if (g_active < 0 && active >= 0)
-      g_saved_logging = log_get_terminal_output();
-    if (active >= 0)
-      log_set_terminal_output(false);
-    else if (g_active >= 0)
-      log_set_terminal_output(g_saved_logging);
     g_active = active;
     if (active < 0)
       atomic_store_bool(&g_blocked, false);
@@ -160,8 +157,6 @@ static void *presentation_main(void *unused) {
     mutex_unlock(&g_mutex);
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
-  if (g_active >= 0)
-    log_set_terminal_output(g_saved_logging);
   g_owner = false;
   return NULL;
 }

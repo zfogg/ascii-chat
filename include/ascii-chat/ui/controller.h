@@ -31,6 +31,8 @@ void ui_controller_restore_terminal(void);
 void ui_controller_redraw(void);
 /** Atomic query, safe for interrupt handling. */
 bool ui_controller_is_blocked(void);
+/** Lock-free query for console logging, including logs from rendering callbacks. */
+bool ui_controller_is_presenting(void);
 bool ui_controller_is_owner(void);
 terminal_size_t ui_controller_size(void);
 /** Read-only presentation state. Input policy belongs to ui/input.h. */

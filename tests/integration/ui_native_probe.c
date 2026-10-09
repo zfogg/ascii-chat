@@ -96,7 +96,12 @@ int main(int argc, char **argv) {
   } else if (!strcmp(kind, "mdns") || !strcmp(kind, "mdns-cancel")) {
     ui_mdns_server_t servers[] = {{.name = "fixture-one", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27224},
                                   {.name = "fixture-two", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27225}};
+    bool logging = !strcmp(kind, "mdns");
+    log_set_terminal_output(logging);
     ok = ui_mdns_select(servers, 2) == (!strcmp(kind, "mdns") ? 1 : -1);
+    // Give the presentation thread time to retire the selection screen.
+    platform_sleep_ns(100 * NS_PER_MS_INT);
+    ok = ok && log_get_terminal_output() == logging;
   } else if (!strcmp(kind, "splash")) {
     splash_intro_start(display);
     platform_sleep_ns(8 * NS_PER_SEC_INT);

@@ -131,8 +131,15 @@ def main():
         pane.resize(100, 45)
         pane.expect(lambda s: "Keyboard Shortcuts" in s, "help-restored")
         time.sleep(.2)
+        pane.key("C-c")
+        pane.expect(lambda s: "Keyboard Shortcuts" not in s, "help-signal-closed")
+        pane.text(" ")
+        time.sleep(.5)
         pane.text("?")
-        pane.expect(lambda s: "Keyboard Shortcuts" not in s, "help-closed")
+        pane.expect(lambda s: "Keyboard Shortcuts" in s, "paused-help")
+        pane.key("C-c")
+        pane.expect(lambda s: "Keyboard Shortcuts" not in s, "paused-help-signal-closed")
+        assert not (pane.directory / "exit").exists(), "help cancellation exited playback"
     run("media-controls", mirror + ["--width", "60", "--height", "20"], media_controls)
     for theme in ["dark", "light", "auto"]:
         output = root / ("recording-" + theme + ".mp4")
