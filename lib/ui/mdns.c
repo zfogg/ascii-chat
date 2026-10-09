@@ -129,7 +129,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     frame_buffer_printf(buffer, "%s\n", clipped);
   }
   frame_buffer_printf(buffer, "\nTimeout: %us (cancel)\nSelect server: %s\033[K",
-                      ui_input_timeout_seconds(30), snapshot->input);
+                      30u, snapshot->input);
   frame_buffer_flush(buffer);
   frame_buffer_destroy(buffer);
 }
@@ -183,7 +183,7 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   log_set_terminal_output(logging);
   SAFE_FREE(snapshot);
   if (timed_out)
-    ui_input_timeout_report(ui_input_timeout_seconds(30),
+    ui_input_timeout_report(30u,
                             "server selection cancelled; specify a server address for unattended use");
   return selection;
 }

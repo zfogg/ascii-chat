@@ -10,8 +10,7 @@ keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms);
 void ui_input_shutdown(void);
 
 /** Absolute monotonic deadline; user activity never extends it. */
-unsigned ui_input_timeout_seconds(unsigned default_seconds);
-uint64_t ui_input_deadline(unsigned default_seconds);
+uint64_t ui_input_deadline(unsigned seconds);
 bool ui_input_expired(uint64_t deadline);
 void ui_input_timeout_report(unsigned seconds, const char *consequence);
 

@@ -918,9 +918,8 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     log_info("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
-    // Allow two peer prompts plus transport overhead; configure both peers for longer overrides.
-    const unsigned prompt_seconds = GET_OPTION(prompt_timeout) > 0 ? (unsigned)GET_OPTION(prompt_timeout) : 120;
-    const uint64_t HANDSHAKE_TIMEOUT_NS = ((uint64_t)prompt_seconds * 2 + 30) * NS_PER_SEC_INT;
+    // Allow two identity-verification prompts plus transport overhead.
+    const uint64_t HANDSHAKE_TIMEOUT_NS = 270ULL * NS_PER_SEC_INT;
     asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
     if (timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to set handshake timeout for client %s: %s", new_client_id,

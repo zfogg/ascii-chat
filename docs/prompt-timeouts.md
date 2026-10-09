@@ -4,7 +4,7 @@ Prompts use absolute monotonic deadlines. Typing, resizing, invalid input, and
 covered screens do not restart the timer. Expiration never accepts a default Yes
 or submits a partial password.
 
-| Prompt | Default | Expiration |
+| Prompt | Timeout | Expiration |
 | --- | ---: | --- |
 | Text, confirmation, overwrite, IP disclosure | 30 seconds | Decline/cancel |
 | Password or SSH/GPG passphrase | 60 seconds | Clear input and cancel authentication |
@@ -12,10 +12,7 @@ or submits a partial password.
 | mDNS server selection | 30 seconds | Cancel connection |
 | Update notification | 10 seconds | Continue normally |
 
-Set `--prompt-timeout SECONDS` or `ASCII_CHAT_PROMPT_TIMEOUT` to override all
-prompt deadlines. The accepted range is 0..86400; zero selects the defaults,
-not an unlimited wait. CLI takes precedence over the environment, including
-commands that prompt before ordinary option parsing (such as completions).
+These deadlines are fixed; no command-line or environment override is needed.
 
 A timeout removes the prompt and prints a diagnostic to stderr. It returns an
 error to the caller rather than terminating inside the input library. Required
@@ -29,9 +26,8 @@ a server address. Supply authentication credentials through the existing
 password/key options rather than waiting for a prompt.
 
 The native server handshake allows two prompt budgets plus 30 seconds of
-transport overhead. Its default budget uses the longest prompt (120 seconds).
-If using longer client prompt overrides, configure the server accordingly;
-older servers and external network timeouts may still close the connection sooner.
+transport overhead. Each budget uses the longest prompt (120 seconds).
+Older servers and external network timeouts may still close the connection sooner.
 
 ## Verification
 

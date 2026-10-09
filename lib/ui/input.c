@@ -12,15 +12,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
 
-#include <ascii-chat/options/options.h>
-
-unsigned ui_input_timeout_seconds(unsigned default_seconds) {
-  int configured = GET_OPTION(prompt_timeout);
-  return configured > 0 ? (unsigned)configured : default_seconds;
-}
-
-uint64_t ui_input_deadline(unsigned default_seconds) {
-  return time_get_ns() + (uint64_t)ui_input_timeout_seconds(default_seconds) * NS_PER_SEC_INT;
+uint64_t ui_input_deadline(unsigned seconds) {
+  return time_get_ns() + (uint64_t)seconds * NS_PER_SEC_INT;
 }
 
 bool ui_input_expired(uint64_t deadline) {
@@ -30,8 +23,7 @@ bool ui_input_expired(uint64_t deadline) {
 void ui_input_timeout_report(unsigned seconds, const char *consequence) {
   char message[512];
   int length = snprintf(message, sizeof(message),
-                        "\nPrompt timed out after %u seconds; %s. "
-                        "Use --prompt-timeout SECONDS to allow more time.\n",
+                        "\nPrompt timed out after %u seconds; %s.\n",
                         seconds, consequence);
   // This diagnostic must remain visible even while a background screen owns the terminal.
   if (length > 0)
@@ -120,7 +112,7 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
   mutex_lock(&g_prompt_mutex);
   size_t len = 0, cursor = 0;
   buffer[0] = '\0';
-  unsigned seconds = ui_input_timeout_seconds(opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60));
+  unsigned seconds = opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60);
   uint64_t deadline = ui_input_deadline(seconds);
   char timed_prompt[8192];
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);

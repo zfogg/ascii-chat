@@ -26,7 +26,7 @@ def probe(library, kind, log):
     native = C.CDLL(str(library))
     native.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     assert native.asciichat_shared_init(str(log).encode(), True, True) == 0
-    words = [b"deadline-probe", b"--no-check-update", b"--prompt-timeout", b"1", b"mirror"]
+    words = [b"deadline-probe", b"--no-check-update", b"mirror"]
     argv = (C.c_char_p * (len(words) + 1))(*words, None)
     assert native.options_init(len(words), argv) == 0
     native.platform_prompt_question.argtypes = [C.c_char_p, C.c_char_p, C.c_size_t, PromptOptions]
@@ -34,10 +34,11 @@ def probe(library, kind, log):
     native.platform_prompt_yes_no.restype = C.c_bool
     native.ui_mdns_select.argtypes = [C.POINTER(Server), C.c_int]
     response = C.create_string_buffer(128)
+    budget = 30 if kind == "mdns" else 10 if kind == "update" else 1
     start = time.monotonic()
     if kind in ("text", "password", "hidden", "success", "cancel", "auto"):
         secret = kind in ("password", "hidden", "auto")
-        opts = PromptOptions(0, not secret, True, b"*" if kind != "hidden" and secret else b"\0")
+        opts = PromptOptions(1, not secret, True, b"*" if kind != "hidden" and secret else b"\0")
         if kind == "auto":
             native.prompt_password_simple.argtypes = [C.c_char_p, C.c_char_p, C.c_size_t]
             result = native.prompt_password_simple(b"Deadline test", response, len(response))
@@ -47,7 +48,11 @@ def probe(library, kind, log):
             assert result == 0 and response.value == b"answer", (result, response.value)
         else:
             assert result == -1 and not any(response.raw), (result, response.raw)
-    elif kind in ("yes", "pipe"):
+    elif kind == "yes":
+        native.platform_prompt_yes_no_timeout.argtypes = [C.c_char_p, C.c_bool, C.c_uint]
+        native.platform_prompt_yes_no_timeout.restype = C.c_bool
+        assert not native.platform_prompt_yes_no_timeout(b"Deadline confirmation", True, 1)
+    elif kind == "pipe":
         assert not native.platform_prompt_yes_no(b"Deadline confirmation", True)
     elif kind in ("mdns", "mdns-pipe"):
         server = Server(b"test-server", b"127.0.0.1", 27224, b"127.0.0.1", b"", 60)
@@ -64,7 +69,7 @@ def probe(library, kind, log):
         native.session_display_destroy(display)
     elapsed = time.monotonic() - start
     if kind in ("text", "password", "hidden", "yes", "mdns", "update"):
-        assert .9 <= elapsed < 3, elapsed
+        assert budget - .1 <= elapsed < budget + 2, elapsed
     else:
         assert elapsed < 1, elapsed
     native.ui_input_shutdown()
@@ -92,14 +97,14 @@ def main():
             for action in ("--completions", "--config-create", "--man-page-create"):
                 path = Path(directory) / "existing"
                 path.write_text("KEEP")
-                cmd = [binary, "--prompt-timeout", "1", action]
+                cmd = [binary, action]
                 if action == "--completions":
                     cmd.append("bash")
                 cmd.append(str(path))
                 term = Terminal(cmd, rows=35, cols=110)
                 try:
                     term.expect(lambda text: "Overwrite" in text, "Overwrite prompt missing", timeout=6)
-                    term.expect(lambda text: "Prompt timed out" in text, "Timeout diagnostic missing", timeout=6)
+                    term.expect(lambda text: "Prompt timed out" in text, "Timeout diagnostic missing", timeout=35)
                     deadline = time.monotonic() + 6
                     while term.process.isalive() and time.monotonic() < deadline:
                         term.pump(.1)
@@ -109,10 +114,6 @@ def main():
                     print(f"PASS {action} preserves file and exits nonzero", flush=True)
                 finally:
                     term.close()
-        for value in ("-1", "86401", "abc"):
-            result = subprocess.run([binary, "--prompt-timeout", value, "--version"],
-                                    capture_output=True, timeout=6)
-            assert result.returncode != 0
     with tempfile.TemporaryDirectory(prefix="prompt-timeouts-") as directory:
         for kind in ("text", "password", "hidden", "yes", "mdns", "update", "success", "cancel", "pipe", "mdns-pipe", "auto"):
             log = Path(directory) / f"{kind}.log"
@@ -147,10 +148,11 @@ def main():
                     for _ in range(5):
                         term.write("x")
                         term.pump(.12)
-                term.expect(lambda s: f"PASS {kind}" in s, "Probe did not finish", timeout=6)
+                term.expect(lambda s: f"PASS {kind}" in s, "Probe did not finish", timeout=35)
                 output = "".join(term.raw)
                 if kind not in ("success", "cancel"):
-                    assert "Prompt timed out after 1 seconds" in output, output
+                    budget = 30 if kind == "mdns" else 10 if kind == "update" else 1
+                    assert f"Prompt timed out after {budget} seconds" in output, output
                 assert "partial-secret" not in output
                 assert "partial-secret" not in log.read_text(encoding="utf-8", errors="replace")
                 print(f"PASS {kind} (native terminal)")

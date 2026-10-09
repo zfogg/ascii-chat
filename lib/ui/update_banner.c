@@ -279,7 +279,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   {
     char line[256];
     snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m",
-             ui_input_timeout_seconds(10));
+             10u);
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 
@@ -322,7 +322,7 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   }
   ui_controller_remove(UI_SCREEN_UPDATE);
   if (timed_out)
-    ui_input_timeout_report(ui_input_timeout_seconds(10), "update notice dismissed; continuing normally");
+    ui_input_timeout_report(10u, "update notice dismissed; continuing normally");
   return update;
 }
 
