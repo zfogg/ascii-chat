@@ -68,8 +68,7 @@ asciichat_error_t test_pattern_resize(test_pattern_t *p, int width, int height) 
   return ASCIICHAT_OK;
 }
 
-// Integer-sized strokes remain legible after ASCII sampling. A fixed black
-// backing prevents the moving source from changing the letters' contrast.
+// Integer-sized black strokes leave readable negative space after ASCII sampling.
 static void render_test_label(image_t *image) {
   static const uint8_t glyphs[4][7] = {
       {4, 4, 31, 4, 4, 5, 2},     // t
@@ -83,10 +82,7 @@ static void render_test_label(image_t *image) {
   // Below this size a four-letter raster label cannot be read reliably.
   if (scale < 1)
     return;
-  int left = scale, top = scale;
-  for (int y = top; y < top + 9 * scale; ++y)
-    for (int x = left; x < left + 25 * scale; ++x)
-      image->pixels[(size_t)y * image->w + x] = (rgb_pixel_t){0, 0, 0};
+  int left = (image->w - 23 * scale) / 2, top = (image->h - 7 * scale) / 2;
   for (int letter = 0; letter < 4; ++letter)
     for (int row = 0; row < 7; ++row)
       for (int col = 0; col < 5; ++col) {
@@ -94,9 +90,9 @@ static void render_test_label(image_t *image) {
           continue;
         for (int dy = 0; dy < scale; ++dy)
           for (int dx = 0; dx < scale; ++dx) {
-            int x = left + (1 + letter * 6 + col) * scale + dx;
-            int y = top + (1 + row) * scale + dy;
-            image->pixels[(size_t)y * image->w + x] = (rgb_pixel_t){255, 255, 255};
+            int x = left + (letter * 6 + col) * scale + dx;
+            int y = top + row * scale + dy;
+            image->pixels[(size_t)y * image->w + x] = (rgb_pixel_t){0, 0, 0};
           }
       }
 }
