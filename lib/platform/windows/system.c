@@ -905,6 +905,7 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
   // Use Windows WriteFile API to avoid deprecated _write
   HANDLE handle = (HANDLE)_get_osfhandle(fd);
   if (handle == INVALID_HANDLE_VALUE) {
+    errno = EBADF;
     return -1;
   }
 
@@ -913,6 +914,25 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
     return (ssize_t)bytes_written;
   }
 
+  // Callers use errno to distinguish transient failures from a closed output.
+  switch (GetLastError()) {
+  case ERROR_BROKEN_PIPE:
+  case ERROR_NO_DATA:
+    errno = EPIPE;
+    break;
+  case ERROR_INVALID_HANDLE:
+    errno = EBADF;
+    break;
+  case ERROR_DISK_FULL:
+    errno = ENOSPC;
+    break;
+  case ERROR_ACCESS_DENIED:
+    errno = EACCES;
+    break;
+  default:
+    errno = EIO;
+    break;
+  }
   return -1;
 }
 

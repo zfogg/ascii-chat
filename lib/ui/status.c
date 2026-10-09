@@ -262,7 +262,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
 
   // Initialize keyboard for interactive grep
   bool keyboard_enabled = false;
-  if (keyboard_init() == ASCIICHAT_OK) {
+  if (terminal_is_interactive() && keyboard_init() == ASCIICHAT_OK) {
     keyboard_enabled = true;
   }
 

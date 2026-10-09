@@ -114,7 +114,8 @@ static void *presentation_main(void *unused) {
       screen_t *screen = &g_screens[active];
       terminal_size_t size = {0};
       // Measure the physical output device, never --width/--height or environment overrides.
-      if (terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 || size.rows <= 0) {
+      if (!platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 ||
+          size.rows <= 0) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         g_small = true;
@@ -217,7 +218,9 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
-    if (terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
+    // Redirected output has no terminal geometry. Avoid raising a terminal
+    // error for every frame when rendering to a file, pipe, or null device.
+    if (!platform_isatty(fd) || terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
       detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
     g_render_size = detected;
     g_owner = true;
@@ -283,7 +286,8 @@ ui_presentation_state_t ui_controller_state(void) {
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
     terminal_size_t size = {0};
-    state.covered = terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 || size.rows <= 0 ||
+    state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
+                    size.cols <= 0 || size.rows <= 0 ||
                     ui_too_small(size, screen->minimum);
   }
   mutex_unlock(&g_mutex);
