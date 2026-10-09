@@ -5,6 +5,7 @@
  * Accumulates terminal output into a growable buffer and flushes atomically.
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/platform/abstraction.h"
 #include <ascii-chat/util/display.h>
@@ -190,7 +191,7 @@ void frame_buffer_flush(frame_buffer_t *buf) {
     }
   }
 
-  platform_write_all(g_terminal_screen_output_fd, output, output_len);
+  ui_controller_write(g_terminal_screen_output_fd, output, output_len);
   SAFE_FREE(output);
 }
 

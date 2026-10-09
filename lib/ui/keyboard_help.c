@@ -327,10 +327,6 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
   const help_snapshot_t *snapshot = data;
   g_help_rows = snapshot->rows;
   session_display_ctx_t *display = snapshot->display;
-  if (keyboard_help_check_signal_cancel()) {
-    keyboard_help_toggle(display);
-    return;
-  }
   keyboard_help_render(display);
 }
 

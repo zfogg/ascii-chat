@@ -4,6 +4,7 @@
  * @ingroup session
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include "pipeline.h"
 #include "capture.h"
@@ -496,7 +497,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     // Pause stops frame production, so keep polling the keyboard on queue
     // timeouts or there would be no way to resume playback.
     if (keyboard_handler) {
-      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_MEDIA);
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
       if (key != KEY_NONE) {
         log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
         keyboard_handler(pipeline->capture, (int)key, user_data);

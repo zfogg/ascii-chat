@@ -13,6 +13,7 @@
  * - Color scheme integration
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "ascii-chat/ui/terminal_screen.h"
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/log/search.h"
@@ -118,7 +119,7 @@ static void terminal_screen_render_owned(const terminal_screen_config_t *config)
   uint64_t elapsed_ms = (now_ns - g_render_start_time_ns) / 1000000;
 
   // Ensure cursor is visible for log-only UI (splash, status screens)
-  (void)terminal_cursor_show();
+  (void)ui_controller_write(frame_buffer_get_screen_output_fd(), "\033[?25h", 6);
 
   g_cached_term_size = ui_controller_size();
 
@@ -398,8 +399,8 @@ static void terminal_screen_render_owned(const terminal_screen_config_t *config)
       if (cursor_offset > 0) {
         frame_buffer_printf(g_frame_buf, "\x1b[%dD", cursor_offset);
       }
-      platform_write_all(frame_buffer_get_screen_output_fd(), frame_buffer_get_content(g_frame_buf),
-                         frame_buffer_get_length(g_frame_buf));
+      ui_controller_write(frame_buffer_get_screen_output_fd(), frame_buffer_get_content(g_frame_buf),
+                          frame_buffer_get_length(g_frame_buf));
 
       mutex_unlock(grep_mutex);
     }

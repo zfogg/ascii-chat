@@ -10,6 +10,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include "session/render.h"
 #include "session/capture.h"
@@ -317,7 +318,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // when tcsetattr() modifies the tty line discipline
       if (keyboard_enabled && keyboard_handler) {
         START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
-        keyboard_key_t key = ui_controller_read_key(UI_SCREEN_MEDIA);
+        keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
         double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
@@ -370,7 +371,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // last row without an \n here. We only need this \n in stdout when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
           if (terminal_is_interactive()) {
-            printf("\n");
+            ui_controller_printf(STDOUT_FILENO, "\n");
           }
           snapshot_done = true;
         }
@@ -463,7 +464,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Re-enable console logging after rendering completes
   log_set_terminal_output(true);
   if (!snapshot_mode && terminal_is_interactive()) {
-    printf("\n");
+    ui_controller_printf(STDOUT_FILENO, "\n");
   }
 
   // Keyboard input cleanup (if it was initialized)

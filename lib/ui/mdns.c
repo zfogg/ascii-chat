@@ -6,6 +6,7 @@
  * Provides interactive terminal UI for server selection and address resolution.
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/util/display.h>
@@ -92,21 +93,21 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
   }
 
   // Display available servers
-  printf("\nAvailable ascii-chat servers on LAN:\n");
+  ui_controller_printf(STDOUT_FILENO, "\nAvailable ascii-chat servers on LAN:\n");
   for (int i = 0; i < count; i++) {
     const ui_mdns_server_t *srv = &servers[i];
     const char *addr = ui_mdns_get_best_address(srv);
-    printf("  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
+    ui_controller_printf(STDOUT_FILENO, "  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
   }
 
   // Prompt for selection
-  printf("\nSelect server (1-%d) or press Enter to cancel: ", count);
+  ui_controller_printf(STDOUT_FILENO, "\nSelect server (1-%d) or press Enter to cancel: ", count);
   fflush(stdout);
 
   // Read user input
   char input[32];
   if (fgets(input, sizeof(input), stdin) == NULL) {
-    printf("\n");
+    ui_controller_printf(STDOUT_FILENO, "\n");
     return -1; // EOF or error
   }
 
@@ -121,7 +122,7 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
 
   // Validate input
   if (selection < 1 || selection > count) {
-    printf("⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
+    ui_controller_printf(STDOUT_FILENO, "⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
     return ui_mdns_prompt_selection(servers, count); // Re-prompt
   }
 
@@ -184,7 +185,7 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
     if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 5},
                              render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
       break;
-    keyboard_key_t key = ui_controller_wait_key(UI_SCREEN_MDNS, 100);
+    keyboard_key_t key = ui_input_wait_key(UI_SCREEN_MDNS, 100);
     if (key == KEY_ESCAPE)
       break;
     if (key == '\r' || key == '\n') {

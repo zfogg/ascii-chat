@@ -6,6 +6,7 @@
  * Supports full /pattern/flags syntax with real-time filtering.
  */
 
+#include <ascii-chat/ui/controller.h>
 #include "ascii-chat/log/search.h"
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"
@@ -707,7 +708,7 @@ void log_search_render_input_line(int width) {
 
   if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
     // Write the pattern to terminal
-    platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
+    ui_controller_write(STDOUT_FILENO, output_buf, (size_t)pattern_len);
 
     // After writing, cursor is at: column = 1 (for "/") + len + 1
     // We want it at: column = 1 (for "/") + cursor_position + 1
@@ -715,7 +716,7 @@ void log_search_render_input_line(int width) {
     int cursor_offset = (int)g_search_state.len - (int)g_search_state.cursor;
     if (cursor_offset > 0) {
       // Move left by the difference
-      terminal_move_cursor_relative(-cursor_offset);
+      ui_controller_printf(STDOUT_FILENO, "\033[%dD", cursor_offset);
     }
   }
 

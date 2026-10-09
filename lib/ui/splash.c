@@ -14,6 +14,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
@@ -489,7 +490,7 @@ static void *splash_animation_thread(void *arg) {
       log_dev("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
     }
     if (keyboard_enabled) {
-      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_SPLASH);
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
       if (key == KEY_ESCAPE) {
         // Escape key: cancel grep if active, otherwise cancel splash
         if (log_search_is_active()) {

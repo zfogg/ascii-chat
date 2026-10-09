@@ -7,6 +7,7 @@
  * info and upgrade instructions. Blocks for user input (Y/Enter or N/Esc).
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/update_banner.h>
@@ -287,7 +288,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
 #undef APPEND
 
   // Write to terminal
-  platform_write_all(STDOUT_FILENO, buffer, buf_pos);
+  ui_controller_write(STDOUT_FILENO, buffer, buf_pos);
   terminal_flush(STDOUT_FILENO);
   SAFE_FREE(buffer);
 }
@@ -304,7 +305,7 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     return false;
   bool update = false;
   while (!shutdown_is_requested()) {
-    keyboard_key_t key = ui_controller_wait_key(UI_SCREEN_UPDATE, 100);
+    keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
       update = true;
       break;
@@ -326,21 +327,17 @@ void update_banner_print_instructions(void) {
   char suggestion[512];
   update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
 
-  terminal_clear_screen();
-
-  fprintf(stdout, "\nUpdate available: %s → %s\n\n", result.current_version, result.latest_version);
-
-  if (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) {
-    fprintf(stdout, "Download the latest release:\n\n    %s\n\n", suggestion);
-  } else {
-    fprintf(stdout, "To upgrade, run:\n\n    %s\n\n", suggestion);
-  }
-
-  if (result.release_url[0] != '\0') {
-    fprintf(stdout, "Release notes: %s\n\n", result.release_url);
-  }
-
-  fflush(stdout);
+  char output[2048];
+  int len =
+      snprintf(output, sizeof(output),
+               "\033[0m\033[2J\033[H\033[?25h"
+               "\nUpdate available: %s -> %s\n\n%s\n\n    %s\n\nRelease notes: %s\n\n",
+               result.current_version, result.latest_version,
+               method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN ? "Download the latest release:"
+                                                                                   : "To upgrade, run:",
+               suggestion, result.release_url);
+  if (len > 0 && len < (int)sizeof(output))
+    ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }
 
 static void *update_check_thread_func(void *arg) {

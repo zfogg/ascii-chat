@@ -259,7 +259,13 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
   log_warn(warning_msg, acds_server, old_fingerprint, new_fingerprint);
 
   // Ask user to confirm
-  bool accepted = platform_prompt_yes_no("Accept new ACDS server key", false);
+  char question[2048];
+  safe_snprintf(question, sizeof(question),
+                "ACDS SERVER KEY HAS CHANGED\nServer: %s\n\nOld SHA256: %s\nNew SHA256: %s\n\n"
+                "This may indicate key rotation or a man-in-the-middle attack.\n"
+                "Verify the new fingerprint with the operator before accepting.\n\nAccept new ACDS server key",
+                acds_server, old_fingerprint, new_fingerprint);
+  bool accepted = platform_prompt_yes_no(question, false);
   if (!accepted) {
     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "User rejected ACDS key change for: %s", acds_server);
   }

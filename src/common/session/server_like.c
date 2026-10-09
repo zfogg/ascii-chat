@@ -7,6 +7,7 @@
  * and signal handling. Modes plug in via callbacks.
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include "server_like.h"
 #include <ascii-chat/asciichat_errno.h>
@@ -137,11 +138,11 @@ static void *status_screen_thread_func(void *arg) {
     if (keyboard_enabled) {
       grep_was_just_cancelled = false;
 
-      keyboard_key_t key = ui_controller_read_key(UI_SCREEN_STATUS);
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATUS);
       while (key != KEY_NONE && !grep_was_just_cancelled) {
         if (skip_next_slash && key == '/') {
           skip_next_slash = false;
-          key = ui_controller_read_key(UI_SCREEN_STATUS);
+          key = ui_input_read_key(UI_SCREEN_STATUS);
           continue;
         }
         skip_next_slash = false;
@@ -162,7 +163,7 @@ static void *status_screen_thread_func(void *arg) {
           }
         }
 
-        key = ui_controller_read_key(UI_SCREEN_STATUS);
+        key = ui_input_read_key(UI_SCREEN_STATUS);
       }
     }
 

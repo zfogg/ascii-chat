@@ -215,11 +215,8 @@
 #include <stdint.h>
 
 static inline void js_mirror_log(const char *msg) {
-  if (msg) {
-    char buffer[512];
-    snprintf(buffer, sizeof(buffer), "[MIRROR-START] %s\n", msg);
-    write(STDERR_FILENO, buffer, strlen(buffer));
-  }
+  if (msg)
+    log_debug("MIRROR-START: %s", msg);
 }
 
 /* ============================================================================

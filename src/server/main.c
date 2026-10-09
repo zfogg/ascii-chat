@@ -1663,7 +1663,9 @@ static asciichat_error_t server_init_fn(void *user_data) {
                  "Anyone with the session string will be able to see your IP address.\n"
                  "This is NOT RECOMMENDED unless you understand the privacy implications.");
 
-        if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+        if (!platform_prompt_yes_no("PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
+                                    "address.\n\nDo you want to proceed",
+                                    false)) {
           log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
           goto skip_acds_session;
         }

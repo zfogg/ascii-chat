@@ -102,9 +102,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  // Debug: Log all bytes received from terminal
-  log_debug("keyboard_read_nonblocking: received byte=%d (0x%02x) char='%c'", ch, ch,
-            (ch >= 32 && ch < 127) ? ch : '?');
 
   // Handle special characters
   if (ch == ' ') {
@@ -136,6 +133,12 @@ keyboard_key_t keyboard_read_nonblocking(void) {
       return KEY_LEFT;
     case 77: // Right arrow
       return KEY_RIGHT;
+    case 83:
+      return KEY_DELETE;
+    case 71:
+      return KEY_HOME;
+    case 79:
+      return KEY_END;
     default:
       // Unknown extended key
       return KEY_NONE;

@@ -3,6 +3,7 @@
  * @brief Status screen display with live log feed at FPS rate
  */
 
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
@@ -282,7 +283,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // Poll keyboard for Escape to exit or for interactive grep
   bool should_exit_status = false;
   if (keyboard_enabled) {
-    keyboard_key_t key = ui_controller_read_key(UI_SCREEN_STATUS);
+    keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATUS);
     if (key == KEY_ESCAPE) {
       // Escape key: cancel grep if active, otherwise exit status screen
       if (log_search_is_active()) {

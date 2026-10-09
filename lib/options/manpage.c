@@ -250,7 +250,9 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       // File exists - ask user if they want to overwrite
       log_plain("Man page file already exists: %s", output_path);
 
-      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      char question[4096];
+      safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
+      bool overwrite = platform_prompt_yes_no(question, false); // Default to No
       if (!overwrite) {
         log_plain("Man page generation cancelled.");
         return SET_ERRNO(ERROR_FILE_OPERATION, "User cancelled overwrite");

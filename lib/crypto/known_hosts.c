@@ -625,24 +625,14 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return false; // REJECT unknown hosts in non-interactive mode
   }
 
-  // Interactive mode - prompt user
-  // Lock terminal so only this thread can output to terminal
-  // Other threads' logs are buffered until we unlock
-  bool previous_terminal_state = log_lock_terminal();
-
-  log_plain("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-            "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n"
-            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-            "\n"
-            "The authenticity of host '%s' can't be established.\n"
-            "Ed25519 key fingerprint is SHA256:%s\n",
-            ip_with_port, fingerprint);
-
-  // Unlock before prompt (prompt_yes_no handles its own terminal locking)
-  log_unlock_terminal(previous_terminal_state);
-
-  // Prompt user - default is No for security
-  if (platform_prompt_yes_no("Are you sure you want to continue connecting", false)) {
+  char question[2048];
+  safe_snprintf(question, sizeof(question),
+                "REMOTE HOST IDENTIFICATION NOT KNOWN!\n\n"
+                "The authenticity of host '%s' cannot be established.\n"
+                "Ed25519 key fingerprint: SHA256:%s\n\n"
+                "Are you sure you want to continue connecting",
+                ip_with_port, fingerprint);
+  if (platform_prompt_yes_no(question, false)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
@@ -813,8 +803,15 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
            "\n",
            ip_with_port);
 
-  // Interactive mode - prompt user (default is No for security)
-  if (platform_prompt_yes_no("Are you sure you want to continue connecting", false)) {
+  char question[2048];
+  safe_snprintf(question, sizeof(question),
+                "Host '%s' has no identity key.\n"
+                "This connection is vulnerable to man-in-the-middle attacks.\n"
+                "Anyone intercepting it could read your data.\n\n"
+                "Use --key on the server and --server-key on the client to verify identity.\n\n"
+                "Are you sure you want to continue connecting",
+                ip_with_port);
+  if (platform_prompt_yes_no(question, false)) {
     log_warn("Warning: Proceeding with unverified connection.\n"
              "Your data may be intercepted by attackers!\n"
              "\n");

@@ -1494,7 +1494,9 @@ asciichat_error_t config_create_default(const char *config_path) {
       // File exists - ask user if they want to overwrite
       log_plain("Config file already exists: %s", config_path_expanded);
 
-      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      char question[4096];
+      safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", config_path_expanded);
+      bool overwrite = platform_prompt_yes_no(question, false); // Default to No
       if (!overwrite) {
         log_plain("Config file creation cancelled.");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");

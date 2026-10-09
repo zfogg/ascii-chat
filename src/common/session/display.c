@@ -706,9 +706,6 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * Session Display Rendering Functions
  * ============================================================================ */
 
-/* Forward declaration for FPS overlay rendering */
-void session_display_render_fps_overlay(session_display_ctx_t *ctx);
-
 static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
@@ -893,7 +890,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+      (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
       SAFE_FREE(write_buf);
     }
 
@@ -910,7 +907,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       if (write_buf) {
         memcpy(write_buf, display_frame, frame_len);
         write_buf[frame_len] = '\n';
-        (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+        (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
 
         // Start snapshot timer on first ASCII frame rendered
         if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
@@ -1015,42 +1012,10 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
   }
 
   // Write all data with automatic retry on transient errors
-  (void)platform_write_all(fd, data, len);
+  (void)ui_controller_write(fd, data, len);
 
   // Flush immediately after write to TTY to ensure data is sent
   (void)terminal_flush(fd);
-}
-
-void session_display_render_fps_overlay(session_display_ctx_t *ctx) {
-  if (!ctx || !ctx->fps_counter || !ctx->initialized) {
-    return;
-  }
-
-  // Only render overlay in TTY mode
-  if (!ctx->has_tty) {
-    return;
-  }
-
-  // Get current FPS value from counter
-  float fps = fps_counter_get(ctx->fps_counter);
-
-  // Get terminal width for right-alignment
-  int term_cols = (int)terminal_get_effective_width();
-
-  // Position at row 1, right side of screen
-  // Column = term_cols - 7 (to fit "FPS:144" which is 7 chars)
-  // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
-  char overlay[64];
-  int overlay_len = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", term_cols - 6, fps);
-
-  if (overlay_len > 0 && overlay_len < (int)sizeof(overlay)) {
-    // Write overlay to TTY
-    int fd = (ctx->has_tty && ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-    (void)platform_write_all(fd, overlay, overlay_len);
-
-    // Flush to ensure overlay appears immediately
-    (void)terminal_flush(fd);
-  }
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {
