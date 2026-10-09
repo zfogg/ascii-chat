@@ -1,6 +1,38 @@
+import { useState } from "react";
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
 import TrackedLink from "../TrackedLink";
+
+function InstallCommand({
+  command,
+  language,
+}: {
+  command: string;
+  language: string;
+}) {
+  const [message, setMessage] = useState("Copy command");
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setMessage("Copied!");
+    } catch {
+      setMessage("Select the command to copy");
+    }
+  }
+  return (
+    <div>
+      <CodeBlock language={language}>{command}</CodeBlock>
+      <button
+        type="button"
+        className="mt-1 text-sm text-cyan-400 hover:text-cyan-200 underline cursor-pointer"
+        aria-label={`Copy ${command}`}
+        onClick={copy}
+      >
+        <span aria-live="polite">{message}</span>
+      </button>
+    </div>
+  );
+}
 
 export default function InstallationSection() {
   return (
@@ -18,14 +50,65 @@ export default function InstallationSection() {
             level={3}
             className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3"
           >
-            Pre-built static binaries
+            Install the latest release
           </Heading>
           <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
             <p className="text-gray-300 mb-3">
-              Download for <strong className="text-cyan-400">macOS</strong>,{" "}
+              Ready-to-run binaries for{" "}
+              <strong className="text-cyan-400">macOS</strong>,{" "}
               <strong className="text-purple-400">Linux</strong>, or{" "}
-              <strong className="text-teal-400">Windows</strong>:
+              <strong className="text-teal-400">Windows</strong>. The installer
+              detects your system and downloads the matching x64 or ARM64
+              release.
             </p>
+            <div className="space-y-5 mb-6">
+              <div>
+                <Heading level={4} className="font-semibold text-cyan-300 mb-2">
+                  macOS &amp; Linux · Bash
+                </Heading>
+                <InstallCommand
+                  language="bash"
+                  command="curl -fsSL https://ascii-chat.com/install.sh | bash"
+                />
+                <p className="text-sm text-gray-400 mt-2">
+                  Installs into ~/.local. Follow the printed PATH instructions
+                  if needed. For everyone on this computer, install into
+                  /usr/local:
+                </p>
+                <InstallCommand
+                  language="bash"
+                  command="curl -fsSL https://ascii-chat.com/install.sh | sudo bash"
+                />
+              </div>
+              <div>
+                <Heading level={4} className="font-semibold text-teal-300 mb-2">
+                  Windows · PowerShell
+                </Heading>
+                <InstallCommand
+                  language="powershell"
+                  command="irm https://ascii-chat.com/install.ps1 | iex"
+                />
+                <p className="text-sm text-gray-400 mt-2">
+                  Run in PowerShell 5.1 or newer. Installs for your user and
+                  adds ascii-chat to PATH. Run PowerShell as Administrator for a
+                  system-wide install in Program Files.
+                </p>
+              </div>
+              <p className="text-sm text-gray-400">
+                Then run <code className="text-gray-200">ascii-chat</code>.
+                Rerun to update; old installer-managed files and temporary
+                downloads are removed. Terminal styling is powered by Gum. You
+                can review the{" "}
+                <a className="text-cyan-400 underline" href="/install.sh">
+                  Bash script
+                </a>{" "}
+                or{" "}
+                <a className="text-teal-400 underline" href="/install.ps1">
+                  PowerShell script
+                </a>{" "}
+                first, or download an archive yourself below.
+              </p>
+            </div>
             <TrackedLink
               href="https://github.com/zfogg/ascii-chat/releases/latest"
               label="Home - Download Latest Release"
