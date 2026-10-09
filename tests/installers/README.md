@@ -24,7 +24,9 @@ sha256sum or shasum. No preinstalled Gum is needed.
 
 The scripts live in `web/www/public` so the website build serves `/install.sh`
 and `/install.ps1`. They select x64 or ARM64 archives from the latest stable
-release. Set `ASCII_CHAT_VERSION=v0.12.17` to select a specific release.
+release. Set `ASCII_CHAT_VERSION=0.12.17` to select a specific version. Bare
+`major.minor.patch` versions are normalized to GitHub's `v`-prefixed tags;
+`ASCII_CHAT_VERSION=v0.12.17` also works. The smoke suites exercise both forms.
 
 - Bash defaults to `~/.local`, or `/usr/local` when run as root (including
   `curl ... | sudo bash`). `ASCII_CHAT_INSTALL_PREFIX` overrides that prefix.

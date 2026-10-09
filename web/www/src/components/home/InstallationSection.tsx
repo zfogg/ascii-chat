@@ -104,9 +104,9 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 <ul className="list-disc pl-5 space-y-2">
                   <li>
                     <code className="text-gray-200">ASCII_CHAT_VERSION</code>{" "}
-                    (both scripts): install a specific release tag, such as
-                    <code className="text-gray-200"> v0.12.17</code>, instead of
-                    the latest release.
+                    (both scripts): install a specific version, such as
+                    <code className="text-gray-200"> 0.12.17</code>, instead of
+                    the latest release. A leading <code>v</code> is optional.
                   </li>
                   <li>
                     <code className="text-gray-200">
@@ -128,11 +128,11 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 </ul>
                 <p className="mt-3">
                   For example, run{" "}
-                  <code>export ASCII_CHAT_VERSION=v0.12.17</code> in Bash, or{" "}
-                  <code>$env:ASCII_CHAT_VERSION = 'v0.12.17'</code> in
+                  <code>export ASCII_CHAT_VERSION=0.12.17</code> in Bash, or{" "}
+                  <code>$env:ASCII_CHAT_VERSION = '0.12.17'</code> in
                   PowerShell, then run the installer above. With sudo, pass
                   overrides to the receiving command, for example
-                  <code> sudo env ASCII_CHAT_VERSION=v0.12.17 bash</code>.
+                  <code> sudo env ASCII_CHAT_VERSION=0.12.17 bash</code>.
                 </p>
               </div>
               <p className="text-sm text-gray-400">

@@ -75,7 +75,7 @@ ascii_chat_configure_path() (
 
 # Download the latest release. Requires Bash 3.2+, curl, and tar.
 # ASCII_CHAT_INSTALL_PREFIX overrides ~/.local (or /usr/local when root).
-# ASCII_CHAT_VERSION pins a release, e.g. v0.12.17.
+# ASCII_CHAT_VERSION pins a release, e.g. 0.12.17 (v0.12.17 also works).
 ascii_chat_install() (
   set -eu
   umask 022
@@ -149,6 +149,7 @@ ascii_chat_install() (
   "$gum" style --border rounded --padding '1 2' --border-foreground 86 'ascii-chat' "Install for $os / $arch"
 
   tag=${ASCII_CHAT_VERSION:-}
+  if [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then tag="v$tag"; fi
   if [ -z "$tag" ]; then
     release_url=$(curl -fsSL --retry 3 --connect-timeout 20 --max-time 60 --proto '=https' --proto-redir '=https' -o /dev/null -w '%{url_effective}' https://github.com/zfogg/ascii-chat/releases/latest)
     tag=${release_url##*/}

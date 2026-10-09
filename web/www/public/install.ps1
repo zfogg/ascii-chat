@@ -1,6 +1,6 @@
 # Windows PowerShell 5.1+ / PowerShell 7. Run with irm .../install.ps1 | iex.
 # ASCII_CHAT_INSTALL_DIR overrides the managed installation directory.
-# ASCII_CHAT_VERSION pins a release, e.g. v0.12.17.
+# ASCII_CHAT_VERSION pins a release, e.g. 0.12.17 (v0.12.17 also works).
 & {
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
@@ -43,8 +43,10 @@
         if ($LASTEXITCODE -ne 0) { throw 'Unable to run Gum (ARM64 requires Windows x64 emulation).' }
         $releaseApi = 'https://api.github.com/repos/zfogg/ascii-chat/releases/latest'
         if ($env:ASCII_CHAT_VERSION) {
-            if ($env:ASCII_CHAT_VERSION -notmatch '^v[0-9][a-zA-Z0-9._-]*$') { throw 'Invalid release tag.' }
-            $releaseApi = "https://api.github.com/repos/zfogg/ascii-chat/releases/tags/$env:ASCII_CHAT_VERSION"
+            $requestedVersion = $env:ASCII_CHAT_VERSION
+            if ($requestedVersion -match '\A[0-9]+\.[0-9]+\.[0-9]+\z') { $requestedVersion = "v$requestedVersion" }
+            if ($requestedVersion -notmatch '^v[0-9][a-zA-Z0-9._-]*$') { throw 'Invalid release tag.' }
+            $releaseApi = "https://api.github.com/repos/zfogg/ascii-chat/releases/tags/$requestedVersion"
         }
         $release = Invoke-RestMethod $releaseApi -TimeoutSec 60
         $tag = $release.tag_name

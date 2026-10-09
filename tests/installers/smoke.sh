@@ -19,7 +19,12 @@ test -f "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/.ascii-chat-installer"
 touch "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/obsolete-file"
 touch "$ASCII_CHAT_INSTALL_PREFIX/unrelated-file"
 # A pipe must behave the same as a downloaded script, including on Bash 3.2.
-cat "$installer" | bash
+release_tag=$(cat "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/.ascii-chat-installer")
+for requested_version in "${release_tag#v}" "$release_tag"; do
+  export ASCII_CHAT_VERSION="$requested_version"
+  cat "$installer" | bash
+  test "$(cat "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/.ascii-chat-installer")" = "$release_tag"
+done
 test ! -e "$ASCII_CHAT_INSTALL_PREFIX/lib/ascii-chat/obsolete-file"
 test -f "$ASCII_CHAT_INSTALL_PREFIX/unrelated-file"
 test -z "$(find "$ASCII_CHAT_INSTALL_PREFIX/lib" -name '.ascii-chat-install.*' -print)"

@@ -22,7 +22,12 @@ try {
     Assert ($bin -in ([Environment]::GetEnvironmentVariable('Path', $scope) -split ';')) 'Persistent PATH missing'
     Set-Content "$env:ASCII_CHAT_INSTALL_DIR\obsolete-file" 'obsolete'
     Set-Content "$sandbox\unrelated-file" 'keep'
-    Get-Content -Raw $Installer | Invoke-Expression
+    $releaseTag = (Get-Content "$env:ASCII_CHAT_INSTALL_DIR\.ascii-chat-installer").Trim()
+    foreach ($requestedVersion in @(($releaseTag -replace '^v', ''), $releaseTag)) {
+        $env:ASCII_CHAT_VERSION = $requestedVersion
+        Get-Content -Raw $Installer | Invoke-Expression
+        Assert ((Get-Content "$env:ASCII_CHAT_INSTALL_DIR\.ascii-chat-installer").Trim() -eq $releaseTag) 'Pinned release changed'
+    }
     Assert (-not (Test-Path "$env:ASCII_CHAT_INSTALL_DIR\obsolete-file")) 'Upgrade left obsolete files'
     Assert (Test-Path "$sandbox\unrelated-file") 'Unrelated file deleted'
     Assert (@(Get-ChildItem $sandbox -Filter '.ascii-chat-install-*').Count -eq 0) 'Temporary files remain'
