@@ -95,8 +95,7 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
               <p className="text-sm text-gray-400">
                 Then run <code className="text-gray-200">ascii-chat</code>.
                 Rerun to update; old installer-managed files and temporary
-                downloads are removed. Terminal styling is powered by Gum. You
-                can review the{" "}
+                downloads are removed. You can review the{" "}
                 <a className="text-cyan-400 underline" href="/install.sh">
                   Bash script
                 </a>{" "}
