@@ -89,9 +89,7 @@ curl -fsSL https://ascii-chat.com/install.sh | sudo bash`}
                 <p className="text-sm text-gray-400 mt-2">
                   Run in PowerShell 5.1 or newer. Installs for your user and
                   adds ascii-chat to PATH. Run PowerShell as Administrator for a
-                  system-wide install in Program Files. If PATH changes, open a
-                  new Windows terminal to load it. The PowerShell session
-                  running the installer is updated immediately.
+                  system-wide install in Program Files.
                 </p>
               </div>
               <p className="text-sm text-gray-400">
