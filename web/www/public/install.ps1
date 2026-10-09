@@ -82,6 +82,14 @@
             if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Recurse -Force }
             if (Test-Path -LiteralPath $previous) { Move-Item -LiteralPath $previous -Destination $destination }
         }
-        if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+        if (Test-Path -LiteralPath $work) {
+            try {
+                Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction Stop
+            }
+            catch {
+                if (-not $committed) { throw }
+                Write-Warning "Installation succeeded, but cleanup is incomplete at $work. Close any running ascii-chat processes and remove that temporary directory."
+            }
+        }
     }
 }

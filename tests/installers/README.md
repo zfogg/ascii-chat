@@ -12,6 +12,7 @@ bash tests/installers/smoke.sh web/www/public/install.sh
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/installers/smoke.ps1 -Installer web/www/public/install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/installers/cleanup.ps1 -Installer web/www/public/install.ps1
 ```
 
 Run the Bash suite as both root and a regular user in a Linux container, and on
@@ -58,6 +59,9 @@ release. Set `ASCII_CHAT_VERSION=v0.12.17` to select a specific release.
   until installation succeeds. Temporary archives, Gum, and previous managed
   files are then removed. Force-killing the process or losing power can prevent
   cleanup; ordinary errors and Bash INT/TERM are handled.
+  If Windows locks an old file after installation has committed, cleanup warns
+  with the remaining temporary directory instead of reporting installation
+  failure. Close the process holding the file and remove that directory.
 
 To remove an installation made by these scripts, remove its managed directory
 and the Bash symlink or Windows PATH entry. Do not use the archive's package
@@ -76,3 +80,12 @@ They cover default acceptance, decline, existing shell-specific PATH entries,
 idempotent reruns and repeated sourcing, paths needing shell quoting, Bash login
 profile selection, ZDOTDIR, and noninteractive/sudo behavior. They require
 Python 3 and Zsh; they do not download releases or edit the user's real profiles.
+
+Run `python3 tests/installers/pipelines.py web/www/src/components/home/InstallationSection.tsx`
+to verify that both displayed Bash commands propagate failed downloads and failed
+installer execution under Bash and Zsh. The website enables pipefail in a subshell
+so it does not change the user's interactive shell options.
+
+`cleanup.ps1` tests the real installer cleanup block against an exclusively locked
+Windows file, covering warnings after commit, errors before commit, and successful
+cleanup after the lock is released. Run it with both PowerShell 5.1 and 7.

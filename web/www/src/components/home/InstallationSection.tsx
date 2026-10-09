@@ -68,7 +68,7 @@ export default function InstallationSection() {
                 </Heading>
                 <InstallCommand
                   language="bash"
-                  command="curl -fsSL https://ascii-chat.com/install.sh | bash"
+                  command="(set -o pipefail; curl -fsSL https://ascii-chat.com/install.sh | bash)"
                 />
                 <p className="text-sm text-gray-400 mt-2">
                   Installs into ~/.local. If needed, a Y/n prompt offers to add
@@ -79,7 +79,7 @@ export default function InstallationSection() {
                 </p>
                 <InstallCommand
                   language="bash"
-                  command="curl -fsSL https://ascii-chat.com/install.sh | sudo bash"
+                  command="(set -o pipefail; curl -fsSL https://ascii-chat.com/install.sh | sudo bash)"
                 />
               </div>
               <div>

@@ -6,7 +6,7 @@ ascii_chat_configure_path() (
   bin_dir=$1
   case ":$PATH:" in *":$bin_dir:"*) return 0 ;; esac
   # sudo must not edit root's profiles on behalf of the invoking user.
-  if [ -n "${SUDO_USER:-}" ] || ! { exec 3<>/dev/tty; } 2>/dev/null; then
+  if [ -z "${HOME:-}" ] || [ -n "${SUDO_USER:-}" ] || ! { exec 3<>/dev/tty; } 2>/dev/null; then
     printf '\nAdd this to your shell profile:\n  export PATH=%q:"$PATH"\nThen reload your shell with exec $SHELL, or open a new terminal.\n' "$bin_dir"
     return 0
   fi
@@ -93,8 +93,11 @@ ascii_chat_install() (
     arm64|aarch64) arch=arm64; gum_arch=arm64 ;;
     *) fail 'Supported architectures: x86_64 and ARM64.' ;;
   esac
-  prefix=${ASCII_CHAT_INSTALL_PREFIX:-${HOME}/.local}
-  if [ "$(id -u)" = 0 ]; then prefix=${ASCII_CHAT_INSTALL_PREFIX:-/usr/local}; fi
+  if [ "$(id -u)" = 0 ]; then
+    prefix=${ASCII_CHAT_INSTALL_PREFIX:-/usr/local}
+  else
+    prefix=${ASCII_CHAT_INSTALL_PREFIX:-${HOME}/.local}
+  fi
   case "$prefix" in /*) ;; *) fail 'ASCII_CHAT_INSTALL_PREFIX must be an absolute path.' ;; esac
   mkdir -p "$prefix/lib" "$prefix/bin"
   prefix=$(cd "$prefix" && pwd -P)
