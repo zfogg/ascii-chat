@@ -8,7 +8,7 @@
 import { test, expect } from "@playwright/test";
 import { expectMeaningful60Fps } from "./server-fixture";
 
-const MIRROR_URL = "/mirror?test";
+const MIRROR_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
 async function ensureMirrorRunning(page: import("@playwright/test").Page) {

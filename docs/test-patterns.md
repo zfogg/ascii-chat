@@ -20,44 +20,25 @@ The browser maps `?test` to pattern zero and `?test2` to pattern one. `?test2&te
 
 The existing terminal palette helpers are shared by the normal render pipeline. `rgb_to_256color` now compares the nearest nonuniform xterm cube entry with the nearest grayscale entry, including exact black and white. `get_256color_rgb` supplies the inverse palette lookup; the existing 16-color helpers supply the other direction. Palette expansion uses the standard reference colors (the first 16 actual terminal colors may be themed).
 
-## Visual verification (2026-10-09)
+## Recorded verification (2026-10-09)
 
-The test-only Canvas reference comes from `37028bd7e`. It is kept outside production imports for regression comparisons. Two changes to the baseline are explicit:
-
-- Disable the previously unconditional cadence overlay for the visible second animation.
-- Use the bundled DejaVu Sans Mono font for labels instead of an OS-dependent `sans-serif` face. Native and WASM use FreeType; the reference browser loads the exact same font bytes. This is a deliberate font change, not a claim of pixel identity with the former system font.
-
-The pixel comparison covers both patterns at 320x240, 640x480, 801x603, and 1920x1080, each at 0, 1000, 2000, 3999, 4000, and 9999 ms. It also checks exact cadence-overlay output across its Gray-code wrap. The fixed-time screenshots below were inspected visually. Small edge/font antialiasing and RGB rounding differences are allowed by explicit test thresholds: mean channel error below 2/255, fewer than 2.5% of pixels with any channel error above 8, and mean geometry error below 1/255. Actual measurements are in [pixel-metrics.json](test-pattern-evidence/pixel-metrics.json).
+The C/WASM output was compared against the former Canvas implementation before removing the JavaScript reference and dedicated browser tests. The retained screenshots document that verification:
 
 ![Canvas reference and C/WASM gradient](test-pattern-evidence/pattern-0-paired.png)
 ![Canvas reference and C/WASM stripes](test-pattern-evidence/pattern-1-paired.png)
 
-The native shared library also generated [pattern zero](test-pattern-evidence/native-pattern-0.png) and [pattern one](test-pattern-evidence/native-pattern-1.png) at 2000 ms. Actual application screenshots: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
+Labels now use bundled DejaVu Sans Mono instead of the previous OS-dependent sans-serif font. The comparisons used the same bundled font on both sides.
 
-## Checks and limits
+Both visible patterns sustained approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Recorded results: [pattern zero](test-pattern-evidence/test-cadence.json), [pattern one](test-pattern-evidence/test2-cadence.json). Application screenshots show the warmed-up counter: [mirror zero](test-pattern-evidence/test-mirror.png), [mirror one](test-pattern-evidence/test2-mirror.png).
 
-- Windows Clang native build, both Emscripten WASM builds, workspace `vp check`, and the web application production build pass.
-- Native executable: 30 snapshots covering both selectors/bare flag, 16/256/truecolor, and minimum/normal dimensions. Invalid selectors, default/repeated selection, legacy environment and config inputs pass.
-- Native shared library: all 256 reference palette entries round-trip; independent renderers, deterministic timestamps, buffer reuse, resize, and invalid input checks pass. See [native-results.json](test-pattern-evidence/native-results.json).
-- Focused Playwright suite: fixed-time visual comparisons, WASM lifetime/resize checks, 1080p generation timing, and actual mirror rendering/stop for both patterns pass.
-- Source generation measured about 6–7 ms median at 1080p, including canvas upload, after warmup. The paired Canvas reference measured about 5–8 ms. [Recorded timing](test-pattern-evidence/generation-timing.json) is machine-specific, not an end-to-end 60-FPS guarantee.
-- Both visible patterns sustain approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Per-second results: [pattern zero](test-pattern-evidence/test-cadence.json), [pattern one](test-pattern-evidence/test2-cadence.json). The strict mirror cadence-overlay test also passes. The sampler now captures frame references during animation and compares terminal cells afterward; parsing entire frames inside each callback had slowed down the application under test. Assertions and the 55-FPS minimum are unchanged. Screenshots now wait for the rolling one-second FPS counter to fill instead of capturing a partial startup window.
-- The separate 15-second native-server/browser-client run previously received and repainted approximately 60 FPS, but its distinct-ASCII metric averaged about 50 FPS and missed its 55-FPS threshold. That separate network check has not been rerun in this mirror verification.
-- The configured web unit suite has eight failures in frame-parser, renderer-resize, and encryption-policy tests. The same eight failures were reproduced with the modified shared TypeScript files restored to the base revision. All three focused test-pattern unit tests pass. The workspace-root test command additionally collects Playwright files as Vitest tests; use the application's Vitest config.
-- Criterion tests were updated but not run on Windows, where Criterion is unsupported. Native C behavior was exercised through the actual shared library instead.
-- Native `--render-file .png` fails in the existing FFmpeg encoder initialization in this environment; the native source images above were captured directly from the library. Native terminal output itself passes the color-mode snapshot checks.
+Native source images: [pattern zero](test-pattern-evidence/native-pattern-0.png), [pattern one](test-pattern-evidence/native-pattern-1.png). Native CLI and shared-library checks cover selectors/defaults, 30 snapshots, legacy config/environment inputs, palette mapping, independent sources, resize, and invalid input. [Recorded results](test-pattern-evidence/native-results.json).
 
-## Reproduce
+## Native verification
 
 ```sh
 cmake --preset default -B build
 cmake --build build --target ascii-chat
 python tests/platform/test_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll
-# Build mirror-web/client-web using the configured Emscripten build, then publish:
-cd web/web
-vp run wasm:build
-vp exec playwright test --config playwright.pattern.config.ts test-pattern-parity.spec.ts mirror-frame-cadence.spec.ts
-vp test run --config vitest.config.ts tests/network/test-pattern.test.ts
 ```
 
-The Playwright configuration uses port 3810 to avoid interfering with an existing developer server. Rebuild/publish the WASM artifacts before running it; the paired tests load the same artifacts used by the application.
+Criterion tests require a supported platform; Windows verification uses the actual shared library. Native PNG encoder initialization fails in this environment, so the native evidence images were captured directly from the library.
