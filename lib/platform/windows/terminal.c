@@ -568,16 +568,16 @@ asciichat_error_t terminal_restore_cursor(void) {
 /**
  * @brief Set terminal window title
  * @param title New window title
- * @return 0 on success, -1 on failure
+ * @return ASCIICHAT_OK on success, an error for NULL titles or console failures
  */
 asciichat_error_t terminal_set_title(const char *title) {
+  if (!title) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title must not be NULL");
+  }
   if (SetConsoleTitleA(title)) {
     return ASCIICHAT_OK;
   }
-  // Fallback to ANSI escape sequence
-  printf("\033]0;%s\007", title);
-  (void)fflush(stdout);
-  return ASCIICHAT_OK;
+  return SET_ERRNO(ERROR_TERMINAL, "Failed to set console title (Windows error %lu)", (unsigned long)GetLastError());
 }
 
 /**

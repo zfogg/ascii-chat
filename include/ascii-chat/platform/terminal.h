@@ -420,6 +420,8 @@ asciichat_error_t terminal_restore_cursor(void);
  * appears in window title bar or terminal tab.
  *
  * @note Title is truncated to terminal-specific maximum length.
+ * @note Windows uses SetConsoleTitleA and reports failure without emitting
+ * escape sequences to stdout, including when no console is attached.
  * @note Some terminals may not support title setting.
  *
  * @ingroup platform_terminal

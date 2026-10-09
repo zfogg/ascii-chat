@@ -370,6 +370,7 @@ if(WIN32)
 else()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-platform PRIVATE
+            "-framework CoreFoundation"
             ${FOUNDATION_FRAMEWORK}
             ${AVFOUNDATION_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK}
@@ -1060,6 +1061,7 @@ add_library(ascii-chat-shared SHARED
     if(APPLE)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES}
+            "-framework CoreFoundation"
             ${COREAUDIO_FRAMEWORK}
             ${AUDIOUNIT_FRAMEWORK}
             ${AUDIOTOOLBOX_FRAMEWORK}
@@ -1215,6 +1217,7 @@ else()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
+            "-framework CoreFoundation"
             ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
             ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
@@ -1559,6 +1562,7 @@ if(WIN32)
 elseif(APPLE)
     target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
         ${FOUNDATION_FRAMEWORK}
+        "-framework CoreFoundation"
         ${AVFOUNDATION_FRAMEWORK}
         ${COREMEDIA_FRAMEWORK}
         ${COREVIDEO_FRAMEWORK}

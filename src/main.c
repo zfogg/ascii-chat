@@ -67,6 +67,7 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -479,9 +480,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Show cursor early in case a previous session crashed with it hidden
-  (void)terminal_cursor_show();
-
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
   named_init();
@@ -504,6 +502,17 @@ int main(int argc, char *argv[]) {
   // Also save main thread ID for memory reporting (must be very early)
   debug_sync_set_main_thread_id();
 #endif
+
+  // Preserve arguments before environment consumers or option parsing retain pointers.
+  asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);
+  if (title_init_result != ASCIICHAT_OK) {
+    CLEAR_ERRNO();
+  }
+  g_argv = argv;
+  (void)atexit(platform_process_title_destroy);
+
+  // Show cursor early in case a previous session crashed with it hidden.
+  (void)terminal_cursor_show();
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors
@@ -1014,6 +1023,15 @@ int main(int argc, char *argv[]) {
 
   // Call the mode-specific entry point
   // Mode entry points use options_get() to access parsed options
+  if (title_init_result == ASCIICHAT_OK) {
+    asciichat_error_t title_result = platform_process_title_set_args(mode->name, argc, argv, opts->mode_arg_index);
+    if (title_result != ASCIICHAT_OK) {
+      log_debug("Could not set process title for %s mode", mode->name);
+      CLEAR_ERRNO();
+    }
+  } else {
+    log_debug("Process title initialization was unavailable (error %d)", title_init_result);
+  }
   int exit_code = mode->entry_point();
 
   // Named registry cleanup is handled by asciichat_shared_destroy()

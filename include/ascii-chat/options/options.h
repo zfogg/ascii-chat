@@ -952,6 +952,7 @@ typedef struct options_state {
   // Mode Detection (auto-detected during options_init)
   // ============================================================================
   asciichat_mode_t detected_mode; ///< Mode detected from command-line arguments
+  int mode_arg_index; ///< Explicit mode token in original argv, or -1 for implicit discovery/session strings
 
   // ============================================================================
   // Binary-Level Options (parsed first, before mode selection)

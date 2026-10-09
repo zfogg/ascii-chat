@@ -528,6 +528,7 @@ options_t options_t_new(void) {
 
   // Zero-initialize all fields first
   memset(&opts, 0, sizeof(opts));
+  opts.mode_arg_index = -1;
 
   // ============================================================================
   // GENERAL CATEGORY - General-purpose options
@@ -2137,6 +2138,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   js_log_options("After log_info PERF");
   js_log_options("Calling options_state_set...");
   js_log_options("Before options_state_set call");
+  opts.mode_arg_index = detected_mode == MODE_DISCOVERY ? -1 : mode_index;
   asciichat_error_t publish_result = options_state_set(&opts);
   js_log_options("After options_state_set call");
   js_log_options("options_state_set returned");

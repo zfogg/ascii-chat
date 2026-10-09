@@ -1,6 +1,7 @@
 # lib/platform - Platform abstraction layer
 
 set(PLATFORM_SRCS_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/process_title.c
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c
     ${CMAKE_CURRENT_SOURCE_DIR}/thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.c
@@ -81,6 +82,7 @@ elseif(PLATFORM_POSIX)
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.c
@@ -89,6 +91,7 @@ elseif(PLATFORM_POSIX)
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/font.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/filesystem.c
