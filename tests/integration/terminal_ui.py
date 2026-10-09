@@ -20,10 +20,41 @@ import time
 import pyte
 
 
+class CaptureScreen(pyte.Screen):
+    """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
+
+    def reset(self):
+        self.last_character = ""
+        super().reset()
+
+    def draw(self, data):
+        super().draw(data)
+        if data:
+            self.last_character = data[-1]
+
+    def repeat_character(self, count=1):
+        if self.last_character:
+            self.draw(self.last_character * (count or 1))
+
+
+class CaptureStream(pyte.Stream):
+    csi = dict(pyte.Stream.csi, b="repeat_character")
+    events = pyte.Stream.events | {"repeat_character"}
+
+
+def check_capture_emulator():
+    screen = CaptureScreen(20, 2)
+    stream = CaptureStream(screen)
+    # Split an escape sequence across reads, just as a PTY can.
+    stream.feed("A\x1b[4")
+    stream.feed("bB\x1b[0bC\x1b[b")
+    assert screen.display[0].startswith("AAAAABBCC"), screen.display[0]
+
+
 class Terminal:
     def __init__(self, argv, rows=12, cols=19):
-        self.screen = pyte.Screen(cols, rows)
-        self.stream = pyte.Stream(self.screen)
+        self.screen = CaptureScreen(cols, rows)
+        self.stream = CaptureStream(self.screen)
         self.output = queue.Queue()
         self.raw = []
         if os.name == "nt":
@@ -109,6 +140,7 @@ def free_port():
 
 
 def main():
+    check_capture_emulator()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path)
