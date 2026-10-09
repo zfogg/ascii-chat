@@ -5,6 +5,11 @@ installer=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 sandbox=$(mktemp -d)
 trap 'rm -rf "$sandbox"' EXIT
 export ASCII_CHAT_INSTALL_PREFIX="$sandbox/prefix with spaces"
+# PATH prompts have their own PTY tests; never offer edits to the test runner's profiles.
+export HOME="$sandbox/home"
+export ZDOTDIR="$HOME"
+mkdir -p "$HOME"
+export PATH="$ASCII_CHAT_INSTALL_PREFIX/bin:$PATH"
 unset ASCII_CHAT_VERSION
 bash "$installer"
 binary="$ASCII_CHAT_INSTALL_PREFIX/bin/ascii-chat"

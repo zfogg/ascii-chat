@@ -71,9 +71,10 @@ export default function InstallationSection() {
                   command="curl -fsSL https://ascii-chat.com/install.sh | bash"
                 />
                 <p className="text-sm text-gray-400 mt-2">
-                  Installs into ~/.local. Follow the printed PATH instructions
-                  if needed. For everyone on this computer, install into
-                  /usr/local:
+                  Installs into ~/.local. If needed, a Y/n prompt offers to add
+                  it to your Bash and Zsh profiles. Press Enter to accept, then
+                  open a new terminal. Existing PATH entries are left alone. For
+                  everyone on this computer, install into /usr/local:
                 </p>
                 <InstallCommand
                   language="bash"

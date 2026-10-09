@@ -1,4 +1,78 @@
 #!/usr/bin/env bash
+# Offer persistent PATH setup without consuming a piped installer on stdin.
+# Shell code below must retain literal variable references until startup.
+# shellcheck disable=SC2016
+ascii_chat_configure_path() (
+  bin_dir=$1
+  case ":$PATH:" in *":$bin_dir:"*) return 0 ;; esac
+  # sudo must not edit root's profiles on behalf of the invoking user.
+  if [ -n "${SUDO_USER:-}" ] || ! { exec 3<>/dev/tty; } 2>/dev/null; then
+    printf '\nAdd this to your shell profile, then open a new terminal:\n  export PATH=%q:"$PATH"\n' "$bin_dir"
+    return 0
+  fi
+  updated=0
+  for shell_name in bash zsh; do
+    shell_path=$(command -v "$shell_name") || continue
+    profiles=()
+    # Check the PATH after each shell reads its existing startup files.
+    # The directory is an argument, never interpolated into shell code.
+    probe='case ":$PATH:" in *":$1:"*) exit 0 ;; *) exit 1 ;; esac'
+    if ! "$shell_path" -ic "$probe" ascii-chat "$bin_dir" </dev/null >/dev/null 2>&1; then
+      if [ "$shell_name" = bash ]; then
+        profiles+=("$HOME/.bashrc")
+      else
+        profiles+=("${ZDOTDIR:-$HOME}/.zshrc")
+      fi
+    fi
+    if ! "$shell_path" -lic "$probe" ascii-chat "$bin_dir" </dev/null >/dev/null 2>&1; then
+      if [ "$shell_name" = bash ]; then
+        login_profile="$HOME/.bash_profile"
+        for candidate in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+          if [ -f "$candidate" ]; then login_profile=$candidate; break; fi
+        done
+        profiles+=("$login_profile")
+      elif [ "${#profiles[@]}" = 0 ]; then
+        profiles+=("${ZDOTDIR:-$HOME}/.zshrc")
+      fi
+    fi
+    [ "${#profiles[@]}" -gt 0 ] || continue
+    # A guarded block is also safe when a profile is sourced more than once.
+    printf -v quoted_dir '%q' "$bin_dir"
+    marker="# ascii-chat PATH: $quoted_dir"
+    pending=()
+    for profile in "${profiles[@]}"; do
+      if [ ! -f "$profile" ] || ! grep -Fqx -- "$marker" "$profile"; then
+        pending+=("$profile")
+      fi
+    done
+    [ "${#pending[@]}" -gt 0 ] || continue
+    printf '\nAdd %s to PATH for %s? [Y/n] ' "$bin_dir" "$shell_name" >&3
+    answer=
+    IFS= read -r answer <&3 || continue
+    case "$answer" in ''|y|Y|yes|YES|Yes) ;; *) continue ;; esac
+    for profile in "${pending[@]}"; do
+      # Do not follow a profile symlink or replace a non-regular file.
+      if [ -L "$profile" ] || { [ -e "$profile" ] && [ ! -f "$profile" ]; }; then
+        printf 'Skipping %s: update this profile manually.\n' "$profile" >&3
+        continue
+      fi
+      if ! {
+        printf '\n%s\n' "$marker"
+        printf 'case ":$PATH:" in\n  *":"%s":"*) ;;\n  *) export PATH=%s:"$PATH" ;;\nesac\n' "$quoted_dir" "$quoted_dir"
+      } >> "$profile"; then
+        printf 'Could not update %s; add the directory manually.\n' "$profile" >&3
+        continue
+      fi
+      printf 'Updated %s\n' "$profile" >&3
+      updated=1
+    done
+  done
+  if [ "$updated" = 1 ]; then
+    printf '\nOpen a new terminal to use the updated PATH.\n'
+  fi
+  printf '\nFor this terminal, run:\n  export PATH=%q:"$PATH"\n' "$bin_dir"
+)
+
 # Download the latest release. Requires Bash 3.2+, curl, and tar.
 # ASCII_CHAT_INSTALL_PREFIX overrides ~/.local (or /usr/local when root).
 # ASCII_CHAT_VERSION pins a release, e.g. v0.12.17.
@@ -92,11 +166,6 @@ ascii_chat_install() (
   ln -sfn "$target/bin/ascii-chat" "$link"
   committed=1
   "$gum" style --foreground 86 "Installed $tag → $link" 'Ready to chat: ascii-chat'
-  # Print a literal $PATH for the user's shell profile.
-  # shellcheck disable=SC2016
-  case ":$PATH:" in
-    *":$prefix/bin:"*) ;;
-    *) printf '\nAdd this to your shell profile, then open a new terminal:\n  export PATH=%q:"$PATH"\n' "$prefix/bin" ;;
-  esac
+  ascii_chat_configure_path "$prefix/bin"
 )
 ascii_chat_install

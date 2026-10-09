@@ -28,7 +28,16 @@ release. Set `ASCII_CHAT_VERSION=v0.12.17` to select a specific release.
 - Bash defaults to `~/.local`, or `/usr/local` when run as root (including
   `curl ... | sudo bash`). `ASCII_CHAT_INSTALL_PREFIX` overrides that prefix.
   The archive lives in `PREFIX/lib/ascii-chat`; `PREFIX/bin/ascii-chat` links to
-  its executable. The installer prints shell PATH instructions when needed.
+  its executable. When needed, the installer offers a separate `Y/n` prompt
+  (Enter means yes) for installed Bash and Zsh shells, reading `/dev/tty` so
+  piped installs work. It checks the current PATH and each shell's interactive
+  and login startup PATH before offering changes. Bash uses `.bashrc` and its
+  first existing login profile (`.bash_profile`, `.bash_login`, or `.profile`),
+  defaulting to `.bash_profile`; Zsh uses `${ZDOTDIR:-$HOME}/.zshrc`.
+  Marked, guarded blocks prevent duplicate edits and duplicate PATH entries
+  when profiles are sourced again. Symlinked profiles are left for manual edits.
+  Open a new terminal afterward, or run the printed command in the current one.
+  Noninteractive and sudo installs print instructions without editing profiles.
 - PowerShell defaults to `%LOCALAPPDATA%\Programs\ascii-chat`, or
   `%ProgramFiles%\ascii-chat` in an Administrator shell. It updates User or
   Machine PATH respectively, plus the current session.
@@ -51,3 +60,17 @@ release. Set `ASCII_CHAT_VERSION=v0.12.17` to select a specific release.
 To remove an installation made by these scripts, remove its managed directory
 and the Bash symlink or Windows PATH entry. Do not use the archive's package
 uninstaller: its layout assumes a conventional package installation.
+
+## PATH prompt regression tests
+
+```bash
+python3 tests/installers/path_profiles.py web/www/public/install.sh
+# Explicitly test macOS's bundled Bash 3.2:
+TEST_BASH=/bin/bash python3 tests/installers/path_profiles.py web/www/public/install.sh
+```
+
+These use real Bash and Zsh with isolated home directories and a pseudo-terminal.
+They cover default acceptance, decline, existing shell-specific PATH entries,
+idempotent reruns and repeated sourcing, paths needing shell quoting, Bash login
+profile selection, ZDOTDIR, and noninteractive/sudo behavior. They require
+Python 3 and Zsh; they do not download releases or edit the user's real profiles.
