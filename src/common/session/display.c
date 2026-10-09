@@ -12,13 +12,13 @@
 
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/splash.h>
-#include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
@@ -83,6 +83,9 @@ typedef struct session_display_ctx {
   /** @brief First frame flag for logging control */
   atomic_t first_frame;
 
+  /** @brief Stop submitting frames after the output consumer disappears */
+  atomic_t output_failed;
+
   /** @brief Context is fully initialized */
   bool initialized;
 
@@ -100,9 +103,6 @@ typedef struct session_display_ctx {
 
   /** @brief Last frame timestamp for digital rain delta time calculation */
   uint64_t last_frame_time_ns;
-
-  /** @brief FPS counter for measuring output throughput */
-  fps_counter_t *fps_counter;
 
   /** @brief Video FPS for render-file encoding */
   uint32_t render_fps;
@@ -194,10 +194,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_ctx = config->audio_ctx;
   ctx->render_fps = config->render_fps;
   atomic_store_bool(&ctx->first_frame, true);
+  atomic_store_bool(&ctx->output_failed, false);
   atomic_store_bool(&ctx->keyboard_help_active, false);
-
-  // Initialize FPS counter
-  ctx->fps_counter = fps_counter_create();
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
@@ -372,12 +370,6 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   if (ctx->digital_rain) {
     digital_rain_destroy(ctx->digital_rain);
     ctx->digital_rain = NULL;
-  }
-
-  // Cleanup FPS counter
-  if (ctx->fps_counter) {
-    fps_counter_destroy(ctx->fps_counter);
-    ctx->fps_counter = NULL;
   }
 
   ctx->initialized = false;
@@ -778,6 +770,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     return;
   }
 
+  // Shutdown is asynchronous; queued frames must not retry a failed output.
+  if (atomic_load_bool(&ctx->output_failed)) {
+    return;
+  }
+
   if (!ascii) {
     SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is NULL");
     return;
@@ -883,22 +880,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
     size_t cursor_seq_len = 7;
-    char overlay[64] = {0};
-    size_t overlay_len = 0;
-    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
-      int cols = ui_controller_size().cols;
-      int n = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", cols > 7 ? cols - 6 : 1,
-                       fps_counter_get(ctx->fps_counter));
-      if (n > 0 && n < (int)sizeof(overlay))
-        overlay_len = (size_t)n;
-    }
-    size_t total_size = cursor_seq_len + frame_len + overlay_len;
+    size_t total_size = cursor_seq_len + frame_len;
 
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
-      memcpy(frame_buffer + cursor_seq_len + frame_len, overlay, overlay_len);
 
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
@@ -913,11 +900,6 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
         log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started");
-      }
-
-      // Tick FPS counter
-      if (ctx->fps_counter) {
-        fps_counter_tick(ctx->fps_counter);
       }
 
       SAFE_FREE(frame_buffer);
@@ -935,7 +917,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-      (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
+      if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+        atomic_store_bool(&ctx->output_failed, true);
+        APP_CALLBACK_VOID(signal_exit);
+        SAFE_FREE(write_buf);
+        goto cleanup_frame;
+      }
       SAFE_FREE(write_buf);
     }
 
@@ -949,7 +936,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-      (void)ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1);
+      if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+        atomic_store_bool(&ctx->output_failed, true);
+        APP_CALLBACK_VOID(signal_exit);
+        SAFE_FREE(write_buf);
+        goto cleanup_frame;
+      }
 
       // Start snapshot timer on first ASCII frame rendered
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
@@ -969,6 +961,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     }
   }
 
+cleanup_frame:
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
 

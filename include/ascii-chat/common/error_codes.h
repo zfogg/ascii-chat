@@ -111,6 +111,7 @@ typedef enum {
   ERROR_RESOURCE_EXHAUSTED = 88, /**< System resources exhausted */
   ERROR_FORMAT = 89,             /**< String formatting operation failed */
   ERROR_STRING = 90,             /**< String manipulation operation failed */
+  ERROR_PROMPT_TIMEOUT = 92,     /**< Interactive prompt deadline expired */
   ERROR_NOT_FOUND = 91,          /**< Resource not found in registry or lookup */
 
   /* Signal/Crash handlers (100-127) */
@@ -151,6 +152,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
   switch (code) {
   case ASCIICHAT_OK:
     return "Success";
+  case ERROR_PROMPT_TIMEOUT:
+    return "Prompt timed out";
   case ERROR_GENERAL:
     return "General error";
   case ERROR_USAGE:

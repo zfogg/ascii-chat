@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -38,6 +39,7 @@ static bool g_finished;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static terminal_size_t g_last_minimum;
+static _Thread_local fps_counter_t *g_fps;
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
@@ -48,7 +50,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     return ASCIICHAT_OK;
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
-  return platform_write_all(fd, data, len) == len ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
+  fps_counter_write_begin(g_fps);
+  bool complete = platform_write_all(fd, data, len) == len;
+  fps_counter_write_end(g_fps, complete);
+  return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
@@ -101,6 +106,7 @@ static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
   uint64_t progress_render_ns = 0;
+  g_fps = fps_counter_create();
   while (!atomic_load_bool(&g_stop)) {
     mutex_lock(&g_mutex);
     int active = -1;
@@ -115,7 +121,8 @@ static void *presentation_main(void *unused) {
       screen_t *screen = &g_screens[active];
       terminal_size_t size = {0};
       // Measure the physical output device, never --width/--height or environment overrides.
-      if (terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 || size.rows <= 0) {
+      if (!platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 ||
+          size.rows <= 0) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         g_small = true;
@@ -132,6 +139,10 @@ static void *presentation_main(void *unused) {
           screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
       g_last_minimum = screen->minimum;
       bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
+      bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
+      transition |= fps_counter_set_visible(g_fps, show_fps);
+      if (changed || small || g_small)
+        fps_counter_reset(g_fps);
       g_redraw = false;
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
@@ -159,11 +170,15 @@ static void *presentation_main(void *unused) {
         bool animate = active != UI_SCREEN_MEDIA;
         if (active == UI_SCREEN_RENDER_PROGRESS)
           animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
-        if (screen->dirty || transition || animate) {
+        bool rendered = screen->dirty || transition || animate;
+        if (rendered) {
+          fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
           screen->render(size, screen->snapshot);
           if (active == UI_SCREEN_RENDER_PROGRESS)
             progress_render_ns = now;
+          fps_counter_frame_end(g_fps, time_get_ns());
         }
+        fps_counter_render(g_fps, screen->fd, size.cols, rendered);
       }
       g_small = small;
       screen->dirty = false;
@@ -172,6 +187,8 @@ static void *presentation_main(void *unused) {
     mutex_unlock(&g_mutex);
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
+  fps_counter_destroy(g_fps);
+  g_fps = NULL;
   g_owner = false;
   return NULL;
 }
@@ -225,7 +242,10 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
-    if (terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
+    // Redirected output has no terminal geometry. Avoid raising a terminal
+    // error for every frame when rendering to a file, pipe, or null device.
+    if (!platform_isatty(fd) || terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 ||
+        detected.rows <= 0)
       detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
     g_render_size = detected;
     g_owner = true;
@@ -291,8 +311,8 @@ ui_presentation_state_t ui_controller_state(void) {
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
     terminal_size_t size = {0};
-    state.covered = terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 || size.rows <= 0 ||
-                    ui_too_small(size, screen->minimum);
+    state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
+                    size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
   }
   mutex_unlock(&g_mutex);
   return state;

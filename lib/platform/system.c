@@ -231,7 +231,8 @@ int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list
 /**
  * @brief Write all bytes to a file descriptor, handling partial writes
  *
- * Handles partial writes and EAGAIN errors, retrying up to 1000 times before giving up.
+ * Handles partial writes, interruptions, and EAGAIN errors, retrying transient
+ * failures up to 1000 times before giving up. Permanent failures return immediately.
  * This ensures that data is fully written even when dealing with non-blocking I/O or
  * interrupted syscalls.
  */
@@ -251,24 +252,22 @@ size_t platform_write_all(int fd, const void *buf, size_t count) {
       written_total += (size_t)result;
       attempts = 0; // Reset attempt counter on successful write
     } else if (result < 0) {
+      int write_errno = errno;
       // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (write_errno == EAGAIN || write_errno == EWOULDBLOCK) {
         // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
         platform_sleep_us(100);
-      } else {
-        // Other write errors - log and retry
-        log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total,
-                 count, errno);
+      } else if (write_errno != EINTR) {
+        // Logging also writes through this function. Reporting a broken output
+        // here can recurse into the same failure, and retrying cannot repair it.
+        break;
       }
+      errno = write_errno;
       attempts++;
     } else {
-      // result == 0: no bytes written, retry
-      attempts++;
+      // A zero-length write cannot make progress on this buffer.
+      break;
     }
-  }
-
-  if (attempts >= MAX_ATTEMPTS && written_total < count) {
-    log_warn("platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes", fd, written_total, count);
   }
 
   return written_total;

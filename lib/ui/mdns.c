@@ -86,47 +86,14 @@ void ui_mdns_free_results(ui_mdns_server_t *servers) {
  * @brief Interactive server selection
  */
 int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
-  if (terminal_is_interactive())
+  if (terminal_can_prompt_user())
     return ui_mdns_select(servers, count);
   if (!servers || count <= 0) {
     return -1;
   }
 
-  // Display available servers
-  ui_controller_printf(STDOUT_FILENO, "\nAvailable ascii-chat servers on LAN:\n");
-  for (int i = 0; i < count; i++) {
-    const ui_mdns_server_t *srv = &servers[i];
-    const char *addr = ui_mdns_get_best_address(srv);
-    ui_controller_printf(STDOUT_FILENO, "  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
-  }
-
-  // Prompt for selection
-  ui_controller_printf(STDOUT_FILENO, "\nSelect server (1-%d) or press Enter to cancel: ", count);
-  fflush(stdout);
-
-  // Read user input
-  char input[32];
-  if (fgets(input, sizeof(input), stdin) == NULL) {
-    ui_controller_printf(STDOUT_FILENO, "\n");
-    return -1; // EOF or error
-  }
-
-  // Check for empty input (Enter pressed)
-  if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
-    return -1; // User cancelled
-  }
-
-  // Parse input as number
-  char *endptr;
-  long selection = strtol(input, &endptr, 10);
-
-  // Validate input
-  if (selection < 1 || selection > count) {
-    ui_controller_printf(STDOUT_FILENO, "⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
-    return ui_mdns_prompt_selection(servers, count); // Re-prompt
-  }
-
-  return (int)(selection - 1); // Convert to 0-based index
+  log_error("Cannot select a discovered server without an interactive terminal; specify a server address.");
+  return -1;
 }
 
 /**
@@ -161,7 +128,8 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 1);
     frame_buffer_printf(buffer, "%s\n", clipped);
   }
-  frame_buffer_printf(buffer, "\nSelect server: %s\033[K", snapshot->input);
+  frame_buffer_printf(buffer, "\nTimeout: %us (cancel)\nSelect server: %s\033[K",
+                      30u, snapshot->input);
   frame_buffer_flush(buffer);
   frame_buffer_destroy(buffer);
 }
@@ -169,7 +137,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
 int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   if (!servers || count <= 0)
     return -1;
-  if (!terminal_is_interactive())
+  if (!terminal_can_prompt_user())
     return ui_mdns_prompt_selection(servers, count);
   size_t bytes = sizeof(mdns_snapshot_t) + (size_t)count * sizeof(*servers);
   mdns_snapshot_t *snapshot = SAFE_CALLOC(1, bytes, mdns_snapshot_t *);
@@ -181,11 +149,17 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   log_set_terminal_output(false);
   int selection = -1;
   size_t length = 0;
+  uint64_t deadline = ui_input_deadline(30);
+  bool timed_out = false;
   while (!shutdown_is_requested()) {
-    if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 5},
+    if (ui_controller_submit(UI_SCREEN_MDNS, STDOUT_FILENO, (terminal_size_t){.cols = 30, .rows = count + 6},
                              render_mdns_selection, snapshot, bytes) != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_MDNS, 100);
+    if (ui_input_expired(deadline)) {
+      timed_out = true;
+      break;
+    }
     if (key == KEY_ESCAPE)
       break;
     if (key == '\r' || key == '\n') {
@@ -208,6 +182,9 @@ int ui_mdns_select(const ui_mdns_server_t *servers, int count) {
   ui_controller_remove(UI_SCREEN_MDNS);
   log_set_terminal_output(logging);
   SAFE_FREE(snapshot);
+  if (timed_out)
+    ui_input_timeout_report(30u,
+                            "server selection cancelled; specify a server address for unattended use");
   return selection;
 }
 
