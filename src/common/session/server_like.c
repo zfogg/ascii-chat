@@ -41,6 +41,7 @@ static bool g_websocket_thread_started = false;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
+static nat_upnp_context_t *g_ws_upnp_ctx = NULL;
 static asciichat_thread_t g_upnp_thread;
 static bool g_upnp_thread_started = false;
 static atomic_t g_upnp_stop = {0};
@@ -51,10 +52,14 @@ static atomic_t g_upnp_ready = {0};
 static void *upnp_renewal_thread(void *unused) {
   (void)unused;
   while (!atomic_load_bool(&g_upnp_stop)) {
-    if (atomic_load_bool(&g_upnp_ready) && time_get_ns() >= g_upnp_ctx->refresh_at_ns) {
-      asciichat_error_t result = nat_upnp_refresh(g_upnp_ctx);
-      if (result != ASCIICHAT_OK) {
-        LOG_ERRNO_IF_SET("Router mapping renewal failed");
+    if (atomic_load_bool(&g_upnp_ready)) {
+      nat_upnp_context_t *mappings[] = {g_upnp_ctx, g_ws_upnp_ctx};
+      for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
+        if (mappings[i] && time_get_ns() >= mappings[i]->refresh_at_ns) {
+          if (nat_upnp_refresh(mappings[i]) != ASCIICHAT_OK) {
+            LOG_ERRNO_IF_SET("Router mapping renewal failed");
+          }
+        }
       }
     }
     time_sleep_ns(100 * NS_PER_MS_INT);
@@ -560,17 +565,6 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
-  if (g_upnp_ctx) {
-    atomic_store_bool(&g_upnp_stop, false);
-    atomic_store_bool(&g_upnp_ready, false);
-    if (asciichat_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
-      g_upnp_thread_started = true;
-    } else {
-      log_warn("NAT: could not start lease renewal; removing the temporary mapping");
-      nat_upnp_close(&g_upnp_ctx);
-    }
-  }
-
   /* === 6. mDNS === */
 
   if (config->mdns.enabled) {
@@ -626,6 +620,25 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
+  if (upnp_requested && g_websocket_thread_started) {
+    // WebSocket binds independently of the raw TCP listener's address.
+    if (nat_upnp_open((uint16_t)GET_OPTION(websocket_port), "ascii-chat WebSocket", &g_ws_upnp_ctx) != ASCIICHAT_OK) {
+      log_warn("WebSocket mapping unavailable; manually forward TCP port %d if needed", GET_OPTION(websocket_port));
+    }
+  }
+
+  if (g_upnp_ctx || g_ws_upnp_ctx) {
+    atomic_store_bool(&g_upnp_stop, false);
+    atomic_store_bool(&g_upnp_ready, false);
+    if (asciichat_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
+      g_upnp_thread_started = true;
+    } else {
+      log_warn("NAT: could not start lease renewal; removing the temporary mapping");
+      nat_upnp_close(&g_upnp_ctx);
+      nat_upnp_close(&g_ws_upnp_ctx);
+    }
+  }
+
   /* === 9. Status screen === */
 
   if (config->status_fn) {
@@ -676,6 +689,8 @@ cleanup:
     nat_upnp_close(&g_upnp_ctx);
     log_debug("UPnP port mapping closed");
   }
+
+  nat_upnp_close(&g_ws_upnp_ctx);
 
   /* 11. Stop status screen */
   if (g_status_screen_thread_started) {

@@ -1,6 +1,6 @@
 /**
  * @file nat/upnp.c
- * @brief Router mapping lifecycle for direct TCP listeners.
+ * @brief Router mapping lifecycle for TCP listeners and UDP transports.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +23,10 @@
 #define MAPPING_RETRY_NS (30ULL * NS_PER_SEC_INT)
 
 #ifdef HAVE_MINIUPNPC
+static const char *mapping_protocol(const nat_upnp_context_t *ctx) {
+  return ctx->protocol == NAT_UPNP_UDP ? "UDP" : "TCP";
+}
+
 static void mapping_set_lease(nat_upnp_context_t *ctx, uint32_t seconds) {
   uint64_t now = time_get_ns();
   ctx->lease_seconds = seconds;
@@ -36,14 +40,14 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
   safe_snprintf(internal_port, sizeof(internal_port), "%u", ctx->internal_port);
   safe_snprintf(external_port, sizeof(external_port), "%u", ctx->mapped_port);
   int result = UPNP_AddPortMapping(ctx->control_url, ctx->service_type, external_port, internal_port, ctx->internal_ip,
-                                   ctx->description, "TCP", NULL, "3600");
+                                   ctx->description, mapping_protocol(ctx), NULL, "3600");
   if (result != UPNPCOMMAND_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: mapping request failed: %s", strupnperror(result));
   }
   // Some gateways silently shorten the requested lease. Read it back on every renewal.
   char client[40] = {0}, port[6] = {0}, description[80] = {0}, enabled[4] = {0}, lease[16] = {0};
-  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, "TCP", NULL, client,
-                                            port, description, enabled, lease);
+  result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx),
+                                            NULL, client, port, description, enabled, lease);
   uint32_t seconds = 60;
   if (result == UPNPCOMMAND_SUCCESS && lease[0] >= '0' && lease[0] <= '9') {
     char *end = NULL;
@@ -156,11 +160,13 @@ static asciichat_error_t natpmp_map(nat_upnp_context_t *ctx, uint32_t lifetime, 
     safe_snprintf(ctx->external_ip, sizeof(ctx->external_ip), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
     ctx->gateway = pmp.gateway;
   }
-  if (sendnewportmappingrequest(&pmp, NATPMP_PROTOCOL_TCP, ctx->internal_port, ctx->mapped_port, lifetime) < 0) {
+  if (sendnewportmappingrequest(&pmp, ctx->protocol == NAT_UPNP_UDP ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP,
+                                ctx->internal_port, ctx->mapped_port, lifetime) < 0) {
     error = SET_ERRNO(ERROR_NETWORK, "NAT-PMP: mapping request failed");
     goto cleanup;
   }
-  error = natpmp_wait(&pmp, &response, NATPMP_RESPTYPE_TCPPORTMAPPING);
+  error = natpmp_wait(&pmp, &response,
+                      ctx->protocol == NAT_UPNP_UDP ? NATPMP_RESPTYPE_UDPPORTMAPPING : NATPMP_RESPTYPE_TCPPORTMAPPING);
   if (error == ASCIICHAT_OK && lifetime != 0) {
     if (!response.pnu.newportmapping.lifetime || !response.pnu.newportmapping.mappedpublicport ||
         response.pnu.newportmapping.privateport != ctx->internal_port) {
@@ -178,21 +184,27 @@ cleanup:
 #endif
 
 asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description, nat_upnp_context_t **ctx) {
+  return nat_upnp_open_protocol(internal_port, description, NAT_UPNP_TCP, ctx);
+}
+
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
+                                         nat_upnp_context_t **ctx) {
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: missing mapping output");
   }
   *ctx = NULL;
-  if (!internal_port || !description) {
+  if (!internal_port || !description || (protocol != NAT_UPNP_TCP && protocol != NAT_UPNP_UDP)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: a listening port and description are required");
   }
   *ctx = SAFE_CALLOC(1, sizeof(nat_upnp_context_t), nat_upnp_context_t *);
   if (!*ctx) {
     return SET_ERRNO(ERROR_MEMORY, "NAT: could not allocate mapping context");
   }
+  (*ctx)->protocol = protocol;
   (*ctx)->internal_port = internal_port;
   (*ctx)->mapped_port = internal_port;
   SAFE_STRNCPY((*ctx)->description, description, sizeof((*ctx)->description));
-  log_info("UPnP: discovering a gateway for TCP port %u", internal_port);
+  log_info("UPnP: discovering a gateway for %s port %u", protocol == NAT_UPNP_UDP ? "UDP" : "TCP", internal_port);
   asciichat_error_t result = upnp_try_map_port(*ctx);
 #if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
   if (result != ASCIICHAT_OK) {
@@ -227,10 +239,11 @@ void nat_upnp_close(nat_upnp_context_t **ctx) {
 #ifdef HAVE_MINIUPNPC
       char port[6];
       safe_snprintf(port, sizeof(port), "%u", (*ctx)->mapped_port);
-      int result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, "TCP", NULL);
+      int result =
+          UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), NULL);
       // Fios gateways require an explicit wildcard when deleting an unrestricted mapping.
       if (result == 402) {
-        result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, "TCP", "*");
+        result = UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), "*");
       }
       if (result != UPNPCOMMAND_SUCCESS && result != 714) {
         log_debug("UPnP: deletion failed: %s (%d)", strupnperror(result), result);
@@ -240,9 +253,9 @@ void nat_upnp_close(nat_upnp_context_t **ctx) {
 #endif
     }
     if (error != ASCIICHAT_OK) {
-      log_warn("NAT: could not remove TCP mapping for port %u; its lease will expire", (*ctx)->mapped_port);
+      log_warn("NAT: could not remove mapping for port %u; its lease will expire", (*ctx)->mapped_port);
     } else {
-      log_info("NAT: removed TCP mapping for port %u", (*ctx)->mapped_port);
+      log_info("NAT: removed mapping for port %u", (*ctx)->mapped_port);
     }
   }
   SAFE_FREE((*ctx)->control_url);

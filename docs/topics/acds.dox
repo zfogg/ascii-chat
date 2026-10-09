@@ -321,9 +321,10 @@
  *
  * - Automatic port forwarding via miniupnpc library
  * - Enables direct TCP connections (lowest latency)
- * - Opt in with `--port-forwarding` in server and discovery-service modes
- * - Maps the TCP listener to the LAN address returned by the gateway
- * - Renews the one-hour lease halfway through and removes the mapping on clean shutdown
+ * - Opt in with `--port-forwarding` in server, discovery-service, client, or discovery modes
+ * - Maps active TCP and WebSocket listeners to the gateway-selected LAN address
+ * - Maps a reserved UDP port for each native WebRTC peer before ICE gathering
+ * - Requests a one-hour lease, renews halfway through the granted lease, and removes mappings on clean shutdown
  * - Reports disabled, discovering, mapped, or unavailable status in the logs
  * - Loopback-only and IPv6-only listeners do not request IPv4 mappings
  *
@@ -333,8 +334,12 @@
  * The discovery service itself still needs a reachable TCP/WebSocket endpoint;
  * it does not gain a WebRTC fallback merely because router mapping failed.
  * Quality probes made before discovery host selection do not modify the router.
- * Only the server listener owns automatic mappings. WebSocket ports are not mapped
- * by this TCP-listener option and must be made reachable separately.
+ * Listener mappings share the server lifecycle; UDP mappings belong to their WebRTC
+ * peer connection and are removed when it closes. Native WebRTC binds its ICE socket
+ * to the mapped IPv4 interface and port. STUN discovers and advertises that endpoint;
+ * normal ICE checks still select the connection path. Mapping failure leaves normal
+ * ICE/STUN/TURN available. Relay-only peers skip mapping. Browser peers do not create
+ * router mappings themselves. Recreate the peer connection after changing networks.
  *
  * @subsection acds_nat_pmp NAT-PMP (NAT Port Mapping Protocol)
  *

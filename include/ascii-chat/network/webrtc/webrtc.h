@@ -145,6 +145,7 @@ typedef struct {
   webrtc_datachannel_error_callback_t on_datachannel_error;
 
   void *user_data; ///< Passed to all callbacks
+  bool port_forwarding; ///< Opt-in UDP mapping before ICE gathering (native peers only)
 } webrtc_config_t;
 
 // ============================================================================

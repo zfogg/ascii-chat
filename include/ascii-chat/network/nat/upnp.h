@@ -1,9 +1,9 @@
 /**
  * @file nat/upnp.h
- * @brief UPnP/NAT-PMP port mapping for direct TCP connectivity
+ * @brief UPnP/NAT-PMP port mapping for TCP and UDP connectivity
  * @ingroup nat
  *
- * Requests router mappings for direct TCP listeners. Mapping success does not
+ * Requests router mappings for TCP listeners and UDP transports. Mapping success does not
  * prove Internet reachability (for example, behind another NAT).
  * The owner must refresh the lease and close the mapping on shutdown.
  *
@@ -16,6 +16,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../common.h"
+
+typedef enum { NAT_UPNP_TCP, NAT_UPNP_UDP } nat_upnp_protocol_t;
 
 /** @brief Handle to UPnP context */
 typedef struct nat_upnp_context {
@@ -33,6 +35,7 @@ typedef struct nat_upnp_context {
   uint64_t expires_at_ns;       ///< Monotonic lease expiry
   uint64_t refresh_at_ns;       ///< Next renewal or retry deadline
   bool is_mapped;               ///< true if port mapping is currently active
+  nat_upnp_protocol_t protocol; ///< Transport of this mapping
 } nat_upnp_context_t;
 
 /**
@@ -59,6 +62,10 @@ typedef struct nat_upnp_context {
  * ```
  */
 asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description, nat_upnp_context_t **ctx);
+
+/** @brief Open an owned TCP or UDP mapping; close with nat_upnp_close(). */
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
+                                         nat_upnp_context_t **ctx);
 
 /**
  * @brief Close port mapping and clean up

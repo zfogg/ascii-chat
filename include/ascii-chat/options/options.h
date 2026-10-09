@@ -1130,7 +1130,7 @@ typedef struct options_state {
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)
   // ============================================================================
-  bool enable_upnp;                        ///< Opt-in TCP router mapping via --port-forwarding
+  bool enable_upnp;                        ///< Opt-in TCP/WebSocket and WebRTC UDP mapping via --port-forwarding
   char stun_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of STUN server URLs
   char turn_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of TURN server URLs
   char turn_username[OPTIONS_BUFF_SIZE];   ///< ACDS: Username for TURN authentication

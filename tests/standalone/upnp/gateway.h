@@ -32,7 +32,9 @@ const char *strupnperror(int);
 #define NATPMP_TRYAGAIN -100
 #define NATPMP_RESPTYPE_PUBLICADDRESS 0
 #define NATPMP_RESPTYPE_TCPPORTMAPPING 2
+#define NATPMP_RESPTYPE_UDPPORTMAPPING 1
 #define NATPMP_PROTOCOL_TCP 2
+#define NATPMP_PROTOCOL_UDP 1
 typedef struct {
   uint32_t gateway;
 } natpmp_t;

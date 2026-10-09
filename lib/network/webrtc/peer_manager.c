@@ -12,6 +12,7 @@
  */
 
 #include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mutex.h>
@@ -368,6 +369,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
       .turn_servers = manager->config.turn_servers,
       .turn_count = manager->config.turn_count,
       .relay_only = manager->config.relay_only,
+      .port_forwarding = GET_OPTION(enable_upnp),
       .turn_username = manager->config.turn_username,
       .turn_credential = manager->config.turn_credential,
       .on_state_change = on_state_change,

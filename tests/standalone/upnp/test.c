@@ -12,6 +12,7 @@ void time_sleep_ns(uint64_t ns) {
 static int discover_calls, add_calls, delete_calls, add_error, delete_error;
 static const char *granted_lease = "3600";
 static int query_error, wildcard_deletes;
+static const char *expected_protocol = "TCP";
 static bool discover_ok = true, bad_lan, bad_external;
 static char target[16], description[128];
 static struct UPNPDev device;
@@ -55,7 +56,7 @@ int UPNP_AddPortMapping(const char *url, const char *service, const char *extern
   assert(strcmp(url, "http://192.168.1.1/control") == 0);
   assert(strcmp(service, "urn:test:WANIPConnection:1") == 0);
   assert(strcmp(external, "27224") == 0 && strcmp(internal, "27224") == 0);
-  assert(strcmp(proto, "TCP") == 0 && remote == NULL && strcmp(lease, "3600") == 0);
+  assert(strcmp(proto, expected_protocol) == 0 && remote == NULL && strcmp(lease, "3600") == 0);
   snprintf(target, sizeof(target), "%s", client);
   snprintf(description, sizeof(description), "%s", desc);
   add_calls++;
@@ -80,7 +81,7 @@ int UPNP_DeletePortMapping(const char *url, const char *service, const char *por
                            const char *remote) {
   assert(strcmp(url, "http://192.168.1.1/control") == 0);
   assert(strcmp(service, "urn:test:WANIPConnection:1") == 0);
-  assert(strcmp(port, "27224") == 0 && strcmp(proto, "TCP") == 0);
+  assert(strcmp(port, "27224") == 0 && strcmp(proto, expected_protocol) == 0);
   delete_calls++;
   if (remote) {
     assert(strcmp(remote, "*") == 0 && delete_error == 402);
@@ -126,9 +127,10 @@ int sendpublicaddressrequest(natpmp_t *pmp) {
 }
 int sendnewportmappingrequest(natpmp_t *pmp, int proto, uint16_t internal, uint16_t external, uint32_t lifetime) {
   (void)pmp;
-  assert(proto == NATPMP_PROTOCOL_TCP && internal == 27224);
+  assert(proto == (strcmp(expected_protocol, "UDP") == 0 ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP) &&
+         internal == 27224);
   assert(external == 27224 || external == 30000);
-  pmp_type = 2;
+  pmp_type = proto;
   pmp_reads = 0;
   pmp_lifetime = lifetime;
   if (!lifetime)
@@ -162,6 +164,7 @@ int main(void) {
   (void)delete_calls;
   nat_upnp_context_t *ctx = NULL;
   assert(nat_upnp_open(0, "test", &ctx) == ERROR_INVALID_PARAM && !ctx);
+  assert(nat_upnp_open_protocol(27224, "test", (nat_upnp_protocol_t)2, &ctx) == ERROR_INVALID_PARAM && !ctx);
   assert(discover_calls == 0);
   assert(nat_upnp_open(27224, NULL, &ctx) == ERROR_INVALID_PARAM);
   assert(nat_upnp_open(27224, "test", NULL) == ERROR_INVALID_PARAM);
@@ -220,6 +223,12 @@ int main(void) {
   assert(nat_upnp_open(27224, "double NAT", &ctx) == ASCIICHAT_OK);
   nat_upnp_close(&ctx);
 #endif
+  expected_protocol = "UDP";
+  assert(nat_upnp_open_protocol(27224, "WebRTC", NAT_UPNP_UDP, &ctx) == ASCIICHAT_OK);
+  assert(ctx->protocol == NAT_UPNP_UDP);
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK);
+  nat_upnp_close(&ctx);
+  expected_protocol = "TCP";
   igd_result = 3;
   assert(nat_upnp_open(27224, "disconnected", &ctx) == ERROR_NETWORK && !ctx);
   igd_result = 1;
@@ -251,6 +260,13 @@ int main(void) {
   assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK);
   nat_upnp_close(&ctx);
   assert(!ctx && pmp_deletes == 1 && pmp_open == pmp_close);
+  expected_protocol = "UDP";
+  assert(nat_upnp_open_protocol(27224, "WebRTC", NAT_UPNP_UDP, &ctx) == ASCIICHAT_OK);
+  assert(ctx->is_natpmp && ctx->protocol == NAT_UPNP_UDP);
+  assert(nat_upnp_refresh(ctx) == ASCIICHAT_OK);
+  nat_upnp_close(&ctx);
+  assert(!ctx && pmp_deletes == 2 && pmp_open == pmp_close);
+  expected_protocol = "TCP";
   pmp_timeout = true;
   uint64_t start = now;
   assert(nat_upnp_open(27224, "test", &ctx) == ERROR_NETWORK && !ctx);
