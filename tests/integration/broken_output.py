@@ -92,7 +92,10 @@ def main():
                 assert message not in log, f"redirected status repeatedly attempted terminal operations: {message}"
             print("PASS redirected status: no terminal or keyboard error storm")
 
-            fixture = Path(__file__).resolve().parents[1] / "fixtures" / "test_pattern.mp4"
+            # Generate a small video so this test also runs in a fresh checkout.
+            fixture = directory / "paused.y4m"
+            frame = b"FRAME\n" + bytes([128]) * (64 * 48 * 3 // 2)
+            fixture.write_bytes(b"YUV4MPEG2 W64 H48 F30:1 Ip A1:1 C420jpeg\n" + frame * 90)
             paused = launch("paused", ["mirror", "--file", str(fixture), "--pause", "--audio=false",
                                        "--splash-screen=false"])
             time.sleep(3)

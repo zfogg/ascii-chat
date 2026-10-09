@@ -260,16 +260,18 @@ bool ui_status_display_interactive(const ui_status_t *status) {
     grep_mode_entered = true;
   }
 
-  // Initialize keyboard for interactive grep
+  // Status may use stderr when stdout is redirected. Check the descriptors
+  // used by this screen instead of requiring stdout to be a terminal.
+  int output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
   bool keyboard_enabled = false;
-  if (terminal_is_interactive() && keyboard_init() == ASCIICHAT_OK) {
+  if (platform_isatty(STDIN_FILENO) && platform_isatty(output_fd) && keyboard_init() == ASCIICHAT_OK) {
     keyboard_enabled = true;
   }
 
   // Use terminal_screen abstraction for rendering
   terminal_screen_config_t config = {
       .screen = UI_SCREEN_STATUS,
-      .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+      .output_fd = output_fd,
       .user_data_size = sizeof(*status),
       .minimum_cols = 20,
       .fixed_header_lines = 4,

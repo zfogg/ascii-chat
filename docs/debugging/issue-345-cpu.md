@@ -39,6 +39,12 @@ An exited process with 0% CPU is **not** an idle pass. Active rendering can legi
 
 ## Reproduce
 
+The status keyboard guard checks stdin and the status output descriptor (stderr
+when stdout is redirected). The status thread preserves stderr in that case,
+so redirecting stdout alone does not disable the display or grep/Escape input.
+`tests/integration/status_redirected.py` exercises normal and redirected stdout
+for server using a real PTY and rendered-screen assertions.
+
 ```sh
 python tests/integration/broken_output.py --binary build/bin/ascii-chat.exe
 python tests/manual/cpu_usage.py --binary build/bin/ascii-chat.exe --output build/cpu-check --filter closed-output --warmup 5 --seconds 10
