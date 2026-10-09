@@ -1,0 +1,62 @@
+{
+  "fps": [
+    60.69651741336731,
+    60.00216401247255,
+    60.002164012472626,
+    60.00245911717693,
+    60.00275422478404,
+    60.002164012472576,
+    60.00245911717693,
+    60.00245911717693,
+    60.00245911717693,
+    60.002538568939514
+  ],
+  "meaningfulChanges": 601,
+  "pipelineFps": [
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    },
+    {
+      "received": 0,
+      "changedReceived": 0,
+      "rendered": 0
+    }
+  ]
+}

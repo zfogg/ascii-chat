@@ -41,7 +41,8 @@ The native shared library also generated [pattern zero](test-pattern-evidence/na
 - Native shared library: all 256 reference palette entries round-trip; independent renderers, deterministic timestamps, buffer reuse, resize, and invalid input checks pass. See [native-results.json](test-pattern-evidence/native-results.json).
 - Focused Playwright suite: fixed-time visual comparisons, WASM lifetime/resize checks, 1080p generation timing, and actual mirror rendering/stop for both patterns pass.
 - Source generation measured about 6–7 ms median at 1080p, including canvas upload, after warmup. The paired Canvas reference measured about 5–8 ms. [Recorded timing](test-pattern-evidence/generation-timing.json) is machine-specific, not an end-to-end 60-FPS guarantee.
-- The strict 1080p mirror visual-change test fails on this machine with both the original Canvas generator and the C generator. The 15-second native-server/browser-client run receives and repaints approximately 60 FPS, but its distinct-ASCII metric averages about 50 FPS and fails its 55-FPS threshold. These stricter end-to-end cadence checks are not claimed as passing.
+- Both visible patterns sustain approximately 60 materially changing ASCII frames per second for 10 seconds in a 1920x1080 browser viewport. Per-second results: [pattern zero](test-pattern-evidence/test-cadence.json), [pattern one](test-pattern-evidence/test2-cadence.json). The strict mirror cadence-overlay test also passes. The sampler now captures frame references during animation and compares terminal cells afterward; parsing entire frames inside each callback had slowed down the application under test. Assertions and the 55-FPS minimum are unchanged. Screenshots now wait for the rolling one-second FPS counter to fill instead of capturing a partial startup window.
+- The separate 15-second native-server/browser-client run previously received and repainted approximately 60 FPS, but its distinct-ASCII metric averaged about 50 FPS and missed its 55-FPS threshold. That separate network check has not been rerun in this mirror verification.
 - The configured web unit suite has eight failures in frame-parser, renderer-resize, and encryption-policy tests. The same eight failures were reproduced with the modified shared TypeScript files restored to the base revision. All three focused test-pattern unit tests pass. The workspace-root test command additionally collects Playwright files as Vitest tests; use the application's Vitest config.
 - Criterion tests were updated but not run on Windows, where Criterion is unsupported. Native C behavior was exercised through the actual shared library instead.
 - Native `--render-file .png` fails in the existing FFmpeg encoder initialization in this environment; the native source images above were captured directly from the library. Native terminal output itself passes the color-mode snapshot checks.
@@ -55,7 +56,7 @@ python tests/platform/test_pattern.py --binary build/bin/ascii-chat.exe --librar
 # Build mirror-web/client-web using the configured Emscripten build, then publish:
 cd web/web
 vp run wasm:build
-vp exec playwright test --config playwright.pattern.config.ts test-pattern-parity.spec.ts
+vp exec playwright test --config playwright.pattern.config.ts test-pattern-parity.spec.ts mirror-frame-cadence.spec.ts
 vp test run --config vitest.config.ts tests/network/test-pattern.test.ts
 ```
 

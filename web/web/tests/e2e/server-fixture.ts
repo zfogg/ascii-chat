@@ -349,7 +349,7 @@ export async function expectMeaningful60Fps(
   page: Page,
   source: "client" | "mirror" = "client",
   durationMs = 5_000,
-): Promise<void> {
+) {
   const sample = await page.evaluate(
     async ({ source, durationMs }) => {
       const readFrame = () => {
@@ -361,8 +361,7 @@ export async function expectMeaningful60Fps(
           ? (win.__clientFrameMetrics?.lastRenderedFrame ?? "")
           : (win.__lastAnsiFrame ?? "");
       };
-      const visualCells = (frame: string) => {
-        const cells: string[] = [];
+      function* visualCells(frame: string) {
         let foreground = "";
         let background = "";
         let attributes = "";
@@ -420,29 +419,25 @@ export async function expectMeaningful60Fps(
         for (const match of frame.matchAll(tokenPattern)) {
           if (match[4] !== undefined) {
             if (match[4] !== "\r") {
-              cells.push(
-                `${attributes}|${foreground}|${background}|${match[4]}`,
-              );
+              yield `${attributes}|${foreground}|${background}|${match[4]}`;
             }
           } else if (match[3] === "m") {
             applySgr(match[1]!);
           }
         }
-        return cells;
-      };
+      }
       const materiallyDifferent = (left: string, right: string) => {
+        if (left === right) return false;
         const a = visualCells(left);
         const b = visualCells(right);
-        const length = Math.max(a.length, b.length);
-        if (length === 0) return false;
-        let changed = 0;
-        for (let index = 0; index < length; index++) {
-          if (a[index] !== b[index]) changed++;
+        // Compare glyph plus effective ANSI style; stop at the first changed
+        // terminal cell, without allocating arrays for the whole screen.
+        for (;;) {
+          const nextA = a.next();
+          const nextB = b.next();
+          if (nextA.done || nextB.done) return nextA.done !== nextB.done;
+          if (nextA.value !== nextB.value) return true;
         }
-        // Compare full terminal cells (glyph plus effective ANSI style), not
-        // raster pixels. A changed cell covers a glyph-sized area and cannot
-        // pass from a one-pixel difference.
-        return changed >= 1;
       };
 
       const startedAt = performance.now();
@@ -473,8 +468,22 @@ export async function expectMeaningful60Fps(
             rendered: metrics?.rendered ?? 0,
           };
         })();
-        const tick = (now: number) => {
-          const current = readFrame();
+        // Capture references on the animation clock; parse terminal cells only
+        // after sampling so the assertion itself cannot stall frame production.
+        const frames: Array<{
+          now: number;
+          frame: string;
+          metrics: {
+            received: number;
+            changedReceived: number;
+            rendered: number;
+          };
+        }> = [];
+        const processSample = ({
+          now,
+          frame: current,
+          metrics,
+        }: (typeof frames)[number]) => {
           if (materiallyDifferent(previous, current)) {
             meaningfulChanges++;
             bucketFrames++;
@@ -483,7 +492,6 @@ export async function expectMeaningful60Fps(
           if (now - bucketStartedAt >= 1_000) {
             const elapsed = now - bucketStartedAt;
             buckets.push((bucketFrames * 1_000) / elapsed);
-            const metrics = window.__clientFrameMetrics;
             const currentPipeline = {
               received: metrics?.received ?? 0,
               changedReceived: metrics?.changedReceived ?? 0,
@@ -508,7 +516,20 @@ export async function expectMeaningful60Fps(
             bucketFrames = 0;
             bucketStartedAt = now;
           }
+        };
+        const tick = (now: number) => {
+          const metrics = window.__clientFrameMetrics;
+          frames.push({
+            now,
+            frame: readFrame(),
+            metrics: {
+              received: metrics?.received ?? 0,
+              changedReceived: metrics?.changedReceived ?? 0,
+              rendered: metrics?.rendered ?? 0,
+            },
+          });
           if (now - startedAt >= durationMs) {
+            for (const frame of frames) processSample(frame);
             if (bucketFrames > 0)
               buckets.push((bucketFrames * 1_000) / (now - bucketStartedAt));
             resolve({ fps: buckets, meaningfulChanges, pipelineFps });
@@ -540,4 +561,5 @@ export async function expectMeaningful60Fps(
     sample.fps.filter((fps) => fps >= 55).length,
     `Every interval should stay near 60 FPS, got ${sample.fps.join(", ")}`,
   ).toBeGreaterThanOrEqual(Math.floor(sample.fps.length * 0.8));
+  return sample;
 }

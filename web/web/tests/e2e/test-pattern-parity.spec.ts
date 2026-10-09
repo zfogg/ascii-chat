@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectMeaningful60Fps } from "./server-fixture";
 import type { MirrorModule } from "../../../packages/shared/src/wasm/mirror";
 type PixelMetric = {
   meanError: number;
@@ -130,6 +131,8 @@ test("1080p source generation timing", async ({ page }, testInfo) => {
 test("both patterns render in the mirror and stop cleanly", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
   for (const query of ["test", "test2"]) {
     await page.goto("/mirror?" + query);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
@@ -174,6 +177,28 @@ test("both patterns render in the mirror and stop cleanly", async ({
       });
     const first = await checksum();
     await expect.poll(checksum).not.toBe(first);
+    // FPS counts the trailing second; a nonzero startup count is not a
+    // sustained rate. Measure changing terminal cells before taking evidence.
+    await expect
+      .poll(async () => {
+        const text = await page.getByText(/FPS:\s*\d+\s*\/\s*60/).textContent();
+        return Number(text?.match(/FPS:\s*(\d+)/)?.[1] ?? 0);
+      })
+      .toBeGreaterThanOrEqual(59);
+    const cadence = await expectMeaningful60Fps(page, "mirror", 10_000);
+    console.log(query + "_CADENCE", JSON.stringify(cadence));
+    await testInfo.attach(query + "-cadence", {
+      body: JSON.stringify(cadence, null, 2),
+      contentType: "application/json",
+    });
+    // Offline frame analysis blocks this page briefly; let its rolling FPS
+    // window refill before capturing the UI.
+    await expect
+      .poll(async () => {
+        const text = await page.getByText(/FPS:\s*\d+\s*\/\s*60/).textContent();
+        return Number(text?.match(/FPS:\s*(\d+)/)?.[1] ?? 0);
+      })
+      .toBe(60);
     await testInfo.attach(query + "-mirror", {
       body: await page.screenshot(),
       contentType: "image/png",
