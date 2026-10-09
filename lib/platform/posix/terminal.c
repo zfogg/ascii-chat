@@ -304,22 +304,13 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  // For TTY devices, use tcdrain() to wait for output to complete, then tcflush()
-  // For regular files/pipes, use fsync() to flush kernel buffers
-  // This is critical for smooth animation where each frame must appear before the next
-
-  // For TTY: Wait for all output to be transmitted, then flush
-  // tcdrain() blocks until all queued output has been transmitted
+  // Drain output without discarding bytes queued concurrently by presentation.
+  // TCOFLUSH would drop a frame written between tcdrain() and tcflush().
   if (tcdrain(fd) == 0) {
-    // Successfully drained - now flush the terminal buffer
-    tcflush(fd, TCOFLUSH);
     return ASCIICHAT_OK;
   }
 
-  // tcdrain failed (probably not a TTY), try tcflush anyway
-  tcflush(fd, TCOFLUSH);
-
-  // If tcflush also failed (not a TTY), try fsync for regular files
+  // Non-terminal files may support fsync; pipes need no additional operation.
   if (fsync(fd) < 0) {
     // ENOTSUP: not supported, EINVAL: not a regular file (pipes), EBADF: bad fd
     // These are OK - just means this fd type doesn't support flushing

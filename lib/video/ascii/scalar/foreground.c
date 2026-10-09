@@ -289,7 +289,7 @@ char *image_print_color(const image_t *p, const char *palette) {
         rle_ctx.length += written;
         // Write UTF-8 bytes
         for (int i = 0; i < char_info->byte_len && rle_ctx.length < rle_ctx.capacity; i++) {
-          rle_ctx.buffer[rle_ctx.length++] = char_info->utf8_bytes[i];
+          memcpy(&rle_ctx.buffer[rle_ctx.length++], &char_info->utf8_bytes[i], 1);
         }
       }
     }

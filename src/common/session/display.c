@@ -27,6 +27,8 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/rle.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/image.h>
@@ -61,6 +63,7 @@ typedef struct session_display_ctx {
 
   /** @brief Detected terminal capabilities */
   terminal_capabilities_t caps;
+  int visualization_color_mode;
 
   /** @brief Palette character string for rendering */
   char palette_chars[256];
@@ -222,6 +225,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
+  // Resolve the theme before rendering; OSC queries consume terminal input.
+  ctx->visualization_color_mode =
+      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
 
   // Set wants_padding based on terminal output mode
   // Enable padding for all rendering modes (including snapshot) to center output
@@ -710,8 +716,7 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
   bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  int color_mode =
-      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
+  int color_mode = ctx->visualization_color_mode;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIX;
   if (selected_audio == AUDIO_SOURCE_MEDIA)
@@ -813,6 +818,20 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       char rain_str[32];
       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
       log_info("DIGITAL_RAIN (write_ascii): Effect applied (%s)", rain_str);
+    }
+  }
+
+  char *plain_frame = NULL;
+  if (GET_OPTION(strip_ansi)) {
+    // Expand REP before stripping escapes so repeated cells are preserved.
+    char *expanded = ansi_expand_rle(display_frame, frame_len);
+    if (expanded) {
+      size_t capacity = strlen(expanded) + 1;
+      plain_frame = SAFE_MALLOC(capacity, char *);
+      strip_ansi_codes(expanded, plain_frame, capacity);
+      SAFE_FREE(expanded);
+      display_frame = plain_frame;
+      frame_len = strlen(plain_frame);
     }
   }
 
@@ -939,6 +958,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
 
   // Clean up digital rain result if allocated
+  SAFE_FREE(plain_frame);
   if (rain_result) {
     SAFE_FREE(rain_result);
   }

@@ -70,3 +70,72 @@ on Windows.
 native Windows prompt APIs over a live media screen and checks text editing,
 password masking, covered input, resize restoration, visible host fingerprints,
 and absence of plaintext passwords in terminal output and logs.
+
+### Docker and tmux matrix
+
+The `tmux_*.py` drivers run the native executable in detached tmux PTYs and save
+plain/ANSI pane captures, exit status, application logs, and sanitizer reports.
+They require Python 3, tmux, ffmpeg/ffprobe, and ssh-keygen inside the Linux test
+container. Use a private tmux socket; these tests use `ascii390`.
+
+```sh
+tmux -L ascii390 new-session -d -s setup -x 80 -y 40
+tmux -L ascii390 set-option -g remain-on-exit on
+mkdir -p /tmp/render-evidence
+ffmpeg -y -v error -f lavfi -i testsrc2=size=160x120:rate=10 \
+  -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 \
+  -c:v libx264 -pix_fmt yuv420p -c:a aac /tmp/render-evidence/media.mp4
+
+python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
+  --artifacts /tmp/render-evidence
+```
+
+For the debug ASan/UBSan build, compile the native prompt fixture against the
+same shared library (replace `build` below if using a different build directory):
+
+```sh
+clang -g -fsanitize=address,undefined -shared-libasan \
+  -Iinclude -Ideps -Isrc/common -Ibuild/generated \
+  tests/integration/ui_native_probe.c -Lbuild/lib -lasciichat -lm \
+  -Wl,-rpath,"$PWD/build/lib" \
+  -Wl,-rpath,"$(clang -print-resource-dir)/lib/linux" -o /tmp/ui-native-probe
+python tests/integration/tmux_prompts.py --probe /tmp/ui-native-probe \
+  --artifacts /tmp/render-evidence
+```
+
+Coverage is explicit rather than every possible Cartesian product:
+
+- 84 live cases: all three render modes, six color spellings, render aliases,
+  six palettes, all 13 filter spellings across render modes, Matrix, FPS,
+  waveform/FFT with all four audio selections, flips/stretch, and UTF-8 off.
+  Each checks startup-small, recovery, blocked keys, help, and shutdown.
+- 13 flows: server status/grep with a live WebSocket handshake while covered,
+  ACDS startup, accept/decline for three overwrite prompts, IP disclosure
+  refusal, paused/help recovery with explicit dimensions, and recording while
+  covered with all three render themes.
+- Four loopback authentication flows: encrypted SSH key, server password,
+  missing client identity, and host-key acceptance.
+- 16 native prompt/TUI fixtures: text editing, password variants, yes/no
+  defaults, cancellation, host/ACDS fingerprints, update choices, mDNS
+  selection/cancellation, and splash. Four additional PCM fixtures exercise
+  microphone/remote waveform and FFT with a nonzero 440 Hz signal.
+- Seven advertised file extensions and three redirected plain snapshots.
+
+mDNS, update availability, GPG passphrase entry, and changed ACDS identities use
+deterministic native API fixtures; they do not prove external discovery/update
+services or GPG decryption. The Docker mirror's microphone/call sources are
+silent; injected PCM fixtures cover their nonzero rendering. ACDS currently has
+no status callback, so its startup output is tested without claiming a status
+TUI. Hardware cameras, physical audio devices, browser/WASM rendering, and every
+combination of independent options are outside this matrix.
+
+Expected refusal exit codes are checked explicitly. Interactive client shutdown
+currently returns 1 for an interrupted connection. Sanitizers remain enabled;
+the harness treats any sanitizer report as a failure and retains previous-run
+logs when retrying a case.
