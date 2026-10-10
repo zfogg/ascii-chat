@@ -1,4 +1,5 @@
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
 
 /**
@@ -209,6 +210,7 @@ void asciichat_shared_destroy(void) {
 
   // Stop diagnostic readers before destroying symbols or synchronization state.
   debug_sync_cleanup_thread();
+  debug_errno_cleanup_thread();
   debug_stats_cleanup_thread();
 
   stats_runtime_stop();
@@ -241,6 +243,7 @@ void asciichat_shared_destroy(void) {
   debug_atomic_shutdown();
 #endif
   debug_sync_destroy();
+  debug_errno_destroy();
   debug_stats_destroy();
 
   // 1. Terminal screen - cleanup frame buffer

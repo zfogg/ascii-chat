@@ -6,10 +6,12 @@
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>
+#include <signal.h>
 #include <assert.h>
 #include <string.h>
 
@@ -384,6 +386,50 @@ static void concurrency_contract(void) {
   CHECK(asciichat_error_stats_get().pending_errors == 0);
 }
 
+
+#ifndef _WIN32
+static atomic_t probe_ready = {0};
+static atomic_t probe_release = {0};
+static atomic_t probe_signaled = {0};
+static void probe_signal(int sig) {
+  (void)sig;
+  debug_errno_trigger_print();
+  atomic_store_bool_impl(&probe_signaled, true);
+}
+static void *probe_producer(void *name) {
+  SET_ERRNO(ERROR_NETWORK, "%s root", (const char *)name);
+  SET_ERRNO(ERROR_MEDIA_OPEN, "%s wrapper", (const char *)name);
+  atomic_fetch_add_u64(&probe_ready, 1);
+  while (!atomic_load_bool_impl(&probe_release))
+    platform_sleep_ns(NS_PER_MS_INT);
+  return NULL;
+}
+static int pending_signal_probe(void) {
+  log_set_level(LOG_INFO);
+  CHECK(platform_signal(SIGUSR1, probe_signal) != SIG_ERR);
+  asciichat_thread_t first, second;
+  CHECK(asciichat_thread_create(&first, "errno_producer_a", probe_producer, "producer-a") == 0);
+  CHECK(asciichat_thread_create(&second, "errno_producer_b", probe_producer, "producer-b") == 0);
+  while (atomic_load_u64(&probe_ready) != 2)
+    platform_sleep_ns(NS_PER_MS_INT);
+  CHECK(debug_errno_start_thread() == ASCIICHAT_OK);
+  log_info("ERRNO_PROBE_READY");
+  uint64_t deadline = time_get_ns() + 10 * NS_PER_SEC_INT;
+  while (!atomic_load_bool_impl(&probe_signaled) && time_get_ns() < deadline)
+    platform_sleep_ns(NS_PER_MS_INT);
+  CHECK(atomic_load_bool_impl(&probe_signaled));
+  platform_sleep_ns(NS_PER_SEC_INT);
+  debug_errno_destroy();
+  CHECK(asciichat_error_stats_get().pending_errors == 4);
+  atomic_store_bool_impl(&probe_release, true);
+  CHECK(asciichat_thread_join(&first, NULL) == 0);
+  CHECK(asciichat_thread_join(&second, NULL) == 0);
+  asciichat_errno_destroy();
+  asciichat_errno_shutdown();
+  return 0;
+}
+#endif
+
 int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
@@ -393,6 +439,10 @@ int main(int argc, char **argv) {
     ASSERT_NO_ERRNO_SINCE(scope);
     return 0;
   }
+#ifndef _WIN32
+  if (argc > 1 && strcmp(argv[1], "--signal-stacks") == 0)
+    return pending_signal_probe();
+#endif
   network_recovery_contract();
   peek_contract();
   stack_contract();
@@ -404,12 +454,14 @@ int main(int argc, char **argv) {
   CHECK(debug_stats_init() == ASCIICHAT_OK);
   CHECK(debug_stats_start_thread() == ASCIICHAT_OK);
   CHECK(debug_sync_start_thread() == ASCIICHAT_OK);
-  debug_stats_print_errno_delayed(60 * NS_PER_SEC_INT);
+  CHECK(debug_errno_start_thread() == ASCIICHAT_OK);
+  debug_errno_print_delayed(60 * NS_PER_SEC_INT);
   debug_sync_print_state_delayed(60 * NS_PER_SEC_INT);
   debug_sync_print_backtrace_delayed(60 * NS_PER_SEC_INT);
   platform_sleep_ns(5 * NS_PER_MS_INT);
   uint64_t start = time_get_ns();
   debug_sync_destroy();
+  debug_errno_destroy();
   debug_stats_destroy();
   CHECK(time_get_ns() - start < NS_PER_SEC_INT);
   asciichat_errno_destroy();

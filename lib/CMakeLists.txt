@@ -142,6 +142,7 @@ list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/backtrace.c
     ${LIB_DIR}/debug/sync.c
     ${LIB_DIR}/debug/stats.c
+    ${LIB_DIR}/debug/errno.c
     ${LIB_DIR}/debug/debug_helpers.c
     ${LIB_DIR}/options/registry/debug.c
 )

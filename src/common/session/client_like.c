@@ -1,4 +1,5 @@
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file client_like.c
@@ -827,6 +828,7 @@ cleanup:
 #ifndef NDEBUG
   // Join the registry inspector before freeing the session's synchronization objects.
   debug_sync_cleanup_thread();
+  debug_errno_cleanup_thread();
   debug_stats_cleanup_thread();
 #endif
 

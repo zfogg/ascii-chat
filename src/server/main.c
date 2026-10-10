@@ -1,6 +1,7 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file server/main.c
@@ -2179,6 +2180,7 @@ static void server_cleanup_fn(void *user_data) {
   // Cleanup debug sync BEFORE destroying websocket_server
 #ifndef NDEBUG
   debug_sync_destroy();
+  debug_errno_destroy();
   debug_stats_destroy();
 #endif
 

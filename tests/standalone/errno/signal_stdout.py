@@ -21,6 +21,7 @@ def free_port():
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('binary', type=Path)
+    parser.add_argument('--errno-probe', type=Path)
     args = parser.parse_args()
     artifacts = Path(tempfile.mkdtemp(prefix='ascii-debug-signal-'))
     master, slave = pty.openpty()
@@ -50,10 +51,11 @@ def main():
                          captured.count(b'Pending error stacks') >= count)
             plain = re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]', b'', captured)
             assert re.search(rb'\[thread/debug_sync\.\d+\].*SYNC_STATE:', plain), plain[-2000:]
-            assert re.search(rb'\[thread/debug_stats\.\d+\].*Error statistics:', plain), plain[-2000:]
+            assert re.search(rb'\[thread/debug_stats\.\d+\].*Diagnostic statistics:', plain), plain[-2000:]
+            assert re.search(rb'\[thread/debug_errno\.\d+\].*Errno stacks:', plain), plain[-2000:]
             assert b'Mutex ' in captured
             assert b'SYNC_STATE:' not in (artifacts / 'stderr.log').read_bytes()
-            print('PASS: distinct debug_sync/debug_stats threads; two SIGUSR1 requests printed both reports on stdout')
+            print('PASS: distinct debug_sync/debug_stats/debug_errno threads; two SIGUSR1 requests printed reports on stdout')
         finally:
             proc.terminate()
             try:
@@ -81,6 +83,42 @@ def main():
                 os.close(master)
                 (artifacts / 'stdout.log').write_bytes(captured)
                 print('Artifacts:', artifacts)
+
+    if args.errno_probe:
+        master, slave = pty.openpty()
+        captured = bytearray()
+        sent = False
+        with (artifacts / 'pending-stderr.log').open('wb') as stderr:
+            proc = subprocess.Popen([str(args.errno_probe.resolve()), '--signal-stacks'],
+                                    stdin=slave, stdout=slave, stderr=stderr, env=env)
+            os.close(slave)
+            try:
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    if select.select([master], [], [], 0.1)[0]:
+                        try:
+                            data = os.read(master, 65536)
+                        except OSError:
+                            break
+                        if not data:
+                            break
+                        captured.extend(data)
+                    if not sent and b'ERRNO_PROBE_READY' in captured:
+                        proc.send_signal(signal.SIGUSR1)
+                        sent = True
+                assert proc.wait(timeout=2) == 0, (proc.returncode, artifacts)
+                plain = re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]', b'', captured)
+                assert sent and b'Pending error stacks (2 threads):' in plain, plain[-2000:]
+                for producer in ('producer-a', 'producer-b'):
+                    for frame in ('root', 'wrapper'):
+                        assert f'{producer} {frame}'.encode() in plain, plain[-2000:]
+                print('PASS: SIGUSR1 printed all four pending frames from two threads without clearing them')
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait()
+                os.close(master)
+                (artifacts / 'pending-stdout.log').write_bytes(captured)
 
 
 if __name__ == '__main__':
