@@ -914,3 +914,28 @@ if(TARGET ascii-chat-static)
         set_tests_properties(errno-stacks PROPERTIES TIMEOUT 60)
     endif()
 endif()
+
+# Production transport tests run natively on Windows, macOS, and Linux without Criterion.
+if(TARGET ascii-chat-static)
+    add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
+    target_link_libraries(test-network-vectors PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(test-network-vectors PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-network-vectors)
+    target_include_directories(test-network-vectors PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-network-vectors PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        if(TARGET tests)
+            add_dependencies(tests test-network-vectors)
+        endif()
+        add_test(NAME network-vectors COMMAND test-network-vectors)
+        set_tests_properties(network-vectors PROPERTIES TIMEOUT 120)
+        if(WIN32)
+            set_property(TEST network-vectors PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+    endif()
+endif()

@@ -39,82 +39,60 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
+asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
+  size_t total = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((buffers[i].len && !buffers[i].data) || buffers[i].len > SOCKET_SEND_BUFFER_MAX - total)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid transport vector size");
+    total += buffers[i].len;
+  }
+  if (transport->methods->sendv)
+    return transport->methods->sendv(transport, buffers, count);
+  // Message transports retain their existing queue and encryption contracts.
+  uint8_t *packet = buffer_pool_alloc(NULL, total);
+  if (!packet)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot assemble transport packet");
+  size_t offset = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if (buffers[i].len)
+      memcpy(packet + offset, buffers[i].data, buffers[i].len);
+    offset += buffers[i].len;
+  }
+  asciichat_error_t result = acip_transport_send(transport, packet, total);
+  buffer_pool_free(NULL, packet, total);
+  return result;
+}
+
+asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
+                                             const socket_buffer_t *payload, size_t count, uint32_t client_id) {
+  if (!transport || !payload || !count || count >= SOCKET_IOV_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet vectors");
+  size_t len = 0;
+  uint32_t crc = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((payload[i].len && !payload[i].data) || payload[i].len > MAX_PACKET_SIZE - len)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid packet payload size");
+    len += payload[i].len;
+    crc = asciichat_crc32_update(crc, payload[i].data, payload[i].len);
+  }
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(type),
+                            .length = HOST_TO_NET_U32((uint32_t)len),
+                            .crc32 = HOST_TO_NET_U32(crc),
+                            .client_id = client_id};
+  socket_buffer_t slices[SOCKET_IOV_MAX] = {{&header, sizeof(header)}};
+  memcpy(slices + 1, payload, count * sizeof(*payload));
+  asciichat_error_t result = acip_transport_sendv(transport, slices, count + 1);
+  stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
+  return result;
+}
+
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, uint32_t client_id) {
-  if (!transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
-  }
-
-// Sanity check: catch suspiciously large packets (likely a bug)
-#define MAX_REASONABLE_PACKET_SIZE (25 * 1024 * 1024) // 25 MB
-  if (payload_len > MAX_REASONABLE_PACKET_SIZE) {
-    log_error("★ PACKET_SIZE_VALIDATION_FAILURE: Attempting to send %zu bytes (%zu MB) with type=%d (0x%04x), exceeds "
-              "max %d bytes (25 MB) - likely a bug in caller's length calculation",
-              payload_len, payload_len / (1024 * 1024), type, type, MAX_REASONABLE_PACKET_SIZE);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet payload too large: %zu bytes (max 25MB)", payload_len);
-  }
-
-  log_dev("★ PACKET_SEND_VIA_TRANSPORT START: type=%d (0x%04x), payload_len=%zu bytes, client_id=%u, transport=%p",
-          type, type, payload_len, client_id, (void *)transport);
-
-  // Build packet header
-  packet_header_t header;
-  header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
-  header.type = HOST_TO_NET_U16(type);
-  header.length = HOST_TO_NET_U32((uint32_t)payload_len);
-  header.client_id = client_id;
-
-  // Calculate CRC32 if we have payload
-  if (payload && payload_len > 0) {
-    header.crc32 = HOST_TO_NET_U32(asciichat_crc32((const uint8_t *)payload, payload_len));
-    log_dev("★ PACKET_SEND: CRC32=0x%08x calculated for %zu byte payload", header.crc32, payload_len);
-  } else {
-    header.crc32 = 0;
-    log_dev("★ PACKET_SEND: No payload, CRC32=0");
-  }
-
-  log_dev("★ PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u", header.magic, type, header.length,
-          header.client_id);
-
-  // Calculate total packet size
-  size_t total_size = sizeof(header) + payload_len;
-  log_dev("★ PACKET_SEND: Header=%zu bytes + Payload=%zu bytes = Total=%zu bytes", sizeof(header), payload_len,
-          total_size);
-
-  // Allocate buffer for complete packet
-  uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
-  if (!packet) {
-    log_error("★ PACKET_SEND: Memory allocation FAILED for %zu byte packet buffer", total_size);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
-  }
-
-  log_dev("★ PACKET_SEND: Packet buffer allocated at %p", (void *)packet);
-
-  // Build complete packet: header + payload
-  memcpy(packet, &header, sizeof(header));
-  if (payload && payload_len > 0) {
-    memcpy(packet + sizeof(header), payload, payload_len);
-    log_dev("★ PACKET_SEND: Payload copied to buffer offset %zu", sizeof(header));
-  }
-
-  // Send via transport (transport handles encryption if crypto_ctx present)
-  // Transport does NOT take ownership - it only copies data to its own buffers
-  log_dev("★ PACKET_SEND: Calling acip_transport_send with %zu total bytes", total_size);
-  asciichat_error_t result = acip_transport_send(transport, packet, total_size);
-  stats_runtime_packet(transport->stats_peer, type, payload_len, true, result == ASCIICHAT_OK);
-
-  if (result == ASCIICHAT_OK) {
-    log_dev("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size, type,
-            client_id);
-  } else {
-    log_error("★ PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes "
-              "type=%d to client_id=%u",
-              result, asciichat_error_string(result), total_size, type, client_id);
-  }
-
-  // Always free the packet buffer
-  SAFE_FREE(packet);
-  return result;
+  socket_buffer_t slice = {payload, payload_len};
+  return packet_send_via_transportv(transport, type, &slice, 1, client_id);
 }
 
 // =============================================================================
@@ -197,23 +175,8 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
   header.channels = 1;
 
-  // Calculate total size (header + float samples)
-  size_t samples_size = num_samples * sizeof(float);
-  size_t total_size = sizeof(header) + samples_size;
-
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
-  }
-
-  // Copy header and samples
-  memcpy(buffer, &header, sizeof(header));
-  memcpy(buffer + sizeof(header), samples, samples_size);
-
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
-
-  buffer_pool_free(NULL, buffer, total_size);
-  return result;
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {samples, (size_t)num_samples * sizeof(float)}};
+  return packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
 }
 
 asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *opus_data, size_t opus_len) {
@@ -241,33 +204,17 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   *(uint32_t *)(header + 8) = HOST_TO_NET_U32(frame_count);
   *(uint32_t *)(header + 12) = 0; // reserved
 
-  // Calculate sizes array size
-  size_t sizes_len = frame_count * sizeof(uint16_t);
-  size_t total_size = sizeof(header) + sizes_len + opus_len;
-
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
-  }
-
-  // Build packet: header + sizes + opus_data
-  memcpy(buffer, header, sizeof(header));
-
-  // Convert frame sizes to network byte order before copying
-  // IMPORTANT: Server expects network byte order and will apply NET_TO_HOST_U16()
-  uint16_t *sizes_buf = (uint16_t *)(buffer + sizeof(header));
-  for (uint32_t i = 0; i < frame_count; i++) {
-    sizes_buf[i] = HOST_TO_NET_U16(frame_sizes[i]);
-  }
-
-  memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
-
-  log_dev("★ OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu", frame_count,
-          sizes_len, opus_len, total_size);
-
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
-
-  buffer_pool_free(NULL, buffer, total_size);
+  if (frame_count > MAX_PACKET_SIZE / sizeof(uint16_t) || opus_len > MAX_PACKET_SIZE)
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Opus batch too large");
+  size_t sizes_len = (size_t)frame_count * sizeof(uint16_t);
+  uint16_t *sizes = buffer_pool_alloc(NULL, sizes_len);
+  if (!sizes)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate Opus lengths");
+  for (uint32_t i = 0; i < frame_count; ++i)
+    sizes[i] = HOST_TO_NET_U16(frame_sizes[i]);
+  socket_buffer_t slices[] = {{header, sizeof(header)}, {sizes, sizes_len}, {opus_data, opus_len}};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, slices, 3, 0);
+  buffer_pool_free(NULL, sizes, sizes_len);
   return result;
 }
 

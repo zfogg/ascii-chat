@@ -246,44 +246,8 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   header.checksum = HOST_TO_NET_U32(checksum_value);
   header.flags = HOST_TO_NET_U32(is_compressed ? FRAME_FLAG_IS_COMPRESSED : 0);
 
-  // Calculate total packet size
-  size_t total_size;
-  if (checked_size_add(sizeof(header), payload_size, &total_size) != ASCIICHAT_OK) {
-    SAFE_FREE(compressed_data);
-    log_error("★ SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)", sizeof(header),
-              payload_size);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
-  }
-
-  log_debug("★ SEND_ASCII_FRAME: Building packet - header=%zu bytes, frame=%zu bytes, total=%zu bytes", sizeof(header),
-            frame_size, total_size);
-
-  // Allocate buffer
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    SAFE_FREE(compressed_data);
-    log_error("★ SEND_ASCII_FRAME: Memory allocation FAILED for %zu bytes", total_size);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
-  }
-
-  log_debug("★ SEND_ASCII_FRAME: Buffer allocated at %p", (void *)buffer);
-
-  // Build packet: header + data
-  memcpy(buffer, &header, sizeof(header));
-  memcpy(buffer + sizeof(header), payload_data, payload_size);
-
-  // Send via transport with client_id for logging
-  log_dev("SEND_ASCII_FRAME: sending PACKET_TYPE_ASCII_FRAME");
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, 0);
-
-  if (result == ASCIICHAT_OK) {
-    log_dev("SEND_ASCII_FRAME: sent client_id=%s bytes=%zu", client_id, total_size);
-  } else {
-    log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%s", result, asciichat_error_string(result),
-              client_id);
-  }
-
-  buffer_pool_free(NULL, buffer, total_size);
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {payload_data, payload_size}};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, 2, 0);
   SAFE_FREE(compressed_data);
   return result;
 }

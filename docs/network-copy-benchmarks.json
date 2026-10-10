@@ -1,0 +1,3226 @@
+{
+  "date": "2026-10-10",
+  "base_commit": "ca8437abfd9072b10b1f431405c81f1169fe0203",
+  "build": "Debug",
+  "results": {
+    "windows": {
+      "platform": "nt",
+      "runs": [
+        {
+          "run": 1,
+          "mode": "assembled",
+          "wall_seconds": 1.9060000000172295,
+          "cpu_seconds": 3.21875,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "29.4",
+              "p95_us": "41.2",
+              "p99_us": "111.9",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "65.1",
+              "p95_us": "106.1",
+              "p99_us": "171.7",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.46",
+              "p50_us": "26.3",
+              "p95_us": "28.7",
+              "p99_us": "117.3",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.16",
+              "p50_us": "66.2",
+              "p95_us": "76.1",
+              "p99_us": "189.7",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "79.44",
+              "p50_us": "37.0",
+              "p95_us": "64.8",
+              "p99_us": "136.4",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "31.48",
+              "p50_us": "111.9",
+              "p95_us": "180.2",
+              "p99_us": "232.9",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "285.86",
+              "p50_us": "207.7",
+              "p95_us": "249.6",
+              "p99_us": "347.8",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "82.30",
+              "p50_us": "731.2",
+              "p95_us": "855.8",
+              "p99_us": "1198.5",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "247.01",
+              "p50_us": "3945.6",
+              "p95_us": "4550.7",
+              "p99_us": "6165.5",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "78.61",
+              "p50_us": "12562.7",
+              "p95_us": "13756.4",
+              "p99_us": "14130.9",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 1,
+          "mode": "vectored",
+          "wall_seconds": 2.0,
+          "cpu_seconds": 3.046875,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "13.5",
+              "p95_us": "21.1",
+              "p99_us": "61.7",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "58.8",
+              "p95_us": "72.0",
+              "p99_us": "155.3",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "7.00",
+              "p50_us": "16.6",
+              "p95_us": "24.1",
+              "p99_us": "44.8",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.44",
+              "p50_us": "59.0",
+              "p95_us": "79.7",
+              "p99_us": "152.7",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "93.44",
+              "p50_us": "24.7",
+              "p95_us": "44.7",
+              "p99_us": "63.4",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "36.95",
+              "p50_us": "97.3",
+              "p95_us": "142.8",
+              "p99_us": "204.0",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "276.73",
+              "p50_us": "215.6",
+              "p95_us": "254.3",
+              "p99_us": "315.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "82.10",
+              "p50_us": "744.9",
+              "p95_us": "808.0",
+              "p99_us": "1038.9",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "228.30",
+              "p50_us": "4084.6",
+              "p95_us": "4529.6",
+              "p99_us": "19402.7",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "74.85",
+              "p50_us": "12872.5",
+              "p95_us": "14679.9",
+              "p99_us": "21397.5",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "assembled",
+          "wall_seconds": 2.077999999979511,
+          "cpu_seconds": 3.296875,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "26.8",
+              "p95_us": "79.7",
+              "p99_us": "111.3",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "71.4",
+              "p95_us": "114.9",
+              "p99_us": "172.7",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "5.64",
+              "p50_us": "27.7",
+              "p95_us": "62.6",
+              "p99_us": "215.9",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.02",
+              "p50_us": "69.6",
+              "p95_us": "96.1",
+              "p99_us": "175.5",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "73.81",
+              "p50_us": "42.7",
+              "p95_us": "80.4",
+              "p99_us": "125.6",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "20.26",
+              "p50_us": "184.0",
+              "p95_us": "261.6",
+              "p99_us": "331.1",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "215.76",
+              "p50_us": "247.5",
+              "p95_us": "415.9",
+              "p99_us": "511.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "71.77",
+              "p50_us": "823.2",
+              "p95_us": "1097.9",
+              "p99_us": "1518.8",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "202.99",
+              "p50_us": "4644.8",
+              "p95_us": "5353.9",
+              "p99_us": "15538.0",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "74.22",
+              "p50_us": "13229.0",
+              "p95_us": "14650.7",
+              "p99_us": "17100.1",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "vectored",
+          "wall_seconds": 2.047000000020489,
+          "cpu_seconds": 3.125,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "15.8",
+              "p95_us": "21.5",
+              "p99_us": "70.3",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "59.8",
+              "p95_us": "80.6",
+              "p99_us": "156.9",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.65",
+              "p50_us": "13.6",
+              "p95_us": "14.5",
+              "p99_us": "32.6",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.37",
+              "p50_us": "60.4",
+              "p95_us": "75.1",
+              "p99_us": "205.4",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "94.04",
+              "p50_us": "24.8",
+              "p95_us": "32.6",
+              "p99_us": "61.0",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "29.57",
+              "p50_us": "112.2",
+              "p95_us": "225.7",
+              "p99_us": "271.5",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "242.47",
+              "p50_us": "247.7",
+              "p95_us": "303.5",
+              "p99_us": "340.9",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "81.72",
+              "p50_us": "752.0",
+              "p95_us": "792.5",
+              "p99_us": "856.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "235.26",
+              "p50_us": "4187.0",
+              "p95_us": "4707.1",
+              "p99_us": "5051.1",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "71.23",
+              "p50_us": "13290.9",
+              "p95_us": "18447.3",
+              "p99_us": "25450.4",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "assembled",
+          "wall_seconds": 2.1719999999622814,
+          "cpu_seconds": 3.34375,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "26.4",
+              "p95_us": "34.8",
+              "p99_us": "113.7",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "66.5",
+              "p95_us": "90.8",
+              "p99_us": "156.3",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.03",
+              "p50_us": "27.7",
+              "p95_us": "43.6",
+              "p99_us": "120.7",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.03",
+              "p50_us": "68.8",
+              "p95_us": "87.9",
+              "p99_us": "155.3",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "82.65",
+              "p50_us": "39.5",
+              "p95_us": "61.3",
+              "p99_us": "133.5",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "30.66",
+              "p50_us": "120.3",
+              "p95_us": "159.5",
+              "p99_us": "231.1",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "256.53",
+              "p50_us": "234.0",
+              "p95_us": "280.0",
+              "p99_us": "357.2",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "77.42",
+              "p50_us": "768.9",
+              "p95_us": "943.5",
+              "p99_us": "1333.4",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "211.67",
+              "p50_us": "4584.6",
+              "p95_us": "5253.2",
+              "p99_us": "11397.8",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "68.35",
+              "p50_us": "13824.1",
+              "p95_us": "20328.1",
+              "p99_us": "23085.2",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "vectored",
+          "wall_seconds": 1.9679999999934807,
+          "cpu_seconds": 3.078125,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "13.5",
+              "p95_us": "20.0",
+              "p99_us": "67.2",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "59.1",
+              "p95_us": "72.9",
+              "p99_us": "131.1",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.34",
+              "p50_us": "13.9",
+              "p95_us": "15.7",
+              "p99_us": "34.2",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.43",
+              "p50_us": "62.0",
+              "p95_us": "86.6",
+              "p99_us": "191.6",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "94.61",
+              "p50_us": "25.3",
+              "p95_us": "26.7",
+              "p99_us": "61.5",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "35.30",
+              "p50_us": "105.2",
+              "p95_us": "131.2",
+              "p99_us": "228.9",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "272.19",
+              "p50_us": "217.4",
+              "p95_us": "276.1",
+              "p99_us": "334.3",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "82.03",
+              "p50_us": "744.1",
+              "p95_us": "810.8",
+              "p99_us": "1015.9",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "241.74",
+              "p50_us": "4035.9",
+              "p95_us": "4491.6",
+              "p99_us": "6476.2",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "74.87",
+              "p50_us": "13229.7",
+              "p95_us": "14359.5",
+              "p99_us": "18274.9",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "platform": "posix",
+      "runs": [
+        {
+          "run": 1,
+          "mode": "assembled",
+          "wall_seconds": 2.777072133991169,
+          "cpu_seconds": 4.1662799999999995,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "76.3",
+              "p95_us": "123.8",
+              "p99_us": "2076.7",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "205.8",
+              "p95_us": "319.0",
+              "p99_us": "791.0",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.28",
+              "p50_us": "50.2",
+              "p95_us": "137.4",
+              "p99_us": "271.1",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.19",
+              "p50_us": "210.5",
+              "p95_us": "301.3",
+              "p99_us": "374.6",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "50.62",
+              "p50_us": "65.7",
+              "p95_us": "116.9",
+              "p99_us": "174.8",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "21.30",
+              "p50_us": "178.7",
+              "p95_us": "254.3",
+              "p99_us": "288.1",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "107.99",
+              "p50_us": "558.7",
+              "p95_us": "669.7",
+              "p99_us": "1025.0",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "56.53",
+              "p50_us": "1087.0",
+              "p95_us": "1206.7",
+              "p99_us": "1329.3",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "120.79",
+              "p50_us": "8124.2",
+              "p95_us": "8920.3",
+              "p99_us": "10345.5",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "64.33",
+              "p50_us": "15109.7",
+              "p95_us": "17818.5",
+              "p99_us": "18164.0",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 1,
+          "mode": "vectored",
+          "wall_seconds": 2.6647614630055614,
+          "cpu_seconds": 4.001796,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "7.9",
+              "p95_us": "105.1",
+              "p99_us": "1590.6",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "180.8",
+              "p95_us": "269.6",
+              "p99_us": "448.3",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "7.50",
+              "p50_us": "9.2",
+              "p95_us": "14.9",
+              "p99_us": "91.0",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.33",
+              "p50_us": "178.3",
+              "p95_us": "285.4",
+              "p99_us": "373.1",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "69.82",
+              "p50_us": "29.7",
+              "p95_us": "36.2",
+              "p99_us": "45.0",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "19.54",
+              "p50_us": "192.8",
+              "p95_us": "267.6",
+              "p99_us": "358.0",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "121.98",
+              "p50_us": "491.4",
+              "p95_us": "599.0",
+              "p99_us": "719.2",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "61.39",
+              "p50_us": "994.6",
+              "p95_us": "1103.5",
+              "p99_us": "1343.2",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "126.53",
+              "p50_us": "7409.7",
+              "p95_us": "9746.4",
+              "p99_us": "19599.9",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "66.58",
+              "p50_us": "14600.4",
+              "p95_us": "17422.3",
+              "p99_us": "18145.2",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "assembled",
+          "wall_seconds": 2.7944138050079346,
+          "cpu_seconds": 4.192171999999999,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "74.5",
+              "p95_us": "125.1",
+              "p99_us": "1238.1",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "198.6",
+              "p95_us": "296.2",
+              "p99_us": "771.8",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.00",
+              "p50_us": "65.7",
+              "p95_us": "151.1",
+              "p99_us": "595.7",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.18",
+              "p50_us": "206.9",
+              "p95_us": "307.7",
+              "p99_us": "335.8",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "54.22",
+              "p50_us": "53.0",
+              "p95_us": "114.9",
+              "p99_us": "209.7",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "20.43",
+              "p50_us": "182.0",
+              "p95_us": "287.5",
+              "p99_us": "373.1",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "109.65",
+              "p50_us": "555.5",
+              "p95_us": "638.3",
+              "p99_us": "730.2",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "57.63",
+              "p50_us": "1066.3",
+              "p95_us": "1167.0",
+              "p99_us": "1368.6",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "124.78",
+              "p50_us": "7893.1",
+              "p95_us": "8488.2",
+              "p99_us": "9552.3",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "62.32",
+              "p50_us": "15321.6",
+              "p95_us": "19569.6",
+              "p99_us": "26523.3",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "vectored",
+          "wall_seconds": 2.677600055001676,
+          "cpu_seconds": 4.019492000000003,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "9.1",
+              "p95_us": "88.0",
+              "p99_us": "1517.6",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "185.9",
+              "p95_us": "290.5",
+              "p99_us": "329.7",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "8.23",
+              "p50_us": "9.1",
+              "p95_us": "11.3",
+              "p99_us": "27.5",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.35",
+              "p50_us": "178.4",
+              "p95_us": "270.1",
+              "p99_us": "375.3",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "71.80",
+              "p50_us": "29.3",
+              "p95_us": "34.4",
+              "p99_us": "51.2",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "19.43",
+              "p50_us": "193.6",
+              "p95_us": "258.5",
+              "p99_us": "352.7",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "123.07",
+              "p50_us": "486.8",
+              "p95_us": "612.4",
+              "p99_us": "752.6",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "61.10",
+              "p50_us": "1002.4",
+              "p95_us": "1118.4",
+              "p99_us": "1309.7",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "121.43",
+              "p50_us": "7595.7",
+              "p95_us": "11497.0",
+              "p99_us": "17345.8",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "67.35",
+              "p50_us": "14624.4",
+              "p95_us": "16724.4",
+              "p99_us": "17326.6",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "assembled",
+          "wall_seconds": 2.7140780330228154,
+          "cpu_seconds": 4.089623999999997,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "76.6",
+              "p95_us": "138.9",
+              "p99_us": "968.6",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "211.2",
+              "p95_us": "307.0",
+              "p99_us": "606.3",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.04",
+              "p50_us": "72.0",
+              "p95_us": "125.4",
+              "p99_us": "176.3",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.14",
+              "p50_us": "202.8",
+              "p95_us": "333.9",
+              "p99_us": "421.1",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "45.12",
+              "p50_us": "69.3",
+              "p95_us": "134.4",
+              "p99_us": "591.3",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "19.91",
+              "p50_us": "189.5",
+              "p95_us": "273.0",
+              "p99_us": "368.5",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "107.70",
+              "p50_us": "564.0",
+              "p95_us": "678.1",
+              "p99_us": "787.3",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "57.35",
+              "p50_us": "1072.1",
+              "p95_us": "1205.5",
+              "p99_us": "1338.8",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "124.74",
+              "p50_us": "7904.3",
+              "p95_us": "8382.4",
+              "p99_us": "9318.6",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "65.87",
+              "p50_us": "14802.3",
+              "p95_us": "17476.6",
+              "p99_us": "19417.5",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "vectored",
+          "wall_seconds": 2.558617973001674,
+          "cpu_seconds": 3.856611000000001,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "8.3",
+              "p95_us": "88.3",
+              "p99_us": "1869.4",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "162.9",
+              "p95_us": "267.4",
+              "p99_us": "739.1",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "8.29",
+              "p50_us": "8.8",
+              "p95_us": "11.1",
+              "p99_us": "26.1",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.51",
+              "p50_us": "158.7",
+              "p95_us": "244.4",
+              "p99_us": "554.6",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "74.17",
+              "p50_us": "28.7",
+              "p95_us": "41.0",
+              "p99_us": "43.4",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "20.76",
+              "p50_us": "181.3",
+              "p95_us": "228.1",
+              "p99_us": "285.2",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "85.89",
+              "p50_us": "652.1",
+              "p95_us": "1254.2",
+              "p99_us": "2099.6",
+              "io": {
+                "calls": "300",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "59.92",
+              "p50_us": "1006.5",
+              "p95_us": "1155.2",
+              "p99_us": "1966.7",
+              "io": {
+                "calls": "300",
+                "bytes": "6562000",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "134.40",
+              "p50_us": "7253.3",
+              "p95_us": "8296.1",
+              "p99_us": "8778.5",
+              "io": {
+                "calls": "3201",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "70.04",
+              "p50_us": "14050.2",
+              "p95_us": "16016.5",
+              "p99_us": "16711.3",
+              "io": {
+                "calls": "3300",
+                "bytes": "104863800",
+                "zerocopy_calls": "1",
+                "completions": "1",
+                "copied": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "macos": {
+      "platform": "posix",
+      "runs": [
+        {
+          "run": 1,
+          "mode": "assembled",
+          "wall_seconds": 3.5052859190036543,
+          "cpu_seconds": 4.474794,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "44.4",
+              "p95_us": "124.5",
+              "p99_us": "197.6",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "112.3",
+              "p95_us": "196.2",
+              "p99_us": "454.0",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "3.95",
+              "p50_us": "40.3",
+              "p95_us": "176.8",
+              "p99_us": "632.9",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "1.79",
+              "p50_us": "124.4",
+              "p95_us": "209.6",
+              "p99_us": "235.2",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "31.93",
+              "p50_us": "114.7",
+              "p95_us": "164.7",
+              "p99_us": "211.4",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "19.07",
+              "p50_us": "193.2",
+              "p95_us": "318.3",
+              "p99_us": "372.4",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "87.21",
+              "p50_us": "690.0",
+              "p95_us": "892.3",
+              "p99_us": "996.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "50.55",
+              "p50_us": "1197.0",
+              "p95_us": "1499.0",
+              "p99_us": "1576.5",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "90.38",
+              "p50_us": "10580.5",
+              "p95_us": "13502.9",
+              "p99_us": "14550.4",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "54.75",
+              "p50_us": "17628.2",
+              "p95_us": "21980.9",
+              "p99_us": "23215.2",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 1,
+          "mode": "vectored",
+          "wall_seconds": 3.2086498780117836,
+          "cpu_seconds": 4.113257,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "12.8",
+              "p95_us": "17.2",
+              "p99_us": "75.4",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "79.8",
+              "p95_us": "148.6",
+              "p99_us": "388.8",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.77",
+              "p50_us": "13.0",
+              "p95_us": "145.2",
+              "p99_us": "651.9",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "2.64",
+              "p50_us": "83.3",
+              "p95_us": "127.4",
+              "p99_us": "523.6",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "54.38",
+              "p50_us": "69.8",
+              "p95_us": "79.8",
+              "p99_us": "328.0",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "26.11",
+              "p50_us": "145.2",
+              "p95_us": "188.0",
+              "p99_us": "210.7",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "90.45",
+              "p50_us": "648.1",
+              "p95_us": "933.6",
+              "p99_us": "1129.8",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "53.83",
+              "p50_us": "1112.9",
+              "p95_us": "1494.0",
+              "p99_us": "1652.3",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "102.10",
+              "p50_us": "9429.2",
+              "p95_us": "11426.0",
+              "p99_us": "11997.8",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "59.26",
+              "p50_us": "16323.8",
+              "p95_us": "19621.8",
+              "p99_us": "21230.7",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "assembled",
+          "wall_seconds": 3.4916327300015837,
+          "cpu_seconds": 4.4443459999999995,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "42.8",
+              "p95_us": "154.2",
+              "p99_us": "185.2",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "112.3",
+              "p95_us": "183.5",
+              "p99_us": "584.2",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "4.48",
+              "p50_us": "38.0",
+              "p95_us": "146.8",
+              "p99_us": "518.6",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "2.09",
+              "p50_us": "98.6",
+              "p95_us": "217.9",
+              "p99_us": "353.8",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "34.54",
+              "p50_us": "104.3",
+              "p95_us": "181.3",
+              "p99_us": "205.5",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "17.18",
+              "p50_us": "218.8",
+              "p95_us": "326.4",
+              "p99_us": "435.3",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "70.69",
+              "p50_us": "836.4",
+              "p95_us": "1258.9",
+              "p99_us": "1562.7",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "53.78",
+              "p50_us": "1124.9",
+              "p95_us": "1347.6",
+              "p99_us": "1647.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "92.74",
+              "p50_us": "10267.0",
+              "p95_us": "14122.1",
+              "p99_us": "17190.9",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "54.56",
+              "p50_us": "17493.9",
+              "p95_us": "22351.1",
+              "p99_us": "24278.7",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "mode": "vectored",
+          "wall_seconds": 3.335929855995346,
+          "cpu_seconds": 4.286505000000002,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "13.6",
+              "p95_us": "22.0",
+              "p99_us": "78.7",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "142.0",
+              "p95_us": "265.7",
+              "p99_us": "385.6",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "5.24",
+              "p50_us": "17.3",
+              "p95_us": "225.0",
+              "p99_us": "835.2",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "2.14",
+              "p50_us": "103.1",
+              "p95_us": "172.8",
+              "p99_us": "218.5",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "37.26",
+              "p50_us": "92.3",
+              "p95_us": "194.7",
+              "p99_us": "371.8",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "16.56",
+              "p50_us": "216.8",
+              "p95_us": "368.8",
+              "p99_us": "518.3",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "77.98",
+              "p50_us": "749.9",
+              "p95_us": "1145.0",
+              "p99_us": "1359.5",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "45.61",
+              "p50_us": "1327.5",
+              "p95_us": "1769.7",
+              "p99_us": "1956.7",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "102.19",
+              "p50_us": "9418.8",
+              "p95_us": "12146.0",
+              "p99_us": "13486.7",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "56.50",
+              "p50_us": "17113.9",
+              "p95_us": "21645.6",
+              "p99_us": "22855.1",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "assembled",
+          "wall_seconds": 3.4917783349956153,
+          "cpu_seconds": 4.450412,
+          "cases": [
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "41.8",
+              "p95_us": "140.2",
+              "p99_us": "180.3",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "109.5",
+              "p95_us": "162.2",
+              "p99_us": "720.5",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "4.01",
+              "p50_us": "42.3",
+              "p95_us": "159.2",
+              "p99_us": "524.5",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "2.06",
+              "p50_us": "103.7",
+              "p95_us": "163.2",
+              "p99_us": "717.0",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "40.94",
+              "p50_us": "94.1",
+              "p95_us": "115.9",
+              "p99_us": "126.6",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "21.42",
+              "p50_us": "179.7",
+              "p95_us": "214.0",
+              "p99_us": "219.7",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "89.27",
+              "p50_us": "681.6",
+              "p95_us": "808.9",
+              "p99_us": "1053.1",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "50.38",
+              "p50_us": "1161.8",
+              "p95_us": "1697.8",
+              "p99_us": "1953.7",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "94.54",
+              "p50_us": "10076.0",
+              "p95_us": "13599.1",
+              "p99_us": "14112.2",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "assembled",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "53.59",
+              "p50_us": "17525.4",
+              "p95_us": "24589.1",
+              "p99_us": "43520.5",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "mode": "vectored",
+          "wall_seconds": 3.3583002789964667,
+          "cpu_seconds": 4.298640999999996,
+          "cases": [
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "14.1",
+              "p95_us": "21.7",
+              "p99_us": "82.8",
+              "io": {
+                "calls": "100",
+                "bytes": "2200",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "0",
+              "iterations": "100",
+              "MiB/s": "0.00",
+              "p50_us": "97.0",
+              "p95_us": "159.8",
+              "p99_us": "494.8",
+              "io": {
+                "calls": "100",
+                "bytes": "8400",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "6.17",
+              "p50_us": "15.6",
+              "p95_us": "176.7",
+              "p99_us": "748.2",
+              "io": {
+                "calls": "100",
+                "bytes": "27800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "256",
+              "iterations": "100",
+              "MiB/s": "2.25",
+              "p50_us": "98.7",
+              "p95_us": "180.9",
+              "p99_us": "351.0",
+              "io": {
+                "calls": "100",
+                "bytes": "34000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "48.10",
+              "p50_us": "70.9",
+              "p95_us": "143.2",
+              "p99_us": "329.9",
+              "io": {
+                "calls": "100",
+                "bytes": "411800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "4096",
+              "iterations": "100",
+              "MiB/s": "25.20",
+              "p50_us": "145.1",
+              "p95_us": "229.3",
+              "p99_us": "344.3",
+              "io": {
+                "calls": "100",
+                "bytes": "418000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "87.54",
+              "p50_us": "686.2",
+              "p95_us": "939.8",
+              "p99_us": "1005.6",
+              "io": {
+                "calls": "100",
+                "bytes": "6555800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "65536",
+              "iterations": "100",
+              "MiB/s": "56.56",
+              "p50_us": "1061.9",
+              "p95_us": "1299.3",
+              "p99_us": "2431.0",
+              "io": {
+                "calls": "100",
+                "bytes": "6562000",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "0",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "97.25",
+              "p50_us": "9581.7",
+              "p95_us": "14306.6",
+              "p99_us": "16025.8",
+              "io": {
+                "calls": "100",
+                "bytes": "104857600",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            },
+            {
+              "mode": "vectored",
+              "encrypted": "1",
+              "bytes": "1048554",
+              "iterations": "100",
+              "MiB/s": "55.76",
+              "p50_us": "17218.7",
+              "p95_us": "22093.1",
+              "p99_us": "24368.7",
+              "io": {
+                "calls": "100",
+                "bytes": "104863800",
+                "zerocopy_calls": "0",
+                "completions": "0",
+                "copied": "0"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

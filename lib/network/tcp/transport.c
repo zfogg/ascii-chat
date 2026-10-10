@@ -20,205 +20,132 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
+#include <ascii-chat/options/options.h>
 
 /**
  * @brief TCP transport implementation data
  */
 typedef struct {
-  socket_t sockfd;    ///< Socket descriptor (NOT owned - don't close)
-  bool is_connected;  ///< Connection state
-  mutex_t send_mutex; ///< Mutex to protect concurrent sends (multiple threads may send packets)
+  socket_t sockfd;        ///< Socket descriptor (NOT owned - don't close)
+  bool is_connected;      ///< Connection state
+  bool zerocopy_disabled; ///< Disable copy avoidance after unsupported or copied completion
+  mutex_t send_mutex;     ///< Mutex to protect concurrent sends (multiple threads may send packets)
 } tcp_transport_data_t;
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * @brief Send all bytes on socket (handles partial sends)
- */
-static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t len) {
-  const uint8_t *ptr = (const uint8_t *)data;
-  size_t remaining = len;
-  size_t total_sent = 0;
-  uint64_t send_start_ns = time_get_ns();
-
-  log_debug("★ TCP_SEND_ALL: sockfd=%d, len=%zu", sockfd, len);
-
-  while (remaining > 0) {
-    uint64_t iteration_start_ns = time_get_ns();
-    ssize_t sent = socket_send(sockfd, ptr, remaining, 0);
-    uint64_t iteration_ns = time_elapsed_ns(iteration_start_ns, time_get_ns());
-
-    if (iteration_ns > 100 * NS_PER_MS_INT) {
-      log_warn("★ TCP_SEND_ALL: SLOW SEND - took %.1fms to send %zu bytes (may indicate full buffer)",
-               (double)iteration_ns / 1e6, remaining);
-    }
-
-    if (sent < 0) {
-      log_error("★ TCP_SEND_ALL: socket_send FAILED at offset %zu/%zu, errno=%d (%s)", total_sent, len, errno,
-                SAFE_STRERROR(errno));
-      return SET_ERRNO_SYS(ERROR_NETWORK,
-                           "Socket send failed: %s (tried to send %zu bytes, %zu remaining, already sent %zu)",
-                           SAFE_STRERROR(errno), len, remaining, total_sent);
-    }
-    if (sent == 0) {
-      log_error("★ TCP_SEND_ALL: socket closed at offset %zu/%zu", total_sent, len);
-      return SET_ERRNO(ERROR_NETWORK, "Socket closed (tried to send %zu bytes, %zu remaining, already sent %zu)", len,
-                       remaining, total_sent);
-    }
-    ptr += sent;
-    remaining -= (size_t)sent;
-    total_sent += (size_t)sent;
-    log_debug("★ TCP_SEND_ALL: sent %zd bytes, total=%zu/%zu, remaining=%zu", sent, total_sent, len, remaining);
+static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  tcp_transport_data_t *tcp = transport->impl_data;
+  if (!buffers || !count || count > SOCKET_IOV_MAX || buffers[0].len < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet header");
+  size_t len = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((buffers[i].len && !buffers[i].data) || buffers[i].len > SOCKET_SEND_BUFFER_MAX - len)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid TCP vector size");
+    len += buffers[i].len;
   }
-
-  uint64_t total_send_ns = time_elapsed_ns(send_start_ns, time_get_ns());
-  if (total_send_ns > 500 * NS_PER_MS_INT) {
-    log_warn("★ TCP_SEND_ALL: TOTAL SEND TIME %.1fms for %zu bytes (%.1f MB/s)", (double)total_send_ns / 1e6, len,
-             (double)(len * NS_PER_SEC_INT) / (double)total_send_ns / 1e6);
+  packet_header_t header;
+  memcpy(&header, buffers[0].data, sizeof(header));
+  mutex_lock(&tcp->send_mutex);
+  if (!tcp->is_connected) {
+    mutex_unlock(&tcp->send_mutex);
+    return SET_ERRNO(ERROR_NETWORK, "TCP transport disconnected");
   }
-
-  log_debug("★ TCP_SEND_ALL: SUCCESS - sent all %zu bytes in %.1fms", len, (double)total_send_ns / 1e6);
-  return ASCIICHAT_OK;
+  bool encrypt = transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
+                 crypto_is_ready(transport->crypto_ctx) && !packet_is_handshake_type(NET_TO_HOST_U16(header.type));
+  uint64_t timeout = packet_send_timeout_ns(len);
+  asciichat_error_t result;
+  if (!encrypt) {
+    result = socket_sendv_all(tcp->sockfd, buffers, count, timeout);
+  } else {
+    if (len > CRYPTO_MAX_PLAINTEXT_SIZE ||
+        len > SOCKET_SEND_BUFFER_MAX - sizeof(header) - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
+      mutex_unlock(&tcp->send_mutex);
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Encrypted TCP packet too large");
+    }
+    size_t capacity = sizeof(header) + len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+    socket_send_buffer_t wire = {0};
+    if (tcp->zerocopy_disabled) {
+      wire.data = buffer_pool_alloc(NULL, capacity);
+      wire.capacity = capacity;
+      result = wire.data ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot allocate ciphertext");
+    } else {
+      result = socket_send_buffer_alloc(capacity, &wire);
+    }
+    if (result != ASCIICHAT_OK) {
+      mutex_unlock(&tcp->send_mutex);
+      return result;
+    }
+    uint8_t *gathered = NULL;
+    const uint8_t *plaintext = buffers[0].data;
+    if (count > 1) {
+      gathered = buffer_pool_alloc(NULL, len);
+      if (!gathered) {
+        socket_send_buffer_free(&wire);
+        mutex_unlock(&tcp->send_mutex);
+        return SET_ERRNO(ERROR_MEMORY, "Cannot allocate encryption input");
+      }
+      size_t offset = 0;
+      for (size_t i = 0; i < count; ++i) {
+        if (buffers[i].len)
+          memcpy(gathered + offset, buffers[i].data, buffers[i].len);
+        offset += buffers[i].len;
+      }
+      plaintext = gathered;
+    }
+    size_t ciphertext_len = 0;
+    uint8_t *ciphertext = (uint8_t *)wire.data + sizeof(header);
+    crypto_result_t encrypted =
+        crypto_encrypt(transport->crypto_ctx, plaintext, len, ciphertext, capacity - sizeof(header), &ciphertext_len);
+    buffer_pool_free(NULL, gathered, len);
+    if (encrypted != CRYPTO_OK) {
+      socket_send_buffer_free(&wire);
+      mutex_unlock(&tcp->send_mutex);
+      return SET_ERRNO(ERROR_CRYPTO, "Cannot encrypt TCP packet");
+    }
+    packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                             .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
+                             .length = HOST_TO_NET_U32((uint32_t)ciphertext_len),
+                             .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len)),
+                             .client_id = 0};
+    memcpy(wire.data, &outer, sizeof(outer));
+    size_t wire_len = sizeof(outer) + ciphertext_len;
+    bool supported = false, copied = false;
+    uint64_t send_start = time_get_ns();
+    result = ASCIICHAT_OK;
+    if (!tcp->zerocopy_disabled && wire_len >= SOCKET_ZEROCOPY_THRESHOLD) {
+      result = socket_send_zerocopy(tcp->sockfd, &wire, wire_len, timeout, &supported, &copied);
+      tcp->zerocopy_disabled = !supported || copied;
+      log_debug("TCP zerocopy: supported=%d copied=%d bytes=%zu", supported, copied, wire_len);
+    }
+    if (result == ASCIICHAT_OK && !supported) {
+      socket_buffer_t slice = {wire.data, wire_len};
+      uint64_t elapsed = time_get_ns() - send_start;
+      result = elapsed >= timeout ? SET_ERRNO(ERROR_NETWORK_TIMEOUT, "TCP send deadline expired")
+                                  : socket_sendv_all(tcp->sockfd, &slice, 1, timeout - elapsed);
+    }
+    socket_send_buffer_free(&wire);
+  }
+  if (result != ASCIICHAT_OK) {
+    tcp->is_connected = false;
+    socket_shutdown(tcp->sockfd, SHUT_RDWR);
+    result = SET_ERRNO(ERROR_NETWORK, "TCP packet transmission failed");
+  }
+  mutex_unlock(&tcp->send_mutex);
+  return result;
 }
 
-// =============================================================================
-// TCP Transport Methods
-// =============================================================================
-
 static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data, size_t len) {
-  tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
+  socket_buffer_t slice = {data, len};
+  return tcp_sendv(transport, &slice, 1);
+}
 
-  // Lock send mutex to prevent concurrent sends from corrupting packet data
+asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, bool enabled) {
+  if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_TCP)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Expected TCP transport");
+  tcp_transport_data_t *tcp = transport->impl_data;
   mutex_lock(&tcp->send_mutex);
-
-  log_dev("[TCP_SEND_STATE] Entry: transport=%p, sockfd=%d, len=%zu, is_connected=%s, data=%p", (void *)transport,
-          tcp->sockfd, len, tcp->is_connected ? "true" : "false", data);
-
-  if (!tcp->is_connected) {
-    log_error("[TCP_SEND_STATE] ❌ DISCONNECTED: Cannot send - transport marked disconnected! sockfd=%d, len=%zu",
-              tcp->sockfd, len);
-    mutex_unlock(&tcp->send_mutex);
-    return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
-  }
-
-  // Data already has packet header from send.c, so we need to extract the type
-  // to determine if this is a handshake packet (which should NOT be encrypted)
-  if (len < sizeof(packet_header_t)) {
-    log_error("[TCP_SEND_STATE] ❌ PACKET_TOO_SMALL: len=%zu < header_size=%zu", len, sizeof(packet_header_t));
-    mutex_unlock(&tcp->send_mutex);
-    return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", len, sizeof(packet_header_t));
-  }
-
-  // Extract packet type from header
-  const packet_header_t *header = (const packet_header_t *)data;
-  uint16_t packet_type = NET_TO_HOST_U16(header->type);
-  log_dev("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type, len,
-          (void *)header);
-
-  // Check if encryption is needed
-  bool should_encrypt = false;
-  bool crypto_ready =
-      (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx));
-  bool is_handshake = packet_is_handshake_type((packet_type_t)packet_type);
-
-  if (crypto_ready) {
-    // Handshake packets are ALWAYS sent unencrypted
-    if (!is_handshake) {
-      should_encrypt = true;
-    }
-  }
-
-  log_dev("[TCP_SEND_STATE] 🔐 CRYPTO_CHECK: crypto_ready=%s, is_handshake=%s, will_encrypt=%s",
-          crypto_ready ? "yes" : "no", is_handshake ? "yes" : "no", should_encrypt ? "yes" : "no");
-
-  // If no encryption needed, send raw data
-  if (!should_encrypt) {
-    log_dev("[TCP_SEND_STATE] 📤 PLAINTEXT_SEND: sockfd=%d, len=%zu bytes (packet_type=%d)", tcp->sockfd, len,
-            packet_type);
-    asciichat_error_t result = tcp_send_all(tcp->sockfd, data, len);
-    if (result == ASCIICHAT_OK) {
-      log_dev("[TCP_SEND_STATE] ✅ PLAINTEXT_SEND_OK: sockfd=%d, %zu bytes sent successfully", tcp->sockfd, len);
-    } else {
-      log_error("[TCP_SEND_STATE] ❌ PLAINTEXT_SEND_FAILED: sockfd=%d, len=%zu - error code set", tcp->sockfd, len);
-    }
-    mutex_unlock(&tcp->send_mutex);
-    return result;
-  }
-
-  // Encrypt the entire packet (header + payload)
-  size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  log_info("[TCP_SEND_STATE] 🔐 ENCRYPT_START: original_len=%zu, with_nonce=%zu, will_allocate=%zu", len,
-           CRYPTO_NONCE_SIZE, ciphertext_size);
-
-  uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
-  if (!ciphertext) {
-    log_error("[TCP_SEND_STATE] ❌ ENCRYPT_ALLOC_FAILED: needed %zu bytes", ciphertext_size);
-    mutex_unlock(&tcp->send_mutex);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer");
-  }
-
-  log_debug("[TCP_SEND_STATE] 🔐 ENCRYPT_BUFFER_ALLOCATED: ciphertext=%p, capacity=%zu", (void *)ciphertext,
-            ciphertext_size);
-
-  size_t ciphertext_len;
-  crypto_result_t result =
-      crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
-  log_info("[TCP_SEND_STATE] 🔐 ENCRYPT_RESULT: code=%d, input=%zu, output=%zu", result, len, ciphertext_len);
-
-  if (result != CRYPTO_OK) {
-    log_error("[TCP_SEND_STATE] ❌ ENCRYPT_FAILED: %s (code=%d)", crypto_result_to_string(result), result);
-    buffer_pool_free(NULL, ciphertext, ciphertext_size);
-    mutex_unlock(&tcp->send_mutex);
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
-  }
-
-  // Build PACKET_TYPE_ENCRYPTED header
-  packet_header_t encrypted_header;
-  encrypted_header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
-  encrypted_header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
-  encrypted_header.length = HOST_TO_NET_U32((uint32_t)ciphertext_len);
-  encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));
-  encrypted_header.client_id = 0;
-
-  log_info("[TCP_SEND_STATE] 🔐 ENCRYPTED_HEADER_BUILT: magic=0x%llx, type=%d, len=%zu, crc=0x%x",
-           (unsigned long long)HOST_TO_NET_U64(PACKET_MAGIC), PACKET_TYPE_ENCRYPTED, ciphertext_len,
-           encrypted_header.crc32);
-
-  // Build combined packet: header + ciphertext (must be atomic to prevent TCP stream desynchronization)
-  size_t combined_size = sizeof(encrypted_header) + ciphertext_len;
-  uint8_t *combined = SAFE_MALLOC(combined_size, uint8_t *);
-  if (!combined) {
-    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_ALLOC_FAILED: needed %zu bytes for header+payload", combined_size);
-    buffer_pool_free(NULL, ciphertext, ciphertext_size);
-    mutex_unlock(&tcp->send_mutex);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate combined packet buffer");
-  }
-
-  // Copy header and payload into single buffer
-  memcpy(combined, &encrypted_header, sizeof(encrypted_header));
-  memcpy(combined + sizeof(encrypted_header), ciphertext, ciphertext_len);
-
-  // Send as single atomic operation to prevent stream desynchronization
-  log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND: sockfd=%d, total=%zu (header=%zu + payload=%zu)", tcp->sockfd,
-           combined_size, sizeof(encrypted_header), ciphertext_len);
-  asciichat_error_t send_result = tcp_send_all(tcp->sockfd, combined, combined_size);
-
-  if (send_result == ASCIICHAT_OK) {
-    log_info("[TCP_SEND_STATE] ✅ ENCRYPTED_SEND_OK: sockfd=%d, total=%zu bytes sent atomically", tcp->sockfd,
-             combined_size);
-  } else {
-    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_FAILED: sockfd=%d, tried %zu bytes", tcp->sockfd, combined_size);
-  }
-
-  SAFE_FREE(combined);
-
-  buffer_pool_free(NULL, ciphertext, ciphertext_size);
-
-  log_debug_every(LOG_RATE_SLOW, "Sent encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", packet_type);
+  tcp->zerocopy_disabled = !enabled;
   mutex_unlock(&tcp->send_mutex);
-  return send_result;
+  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
@@ -272,39 +199,11 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;
 
-  /*
-   * `receive_packet_secure()` returns two different buffer shapes:
-   * - plaintext packets: [header][payload]
-   * - encrypted packets: [payload only] with the decrypted header still
-   *   present at the start of the allocated buffer.
-   *
-   * The ACIP client code and transport-agnostic packet helpers expect a
-   * normalized packet buffer that always begins with the ACIP header, so
-   * copy encrypted packets into a compact [header][payload] buffer here.
-   */
+  // The decrypted allocation already starts with its authenticated inner header.
+  // Transfer it directly; buffer_pool_free tracks the original allocation size.
   if (envelope.data != envelope.allocated_buffer) {
-    size_t packet_size = sizeof(packet_header_t) + envelope.len;
-    uint8_t *normalized = buffer_pool_alloc(NULL, packet_size);
-    if (!normalized) {
-      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized packet buffer");
-    }
-
-    memcpy(normalized, envelope.allocated_buffer, packet_size);
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-
-    *buffer = normalized;
-    *out_len = packet_size;
-    *out_allocated_buffer = normalized;
-  }
-
-  if (envelope.len >= sizeof(packet_header_t)) {
-    const packet_header_t *hdr = (const packet_header_t *)envelope.data;
-    uint16_t pkt_type = NET_TO_HOST_U16(hdr->type);
-    log_debug("[TCP_RECV_STATE] ✅ RECV_OK: sockfd=%d, packet_type=%d (0x%04x), len=%zu", tcp->sockfd, pkt_type,
-              pkt_type, envelope.len);
-  } else {
-    log_warn("[TCP_RECV_STATE] ⚠️  RECV_OK_SMALL_PACKET: sockfd=%d, len=%zu (< header)", tcp->sockfd, envelope.len);
+    *buffer = envelope.allocated_buffer;
+    *out_len = sizeof(packet_header_t) + envelope.len;
   }
 
   return ASCIICHAT_OK;
@@ -382,6 +281,7 @@ static void tcp_destroy_impl(acip_transport_t *transport) {
 
 static const acip_transport_methods_t tcp_methods = {
     .send = tcp_send,
+    .sendv = tcp_sendv,
     .recv = tcp_recv,
     .close = tcp_close,
     .get_type = tcp_get_type,
@@ -433,6 +333,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
+  tcp_data->zerocopy_disabled = !GET_OPTION(network_zerocopy);
 
   // Initialize send mutex to protect concurrent sends from multiple threads
   int mutex_result = mutex_init(&tcp_data->send_mutex, "tcp_send");

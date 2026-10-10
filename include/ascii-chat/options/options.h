@@ -796,6 +796,7 @@ static const bool default_fft_value = false;
 static const bool default_fps_counter_value = OPT_FPS_COUNTER_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
+static const bool default_network_zerocopy_value = false;
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
 static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
 static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
@@ -1007,6 +1008,7 @@ typedef struct options_state {
   // Network Performance Options
   // ============================================================================
   int compression_level; ///< zstd compression level (1-9)
+  bool network_zerocopy; ///< Opt-in Linux kernel copy avoidance for large encrypted TCP packets
   bool no_compress;      ///< Disable compression entirely
   bool encode_audio;     ///< Enable Opus audio encoding
 
@@ -1018,10 +1020,10 @@ typedef struct options_state {
   // ============================================================================
   // Webcam Options
   // ============================================================================
-  int webcam_index;    ///< Webcam device index (0 = first)
-  bool test_pattern;   ///< Use test pattern instead of webcam
+  int webcam_index;       ///< Webcam device index (0 = first)
+  bool test_pattern;      ///< Use test pattern instead of webcam
   int test_pattern_index; ///< Synthetic pattern selector (0 or 1)
-  bool no_audio_mixer; ///< Disable audio mixer (debug)
+  bool no_audio_mixer;    ///< Disable audio mixer (debug)
 
   // ============================================================================
   // Media File Streaming Options
@@ -1053,17 +1055,17 @@ typedef struct options_state {
   // ============================================================================
   // Audio Configuration
   // ============================================================================
-  bool audio_enabled;           ///< Enable audio streaming
-  audio_source_t audio_source;  ///< Visualization source (all/call/mic/media)
+  bool audio_enabled;                          ///< Enable audio streaming
+  audio_source_t audio_source;                 ///< Visualization source (all/call/mic/media)
   audio_capture_source_t audio_capture_source; ///< Local capture/media selection policy
-  bool waveform; ///< Replace the video image with a live audio waveform
-  bool fft;      ///< Replace the video image with a live audio frequency spectrogram
-  int microphone_index;         ///< Microphone device index (-1 = default)
-  int speakers_index;           ///< Speakers device index (-1 = default)
-  float microphone_sensitivity; ///< Microphone volume multiplier (0.0-1.0, default 1.0)
-  float speakers_volume;        ///< Speaker volume multiplier (0.0-1.0, default 1.0)
-  bool audio_analysis_enabled;  ///< Enable audio analysis (debug)
-  bool audio_no_playback;       ///< Disable speaker playback (debug)
+  bool waveform;                               ///< Replace the video image with a live audio waveform
+  bool fft;                                    ///< Replace the video image with a live audio frequency spectrogram
+  int microphone_index;                        ///< Microphone device index (-1 = default)
+  int speakers_index;                          ///< Speakers device index (-1 = default)
+  float microphone_sensitivity;                ///< Microphone volume multiplier (0.0-1.0, default 1.0)
+  float speakers_volume;                       ///< Speaker volume multiplier (0.0-1.0, default 1.0)
+  bool audio_analysis_enabled;                 ///< Enable audio analysis (debug)
+  bool audio_no_playback;                      ///< Disable speaker playback (debug)
 
   // ============================================================================
   // Image Options

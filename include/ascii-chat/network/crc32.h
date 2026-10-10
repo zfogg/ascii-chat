@@ -79,6 +79,10 @@
  * @note The CRC32 polynomial used is IEEE 802.3 (CRC-32), which is
  *       compatible with standard CRC32 implementations.
  */
+/** Extend a finalized CRC32-C; pass zero for the first slice. */
+uint32_t asciichat_crc32_update(uint32_t previous, const void *data, size_t len);
+uint32_t asciichat_crc32_sw_update(uint32_t previous, const void *data, size_t len);
+
 uint32_t asciichat_crc32_hw(const void *data, size_t len);
 
 /**
