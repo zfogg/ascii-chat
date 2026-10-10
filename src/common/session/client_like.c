@@ -826,6 +826,7 @@ cleanup:
 
 #ifndef NDEBUG
   // Join the registry inspector before freeing the session's synchronization objects.
+  debug_sync_cleanup_thread();
   debug_stats_cleanup_thread();
 #endif
 

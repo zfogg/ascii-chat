@@ -118,12 +118,14 @@ releases the guard. A later synchronized reader sees it unless it has already
 been popped; history covers that latter case. This is not a wall-clock latency
 guarantee and the API is not async-signal-safe.
 
-@section errno_diagnostics Diagnostics worker
+@section errno_diagnostics Diagnostics workers
 
-lib/debug/stats.c owns a single native worker for all five modes: server, client,
-mirror, discovery-service, and discovery. Independent deadlines allow delayed
-state and backtrace requests to coexist. Duplicate requests for the same report
-coalesce at the earliest deadline. Shutdown wakes and joins the worker before
+lib/debug/sync.c owns the debug_sync worker for synchronization inspection,
+deadlock monitoring, and backtraces. lib/debug/stats.c owns the separate
+debug_stats worker for errno and memory statistics. Both serve all five native
+modes: server, client, mirror, discovery-service, and discovery. Independent
+deadlines allow delayed requests to coexist. Duplicate requests for the same report
+coalesce at the earliest deadline. Shutdown wakes and joins both workers before
 diagnostic data is destroyed. Signal handlers only set a request flag.
 
 --errno-stacks [TIME] prints pending error stacks, handled history, error totals,
@@ -133,10 +135,10 @@ Each schedules its own one-shot report after TIME
 seconds (immediately when omitted); using both produces two independent reports.
 Signal and keyboard diagnostic requests still print both reports.
 Debug builds monitor synchronization automatically; Release builds do not start
-the diagnostics worker. Error recording and searching are
+the diagnostics workers. Error recording and searching are
 available in every build. Backtraces follow ENABLE_ERRNO_BACKTRACES.
 
-WASM can call the synchronous printers and debug_stats_poll from its event loop;
+WASM can call the synchronous printers and debug_sync_poll and debug_stats_poll from its event loop;
 it does not create a native diagnostics worker.
 
 @section errno_recovery Recovery and remote error policy
@@ -214,6 +216,8 @@ cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-errno-stacks
 ctest --test-dir build -R "^errno-stacks$" --output-on-failure
 python tests/standalone/errno/smoke.py build/bin/ascii-chat --debug-sync
+# Linux: verify SIGUSR1 prints both reports on stdout from separate workers
+python tests/standalone/errno/signal_stdout.py build/bin/ascii-chat
 @endcode
 
 Generate a real unsupported-audio fixture with FFmpeg and exercise codec fallback:

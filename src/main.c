@@ -267,6 +267,7 @@ static void handle_sigterm(int sig) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
+  debug_sync_trigger_print();
   debug_stats_trigger_print();
 #endif
 
@@ -298,6 +299,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
+  debug_sync_trigger_print();
   debug_stats_trigger_print();
 #endif
 
@@ -328,6 +330,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
  */
 static void common_handle_sigusr1(int sig) {
   (void)sig;
+  debug_sync_trigger_print();
   debug_stats_trigger_print();
 }
 
@@ -1002,6 +1005,9 @@ int main(int argc, char *argv[]) {
 
   // Diagnostic monitoring is Debug-only; error storage is available in every build.
 #ifndef NDEBUG
+  if (debug_sync_start_thread() != ASCIICHAT_OK) {
+    FATAL(ERROR_THREAD, "Cannot start synchronization worker");
+  }
   if (debug_stats_start_thread() != ASCIICHAT_OK) {
     FATAL(ERROR_THREAD, "Cannot start diagnostics worker");
   }

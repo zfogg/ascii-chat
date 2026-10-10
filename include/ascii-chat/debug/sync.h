@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/common/error_codes.h>
 
 /**
  * @file sync.h
@@ -72,7 +73,7 @@
  *
  * // In main:
  * debug_stats_init();
- * debug_stats_start_thread();
+ * debug_sync_start_thread();
  * signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
  * // Now: kill -USR2 <pid> triggers state dump in logs
  * @endcode
@@ -81,7 +82,7 @@
  *
  * @code
  * // Schedule a state dump after 100ms (during critical section):
- * debug_stats_print_state_delayed(100 * 1000000);  // 100ms in nanoseconds
+ * debug_sync_print_state_delayed(100 * 1000000);  // 100ms in nanoseconds
  * // State will print automatically on debug thread
  * @endcode
  *
@@ -90,7 +91,7 @@
  * @code
  * // Combined with backtrace:
  * debug_sync_print_state();         // See which locks are held
- * debug_stats_print_backtrace_delayed(50 * 1000000);  // Get stacks after 50ms
+ * debug_sync_print_backtrace_delayed(50 * 1000000);  // Get stacks after 50ms
  * @endcode
  *
  * ## Output Format
@@ -293,9 +294,23 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
  * @note No blocking: reads only, doesn't acquire locks
  * @note Called automatically by debug thread; only call manually for immediate checks
  *
- * @see debug_stats_start_thread() to ensure periodic checking
+ * @see debug_sync_start_thread() to ensure periodic checking
  */
 void debug_sync_check_cond_deadlocks(void);
+
+// Independent worker for synchronization monitoring and reports.
+asciichat_error_t debug_sync_init(void);
+asciichat_error_t debug_sync_start_thread(void);
+void debug_sync_cleanup_thread(void);
+void debug_sync_destroy(void);
+void debug_sync_final_cleanup(void);
+bool debug_sync_is_cleanup_in_progress(void);
+void debug_sync_trigger_print(void);
+void debug_sync_print_state_delayed(uint64_t delay_ns);
+void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
+void debug_sync_print(void);
+void debug_sync_poll(void);
+
 
 #ifdef __cplusplus
 }

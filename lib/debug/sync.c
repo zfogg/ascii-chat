@@ -9,6 +9,8 @@
  */
 
 #include <ascii-chat/debug/sync.h>
+#include <ascii-chat/debug/debug_helpers.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
@@ -415,7 +417,18 @@ void debug_sync_print_state(void) {
   // Log everything in one call
   log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
   if (buf.offset > 0) {
-    log_info("SYNC_STATE:\n%s", buf.buffer);
+    // Emit bounded lines so the logger does not truncate a large registry report.
+    log_info("SYNC_STATE:");
+    char *line = buf.buffer;
+    while (*line) {
+      char *end = strchr(line, '\n');
+      if (end)
+        *end = '\0';
+      log_info("%s", line);
+      if (!end)
+        break;
+      line = end + 1;
+    }
   } else {
     log_info("SYNC_STATE: (empty)");
   }
@@ -538,3 +551,164 @@ void debug_sync_print_state(void) {
 
 
 #endif
+
+
+static atomic_t g_signal = {0};
+static atomic_t g_exiting = {0};
+static atomic_t g_cleaning = {0};
+static asciichat_thread_t g_thread;
+static mutex_t g_mutex;
+static cond_t g_condition;
+static bool g_initialized;
+static bool g_started;
+static uint64_t g_state_deadline;
+static uint64_t g_backtrace_deadline;
+
+asciichat_error_t debug_sync_init(void) {
+  if (g_initialized)
+    return ASCIICHAT_OK;
+  if (mutex_init(&g_mutex, "debug_sync") != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics mutex");
+  if (cond_init(&g_condition, "debug_sync") != 0) {
+    mutex_destroy(&g_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics condition");
+  }
+  g_initialized = true;
+  atomic_store_bool_impl(&g_cleaning, false);
+  return ASCIICHAT_OK;
+}
+static void debug_sync_print_sync(void) {
+#ifndef NDEBUG
+  debug_sync_print_state();
+  named_print_hash_stats();
+#else
+  log_info("SYNC_STATE: synchronization diagnostics are unavailable in Release builds");
+#endif
+}
+void debug_sync_print(void) {
+  debug_sync_print_sync();
+}
+void debug_sync_print_state_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_state_deadline, delay);
+}
+void debug_sync_print_backtrace_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_backtrace_deadline, delay);
+}
+void debug_sync_trigger_print(void) {
+  // Do not signal a condition variable or invoke diagnostic hooks in a signal
+  // handler. The worker checks this flag at most 100ms after its next wakeup.
+  atomic_store_bool_impl(&g_signal, true);
+}
+bool debug_sync_is_cleanup_in_progress(void) {
+  return atomic_load_bool_impl(&g_cleaning);
+}
+void debug_sync_poll(void) {
+  if (!g_initialized)
+    return;
+  uint64_t now = time_get_ns();
+  bool all = atomic_exchange_bool_impl(&g_signal, false);
+  bool state = false;
+  mutex_lock(&g_mutex);
+  bool backtrace = g_backtrace_deadline && now >= g_backtrace_deadline;
+  if (g_state_deadline && now >= g_state_deadline) {
+    state = true;
+    g_state_deadline = 0;
+  }
+  if (backtrace)
+    g_backtrace_deadline = 0;
+  mutex_unlock(&g_mutex);
+  if (all || state)
+    debug_sync_print_sync();
+  if (backtrace) {
+    backtrace_t trace = {0};
+    backtrace_capture(&trace);
+    backtrace_symbolize(&trace);
+    if (trace.symbols)
+      backtrace_print("Diagnostics worker backtrace", &trace, 0, 0, NULL);
+    backtrace_t_free(&trace);
+  }
+}
+#ifndef EMSCRIPTEN_BUILD
+static void *debug_sync_worker(void *unused) {
+  (void)unused;
+  while (!atomic_load_bool_impl(&g_exiting)) {
+    debug_sync_poll();
+#ifndef NDEBUG
+    if (!atomic_load_bool_impl(&g_exiting)) {
+      debug_sync_check_cond_deadlocks();
+      mutex_stack_detect_deadlocks();
+    }
+#endif
+    mutex_lock(&g_mutex);
+    uint64_t now = time_get_ns();
+    uint64_t wait = 100 * NS_PER_MS_INT;
+    uint64_t deadlines[] = {g_state_deadline, g_backtrace_deadline};
+    for (size_t i = 0; i < sizeof(deadlines) / sizeof(deadlines[0]); ++i)
+      if (deadlines[i]) {
+        uint64_t remaining = deadlines[i] > now ? deadlines[i] - now : 1;
+        if (remaining < wait)
+          wait = remaining;
+      }
+    if (!atomic_load_bool_impl(&g_exiting))
+      cond_timedwait(&g_condition, &g_mutex, wait);
+    mutex_unlock(&g_mutex);
+  }
+  return NULL;
+}
+#endif
+asciichat_error_t debug_sync_start_thread(void) {
+  if (g_started)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = debug_sync_init();
+  if (result != ASCIICHAT_OK)
+    return result;
+  atomic_store_bool_impl(&g_exiting, false);
+  atomic_store_bool_impl(&g_cleaning, false);
+  options_t *opts = options_get();
+  if (opts) {
+    if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts))
+      debug_sync_print_state_delayed((uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT));
+    if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts))
+      debug_sync_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
+  }
+#ifndef EMSCRIPTEN_BUILD
+  if (asciichat_thread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
+#endif
+  g_started = true;
+  return ASCIICHAT_OK;
+}
+void debug_sync_cleanup_thread(void) {
+  if (!g_started)
+    return;
+  atomic_store_bool_impl(&g_cleaning, true);
+  mutex_lock(&g_mutex);
+  atomic_store_bool_impl(&g_exiting, true);
+  cond_signal(&g_condition);
+  mutex_unlock(&g_mutex);
+#ifndef EMSCRIPTEN_BUILD
+  // Join fully: diagnostic data must not be destroyed while a reader is alive.
+  if (asciichat_thread_join(&g_thread, NULL) != 0)
+    FATAL(ERROR_THREAD, "Cannot join diagnostics worker");
+#endif
+  g_started = false;
+}
+void debug_sync_destroy(void) {
+  debug_sync_cleanup_thread();
+  if (g_initialized) {
+    cond_destroy(&g_condition);
+    mutex_destroy(&g_mutex);
+    g_initialized = false;
+    atomic_store_bool_impl(&g_signal, false);
+    g_state_deadline = g_backtrace_deadline = 0;
+  }
+}
+void debug_sync_final_cleanup(void) {
+#ifndef NDEBUG
+  mutex_stack_cleanup_current_thread();
+#endif
+}

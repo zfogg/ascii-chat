@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/sync.h>
 /** Native tests use the production library and platform threads, including on Windows. */
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/thread.h>
@@ -402,10 +403,13 @@ int main(int argc, char **argv) {
   concurrency_contract();
   CHECK(debug_stats_init() == ASCIICHAT_OK);
   CHECK(debug_stats_start_thread() == ASCIICHAT_OK);
-  debug_stats_print_state_delayed(60 * NS_PER_SEC_INT);
-  debug_stats_print_backtrace_delayed(60 * NS_PER_SEC_INT);
+  CHECK(debug_sync_start_thread() == ASCIICHAT_OK);
+  debug_stats_print_errno_delayed(60 * NS_PER_SEC_INT);
+  debug_sync_print_state_delayed(60 * NS_PER_SEC_INT);
+  debug_sync_print_backtrace_delayed(60 * NS_PER_SEC_INT);
   platform_sleep_ns(5 * NS_PER_MS_INT);
   uint64_t start = time_get_ns();
+  debug_sync_destroy();
   debug_stats_destroy();
   CHECK(time_get_ns() - start < NS_PER_SEC_INT);
   asciichat_errno_destroy();

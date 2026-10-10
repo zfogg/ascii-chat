@@ -746,7 +746,7 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
 }
 
 // Forward declare function from sync.c to check cleanup status
-extern bool debug_stats_is_cleanup_in_progress(void);
+extern bool debug_sync_is_cleanup_in_progress(void);
 
 /**
  * @brief Check all condition variables for deadlocks
@@ -760,7 +760,7 @@ extern bool debug_stats_is_cleanup_in_progress(void);
  * @ingroup debug_sync
  */
 void debug_sync_check_cond_deadlocks(void) {
-  if (debug_stats_is_cleanup_in_progress()) {
+  if (debug_sync_is_cleanup_in_progress()) {
     return;
   }
   named_registry_for_each(cond_deadlock_check_callback, NULL);

@@ -28,7 +28,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>       // For RCU-based options access
 #include <ascii-chat/discovery/strings.h> // For RCU-based options access
-#include <ascii-chat/debug/sync.h> // For debug_stats_final_cleanup, debug_stats_cleanup_thread, debug_stats_destroy
+#include <ascii-chat/debug/sync.h> // Synchronization diagnostics lifecycle
 #include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/atomic.h>      // For debug_atomic_shutdown()
@@ -208,6 +208,7 @@ void asciichat_shared_destroy(void) {
   shutdown_done = true;
 
   // Stop diagnostic readers before destroying symbols or synchronization state.
+  debug_sync_cleanup_thread();
   debug_stats_cleanup_thread();
 
   stats_runtime_stop();
@@ -229,7 +230,7 @@ void asciichat_shared_destroy(void) {
   mutex_stack_cleanup();
 
   // Clean up current thread's allocations
-  debug_stats_final_cleanup();
+  debug_sync_final_cleanup();
 
   // Memory debug thread - prints memory report (must be last)
 #if defined(DEBUG_MEMORY)
@@ -239,6 +240,7 @@ void asciichat_shared_destroy(void) {
   // Atomic debug cleanup
   debug_atomic_shutdown();
 #endif
+  debug_sync_destroy();
   debug_stats_destroy();
 
   // 1. Terminal screen - cleanup frame buffer
@@ -287,7 +289,7 @@ void asciichat_shared_destroy(void) {
 #ifndef NDEBUG
   mutex_stack_cleanup();
   // Final cleanup: free the main thread's debug allocations
-  debug_stats_final_cleanup();
+  debug_sync_final_cleanup();
 #endif
 
   // 14. Memory stats (debug builds only) - runs with colors still available
