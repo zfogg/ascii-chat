@@ -560,7 +560,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #endif
 
   // Clean up thread-local error context to prevent leaks
-  asciichat_clear_errno();
+  asciichat_errno_destroy();
 
   return (DWORD)(uintptr_t)result;
 }
@@ -739,7 +739,7 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
  */
 void asciichat_thread_exit(void *retval) {
   // Clean up thread-local error context to prevent leaks
-  asciichat_clear_errno();
+  asciichat_errno_destroy();
 
   ExitThread((DWORD)(uintptr_t)retval);
 }

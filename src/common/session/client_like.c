@@ -1,3 +1,5 @@
+#include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file client_like.c
@@ -347,8 +349,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       // Always probe FPS for HTTP URLs, even in snapshot mode
       // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
       log_debug("Probing FPS for HTTP URL");
+      asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
       probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
       if (probe_source) {
+        ASSERT_NO_ERRNO_SINCE(probe_scope);
+        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
         double url_fps = media_source_get_video_fps(probe_source);
         log_info("Detected HTTP stream video FPS: %.1f", url_fps);
         if (url_fps > 0.0) {
@@ -358,6 +363,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
           capture_config.target_fps = 60;
         }
       } else {
+        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
         capture_config.target_fps = 60;
       }
@@ -374,12 +380,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         capture_config.target_fps = (uint32_t)user_fps;
       } else {
         log_debug("Probing FPS from buffered stdin media");
+        asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
         probe_source = media_source_create(MEDIA_SOURCE_STDIN, NULL);
         if (probe_source) {
+          ASSERT_NO_ERRNO_SINCE(probe_scope);
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
           double stdin_fps = media_source_get_video_fps(probe_source);
           log_info("Detected stdin video FPS: %.1f", stdin_fps);
           capture_config.target_fps = stdin_fps > 0.0 ? (uint32_t)(stdin_fps + 0.5) : 60;
         } else {
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
           log_warn("Failed to probe stdin FPS, using default 60 FPS");
           capture_config.target_fps = 60;
         }
@@ -397,8 +407,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         // Always probe FPS for local files, even in snapshot mode
         // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
         log_debug("Probing FPS for local file");
+        asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
         probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
         if (probe_source) {
+          ASSERT_NO_ERRNO_SINCE(probe_scope);
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
           double file_fps = media_source_get_video_fps(probe_source);
           log_info("Detected file video FPS: %.1f", file_fps);
           if (file_fps > 0.0) {
@@ -408,6 +421,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
             capture_config.target_fps = 60;
           }
         } else {
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
           log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
           capture_config.target_fps = 60;
         }
@@ -716,10 +730,13 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     if (attempt > 1)
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
 
+    asciichat_errno_scope_t attempt_scope = asciichat_errno_scope_begin();
     result = config->run_fn(capture, display, config->run_user_data);
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
+      ASSERT_NO_ERRNO_SINCE(attempt_scope);
+      asciichat_errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
       // Connection succeeded - splash screen cleanup now happens when first frame renders
       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
 
@@ -749,6 +766,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       break;
     }
 
+    LOG_ERRNO_IF_SET("Connection attempt failed; retrying");
+    asciichat_errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+
     // Reconnection will happen - show splash screen during reconnection attempt
     // Reset first_frame flag so splash cleanup runs on next successful connection
     session_display_reset_first_frame(display);
@@ -767,8 +787,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Apply reconnection delay if configured
     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
-    if (config->reconnect_delay_ms > 0) {
-      unsigned int remaining_ms = config->reconnect_delay_ms;
+    unsigned int retry_delay_ms = config->reconnect_delay_ms;
+    if (result == ERROR_RATE_LIMITED || result == ERROR_SESSION_FULL) {
+      unsigned int exponent = attempt > 5 ? 5 : (unsigned int)attempt;
+      unsigned int rejection_delay_ms = 1000U << exponent;
+      if (retry_delay_ms < rejection_delay_ms)
+        retry_delay_ms = rejection_delay_ms;
+    }
+    if (retry_delay_ms > 0) {
+      unsigned int remaining_ms = retry_delay_ms;
       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
 
       while (remaining_ms > 0 && !APP_CALLBACK_BOOL(should_exit)) {
@@ -801,6 +828,8 @@ cleanup:
 #ifndef NDEBUG
   // Join the registry inspector before freeing the session's synchronization objects.
   debug_sync_cleanup_thread();
+  debug_errno_cleanup_thread();
+  debug_stats_cleanup_thread();
 #endif
 
   // Stop audio thread before destroying audio context to prevent use-after-free

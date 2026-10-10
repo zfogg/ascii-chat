@@ -1,207 +1,237 @@
 /**
- * @file asciichat_errno.h
- * @defgroup errno Error Handling
- * @ingroup module_development
- * @brief ⚠️ Thread-Local Error Number System with Context
- */
+@page errno Error stacks and recovery
 
-/**
- * @page topic_errno asciichat_errno
- * @ingroup errno
- *
- * @section errno_overview Overview
- *
- * The Error Handling System provides comprehensive error tracking and reporting
- * for ascii-chat. It uses typed error codes, error context capture, and thread-local
- * storage for safe multi-threaded error handling.
- *
- * **Implementation**: lib/asciichat_errno.h
- *
- * **Key Features**:
- * - Typed error codes via asciichat_error_t enum
- * - Thread-local error context storage
- * - Automatic file/line/function capture
- * - System error integration (errno capture)
- * - Error context stack traces (debug builds)
- * - Comprehensive error messages with context
- *
- * @section errno_architecture Architecture
- *
- * **Error Code System**:
- * - All functions return `asciichat_error_t` instead of int
- * - ASCIICHAT_OK (0) indicates success
- * - Negative values indicate specific error types
- * - Error codes are categorized by subsystem
- *
- * **Thread-Local Storage**:
- * - Each thread has its own error context
- * - No cross-thread error contamination
- * - Safe for concurrent error handling
- *
- * **Error Context Capture**:
- * - File name and line number where error occurred
- * - Function name where error was set
- * - Custom error message with printf-style formatting
- * - System errno value (when applicable)
- * - Stack trace (debug builds only)
- *
- * @section errno_usage Usage Patterns
- *
- * @subsection errno_setting Setting Errors
- *
- * **SET_ERRNO Macro** (preferred):
- * @code{.c}
- * // Set error with custom message
- * if (socket_fd < 0) {
- *     return SET_ERRNO(ERROR_NETWORK_SOCKET, "Failed to create socket");
- * }
- *
- * // Set error with formatted message
- * if (bind(sockfd, &addr, sizeof(addr)) < 0) {
- *     return SET_ERRNO(ERROR_NETWORK_BIND, "Cannot bind to port %d", port);
- * }
- * @endcode
- *
- * **SET_ERRNO_SYS Macro** (captures system errno):
- * @code{.c}
- * // Capture both error code and system errno
- * int fd = open(path, O_RDONLY);
- * if (fd < 0) {
- *     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config: %s", path);
- * }
- * @endcode
- *
- * @subsection errno_checking Checking Errors
- *
- * **Check for Error**:
- * @code{.c}
- * asciichat_error_context_t err_ctx;
- * if (HAS_ERRNO(&err_ctx)) {
- *     log_error("Error: %s", err_ctx.context_message);
- *     log_error("  at %s:%d in %s()", err_ctx.file, err_ctx.line, err_ctx.function);
- * }
- * @endcode
- *
- * **Get Current Error Code**:
- * @code{.c}
- * asciichat_error_t current_error = GET_ERRNO();
- * if (current_error != ASCIICHAT_OK) {
- *     // Handle error
- * }
- * @endcode
- *
- * **Clear Error State**:
- * @code{.c}
- * CLEAR_ERRNO();  // Reset error state for this thread
- * @endcode
- *
- * @subsection errno_debugging Debug Output
- *
- * **Print Error Context** (debug builds only):
- * @code{.c}
- * asciichat_error_context_t err_ctx;
- * if (HAS_ERRNO(&err_ctx)) {
- *     PRINT_ERRNO_CONTEXT(&err_ctx);  // Prints full context including stack trace
- * }
- * @endcode
- *
- * @section errno_codes Error Code Categories
- *
- * **General Errors**:
- * - ASCIICHAT_OK (0) - Success
- * - ERROR_UNKNOWN (-1) - Unknown error
- * - ERROR_INVALID_PARAM (-2) - Invalid parameter
- * - ERROR_OUT_OF_MEMORY (-3) - Memory allocation failed
- *
- * **Network Errors**:
- * - ERROR_NETWORK_SOCKET - Socket creation failed
- * - ERROR_NETWORK_BIND - Socket bind failed
- * - ERROR_NETWORK_LISTEN - Socket listen failed
- * - ERROR_NETWORK_CONNECT - Connection failed
- * - ERROR_NETWORK_SEND - Send operation failed
- * - ERROR_NETWORK_RECV - Receive operation failed
- *
- * **Crypto Errors**:
- * - ERROR_CRYPTO_INIT - Crypto initialization failed
- * - ERROR_CRYPTO_KEY - Key loading/parsing failed
- * - ERROR_CRYPTO_HANDSHAKE - Handshake failed
- * - ERROR_CRYPTO_ENCRYPT - Encryption failed
- * - ERROR_CRYPTO_DECRYPT - Decryption failed
- *
- * **Platform Errors**:
- * - ERROR_PLATFORM_THREAD - Thread operation failed
- * - ERROR_PLATFORM_MUTEX - Mutex operation failed
- * - ERROR_PLATFORM_SOCKET - Platform-specific socket error
- *
- * **Configuration Errors**:
- * - ERROR_CONFIG - Configuration loading failed
- * - ERROR_CONFIG_PARSE - Configuration parsing failed
- * - ERROR_CONFIG_INVALID - Invalid configuration value
- *
- * @section errno_integration Integration with Logging
- *
- * **Automatic Logging**:
- * - SET_ERRNO() automatically logs errors at ERROR level
- * - SET_ERRNO_SYS() logs with system error details
- * - Error messages include context automatically
- *
- * **Example Integration**:
- * @code{.c}
- * asciichat_error_t process_client(client_t *client) {
- *     if (!client) {
- *         return SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
- *         // Automatically logged: "ERROR: Client is NULL"
- *     }
- *
- *     int result = some_operation();
- *     if (result < 0) {
- *         return SET_ERRNO_SYS(ERROR_OPERATION_FAILED, "Operation failed");
- *         // Automatically logged with errno details
- *     }
- *
- *     return ASCIICHAT_OK;
- * }
- * @endcode
- *
- * @section errno_best_practices Best Practices
- *
- * **DO**:
- * - Always use asciichat_error_t for return types
- * - Use SET_ERRNO() for all error conditions
- * - Use SET_ERRNO_SYS() when capturing system errors
- * - Provide descriptive error messages
- * - Check return values and propagate errors
- *
- * **DON'T**:
- * - Don't use int return values with -1 for errors
- * - Don't ignore return values
- * - Don't use generic error messages
- * - Don't access errno directly (use SET_ERRNO_SYS)
- * - Don't forget to check errors from called functions
- *
- * @section errno_thread_safety Thread Safety
- *
- * **Thread-Local Storage**:
- * - Each thread maintains its own error context
- * - No locks needed for error operations
- * - Safe for concurrent error handling
- * - Thread ID captured in error context
- *
- * **Example Multi-threaded Usage**:
- * @code{.c}
- * void* worker_thread(void *arg) {
- *     // This thread's error context is independent
- *     asciichat_error_t err = do_work();
- *     if (err != ASCIICHAT_OK) {
- *         asciichat_error_context_t ctx;
- *         if (HAS_ERRNO(&ctx)) {
- *             log_error("Worker failed: %s", ctx.context_message);
- *         }
- *     }
- *     return NULL;
- * }
- * @endcode
- *
- * @see asciichat_errno.h
- * @see logging.h
- */
+@tableofcontents
+
+@section errno_contract Pending errors
+
+Each registered thread has a LIFO stack in a process-wide hash table. The main
+thread owns process shutdown; workers publish directly. SET_ERRNO() pushes a
+frame and returns the supplied asciichat_error_t. Returning an existing error
+propagates it without adding a duplicate. Add a frame only for useful context.
+
+CLEAR_ERRNO() removes one frame. CLEAR_ERRNO_ALL() removes this thread's complete
+stack. GET_ERRNO() reads the top, or ASCIICHAT_OK. HAS_ERRNO(&snapshot) copies the
+top. HAS_ERRNO_CODE(code) searches all pending frames, not handled history.
+ASCIICHAT_OK is never a match. Empty stacks and unknown thread IDs return false.
+
+CLEAR_ERRNO_TID(tid), CLEAR_ERRNO_ALL_TID(tid), and
+HAS_ERRNO_CODE_TID(tid, code) operate on a full-width platform thread ID.
+Unconditional TID operations target that ID's current registration. For an
+inspect-then-clear decision use asciichat_clear_errno_if_top(tid, generation,
+error_id); an intervening push, clear, or ID reuse makes it return false.
+Remote clearing changes only application error state, never another thread's
+native errno. Automatic TLS destructors unregister exited native threads.
+
+@section errno_snapshot Snapshot ownership
+
+Contexts are self-contained values. They contain a bounded inline message and
+raw backtrace addresses, not pointers into mutable stack nodes. No snapshot
+destroy call is necessary. Copies remain valid after pop, cross-thread clear,
+thread exit, or process registry shutdown. Source locations refer to static
+compiler strings. Printing symbolizes a private backtrace and frees its symbols.
+
+The context structure and removal of writable TLS globals change the library
+ABI. Consumers must rebuild against the new header. Replace direct writes to
+asciichat_errno/asciichat_errno_context with SET_ERRNO or its system-error
+variant. Replace the old separate cross-thread setter with publication by the
+offending thread; there is only one authoritative error registry now.
+
+@section errno_scopes Recovery boundaries
+
+The offending thread owns recovery policy. Libraries record and return errors;
+application boundaries choose retry, dismissal, connection teardown, or shutdown.
+
+@code
+asciichat_errno_scope_t attempt = asciichat_errno_scope_begin();
+asciichat_error_t result = try_connection();
+if (result == ERROR_NETWORK_TIMEOUT) {
+    asciichat_errno_scope_end(attempt, ASCIICHAT_ERRNO_DISMISSED);
+    // Retry; errors from before this attempt remain untouched.
+} else if (result != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("Connection failed");
+    return result;
+} else {
+    ASSERT_NO_ERRNO_SINCE(attempt);
+    asciichat_errno_scope_end(attempt, ASCIICHAT_ERRNO_HANDLED);
+}
+@endcode
+
+HAS_ERRNO_CODE_SINCE(attempt, code) searches only frames newer than the checkpoint.
+Scopes use monotonically assigned IDs and a registration generation, not depth,
+so concurrent removals cannot cause unrelated older errors to be consumed.
+asciichat_errno_checkpoint() observes a suboperation without starting a new
+causal chain; use it for propagation checks inside an existing attempt.
+Nested scopes resolve inner attempts independently. Starting an operation also
+sets a cause boundary: a new failure cannot cite an unrelated older operation.
+
+ASSERT_NO_ERRNO_SINCE detects successful operations that leave newly created
+errors unresolved in debug builds. It does not clear errors. ASSERT_NO_ERRNO
+checks the whole current stack. Explicitly resolve known recoverable failures
+before declaring success; do not blanket-clear caller errors.
+
+For a fatal worker decision, asciichat_errno_request_exit(code) retains the first
+nonzero process error independently of stack cleanup. Request normal application
+shutdown after recording the decision. Main returns that code after the mode has
+stopped its workers. FATAL remains available for unrecoverable startup failures.
+A client authentication failure on the server closes that connection, not every
+other client's session.
+
+@section errno_causes Causes, history, and timing
+
+A new frame links to the preceding pending frame inside its operation.
+LOG_ERRNO_IF_SET prints the chain from outer context toward the original cause.
+SET_ERRNO produces a debug breadcrumb rather than a separate error-level incident
+at every propagation layer. Top-level handlers still report failures explicitly.
+
+Every frame has a unique ID, thread generation, captured system/WSA error,
+wall-clock timestamp, and monotonic creation time. Pending age and resolution
+latency use only the monotonic clock. SET_ERRNO_SYS captures the system error
+before evaluating formatting arguments, and macro arguments are evaluated once.
+
+Popped frames become bounded history records with handled, dismissed, thread-exit,
+or overflow outcomes. Readers can inspect a brief failure even after successful
+recovery. This is a diagnostic history, not a guaranteed-delivery event queue.
+Snapshots are non-destructive. History overwrite counters make loss explicit.
+
+@section errno_capacity Capacity and error-path safety
+
+The process reserves 1,024 frame slots, at most 64 frames per thread, at most 256
+registered threads, and 128 history records. Messages hold 1,023 bytes plus the
+terminator and expose message_truncated. No pending-error allocation is performed
+on failure, including out-of-memory failures. Pop zeroes and returns a pool slot;
+thread exit returns all its slots; shutdown zeroes stacks and history and releases
+the platform TLS key. No message or backtrace-symbol heap allocation remains in
+the registry.
+
+Two frame slots are reserved for each thread registration, preserving its root
+and newest error even when other threads exhaust the shared pool. At a depth or
+shared-pool limit, the second-oldest frame is evicted to preserve root and newest
+context. dropped_errors counts eviction and failed registration. A registration
+limit/TLS failure records an overflow history event, but cannot create a pending
+stack. The original function return code is always preserved.
+
+The registry guard uses platform atomics without recursive diagnostic hooks.
+Critical sections only manipulate bounded data; logging, handlers, allocation,
+and backtrace symbolization run outside them. A push becomes visible when it
+releases the guard. A later synchronized reader sees it unless it has already
+been popped; history covers that latter case. This is not a wall-clock latency
+guarantee and the API is not async-signal-safe.
+
+@section errno_diagnostics Diagnostics workers
+
+lib/debug/sync.c owns the debug_sync worker for synchronization inspection,
+deadlock monitoring, and backtraces. lib/debug/stats.c owns the separate
+debug_stats worker for error totals and memory statistics. lib/debug/errno.c owns
+the debug_errno worker for all pending thread stacks and handled history.
+All three serve all five native
+modes: server, client, mirror, discovery-service, and discovery. Independent
+deadlines allow delayed requests to coexist. Duplicate requests for the same report
+coalesce at the earliest deadline. Shutdown wakes and joins all three workers before
+diagnostic data is destroyed. Signal handlers only set a request flag.
+
+--errno-stacks [TIME] prints pending error stacks, handled history, error totals,
+and error registry statistics. --sync-state [TIME] prints synchronization state
+and named registry statistics. Both options are available only in Debug builds.
+Each schedules its own one-shot report after TIME
+seconds (immediately when omitted); using both produces two independent reports.
+Signal and keyboard diagnostic requests notify all three workers; SIGUSR1 includes every pending thread stack.
+Debug builds monitor synchronization automatically; Release builds do not start
+the diagnostics workers. Error recording and searching are
+available in every build. Backtraces follow ENABLE_ERRNO_BACKTRACES.
+
+WASM can call the synchronous printers and debug_sync_poll, debug_errno_poll, and debug_stats_poll from its event loop;
+it does not create a native diagnostics worker.
+
+@section errno_recovery Recovery and remote error policy
+
+Use the return value to establish failure. Inspect only errors created by that
+operation (HAS_ERRNO_CODE_SINCE with a checkpoint/scope) to choose recovery.
+Resolve that operation's errors only after handling them. Successful independent
+operations must restore their scope boundary too. Add SET_ERRNO only when adding
+useful context; propagate the return code unchanged otherwise.
+
+TCP timeouts are retryable only before any header bytes have arrived. A partial
+header or any payload timeout is terminal. WebRTC retains incomplete packet bytes
+and returns ERROR_NETWORK_INCOMPLETE while waiting; five seconds from the start of
+the incomplete packet is a terminal deadline, not reset by another fragment.
+
+Known local packet construction failures may drop a media frame without closing
+the transport. Send implementations must return ERROR_NETWORK if transmission
+could have consumed bytes; crypto and unknown failures are not treated as local
+frame rejections. Optional audio drops are recorded as handled history.
+
+Discovery errors map the ACIP wire namespace to application codes for create,
+lookup and join. Public responses use an allowlist and generic text; internal
+paths, subprocess output and backtraces stay local. Session-full and rate-limit
+rejections use the existing retry budget with bounded exponential delays up to
+32 seconds. Authentication/protocol rejections stop automatic retries. Snapshot
+mode still does not retry.
+
+PROTOCOL_FEATURE_RECOVERABLE_ERRORS (0x04) advertises support for nonfatal audio
+notifications using the existing protocol version feature field. The server sends
+an ERROR_AUDIO notification at most once per connection only to an opted-in peer;
+older peers receive a remote log instead. Video continues on ERROR_AUDIO. Error
+notifications and logs share the media send lock to preserve packet framing.
+
+Admission captures the original failure before attempting notification. The
+notification has its own recovery scope, and explicit socket ownership prevents
+sending on descriptors already consumed by client cleanup. The initial version
+packet is consumed before a pre-handshake rejection to avoid losing that response
+to a reset caused by unread input.
+
+The recovery audit covered existing scope/search/clear users across native modes,
+network transports, discovery, media probes and configuration. It also corrected
+positive-enum send-result checks and successful-path scope leaks. Legacy APIs
+with documented negative/status/count returns retain their own return contracts.
+
+@section errno_handoff Operation-local snapshots and worker handoff
+
+asciichat_errno_peek_since(checkpoint, &failure) copies the newest error from that
+operation, rejecting older frames and stale thread generations. Pointer-returning
+APIs use this to attribute failure without reusing unrelated pending errors.
+
+An operation can store this value snapshot under its own mutex, or publish it
+through a joined worker result. asciichat_errno_import(&failure) records a new
+caller-owned frame with the original error ID as its cause, retaining the copied
+message, source and raw backtrace even after worker exit or history eviction.
+It does not consume or clear the producer's errors. Import once when processing
+an operation result, not by polling arbitrary thread stacks.
+
+ffmpeg_decoder_poll_video distinguishes READY, WAITING, EOF and FAILED; failure
+includes an owned snapshot. The pointer compatibility API imports FAILED into
+the reading thread. Capture owners stop on new errors and the pipeline imports
+its capture failure after joining, so decoder failure cannot masquerade as
+perpetual frame starvation. Failed prefetch startup fails media creation.
+
+PortAudio software fallback and optional router mapping attempts resolve only
+their operation scopes. Router renewal failures enter bounded handled history
+when the scheduler takes responsibility for retrying; mapping state still tracks
+lease expiration. Rate-limit helpers return a typed status plus an allowed
+output; connection owners send encrypted public responses under their send lock.
+
+@section errno_tests Tests
+
+Build the production library tests without Criterion:
+@code
+cmake --preset default -B build -DBUILD_TESTS=ON
+cmake --build build --target test-errno-stacks
+ctest --test-dir build -R "^errno-stacks$" --output-on-failure
+python tests/standalone/errno/smoke.py build/bin/ascii-chat --debug-sync
+# Linux: verify SIGUSR1 prints both reports on stdout from separate workers
+python tests/standalone/errno/signal_stdout.py build/bin/ascii-chat --errno-probe build/bin/test-errno-stacks
+@endcode
+
+Generate a real unsupported-audio fixture with FFmpeg and exercise codec fallback:
+@code
+python tests/standalone/errno/codec_fixture.py build/optional-codec.mkv
+python tests/standalone/errno/smoke.py build/bin/ascii-chat --codec-fixture build/optional-codec.mkv
+@endcode
+
+The native suite exercises root/top search, single evaluation, system/WSA
+metadata, safe value snapshots, scoped recovery, history timing/overflow,
+thread-ID generations, remote clearing, thread exit, simultaneous writers,
+global/per-thread capacity, and interruptible diagnostics shutdown.
+Run test-errno-stacks --assert-leak in a debug build to verify that an unresolved
+successful-operation boundary exits with ERROR_INVALID_STATE.
+*/

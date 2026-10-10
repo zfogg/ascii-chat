@@ -25,6 +25,23 @@
 #include <wchar.h>
 
 #include <windows.h>
+// Capture SDK values before undefining names used by the application error enum.
+// Enum constants preserve the expanded values; macro aliases would expand only
+// when used, after the original macros have been undefined.
+enum {
+  WIN32_ERROR_BUFFER_OVERFLOW = ERROR_BUFFER_OVERFLOW,
+  WIN32_ERROR_INVALID_STATE = ERROR_INVALID_STATE,
+  WIN32_ERROR_FILE_NOT_FOUND = ERROR_FILE_NOT_FOUND,
+  WIN32_ERROR_NOT_SUPPORTED = ERROR_NOT_SUPPORTED,
+  WIN32_ERROR_INVALID_PASSWORD = ERROR_INVALID_PASSWORD,
+  WIN32_ERROR_NOT_FOUND = ERROR_NOT_FOUND,
+};
+#undef ERROR_BUFFER_OVERFLOW
+#undef ERROR_INVALID_STATE
+#undef ERROR_FILE_NOT_FOUND
+#undef ERROR_NOT_SUPPORTED
+#undef ERROR_INVALID_PASSWORD
+#undef ERROR_NOT_FOUND
 #pragma pack(pop)
 #endif // _WIN32
 

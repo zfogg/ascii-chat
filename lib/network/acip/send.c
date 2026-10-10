@@ -12,6 +12,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>
@@ -308,6 +309,9 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
+
+  error_code = network_error_public_code((asciichat_error_t)error_code);
+  message = asciichat_error_string((asciichat_error_t)error_code);
 
   // Calculate message length (max MAX_ERROR_MESSAGE_LENGTH)
   size_t msg_len = 0;

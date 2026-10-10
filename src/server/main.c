@@ -1,3 +1,7 @@
+#include <ascii-chat/debug/sync.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file server/main.c
@@ -973,8 +977,13 @@ static void *acds_receive_thread(void *arg) {
       break;
     }
 
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
+    if (result == ASCIICHAT_OK) {
+      ASSERT_NO_ERRNO_SINCE(receive_scope);
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
     if (result != ASCIICHAT_OK) {
       // Check error context to see if connection actually closed
       asciichat_error_context_t err_ctx;
@@ -982,28 +991,13 @@ static void *acds_receive_thread(void *arg) {
 
       // Timeouts are normal when there are no packets - just continue waiting
       if (result == ERROR_NETWORK_TIMEOUT) {
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         continue;
       }
 
-      // ERROR_NETWORK could be:
-      // 1. Receive timeout (non-fatal - continue waiting)
-      // 2. EOF/connection closed (fatal - exit thread)
-      // Check the error context message to distinguish
       if (result == ERROR_NETWORK) {
-        if (has_context && strstr(err_ctx.context_message, "Failed to receive packet") != NULL) {
-          // Generic receive failure (likely timeout) - continue waiting
-          log_debug("ACDS receive timeout, continuing to wait for packets");
-          continue;
-        } else if (has_context && (strstr(err_ctx.context_message, "EOF") != NULL ||
-                                   strstr(err_ctx.context_message, "closed") != NULL)) {
-          // Connection actually closed
-          log_warn("ACDS connection closed: %s", err_ctx.context_message);
-          break;
-        } else {
-          // Unknown ERROR_NETWORK - log and exit
-          log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
-          break;
-        }
+        log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
+        break;
       }
 
       // Other errors - exit thread
@@ -1083,7 +1077,15 @@ static void *ascii_chat_client_handler(void *arg) {
     asciichat_error_t rate_check =
         rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      tcp_server_reject_client(client_socket, "Connection rate limit exceeded");
+      asciichat_errno_scope_t rejection_scope = asciichat_errno_scope_begin();
+      asciichat_error_t public_code = rate_check == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL;
+      packet_envelope_t initial = {0};
+      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
+      if (initial.allocated_buffer)
+        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+      packet_send_error(client_socket, NULL, public_code, asciichat_error_string(public_code));
+      asciichat_errno_scope_end(rejection_scope, ASCIICHAT_ERRNO_HANDLED);
+      socket_close(client_socket);
       SAFE_FREE(ctx);
       return NULL;
     }
@@ -1092,17 +1094,39 @@ static void *ascii_chat_client_handler(void *arg) {
   }
 
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
-  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port);
+  asciichat_errno_scope_t admission_scope = asciichat_errno_scope_begin();
+  bool socket_consumed = false;
+  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port, &socket_consumed);
   if (!client) {
-    if (HAS_ERRNO(&asciichat_errno_context)) {
-      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-      CLEAR_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t code = ERROR_INTERNAL;
+    if (asciichat_errno_peek_since(admission_scope, &failure)) {
+      code = network_error_public_code(failure.code);
     }
-    tcp_server_reject_client(client_socket, "Failed to add client");
+    asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
+    // Consume the initial version packet before replying. Closing a socket with
+    // unread input can reset the connection and discard the rejection response.
+    if (!socket_consumed) {
+      packet_envelope_t initial = {0};
+      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
+      if (initial.allocated_buffer)
+        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+    }
+    asciichat_error_t sent =
+        socket_consumed ? ASCIICHAT_OK : packet_send_error(client_socket, NULL, code, asciichat_error_string(code));
+    if (sent != ASCIICHAT_OK)
+      LOG_ERRNO_IF_SET("Failed to report client rejection");
+    asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
+    LOG_ERRNO_IF_SET("Client admission failed");
+    asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
+    if (!socket_consumed)
+      socket_close(client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
+  ASSERT_NO_ERRNO_SINCE(admission_scope);
+  asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
   log_debug("Client %s added successfully from %s:%d", client->client_id, client_ip, client_port);
 
   // Block until client disconnects (active flag is set by receive thread)
@@ -2165,6 +2189,8 @@ static void server_cleanup_fn(void *user_data) {
   // Cleanup debug sync BEFORE destroying websocket_server
 #ifndef NDEBUG
   debug_sync_destroy();
+  debug_errno_destroy();
+  debug_stats_destroy();
 #endif
 
   // Clean up all connected clients (only if rwlock was initialized)

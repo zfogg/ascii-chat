@@ -1661,8 +1661,13 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   // Media-only recording can run through the software worker without an audio
   // device. Initialize PortAudio opportunistically so monitoring still works
   // when a speaker is available.
+  asciichat_errno_scope_t pa_scope = asciichat_errno_scope_begin();
   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
-  if (pa_result != ASCIICHAT_OK && !media_only)
+  if (pa_result == ASCIICHAT_OK) {
+    ASSERT_NO_ERRNO_SINCE(pa_scope);
+    asciichat_errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
+  }
+  if (pa_result != ASCIICHAT_OK && (!media_only || pa_result != ERROR_AUDIO))
     return pa_result;
 
   if (pa_result != ASCIICHAT_OK) {
@@ -2035,6 +2040,8 @@ start_worker:
   ctx->running = true;
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
+  if (pa_result != ASCIICHAT_OK)
+    asciichat_errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
   return ASCIICHAT_OK;
 }
 

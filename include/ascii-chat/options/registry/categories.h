@@ -24,6 +24,4 @@ extern const registry_entry_t g_network_entries[];
 extern const registry_entry_t g_security_entries[];
 extern const registry_entry_t g_database_entries[];
 
-#ifndef NDEBUG
 extern const registry_entry_t g_debug_entries[];
-#endif

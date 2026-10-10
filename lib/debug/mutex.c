@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/stats.h>
 /**
  * @file debug/mutex.c
  * @ingroup debug_sync

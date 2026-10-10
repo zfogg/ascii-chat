@@ -9,6 +9,8 @@
  */
 
 #include <ascii-chat/debug/sync.h>
+#include <ascii-chat/debug/debug_helpers.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
@@ -415,308 +417,24 @@ void debug_sync_print_state(void) {
   // Log everything in one call
   log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
   if (buf.offset > 0) {
-    log_info("SYNC_STATE:\n%s", buf.buffer);
+    // Emit bounded lines so the logger does not truncate a large registry report.
+    log_info("SYNC_STATE:");
+    char *line = buf.buffer;
+    while (*line) {
+      char *end = strchr(line, '\n');
+      if (end)
+        *end = '\0';
+      log_info("%s", line);
+      if (!end)
+        break;
+      line = end + 1;
+    }
   } else {
     log_info("SYNC_STATE: (empty)");
   }
 
   SAFE_FREE(buffer);
 #undef SYNC_BUFFER_SIZE
-}
-
-// ============================================================================
-// Condition Variable Deadlock Detection
-// ============================================================================
-
-// ============================================================================
-// Scheduled Debug State Printing (runs on separate thread)
-// ============================================================================
-
-typedef enum {
-  DEBUG_REQUEST_STATE,         // Print sync state
-  DEBUG_REQUEST_BACKTRACE,     // Print backtrace
-  DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
-} debug_request_type_t;
-
-typedef struct {
-  debug_request_type_t request_type; // What to print
-  uint64_t delay_ns;
-  atomic_t should_run;                 // Atomic flag set by main thread
-  atomic_t should_exit;                // Atomic flag for shutdown
-  atomic_t signal_triggered;           // Flag set by SIGUSR1 handler
-  uint64_t memory_report_interval_ns;  // Interval for periodic memory reports (0 = disabled)
-  uint64_t last_memory_report_time_ns; // Timestamp of last memory report
-  mutex_t mutex;                       // Protects access to flags during locked operations
-  cond_t cond;                         // Wakes thread when signal arrives
-  bool initialized;                    // Tracks if mutex/cond are initialized
-  bool handled_sync_state_time;        // Track if --sync-state option was already processed
-  bool handled_backtrace_time;         // Track if --backtrace option was already processed
-  bool handled_memory_report;          // Track if --memory-report option was already processed
-} debug_state_request_t;
-
-static debug_state_request_t g_debug_state_request = {
-    .request_type = DEBUG_REQUEST_STATE,
-    .delay_ns = 0,
-    .should_run = {.impl = 0},
-    .should_exit = {.impl = 0},
-    .signal_triggered = {.impl = 0},
-    .memory_report_interval_ns = 0,
-    .last_memory_report_time_ns = 0,
-    .initialized = false,
-    .handled_sync_state_time = false,
-    .handled_backtrace_time = false,
-    .handled_memory_report = false,
-};
-static asciichat_thread_t g_debug_thread;
-static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory reporting
-static atomic_t g_cleanup_in_progress = {0}; // Flag to prevent deadlock checks during shutdown
-
-/**
- * @brief Thread function for scheduled debug state printing
- *
- * Handles both delayed printing and signal-triggered printing (via SIGUSR1).
- * Logging is performed on this thread, not in signal handler context,
- * avoiding potential deadlocks with logging mutexes.
- *
- * Uses a condition variable to wake up immediately when SIGUSR1 is received,
- * without polling or busy-waiting.
- */
-static void *debug_print_thread_fn(void *arg) {
-  (void)arg;
-
-  while (!atomic_load_bool(&g_debug_state_request.should_exit)) {
-    // Handle delayed printing
-    if (atomic_load_bool(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
-      platform_sleep_ns(g_debug_state_request.delay_ns);
-      g_debug_state_request.delay_ns = 0;
-    }
-
-    // Handle both scheduled and signal-triggered printing
-    mutex_lock(&g_debug_state_request.mutex);
-    bool should_run = atomic_load_bool(&g_debug_state_request.should_run);
-    bool signal_triggered = atomic_load_bool(&g_debug_state_request.signal_triggered);
-    bool should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
-
-    if ((should_run || signal_triggered) && !should_exit) {
-      debug_request_type_t request_type = g_debug_state_request.request_type;
-      mutex_unlock(&g_debug_state_request.mutex);
-
-      // Print based on request type
-      if (request_type == DEBUG_REQUEST_STATE) {
-        debug_sync_print_state();
-      } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
-        backtrace_t bt = {0};
-        backtrace_capture_and_symbolize(&bt);
-        backtrace_print("Backtrace", &bt, 0, 0, NULL);
-        backtrace_t_free(&bt);
-      }
-
-      mutex_lock(&g_debug_state_request.mutex);
-      atomic_store_bool(&g_debug_state_request.should_run, false);
-      atomic_store_bool(&g_debug_state_request.signal_triggered, false);
-      should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
-    }
-
-    // Wait for work or signal, with 100ms timeout to check should_exit
-    if (!should_exit) {
-      cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000); // 100ms
-    }
-    mutex_unlock(&g_debug_state_request.mutex);
-
-    // Periodic deadlock detection (runs every 100ms during wait timeout)
-    debug_sync_check_cond_deadlocks();
-    mutex_stack_detect_deadlocks();
-
-#ifndef NDEBUG
-    // Periodic memory report (if enabled and DEBUG_MEMORY is configured)
-#ifdef DEBUG_MEMORY
-    if (g_debug_state_request.memory_report_interval_ns > 0) {
-      uint64_t now = time_get_ns();
-      uint64_t last_time = g_debug_state_request.last_memory_report_time_ns;
-
-      // Check if enough time has passed (or first report)
-      if (last_time == 0 || (now - last_time >= g_debug_state_request.memory_report_interval_ns)) {
-        debug_memory_report();
-        g_debug_state_request.last_memory_report_time_ns = now;
-      }
-    }
-#endif
-
-    options_t *opts = options_get();
-    if (!opts) {
-      continue;
-    }
-
-    // Handle --debug-state (debug builds only)
-    // Schedule sync state printing after specified delay (execute only once, when option is first detected)
-    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
-    if (!g_debug_state_request.handled_sync_state_time && IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &&
-        opts->debug_sync_state_time > 0.0) {
-      g_debug_state_request.handled_sync_state_time = true;
-      log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
-      uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
-      debug_sync_print_state_delayed(delay_ns);
-    }
-
-    // Handle --backtrace (debug builds only)
-    // Schedule backtrace printing after specified delay (execute only once, when option is first detected)
-    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
-    if (!g_debug_state_request.handled_backtrace_time && IS_OPTION_EXPLICIT(debug_backtrace_time, opts) &&
-        opts->debug_backtrace_time > 0.0) {
-      g_debug_state_request.handled_backtrace_time = true;
-      log_info("Will print backtrace after %f seconds", opts->debug_backtrace_time);
-      uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
-      debug_sync_print_backtrace_delayed(delay_ns);
-    }
-
-    // Handle --memory-report (debug builds only)
-    // Enable periodic memory reporting at specified interval (execute only once, when option is first detected)
-    if (!g_debug_state_request.handled_memory_report && IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) &&
-        opts->debug_memory_report_interval > 0.0) {
-      g_debug_state_request.handled_memory_report = true;
-      log_info("Enabling memory reports every %f seconds", opts->debug_memory_report_interval);
-      uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
-      debug_sync_set_memory_report_interval(interval_ns);
-    }
-#else
-    options_t *opts = options_get();
-    if (!opts) {
-      continue;
-    }
-#endif
-  }
-
-  return NULL;
-}
-
-/**
- * @brief Final cleanup of all debug allocations at shutdown
- */
-void debug_sync_final_cleanup(void) {
-  // Clean up current thread's mutex stack explicitly
-  mutex_stack_cleanup_current_thread();
-}
-
-/**
- * @brief Schedule delayed debug state printing on debug thread
- * @param delay_ns Nanoseconds to sleep before printing
- */
-void debug_sync_print_state_delayed(uint64_t delay_ns) {
-  mutex_lock(&g_debug_state_request.mutex);
-  g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
-  g_debug_state_request.delay_ns = delay_ns;
-  atomic_store_bool(&g_debug_state_request.should_run, true);
-  cond_signal(&g_debug_state_request.cond);
-  mutex_unlock(&g_debug_state_request.mutex);
-}
-
-/**
- * @brief Schedule delayed backtrace printing on debug thread
- * @param delay_ns Nanoseconds to sleep before printing
- */
-void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
-  mutex_lock(&g_debug_state_request.mutex);
-  g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
-  g_debug_state_request.delay_ns = delay_ns;
-  atomic_store_bool(&g_debug_state_request.should_run, true);
-  cond_signal(&g_debug_state_request.cond);
-  mutex_unlock(&g_debug_state_request.mutex);
-}
-
-/**
- * @brief Set periodic memory report interval
- * @param interval_ns Interval in nanoseconds (0 to disable)
- */
-void debug_sync_set_memory_report_interval(uint64_t interval_ns) {
-  g_debug_state_request.memory_report_interval_ns = interval_ns;
-  g_debug_state_request.last_memory_report_time_ns = 0; // Reset timer
-}
-
-// ============================================================================
-// Debug Sync API - Thread management
-// ============================================================================
-
-void debug_sync_set_main_thread_id(void) {
-  // Save main thread ID for memory reporting (call very early)
-  g_debug_main_thread_id = asciichat_thread_current_id();
-}
-
-int debug_sync_init(void) {
-  // debug_sync_set_main_thread_id() should have already been called
-  return 0;
-}
-
-uint64_t debug_sync_get_main_thread_id(void) {
-  return g_debug_main_thread_id;
-}
-
-bool debug_sync_is_cleanup_in_progress(void) {
-  return atomic_load_bool(&g_cleanup_in_progress);
-}
-
-int debug_sync_start_thread(void) {
-  // Initialize mutex and condition variable for signal wakeup
-  if (!g_debug_state_request.initialized) {
-    mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
-    cond_init(&g_debug_state_request.cond, "debug_sync_signal");
-    g_debug_state_request.initialized = true;
-  }
-
-  atomic_store_bool(&g_debug_state_request.should_exit, false);
-  int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
-  return err;
-}
-
-void debug_sync_destroy(void) {
-  debug_sync_cleanup_thread();
-}
-
-void debug_sync_cleanup_thread(void) {
-  log_debug("[DEBUG_SYNC_CLEANUP] Starting cleanup");
-
-  // Only join if thread was actually created
-  if (!g_debug_state_request.initialized) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread not initialized, returning");
-    return;
-  }
-
-  // Set cleanup flag to prevent deadlock checks from accessing freed memory
-  // Do this after checking initialization so we don't set it unnecessarily
-  atomic_store_bool(&g_cleanup_in_progress, true);
-  log_debug("[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup");
-
-  log_debug("[DEBUG_SYNC_CLEANUP] Setting initialized to false");
-  g_debug_state_request.initialized = false; // Prevent double-join
-
-  // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-  log_debug("[DEBUG_SYNC_CLEANUP] Signaling thread to exit");
-  atomic_store_bool(&g_debug_state_request.should_exit, true);
-  cond_signal(&g_debug_state_request.cond);
-  log_debug("[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread");
-
-  // Use a timeout join to ensure we don't deadlock, but still unregister the thread
-  // The debug thread should exit quickly after should_exit is set above
-  int join_result = asciichat_thread_join_timeout(&g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
-  if (join_result == 0) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread joined successfully");
-  } else if (join_result == -2) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread join timed out (thread may still be running)");
-    // Don't unregister if timeout - thread is still alive
-  } else {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread join failed with error %d", join_result);
-  }
-}
-
-void debug_sync_trigger_print(void) {
-  // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
-  // We don't call debug_sync_print_state() directly here to avoid logging
-  // in signal handler context, which could deadlock with logging mutexes.
-  // Uses atomic_store for thread-safe flag setting from signal handler.
-  //
-  // Signal the condition variable to wake up the debug thread immediately
-  // (without waiting for the 100ms timeout).
-  atomic_store_bool(&g_debug_state_request.signal_triggered, true);
-  cond_signal(&g_debug_state_request.cond);
 }
 
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
@@ -831,8 +549,166 @@ void debug_sync_print_state(void) {
   // No-op in release builds
 }
 
-void debug_sync_cleanup_thread(void) {
-  // No-op in release builds
-}
 
 #endif
+
+
+static atomic_t g_signal = {0};
+static atomic_t g_exiting = {0};
+static atomic_t g_cleaning = {0};
+static asciichat_thread_t g_thread;
+static mutex_t g_mutex;
+static cond_t g_condition;
+static bool g_initialized;
+static bool g_started;
+static uint64_t g_state_deadline;
+static uint64_t g_backtrace_deadline;
+
+asciichat_error_t debug_sync_init(void) {
+  if (g_initialized)
+    return ASCIICHAT_OK;
+  if (mutex_init(&g_mutex, "debug_sync") != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics mutex");
+  if (cond_init(&g_condition, "debug_sync") != 0) {
+    mutex_destroy(&g_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics condition");
+  }
+  g_initialized = true;
+  atomic_store_bool_impl(&g_cleaning, false);
+  return ASCIICHAT_OK;
+}
+static void debug_sync_print_sync(void) {
+#ifndef NDEBUG
+  debug_sync_print_state();
+  named_print_hash_stats();
+#else
+  log_info("SYNC_STATE: synchronization diagnostics are unavailable in Release builds");
+#endif
+}
+void debug_sync_print(void) {
+  debug_sync_print_sync();
+}
+void debug_sync_print_state_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_state_deadline, delay);
+}
+void debug_sync_print_backtrace_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_backtrace_deadline, delay);
+}
+void debug_sync_trigger_print(void) {
+  // Do not signal a condition variable or invoke diagnostic hooks in a signal
+  // handler. The worker checks this flag at most 100ms after its next wakeup.
+  atomic_store_bool_impl(&g_signal, true);
+}
+bool debug_sync_is_cleanup_in_progress(void) {
+  return atomic_load_bool_impl(&g_cleaning);
+}
+void debug_sync_poll(void) {
+  if (!g_initialized)
+    return;
+  uint64_t now = time_get_ns();
+  bool all = atomic_exchange_bool_impl(&g_signal, false);
+  bool state = false;
+  mutex_lock(&g_mutex);
+  bool backtrace = g_backtrace_deadline && now >= g_backtrace_deadline;
+  if (g_state_deadline && now >= g_state_deadline) {
+    state = true;
+    g_state_deadline = 0;
+  }
+  if (backtrace)
+    g_backtrace_deadline = 0;
+  mutex_unlock(&g_mutex);
+  if (all || state)
+    debug_sync_print_sync();
+  if (backtrace) {
+    backtrace_t trace = {0};
+    backtrace_capture(&trace);
+    backtrace_symbolize(&trace);
+    if (trace.symbols)
+      backtrace_print("Diagnostics worker backtrace", &trace, 0, 0, NULL);
+    backtrace_t_free(&trace);
+  }
+}
+#ifndef EMSCRIPTEN_BUILD
+static void *debug_sync_worker(void *unused) {
+  (void)unused;
+  while (!atomic_load_bool_impl(&g_exiting)) {
+    debug_sync_poll();
+#ifndef NDEBUG
+    if (!atomic_load_bool_impl(&g_exiting)) {
+      debug_sync_check_cond_deadlocks();
+      mutex_stack_detect_deadlocks();
+    }
+#endif
+    mutex_lock(&g_mutex);
+    uint64_t now = time_get_ns();
+    uint64_t wait = 100 * NS_PER_MS_INT;
+    uint64_t deadlines[] = {g_state_deadline, g_backtrace_deadline};
+    for (size_t i = 0; i < sizeof(deadlines) / sizeof(deadlines[0]); ++i)
+      if (deadlines[i]) {
+        uint64_t remaining = deadlines[i] > now ? deadlines[i] - now : 1;
+        if (remaining < wait)
+          wait = remaining;
+      }
+    if (!atomic_load_bool_impl(&g_exiting))
+      cond_timedwait(&g_condition, &g_mutex, wait);
+    mutex_unlock(&g_mutex);
+  }
+  return NULL;
+}
+#endif
+asciichat_error_t debug_sync_start_thread(void) {
+  if (g_started)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = debug_sync_init();
+  if (result != ASCIICHAT_OK)
+    return result;
+  atomic_store_bool_impl(&g_exiting, false);
+  atomic_store_bool_impl(&g_cleaning, false);
+  options_t *opts = options_get();
+  if (opts) {
+    if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts))
+      debug_sync_print_state_delayed((uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT));
+    if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts))
+      debug_sync_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
+  }
+#ifndef EMSCRIPTEN_BUILD
+  if (asciichat_thread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
+#endif
+  g_started = true;
+  return ASCIICHAT_OK;
+}
+void debug_sync_cleanup_thread(void) {
+  if (!g_started)
+    return;
+  atomic_store_bool_impl(&g_cleaning, true);
+  mutex_lock(&g_mutex);
+  atomic_store_bool_impl(&g_exiting, true);
+  cond_signal(&g_condition);
+  mutex_unlock(&g_mutex);
+#ifndef EMSCRIPTEN_BUILD
+  // Join fully: diagnostic data must not be destroyed while a reader is alive.
+  if (asciichat_thread_join(&g_thread, NULL) != 0)
+    FATAL(ERROR_THREAD, "Cannot join diagnostics worker");
+#endif
+  g_started = false;
+}
+void debug_sync_destroy(void) {
+  debug_sync_cleanup_thread();
+  if (g_initialized) {
+    cond_destroy(&g_condition);
+    mutex_destroy(&g_mutex);
+    g_initialized = false;
+    atomic_store_bool_impl(&g_signal, false);
+    g_state_deadline = g_backtrace_deadline = 0;
+  }
+}
+void debug_sync_final_cleanup(void) {
+#ifndef NDEBUG
+  mutex_stack_cleanup_current_thread();
+#endif
+}

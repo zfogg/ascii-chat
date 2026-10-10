@@ -96,6 +96,8 @@ typedef struct client_info {
   char client_ip[INET_ADDRSTRLEN];
   int port;
 
+  atomic_t supports_recoverable_errors; // Negotiated optional error notifications
+
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;

@@ -394,12 +394,15 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
 
     // Perform crypto handshake with server
     log_debug("Performing crypto handshake with server...");
-    if (APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport) != 0) {
-      log_error("Crypto handshake failed");
+    asciichat_errno_scope_t handshake_scope = asciichat_errno_checkpoint();
+    asciichat_error_t handshake_result = APP_CALLBACK_ERROR_TRANSPORT(client_crypto_handshake, transport);
+    if (handshake_result != ASCIICHAT_OK) {
       acip_transport_destroy(transport);
       tcp_client_destroy(&tcp_client);
-      return SET_ERRNO(ERROR_NETWORK, "Crypto handshake failed");
+      return SET_ERRNO(handshake_result, "Crypto handshake failed");
     }
+    ASSERT_NO_ERRNO_SINCE(handshake_scope);
+    asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
     log_debug("Crypto handshake completed successfully");
 
     // Get crypto context after handshake and set it on the transport

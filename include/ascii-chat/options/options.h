@@ -842,14 +842,14 @@ static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
 static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
-#ifndef NDEBUG
+static const double default_debug_errno_stacks_time_value = 0.0;
+static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
 static const bool default_debug_backtrace_time_explicit_value = false;
 static const double default_debug_memory_report_interval_value = 0.0;
 static const bool default_debug_memory_report_interval_explicit_value = false;
-#endif
 
 static const int default_render_theme_value = OPT_RENDER_THEME_DEFAULT;
 static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAULT;
@@ -1157,16 +1157,16 @@ typedef struct options_state {
   bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
 
   // ============================================================================
-  // Debug Options (Debug builds only)
+  // Diagnostics options
   // ============================================================================
-#ifndef NDEBUG
-  double debug_sync_state_time;               ///< Time parameter for --sync-state option (debug builds only)
-  bool debug_sync_state_time_explicit;        ///< True if --debug-state was explicitly provided
-  double debug_backtrace_time;                ///< Time parameter for --backtrace option (debug builds only)
+  double debug_errno_stacks_time;             ///< Delay before the error report
+  bool debug_errno_stacks_time_explicit;      ///< True if --errno-stacks was provided
+  double debug_sync_state_time;               ///< Time parameter for --sync-state
+  bool debug_sync_state_time_explicit;        ///< True if --sync-state was explicitly provided
+  double debug_backtrace_time;                ///< Time parameter for --backtrace option
   bool debug_backtrace_time_explicit;         ///< True if --backtrace was explicitly provided
-  double debug_memory_report_interval;        ///< Interval in seconds for periodic memory reports (debug builds only)
+  double debug_memory_report_interval;        ///< Interval in seconds for periodic memory reports
   bool debug_memory_report_interval_explicit; ///< True if --memory-report was explicitly provided
-#endif
 
   // ============================================================================
   // Render-to-file options

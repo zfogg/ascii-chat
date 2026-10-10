@@ -595,11 +595,14 @@ void action_completions(const char *shell_name, const char *output_path) {
 
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
+      asciichat_errno_scope_t prompt_scope = asciichat_errno_checkpoint();
       bool overwrite = ui_notice_confirm(UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
         asciichat_error_context_t context;
-        action_exit(HAS_ERRNO(&context) && context.code == ERROR_PROMPT_TIMEOUT ? ERROR_PROMPT_TIMEOUT : 0);
+        action_exit(asciichat_errno_peek_since(prompt_scope, &context) && context.code == ERROR_PROMPT_TIMEOUT
+                        ? ERROR_PROMPT_TIMEOUT
+                        : 0);
       }
 
       log_plain("Overwriting existing completions file...");

@@ -236,11 +236,13 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->file_has_audio = false;
 
   // Create media source from config type and path
+  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
   ctx->source = media_source_create(config->type, config->path);
 
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
-    asciichat_error_t existing_error = GET_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     if (existing_error == ASCIICHAT_OK) {
       SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create media source");
     }

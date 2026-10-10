@@ -1171,12 +1171,16 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
 
   // Apply configuration using schema-driven parser with bitmask validation
+  asciichat_errno_scope_t schema_scope = asciichat_errno_scope_begin();
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
 
   if (schema_result != ASCIICHAT_OK && strict) {
     toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
+  if (strict && schema_result == ASCIICHAT_OK)
+    ASSERT_NO_ERRNO_SINCE(schema_scope);
+  asciichat_errno_scope_end(schema_scope, ASCIICHAT_ERRNO_DISMISSED);
   // In non-strict mode, continue even if some options failed validation
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
@@ -1189,12 +1193,16 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
 
   // Update RCU system with modified options (for test compatibility)
   // In real usage, options_state_set is called later after CLI parsing
+  asciichat_errno_scope_t rcu_scope = asciichat_errno_scope_begin();
   asciichat_error_t rcu_result = options_state_set(opts);
   if (rcu_result != ASCIICHAT_OK) {
     // Non-fatal - RCU might not be initialized yet in some test scenarios
     // But log as warning so tests can see if this is the issue
     CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
+  } else {
+    ASSERT_NO_ERRNO_SINCE(rcu_scope);
   }
+  asciichat_errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
 
   toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
@@ -1597,6 +1605,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no",
                  file_strict ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
 
+    asciichat_errno_scope_t load_scope = asciichat_errno_scope_begin();
     asciichat_error_t load_result = config_load_and_apply(detected_mode, file->path, file_strict, opts);
 
     if (load_result != ASCIICHAT_OK) {
@@ -1607,8 +1616,12 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
       } else {
         // Non-strict mode: errors are non-fatal, just log and continue
         CONFIG_DEBUG("Non-strict config loading warning for %s: %d (continuing)", file->path, load_result);
-        CLEAR_ERRNO(); // Clear error context for next file
+        asciichat_errno_scope_end(load_scope, ASCIICHAT_ERRNO_DISMISSED);
+        ASSERT_NO_ERRNO_SINCE(load_scope);
       }
+    } else {
+      ASSERT_NO_ERRNO_SINCE(load_scope);
+      asciichat_errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
     }
   }
 

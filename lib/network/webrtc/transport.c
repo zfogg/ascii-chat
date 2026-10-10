@@ -79,6 +79,7 @@ typedef struct {
   uint8_t *partial;                    ///< Incomplete ACIP packet bytes
   size_t partial_len;
   size_t partial_capacity;
+  uint64_t partial_since_ns;
   mutex_t queue_mutex;            ///< Protect queue operations
   cond_t queue_cond;              ///< Signal when messages arrive
   bool is_connected;              ///< Connection state
@@ -186,6 +187,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     webrtc_datachannel_close(channel);
     return;
   }
+  if (!wrtc->partial_len)
+    wrtc->partial_since_ns = time_get_ns();
   size_t required = wrtc->partial_len + len;
   if (required > wrtc->partial_capacity) {
     size_t capacity = wrtc->partial_capacity ? wrtc->partial_capacity : 16384;
@@ -244,6 +247,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     offset += packet_len;
   }
   wrtc->partial_len -= offset;
+  if (offset)
+    wrtc->partial_since_ns = wrtc->partial_len ? time_get_ns() : 0;
   if (offset && wrtc->partial_len)
     memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
   cond_signal(&wrtc->queue_cond);
@@ -380,23 +385,29 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
       uint16_t packet_type = NET_TO_HOST_U16(header.type);
       is_video_packet = packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME;
       if (is_video_packet) {
+        asciichat_errno_scope_t buffered_scope = asciichat_errno_scope_begin();
         asciichat_error_t buffered_result =
             webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
         if (buffered_result != ASCIICHAT_OK) {
           buffered_before_send = 0;
-          CLEAR_ERRNO();
+        } else {
+          ASSERT_NO_ERRNO_SINCE(buffered_scope);
         }
+        asciichat_errno_scope_end(buffered_scope, ASCIICHAT_ERRNO_DISMISSED);
       }
     }
   }
 
   size_t max_message_size = 16384;
+  asciichat_errno_scope_t size_scope = asciichat_errno_scope_begin();
   asciichat_error_t max_size_result =
       webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
   if (max_size_result != ASCIICHAT_OK || max_message_size == 0) {
     max_message_size = 16384;
-    CLEAR_ERRNO();
+  } else {
+    ASSERT_NO_ERRNO_SINCE(size_scope);
   }
+  asciichat_errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
   log_info_every(60 * NS_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes",
                  max_message_size);
 
@@ -457,6 +468,18 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
     // callback. Periodically recheck the peer state so a lost connection can
     // leave this blocking receive path and let its owner clean up.
     cond_timedwait(&wrtc->queue_cond, &wrtc->queue_mutex, 250 * NS_PER_MS_INT);
+    if (ringbuffer_is_empty(wrtc->recv_queue) && wrtc->partial_len) {
+      bool expired = time_elapsed_ns(wrtc->partial_since_ns, time_get_ns()) >= 5 * NS_PER_SEC_INT;
+      mutex_unlock(&wrtc->queue_mutex);
+      if (expired) {
+        mutex_lock(&wrtc->state_mutex);
+        wrtc->is_connected = false;
+        wrtc->data_channel_closed = true;
+        mutex_unlock(&wrtc->state_mutex);
+        return SET_ERRNO(ERROR_NETWORK, "Incomplete WebRTC packet exceeded receive deadline");
+      }
+      return SET_ERRNO(ERROR_NETWORK_INCOMPLETE, "Waiting for remaining WebRTC packet bytes");
+    }
   }
 
   // Read message from queue

@@ -141,6 +141,10 @@ list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/mutex.c
     ${LIB_DIR}/debug/backtrace.c
     ${LIB_DIR}/debug/sync.c
+    ${LIB_DIR}/debug/stats.c
+    ${LIB_DIR}/debug/errno.c
+    ${LIB_DIR}/debug/debug_helpers.c
+    ${LIB_DIR}/options/registry/debug.c
 )
 
 # Additional debug sources only in non-Release builds
@@ -148,7 +152,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/atomic.c
         ${LIB_DIR}/debug/memory.c
-        ${LIB_DIR}/options/registry/debug.c
     )
 endif()
 

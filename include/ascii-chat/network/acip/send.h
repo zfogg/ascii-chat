@@ -149,7 +149,7 @@ asciichat_error_t acip_send_pong(acip_transport_t *transport);
  *
  * @param transport Transport instance
  * @param error_code Error code from asciichat_error_t
- * @param message Error message (will be truncated to MAX_ERROR_MESSAGE_LENGTH)
+ * @param message Legacy argument; fixed public text is sent for the allowlisted error code
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_code, const char *message);

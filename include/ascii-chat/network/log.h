@@ -45,20 +45,24 @@ typedef enum remote_log_direction {
 #ifdef NDEBUG
 #define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                       \
   do {                                                                                                                 \
+    mutex_lock(&(client)->send_mutex);                                                                                 \
     if ((client)->crypto_initialized) {                                                                                \
       const struct crypto_context_t *_ctx = crypto_handshake_get_context(&(client)->crypto_handshake_ctx);             \
-      log_net_message((client)->socket, _ctx, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, NULL, 0, NULL, fmt,        \
-                      ##__VA_ARGS__);                                                                                  \
+      log_net_message((client)->socket, _ctx, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, NULL, 0, NULL,             \
+                      fmt, ##__VA_ARGS__);                                                                             \
     }                                                                                                                  \
+    mutex_unlock(&(client)->send_mutex);                                                                               \
   } while (0)
 #else
 #define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                       \
   do {                                                                                                                 \
+    mutex_lock(&(client)->send_mutex);                                                                                 \
     if ((client)->crypto_initialized) {                                                                                \
       const struct crypto_context_t *_ctx = crypto_handshake_get_context(&(client)->crypto_handshake_ctx);             \
       log_net_message((client)->socket, _ctx, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, __FILE__, __LINE__,        \
                       __func__, fmt, ##__VA_ARGS__);                                                                   \
     }                                                                                                                  \
+    mutex_unlock(&(client)->send_mutex);                                                                               \
   } while (0)
 #endif
 

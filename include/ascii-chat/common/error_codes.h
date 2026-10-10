@@ -28,14 +28,9 @@
 
 #include <stdint.h>
 
-/* Undefine Windows macros that conflict with our enum values */
+// Preserve Windows error values and remove conflicting macros before the enum.
 #ifdef _WIN32
-#undef ERROR_BUFFER_OVERFLOW
-#undef ERROR_INVALID_STATE
-#undef ERROR_FILE_NOT_FOUND
-#undef ERROR_NOT_SUPPORTED
-#undef ERROR_INVALID_PASSWORD
-#undef ERROR_NOT_FOUND
+#include <ascii-chat/platform/windows_compat.h>
 #endif
 
 /**
@@ -91,6 +86,8 @@ typedef enum {
   ERROR_ACDS_STRING_INVALID = 52, /**< Invalid session string format (ACDS) */
   ERROR_INTERNAL = 53,            /**< Internal server error */
   ERROR_UNKNOWN_PACKET = 54,      /**< Unknown packet type received */
+
+  ERROR_NETWORK_INCOMPLETE = 55, /**< Incomplete buffered message; retry within the receive deadline */
 
   /* Security/Crypto errors (60-79) */
   ERROR_CRYPTO = 60,              /**< Cryptographic operation failed */
@@ -198,6 +195,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Cannot bind to network port";
   case ERROR_NETWORK_CONNECT:
     return "Cannot connect to server";
+  case ERROR_NETWORK_INCOMPLETE:
+    return "Incomplete network message";
   case ERROR_NETWORK_TIMEOUT:
     return "Network timeout";
   case ERROR_NETWORK_PROTOCOL:

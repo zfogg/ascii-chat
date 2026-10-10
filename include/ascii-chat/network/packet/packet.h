@@ -801,6 +801,7 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
  */
 #define FEATURE_RLE_ENCODING 0x01 /**< @brief Run-length encoding support */
 #define FEATURE_DELTA_FRAMES 0x02 /**< @brief Delta frame encoding (future) */
+#define PROTOCOL_FEATURE_RECOVERABLE_ERRORS 0x04 /**< Peer accepts nonfatal audio error notifications */
 
 /** @} */
 
@@ -1381,7 +1382,7 @@ int send_pong_packet(socket_t sockfd);
  * @param sockfd Socket file descriptor
  * @param crypto_ctx Crypto context for encryption (NULL or not ready sends plaintext)
  * @param error_code Error code from asciichat_error_t enumeration
- * @param message Human-readable message to accompany the error (can be NULL)
+ * @param message Legacy argument; fixed public text is sent for the allowlisted error code
  * @return ASCIICHAT_OK on success, error code otherwise
  *
  * When the crypto context is ready, the packet is encrypted automatically.

@@ -606,3 +606,13 @@ const char *named_get_packet_type_format_spec(int pkt_type) {
 void named_registry_register_packet_types(void) {
   // No-op
 }
+
+void named_print_hash_stats(void) {
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle))
+    return;
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  size_t entries = HASH_COUNT(g_named_registry.entries);
+  size_t buckets = g_named_registry.entries ? g_named_registry.entries->hh.tbl->num_buckets : 0;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  log_plain("Named registry: entries=%zu buckets=%zu", entries, buckets);
+}

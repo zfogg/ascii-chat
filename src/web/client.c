@@ -214,7 +214,7 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
   if (!key_path || !secret_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
 #ifdef EMSCRIPTEN_BUILD
   static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
   if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) return -1;
@@ -234,7 +234,7 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
 EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
   if (!key_line || !public_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -242,7 +242,7 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
   if (!armored_key || !public_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
   return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -250,7 +250,7 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
   if (!key_data || key_data_len == 0 || !public_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
   return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -258,7 +258,7 @@ int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
   if (!armored_key || !secret_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
@@ -288,7 +288,7 @@ cleanup:
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
   if (!key_data || key_data_len == 0 || !secret_key_out) return -1;
-  CLEAR_ERRNO();
+  CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
@@ -319,7 +319,8 @@ EMSCRIPTEN_KEEPALIVE
 int client_get_crypto_error_message(char *output, size_t output_size) {
   if (!output || output_size == 0) return -1;
   asciichat_error_context_t context = {0};
-  if (!HAS_ERRNO(&context) || !context.context_message) return -1;
+  if (!HAS_ERRNO(&context) || !context.context_message[0])
+    return -1;
   safe_snprintf(output, output_size, "%s", context.context_message);
   return 0;
 }
@@ -379,6 +380,7 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
+  asciichat_errno_destroy();
 
   // Clean up crypto handshake context
   crypto_handshake_destroy(&g_crypto_handshake_ctx);
