@@ -328,6 +328,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   case KEY_2: {
+    if (!GET_OPTION(audio_enabled)) {
+      log_info("Audio waveform requires audio to be enabled");
+      break;
+    }
     bool enabled = !GET_OPTION(waveform);
     if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
         options_set_bool("fft", false) != ASCIICHAT_OK ||
@@ -338,6 +342,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   case KEY_3: {
+    if (!GET_OPTION(audio_enabled)) {
+      log_info("Audio frequency display requires audio to be enabled");
+      break;
+    }
     bool enabled = !GET_OPTION(fft);
     if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
         options_set_bool("waveform", false) != ASCIICHAT_OK ||

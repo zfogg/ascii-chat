@@ -6,6 +6,7 @@ Run: python tests/integration/audio_visualization_keys.py --binary build/bin/asc
 import argparse
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 from terminal_ui import Terminal
 
@@ -18,10 +19,37 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ascii-audio-keys-') as directory:
         root = Path(directory)
         media = root / 'signal.mp4'
-        subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i',
+        ffmpeg = shutil.which('ffmpeg')
+        assert ffmpeg, 'ffmpeg is required to generate test media'
+        subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i',
                         'testsrc2=size=160x120:rate=15', '-f', 'lavfi', '-i',
                         'aevalsrc=0.5*sin(2*PI*(220+180*t)*t)*(0.6+0.4*sin(2*PI*2*t)):s=48000',
-                        '-t', '12', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(media)], check=True)
+                        '-t', '12', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(media)], check=True, timeout=60)
+        # Rejected hotkeys must preserve both the video and an active Matrix effect.
+        disabled = Terminal([binary, '--no-check-update', '--log-file',
+                             str(root/'audio-disabled.log'), 'mirror', '--file', str(media),
+                             '--loop', '--audio=false', '--splash-screen=false',
+                             '--color-mode', 'truecolor'], rows=24, cols=100)
+        try:
+            disabled.pump(5)
+            disabled.write('?')
+            disabled.expect(lambda s: 'Current Settings:' in s, 'Disabled-audio help opens')
+            for matrix in ('X', 'O'):
+                if matrix == 'O':
+                    disabled.write('1')
+                    disabled.expect(lambda s: '(1) Matrix "Digital Rain" : O' in s, 'Matrix enables without audio')
+                for key in ('2', '3'):
+                    disabled.write(key)
+                    text = disabled.pump(1)
+                    assert '(2) Audio Waveform : X' in text, text
+                    assert '(3) Audio Frequencies (FFT) : X' in text, text
+                    assert f'(1) Matrix "Digital Rain" : {matrix}' in text, text
+            disabled.write('?')
+            disabled.expect(lambda s: 'Keyboard Shortcuts' not in s, 'Disabled-audio help closes')
+            disabled.interrupt()
+            print('PASS audio-disabled keys preserve visualization and Matrix settings')
+        finally:
+            disabled.close()
         term = Terminal([binary, '--no-check-update', '--log-file',
                          str(root/'audio-keys-runtime.log'), 'mirror', '--file', str(media),
                          '--loop', '--audio-source', 'media', '--volume', '0', '--splash-screen=false',
