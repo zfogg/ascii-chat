@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file video/h265/encoder.c
  * @brief FFmpeg HEVC encoder for ASCII art frames
@@ -327,15 +328,18 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
 
   // Encode frame
   log_info("[H265_ENCODE_6] Sending frame to encoder: %ux%u format=%d", width, height, encoder->frame->format);
+  uint64_t stats_codec_start = time_get_ns();
   int send_ret = avcodec_send_frame(encoder->codec_ctx, encoder->frame);
   log_info("[H265_ENCODE_7] avcodec_send_frame returned %d", send_ret);
   if (send_ret < 0) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
     log_error("H265_ENCODE: avcodec_send_frame failed: %d", send_ret);
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send frame to encoder");
   }
 
   log_info("[H265_ENCODE_8] Receiving encoded packet...");
   int recv_ret = avcodec_receive_packet(encoder->codec_ctx, encoder->packet);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
   if (recv_ret == AVERROR(EAGAIN)) {
     // EAGAIN is normal - encoder needs more frames before outputting a packet
     log_dev("H265_ENCODE: EAGAIN - encoder buffering frames (normal), waiting for next frame");
@@ -380,6 +384,7 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
 
   *output_size = required_size;
   encoder->total_frames++;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENCODED, 1);
   log_dev("[H265_ENCODE_DONE] Encoding complete, output_size=%zu", required_size);
 
   return ASCIICHAT_OK;
@@ -402,8 +407,10 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
 
   // Send NULL frame to signal end of stream (flushes encoder)
   log_debug("H265_FLUSH: Sending NULL frame to encoder to flush buffered data");
+  uint64_t stats_codec_start = time_get_ns();
   int send_ret = avcodec_send_frame(encoder->codec_ctx, NULL);
   if (send_ret < 0) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
     log_error("H265_FLUSH: avcodec_send_frame(NULL) failed: %d", send_ret);
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to flush encoder");
   }
@@ -411,6 +418,7 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
   // Try to receive a packet
   log_debug("H265_FLUSH: Attempting to receive flushed packet...");
   int recv_ret = avcodec_receive_packet(encoder->codec_ctx, encoder->packet);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
   if (recv_ret == AVERROR(EAGAIN)) {
     log_dev("H265_FLUSH: EAGAIN - no more frames available");
     *output_size = 0;
@@ -457,6 +465,7 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
 
   *output_size = required_size;
   encoder->total_frames++;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENCODED, 1);
 
   return ASCIICHAT_OK;
 }

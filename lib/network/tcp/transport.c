@@ -458,6 +458,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
 
   // Initialize transport
   transport->methods = &tcp_methods;
+  transport->stats_peer = stats_runtime_peer_open("TCP");
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = tcp_data;
 
@@ -516,6 +517,9 @@ void acip_transport_destroy(acip_transport_t *transport) {
     SAFE_FREE(transport->impl_data);
     log_debug("[TRANSPORT_DESTROY] ✅ IMPL_DATA_FREED");
   }
+
+  stats_runtime_peer_close(transport->stats_peer);
+  transport->stats_peer = NULL;
 
   // Free transport structure
   log_debug("[TRANSPORT_DESTROY] 🗑️  FREEING_TRANSPORT: %p", (void *)transport);

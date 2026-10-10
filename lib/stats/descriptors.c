@@ -2,10 +2,18 @@
 #include <stddef.h>
 
 static const stats_descriptor_t counter_descriptors[STATS_COUNTER_COUNT] = {
+    [STATS_COUNTER_FRAMES_ENQUEUED] = {"frames_enqueued", "frames",
+                                       "Successful frame queue submissions (fanout counted separately)"},
+    [STATS_COUNTER_QUEUE_DROPS] = {"queue_drops", "frames", "Frames discarded because a queue is full"},
+    [STATS_COUNTER_MIGRATION_FAILURES] = {"migration_failures", "events", "Host migrations which failed or timed out"},
+    [STATS_COUNTER_RECONNECTS] = {"reconnects", "attempts", "Connection retries after the first attempt"},
+    [STATS_COUNTER_RECORDING_FRAMES] = {"recording_frames", "frames", "Frames accepted by the recording encoder"},
+    [STATS_COUNTER_FRAMES_SENT] = {"frames_sent", "frames", "Media frames accepted by the transport"},
+    [STATS_COUNTER_FRAMES_RECEIVED] = {"frames_received", "frames", "Decrypted media packets received"},
     [STATS_COUNTER_FRAMES_CAPTURED] = {"frames_captured", "frames", "Frames acquired from a media source"},
     [STATS_COUNTER_FRAMES_CONVERTED] = {"frames_converted", "frames", "Successful ASCII frame conversions"},
     [STATS_COUNTER_FRAMES_ENCODED] = {"frames_encoded", "frames", "Successfully encoded video frames"},
-    [STATS_COUNTER_FRAMES_DECODED] = {"frames_decoded", "frames", "Successfully decoded video frames"},
+    [STATS_COUNTER_FRAMES_DECODED] = {"frames_decoded", "frames", "Successfully decoded H.265 or ASCII frames"},
     [STATS_COUNTER_FRAMES_PRESENTED] = {"frames_presented", "frames", "Complete media frames written to the terminal"},
     [STATS_COUNTER_FRAMES_SKIPPED] = {"frames_skipped", "frames", "Frames deliberately skipped by policy"},
     [STATS_COUNTER_FRAMES_DROPPED] = {"frames_dropped", "frames",
@@ -39,10 +47,11 @@ static const stats_descriptor_t gauge_descriptors[STATS_GAUGE_COUNT] = {
 };
 
 static const stats_descriptor_t duration_descriptors[STATS_DURATION_COUNT] = {
+    [STATS_DURATION_RECORDING] = {"recording", "ns", "Recording frame conversion and encoding attempt"},
     [STATS_DURATION_CAPTURE] = {"capture", "ns", "Media acquisition attempt, including source wait"},
     [STATS_DURATION_ASCII_CONVERT] = {"ascii_convert", "ns", "ASCII conversion attempt, excluding capture and output"},
     [STATS_DURATION_ENCODE] = {"encode", "ns", "Video codec encode call, excluding queue wait"},
-    [STATS_DURATION_DECODE] = {"decode", "ns", "Video codec decode call, excluding queue wait"},
+    [STATS_DURATION_DECODE] = {"decode", "ns", "Media payload decode attempt, excluding queue wait"},
     [STATS_DURATION_AUDIO_MIX] = {"audio_mix", "ns", "Audio mixing attempt, excluding playback"},
     [STATS_DURATION_TERMINAL_WRITE] = {"terminal_write", "ns", "Media frame write attempt, including output blocking"},
     [STATS_DURATION_CONNECTION_SETUP] = {"connection_setup", "ns", "Connection attempt through readiness or failure"},

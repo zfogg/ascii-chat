@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
@@ -40,6 +41,21 @@ static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static terminal_size_t g_last_minimum;
 static _Thread_local fps_counter_t *g_fps;
+static _Thread_local bool g_stats_media, g_stats_failed;
+static _Thread_local uint64_t g_stats_write_ns, g_stats_writes;
+static void stats_media_begin(bool media) {
+  g_stats_media = media;
+  g_stats_failed = false;
+  g_stats_write_ns = g_stats_writes = 0;
+}
+static void stats_media_end(void) {
+  if (g_stats_media && g_stats_writes) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_TERMINAL_WRITE, g_stats_write_ns);
+    stats_counter_add(stats_runtime_scope(),
+                      g_stats_failed ? STATS_COUNTER_FRAMES_DROPPED : STATS_COUNTER_FRAMES_PRESENTED, 1);
+  }
+  g_stats_media = false;
+}
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
@@ -51,7 +67,13 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   fps_counter_write_begin(g_fps);
+  uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   bool complete = platform_write_all(fd, data, len) == len;
+  if (g_stats_media) {
+    g_stats_write_ns += time_get_ns() - stats_start;
+    g_stats_writes++;
+    g_stats_failed |= !complete;
+  }
   fps_counter_write_end(g_fps, complete);
   return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
@@ -165,10 +187,12 @@ static void *presentation_main(void *unused) {
           if (GET_OPTION(auto_height))
             options_set_int("height", size.rows);
         }
-        bool rendered = screen->dirty || transition || active != UI_SCREEN_MEDIA;
+        bool rendered = screen->dirty || transition || (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS);
         if (rendered) {
           fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
+          stats_media_begin(active == UI_SCREEN_MEDIA);
           screen->render(size, screen->snapshot);
+          stats_media_end();
           fps_counter_frame_end(g_fps, time_get_ns());
         }
         fps_counter_render(g_fps, screen->fd, size.cols, rendered);
@@ -243,7 +267,9 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     g_owner = true;
     g_render_fd = fd;
     frame_buffer_set_screen_output_fd(fd);
+    stats_media_begin(screen == UI_SCREEN_MEDIA);
     render(g_render_size, snapshot);
+    stats_media_end();
     g_owner = previous_owner;
     g_render_fd = previous_fd;
     return ASCIICHAT_OK;

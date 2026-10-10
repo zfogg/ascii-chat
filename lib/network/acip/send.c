@@ -100,6 +100,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   // Transport does NOT take ownership - it only copies data to its own buffers
   log_dev("★ PACKET_SEND: Calling acip_transport_send with %zu total bytes", total_size);
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
+  stats_runtime_packet(transport->stats_peer, type, payload_len, true, result == ASCIICHAT_OK);
 
   if (result == ASCIICHAT_OK) {
     log_dev("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size, type,
@@ -135,6 +136,8 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   size_t recv_len = 0;
   asciichat_error_t result = acip_transport_recv(transport, &recv_buffer, &recv_len, alloc_buffer);
   if (result != ASCIICHAT_OK) {
+    if (result != ERROR_NETWORK_TIMEOUT)
+      stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
     return result;
   }
 
@@ -145,6 +148,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
       buffer_pool_free(NULL, *alloc_buffer, recv_len);
       *alloc_buffer = NULL;
     }
+    stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Received packet smaller than header");
   }
 
@@ -158,6 +162,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
       buffer_pool_free(NULL, *alloc_buffer, recv_len);
       *alloc_buffer = NULL;
     }
+    stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated packet payload");
   }
 
@@ -165,6 +170,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
     *payload = (uint8_t *)recv_buffer + sizeof(packet_header_t);
   }
   *payload_len = plen;
+  stats_runtime_packet(transport->stats_peer, *type, plen, false, true);
 
   return ASCIICHAT_OK;
 }
@@ -392,5 +398,7 @@ asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const ac
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or response");
   }
 
+  if (!response->success)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_REQUEST_FAILURES, 1);
   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
 }

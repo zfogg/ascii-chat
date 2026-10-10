@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file discovery/session.c
  * @brief Discovery session flow management
@@ -1622,6 +1623,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       asciichat_error_t result = negotiate_determine_result(&session->negotiate);
       if (result == ASCIICHAT_OK) {
         session->is_host = session->negotiate.we_are_host;
+        stats_runtime_connection_state(session->is_host ? "discovery host" : "discovery participant");
 
         if (session->is_host) {
           // We become the host
@@ -2430,6 +2432,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
     // within the last 5 minutes. Fall back to treating this as fatal.
     log_error("No future host pre-elected! Session cannot recover from host disconnect.");
     session->migration.state = MIGRATION_STATE_COMPLETE;
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     return ERROR_NETWORK; // Session should end
   }
 
@@ -2477,6 +2480,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
     session->host_ctx = session_host_create(&hconfig);
     if (!session->host_ctx) {
       log_error("Failed to create host context for migration");
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
       return ERROR_MEMORY;
     }
 
@@ -2484,6 +2488,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
     asciichat_error_t hstart = session_host_start(session->host_ctx);
     if (hstart != ASCIICHAT_OK) {
       log_error("Failed to start host after migration: %d", hstart);
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
       return hstart;
     }
 
@@ -2508,6 +2513,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
 
   // Mark migration complete
   session->migration.state = MIGRATION_STATE_COMPLETE;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
 
   // Transition to ACTIVE state (host is ready)
   set_state(session, DISCOVERY_STATE_ACTIVE);
@@ -2542,6 +2548,7 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
   session->participant_ctx = session_participant_create(&pconfig);
   if (!session->participant_ctx) {
     log_error("Failed to create participant context for future host");
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     return ERROR_MEMORY;
   }
 
@@ -2549,6 +2556,7 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
   asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
   if (pconn != ASCIICHAT_OK) {
     log_error("Failed to connect to future host: %d", pconn);
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     return pconn;
   }
 
@@ -2564,6 +2572,7 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
 
   // Mark migration complete (in real implementation, this would be done after successful connection)
   session->migration.state = MIGRATION_STATE_COMPLETE;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
 
   // Transition to ACTIVE state (participant is ready)
   set_state(session, DISCOVERY_STATE_ACTIVE);

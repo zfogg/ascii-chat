@@ -732,6 +732,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
 
   // Initialize transport
   transport->methods = &webrtc_methods;
+  transport->stats_peer = stats_runtime_peer_open("WebRTC");
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = wrtc_data;
 

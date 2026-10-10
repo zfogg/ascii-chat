@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file acds/server.c
  * @brief 🌐 Discovery server TCP connection manager
@@ -130,7 +131,11 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
              (unsigned long long)elapsed_ms);
 
     // Migration timed out - mark session as failed and clear migration state
-    asciichat_error_t result = database_session_clear_host(server->db, ctx->session_id);
+    bool still_migrating = database_session_is_migration_ready(server->db, ctx->session_id, 0);
+    asciichat_error_t result =
+        still_migrating ? database_session_clear_host(server->db, ctx->session_id) : ASCIICHAT_OK;
+    if (still_migrating)
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_string(result));
     }
@@ -405,6 +410,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t create_result =
         database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
     if (create_result == ASCIICHAT_OK) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
       // Build complete payload: fixed response + variable STUN/TURN servers
       size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
       size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
@@ -482,6 +488,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t create_result =
         database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
     if (create_result == ASCIICHAT_OK) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
       // Build complete payload: fixed response + variable STUN/TURN servers
       size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
       size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
@@ -573,6 +580,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
       return;
@@ -646,6 +654,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
       return;
@@ -664,6 +673,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
 
   asciichat_error_t lookup_result = database_session_lookup(server->db, session_string, &server->config, &resp);
   if (lookup_result == ASCIICHAT_OK) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_LOOKUPS, 1);
     acip_send_session_info(transport, &resp);
     log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
   } else {
@@ -685,6 +695,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
       return;
@@ -731,6 +742,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
 
   asciichat_error_t join_result = database_session_join(server->db, req, &server->config, &resp);
   if (join_result == ASCIICHAT_OK && resp.success) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_JOINS, 1);
     acip_send_session_joined(transport, &resp);
 
     // Update client data (accessed via transport->user_data)

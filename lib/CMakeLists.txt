@@ -12,6 +12,7 @@ set(CORE_SRCS
     ${LIB_DIR}/lifecycle.c
     ${LIB_DIR}/stats/stats.c
     ${LIB_DIR}/stats/descriptors.c
+    ${LIB_DIR}/stats/runtime.c
     # log/
     ${LIB_DIR}/log/log.c
     ${LIB_DIR}/log/format.c

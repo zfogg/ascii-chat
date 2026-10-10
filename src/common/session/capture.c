@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file session/capture.c
  * @brief 📹 Unified media capture implementation
@@ -357,6 +358,12 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   uint64_t frame_request_time_ns = time_get_ns();
 
   image_t *frame = media_source_read_video(ctx->source);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_CAPTURE, time_get_ns() - frame_request_time_ns);
+  if (frame) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_CAPTURED, 1);
+    stats_runtime_media(frame->w, frame->h, media_source_get_position(ctx->source),
+                        media_source_get_duration(ctx->source));
+  }
 
   if (frame) {
     uint64_t frame_available_time_ns = time_get_ns();

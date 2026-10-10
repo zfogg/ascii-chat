@@ -1044,6 +1044,7 @@ typedef struct options_state {
   render_mode_t render_mode;        ///< Render mode (foreground/background/half-block)
   bool show_capabilities;           ///< Show terminal capabilities and exit
   int force_utf8;                   ///< UTF-8 support setting (auto/true/false)
+  int stats_interval;               ///< Periodic plain statistics on stdout; zero disables.
   int fps;                          ///< Target framerate (1-144, default: 60)
   bool fps_explicitly_set;          ///< True if FPS was explicitly configured by the user
   bool flip_x;                      ///< Flip video horizontally (X-axis). Ignored for webcam on macOS

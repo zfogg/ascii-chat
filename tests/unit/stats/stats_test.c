@@ -301,3 +301,93 @@ Test(stats, capabilities_are_copied_and_wrap_rebaselines) {
   stats_sampler_destroy(sampler);
   stats_scope_destroy(scope);
 }
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/packet/parsing.h>
+
+Test(stats, transport_totals_survive_disconnect_and_restart) {
+  options_state_init();
+  cr_assert_eq(stats_runtime_start("client", 0), ASCIICHAT_OK);
+  const char *transports[] = {"TCP", "WebSocket", "WebRTC"};
+  for (unsigned i = 0; i < 3; ++i) {
+    stats_peer_t *peer = stats_runtime_peer_open(transports[i]);
+    cr_assert_not_null(peer);
+    stats_runtime_packet(peer, PACKET_TYPE_IMAGE_FRAME_H265, 101, true, true);
+    stats_runtime_packet(peer, PACKET_TYPE_ASCII_FRAME, 203, false, true);
+    stats_runtime_packet(peer, PACKET_TYPE_IMAGE_FRAME_H265, 999, true, false);
+    stats_runtime_packet(peer, 0, 0, false, false);
+    stats_snapshot_t local;
+    cr_assert_eq(stats_scope_snapshot(stats_runtime_peer_scope(peer), &local), ASCIICHAT_OK);
+    cr_assert_eq(local.counters[STATS_COUNTER_BYTES_SENT], sizeof(packet_header_t) + 101);
+    cr_assert_eq(local.counters[STATS_COUNTER_BYTES_RECEIVED], sizeof(packet_header_t) + 203);
+    cr_assert_eq(local.counters[STATS_COUNTER_SEND_ERRORS], 1);
+    cr_assert_eq(local.counters[STATS_COUNTER_RECEIVE_ERRORS], 1);
+    cr_assert_eq(local.counters[STATS_COUNTER_FRAMES_SENT], 1);
+    cr_assert_eq(local.counters[STATS_COUNTER_FRAMES_RECEIVED], 1);
+    stats_runtime_peer_close(peer);
+  }
+  char *decoded = packet_decode_frame_data_malloc("abc", 3, false, 3, 0);
+  cr_assert_not_null(decoded);
+  SAFE_FREE(decoded);
+  cr_assert_null(packet_decode_frame_data_malloc("abc", 3, false, 4, 0));
+  stats_snapshot_t total;
+  cr_assert_eq(stats_scope_snapshot(stats_runtime_scope(), &total), ASCIICHAT_OK);
+  cr_assert_eq(total.counters[STATS_COUNTER_BYTES_SENT], 3 * (sizeof(packet_header_t) + 101));
+  cr_assert_eq(total.counters[STATS_COUNTER_BYTES_RECEIVED], 3 * (sizeof(packet_header_t) + 203));
+  cr_assert_eq(total.counters[STATS_COUNTER_PACKETS_SENT], 3);
+  cr_assert_eq(total.counters[STATS_COUNTER_SEND_ERRORS], 3);
+  cr_assert_eq(total.counters[STATS_COUNTER_FRAMES_DECODED], 1);
+  cr_assert_eq(total.counters[STATS_COUNTER_FRAMES_DROPPED], 1);
+  cr_assert_eq(total.durations[STATS_DURATION_DECODE].observations, 2);
+  uint64_t old_scope = total.scope_id;
+  stats_runtime_stop();
+  cr_assert_eq(stats_runtime_start("mirror", 0), ASCIICHAT_OK);
+  cr_assert_eq(stats_scope_snapshot(stats_runtime_scope(), &total), ASCIICHAT_OK);
+  cr_assert_neq(total.scope_id, old_scope);
+  cr_assert_not(total.capabilities.counters[STATS_COUNTER_BYTES_SENT]);
+  cr_assert_eq(total.counters[STATS_COUNTER_FRAMES_CAPTURED], 0);
+  stats_runtime_stop();
+  options_state_destroy();
+}
+
+Test(stats, view_labels_cannot_inject_terminal_controls) {
+  stats_view_t view = {0};
+  stats_view_add(&view, "peer %s", "bad\033[2J\nname");
+  cr_assert_eq(view.count, 1);
+  cr_assert_str_eq(view.lines[0], "peer bad?[2J?name");
+  for (unsigned i = 0; i < STATS_VIEW_LINES + 10; ++i)
+    stats_view_add(&view, "%u", i);
+  cr_assert_eq(view.count, STATS_VIEW_LINES);
+}
+#include <ascii-chat/debug/named.h>
+static void count_named_object(uintptr_t key, void *data) {
+  (void)key;
+  (*(unsigned *)data)++;
+}
+Test(stats, duplicate_debug_registration_is_fully_retired) {
+#ifndef NDEBUG
+  cr_assert_eq(named_init(), ASCIICHAT_OK);
+  unsigned object = 0, reads = 0;
+  uintptr_t key = (uintptr_t)&object;
+  named_register(key, "condition", "cond", "%p", __FILE__, __LINE__, __func__, 0);
+  named_register(key, "parent_condition", "cond", "%p", __FILE__, __LINE__, __func__, 0);
+  cr_assert(named_registry_read(key, "cond", count_named_object, &reads));
+  named_unregister(key);
+  cr_assert_not(named_registry_read(key, "cond", count_named_object, &reads));
+  cr_assert_eq(reads, 1);
+#endif
+}
+
+#include <ascii-chat/audio/audio.h>
+Test(stats, audio_teardown_retires_debug_atomics) {
+  audio_context_t context;
+  cr_assert_eq(audio_init(&context), ASCIICHAT_OK);
+  audio_destroy(&context);
+#ifndef NDEBUG
+  unsigned reads = 0;
+  cr_assert_not(named_registry_read((uintptr_t)&context.worker_should_stop, "atomic_t", count_named_object, &reads));
+  cr_assert_not(named_registry_read((uintptr_t)&context.shutting_down, "atomic_t", count_named_object, &reads));
+  cr_assert_eq(reads, 0);
+#endif
+}
