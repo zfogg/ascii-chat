@@ -2024,13 +2024,13 @@ skip_acds_session:
   // ====================================================================
   if (session_string[0] != '\0') {
     if (session_is_mdns_only) {
-      NOTICE(INFO, "SESSION READY",
+      NOTICE_ANNOUNCE("SESSION READY",
              "Session String: %s (LAN only via "
              "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
              "%s",
              session_string, session_string);
     } else {
-      NOTICE(INFO, "SESSION READY",
+      NOTICE_ANNOUNCE("SESSION READY",
              "Session String: %s\nShare this "
              "globally to join:\n   ascii-chat %s",
              session_string, session_string);

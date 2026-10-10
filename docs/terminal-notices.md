@@ -28,6 +28,8 @@ follows terminal capabilities, `--color`, `--color-mode`, and `--strip-ansi`.
 Redirected output has no cursor movement. Terminal boxes do not decorate file
 or JSON message bodies; existing log header formatting is retained. Log levels,
 quiet mode, and grep filtering still apply to logged notices.
+Session invitations use `NOTICE_ANNOUNCE` to remain visible at every log level;
+quiet mode, grep filtering, and JSON output still apply to these announcements.
 
 During live presentation, notices queue above ordinary screens and below input
 prompts. Long notices advance a page every ten seconds; resizing restarts the
@@ -56,7 +58,7 @@ ordinary notices. Security prompts retain their original deadlines.
 | Session information | LAN-only and global session strings and join commands |
 | Operational failures | Invalid startup options, no discovered servers, connection failure, camera/media failure, audio unavailable, discovery/mirror failure |
 | Destructive local actions | Config, completions, and man-page overwrite prompts use yellow warnings with their existing No default |
-| Fatal failures | `FATAL` context summary and `log_fatal` call sites use purple notices |
+| Fatal failures | `FATAL` context summary and explicit fatal notices use purple boxes; ordinary `log_fatal` records do not retire screens |
 
 Routine packet diagnostics, per-frame errors, backtraces, and debug reports remain
 logs. Existing specialized help/update screens retain their own layouts.
@@ -77,6 +79,9 @@ and ASCII layouts, seven widths, all four color mappings, complete long
 fingerprints, control-character escaping, multiline log retention, grep/JSON
 behavior, changed-key rejection, real unknown-host/ACDS prompts, default-No
 behavior after resizing, queued live notices, and fatal screen teardown.
+Regression cases cover non-terminating fatal-level logging, invitations at
+WARN/ERROR/FATAL levels, announcement quiet/grep/JSON behavior, restored terminal
+output, and flushing a queued warning before forced exit.
 The PTY assertions inspect the rendered terminal cells, not just log output.
 The existing prompt suites cover masked input, discarded covered input, absolute
 timeouts, noninteractive refusal, and automated responses.

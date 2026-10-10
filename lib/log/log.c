@@ -1037,6 +1037,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 static _Thread_local const char *g_notice_text;
 static _Thread_local ui_notice_severity_t g_notice_severity;
 static _Thread_local bool g_notice_record_only;
+static _Thread_local bool g_notice_unfiltered;
 
 static void output_notice(void) {
   if (g_notice_record_only)
@@ -1060,14 +1061,11 @@ static void output_notice(void) {
   g_notice_text = text;
 }
 
-void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,
-                   const char *format, ...) {
+static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const char *file, int line, const char *func,
+                        const char *title, const char *format, va_list args) {
   if (!title || !format || !lifecycle_is_initialized(&g_log.lifecycle))
     return;
-  va_list args;
-  va_start(args, format);
   char *body = format_message(format, args);
-  va_end(args);
   if (!body)
     return;
   size_t size = strlen(title) + strlen(body) + 2;
@@ -1079,8 +1077,10 @@ void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, co
   safe_snprintf(message, size, "%s\n%s", title, body);
   const char *previous = g_notice_text;
   ui_notice_severity_t previous_severity = g_notice_severity;
+  bool previous_unfiltered = g_notice_unfiltered;
   g_notice_text = message;
   g_notice_severity = severity;
+  g_notice_unfiltered = unfiltered;
   log_level_t level = severity == UI_NOTICE_FATAL     ? LOG_FATAL
                       : severity == UI_NOTICE_DANGER  ? LOG_ERROR
                       : severity == UI_NOTICE_WARNING ? LOG_WARN
@@ -1104,13 +1104,29 @@ void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, co
       cursor += bytes;
     }
     g_notice_record_only = previous_record_only;
-    if (level >= log_get_level() && atomic_load_int(&g_log.json_file) < 0)
+    if ((unfiltered || level >= log_get_level()) && atomic_load_int(&g_log.json_file) < 0)
       output_notice();
   }
   g_notice_text = previous;
   g_notice_severity = previous_severity;
+  g_notice_unfiltered = previous_unfiltered;
   SAFE_FREE(message);
   SAFE_FREE(body);
+}
+
+void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,
+                   const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  notice_logv(severity, false, file, line, func, title, format, args);
+  va_end(args);
+}
+
+void ui_notice_announce(const char *file, int line, const char *func, const char *title, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  notice_logv(UI_NOTICE_INFO, true, file, line, func, title, format, args);
+  va_end(args);
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
@@ -1129,22 +1145,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   uint64_t loaded_level = atomic_load_u64(&g_log.level);
 
-  if (level < (log_level_t)loaded_level) {
+  if (level < (log_level_t)loaded_level && !(g_notice_text && g_notice_unfiltered)) {
     return;
   }
-#ifndef EMSCRIPTEN_BUILD
-  if (level == LOG_FATAL && !g_notice_text) {
-    va_list args;
-    va_start(args, fmt);
-    char *message = format_message(fmt, args);
-    va_end(args);
-    if (message) {
-      ui_notice_log(UI_NOTICE_FATAL, file, line, func, "FATAL ERROR", "%s", message);
-      SAFE_FREE(message);
-    }
-    return;
-  }
-#endif
   /* =========================================================================
    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
    * ========================================================================= */

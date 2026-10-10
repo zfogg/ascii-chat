@@ -27,6 +27,8 @@ def probe(library, kind, log):
     native.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     assert native.asciichat_shared_init(str(log).encode(), True, True) == 0
     words = [b"notice-probe", b"--no-check-update", b"--color", b"false" if kind in ("log", "reject", "layout") else b"true", b"mirror"]
+    if kind == "announce-quiet":
+        words.insert(-1, b"--quiet")
     argv = (C.c_char_p * (len(words) + 1))(*words, None)
     assert native.options_init(len(words), argv) == 0
     native.log_set_terminal_output(True)
@@ -35,7 +37,42 @@ def probe(library, kind, log):
     native.ui_notice_confirm.argtypes = [C.c_int, C.c_char_p, C.c_uint]
     native.ui_notice_confirm.restype = C.c_bool
     native.ui_controller_present.argtypes = [C.c_int, C.c_int, Size, C.c_char_p, C.c_size_t]
-    if kind == "layout":
+    native.ui_controller_finish.argtypes = [C.c_int, C.c_char_p, C.c_size_t]
+    if kind.startswith("announce-"):
+        native.ui_notice_announce.argtypes = [C.c_char_p, C.c_int, C.c_char_p, C.c_char_p, C.c_char_p]
+        native.log_set_level(5)
+        if kind == "announce-filter":
+            native.grep_init.argtypes = [C.c_char_p]
+            assert native.grep_init(b"NO MATCH") == 0
+        if kind == "announce-json":
+            native.log_set_json_output(2)
+        for level in (3, 4, 5):
+            native.log_set_level(level)
+            for scope in (b"LAN only via mDNS", b"globally"):
+                body = b"Session String: blue-mountain-tiger\nShare " + scope + b" to join:\n   ascii-chat blue-mountain-tiger"
+                native.ui_notice_announce(b"notice-test", 1, b"probe", b"SESSION READY", body)
+        native.ui_notice_log(0, b"notice-test", 1, b"probe", b"FILTERED INFO", b"Must stay filtered")
+        if kind == "announce-json":
+            native.log_set_json_output(-1)
+    elif kind == "fatal-log":
+        native.log_msg.argtypes = [C.c_int, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p]
+        assert native.ui_controller_present(1, 1, Size(2, 40), b"INITIAL MEDIA", 13) == 0
+        native.log_msg(5, b"notice-test", 1, b"probe", b"LWS_CALLBACK_CLIENT_ESTABLISHED")
+        updated = b"MEDIA AFTER FATAL LOG"
+        assert native.ui_controller_present(1, 1, Size(2, 40), updated, len(updated)) == 0
+        while not log.with_suffix(".finish").exists():
+            time.sleep(.01)
+    elif kind == "forced-exit":
+        assert native.ui_controller_present(2, 1, Size(2, 40), b"SPLASH", 6) == 0
+        native.log_lock_terminal()
+        native.ui_notice_log(1, b"notice-test", 1, b"probe", b"NO SERVERS FOUND", b"Use an address to connect manually.")
+        native.ui_controller_finish(2, b"", 0)
+        native.platform_force_exit(1)
+    elif kind == "restore-output":
+        native.log_set_terminal_output(False)
+        native.log_set_terminal_output(True)
+        native.ui_notice_log(1, b"notice-test", 1, b"probe", b"MIRROR FAILED", b"Mirror mode failed")
+    elif kind == "layout":
         native.frame_buffer_create.argtypes = [C.c_int, C.c_int]
         native.frame_buffer_create.restype = C.c_void_p
         native.frame_buffer_get_content.argtypes = [C.c_void_p]
@@ -171,10 +208,25 @@ def main():
         def command(kind):
             return [sys.executable, "-X", "utf8", str(Path(__file__).resolve()), "--library", str(args.library.resolve()),
                     "--probe", kind, "--log", str(Path(directory) / (kind + ".log"))]
-        for kind in ("layout", "buffer", "log", "reject", "filter", "json"):
+        for kind in ("layout", "buffer", "log", "reject", "filter", "json", "announce-levels", "announce-filter", "announce-quiet", "announce-json", "restore-output"):
             result = subprocess.run(command(kind), input="", text=True, encoding="utf-8", capture_output=True, timeout=30)
             assert result.returncode == 0, result.stdout + result.stderr
             assert "NOTICE PROBE PASSED" in result.stdout
+            if kind.startswith("announce-"):
+                output = result.stdout + result.stderr
+                assert "FILTERED INFO" not in output
+                if kind in ("announce-filter", "announce-quiet"):
+                    assert "SESSION READY" not in output
+                else:
+                    assert output.count("SESSION READY") >= 6
+                    assert "LAN only via mDNS" in output and "globally" in output
+                    assert "ascii-chat blue-mountain-tiger" in output
+                if kind == "announce-json":
+                    records = [json.loads(line) for line in output.splitlines() if line.startswith("{")]
+                    assert sum("SESSION READY" in str(record) for record in records) >= 6
+                    assert "╔" not in output
+            if kind == "restore-output":
+                assert "MIRROR FAILED" in result.stderr
             if kind == "log":
                 contents = (Path(directory) / "log.log").read_text(encoding="utf-8")
                 assert "LAST-BYTE" in contents and "Complete fingerprint: SHA256:abc123" in contents
@@ -186,10 +238,17 @@ def main():
                 assert any("KEEP THIS NOTICE" in str(record) for record in records)
                 assert "╔" not in result.stderr and "+---" not in result.stderr
             print("PASS", kind)
-        for kind in ("color-0", "color-1", "color-2", "color-3", "unknown-host", "acds-key", "prompt", "live", "pages"):
+        for kind in ("color-0", "color-1", "color-2", "color-3", "unknown-host", "acds-key", "prompt", "live", "pages", "fatal-log", "forced-exit"):
             term = Terminal(command(kind), rows=12 if kind == "pages" else 30, cols=80)
             try:
-                if kind.startswith("color"):
+                if kind == "fatal-log":
+                    term.expect(lambda text: "MEDIA AFTER FATAL LOG" in text, "Fatal-level logging retired media")
+                    (Path(directory) / "fatal-log.finish").touch()
+                elif kind == "forced-exit":
+                    term.expect(lambda text: "NO SERVERS FOUND" in text and "connect manually" in text, "Queued notice lost on forced exit")
+                    print("PASS", kind)
+                    continue
+                elif kind.startswith("color"):
                     severity = int(kind[-1])
                     term.expect(lambda text: f"COLOR {severity}" in text, "Colored notice did not render")
                     cells = [cell for row in term.screen.buffer.values() for cell in row.values() if cell.data == "C"]

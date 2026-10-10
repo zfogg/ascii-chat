@@ -64,6 +64,7 @@
  */
 
 #include <ascii-chat/ui/notice.h>
+#include <ascii-chat/ui/controller.h>
 
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -743,6 +744,7 @@ int client_main(void) {
                "manually.");
 
         // Exit without cleanup
+        ui_controller_finish(STDERR_FILENO, "", 0);
         platform_force_exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)

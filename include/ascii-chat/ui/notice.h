@@ -35,5 +35,10 @@ void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, co
 #define NOTICE(severity, title, ...)                                                                                   \
   ui_notice_log(UI_NOTICE_##severity, __FILE__, __LINE__, __func__, title, __VA_ARGS__)
 
+/** Informational user output independent of log level; quiet, grep and JSON still apply. */
+void ui_notice_announce(const char *file, int line, const char *func, const char *title, const char *format, ...)
+    __attribute__((format(printf, 5, 6)));
+#define NOTICE_ANNOUNCE(title, ...) ui_notice_announce(__FILE__, __LINE__, __func__, title, __VA_ARGS__)
+
 /** Controller teardown writes pending notices to scrollback before releasing them. */
 void ui_notice_flush_snapshot(int fd, const void *snapshot);

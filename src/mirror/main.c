@@ -392,6 +392,7 @@ int mirror_main(void) {
   log_info("mirror_main: session_client_like_run returned with result=%d", result);
 
   if (result != ASCIICHAT_OK) {
+    log_set_terminal_output(true);
     NOTICE(WARNING, "MIRROR FAILED", "Mirror mode failed with error code: %d", result);
   }
 
