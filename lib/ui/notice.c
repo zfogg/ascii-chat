@@ -155,7 +155,8 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
   bool unicode = tty && terminal_supports_utf8();
   if (severity != UI_NOTICE_FATAL && tty && ui_controller_is_presenting() && !ui_controller_is_owner() &&
       !GET_OPTION(snapshot_mode)) {
-    size_t bytes = sizeof(notice_snapshot_t) + strlen(text) + 1;
+    size_t text_bytes = strlen(text) + 1;
+    size_t bytes = sizeof(notice_snapshot_t) + text_bytes;
     notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
     if (!snapshot)
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate notice");
@@ -163,7 +164,7 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     snapshot->unicode = unicode;
     snapshot->color = color;
     snapshot->started = time_get_ns();
-    memcpy(snapshot->text, text, strlen(text) + 1);
+    memcpy(snapshot->text, text, text_bytes);
     asciichat_error_t result = ui_controller_submit(
         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
     SAFE_FREE(snapshot);
