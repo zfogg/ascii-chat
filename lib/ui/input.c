@@ -61,6 +61,13 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     return KEY_NONE;
   mutex_lock(&g_mutex);
   ui_presentation_state_t state = ui_controller_state();
+  if (state.screen == UI_SCREEN_NOTICE) {
+    keyboard_key_t notice_key = keyboard_read_nonblocking();
+    if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
+      ui_controller_remove(UI_SCREEN_NOTICE);
+    mutex_unlock(&g_mutex);
+    return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
+  }
   bool active =
       state.screen < 0 || state.screen == (int)screen || (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP);
   keyboard_key_t key = KEY_NONE;

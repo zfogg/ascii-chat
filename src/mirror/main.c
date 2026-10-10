@@ -200,6 +200,8 @@
  * @see lib/video/palette.h - ASCII palette types
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "main.h"
 #include "session/client_like.h"
 #include "session/capture.h"
@@ -390,7 +392,8 @@ int mirror_main(void) {
   log_info("mirror_main: session_client_like_run returned with result=%d", result);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Mirror mode failed with error code: %d", result);
+    log_set_terminal_output(true);
+    NOTICE(WARNING, "MIRROR FAILED", "Mirror mode failed with error code: %d", result);
   }
 
   return (int)result;

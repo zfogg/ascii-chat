@@ -5,6 +5,8 @@
  * @ingroup discovery
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "session.h"
 
 #include <ascii-chat/common.h>
@@ -103,7 +105,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   if (id_result != ASCIICHAT_OK) {
-    log_warn("Failed to load/generate identity key, using zero key");
+    NOTICE(DANGER, "DISCOVERY IDENTITY UNAVAILABLE", "Failed to load/generate identity key, using zero key");
     memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
     memset(session->identity_seckey, 0, sizeof(session->identity_seckey));
   } else {
@@ -1938,7 +1940,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       buffer_pool_free(NULL, payload, payload_len);
 
       if (!server_version.supports_encryption) {
-        log_error("Server does not support encryption");
+        NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
         set_error(session, ERROR_NETWORK, "Server does not support encryption");
         session_participant_disconnect(session->participant_ctx);
         break;

@@ -7,6 +7,8 @@
  * @date February 2026
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/common/protocol_constants.h>
@@ -879,7 +881,8 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
 #endif
   } else if ((config->tls_cert_path && config->tls_cert_path[0] != '\0') ||
              (config->tls_key_path && config->tls_key_path[0] != '\0')) {
-    log_warn("WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS");
+    NOTICE(DANGER, "WEBSOCKET TLS DISABLED",
+           "WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS");
   }
 
   // Increase per-thread service buffer to prevent fragmentation of large messages

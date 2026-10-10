@@ -146,6 +146,8 @@
  * @see crypto/known_hosts.h For server identity verification
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "main.h"
 #include "crypto.h"
 #include "server.h"
@@ -250,7 +252,7 @@ int client_crypto_init(void) {
       log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
-      log_error("Failed to parse SSH key file: %s", encrypt_key);
+      NOTICE(DANGER, "IDENTITY KEY COULD NOT BE LOADED", "Failed to parse SSH key file: %s", encrypt_key);
       log_error("This may be due to:");
       log_error("  - Wrong password for encrypted key");
       log_error("  - Unsupported key type (only Ed25519 is currently supported)");
@@ -373,7 +375,7 @@ int client_crypto_init(void) {
       asciichat_error_t verify_result =
           discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
       if (verify_result != ASCIICHAT_OK) {
-        log_error("ACDS key verification failed for %s", acds_config.server_address);
+        NOTICE(DANGER, "ACDS VERIFICATION FAILED", "ACDS key verification failed for %s", acds_config.server_address);
         return -1;
       }
       log_debug("ACDS server key verified successfully");
@@ -435,15 +437,15 @@ int client_crypto_init(void) {
 int client_crypto_handshake(acip_transport_t *transport) {
   // If client has --no-encrypt, skip handshake entirely
   if (GET_OPTION(no_encrypt)) {
-    log_debug("Client has --no-encrypt, skipping crypto handshake");
+    NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
     return 0;
   }
 
   // If we reach here, crypto must be initialized for encryption
   if (!lifecycle_is_initialized(&g_crypto_lc)) {
-    log_error("Crypto not initialized but server requires encryption");
-    log_error("Server requires encrypted connection but client has no encryption configured");
-    log_error("Use --key to specify a client key or --password for password authentication");
+    NOTICE(DANGER, "ENCRYPTION REQUIRED",
+           "Server requires an encrypted connection but client crypto is not initialized.\n"
+           "Use --key to specify a client key or --password for password authentication.");
     return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
   }
 
@@ -607,7 +609,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
     return CONNECTION_ERROR_AUTH_FAILED;
   }
   if (!expect_cipher && server_params.selected_cipher != CIPHER_ALGO_NONE) {
-    log_error("Server chose cipher %u but client requested no encryption", server_params.selected_cipher);
+    NOTICE(DANGER, "ENCRYPTION MODE MISMATCH", "Server chose cipher %u but client requested no encryption",
+           server_params.selected_cipher);
     STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
@@ -689,38 +692,25 @@ int client_crypto_handshake(acip_transport_t *transport) {
 #endif
     if (!skip_interactive && platform_is_interactive()) {
       // Interactive mode - prompt user for confirmation
-      // Lock terminal for the warning message
-      bool previous_terminal_state = log_lock_terminal();
-
-      log_plain("\n"
-                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-                "@  WARNING: CLIENT AUTHENTICATION REQUIRED                                    @\n"
-                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-                "\n"
-                "The server requires client authentication (--client-keys enabled),\n"
-                "but you have not provided a client identity key with --key.\n"
-                "\n"
-                "To connect to this server, you need to:\n"
-                "  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n"
-                "  2. Add the public key to the server's --client-keys list\n"
-                "  3. Connect with: ascii-chat client --key /path/to/private/key\n");
-
-      // Unlock before prompt (prompt_yes_no handles its own terminal locking)
-      log_unlock_terminal(previous_terminal_state);
-
       // Prompt user - default is No since this will likely fail
-      if (!platform_prompt_yes_no("CLIENT AUTHENTICATION REQUIRED\nThe server requires a client identity key, but "
-                                  "--key was not supplied.\nGenerate an Ed25519 key and have its public key added to "
-                                  "the server client-keys list.\n\nContinue without a key (this will likely fail)",
-                                  false)) {
+      if (!ui_notice_confirm(UI_NOTICE_WARNING,
+                             "CLIENT AUTHENTICATION REQUIRED\nThe server requires a client identity key, but "
+                             "--key was not supplied.\n\n"
+                             "1. Generate a key: ssh-keygen -t ed25519\n"
+                             "2. Add its public key to the server --client-keys list.\n"
+                             "3. Connect with: ascii-chat client --key /path/to/private/key\n\n"
+                             "Continue without a key (this will likely fail)",
+                             30)) {
         log_plain("Connection aborted by user.");
         exit(0); // User declined - exit cleanly
       }
 
-      log_plain("Warning: Continuing without client identity key (connection may fail).\n");
+      NOTICE(WARNING, "CLIENT IDENTITY MISSING",
+             "Warning: Continuing without client identity key (connection may fail).\n");
     } else {
       // Non-interactive mode (background/script) - just log warning and continue
-      log_warn("Non-interactive mode: Continuing without client identity key (connection may fail)");
+      NOTICE(WARNING, "CLIENT AUTHENTICATION REQUIRED",
+             "Non-interactive mode: Continuing without client identity key (connection may fail)");
     }
   }
 

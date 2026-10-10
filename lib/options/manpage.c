@@ -11,6 +11,8 @@
  * - Merger: Intelligently merging auto-generated with manual content
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/resources.h>
 #include <ascii-chat/options/manpage/parser.h>
@@ -252,7 +254,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
-      bool overwrite = platform_prompt_yes_no(question, false); // Default to No
+      bool overwrite = ui_notice_confirm(UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Man page generation cancelled.");
         return SET_ERRNO(ERROR_FILE_OPERATION, "User cancelled overwrite");

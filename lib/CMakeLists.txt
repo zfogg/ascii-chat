@@ -27,8 +27,10 @@ set(CORE_SRCS
     ${LIB_DIR}/log/asan.c
     # ui/
     ${LIB_DIR}/ui/controller.c
+    ${LIB_DIR}/ui/render_progress.c
     ${LIB_DIR}/ui/input.c
     ${LIB_DIR}/ui/prompt.c
+    ${LIB_DIR}/ui/notice.c
     ${LIB_DIR}/ui/too_small.c
     ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/fps_counter.c

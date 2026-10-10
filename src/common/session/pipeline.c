@@ -201,7 +201,9 @@ struct session_pipeline_s {
   atomic_t stop;
   atomic_t capture_finished;
   atomic_t first_frame_ns;
-  bool has_render_file; // Track if render_file was set at creation time
+  asciichat_error_t encode_error; // Encode-owned; read only after joining encode.
+  uint64_t frames_accepted;       // Capture-owned; read only after joining capture.
+  bool has_render_file;           // Track if render_file was set at creation time
 };
 
 /* ============================================================================
@@ -240,13 +242,6 @@ static void *pipeline_capture_thread(void *arg) {
     if (!img) {
       if (session_capture_at_end(pipeline->capture)) {
         log_info("[PIPELINE_CAPTURE] End of media reached");
-        // Push EOF sentinels (zero-initialized)
-        pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
-        frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
-        if (pipeline->has_render_file) {
-          pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
-          frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
-        }
         break;
       }
       platform_sleep_ns(1 * NS_PER_MS_INT);
@@ -285,7 +280,10 @@ static void *pipeline_capture_thread(void *arg) {
     if (pipeline->has_render_file) {
       // Encode all captured frames, including frames before display rendering starts
       // The encoder will use them with correct timestamps regardless of display timing
-      if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
+      bool queued = frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT);
+      while (!queued && snapshot_uses_frame_target && !atomic_load_bool(&pipeline->stop))
+        queued = frame_queue_push(pipeline->encode_queue, frame, 100 * NS_PER_MS_INT);
+      if (!queued) {
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
         // Non-blocking: drop if queue full after 500ms
@@ -293,8 +291,8 @@ static void *pipeline_capture_thread(void *arg) {
         free_frame(frame);
       } else {
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
-        log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w,
-                        frame->h);
+        pipeline->frames_accepted++;
+        log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }
     } else {
       log_warn_every(1000 * NS_PER_MS_INT, "[PIPELINE_CAPTURE] has_render_file=false, NOT encoding frames");
@@ -334,26 +332,6 @@ static void *pipeline_capture_thread(void *arg) {
         log_info("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
                  (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
 
-        // Wait for encode queue to drain (all buffered frames processed)
-        // This ensures slow encoders can catch up and encode all captured frames
-        // Skip wait if snapshot_delay is 0 (immediate exit after 1 frame)
-        double snapshot_delay = GET_OPTION(snapshot_delay);
-        if (pipeline->has_render_file && snapshot_delay > 0) {
-          while (frame_queue_count(pipeline->encode_queue) > 0) {
-            log_debug("[PIPELINE_CAPTURE] Waiting for encode queue to drain (%d frames pending)",
-                      frame_queue_count(pipeline->encode_queue));
-            platform_sleep_ns(10 * NS_PER_MS_INT);
-          }
-          log_info("[PIPELINE_CAPTURE] Encode queue drained, sending EOF sentinel");
-        }
-
-        // Push EOF sentinels (zero-initialized)
-        pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
-        frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
-        if (pipeline->has_render_file) {
-          pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
-          frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
-        }
         break;
       }
     }
@@ -373,9 +351,7 @@ static void *pipeline_encode_thread(void *arg) {
   log_info("[PIPELINE_ENCODE] Starting encode thread");
 
   uint64_t frames_processed = 0;
-  bool received_eof = false;
-
-  while (!received_eof) {
+  while (true) {
     // Drain queued frames before exiting, even when capture was interrupted.
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->encode_queue, 100 * NS_PER_MS_INT);
 
@@ -386,15 +362,6 @@ static void *pipeline_encode_thread(void *arg) {
       log_debug_every(1 * NS_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)",
                       (unsigned long long)frames_processed);
       continue; // timeout, keep waiting
-    }
-
-    if (!frame->pixels) {
-      // EOF sentinel
-      log_info("[PIPELINE_ENCODE] Received EOF sentinel, exiting (processed=%llu frames)",
-               (unsigned long long)frames_processed);
-      free_frame(frame);
-      received_eof = true;
-      break;
     }
 
     // Validate frame before processing (catch memory corruption)
@@ -412,7 +379,12 @@ static void *pipeline_encode_thread(void *arg) {
     // Encode frame (convert_to_ascii is called internally by encode_frame)
     // Avoid double-conversion that was causing state desynchronization between display/encode threads
     image_t raw_image = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
-    session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
+    pipeline->encode_error = session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
+    if (pipeline->encode_error != ASCIICHAT_OK) {
+      atomic_store_bool(&pipeline->stop, true);
+      free_frame(frame);
+      break;
+    }
     frames_processed++;
 
     free_frame(frame);
@@ -493,8 +465,8 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   log_info("[PIPELINE_MAIN] Starting main thread loop");
 
   // Snapshot duration is owned by the capture thread. It records the first
-  // captured frame, runs until snapshot_delay has elapsed, then sends the EOF
-  // sentinel. The display thread must wait for that sentinel instead of using
+  // captured frame and marks capture_finished at its duration limit.
+  // The display thread waits for producer completion instead of using
   // a second timer based on terminal rendering speed; large terminals can make
   // ASCII conversion and render-file encoding substantially slower than capture.
   while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop)) {
@@ -515,16 +487,10 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       }
     }
 
-    if (!frame)
-      continue; // timeout, check should_exit again
-
-    // EOF sentinels are intentionally zero-initialized and therefore do not
-    // satisfy normal frame validation.
-    if (!frame->pixels) {
-      log_info("[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping");
-      free_frame(frame);
-      frame = NULL;
-      break;
+    if (!frame) {
+      if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->display_queue) == 0)
+        break;
+      continue;
     }
 
     // Validate frame structure exists before accessing fields
@@ -592,12 +558,15 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
+  session_display_begin_drain(pipeline->display, 0, false);
+
   // A timeout must never let the owner free memory still referenced by a worker.
   // Capture observes stop; encode drains its queue and exits once capture is done.
   if (asciichat_thread_is_initialized(&pipeline->capture_tid)) {
     if (asciichat_thread_join(&pipeline->capture_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline capture thread");
   }
+  session_display_begin_drain(pipeline->display, pipeline->frames_accepted, true);
   if (asciichat_thread_is_initialized(&pipeline->encode_tid)) {
     if (asciichat_thread_join(&pipeline->encode_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline encode thread");
@@ -610,8 +579,9 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   frame_queue_destroy(pipeline->display_queue);
   frame_queue_destroy(pipeline->encode_queue);
   NAMED_UNREGISTER(&pipeline->capture_finished);
+  asciichat_error_t err = pipeline->encode_error;
   SAFE_FREE(pipeline);
 
   log_info("[PIPELINE] Pipeline destroyed");
-  return ASCIICHAT_OK;
+  return err;
 }

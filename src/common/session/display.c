@@ -328,11 +328,28 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   return ctx;
 }
 
+void session_display_begin_drain(session_display_ctx_t *ctx, uint64_t total, bool total_known) {
+  if (ctx && ctx->render_file) {
+    ui_controller_remove(UI_SCREEN_HELP);
+    render_file_begin_drain(ctx->render_file, total, total_known);
+  }
+}
+
+asciichat_error_t session_display_finish_render_file(session_display_ctx_t *ctx) {
+  if (!ctx || !ctx->render_file)
+    return ASCIICHAT_OK;
+  asciichat_error_t err = render_file_destroy(ctx->render_file);
+  ctx->render_file = NULL;
+  return err;
+}
+
 void session_display_destroy(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
+
+  session_display_finish_render_file(ctx);
 
   ui_controller_remove(UI_SCREEN_HELP);
   ui_controller_remove(UI_SCREEN_MEDIA);
@@ -354,12 +371,6 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   if (ctx->digital_rain) {
     digital_rain_destroy(ctx->digital_rain);
     ctx->digital_rain = NULL;
-  }
-
-  // Cleanup render-file if active
-  if (ctx->render_file) {
-    render_file_destroy(ctx->render_file);
-    ctx->render_file = NULL;
   }
 
   ctx->initialized = false;
@@ -844,6 +855,20 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     splash_wait_for_animation();
   }
 
+  // Binary video owns stdout in every terminal mode.
+  const char *output = GET_OPTION(render_file);
+  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0);
+  if (binary_stdout) {
+    if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
+      g_snapshot_first_frame_rendered = true;
+      g_snapshot_first_frame_rendered_ns = time_get_ns();
+    }
+    SAFE_FREE(plain_frame);
+    SAFE_FREE(rain_result);
+    SAFE_FREE(visualization_frame);
+    return;
+  }
+
   // Output routing logic
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
@@ -910,44 +935,33 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
   } else {
-    // Non-interactive piped output
-    // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file="-")
-    if (!ctx->render_file) {
-      // No render-file, safe to write ASCII frames to stdout
-      char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-      if (write_buf) {
-        memcpy(write_buf, display_frame, frame_len);
-        write_buf[frame_len] = '\n';
-        if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
-          atomic_store_bool(&ctx->output_failed, true);
-          APP_CALLBACK_VOID(signal_exit);
-          SAFE_FREE(write_buf);
-          goto cleanup_frame;
-        }
-
-        // Start snapshot timer on first ASCII frame rendered
-        if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
-          g_snapshot_first_frame_rendered = true;
-          g_snapshot_first_frame_rendered_ns = time_get_ns();
-          log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
-        }
-
+    // Named render files leave stdout available for ASCII output
+    char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+    if (write_buf) {
+      memcpy(write_buf, display_frame, frame_len);
+      write_buf[frame_len] = '\n';
+      if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+        atomic_store_bool(&ctx->output_failed, true);
+        APP_CALLBACK_VOID(signal_exit);
         SAFE_FREE(write_buf);
+        goto cleanup_frame;
       }
 
-      // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
-      (void)fflush(stdout);
-      if (!GET_OPTION(snapshot_mode) || ctx->has_tty) {
-        int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-        (void)terminal_flush(flush_fd);
-      }
-    } else {
-      // render_file is using stdout: skip ASCII output to avoid mixing with video
+      // Start snapshot timer on first ASCII frame rendered
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started");
+        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
       }
+
+      SAFE_FREE(write_buf);
+    }
+
+    // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
+    (void)fflush(stdout);
+    if (!GET_OPTION(snapshot_mode) || ctx->has_tty) {
+      int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+      (void)terminal_flush(flush_fd);
     }
   }
 
@@ -968,7 +982,7 @@ void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
     render_file_set_live_timing(ctx->render_file);
 }
 
-void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
+asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
   static int call_count = 0;
   if (call_count++ < 5) {
     log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
@@ -976,26 +990,24 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
   }
 
   if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
-    return;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
   }
 
   if (!image) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image is NULL");
-    return;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Image is NULL");
   }
 
   // Only encode if render_file is active
   if (!ctx->render_file) {
     log_warn_every(10 * NS_PER_SEC_INT, "session_display_encode_frame: render_file is NULL, skipping encode");
-    return;
+    return ASCIICHAT_OK;
   }
 
   // Convert image to ASCII
   char *ascii = session_display_convert_to_ascii(ctx, image);
   if (!ascii) {
     log_warn("session_display_encode_frame: Failed to convert image to ASCII");
-    return;
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording frame to ASCII");
   }
 
   // Write the same selected visualization used by the terminal to the render-file encoder.
@@ -1018,6 +1030,7 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
   }
 
   SAFE_FREE(ascii);
+  return fe;
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {

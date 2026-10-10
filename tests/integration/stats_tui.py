@@ -98,6 +98,12 @@ class Pane:
         tmux("resize-window", "-t", self.name, "-x", 110, "-y", 54)
         wait(lambda: "LIVE STATS" in self.text())
 
+    def wait_media(self):
+        # Wait for real media rather than sending input during connection prompts.
+        wait(lambda: sum(len(line) > 70 and not any(c.isspace() for c in line)
+                         for line in self.text().splitlines()) >= 20)
+        time.sleep(0.5)
+
     def open(self):
         self.key("=")
         wait(lambda: "LIVE STATS" in self.text())
@@ -226,7 +232,7 @@ def main():
                 "20",
             ],
         )
-        time.sleep(5)
+        client.wait_media()
         client.open()
         wait(
             lambda: metric(client, "frames_received")
@@ -274,7 +280,7 @@ def main():
                 "20",
             ],
         )
-        time.sleep(5)
+        ws.wait_media()
         ws.open()
         wait(
             lambda: metric(ws, "frames_received")

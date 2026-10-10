@@ -172,6 +172,9 @@ void session_display_set_global_context_public(session_display_ctx_t *ctx);
  *
  * @ingroup session
  */
+asciichat_error_t session_display_finish_render_file(session_display_ctx_t *ctx);
+void session_display_begin_drain(session_display_ctx_t *ctx, uint64_t total, bool total_known);
+
 void session_display_destroy(session_display_ctx_t *ctx);
 
 /**
@@ -383,7 +386,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *frame_d
  *
  * @ingroup session
  */
-void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns);
+asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns);
 
 /**
  * @brief Render an ASCII frame to the terminal

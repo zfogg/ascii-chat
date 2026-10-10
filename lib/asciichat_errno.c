@@ -4,6 +4,8 @@
  * @brief 🚨 Custom error code system with formatted messages, thread-local storage, and errno mapping
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -264,30 +266,21 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   (void)line;
   (void)function;
 
-  // Print library error context if available
-  asciichat_error_context_t err_ctx;
-  if (HAS_ERRNO(&err_ctx)) {
-    log_labeled("\nasciichat_errno: libary code error context", LOG_COLOR_ERROR, "");
+  asciichat_error_context_t err_ctx = {0};
+  bool has_context = HAS_ERRNO(&err_ctx);
+  va_list args;
+  va_start(args, format);
+  char *message = format ? format_message(format, args) : NULL;
+  va_end(args);
+  NOTICE(FATAL, "FATAL ERROR", "%s\nExit code: %d (%s)%s%s", message ? message : "Operation failed", (int)code,
+         asciichat_error_string(code), has_context ? "\nDetails: " : "",
+         has_context && err_ctx.context_message ? err_ctx.context_message : "");
+  SAFE_FREE(message);
+  if (has_context)
     asciichat_print_error_context(&err_ctx);
-  } else {
-    log_plain("WARNING: No error context found (asciichat_errno_context.code=%d)", asciichat_errno_context.code);
-  }
-
-  safe_fprintf(stderr, "\n");
-  log_labeled("FATAL ERROR", LOG_COLOR_FATAL, "exit code %d (%s)", (int)code, asciichat_error_string(code));
 #ifndef NDEBUG
-  const char *relative_file = extract_project_relative_path(file);
-  log_plain("  Location: %s:%d in %s()", relative_file, line, function);
+  log_plain("Location: %s:%d in %s()", extract_project_relative_path(file), line, function);
 #endif
-
-  if (format) {
-    va_list args;
-    va_start(args, format);
-    char *formatted_message = format_message(format, args);
-    log_plain("  Error message: %s", formatted_message);
-    SAFE_FREE(formatted_message);
-    va_end(args);
-  }
 
 #ifndef NDEBUG
   // Always print platform backtrace in debug/dev builds

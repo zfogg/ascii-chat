@@ -820,6 +820,9 @@ cleanup:
   session_display_ctx_t *current_global = session_display_get_global_context();
   if (display && display == current_global) {
     // Display is still valid (not destroyed by discovery mode)
+    asciichat_error_t finish_err = session_display_finish_render_file(display);
+    if (result == ASCIICHAT_OK)
+      result = finish_err;
     session_display_destroy(display);
     display = NULL;
   } else if (display && display != current_global) {

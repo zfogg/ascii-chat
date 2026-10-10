@@ -4,6 +4,8 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/regex.h>
@@ -1012,8 +1014,9 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   struct stat st;
   if (stat(validated_path, &st) == 0) {
     if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
-      log_error("SSH key file %s has overly permissive permissions: %o", key_path, st.st_mode & 0777);
-      log_error("Run 'chmod 600 %s' to fix this", key_path);
+      NOTICE(DANGER, "UNSAFE PRIVATE KEY PERMISSIONS",
+             "SSH key file %s has overly permissive permissions: %o.\nRun chmod 600 on this key file before retrying.",
+             key_path, st.st_mode & 0777);
       SAFE_FREE(normalized_path);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key file has overly permissive permissions: %s", key_path);
     }

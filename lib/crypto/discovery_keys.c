@@ -7,6 +7,8 @@
  * @date January 2026
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/known_hosts.h>
 
@@ -240,24 +242,6 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
-  const char *warning_msg = "\n"
-                            "⚠️  WARNING: ACDS SERVER KEY HAS CHANGED\n"
-                            "═══════════════════════════════════════════════════════════════\n"
-                            "Server: %s\n"
-                            "\n"
-                            "Old key (SHA256): %s\n"
-                            "New key (SHA256): %s\n"
-                            "\n"
-                            "This could indicate:\n"
-                            "  1. The server operator rotated their key\n"
-                            "  2. A man-in-the-middle attack is in progress\n"
-                            "\n"
-                            "Verify the new key fingerprint with the server operator before accepting.\n"
-                            "═══════════════════════════════════════════════════════════════\n";
-
-  // Log to both stderr (via log_warn) and file log
-  log_warn(warning_msg, acds_server, old_fingerprint, new_fingerprint);
-
   // Ask user to confirm
   char question[2048];
   safe_snprintf(question, sizeof(question),
@@ -265,7 +249,7 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
                 "This may indicate key rotation or a man-in-the-middle attack.\n"
                 "Verify the new fingerprint with the operator before accepting.\n\nAccept new ACDS server key",
                 acds_server, old_fingerprint, new_fingerprint);
-  bool accepted = platform_prompt_yes_no_timeout(question, false, 120);
+  bool accepted = ui_notice_confirm(UI_NOTICE_DANGER, question, 120);
   if (!accepted) {
     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "User rejected ACDS key change for: %s", acds_server);
   }

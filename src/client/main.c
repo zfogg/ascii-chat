@@ -63,6 +63,9 @@
  * @version 2.0
  */
 
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/ui/controller.h>
+
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
@@ -374,7 +377,7 @@ static int initialize_client_systems(void) {
   // Timed recordings capture call audio; immediate snapshots need only one frame.
   if (GET_OPTION(audio_enabled) && (!GET_OPTION(snapshot_mode) || GET_OPTION(snapshot_delay) > 0)) {
     if (audio_client_init() != 0) {
-      log_warn("Failed to initialize audio system");
+      NOTICE(WARNING, "AUDIO UNAVAILABLE", "Failed to initialize audio system");
       // Continue without audio instead of crashing (e.g., ARM systems with audio device incompatibility)
     }
 
@@ -484,7 +487,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     // (even though protocol_start_connection was never called)
     audio_stop_thread();
     // Framework will handle retry based on config
-    log_error("Connection attempt failed");
+    NOTICE(WARNING, "CONNECTION FAILED", "Connection attempt failed");
     return connection_result;
   }
 
@@ -736,10 +739,12 @@ int client_main(void) {
         log_lock_terminal();
 
         // Log single message with embedded newlines to prevent multiple log entries
-        log_error("No ascii-chat servers found on the local network.\nUse 'ascii-chat client <address>' to connect "
-                  "manually.");
+        NOTICE(WARNING, "NO SERVERS FOUND",
+               "No ascii-chat servers found on the local network.\nUse 'ascii-chat client <address>' to connect "
+               "manually.");
 
         // Exit without cleanup
+        ui_controller_finish(STDERR_FILENO, "", 0);
         platform_force_exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)
