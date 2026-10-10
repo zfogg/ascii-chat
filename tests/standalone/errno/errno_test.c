@@ -9,6 +9,17 @@
 #include <assert.h>
 #include <string.h>
 
+#ifdef _WIN32
+// SDK codes remain available alongside the application error enum.
+static_assert(WIN32_ERROR_BUFFER_OVERFLOW == 111);
+static_assert(WIN32_ERROR_INVALID_STATE == 5023);
+static_assert(WIN32_ERROR_FILE_NOT_FOUND == 2);
+static_assert(WIN32_ERROR_NOT_SUPPORTED == 50);
+static_assert(WIN32_ERROR_INVALID_PASSWORD == 86);
+static_assert(WIN32_ERROR_NOT_FOUND == 1168);
+static_assert(ERROR_INVALID_STATE != WIN32_ERROR_INVALID_STATE);
+#endif
+
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
     if (!(expr))                                                                                                       \

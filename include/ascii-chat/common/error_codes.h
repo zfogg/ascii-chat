@@ -28,14 +28,9 @@
 
 #include <stdint.h>
 
-/* Undefine Windows macros that conflict with our enum values */
+// Preserve Windows error values and remove conflicting macros before the enum.
 #ifdef _WIN32
-#undef ERROR_BUFFER_OVERFLOW
-#undef ERROR_INVALID_STATE
-#undef ERROR_FILE_NOT_FOUND
-#undef ERROR_NOT_SUPPORTED
-#undef ERROR_INVALID_PASSWORD
-#undef ERROR_NOT_FOUND
+#include <ascii-chat/platform/windows_compat.h>
 #endif
 
 /**
