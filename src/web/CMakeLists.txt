@@ -220,6 +220,9 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/rgba/video_frame.c
     ${LIB_ROOT}/video/ascii/palette.c
     ${LIB_ROOT}/video/ascii/output_buffer.c
+    ${LIB_ROOT}/video/ascii/sgr.c
+    ${LIB_ROOT}/video/ascii/simd/dispatch.c
+    ${LIB_ROOT}/platform/cpu.c
     ${LIB_ROOT}/video/ascii/common.c
     ${LIB_ROOT}/video/ascii/scalar/background.c
     ${LIB_ROOT}/video/ascii/scalar/foreground.c
