@@ -35,7 +35,7 @@ export function Footer() {
         </>
       }
       authorLinkColor="text-terminal-cyan hover:text-terminal-brightCyan"
-      className="border-t border-terminal-8 pt-6 md:pt-8 text-terminal-8 mt-auto mb-8"
+      className="relative before:absolute before:inset-x-0 before:-top-[10px] before:border-t before:border-terminal-8 pt-6 md:pt-8 text-terminal-8 mt-auto mb-8"
     />
   );
 }

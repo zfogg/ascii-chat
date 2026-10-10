@@ -9,6 +9,7 @@ export interface PageControlBarProps {
   dimensions?: { cols: number; rows: number } | undefined;
   fps?: number | undefined;
   targetFps?: number | undefined;
+  showBandwidth?: boolean | undefined;
   isWebcamRunning?: boolean | undefined;
   mediaSource?: MediaSource | undefined;
   onStartWebcam?: (() => void) | undefined;
@@ -33,6 +34,7 @@ export function PageControlBar({
   dimensions,
   fps,
   targetFps,
+  showBandwidth = true,
   isWebcamRunning = false,
   mediaSource,
   onStartWebcam,
@@ -109,7 +111,7 @@ export function PageControlBar({
               {targetFps && ` / ${targetFps}`}
             </span>
           )}
-          {fps !== undefined && <BandwidthMeter />}
+          {fps !== undefined && showBandwidth && <BandwidthMeter />}
           {statusControls && (
             <div className="flex items-center gap-2">{statusControls}</div>
           )}

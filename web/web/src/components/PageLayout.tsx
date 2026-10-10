@@ -46,7 +46,7 @@ export function PageLayout({
   }, [videoRef]);
 
   return (
-    <div className="flex-1 min-h-0 bg-terminal-bg text-terminal-fg flex flex-col [&_.ascii-canvas-container]:[contain:size] [&_.ascii-canvas-container]:justify-end">
+    <div className="flex-1 min-h-0 bg-terminal-bg text-terminal-fg flex flex-col pb-[25px] [&_.ascii-canvas-container]:[contain:size] [&_.ascii-canvas-container]:justify-end">
       {/* Hidden video and canvas for capture */}
       <div
         style={{

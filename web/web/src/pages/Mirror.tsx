@@ -277,6 +277,7 @@ export function MirrorPage() {
               dimensions: terminalDimensions,
               fps,
               targetFps: settings.targetFps,
+              showBandwidth: false,
               isWebcamRunning,
               mediaSource,
               onStartWebcam: startWebcam,
