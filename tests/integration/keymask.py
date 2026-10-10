@@ -66,24 +66,22 @@ def identity(native, key, art=True, unicode=False, cols=80):
 
 
 def check_core(native, directory):
-    border = "+" + "-" * 32 + "+\n"
-    zero = render(native, bytes(32))
-    assert zero == border + ("|" + " " * 32 + "|\n") * 16 + border
-    assert render(native, b"\xff" * 32) == border + ("|" + "#" * 32 + "|\n") * 16 + border
-    assert len(render(native, b"\xff" * 32, True).encode()) == 1654
-    # Exhaust all 256 positions: each digest bit must occupy one unique mirrored pair.
+    # Deterministic masks, full-input sensitivity, geometry and encoding parity.
     pictures = set()
     for bit in range(256):
         digest = (1 << (255 - bit)).to_bytes(32, "big")
         art = render(native, digest)
-        rows = art.splitlines()[1:-1]
-        assert all(row == row[::-1] for row in rows)
-        cells = [(r, c) for r, row in enumerate(rows) for c, ch in enumerate(row[1:-1]) if ch == "#"]
-        row, col = divmod(bit, 16)
-        assert cells == [(row, col), (row, 31 - col)]
-        pictures.add(art)
+        assert render(native, digest) == art
+        rows = art.splitlines()
+        assert len(rows) == 18 and all(len(row) == 34 for row in rows)
+        assert rows[0] == rows[-1] == "+" + "-" * 32 + "+"
+        assert all(row.startswith("|") and row.endswith("|") for row in rows[1:-1])
         assert render(native, digest, True).replace("█", "#") == art
+        assert len(render(native, digest, True).encode()) < 1655
+        pictures.add(art)
     assert len(pictures) == 256
+    golden = Path(__file__).with_name("keymask-v2-zero.txt").read_text(encoding="utf-8")
+    assert render(native, bytes(32)) == golden
 
     # Reject undersized buffers before writing beyond them; exact-size buffers work.
     for unicode in (False, True):
@@ -130,13 +128,13 @@ def check_core(native, directory):
         key = PublicKey()
         assert native.parse_public_key(source, C.byref(key)) == 0
         assert bytes(key.key) == data
-        imported.append(identity(native, key).split("Keymask v1 / SHA-256\n")[1])
+        imported.append(identity(native, key).split("Keymask v2 / SHA-256\n")[1])
     assert len(set(imported)) == 1
     for kind in (1, 2, 3):
         key = public_key(data, kind)
         text = identity(native, key)
         assert "SHA256:" + hashlib.sha256(data).hexdigest() in text
-        assert text.split("Keymask v1 / SHA-256\n")[1] == imported[0]
+        assert text.split("Keymask v2 / SHA-256\n")[1] == imported[0]
         assert "Keymask" not in identity(native, key, cols=33)
         assert "Keymask" in identity(native, key, cols=34)
         assert "Keymask" not in identity(native, key, art=False)
@@ -163,7 +161,7 @@ def check_core(native, directory):
     assert not native.display_mitm_warning(host, port, None, other)
     trust_path.write_text(first_entry + f"127.0.0.234:54321 ssh-ed25519 {other.hex()} fixture\n", encoding="utf-8")
     assert native.check_known_host_with_key(host, port, other, stored, C.byref(found)) == 1
-    print("PASS: vectors, all 256 bits, UTF-8 parity, bounds, SHA-256, imports, narrow layout and trust decisions", flush=True)
+    print("PASS: v2 golden vector, 256 single-bit mutations, UTF-8 parity, bounds, SHA-256, imports, narrow layout and trust decisions", flush=True)
 
 
 def contact_sheet(native, destination):
@@ -174,7 +172,7 @@ def contact_sheet(native, destination):
     draw = ImageDraw.Draw(image)
     for i in range(36):
         digest = hashlib.sha256(f"keymask-contact-sheet-{i}".encode()).digest()
-        text = f"Keymask v1  /  sample {i + 1:02}\n" + render(native, digest) + digest.hex()[:32]
+        text = f"Keymask v2  /  sample {i + 1:02}\n" + render(native, digest) + digest.hex()[:32]
         draw.multiline_text(((i % 6) * 280 + 14, (i // 6) * 300 + 12), text, font=font, fill="#d8e9e8", spacing=0)
     image.save(destination)
     print(f"Contact sheet: {destination}")
@@ -207,16 +205,16 @@ def check_terminal(args):
     for mode, expected in (("auto", False), ("on", True), ("off", False)):
         result = subprocess.run(command + ["--probe", "format", "--art", mode], capture_output=True, text=True, encoding="utf-8", timeout=30)
         assert result.returncode == 0, result.stderr
-        assert ("Keymask v1" in result.stdout) == expected
+        assert ("Keymask v2" in result.stdout) == expected
         assert "SHA256:" in result.stdout
     for cols, rows, mode, expected in ((80, 40, "auto", True), (38, 40, "auto", False), (80, 40, "off", False)):
         terminal = Terminal(command + ["--probe", "notice", "--art", mode], rows=rows, cols=cols)
         try:
             text = terminal.expect(lambda text: "SHA256:" in text, "identity notice")
-            assert ("Keymask v1" in text) == expected, text
+            assert ("Keymask v2" in text) == expected, text
             if expected:
                 mask_rows = [line for line in text.splitlines() if "|" in line and ("█" in line or "#" in line)]
-                assert len(mask_rows) == 16, text
+                assert len(mask_rows) >= 10, text
             terminal.pump(3.5)
         finally:
             terminal.close()
@@ -224,7 +222,7 @@ def check_terminal(args):
         terminal = Terminal(command + ["--probe", "prompt", "--art", "auto"], rows=rows, cols=80)
         try:
             text = terminal.expect(lambda text: "continue connecting" in text, "unknown-host prompt")
-            assert ("Keymask v1" in text) == expected, text
+            assert ("Keymask v2" in text) == expected, text
             terminal.write("n\r")
             terminal.expect(lambda text: "PROMPT_RESULT=0" in text, "TOFU rejection")
         finally:
@@ -266,13 +264,13 @@ def check_live(binary, directory):
             client_text = client.stdout + client.stderr
             assert client.returncode == 0, client_text
             assert "UNVERIFIED SERVER PUBLIC IDENTITY" in client_text, client_text
-            assert "Keymask v1" in client_text, client_text
-            assert "Keymask v1" not in client.stdout, "Identity art must not contaminate snapshot stdout"
+            assert "Keymask v2" in client_text, client_text
+            assert "Keymask v2" not in client.stdout, "Identity art must not contaminate snapshot stdout"
             assert "SHA256:" + hashlib.sha256(raw_server).hexdigest() in client_text, client_text
             server_text = server_output.read_text(encoding="utf-8", errors="replace")
             assert "AUTHENTICATED CLIENT PUBLIC IDENTITY" in server_text, server_text
             assert "SHA256:" + hashlib.sha256(raw_client).hexdigest() in server_text, server_text
-            assert "Keymask v1" in server_text, server_text
+            assert "Keymask v2" in server_text, server_text
         finally:
             server.terminate()
             server.wait(timeout=10)

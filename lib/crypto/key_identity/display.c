@@ -41,7 +41,7 @@ asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool un
   bool show = art && cols >= KEYMASK_WIDTH;
   if (show && (result = keymask_render(digest, unicode, mask, sizeof(mask))) != ASCIICHAT_OK)
     return result;
-  const char *heading = show ? "Keymask v1 / SHA-256\n" : "";
+  const char *heading = show ? "Keymask v2 / SHA-256\n" : "";
   size_t needed = strlen(type) + strlen(" public key\n") + strlen(heading) + strlen(mask) + strlen("SHA256:") + 64 + 2;
   if (size < needed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Identity output needs %zu bytes", needed);

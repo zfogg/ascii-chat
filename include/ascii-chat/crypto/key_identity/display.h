@@ -5,7 +5,7 @@
 
 #define KEY_IDENTITY_BUFFER_SIZE 2048
 
-/** Format public identity with full fingerprint and optional Keymask v1.
+/** Format public identity with full fingerprint and optional Keymask v2.
  * cols is the available content width; insufficient width suppresses the art.
  */
 asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out,

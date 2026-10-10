@@ -14,8 +14,8 @@
 /** SHA-256 of the 32 public-key bytes, independent of key source or encoding. */
 asciichat_error_t key_fingerprint_digest(const uint8_t public_key[32], uint8_t digest[KEYMASK_DIGEST_SIZE]);
 
-/** Keymask v1: row-major, MSB-first 16x16 digest bitmap, mirrored to 32x16.
- * ASCII and UTF-8 represent the same bits. No terminal I/O or allocations.
- * Different digests have different exact images, not necessarily distinct-looking images.
+/** Keymask v2: domain-separated constructed mask from the public-key digest.
+ * ASCII and UTF-8 represent the same geometry. No terminal I/O or allocations.
+ * This is a recognition aid; exact and perceptual collisions are possible.
  */
 asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool unicode, char *out, size_t size);
