@@ -91,6 +91,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/named.h> // For NAMED_REGISTER_ATOMIC macro
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
@@ -134,6 +135,15 @@ static acip_transport_t *g_client_transport = NULL;
  * @ingroup client_connection
  */
 static atomic_t g_connection_active = {0};
+
+// Publish a remote rejection from the receive worker to the reconnect owner.
+static atomic_t g_remote_error = {0};
+void server_connection_set_remote_error(asciichat_error_t code) {
+  atomic_store_int(&g_remote_error, code);
+}
+asciichat_error_t server_connection_get_remote_error(void) {
+  return (asciichat_error_t)atomic_load_int(&g_remote_error);
+}
 
 /**
  * @brief Atomic flag indicating if connection loss was detected
@@ -487,7 +497,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     char my_display_name[MAX_DISPLAY_NAME_LEN];
     int pid = getpid();
     SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
-    if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
+    if (threaded_send_client_join_packet(my_display_name, my_capabilities) != ASCIICHAT_OK) {
       log_error("Failed to send client join packet: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
@@ -573,8 +583,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     g_client_transport = NULL;
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    FATAL(handshake_result,
-          "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
+    return -1; // Preserve the handshake cause for the connection owner.
   }
   ASSERT_NO_ERRNO_SINCE(handshake_scope);
   asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
@@ -636,7 +645,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   int pid = getpid();
   SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
 
-  if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
+  if (threaded_send_client_join_packet(my_display_name, my_capabilities) != ASCIICHAT_OK) {
     log_error("Failed to send client join packet: %s", network_error_string());
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
@@ -1012,8 +1021,9 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed, calling server_connection_lost()");
-    server_connection_lost();
+    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed");
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
     return result;
   }
 
@@ -1034,14 +1044,14 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
   if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get transport reference - transport has its own internal synchronization
@@ -1055,11 +1065,12 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    server_connection_lost();
-    return -1;
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
+    return result;
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -1119,7 +1130,8 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    server_connection_lost();
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
     return result;
   }
 
@@ -1164,7 +1176,8 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    server_connection_lost();
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
     return result;
   }
 
@@ -1208,7 +1221,8 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    server_connection_lost();
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
     return result;
   }
 
@@ -1300,7 +1314,8 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    server_connection_lost();
+    if (!network_error_is_local_rejection(result))
+      server_connection_lost();
     return result;
   }
 
@@ -1314,7 +1329,7 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
  *
  * @ingroup client_connection
  */
-int threaded_send_ping_packet(void) {
+asciichat_error_t threaded_send_ping_packet(void) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
   return threaded_send_packet(PACKET_TYPE_PING, NULL, 0);
 }
@@ -1326,7 +1341,7 @@ int threaded_send_ping_packet(void) {
  *
  * @ingroup client_connection
  */
-int threaded_send_pong_packet(void) {
+asciichat_error_t threaded_send_pong_packet(void) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
   return threaded_send_packet(PACKET_TYPE_PONG, NULL, 0);
 }
@@ -1466,7 +1481,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
  *
  * @ingroup client_connection
  */
-int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
+asciichat_error_t threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally

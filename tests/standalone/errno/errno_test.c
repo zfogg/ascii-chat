@@ -6,6 +6,9 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
 #include <assert.h>
 #include <string.h>
 
@@ -25,6 +28,73 @@ static_assert(ERROR_INVALID_STATE != WIN32_ERROR_INVALID_STATE);
     if (!(expr))                                                                                                       \
       FATAL(ERROR_ASSERTION_FAILED, "Test failed: %s at line %d", #expr, __LINE__);                                    \
   } while (0)
+
+static asciichat_error_t capture_public_error(acip_transport_t *transport, const void *data, size_t len) {
+  (void)transport;
+  CHECK(len > sizeof(packet_header_t));
+  asciichat_error_t code;
+  char message[MAX_ERROR_MESSAGE_LENGTH + 1];
+  CHECK(packet_parse_error_message((const uint8_t *)data + sizeof(packet_header_t), len - sizeof(packet_header_t),
+                                   &code, message, sizeof(message), NULL) == ASCIICHAT_OK);
+  CHECK(code == ERROR_INTERNAL);
+  CHECK(strcmp(message, asciichat_error_string(ERROR_INTERNAL)) == 0);
+  return ASCIICHAT_OK;
+}
+static int fake_send_calls;
+static asciichat_error_t failing_send(acip_transport_t *transport, const void *data, size_t len) {
+  (void)transport;
+  (void)data;
+  (void)len;
+  ++fake_send_calls;
+  SET_ERRNO(ERROR_MEMORY, "failure after transport dispatch");
+  return SET_ERRNO(ERROR_NETWORK, "Delivery may be partial");
+}
+static void network_recovery_contract(void) {
+  const asciichat_error_t expected[] = {ERROR_INTERNAL,          ERROR_SESSION_NOT_FOUND,  ERROR_SESSION_FULL,
+                                        ERROR_INVALID_PASSWORD,  ERROR_INVALID_SIGNATURE,  ERROR_RATE_LIMITED,
+                                        ERROR_ACDS_STRING_TAKEN, ERROR_ACDS_STRING_INVALID};
+  for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); ++i) {
+    acip_error_t wire = {.error_code = (uint8_t)i};
+    memset(wire.error_message, 'x', sizeof(wire.error_message));
+    CLEAR_ERRNO_ALL();
+    CHECK(network_error_decode(PACKET_TYPE_ACIP_ERROR, &wire, sizeof(wire)) == expected[i]);
+    CHECK(HAS_ERRNO_CODE(expected[i]));
+    asciichat_error_context_t context;
+    CHECK(HAS_ERRNO(&context));
+    CHECK(strstr(context.context_message, "xxxx") == NULL);
+    CHECK(network_error_decode(PACKET_TYPE_ACIP_ERROR, &wire, sizeof(wire) - 1) == ERROR_NETWORK_PROTOCOL);
+  }
+  CLEAR_ERRNO_ALL();
+  SET_ERRNO(ERROR_SESSION_FULL, "original admission failure");
+  asciichat_error_context_t admission;
+  CHECK(HAS_ERRNO(&admission));
+  asciichat_errno_scope_t notify = asciichat_errno_scope_begin();
+  CHECK(packet_send_error(INVALID_SOCKET_VALUE, NULL, ERROR_SESSION_FULL, "Session full") != ASCIICHAT_OK);
+  asciichat_errno_scope_end(notify, ASCIICHAT_ERRNO_HANDLED);
+  asciichat_error_context_t preserved;
+  CHECK(HAS_ERRNO(&preserved) && preserved.error_id == admission.error_id);
+  CHECK(network_error_from_acip(255) == ERROR_INTERNAL);
+  CHECK(network_error_public_code(ERROR_FILE_NOT_FOUND) == ERROR_INTERNAL);
+  CHECK(network_error_action(ERROR_INVALID_PASSWORD) == NETWORK_ERROR_STOP);
+  CHECK(network_error_action(ERROR_CRYPTO_AUTH) == NETWORK_ERROR_STOP);
+  CHECK(network_error_action(ERROR_NETWORK_PROTOCOL) == NETWORK_ERROR_STOP);
+  CHECK(network_error_action(ERROR_SESSION_FULL) == NETWORK_ERROR_RETRY);
+  CHECK(network_error_action(ERROR_RATE_LIMITED) == NETWORK_ERROR_RETRY);
+  CHECK(network_error_action(ERROR_AUDIO) == NETWORK_ERROR_CONTINUE);
+  CHECK(network_error_is_local_rejection(ERROR_MEMORY));
+  CHECK(!network_error_is_local_rejection(ERROR_NETWORK));
+  CHECK(!network_error_is_local_rejection(ERROR_CRYPTO));
+  acip_transport_methods_t methods = {.send = failing_send};
+  acip_transport_t transport = {.methods = &methods};
+  CHECK(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 30 * 1024 * 1024, 0) == ERROR_INVALID_PARAM);
+  CHECK(fake_send_calls == 0);
+  CHECK(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 0, 0) == ERROR_NETWORK);
+  CHECK(fake_send_calls == 1);
+  methods.send = capture_public_error;
+  CHECK(acip_send_error(&transport, ERROR_FILE_NOT_FOUND, "private/path and subprocess details") == ASCIICHAT_OK);
+  CHECK(GET_ERRNO() == ERROR_NETWORK && HAS_ERRNO_CODE(ERROR_MEMORY));
+  CLEAR_ERRNO_ALL();
+}
 
 static void stack_contract(void) {
   CLEAR_ERRNO_ALL();
@@ -278,6 +348,7 @@ int main(int argc, char **argv) {
     ASSERT_NO_ERRNO_SINCE(scope);
     return 0;
   }
+  network_recovery_contract();
   stack_contract();
   scopes_and_history();
   capacity_contract();

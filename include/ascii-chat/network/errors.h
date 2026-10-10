@@ -19,6 +19,16 @@
 extern "C" {
 #endif
 
+/** True only for local packet construction failures that have not reached transport I/O. */
+bool network_error_is_local_rejection(asciichat_error_t code);
+/** Allowlisted public application code; internal failures become ERROR_INTERNAL. */
+asciichat_error_t network_error_public_code(asciichat_error_t code);
+asciichat_error_t network_error_from_acip(uint8_t code);
+/** Decode either discovery or application error packets with bounded payload validation. */
+asciichat_error_t network_error_decode(packet_type_t type, const void *payload, size_t size);
+typedef enum { NETWORK_ERROR_RETRY, NETWORK_ERROR_STOP, NETWORK_ERROR_CONTINUE } network_error_action_t;
+network_error_action_t network_error_action(asciichat_error_t code);
+
 /**
  * @brief Send an ACIP error packet using asciichat_error_t
  *
@@ -32,14 +42,14 @@ extern "C" {
 asciichat_error_t send_error_packet(socket_t sockfd, asciichat_error_t error_code);
 
 /**
- * @brief Send an ACIP error packet with custom message
+ * @brief Send an ACIP error packet with a public message
  *
- * Converts an asciichat_error_t code to an ACIP error packet with a
- * custom error message.
+ * Maps application codes to discovery wire codes and uses their fixed public text.
+ * The legacy message argument is ignored to avoid exposing internal diagnostics.
  *
  * @param sockfd Socket to send error on
  * @param error_code Error code from asciichat_error_t enum
- * @param message Custom error message (max 255 chars)
+ * @param message Legacy argument, ignored
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t error_code, const char *message);

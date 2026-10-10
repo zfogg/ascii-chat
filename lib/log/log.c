@@ -1536,11 +1536,14 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
 
   va_list args_copy;
   va_copy(args_copy, args);
+  asciichat_errno_scope_t format_scope = asciichat_errno_checkpoint();
   char *formatted = format_message(fmt, args_copy);
   va_end(args_copy);
 
   if (!formatted) {
-    asciichat_error_t current_error = GET_ERRNO();
+    asciichat_error_context_t current;
+    asciichat_error_t current_error =
+        HAS_ERRNO(&current) && current.error_id > format_scope.after_id ? current.code : ASCIICHAT_OK;
     if (current_error == ASCIICHAT_OK) {
       current_error = SET_ERRNO(ERROR_MEMORY, "Failed to format network log message");
     }

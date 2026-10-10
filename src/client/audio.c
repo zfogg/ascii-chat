@@ -1,3 +1,4 @@
+#include <ascii-chat/network/errors.h>
 /**
  * @file client/audio.c
  * @ingroup client_audio
@@ -308,15 +309,23 @@ static void *audio_sender_thread_func(void *arg) {
     mutex_unlock(&g_audio_send_queue_mutex);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
+    asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
     START_TIMER("network_send_audio");
     asciichat_error_t send_result =
         threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count);
     double send_time_ns = STOP_TIMER("network_send_audio");
 
     send_count++;
-    if (send_result < 0) {
-      log_debug_every(LOG_RATE_VERY_FAST, "Failed to send audio packet");
-    } else if (send_count % 50 == 0) {
+    if (send_result != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("Failed to send audio packet");
+      if (!network_error_is_local_rejection(send_result))
+        break;
+      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+    } else {
+      ASSERT_NO_ERRNO_SINCE(send_scope);
+      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
+    if (send_result == ASCIICHAT_OK && send_count % 50 == 0) {
       char duration_str[32];
       time_pretty((uint64_t)(send_time_ns), -1, duration_str, sizeof(duration_str));
       log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,

@@ -70,7 +70,7 @@ def main():
     with (logs / "server-output.log").open("wb") as output:
         server = subprocess.Popen(command("server", ["server", "127.0.0.1", "--port", port,
                                   "--websocket-port", unused_port(), "--password", "errno-test-secret",
-                                  "--status-screen=false"]), env=env, stdout=output, stderr=output)
+                                  "--status-screen=false", "--max-clients", "1"]), env=env, stdout=output, stderr=output)
         try:
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
@@ -84,6 +84,27 @@ def main():
                     "wrong-test-secret", "--test-pattern", *snapshot], 62)
                 assert server.poll() is None, "One client's authentication failure stopped the server"
             print("PASS server survives repeated authentication failures", flush=True)
+            # Keep an authenticated client active while testing the capacity rejection.
+            with (logs / "holder-output.log").open("wb") as holder_output:
+                holder = subprocess.Popen(command("holder", ["client", f"127.0.0.1:{port}",
+                    "--password", "errno-test-secret", "--test-pattern", "--video-codec", "raw",
+                    "--width", "20", "--height", "10", "--splash-screen=false", "--audio=false"]),
+                    env=env, stdout=holder_output, stderr=holder_output)
+                try:
+                    deadline = time.monotonic() + 15
+                    while time.monotonic() < deadline:
+                        assert holder.poll() is None, ("holder exited", logs)
+                        holder_log = logs / "holder.log"
+                        if holder_log.exists() and "Connected" in holder_log.read_text(encoding="utf-8", errors="replace"):
+                            break
+                        time.sleep(0.1)
+                    run("session-full", ["client", f"127.0.0.1:{port}", "--password",
+                        "errno-test-secret", "--test-pattern", "--video-codec", "raw", *snapshot], 48)
+                finally:
+                    holder.terminate()
+                    holder.wait(timeout=10)
+            time.sleep(1)
+            assert server.poll() is None, "Admission rejection stopped the server"
             run("authenticated-client", ["client", f"127.0.0.1:{port}", "--password",
                 "errno-test-secret", "--test-pattern", "--video-codec", "raw",
                 *snapshot, "--snapshot-delay", "0"], 0)

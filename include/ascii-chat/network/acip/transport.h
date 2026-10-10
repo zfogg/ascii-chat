@@ -252,6 +252,8 @@ static inline asciichat_error_t acip_transport_send(acip_transport_t *transport,
   if (!transport || !transport->methods || !transport->methods->send) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
+  // Implementations preserve local construction errors; failures after transmission
+  // begins must return ERROR_NETWORK because framing may have been consumed.
   return transport->methods->send(transport, data, len);
 }
 

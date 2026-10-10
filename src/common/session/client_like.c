@@ -350,6 +350,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
       probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
       if (probe_source) {
+        ASSERT_NO_ERRNO_SINCE(probe_scope);
+        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
         double url_fps = media_source_get_video_fps(probe_source);
         log_info("Detected HTTP stream video FPS: %.1f", url_fps);
         if (url_fps > 0.0) {
@@ -379,6 +381,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
         probe_source = media_source_create(MEDIA_SOURCE_STDIN, NULL);
         if (probe_source) {
+          ASSERT_NO_ERRNO_SINCE(probe_scope);
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
           double stdin_fps = media_source_get_video_fps(probe_source);
           log_info("Detected stdin video FPS: %.1f", stdin_fps);
           capture_config.target_fps = stdin_fps > 0.0 ? (uint32_t)(stdin_fps + 0.5) : 60;
@@ -404,6 +408,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
         probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
         if (probe_source) {
+          ASSERT_NO_ERRNO_SINCE(probe_scope);
+          asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
           double file_fps = media_source_get_video_fps(probe_source);
           log_info("Detected file video FPS: %.1f", file_fps);
           if (file_fps > 0.0) {
@@ -777,8 +783,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Apply reconnection delay if configured
     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
-    if (config->reconnect_delay_ms > 0) {
-      unsigned int remaining_ms = config->reconnect_delay_ms;
+    unsigned int retry_delay_ms = config->reconnect_delay_ms;
+    if (result == ERROR_RATE_LIMITED || result == ERROR_SESSION_FULL) {
+      unsigned int exponent = attempt > 5 ? 5 : (unsigned int)attempt;
+      unsigned int rejection_delay_ms = 1000U << exponent;
+      if (retry_delay_ms < rejection_delay_ms)
+        retry_delay_ms = rejection_delay_ms;
+    }
+    if (retry_delay_ms > 0) {
+      unsigned int remaining_ms = retry_delay_ms;
       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
 
       while (remaining_ms > 0 && !APP_CALLBACK_BOOL(should_exit)) {

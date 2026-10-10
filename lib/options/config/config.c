@@ -1176,9 +1176,9 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
-  if (!strict)
-    asciichat_errno_scope_end(schema_scope, ASCIICHAT_ERRNO_DISMISSED);
-  ASSERT_NO_ERRNO_SINCE(schema_scope);
+  if (strict && schema_result == ASCIICHAT_OK)
+    ASSERT_NO_ERRNO_SINCE(schema_scope);
+  asciichat_errno_scope_end(schema_scope, ASCIICHAT_ERRNO_DISMISSED);
   // In non-strict mode, continue even if some options failed validation
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
@@ -1197,8 +1197,10 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     // Non-fatal - RCU might not be initialized yet in some test scenarios
     // But log as warning so tests can see if this is the issue
     CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
-    asciichat_errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
+  } else {
+    ASSERT_NO_ERRNO_SINCE(rcu_scope);
   }
+  asciichat_errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
 
   toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
@@ -1615,6 +1617,9 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
         asciichat_errno_scope_end(load_scope, ASCIICHAT_ERRNO_DISMISSED);
         ASSERT_NO_ERRNO_SINCE(load_scope);
       }
+    } else {
+      ASSERT_NO_ERRNO_SINCE(load_scope);
+      asciichat_errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
     }
   }
 

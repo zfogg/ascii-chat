@@ -1,3 +1,4 @@
+#include <ascii-chat/network/errors.h>
 /**
  * @file client/capture.c
  * @ingroup client_capture
@@ -287,6 +288,7 @@ static void *webcam_capture_thread_func(void *arg) {
       log_debug("Requesting H.265 keyframe for encoder flush");
     }
 
+    asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
     asciichat_error_t send_result;
     if (use_hevc) {
       asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
@@ -321,6 +323,12 @@ static void *webcam_capture_thread_func(void *arg) {
     }
     uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
 
+    if (send_result != ASCIICHAT_OK && network_error_is_local_rejection(send_result)) {
+      LOG_ERRNO_IF_SET("Dropping locally rejected video frame");
+      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+      image_destroy(processed_image);
+      continue;
+    }
     if (send_result != ASCIICHAT_OK) {
       const char *codec_name = use_hevc ? "H265" : "RAW";
       log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
@@ -330,6 +338,8 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(send_scope);
+    asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
       const char *codec_name = use_hevc ? "H.265" : "RAW";
       log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",

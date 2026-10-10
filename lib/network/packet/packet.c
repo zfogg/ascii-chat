@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -914,9 +915,8 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
   }
 
-  if (!message) {
-    message = "";
-  }
+  error_code = network_error_public_code(error_code);
+  message = asciichat_error_string(error_code);
 
   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {

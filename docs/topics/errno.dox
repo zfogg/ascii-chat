@@ -138,6 +138,48 @@ available in every build. Backtraces follow ENABLE_ERRNO_BACKTRACES.
 WASM can call the synchronous printers and debug_stats_poll from its event loop;
 it does not create a native diagnostics worker.
 
+@section errno_recovery Recovery and remote error policy
+
+Use the return value to establish failure. Inspect only errors created by that
+operation (HAS_ERRNO_CODE_SINCE with a checkpoint/scope) to choose recovery.
+Resolve that operation's errors only after handling them. Successful independent
+operations must restore their scope boundary too. Add SET_ERRNO only when adding
+useful context; propagate the return code unchanged otherwise.
+
+TCP timeouts are retryable only before any header bytes have arrived. A partial
+header or any payload timeout is terminal. WebRTC retains incomplete packet bytes
+and returns ERROR_NETWORK_INCOMPLETE while waiting; five seconds from the start of
+the incomplete packet is a terminal deadline, not reset by another fragment.
+
+Known local packet construction failures may drop a media frame without closing
+the transport. Send implementations must return ERROR_NETWORK if transmission
+could have consumed bytes; crypto and unknown failures are not treated as local
+frame rejections. Optional audio drops are recorded as handled history.
+
+Discovery errors map the ACIP wire namespace to application codes for create,
+lookup and join. Public responses use an allowlist and generic text; internal
+paths, subprocess output and backtraces stay local. Session-full and rate-limit
+rejections use the existing retry budget with bounded exponential delays up to
+32 seconds. Authentication/protocol rejections stop automatic retries. Snapshot
+mode still does not retry.
+
+PROTOCOL_FEATURE_RECOVERABLE_ERRORS (0x04) advertises support for nonfatal audio
+notifications using the existing protocol version feature field. The server sends
+an ERROR_AUDIO notification at most once per connection only to an opted-in peer;
+older peers receive a remote log instead. Video continues on ERROR_AUDIO. Error
+notifications and logs share the media send lock to preserve packet framing.
+
+Admission captures the original failure before attempting notification. The
+notification has its own recovery scope, and explicit socket ownership prevents
+sending on descriptors already consumed by client cleanup. The initial version
+packet is consumed before a pre-handshake rejection to avoid losing that response
+to a reset caused by unread input.
+
+The recovery audit covered existing scope/search/clear users across native modes,
+network transports, discovery, media probes and configuration. It also corrected
+positive-enum send-result checks and successful-path scope leaks. Legacy APIs
+with documented negative/status/count returns retain their own return contracts.
+
 @section errno_tests Tests
 
 Build the production library tests without Criterion:

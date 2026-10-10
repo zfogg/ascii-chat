@@ -190,6 +190,8 @@ static void *discovery_video_receive_thread(void *user_data) {
           char *decoded = packet_decode_frame_data_malloc((const char *)payload + sizeof(header), encoded_length,
                                                           is_compressed, original_size, compressed_size);
           if (decoded) {
+            ASSERT_NO_ERRNO_SINCE(decode_scope);
+            asciichat_errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
             SAFE_FREE(latest_text);
             latest_text = decoded;
           } else {

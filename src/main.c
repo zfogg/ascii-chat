@@ -501,9 +501,9 @@ int main(int argc, char *argv[]) {
   // Preserve arguments before environment consumers or option parsing retain pointers.
   asciichat_errno_scope_t title_init_scope = asciichat_errno_scope_begin();
   asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);
-  if (title_init_result != ASCIICHAT_OK) {
-    asciichat_errno_scope_end(title_init_scope, ASCIICHAT_ERRNO_DISMISSED);
-  }
+  if (title_init_result == ASCIICHAT_OK)
+    ASSERT_NO_ERRNO_SINCE(title_init_scope);
+  asciichat_errno_scope_end(title_init_scope, ASCIICHAT_ERRNO_DISMISSED);
   g_argv = argv;
   (void)atexit(platform_process_title_destroy);
 
@@ -1023,8 +1023,10 @@ int main(int argc, char *argv[]) {
     asciichat_error_t title_result = platform_process_title_set_args(mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
       log_debug("Could not set process title for %s mode", mode->name);
-      asciichat_errno_scope_end(title_scope, ASCIICHAT_ERRNO_DISMISSED);
+    } else {
+      ASSERT_NO_ERRNO_SINCE(title_scope);
     }
+    asciichat_errno_scope_end(title_scope, ASCIICHAT_ERRNO_DISMISSED);
   } else {
     log_debug("Process title initialization was unavailable (error %d)", title_init_result);
   }

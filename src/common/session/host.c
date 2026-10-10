@@ -1077,7 +1077,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
     if (host->callbacks.on_error) {
       host->callbacks.on_error(host, ERROR_NETWORK_BIND, "Failed to create listen socket", host->user_data);
     }
-    return GET_ERRNO();
+    return SET_ERRNO(ERROR_NETWORK_BIND, "Session host could not create a listening socket");
   }
 
   host->running = true;

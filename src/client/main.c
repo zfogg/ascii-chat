@@ -425,7 +425,8 @@ static int initialize_client_systems(void) {
  */
 static bool client_should_reconnect(asciichat_error_t last_error, int attempt_number, void *user_data) {
   if (last_error == ERROR_CRYPTO_AUTH || last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION ||
-      last_error == ERROR_CONFIG)
+      last_error == ERROR_CONFIG || last_error == ERROR_INVALID_PASSWORD || last_error == ERROR_INVALID_SIGNATURE ||
+      last_error == ERROR_NETWORK_PROTOCOL || last_error == ERROR_INTERNAL)
     return false;
   (void)attempt_number;
   (void)user_data;
@@ -470,6 +471,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
 
   // Attempt connection with fallback stages (TCP, WebRTC+STUN, WebRTC+TURN)
+  server_connection_set_remote_error(ASCIICHAT_OK);
   asciichat_error_t connection_result = connection_attempt_tcp(
       &g_client_session.connection_ctx,
       g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "",
@@ -625,7 +627,10 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return ASCIICHAT_OK;
   }
 
-  // Return error to signal reconnection needed (framework handles the retry)
+  // The receive worker publishes the rejection before marking the connection lost.
+  asciichat_error_t remote_error = server_connection_get_remote_error();
+  if (remote_error != ASCIICHAT_OK)
+    return SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
   return ERROR_NETWORK;
 }
 
@@ -690,6 +695,9 @@ int client_main(void) {
       // For other errors, just exit with the error code
       return init_result;
     }
+  } else {
+    ASSERT_NO_ERRNO_SINCE(init_scope);
+    asciichat_errno_scope_end(init_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   // Register cleanup function for graceful shutdown

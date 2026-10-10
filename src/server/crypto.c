@@ -320,6 +320,8 @@ int server_crypto_handshake(client_info_t *client) {
 
   protocol_version_packet_t client_version;
   memcpy(&client_version, payload, sizeof(protocol_version_packet_t));
+  atomic_store_bool(&client->supports_recoverable_errors,
+                    (NET_TO_HOST_U16(client_version.feature_flags) & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %s", client->client_id);
   buffer_pool_free(NULL, payload, payload_len);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %s", client->client_id);
@@ -355,7 +357,7 @@ int server_crypto_handshake(client_info_t *client) {
   server_version.supports_encryption = client_mode;      // Echo client's mode
   server_version.compression_algorithms = 0;             // No compression for now
   server_version.compression_threshold = 0;
-  server_version.feature_flags = 0;
+  server_version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to call send_protocol_version_packet for client %u", client->client_id);
   result = send_protocol_version_packet(socket, &server_version);

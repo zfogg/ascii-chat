@@ -539,8 +539,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       if (decode_count <= 3) {
         log_info("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
         rgb_pixel_t *test_px = (rgb_pixel_t *)decode_buffer->pixels;
-        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u), RGB[100]=(%u,%u,%u)", decode_count, test_px[0].r,
-                 test_px[0].g, test_px[0].b, test_px[100].r, test_px[100].g, test_px[100].b);
+        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u)", decode_count, test_px[0].r, test_px[0].g, test_px[0].b);
       }
 
       frame_decoded = true;

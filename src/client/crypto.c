@@ -1,3 +1,4 @@
+#include <ascii-chat/network/errors.h>
 /**
  * @file client/crypto.c
  * @ingroup client_crypto
@@ -459,7 +460,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   client_version.supports_encryption = g_crypto_mode;    // Send crypto mode bitmask
   client_version.compression_algorithms = 0;             // No compression for now
   client_version.compression_threshold = 0;
-  client_version.feature_flags = 0;
+  client_version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
 
   int result =
       packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &client_version, sizeof(client_version), 0);
@@ -477,6 +478,13 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   size_t payload_len = 0;
 
   result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
+  if (result == ASCIICHAT_OK && packet_type == PACKET_TYPE_ERROR_MESSAGE) {
+    asciichat_error_t rejection = network_error_decode(packet_type, payload, payload_len);
+    if (alloc_buffer)
+      buffer_pool_free(NULL, alloc_buffer, 0);
+    STOP_TIMER("client_crypto_handshake");
+    return rejection;
+  }
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     log_error("Failed to receive server protocol version (got type %u)", packet_type);
     log_error("Packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)", packet_type, packet_type,

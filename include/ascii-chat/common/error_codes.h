@@ -87,6 +87,8 @@ typedef enum {
   ERROR_INTERNAL = 53,            /**< Internal server error */
   ERROR_UNKNOWN_PACKET = 54,      /**< Unknown packet type received */
 
+  ERROR_NETWORK_INCOMPLETE = 55, /**< Incomplete buffered message; retry within the receive deadline */
+
   /* Security/Crypto errors (60-79) */
   ERROR_CRYPTO = 60,              /**< Cryptographic operation failed */
   ERROR_CRYPTO_KEY = 61,          /**< Key loading, parsing, or generation failed */
@@ -193,6 +195,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Cannot bind to network port";
   case ERROR_NETWORK_CONNECT:
     return "Cannot connect to server";
+  case ERROR_NETWORK_INCOMPLETE:
+    return "Incomplete network message";
   case ERROR_NETWORK_TIMEOUT:
     return "Network timeout";
   case ERROR_NETWORK_PROTOCOL:

@@ -1075,12 +1075,11 @@ void *acds_client_handler(void *arg) {
     if (result < 0) {
       // Check error context to distinguish timeout from actual disconnect
       asciichat_error_context_t err_ctx;
-      bool has_context = HAS_ERRNO(&err_ctx);
+      (void)HAS_ERRNO(&err_ctx);
 
       // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
       asciichat_error_t error = GET_ERRNO();
-      if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT) ||
-          (error == ERROR_NETWORK && has_context && strstr(err_ctx.context_message, "timed out") != NULL)) {
+      if (error == ERROR_NETWORK_TIMEOUT && HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
         // Check if client has been idle too long (abrupt disconnect without FIN)
         uint64_t idle_ns = time_get_ns() - last_packet_time_ns;
         if (idle_ns >= idle_disconnect_ns) {
@@ -1107,6 +1106,8 @@ void *acds_client_handler(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(receive_scope);
+    asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
     log_debug("Received packet type 0x%02X from %s, length=%zu", packet_type, client_ip, payload_size);
 
     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
@@ -1325,6 +1326,8 @@ void *acds_websocket_client_handler(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(receive_scope);
+    asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
     // Parse packet header from received data
     if (recv_len < sizeof(packet_header_t)) {
       log_warn("WebSocket client %s: received packet too small (%zu bytes)", client_ip, recv_len);

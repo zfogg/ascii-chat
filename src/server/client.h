@@ -77,7 +77,8 @@ extern rwlock_t g_client_manager_rwlock;
 extern bool g_client_manager_rwlock_initialized;
 
 // Client management functions
-client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port);
+client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port,
+                          bool *socket_consumed);
 client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
                                  bool start_threads);
 int start_webrtc_client_threads(server_context_t *server_ctx, const char *client_id);

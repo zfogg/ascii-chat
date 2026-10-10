@@ -1,3 +1,4 @@
+#include <ascii-chat/network/errors.h>
 /**
  * @file client/protocol.c
  * @ingroup client_protocol
@@ -813,7 +814,21 @@ static bool handle_error_message_packet(const void *data, size_t len) {
   }
 
   log_error("Server reported error %d (%s): %s", remote_error, asciichat_error_string(remote_error), message);
-  log_warn("Server signaled protocol error; closing connection");
+  remote_error = network_error_public_code(remote_error);
+  asciichat_errno_scope_t notification = asciichat_errno_scope_begin();
+  SET_ERRNO(remote_error, "Server notification: %s", asciichat_error_string(remote_error));
+  if (network_error_action(remote_error) == NETWORK_ERROR_CONTINUE) {
+    log_warn("Server audio unavailable; continuing video");
+    asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
+    return true;
+  }
+  server_connection_set_remote_error(remote_error);
+  if (network_error_action(remote_error) == NETWORK_ERROR_STOP) {
+    asciichat_errno_request_exit(remote_error);
+    signal_exit();
+  }
+  log_warn("Server rejected this connection; closing it");
+  asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
   server_connection_shutdown();
   server_connection_lost();
   return true;
@@ -1036,6 +1051,8 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     if (acip_result == ASCIICHAT_OK) {
+      ASSERT_NO_ERRNO_SINCE(receive_scope);
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
       packet_count++;
       log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
     } else if (acip_result == ERROR_NETWORK_TIMEOUT) {
@@ -1043,6 +1060,10 @@ static void *data_reception_thread_func(void *arg) {
       // Network timeouts are expected - socket may have no data available
       // Continue looping to allow snapshot timer to expire
       log_debug("[FRAME_RECV_LOOP] ⏱️  TIMEOUT: No data available, retrying (packets received: %d)", packet_count);
+      continue;
+    } else if (acip_result == ERROR_NETWORK_INCOMPLETE &&
+               HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_INCOMPLETE)) {
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
       continue;
     } else {
       // Handle receive/dispatch errors - ALWAYS exit on network errors
@@ -1567,7 +1588,7 @@ static void acip_on_ping(void *ctx) {
   (void)ctx;
 
   // Respond with PONG
-  if (threaded_send_pong_packet() < 0) {
+  if (threaded_send_pong_packet() != ASCIICHAT_OK) {
     log_error("Failed to send PONG response");
   }
 }

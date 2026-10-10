@@ -210,6 +210,8 @@ void server_connection_shutdown();
  * @ingroup client_connection
  */
 void server_connection_lost();
+void server_connection_set_remote_error(asciichat_error_t code);
+asciichat_error_t server_connection_get_remote_error(void);
 
 /**
  * @brief Check if connection loss was detected
@@ -251,7 +253,7 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count);
+asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count);
 
 /**
  * @brief Thread-safe Opus audio frame transmission
@@ -327,7 +329,7 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
  *
  * @ingroup client_connection
  */
-int threaded_send_ping_packet(void);
+asciichat_error_t threaded_send_ping_packet(void);
 
 /**
  * @brief Thread-safe pong packet transmission
@@ -336,7 +338,7 @@ int threaded_send_ping_packet(void);
  *
  * @ingroup client_connection
  */
-int threaded_send_pong_packet(void);
+asciichat_error_t threaded_send_pong_packet(void);
 
 /**
  * @brief Thread-safe stream start packet transmission
@@ -368,7 +370,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
  *
  * @ingroup client_connection
  */
-int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities);
+asciichat_error_t threaded_send_client_join_packet(const char *display_name, uint32_t capabilities);
 
 /* ============================================================================
  * Thread-Safe Packet Sending Functions
