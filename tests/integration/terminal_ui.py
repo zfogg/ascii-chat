@@ -121,7 +121,12 @@ class Terminal:
         self.write("\x03")
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline and self.process.isalive():
-            self.pump(0.1)
+            # The reader continues draining the PTY. Retain output without
+            # parsing queued frames while measuring the process exit deadline.
+            try:
+                self.raw.append(self.output.get(timeout=0.05))
+            except queue.Empty:
+                pass
         assert not self.process.isalive(), "UI shutdown did not join its worker"
 
     def close(self):

@@ -226,11 +226,9 @@ static void stats_render(terminal_size_t size, const void *data) {
 
 static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rates_t *rates) {
   snprintf(view->mode, sizeof(view->mode), "%s", g_mode);
-  stats_scope_snapshot(g_scope, snapshot);
-  stats_sampler_update(g_sampler, snapshot, rates);
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
-    stats_view_add(view, "Uptime %.1fs  |  Totals survive disconnected peers",
+    stats_view_add(view, "Uptime %.1fs",
                    (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
     stats_view_add(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
@@ -356,7 +354,8 @@ static void *stats_worker(void *unused) {
     bool active = stats_runtime_active();
     ui_presentation_state_t state = ui_controller_state();
     // Own input only while our screen is visible, or while a server has no screen.
-    if (g_keyboard && (active || state.screen < 0)) {
+    bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0;
+    if (g_keyboard && (active || (server_like && state.screen < 0))) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
       if (active && (key == '=' || key == KEY_ESCAPE)) {
         atomic_store_bool_impl(&g_active, false);
@@ -389,7 +388,11 @@ static void *stats_worker(void *unused) {
       stats_view_t view = {.page = page};
       stats_snapshot_t snapshot;
       stats_rates_t rates;
-      build_view(&view, &snapshot, &rates);
+      stats_scope_snapshot(g_scope, &snapshot);
+      stats_sampler_update(g_sampler, &snapshot, &rates);
+      bool print_due = g_interval && now >= next_print;
+      if (active || print_due)
+        build_view(&view, &snapshot, &rates);
       if (selected >= view.count)
         selected = view.count ? view.count - 1 : 0;
       view.selected = selected;
@@ -397,7 +400,7 @@ static void *stats_worker(void *unused) {
       if (active)
         ui_controller_submit(UI_SCREEN_STATS, g_fd, stats_minimum(&view), stats_render, &view,
                              sizeof(view));
-      if (g_interval && now >= next_print) {
+      if (print_due) {
         print_summary(&snapshot, &rates);
         next_print = now + (uint64_t)g_interval * NS_PER_SEC_INT;
       }

@@ -94,7 +94,12 @@ def main():
                 "--splash-screen=false",
             ],
         )
-        client.pump(6)
+        client.expect(
+            lambda s: sum(len(line) > 70 and not any(c.isspace() for c in line)
+                          for line in s.splitlines()) >= 20,
+            "client media ready",
+        )
+        client.pump(0.5)
         overlay(client, "client")
         overlay(server, "server")
         ap = free_port()

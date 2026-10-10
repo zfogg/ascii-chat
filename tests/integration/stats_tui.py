@@ -35,7 +35,7 @@ def wait(check, timeout=25):
 
 
 class Pane:
-    def __init__(self, name, args, binary, root):
+    def __init__(self, name, args, binary, root, stdout=None):
         self.name = name
         self.root = root
         self.exit = root / (name + ".exit")
@@ -61,6 +61,7 @@ class Pane:
         ]
         cmd = (
             shlex.join(argv)
+            + (" > " + shlex.quote(str(stdout)) if stdout else "")
             + "; code=$?; printf '%s' \"$code\" > "
             + shlex.quote(str(self.exit))
             + "; exec sleep 600"
@@ -100,8 +101,13 @@ class Pane:
 
     def wait_media(self):
         # Wait for real media rather than sending input during connection prompts.
-        wait(lambda: sum(len(line) > 70 and not any(c.isspace() for c in line)
-                         for line in self.text().splitlines()) >= 20)
+        wait(
+            lambda: sum(
+                len(line) > 70 and not any(c.isspace() for c in line)
+                for line in self.text().splitlines()
+            )
+            >= 20
+        )
         time.sleep(0.5)
 
     def open(self):
@@ -238,9 +244,13 @@ def main():
             lambda: metric(client, "frames_received")
             and metric(client, "frames_received")[0] > 0
         )
-        assert re.search(r"ascii_convert\s+n/a \(server\)", client.text()), client.text()
+        assert re.search(
+            r"ascii_convert\s+n/a \(server\)", client.text()
+        ), client.text()
         assert re.search(r"terminal_write\s+idle", client.text()), client.text()
-        assert re.search(r"connection_setup \(last\)\s+\d+\.\d+", client.text()), client.text()
+        assert re.search(
+            r"connection_setup \(last\)\s+\d+\.\d+", client.text()
+        ), client.text()
         client.capture("client-overview")
         client.check_fit_boundary()
         server.open()
@@ -379,6 +389,34 @@ def main():
         status.open()
         status.capture("server-status-overlay")
         results.append({"input": "interactive grep retains equals", "result": "pass"})
+        redirected = root / "interactive-stdout.txt"
+        stderr_pane = Pane(
+            "stderr",
+            [
+                "server",
+                "127.0.0.1",
+                "--port",
+                str(port()),
+                "--websocket-port",
+                str(port()),
+                "--status-screen=false",
+                "--stats-interval",
+                "1",
+            ],
+            binary,
+            root,
+            stdout=redirected,
+        )
+        panes.append(stderr_pane)
+        wait(lambda: redirected.exists() and "stats mode=" in redirected.read_text())
+        stderr_pane.open()
+        stderr_pane.capture("stderr-overlay")
+        stderr_pane.key("Escape")
+        wait(lambda: "LIVE STATS" not in stderr_pane.text())
+        assert "\x1b" not in redirected.read_text()
+        results.append(
+            {"input": "stderr overlay opens and closes without Enter", "result": "pass"}
+        )
         for mode in ("server", "discovery-service"):
             outfile = root / (mode + "-stdout.txt")
             with outfile.open("w") as output:
@@ -436,14 +474,17 @@ def main():
             try:
                 pane.close()
             except Exception as e:
-                pane.capture(pane.name + "-failure")
                 failures.append(str(e))
-        if failures:
-            raise AssertionError("Cleanup failures: " + repr(failures))
+                try:
+                    pane.capture(pane.name + "-failure")
+                except subprocess.CalledProcessError as capture_error:
+                    failures.append(str(capture_error))
         try:
-            tmux("kill-session", "-t", "keeper")
+            tmux("kill-server")
         except subprocess.CalledProcessError:
             pass
+        if failures:
+            raise AssertionError("Cleanup failures: " + repr(failures))
 
 
 if __name__ == "__main__":

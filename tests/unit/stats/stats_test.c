@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/stats/stats.h>
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/thread.h>
 #include <string.h>
@@ -413,4 +415,29 @@ Test(stats, audio_teardown_retires_debug_atomics) {
   cr_assert_not(named_registry_read((uintptr_t)&context.shutting_down, "atomic_t", count_named_object, &reads));
   cr_assert_eq(reads, 0);
 #endif
+}
+
+static void count_provider_calls(stats_view_t *view, void *data) {
+  (void)view;
+  atomic_fetch_add_u64_impl((atomic_t *)data, 1);
+}
+
+Test(stats, idle_runtime_does_not_call_provider, .timeout = 5) {
+  atomic_t calls = {0};
+  cr_assert_eq(stats_runtime_start("discovery-service", 0), ASCIICHAT_OK);
+  stats_runtime_set_provider(count_provider_calls, &calls);
+  platform_sleep_ns(800000000);
+  stats_runtime_set_provider(NULL, NULL);
+  stats_runtime_stop();
+  cr_assert_eq(atomic_load_u64_impl(&calls), 0);
+}
+
+Test(stats, summary_runtime_calls_provider_when_due, .timeout = 5) {
+  atomic_t calls = {0};
+  cr_assert_eq(stats_runtime_start("discovery-service", 1), ASCIICHAT_OK);
+  stats_runtime_set_provider(count_provider_calls, &calls);
+  platform_sleep_ns(1600000000);
+  stats_runtime_set_provider(NULL, NULL);
+  stats_runtime_stop();
+  cr_assert_eq(atomic_load_u64_impl(&calls), 1);
 }

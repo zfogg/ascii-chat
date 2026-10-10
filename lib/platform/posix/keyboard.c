@@ -53,9 +53,9 @@ asciichat_error_t keyboard_init(void) {
     return ASCIICHAT_OK;
   }
 
-  // Skip keyboard initialization if stdout is piped (keyboard input not possible in non-interactive mode)
-  // tcsetattr() can hang when stdout is piped in tmux, so we skip it entirely for piped output
-  if (terminal_is_piped_output()) {
+  // Stderr can host interactive overlays while stdout carries redirected output.
+  // Avoid configuring input when neither output is a terminal.
+  if (terminal_is_piped_output() && !platform_isatty(STDERR_FILENO)) {
     log_info("keyboard_init: Skipping (output is piped, non-interactive mode)");
     // LOG_IO may redirect stdout temporarily. Retry initialization on the
     // next poll instead of permanently committing an unconfigured keyboard.

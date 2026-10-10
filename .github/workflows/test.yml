@@ -15,6 +15,7 @@ on:
       - ".github/workflows/test.yml"
       - "codecov.yml"
       - ".github/scripts/*coverage*.py"
+      - ".github/scripts/*junit*.py"
       - ".github/actions/generate-coverage/**"
       - ".github/actions/publish-test-results/**"
   pull_request:
@@ -30,6 +31,7 @@ on:
       - ".github/workflows/test.yml"
       - "codecov.yml"
       - ".github/scripts/*coverage*.py"
+      - ".github/scripts/*junit*.py"
       - ".github/actions/generate-coverage/**"
       - ".github/actions/publish-test-results/**"
 
@@ -71,6 +73,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
+      - run: python .github/scripts/test_criterion_to_junit.py
 
   unit-tests:
     name: Unit Tests
