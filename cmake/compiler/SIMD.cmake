@@ -1,138 +1,52 @@
-# =============================================================================
-# SIMD.cmake - SIMD instruction set detection and configuration
-# =============================================================================
-# Detects SIMD capabilities across different architectures (SSE2, SSSE3, AVX2,
-# NEON, SVE) and configures appropriate compiler flags.
-#
-# Sets:
-#   ENABLE_SIMD_SSE2, ENABLE_SIMD_SSSE3, ENABLE_SIMD_AVX2 - x86_64 SIMD support
-#   ENABLE_SIMD_NEON, ENABLE_SIMD_SVE - ARM SIMD support
-#
-# Must be included AFTER platform detection.
-# =============================================================================
-
-# Include centralized CPU detection
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
-
-# User override controls
-set(ASCIICHAT_SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
-set_property(CACHE ASCIICHAT_SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "neon" "sve")
-
-# Initialize SIMD flags
-set(ENABLE_SIMD_SSE2 FALSE)
-set(ENABLE_SIMD_SSSE3 FALSE)
-set(ENABLE_SIMD_AVX2 FALSE)
-set(ENABLE_SIMD_NEON FALSE)
-set(ENABLE_SIMD_SVE FALSE)
-
-# Check for user-specified SIMD mode
-if(NOT ASCIICHAT_SIMD_MODE STREQUAL "auto")
-    # Manual mode - only enable the specific architecture requested
-    if(ASCIICHAT_SIMD_MODE STREQUAL "sse2")
-        set(ENABLE_SIMD_SSE2 TRUE)
-    elseif(ASCIICHAT_SIMD_MODE STREQUAL "ssse3")
-        set(ENABLE_SIMD_SSSE3 TRUE)
-    elseif(ASCIICHAT_SIMD_MODE STREQUAL "avx2")
-        set(ENABLE_SIMD_AVX2 TRUE)
-    elseif(ASCIICHAT_SIMD_MODE STREQUAL "neon")
-        set(ENABLE_SIMD_NEON TRUE)
-    elseif(ASCIICHAT_SIMD_MODE STREQUAL "sve")
-        set(ENABLE_SIMD_SVE TRUE)
-    endif()
-else()
-    # Auto-detect SIMD capabilities using CPUDetection functions
-
-    if(ASCIICHAT_IS_X86_64)
-        # Detect x86_64 SIMD features
-        detect_x86_simd_features()
-
-        # Enable only the highest available (higher includes lower)
-        if(HAS_AVX2)
-            set(ENABLE_SIMD_AVX2 TRUE)
-        elseif(HAS_SSSE3)
-            set(ENABLE_SIMD_SSSE3 TRUE)
-        elseif(HAS_SSE2)
-            set(ENABLE_SIMD_SSE2 TRUE)
-        endif()
-
-    elseif(ASCIICHAT_IS_ARM64 OR ASCIICHAT_IS_ARM32)
-        # Detect ARM SIMD features
-        detect_arm_neon()
-        if(HAS_NEON)
-            set(ENABLE_SIMD_NEON TRUE)
-        endif()
-
-        # Check for SVE (ARM64 only)
-        if(ASCIICHAT_IS_ARM64)
-            detect_arm_sve()
-            if(HAS_SVE)
-                set(ENABLE_SIMD_SVE TRUE)
-            endif()
-        endif()
-    endif()
+# Build availability is determined by the target toolchain, never the host CPU.
+include(CheckCSourceCompiles)
+set(ASCIICHAT_SIMD_MODE "auto" CACHE STRING "SIMD backends: auto, scalar, sse2, ssse3, avx2, neon, sve")
+set_property(CACHE ASCIICHAT_SIMD_MODE PROPERTY STRINGS auto scalar sse2 ssse3 avx2 neon sve)
+if(NOT ASCIICHAT_SIMD_MODE MATCHES "^(auto|scalar|sse2|ssse3|avx2|neon|sve)$")
+    message(FATAL_ERROR "Unknown ASCIICHAT_SIMD_MODE: ${ASCIICHAT_SIMD_MODE}")
 endif()
 
-# Apply SIMD compile definitions and flags
-if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_NEON OR ENABLE_SIMD_SVE)
-    add_definitions(-DSIMD_SUPPORT)
+foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
+    set(ENABLE_SIMD_${isa} FALSE)
+endforeach()
 
-    # Prefer wider vector widths for SIMD-heavy workloads
-    if(ENABLE_SIMD_AVX2)
-        add_compile_options(-mprefer-vector-width=256)
+function(asciichat_check_simd isa flags header expression)
+    string(TOLOWER "${isa}" name)
+    if(NOT ASCIICHAT_SIMD_MODE STREQUAL "auto" AND NOT ASCIICHAT_SIMD_MODE STREQUAL "${name}")
+        return()
     endif()
+    set(CMAKE_REQUIRED_FLAGS "${flags}")
+    # Compile only: cross compilers and non-SVE build hosts can build SVE objects.
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    check_c_source_compiles("#include <${header}>
+int main(void) { ${expression}; return 0; }" ASCIICHAT_CAN_COMPILE_${isa})
+    set(ENABLE_SIMD_${isa} ${ASCIICHAT_CAN_COMPILE_${isa}} PARENT_SCOPE)
+endfunction()
+
+if(ASCIICHAT_IS_X86_64)
+    asciichat_check_simd(SSE2 "-msse2" emmintrin.h "(void)_mm_setzero_si128()")
+    asciichat_check_simd(SSSE3 "-mssse3" tmmintrin.h "(void)_mm_shuffle_epi8(_mm_setzero_si128(), _mm_setzero_si128())")
+    asciichat_check_simd(AVX2 "-mavx2" immintrin.h "(void)_mm256_setzero_si256()")
+elseif(ASCIICHAT_IS_ARM64)
+    asciichat_check_simd(NEON "-march=armv8-a" arm_neon.h "(void)vdup_n_u8(0)")
+    # SVE dispatch currently has an OS capability probe on Linux only.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        asciichat_check_simd(SVE "-march=armv8-a+sve" arm_sve.h "(void)svcntb()")
+    endif()
+elseif(ASCIICHAT_IS_ARM32)
+    asciichat_check_simd(NEON "-mfpu=neon" arm_neon.h "(void)vdup_n_u8(0)")
 endif()
 
-# Apply specific SIMD flags
-if(ENABLE_SIMD_SSE2)
-    add_definitions(-DSIMD_SUPPORT_SSE2=1)
-    if(WIN32)
-        add_compile_options(-msse2 -mno-mmx)  # Disable MMX on Windows
+if(NOT ASCIICHAT_SIMD_MODE MATCHES "^(auto|scalar)$")
+    string(TOUPPER "${ASCIICHAT_SIMD_MODE}" requested)
+    if(NOT ENABLE_SIMD_${requested})
+        message(FATAL_ERROR "Requested SIMD backend ${ASCIICHAT_SIMD_MODE} is unavailable for this target/toolchain")
+    endif()
+endif()
+foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
+    if(ENABLE_SIMD_${isa})
+        add_compile_definitions(SIMD_SUPPORT_${isa}=1)
     else()
-        add_compile_options(-msse2)
+        add_compile_definitions(SIMD_SUPPORT_${isa}=0)
     endif()
-else()
-    add_definitions(-DSIMD_SUPPORT_SSE2=0)
-endif()
-
-if(ENABLE_SIMD_SSSE3)
-    add_definitions(-DSIMD_SUPPORT_SSSE3=1)
-    if(WIN32)
-        add_compile_options(-mssse3 -mno-mmx)  # Disable MMX on Windows
-    else()
-        add_compile_options(-mssse3)
-    endif()
-else()
-    add_definitions(-DSIMD_SUPPORT_SSSE3=0)
-endif()
-
-if(ENABLE_SIMD_AVX2)
-    add_definitions(-DSIMD_SUPPORT_AVX2=1)
-    if(WIN32)
-        add_compile_options(-mavx2 -mno-mmx)  # Disable MMX on Windows
-    else()
-        add_compile_options(-mavx2)
-    endif()
-else()
-    add_definitions(-DSIMD_SUPPORT_AVX2=0)
-endif()
-
-if(ENABLE_SIMD_NEON)
-    add_definitions(-DSIMD_SUPPORT_NEON=1)
-    # Windows ARM64 with Clang needs proper arch flags
-    if(WIN32 AND ASCIICHAT_IS_ARM64)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_compile_options(-march=armv8-a+simd)
-        endif()
-    endif()
-else()
-    add_definitions(-DSIMD_SUPPORT_NEON=0)
-endif()
-
-if(ENABLE_SIMD_SVE)
-    add_definitions(-DSIMD_SUPPORT_SVE=1)
-    add_compile_options(-march=armv8-a+sve)
-else()
-    add_definitions(-DSIMD_SUPPORT_SVE=0)
-endif()
-
-# =============================================================================
+endforeach()

@@ -53,66 +53,39 @@ set(SIMD_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/background.c
 )
 
-if(ENABLE_SIMD_SSE2)
-    list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/color.c
-    )
-    set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/color.c
-        PROPERTIES COMPILE_FLAGS "-msse2"
-    )
-endif()
-
-if(ENABLE_SIMD_SSSE3)
-    list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/color.c
-    )
-    set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/color.c
-        PROPERTIES COMPILE_FLAGS "-mssse3"
-    )
-endif()
-
-if(ENABLE_SIMD_AVX2)
-    list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
-    )
-    set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
-        PROPERTIES COMPILE_FLAGS "-mavx2"
-    )
-endif()
-
-if(ENABLE_SIMD_NEON)
-    # Enable working NEON files; disable mono.c and color.c due to function signature mismatches
-    list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c
-    )
-    # TODO: Fix mono.c and color.c function signatures
-    # ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/mono.c
-    # ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/color.c
-endif()
-
-if(ENABLE_SIMD_SVE)
-    list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/color.c
-    )
-    set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/color.c
-        PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve"
-    )
-endif()
+# ISA flags apply in the directory that creates ascii-chat-simd (the root).
+# Source options also exclude these files from unity builds and shared PCHs.
+list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c)
+foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
+    if(NOT ENABLE_SIMD_${isa})
+        continue()
+    endif()
+    string(TOLOWER "${isa}" name)
+    set(isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/luminance.c)
+    if(isa STREQUAL "NEON")
+        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c)
+        if(ASCIICHAT_IS_ARM64)
+            set(isa_flags -march=armv8-a)
+        else()
+            set(isa_flags -mfpu=neon)
+        endif()
+    else()
+        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/mono.c ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/color.c)
+        if(isa STREQUAL "AVX2")
+            list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c)
+        endif()
+        if(isa STREQUAL "SVE")
+            set(isa_flags -march=armv8-a+sve)
+        else()
+            set(isa_flags -m${name})
+        endif()
+    endif()
+    set_source_files_properties(${isa_sources} DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES
+        COMPILE_OPTIONS "${isa_flags};-fno-lto"
+        SKIP_PRECOMPILE_HEADERS ON
+        SKIP_UNITY_BUILD_INCLUSION ON)
+    list(APPEND SIMD_SRCS ${isa_sources})
+endforeach()
 
 set(VIDEO_SRCS ${VIDEO_SRCS} PARENT_SCOPE)
 set(SIMD_SRCS ${SIMD_SRCS} PARENT_SCOPE)

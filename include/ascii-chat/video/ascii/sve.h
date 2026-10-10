@@ -21,9 +21,6 @@
 #include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_SVE
-#if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))
-#error "SVE support required for ARM64"
-#endif
 
 /**
  * @brief Render image as monochrome ASCII using SVE

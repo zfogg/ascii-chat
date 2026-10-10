@@ -65,9 +65,8 @@
 #endif
 #endif
 
-// Define umbrella SIMD_SUPPORT macro if any specific SIMD is supported
-#if defined(SIMD_SUPPORT_SVE) || defined(SIMD_SUPPORT_AVX2) || defined(SIMD_SUPPORT_SSSE3) ||                          \
-    defined(SIMD_SUPPORT_SSE2) || defined(SIMD_SUPPORT_NEON)
+// Availability means a backend was compiled, not that the running CPU supports it.
+#if SIMD_SUPPORT_SVE || SIMD_SUPPORT_AVX2 || SIMD_SUPPORT_SSSE3 || SIMD_SUPPORT_SSE2 || SIMD_SUPPORT_NEON
 #define SIMD_SUPPORT 1
 #endif
 
