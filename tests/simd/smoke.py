@@ -45,7 +45,7 @@ def main():
                             ("truecolor", "background"), ("256", "foreground"), ("16", "foreground")]:
             args = [binary, "mirror", "--file", str(source), "--snapshot", "--snapshot-delay", "0",
                     "--splash-screen=false", "--audio=false", "--width", "65", "--height", "17",
-                    "--color-mode", color, "--render-mode", mode, "--palette-chars", " .:+#â–ˆ"]
+                    "--color-mode", color, "--render-mode", mode, "--palette-chars", " .:+#\u2588"]
             reference = None
             for backend in ["scalar", *backends]:
                 result = subprocess.run(args, env=dict(env, ASCII_CHAT_SIMD=backend),
