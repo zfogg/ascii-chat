@@ -74,6 +74,7 @@ def main():
                 labels.append(match.groups())
                 rows = text.splitlines()
                 progress_row = next(i for i, row in enumerate(rows) if 'Rendering file' in row)
+                assert '--render-file Progress' in rows[progress_row - 1], 'Progress title missing'
                 destination = str(output)
                 if wcswidth(destination) > term.screen.columns - 4:
                     while wcswidth(destination) > term.screen.columns - 5:

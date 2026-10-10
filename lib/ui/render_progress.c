@@ -73,7 +73,11 @@ static void progress_render(terminal_size_t size, const void *data) {
     width = size.cols - 2;
     label[width] = '\0';
   }
-  int col = (size.cols - width) / 2 + 1;
+  char title[64];
+  truncate_with_ellipsis("--render-file Progress", title, sizeof(title), size.cols - 4);
+  int col = (size.cols - display_width(title) - 2) / 2 + 1;
+  frame_buffer_printf(buffer, "\033[%d;%dH\033[0;1;7m %s \033[0m", (size.rows + 1) / 2 - 1, col, title);
+  col = (size.cols - width) / 2 + 1;
   frame_buffer_printf(buffer, "\033[%d;%dH\033[0;7m%s\033[0m", (size.rows + 1) / 2, col, label);
   size_t destination_size = snapshot->destination_length + 32;
   char *destination = SAFE_MALLOC(destination_size, char *);
