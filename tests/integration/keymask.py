@@ -27,7 +27,7 @@ def public_key(data, kind=1):
     return PublicKey(kind, (C.c_ubyte * 32).from_buffer_copy(data), b"")
 
 
-def load(library, directory, art="on"):
+def load(library, directory):
     # Keep the DLL search handle alive for the duration of the tests.
     handle = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
     native = C.CDLL(str(library))
@@ -35,7 +35,7 @@ def load(library, directory, art="on"):
     native.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     assert native.asciichat_shared_init(str(directory / "keymask.log").encode(), True, True) == 0
     args = [b"keymask-test", b"--no-check-update", b"--log-file", str(directory / "keymask.log").encode(),
-            b"--key-art", art.encode(), b"client"]
+            b"client"]
     argv = (C.c_char_p * (len(args) + 1))(*args, None)
     assert native.options_init(len(args), argv) == 0
     native.log_set_terminal_output(False)
@@ -179,7 +179,7 @@ def contact_sheet(native, destination):
 
 
 def probe(args, directory):
-    native = load(args.library, directory, args.art)
+    native = load(args.library, directory)
     key = public_key(bytes(range(32)))
     out = C.create_string_buffer(2048)
     assert native.key_identity_format_terminal(C.byref(key), out, len(out)) == 0
@@ -202,13 +202,12 @@ def probe(args, directory):
 def check_terminal(args):
     from terminal_ui import Terminal
     command = [sys.executable, str(Path(__file__).resolve()), "--library", str(args.library)]
-    for mode, expected in (("auto", False), ("on", True), ("off", False)):
-        result = subprocess.run(command + ["--probe", "format", "--art", mode], capture_output=True, text=True, encoding="utf-8", timeout=30)
-        assert result.returncode == 0, result.stderr
-        assert ("Keymask v2" in result.stdout) == expected
-        assert "SHA256:" in result.stdout
-    for cols, rows, mode, expected in ((80, 40, "auto", True), (38, 40, "auto", False), (80, 40, "off", False)):
-        terminal = Terminal(command + ["--probe", "notice", "--art", mode], rows=rows, cols=cols)
+    result = subprocess.run(command + ["--probe", "format"], capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert "Keymask v2" not in result.stdout
+    assert "SHA256:" in result.stdout
+    for cols, rows, expected in ((80, 40, True), (38, 40, False)):
+        terminal = Terminal(command + ["--probe", "notice"], rows=rows, cols=cols)
         try:
             text = terminal.expect(lambda text: "SHA256:" in text, "identity notice")
             assert ("Keymask v2" in text) == expected, text
@@ -219,7 +218,7 @@ def check_terminal(args):
         finally:
             terminal.close()
     for rows, expected in ((40, True), (24, False)):
-        terminal = Terminal(command + ["--probe", "prompt", "--art", "auto"], rows=rows, cols=80)
+        terminal = Terminal(command + ["--probe", "prompt"], rows=rows, cols=80)
         try:
             text = terminal.expect(lambda text: "continue connecting" in text, "unknown-host prompt")
             assert ("Keymask v2" in text) == expected, text
@@ -227,7 +226,7 @@ def check_terminal(args):
             terminal.expect(lambda text: "PROMPT_RESULT=0" in text, "TOFU rejection")
         finally:
             terminal.close()
-    print("PASS: redirected auto/on/off, ConPTY/PTY notices, narrow terminals and interactive TOFU rejection")
+    print("PASS: automatic display and redirected fingerprints, ConPTY/PTY notices, narrow terminals and interactive TOFU rejection")
 
 
 def check_live(binary, directory):
@@ -246,7 +245,7 @@ def check_live(binary, directory):
     config = directory / ("AppData/Roaming/ascii-chat" if os.name == "nt" else "ascii-chat")
     config.mkdir(parents=True, exist_ok=True)
     (config / "known_hosts").write_text(f"127.0.0.1:{port} ssh-ed25519 {raw_server.hex()} fixture\n")
-    common = [str(binary), "--no-check-update", "--key-art=on", "--log-level=error"]
+    common = [str(binary), "--no-check-update", "--log-level=error"]
     server_log = directory / "server.log"
     server_output = directory / "server-output.txt"
     with server_output.open("w", encoding="utf-8") as output:
@@ -264,13 +263,13 @@ def check_live(binary, directory):
             client_text = client.stdout + client.stderr
             assert client.returncode == 0, client_text
             assert "UNVERIFIED SERVER PUBLIC IDENTITY" in client_text, client_text
-            assert "Keymask v2" in client_text, client_text
+            assert "Keymask v2" not in client_text, client_text
             assert "Keymask v2" not in client.stdout, "Identity art must not contaminate snapshot stdout"
             assert "SHA256:" + hashlib.sha256(raw_server).hexdigest() in client_text, client_text
             server_text = server_output.read_text(encoding="utf-8", errors="replace")
             assert "AUTHENTICATED CLIENT PUBLIC IDENTITY" in server_text, server_text
             assert "SHA256:" + hashlib.sha256(raw_client).hexdigest() in server_text, server_text
-            assert "Keymask v2" in server_text, server_text
+            assert "Keymask v2" not in server_text, server_text
         finally:
             server.terminate()
             server.wait(timeout=10)
@@ -284,7 +283,6 @@ def main():
     parser.add_argument("--binary", type=lambda p: Path(p).resolve())
     parser.add_argument("--contact-sheet", type=Path)
     parser.add_argument("--probe", choices=("format", "prompt", "notice"))
-    parser.add_argument("--art", default="on")
     args = parser.parse_args()
     for name in ("CLAUDECODE", "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "ASCII_CHAT_QUESTION_PROMPT_RESPONSE"):
         os.environ.pop(name, None)

@@ -4,10 +4,9 @@ Keymask is ascii-chat's deterministic, monochrome public-key emblem. It suppleme
 the full SHA-256 fingerprint and existing authentication checks. A similar-looking
 picture is not proof that two keys match.
 
-Use `--key-art=auto|on|off` (or `ASCII_CHAT_KEY_ART`). The default, `auto`, shows art
-on interactive stderr terminals outside snapshot mode. `on` also allows ASCII art
-in redirected output. `off` keeps the textual fingerprint. Quiet, grep, and JSON
-output retain their existing notice policies.
+Art appears automatically on interactive stderr terminals outside snapshot mode,
+when the terminal has room. Redirected output keeps the textual fingerprint.
+Quiet, grep, and JSON output retain their existing notice policies.
 
 ## Stable v2 mapping
 

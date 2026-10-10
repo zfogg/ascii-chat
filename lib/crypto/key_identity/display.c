@@ -51,8 +51,7 @@ asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool un
 
 asciichat_error_t key_identity_format_terminal(const public_key_t *key, char *out, size_t size) {
   bool tty = platform_isatty(STDERR_FILENO);
-  int mode = GET_OPTION(key_art);
-  bool art = mode == 1 || (mode == 0 && tty && !GET_OPTION(snapshot_mode));
+  bool art = tty && !GET_OPTION(snapshot_mode);
   int cols = tty ? ui_controller_size().cols : 80;
   // Notices reserve borders, padding, and the terminal's final column.
   cols = (cols > 81 ? 80 : cols - 1) - 4;

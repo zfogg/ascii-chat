@@ -1092,7 +1092,6 @@ typedef struct options_state {
   // ============================================================================
   // Encryption Options
   // ============================================================================
-  int key_art;                             ///< Public-key art: 0 auto, 1 on, 2 off
   bool encrypt_enabled;                    ///< Enable encryption
   char encrypt_key[OPTIONS_BUFF_SIZE];     ///< SSH/GPG key file path (first --key flag, kept for compatibility)
   char password[OPTIONS_BUFF_SIZE];        ///< Password string
