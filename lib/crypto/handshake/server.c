@@ -4,6 +4,8 @@
  * @brief Server-side handshake protocol implementation
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/buffer_pool.h>
@@ -272,14 +274,14 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
       log_debug("Client sent null identity key - no client authentication required");
       client_sent_identity = false;
       ctx->client_sent_identity = false;
-      log_warn("Client connected without identity authentication");
+      NOTICE(WARNING, "UNVERIFIED CLIENT IDENTITY", "Client connected without identity authentication");
     } else {
       // Client has a real identity key
       // If server didn't specify --client-keys, skip signature verification
       // (server doesn't care about client identity verification)
       if (!ctx->require_client_auth) {
         log_info("Skipping client signature verification (no --client-keys specified)");
-        log_warn("Connection is encrypted but client identity is NOT verified");
+        NOTICE(WARNING, "UNVERIFIED CLIENT IDENTITY", "Connection is encrypted but client identity is NOT verified");
       } else {
         // Verify client's signature
         log_debug("Verifying client's signature");
@@ -311,7 +313,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     memcpy(client_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
     client_sent_identity = false;
     ctx->client_sent_identity = false;
-    log_warn("Client connected without identity authentication");
+    NOTICE(WARNING, "UNVERIFIED CLIENT IDENTITY", "Client connected without identity authentication");
   } else {
     // Payload ownership remains with caller
     SAFE_FREE(client_ephemeral_key);

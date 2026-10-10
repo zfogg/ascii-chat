@@ -73,6 +73,8 @@
  * @version 2.0
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "protocol.h"
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -1080,7 +1082,8 @@ static void *data_reception_thread_func(void *arg) {
           if (err_ctx.code == ERROR_CRYPTO) {
             // Security violation - exit immediately
             log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
-            log_error("SECURITY: This is a critical security violation - exiting immediately");
+            NOTICE(DANGER, "ENCRYPTION POLICY VIOLATION",
+                   "SECURITY: This is a critical security violation - exiting immediately");
             exit(1);
           }
         }
@@ -1879,7 +1882,7 @@ static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payl
   asciichat_error_t result =
       crypto_handshake_client_complete(&g_crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
   if (result != ASCIICHAT_OK) {
-    log_error("Crypto handshake verification failed");
+    NOTICE(DANGER, "HANDSHAKE VERIFICATION FAILED", "Crypto handshake verification failed");
     server_connection_lost();
   } else {
     log_info("Crypto handshake completed successfully (mutual auth)");
@@ -1914,7 +1917,7 @@ static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, 
     error_msg[msg_len] = '\0';
   }
 
-  log_error("Server rejected authentication: %s", error_msg);
+  NOTICE(DANGER, "AUTHENTICATION REJECTED", "Server rejected authentication: %s", error_msg);
   log_error("Disconnecting - crypto handshake failed");
 
   server_connection_lost();

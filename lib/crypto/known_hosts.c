@@ -4,6 +4,8 @@
  * @brief 📜 SSH known_hosts file parser for host key verification and trust management
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -197,7 +199,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 
       // Both zero = no-identity connection (weaker security)
       if (server_key_is_zero && stored_key_is_zero) {
-        log_warn("SECURITY: Connecting to no-identity server at known IP:port");
+        NOTICE(WARNING, "UNVERIFIED SERVER IDENTITY", "SECURITY: Connecting to no-identity server at known IP:port");
         SAFE_FREE(parsed_ip_port);
         SAFE_FREE(parsed_key_type);
         SAFE_FREE(parsed_hex_key);
@@ -311,7 +313,8 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
 
     // If we found a normal identity key entry, this is a mismatch
     // Server previously had identity key but now has none
-    log_warn("Server previously had identity key but now has none - potential security issue");
+    NOTICE(DANGER, "SERVER IDENTITY REMOVED",
+           "Server previously had identity key but now has none - potential security issue");
     SAFE_FREE(parsed_ip_port);
     SAFE_FREE(parsed_key_type);
     SAFE_FREE(parsed_hex_key);
@@ -470,11 +473,15 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
 
   // Check if fprintf failed
   if (fprintf_result < 0) {
+    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED",
+           "Failed to write to known_hosts file: %s\nHost trust has not been persisted.", path);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to write to known_hosts file: %s", path);
   }
 
   // Flush to ensure data is written
   if (fflush(f) != 0) {
+    NOTICE(DANGER, "TRUSTED HOST KEY COULD NOT BE SAVED",
+           "Failed to flush known_hosts file: %s\nHost trust has not been persisted.", path);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to flush known_hosts file: %s", path);
   }
 
@@ -596,32 +603,33 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
   const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
   if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
-    log_warn("Skipping known_hosts checking. This is a security vulnerability.");
+    NOTICE(DANGER, "HOST VERIFICATION DISABLED", "Skipping known_hosts checking. This is a security vulnerability.");
     return true;
   }
 #ifndef NDEBUG
   // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
   const char *env_claudecode = platform_getenv("CLAUDECODE");
   if (env_claudecode && strlen(env_claudecode) > 0) {
-    log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build).");
+    NOTICE(DANGER, "HOST VERIFICATION DISABLED", "Skipping known_hosts checking (CLAUDECODE set in debug build).");
     return true;
   }
 #endif
   if (!terminal_can_prompt_user()) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
-    log_error("ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n"
-              "This connection may be a man-in-the-middle attack!\n"
-              "\n"
-              "To connect to this host:\n"
-              "  1. Run the client interactively (from a terminal with TTY)\n"
-              "  2. Verify the fingerprint: SHA256:%s\n"
-              "  3. Accept the host when prompted\n"
-              "  4. The host will be added to: %s\n"
-              "\n"
-              "Connection aborted for security.\n"
-              "To bypass this check, set the environment variable ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK to 1",
-              fingerprint, get_known_hosts_path());
+    NOTICE(DANGER, "HOST VERIFICATION FAILED",
+           "ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n"
+           "This connection may be a man-in-the-middle attack!\n"
+           "\n"
+           "To connect to this host:\n"
+           "  1. Run the client interactively (from a terminal with TTY)\n"
+           "  2. Verify the fingerprint: SHA256:%s\n"
+           "  3. Accept the host when prompted\n"
+           "  4. The host will be added to: %s\n"
+           "\n"
+           "Connection aborted for security.\n"
+           "To bypass this check, set the environment variable ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK to 1",
+           fingerprint, get_known_hosts_path());
     return false; // REJECT unknown hosts in non-interactive mode
   }
 
@@ -632,7 +640,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
                 "Ed25519 key fingerprint: SHA256:%s\n\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port, fingerprint);
-  if (platform_prompt_yes_no_timeout(question, false, 120)) {
+  if (ui_notice_confirm(UI_NOTICE_DANGER, question, 120)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
@@ -660,41 +668,39 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
 
   char escaped_ip_with_port[128];
   escape_ascii(ip_with_port, "[]", escaped_ip_with_port, 128);
-  log_warn("\n"
-           "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-           "@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\n"
-           "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-           "\n"
-           "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\n"
-           "Someone could be eavesdropping on you right now (man-in-the-middle attack)!\n"
-           "It is also possible that the host key has just been changed.\n"
-           "\n"
-           "The fingerprint for the Ed25519 key sent by the remote host is:\n"
-           "SHA256:%s\n"
-           "\n"
-           "Expected fingerprint:\n"
-           "SHA256:%s\n"
-           "\n"
-           "Please contact your system administrator.\n"
-           "\n"
-           "Add correct host key in %s to get rid of this message.\n"
-           "Offending key for IP address %s was found at:\n"
-           "%s\n"
-           "\n"
-           "To update the key, run:\n"
-           "  # Linux/macOS:\n"
-           "    sed -i '' '/%s /d' ~/.ascii-chat/known_hosts\n"
-           "    # or run this instead:\n"
-           "    cat ~/.ascii-chat/known_hosts | grep -v '%s ' > /tmp/x; cp /tmp/x ~/.ascii-chat/known_hosts\n"
-           "  # Windows PowerShell:\n"
-           "    (Get-Content ~/.ascii-chat/known_hosts) | Where-Object { $_ -notmatch '^%s ' } | Set-Content "
-           "~/.ascii-chat/known_hosts\n"
-           "  # Or manually edit ~/.ascii-chat/known_hosts to remove lines starting with '%s '\n"
-           "\n"
-           "Host key verification failed.\n"
-           "\n",
-           received_fp, expected_fp, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port,
-           escaped_ip_with_port, ip_with_port, ip_with_port);
+  NOTICE(DANGER, "REMOTE HOST IDENTIFICATION HAS CHANGED",
+         "\n"
+         "\n"
+         "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\n"
+         "Someone could be eavesdropping on you right now (man-in-the-middle attack)!\n"
+         "It is also possible that the host key has just been changed.\n"
+         "\n"
+         "The fingerprint for the Ed25519 key sent by the remote host is:\n"
+         "SHA256:%s\n"
+         "\n"
+         "Expected fingerprint:\n"
+         "SHA256:%s\n"
+         "\n"
+         "Please contact your system administrator.\n"
+         "\n"
+         "Add correct host key in %s to get rid of this message.\n"
+         "Offending key for IP address %s was found at:\n"
+         "%s\n"
+         "\n"
+         "To update the key, run:\n"
+         "  # Linux/macOS:\n"
+         "    sed -i '' '/%s /d' ~/.ascii-chat/known_hosts\n"
+         "    # or run this instead:\n"
+         "    cat ~/.ascii-chat/known_hosts | grep -v '%s ' > /tmp/x; cp /tmp/x ~/.ascii-chat/known_hosts\n"
+         "  # Windows PowerShell:\n"
+         "    (Get-Content ~/.ascii-chat/known_hosts) | Where-Object { $_ -notmatch '^%s ' } | Set-Content "
+         "~/.ascii-chat/known_hosts\n"
+         "  # Or manually edit ~/.ascii-chat/known_hosts to remove lines starting with '%s '\n"
+         "\n"
+         "Host key verification failed.\n"
+         "\n",
+         received_fp, expected_fp, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port, escaped_ip_with_port,
+         ip_with_port, ip_with_port);
 
   return false;
 }
@@ -776,32 +782,20 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   // In debug builds, Claude Code automation can't interact with prompts
   if (is_automated_mode()) {
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify server without identity key in non-interactive/automated mode");
-    log_error("ERROR: Cannot verify server without identity key in non-interactive/automated mode.\n"
-              "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n"
-              "\n"
-              "To connect to this host:\n"
-              "  1. Run the client interactively (from a terminal with TTY)\n"
-              "  2. Verify you trust this server despite no identity key\n"
-              "  3. Accept the risk when prompted\n"
-              "  OR better: Ask server admin to use --key for proper authentication\n"
-              "\n"
-              "Connection aborted for security.\n"
-              "\n");
+    NOTICE(DANGER, "SERVER IDENTITY MISSING",
+           "ERROR: Cannot verify server without identity key in non-interactive/automated mode.\n"
+           "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n"
+           "\n"
+           "To connect to this host:\n"
+           "  1. Run the client interactively (from a terminal with TTY)\n"
+           "  2. Verify you trust this server despite no identity key\n"
+           "  3. Accept the risk when prompted\n"
+           "  OR better: Ask server admin to use --key for proper authentication\n"
+           "\n"
+           "Connection aborted for security.\n"
+           "\n");
     return false;
   }
-
-  log_warn("\n"
-           "The authenticity of host '%s' can't be established.\n"
-           "The server has no identity key to verify its authenticity.\n"
-           "\n"
-           "WARNING: This connection is vulnerable to man-in-the-middle attacks!\n"
-           "Anyone can intercept your connection and read your data.\n"
-           "\n"
-           "To secure this connection:\n"
-           "  1. Server should use --key to provide an identity key\n"
-           "  2. Client should use --server-key to verify the server\n"
-           "\n",
-           ip_with_port);
 
   char question[2048];
   safe_snprintf(question, sizeof(question),
@@ -811,10 +805,11 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
                 "Use --key on the server and --server-key on the client to verify identity.\n\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port);
-  if (platform_prompt_yes_no_timeout(question, false, 120)) {
-    log_warn("Warning: Proceeding with unverified connection.\n"
-             "Your data may be intercepted by attackers!\n"
-             "\n");
+  if (ui_notice_confirm(UI_NOTICE_DANGER, question, 120)) {
+    NOTICE(DANGER, "UNVERIFIED CONNECTION",
+           "Warning: Proceeding with unverified connection.\n"
+           "Your data may be intercepted by attackers!\n"
+           "\n");
     return true;
   }
 

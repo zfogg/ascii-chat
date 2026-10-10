@@ -13,6 +13,8 @@
  * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/ui/mdns.h> // For ui_mdns_server_t struct only
 #include <ascii-chat/network/acip/acds_client.h>
@@ -417,7 +419,9 @@ static void *acds_thread_fn(void *arg) {
   // Verify pubkey if provided
   if (ctx->config->expected_pubkey) {
     if (memcmp(lookup_result.host_pubkey, ctx->config->expected_pubkey, 32) != 0) {
-      log_warn("ACDS: Session found but pubkey mismatch (MITM?)");
+      NOTICE(DANGER, "DISCOVERED HOST KEY MISMATCH",
+             "The discovered session host key does not match the expected key.\n"
+             "Possible man-in-the-middle attack. This discovery result was rejected.");
       acds_client_disconnect(&client);
       mutex_lock(&ctx->state->lock);
       ctx->state->acds_done = true;
@@ -539,6 +543,10 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
   // Determine which discovery methods to use
   bool use_mdns = true;
   bool use_acds = config->expected_pubkey != NULL || config->insecure_mode;
+  if (config->insecure_mode && !config->expected_pubkey)
+    NOTICE(DANGER, "DISCOVERY HOST VERIFICATION DISABLED",
+           "Insecure discovery is enabled without an expected host key.\n"
+           "The discovered host identity cannot be verified; this is vulnerable to man-in-the-middle attacks.");
 
   if (!use_acds) {
     log_debug("Discovery: mDNS-only mode (no --server-key and no --acds-insecure)");

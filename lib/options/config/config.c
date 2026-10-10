@@ -4,6 +4,8 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/common/error_codes.h>
@@ -1515,7 +1517,7 @@ asciichat_error_t config_create_default(const char *config_path) {
 
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", config_path_expanded);
-      bool overwrite = platform_prompt_yes_no(question, false); // Default to No
+      bool overwrite = ui_notice_confirm(UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Config file creation cancelled.");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");

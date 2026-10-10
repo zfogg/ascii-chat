@@ -5,3 +5,5 @@
 /** Only display-safe text crosses this boundary; never pass an unmasked password. */
 asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor);
 void ui_prompt_remove(void);
+
+int ui_prompt_required_rows(const void *snapshot, int cols);

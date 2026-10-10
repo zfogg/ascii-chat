@@ -55,6 +55,8 @@
  * @version 2.0
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "server.h"
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -404,7 +406,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     // Initialize crypto if encryption is enabled
     log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
     if (client_crypto_init() != 0) {
-      log_error("Failed to initialize crypto (password required or incorrect)");
+      NOTICE(DANGER, "AUTHENTICATION FAILED", "Failed to initialize crypto (password required or incorrect)");
       log_debug("CLIENT_CONNECT: client_crypto_init() failed");
       return CONNECTION_ERROR_AUTH_FAILED;
     }
@@ -544,7 +546,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Note: server IP is already set above in the connection loop
   log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
   if (client_crypto_init() != 0) {
-    log_error("Failed to initialize crypto (password required or incorrect)");
+    NOTICE(DANGER, "AUTHENTICATION FAILED", "Failed to initialize crypto (password required or incorrect)");
     log_debug("CLIENT_CONNECT: client_crypto_init() failed");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
