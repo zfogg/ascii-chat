@@ -45,6 +45,7 @@ ordinary notices. Security prompts retain their original deadlines.
 | Unknown host | `prompt_unknown_host`: fingerprint prompt, noninteractive refusal, explicit/debug verification bypass |
 | Changed host key | `display_mitm_warning`: received/expected fingerprints, known-hosts path, recovery guidance, rejection |
 | Missing/removed identity | `prompt_unknown_host_no_identity`, `check_known_host_no_identity`, handshake client/server: unverified peer and identity downgrade |
+| Discovery lookup | Expected host-key mismatch rejects the lookup result; insecure lookup without a pinned host key warns about MITM risk |
 | ACDS trust | `discovery_keys_verify_change`: old/new fingerprints, operator verification, default-No confirmation and noninteractive refusal |
 | Verification failure | Handshake client: invalid server signature, browser-pinned key mismatch, configured server-key mismatch, invalid HMAC |
 | Authentication rejection | Handshake reason flags and client protocol: incorrect/missing password, missing/rejected client key, invalid signature |
