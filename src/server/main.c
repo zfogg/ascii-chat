@@ -50,6 +50,8 @@
  * @version 2.0 (Post-Modularization)
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -1394,7 +1396,7 @@ static void *websocket_client_handler(void *arg) {
 static int init_server_crypto(void) {
   // Check if encryption is disabled
   if (GET_OPTION(no_encrypt)) {
-    log_info("Encryption: DISABLED (--no-encrypt)");
+    NOTICE(DANGER, "ENCRYPTION DISABLED", "Encryption: DISABLED (--no-encrypt)");
     g_server_encryption_enabled = false;
     return 0;
   }
@@ -1441,7 +1443,7 @@ static int init_server_crypto(void) {
     }
 
     if (g_num_server_identity_keys == 0) {
-      log_error("No valid identity keys loaded despite %zu --key flag(s)", num_keys);
+      NOTICE(DANGER, "NO VALID IDENTITY KEYS", "No valid identity keys loaded despite %zu --key flag(s)", num_keys);
       SET_ERRNO(ERROR_CRYPTO_KEY, "No valid identity keys loaded");
       return -1;
     }
@@ -1681,13 +1683,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
       bool is_interactive = terminal_can_prompt_user();
 
       if (is_interactive) {
-        log_warn("You are about to allow PUBLIC IP disclosure.\n"
-                 "Anyone with the session string will be able to see your IP address.\n"
-                 "This is NOT RECOMMENDED unless you understand the privacy implications.");
-
-        if (!platform_prompt_yes_no("PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
-                                    "address.\n\nDo you want to proceed",
-                                    false)) {
+        if (!ui_notice_confirm(UI_NOTICE_DANGER,
+                               "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
+                               "address.\n\nDo you want to proceed",
+                               30)) {
           log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
           goto skip_acds_session;
         }
@@ -1695,17 +1694,19 @@ static asciichat_error_t server_init_fn(void *user_data) {
 
       // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
       acds_expose_ip_flag = true;
-      log_info("Public IP disclosure CONFIRMED.\n"
-               "Your IP address will be visible to anyone with the session string");
+      NOTICE(DANGER, "PUBLIC IP DISCLOSURE ENABLED",
+             "Public IP disclosure CONFIRMED.\n"
+             "Your IP address will be visible to anyone with the session string");
     } else {
       // Security violation: No password, no identity, no explicit opt-in
-      log_error("Cannot create ACDS session: No security configured!\n"
-                "You must either:\n"
-                "1. Set a password: --password \"your-secret\"\n"
-                "2. Use identity key: --key ~/.ssh/id_ed25519\n"
-                "3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n"
-                "\n"
-                "Server will run WITHOUT discovery service.");
+      NOTICE(DANGER, "DISCOVERY DISABLED: SECURITY REQUIRED",
+             "Cannot create ACDS session: No security configured!\n"
+             "You must either:\n"
+             "1. Set a password: --password \"your-secret\"\n"
+             "2. Use identity key: --key ~/.ssh/id_ed25519\n"
+             "3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n"
+             "\n"
+             "Server will run WITHOUT discovery service.");
       goto skip_acds_session;
     }
 
@@ -2045,14 +2046,16 @@ skip_acds_session:
   // ====================================================================
   if (session_string[0] != '\0') {
     if (session_is_mdns_only) {
-      log_plain("========================================================\nSession String: %s (LAN only via "
-                "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
-                "%s\n========================================================",
-                session_string, session_string);
+      NOTICE_ANNOUNCE("SESSION READY",
+             "Session String: %s (LAN only via "
+             "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
+             "%s",
+             session_string, session_string);
     } else {
-      log_plain("========================================================\nSession String: %s\nShare this "
-                "globally to join:\n   ascii-chat %s\n========================================================",
-                session_string, session_string);
+      NOTICE_ANNOUNCE("SESSION READY",
+             "Session String: %s\nShare this "
+             "globally to join:\n   ascii-chat %s",
+             session_string, session_string);
     }
   }
 

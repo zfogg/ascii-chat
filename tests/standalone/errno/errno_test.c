@@ -235,6 +235,10 @@ static void cross_thread_contract(void) {
   asciichat_error_context_t snapshot;
   CHECK(asciichat_has_thread_errno(data.tid, &snapshot));
   CHECK(HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
+  SET_ERRNO(ERROR_AUDIO, "caller error");
+  CLEAR_ERRNO_ALL();
+  CHECK(!HAS_ERRNO(NULL));
+  CHECK(HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
   CLEAR_ERRNO_TID(data.tid);
   CHECK(!HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
   CHECK(strcmp(snapshot.context_message, "worker 0") == 0);

@@ -616,17 +616,39 @@ static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMed
   }
 
   // Copy codec parameters
-  if (avcodec_parameters_to_context(*codec_ctx, stream->codecpar) < 0) {
+  ret = avcodec_parameters_to_context(*codec_ctx, stream->codecpar);
+  if (ret < 0) {
     avcodec_free_context(codec_ctx);
-    return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to copy codec parameters");
+    return SET_ERRNO(ret == AVERROR(ENOMEM) ? ERROR_MEMORY : ERROR_MEDIA_DECODE, "Failed to copy codec parameters");
   }
 
   // Open codec
-  if (avcodec_open2(*codec_ctx, codec, NULL) < 0) {
+  ret = avcodec_open2(*codec_ctx, codec, NULL);
+  if (ret < 0) {
     avcodec_free_context(codec_ctx);
-    return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to open codec");
+    return SET_ERRNO(ret == AVERROR(ENOMEM) ? ERROR_MEMORY : ERROR_MEDIA_DECODE, "Failed to open codec");
   }
 
+  return ASCIICHAT_OK;
+}
+
+// A missing/unsupported stream can fall back to the other media type. Allocation
+// and other initialization failures still fail decoder creation with their cause.
+static asciichat_error_t open_optional_codec_context(AVFormatContext *format, enum AVMediaType type, int *stream_index,
+                                                     AVCodecContext **context) {
+  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_error_t result = open_codec_context(format, type, stream_index, context);
+  if (result == ERROR_MEDIA_DECODE && HAS_ERRNO_CODE_SINCE(scope, ERROR_MEDIA_DECODE)) {
+    LOG_ERRNO_IF_SET("Optional media stream unavailable");
+    avcodec_free_context(context);
+    *stream_index = -1;
+    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    return ASCIICHAT_OK;
+  }
+  if (result != ASCIICHAT_OK)
+    return result;
+  ASSERT_NO_ERRNO_SINCE(scope);
+  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   return ASCIICHAT_OK;
 }
 
@@ -718,20 +740,20 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   }
 
   // Open video codec
-  asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
-                                             &decoder->video_codec_ctx);
+  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO,
+                                                      &decoder->video_stream_idx, &decoder->video_codec_ctx);
   if (err != ASCIICHAT_OK) {
-    log_warn("Failed to open video codec (file may be audio-only)");
+    ffmpeg_decoder_destroy(decoder);
+    return NULL;
   }
 
   // Open audio codec - audio is enabled by default (no option needed)
   // Always try to open audio codec, don't rely on GET_OPTION(audio_enabled) which has a default issue
-  err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                           &decoder->audio_codec_ctx);
+  err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
+                                    &decoder->audio_codec_ctx);
   if (err != ASCIICHAT_OK) {
-    log_debug("No audio codec found (file may be video-only or audio codec not available)");
-    decoder->audio_stream_idx = -1;
-    decoder->audio_codec_ctx = NULL;
+    ffmpeg_decoder_destroy(decoder);
+    return NULL;
   }
 
   // Require at least one stream
@@ -976,17 +998,19 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   }
 
   // Open codecs (same as file-based decoder)
-  asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
-                                             &decoder->video_codec_ctx);
+  asciichat_error_t err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO,
+                                                      &decoder->video_stream_idx, &decoder->video_codec_ctx);
   if (err != ASCIICHAT_OK) {
-    log_warn("Failed to open video codec from stdin");
+    ffmpeg_decoder_destroy(decoder);
+    return NULL;
   }
 
   if (GET_OPTION(audio_enabled)) {
-    err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                             &decoder->audio_codec_ctx);
+    err = open_optional_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
+                                      &decoder->audio_codec_ctx);
     if (err != ASCIICHAT_OK) {
-      log_warn("Failed to open audio codec from stdin");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
     }
   } else {
     decoder->audio_stream_idx = -1;

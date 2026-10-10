@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
@@ -15,7 +17,8 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/debug/named.h>
 
-typedef struct {
+typedef struct screen {
+  struct screen *next;
   void *snapshot;
   ui_render_fn render;
   terminal_size_t minimum;
@@ -56,16 +59,30 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
+static void release_screen(screen_t *screen, bool flush_notices) {
+  screen_t *current = screen;
+  while (current) {
+    screen_t *next = current->next;
+    if (current->render) {
+      if (flush_notices)
+        ui_notice_flush_snapshot(current->fd, current->snapshot);
+      platform_close(current->fd);
+    }
+    SAFE_FREE(current->snapshot);
+    if (current != screen)
+      SAFE_FREE(current);
+    current = next;
+  }
+  memset(screen, 0, sizeof(*screen));
+}
+
 void ui_controller_finish(int fd, const char *data, size_t len) {
   bool locked = lifecycle_is_initialized(&g_lifecycle);
   if (locked) {
     mutex_lock(&g_mutex);
     g_finished = true;
     for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
-      if (g_screens[i].render)
-        platform_close(g_screens[i].fd);
-      SAFE_FREE(g_screens[i].snapshot);
-      memset(&g_screens[i], 0, sizeof(screen_t));
+      release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
     }
   }
   platform_write_all(fd, data, len);
@@ -133,6 +150,8 @@ static void *presentation_main(void *unused) {
       bool resized = size.cols != g_size.cols || size.rows != g_size.rows;
       g_size = size;
       g_render_size = size;
+      if (active == UI_SCREEN_PROMPT)
+        screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
       bool small = ui_too_small(size, screen->minimum);
       atomic_store_bool(&g_blocked, small);
       bool requirement_changed =
@@ -270,11 +289,37 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     return ASCIICHAT_OK;
   }
   screen_t *slot = &g_screens[screen];
-  int output_fd = slot->render ? slot->fd : platform_dup(fd);
+  bool queue_notice = screen == UI_SCREEN_NOTICE && slot->render;
+  int output_fd = slot->render && !queue_notice ? slot->fd : platform_dup(fd);
   if (output_fd < 0) {
     mutex_unlock(&g_mutex);
     SAFE_FREE(copy);
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
+  }
+  if (queue_notice) {
+    size_t pending = 1;
+    screen_t *tail = slot;
+    while (tail->next) {
+      tail = tail->next;
+      ++pending;
+    }
+    if (pending >= 64) {
+      platform_close(output_fd);
+      SAFE_FREE(copy);
+      mutex_unlock(&g_mutex);
+      return ERROR_BUFFER_FULL;
+    }
+    screen_t *queued = SAFE_CALLOC(1, sizeof(*queued), screen_t *);
+    if (!queued) {
+      platform_close(output_fd);
+      SAFE_FREE(copy);
+      mutex_unlock(&g_mutex);
+      return ERROR_MEMORY;
+    }
+    *queued = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
+    tail->next = queued;
+    mutex_unlock(&g_mutex);
+    return ASCIICHAT_OK;
   }
   SAFE_FREE(slot->snapshot);
   atomic_store_bool(&g_live, true);
@@ -291,7 +336,14 @@ void ui_controller_remove(ui_screen_t screen) {
   if (g_screens[screen].render)
     platform_close(g_screens[screen].fd);
   SAFE_FREE(g_screens[screen].snapshot);
-  memset(&g_screens[screen], 0, sizeof(screen_t));
+  screen_t *next = g_screens[screen].next;
+  if (next) {
+    g_screens[screen] = *next;
+    SAFE_FREE(next);
+    g_redraw = true;
+  } else {
+    memset(&g_screens[screen], 0, sizeof(screen_t));
+  }
   bool live = false;
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     live |= g_screens[i].render != NULL;
@@ -311,6 +363,8 @@ ui_presentation_state_t ui_controller_state(void) {
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
     terminal_size_t size = {0};
+    if (state.screen == UI_SCREEN_PROMPT && terminal_get_size_fd(screen->fd, &size) == ASCIICHAT_OK)
+      screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
     state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
                     size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
   }
@@ -390,10 +444,7 @@ void ui_controller_shutdown(void) {
   atomic_store_bool(&g_presentation_stop_requested, true);
   asciichat_thread_join(&g_thread, NULL);
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
-    if (g_screens[i].render)
-      platform_close(g_screens[i].fd);
-    SAFE_FREE(g_screens[i].snapshot);
-    memset(&g_screens[i], 0, sizeof(screen_t));
+    release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
   }
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);

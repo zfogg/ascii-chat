@@ -4,6 +4,8 @@
  * @brief Client-side handshake protocol implementation
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/buffer_pool.h>
@@ -133,7 +135,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // (client doesn't care about server identity verification)
     if (!ctx->verify_server_key) {
       log_info("Skipping server signature verification (no --server-key specified)");
-      log_warn("Connection is encrypted but server identity is NOT verified (vulnerable to MITM)");
+      NOTICE(DANGER, "UNVERIFIED SERVER IDENTITY",
+             "Connection is encrypted but server identity is NOT verified (vulnerable to MITM)");
     } else {
       // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
       const char *gpg_key_id = NULL;
@@ -152,6 +155,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
+        NOTICE(DANGER, "SERVER SIGNATURE INVALID",
+               "The server identity signature could not be verified.\n"
+               "Possible man-in-the-middle attack. Connection rejected.");
         return SET_ERRNO(ERROR_CRYPTO, "Server signature verification FAILED - rejecting connection. "
                                        "This indicates: Server's identity key does not "
                                        "match its ephemeral key, Potential man-in-the-middle attack, "
@@ -167,6 +173,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
+        NOTICE(DANGER, "SERVER IDENTITY KEY MISMATCH",
+               "The server key does not match the browser verification key.\nConnection rejected.");
         return SET_ERRNO(ERROR_CRYPTO_VERIFICATION,
                          "Server identity key does not match the active browser verification key");
       }
@@ -202,6 +210,10 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
+        NOTICE(DANGER, "SERVER IDENTITY KEY MISMATCH",
+               "The server key does not match --server-key: %s.\n"
+               "Possible man-in-the-middle attack. Do not connect until the server identity is verified.",
+               ctx->expected_server_key);
         return SET_ERRNO(ERROR_CRYPTO,
                          "Server identity key mismatch - potential MITM attack! "
                          "Expected key(s) from: %s (checked %zu keys), Server presented a different key "
@@ -255,7 +267,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                            "SECURITY: Connection aborted - server key mismatch (possible MITM attack)");
         }
         // User accepted the risk - continue with connection
-        log_warn("SECURITY WARNING: User accepted MITM risk - continuing with connection");
+        NOTICE(DANGER, "HOST KEY CHANGE ACCEPTED",
+               "SECURITY WARNING: User accepted MITM risk - continuing with connection");
       } else if (known_host_result == ASCIICHAT_OK) {
         // Unknown host (first connection) - prompt user to verify fingerprint
         if (!prompt_unknown_host(ctx->server_ip, ctx->server_port, server_identity_key)) {
@@ -342,10 +355,11 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                ctx->server_port);
     } else if (known_host_result == ASCIICHAT_OK) {
       // Server IP is unknown - require user confirmation
-      log_warn("SECURITY: Unknown server IP %s:%u with no identity key\n"
-               "This connection is vulnerable to man-in-the-middle attacks\n"
-               "Anyone can intercept your connection and read your data",
-               ctx->server_ip, ctx->server_port);
+      NOTICE(DANGER, "UNVERIFIED SERVER IDENTITY",
+             "SECURITY: Unknown server IP %s:%u with no identity key\n"
+             "This connection is vulnerable to man-in-the-middle attacks\n"
+             "Anyone can intercept your connection and read your data",
+             ctx->server_ip, ctx->server_port);
 
       if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
         SAFE_FREE(server_ephemeral_key);
@@ -371,7 +385,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       log_debug("Server host added to known_hosts successfully");
     } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
       // Server previously had identity key but now has none - potential security issue
-      log_warn("SECURITY: Server previously had identity key but now has none - potential security issue");
+      NOTICE(DANGER, "SERVER IDENTITY REMOVED",
+             "SECURITY: Server previously had identity key but now has none - potential security issue");
       SAFE_FREE(server_ephemeral_key);
       SAFE_FREE(server_identity_key);
       SAFE_FREE(server_signature);
@@ -798,6 +813,13 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
     // Parse the auth failure packet to get specific reasons
     if (payload_len >= sizeof(auth_failure_packet_t)) {
       auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
+      NOTICE(DANGER, "AUTHENTICATION REJECTED", "%s%s%s%s%sConnection rejected.",
+             failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT ? "Incorrect password.\n" : "",
+             failure->reason_flags & AUTH_FAIL_PASSWORD_REQUIRED ? "Password required: use --password.\n" : "",
+             failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REQUIRED ? "Client identity required: use --key.\n" : "",
+             failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REJECTED ? "Client key is not authorized by the server.\n"
+                                                                   : "",
+             failure->reason_flags & AUTH_FAIL_SIGNATURE_INVALID ? "Client signature verification failed.\n" : "");
       SET_ERRNO(ERROR_CRYPTO_AUTH, "Server rejected authentication:");
 
       if (failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT) {
@@ -832,6 +854,8 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
         }
       }
     } else {
+      NOTICE(DANGER, "AUTHENTICATION REJECTED",
+             "Server rejected authentication (no details provided).\nConnection rejected.");
       SET_ERRNO(ERROR_CRYPTO_AUTH, "Server rejected authentication (no details provided)");
     }
     return SET_ERRNO(ERROR_CRYPTO_AUTH,
@@ -863,8 +887,9 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
 
   // Verify server's HMAC (binds to DH shared_secret to prevent MITM)
   if (!crypto_verify_auth_response(&ctx->crypto_ctx, ctx->client_challenge_nonce, payload)) {
-    SET_ERRNO(ERROR_CRYPTO_AUTH, "SECURITY: Server authentication failed - incorrect HMAC");
-    SET_ERRNO(ERROR_CRYPTO_AUTH, "This may indicate a man-in-the-middle attack!");
+    NOTICE(
+        DANGER, "SERVER AUTHENTICATION FAILED",
+        "The server returned an incorrect HMAC. This may indicate a man-in-the-middle attack.\nConnection rejected.");
     return SET_ERRNO(ERROR_CRYPTO_AUTH,
                      "Server authentication failed - incorrect HMAC"); // Authentication
                                                                        // failure - do not

@@ -4,6 +4,8 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
@@ -1032,7 +1034,116 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   (void)fflush(output_stream);
 }
 
+static _Thread_local const char *g_notice_text;
+static _Thread_local ui_notice_severity_t g_notice_severity;
+static _Thread_local bool g_notice_record_only;
+static _Thread_local bool g_notice_unfiltered;
+
+static void output_notice(log_level_t level, const char *file, int line, const char *func) {
+  if (g_notice_record_only)
+    return;
+  const char *text = g_notice_text;
+  ui_notice_severity_t severity = g_notice_severity;
+  g_notice_text = NULL;
+  session_log_buffer_t *buffer = log_get_session_log_buffer();
+  if (buffer)
+    session_log_buffer_append(buffer, text);
+  // Match the same uncolored template as ordinary terminal logs, including metadata.
+  // Keep the complete body for notices that span multiple file-log records.
+  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + 512;
+  char *plain_log_line = SAFE_MALLOC(capacity, char *);
+  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
+  uint64_t time_ns = time_get_realtime_ns();
+  get_current_time_formatted(timestamp);
+  const log_template_t *format = g_log.format;
+  int plain_len = format && plain_log_line
+                      ? log_template_apply(format, plain_log_line, capacity, level, timestamp, file, line, func,
+                                           asciichat_thread_current_id(), text, false, time_ns)
+                      : -1;
+  size_t start = 0, length = 0;
+  if (!GET_OPTION(quiet) &&
+      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) &&
+      plain_len > 0 && (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
+#ifdef EMSCRIPTEN_BUILD
+    log_plain("%s", text);
+#else
+    if (ui_notice_present(severity, text) == ERROR_BUFFER_FULL)
+      log_warn_every(US_PER_SEC_INT, "Notice display queue is full; additional notices remain in the log");
+#endif
+  SAFE_FREE(plain_log_line);
+  g_notice_text = text;
+}
+
+static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const char *file, int line, const char *func,
+                        const char *title, const char *format, va_list args) {
+  if (!title || !format || !lifecycle_is_initialized(&g_log.lifecycle))
+    return;
+  char *body = format_message(format, args);
+  if (!body)
+    return;
+  size_t size = strlen(title) + strlen(body) + 2;
+  char *message = SAFE_MALLOC(size, char *);
+  if (!message) {
+    SAFE_FREE(body);
+    return;
+  }
+  safe_snprintf(message, size, "%s\n%s", title, body);
+  const char *previous = g_notice_text;
+  ui_notice_severity_t previous_severity = g_notice_severity;
+  bool previous_unfiltered = g_notice_unfiltered;
+  g_notice_text = message;
+  g_notice_severity = severity;
+  g_notice_unfiltered = unfiltered;
+  log_level_t level = severity == UI_NOTICE_FATAL     ? LOG_FATAL
+                      : severity == UI_NOTICE_DANGER  ? LOG_ERROR
+                      : severity == UI_NOTICE_WARNING ? LOG_WARN
+                                                      : LOG_INFO;
+  if (strlen(message) < 3000) {
+    log_msg(level, file, line, func, "%s", message);
+  } else {
+    bool previous_record_only = g_notice_record_only;
+    g_notice_record_only = true;
+    const char *cursor = message;
+    while (*cursor) {
+      size_t bytes = strlen(cursor);
+      if (bytes > 3000) {
+        bytes = 3000;
+        while (bytes && ((unsigned char)cursor[bytes] & 0xc0) == 0x80)
+          --bytes;
+        if (!bytes)
+          bytes = 3000; // Malformed UTF-8 must still make progress.
+      }
+      log_msg(level, file, line, func, "%.*s", (int)bytes, cursor);
+      cursor += bytes;
+    }
+    g_notice_record_only = previous_record_only;
+    if ((unfiltered || level >= log_get_level()) && atomic_load_int(&g_log.json_file) < 0)
+      output_notice(level, file, line, func);
+  }
+  g_notice_text = previous;
+  g_notice_severity = previous_severity;
+  g_notice_unfiltered = previous_unfiltered;
+  SAFE_FREE(message);
+  SAFE_FREE(body);
+}
+
+void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,
+                   const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  notice_logv(severity, false, file, line, func, title, format, args);
+  va_end(args);
+}
+
+void ui_notice_announce(const char *file, int line, const char *func, const char *title, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  notice_logv(UI_NOTICE_INFO, true, file, line, func, title, format, args);
+  va_end(args);
+}
+
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+
 
   // All state access uses atomic operations - fully lock-free
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
@@ -1047,7 +1158,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   uint64_t loaded_level = atomic_load_u64(&g_log.level);
 
-  if (level < (log_level_t)loaded_level) {
+  if (level < (log_level_t)loaded_level && !(g_notice_text && g_notice_unfiltered)) {
     return;
   }
   /* =========================================================================
@@ -1073,6 +1184,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     validate_log_message_utf8(msg_buffer, "mmap log message");
 
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
+
+    if (g_notice_text) {
+      output_notice(level, file, line, func);
+      return;
+    }
 
     // Terminal output (check with atomic loads)
     if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked)) {
@@ -1199,6 +1315,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+    }
+
+    if (g_notice_text) {
+      output_notice(level, file, line, func);
+      return;
     }
 
     // Write to terminal (atomic state checks)

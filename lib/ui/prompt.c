@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
@@ -8,35 +10,11 @@
 typedef struct {
   size_t prompt_bytes;
   size_t cursor;
+  ui_notice_severity_t severity;
+  bool color;
+  bool unicode;
   char text[];
 } prompt_snapshot_t;
-
-// The same layout measures the minimum height and renders it. Wrapping keeps
-// fingerprints and long questions intact instead of truncating security context.
-static int layout(frame_buffer_t *buffer, const char *text, int cols, int row) {
-  int col = 1;
-  while (*text) {
-    int bytes = utf8_next_char_bytes(text, strlen(text));
-    if (bytes <= 0)
-      bytes = 1;
-    int width = utf8_display_width_n(text, (size_t)bytes);
-    if (*text == '\n' || col + width > cols) {
-      ++row;
-      col = 1;
-      if (*text == '\n') {
-        ++text;
-        continue;
-      }
-    }
-    if (buffer) {
-      frame_buffer_printf(buffer, "\033[%d;%dH", row, col);
-      frame_buffer_append(buffer, text, (size_t)bytes);
-    }
-    col += width > 0 ? width : 0;
-    text += bytes;
-  }
-  return row;
-}
 
 static void render_prompt(terminal_size_t size, const void *data) {
   const prompt_snapshot_t *snapshot = data;
@@ -45,7 +23,8 @@ static void render_prompt(terminal_size_t size, const void *data) {
   if (!buffer)
     return;
   frame_buffer_append(buffer, "\033[0m\033[H", 7);
-  int row = layout(buffer, snapshot->text, size.cols, 1) + 2;
+  int row =
+      ui_notice_render(buffer, snapshot->text, snapshot->severity, size.cols, snapshot->unicode, snapshot->color) + 2;
   frame_buffer_printf(buffer, "\033[%d;1H\033[2K> ", row);
   // Keep the editable line within the terminal and scroll with the cursor.
   size_t start = snapshot->cursor > (size_t)(size.cols - 4) ? snapshot->cursor - (size.cols - 4) : 0;
@@ -82,10 +61,14 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt presentation");
   snapshot->prompt_bytes = prompt_bytes;
   snapshot->cursor = cursor;
+  snapshot->severity = ui_notice_prompt_severity();
+  snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
+  snapshot->unicode = terminal_supports_utf8();
   memcpy(snapshot->text, prompt, prompt_bytes);
   memcpy(snapshot->text + prompt_bytes, visible, visible_bytes);
   // Height is measured at the minimum width, so every larger terminal fits.
-  terminal_size_t minimum = {.cols = 40, .rows = layout(NULL, prompt, 40, 1) + 3};
+  terminal_size_t minimum = {.cols = 40,
+                             .rows = ui_notice_render(NULL, prompt, snapshot->severity, 40, false, false) + 3};
   asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), minimum, render_prompt, snapshot,
                                                   sizeof(*snapshot) + prompt_bytes + visible_bytes);
   SAFE_FREE(snapshot);
@@ -96,4 +79,9 @@ void ui_prompt_remove(void) {
   ui_controller_remove(UI_SCREEN_PROMPT);
   if (ui_controller_state().screen < 0)
     ui_controller_write(prompt_fd(), "\r\n", 2);
+}
+
+int ui_prompt_required_rows(const void *data, int cols) {
+  const prompt_snapshot_t *snapshot = data;
+  return ui_notice_render(NULL, snapshot->text, snapshot->severity, cols, false, false) + 3;
 }

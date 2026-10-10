@@ -52,8 +52,12 @@ static void debug_stats_print_errno(void) {
   asciichat_errno_print_hash_stats();
 }
 static void debug_stats_print_sync(void) {
+#ifndef NDEBUG
   debug_sync_print_state();
   named_print_hash_stats();
+#else
+  log_info("SYNC_STATE: synchronization diagnostics are unavailable in Release builds");
+#endif
 }
 void debug_stats_print(void) {
   debug_stats_print_sync();

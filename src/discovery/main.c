@@ -31,6 +31,8 @@
  * @version 1.0
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "session.h"
@@ -456,17 +458,27 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       if (frame) {
         log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
         // Inject host's frame into mixer for broadcasting
-        session_host_inject_frame(host, host_participant_id, frame);
+        result = session_host_inject_frame(host, host_participant_id, frame);
+        if (result != ASCIICHAT_OK) {
+          LOG_ERRNO_IF_SET("Failed to inject host frame");
+          break;
+        }
       } else {
         log_debug_every(5 * NS_PER_SEC_INT, "No frame captured");
       }
 
       // Keep discovery session responsive (NAT negotiations, migrations)
+      asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
       result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
         log_error("Discovery session process failed: %d", result);
         break;
       }
+
+      if (result == ASCIICHAT_OK)
+        ASSERT_NO_ERRNO_SINCE(process_scope);
+      asciichat_errno_scope_end(process_scope, ASCIICHAT_ERRNO_HANDLED);
+      result = ASCIICHAT_OK;
 
       // Frame rate limiting (60 FPS)
       session_capture_sleep_for_fps(capture);
@@ -477,6 +489,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
 
     // Stop render thread before returning (display will be destroyed by caller)
     session_host_stop_render(host);
+
+    if (result != ASCIICHAT_OK)
+      return result;
 
     if (should_exit()) {
       return ASCIICHAT_OK;
@@ -785,7 +800,8 @@ int discovery_main(void) {
 
   if (session_result != ASCIICHAT_OK || discovery_error[0]) {
     log_set_terminal_output(true);
-    log_error("Discovery failed: %s", discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
+    NOTICE(WARNING, "DISCOVERY FAILED", "Discovery failed: %s",
+           discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
     if (session_result == ASCIICHAT_OK)
       session_result = discovery_error_code;
   }

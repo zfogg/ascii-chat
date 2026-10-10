@@ -3,6 +3,8 @@
  * @brief Unified media source implementation
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/media/source.h>
@@ -241,7 +243,8 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     asciichat_error_t webcam_error = webcam_init_context(&source->webcam_ctx, index);
     if (webcam_error != ASCIICHAT_OK) {
       // Webcam init failed - log and cleanup
-      log_error("Failed to initialize webcam device %u (error code: %d)", index, webcam_error);
+      NOTICE(WARNING, "CAMERA UNAVAILABLE", "Failed to initialize webcam device %u (error code: %d)", index,
+             webcam_error);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
       mutex_destroy(&source->pause_mutex);
@@ -317,6 +320,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     source->video_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
+      NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s", effective_path);
       LOG_ERRNO_IF_SET("Media initialization failed");
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);

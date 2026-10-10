@@ -3,6 +3,7 @@
  * @brief Bounded, synchronized error stacks with allocation-free recording.
  */
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/ui/notice.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/backtrace.h>
@@ -640,6 +641,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   va_start(args, format);
   vsnprintf(message, sizeof(message), format ? format : "", args);
   va_end(args);
+  NOTICE(FATAL, "FATAL ERROR", "%s\nExit code: %d (%s)", message, code, asciichat_error_string(code));
   log_error("Fatal: %s (code=%d at %s:%d in %s)", message, code, file ? file : "?", line, function ? function : "?");
   asciichat_errno_print_stacks();
   g_recording = previous;

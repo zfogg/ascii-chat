@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("binary", type=Path)
     parser.add_argument("--debug-sync", action="store_true", help="Require Debug synchronization reports")
+    parser.add_argument("--codec-fixture", type=Path, help="Video with an unsupported optional audio codec")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     logs = Path(tempfile.mkdtemp(prefix="ascii-errno-smoke-"))
@@ -52,6 +53,9 @@ def main():
         assert sync.count("SYNC_STATE:") == 1
         assert both.count("SYNC_STATE:") == 1
         assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
+    else:
+        assert "synchronization diagnostics are unavailable in Release builds" in sync
+        assert "synchronization diagnostics are unavailable in Release builds" in both
     # A later errno deadline must not delay or replace the earlier sync report.
     later = run("independent-deadlines", ["mirror", "--test-pattern", "--sync-state=0.05",
                                         "--errno-stacks=60", *snapshot], 0)
@@ -65,6 +69,9 @@ def main():
     frame = logs / "extensionless-frame"
     frame.write_bytes(b"P6\n2 2\n255\n" + bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0]))
     run("media-fallback", ["mirror", "--file", str(frame), *snapshot], 0)
+    if args.codec_fixture:
+        fallback = run("optional-codec", ["mirror", "--file", str(args.codec_fixture.resolve()), *snapshot], 0)
+        assert "Optional media stream unavailable" in fallback
 
     port = unused_port()
     with (logs / "server-output.log").open("wb") as output:

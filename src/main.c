@@ -21,6 +21,8 @@
  * Test: Running macOS builds with WebRTC Threads fix
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/ui/controller.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -757,9 +759,9 @@ int main(int argc, char *argv[]) {
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
     if (HAS_ERRNO(&error_ctx)) {
-      log_error("Error: %s", error_ctx.context_message);
+      NOTICE(WARNING, "INVALID OPTIONS", "%s", error_ctx.context_message);
     } else {
-      log_error("Error: Failed to initialize options (error code: %d)", options_result);
+      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options (error code: %d)", options_result);
     }
 
     // Clean up options state before exiting
