@@ -208,7 +208,7 @@ def main():
                            "--audio=false", "--color-mode", "none"]
             mirror = terminal("mirror", mirror_args)
             small(mirror)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             video(mirror)
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
@@ -229,7 +229,7 @@ def main():
             small(mirror)
             mirror.write("?m ")
             mirror.pump(0.4)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             help_text = mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help restoration")
             assert "100%" in help_text, "Controls were replayed after resize"
             mirror.write("?")
@@ -240,7 +240,7 @@ def main():
             assert mirror.pump(0.3) == paused, "Playback did not pause"
             mirror.resize(12, 19)
             small(mirror)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             video(mirror)
             # Restoring a paused screen must not resume capture.
             paused = mirror.pump(0.3)
