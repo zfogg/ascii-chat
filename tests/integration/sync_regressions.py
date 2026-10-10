@@ -35,10 +35,13 @@ def main():
                 text = terminal.expect(lambda text: "Sync primitives" in text and "sync_fixture_value" in text,
                                        "Sync screen did not open with the main thread blocked")
                 if mode == "deadlock":
-                    terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
+                    text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
+                    rows = text.splitlines()
+                    assert "cycle_a" in rows[3] and "DEADLOCK" in rows[3], text
+                    assert "cycle_b" in rows[4] and "DEADLOCK" in rows[4], text
                     terminal.write("\x1b[F")
                     terminal.expect(lambda text: "named_registry_lock" in text, "Cannot reach final page")
-                    terminal.write("\x1b[D")
+                    terminal.write("\x1b[H")
                     terminal.expect(lambda text: "cycle_a" in text and "DEADLOCK" in text, "Missing named cycle detail")
                 else:
                     terminal.expect(lambda text: "STALE: collection unavailable" in text, "Missing stale sample status")

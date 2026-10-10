@@ -110,6 +110,8 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
 
 static int sync_compare_rows(const void *a, const void *b) {
   const sync_row_t *x = a, *y = b;
+  if (x->cycle != y->cycle)
+    return x->cycle ? -1 : 1;
   int result = strcmp(x->type, y->type);
   return result ? result : strcmp(x->name, y->name);
 }
