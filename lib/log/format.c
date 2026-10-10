@@ -643,7 +643,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       /* Apply colorize_log_message() for number/unit/hex highlighting, then format named objects */
       if (message) {
         const char *formatted_msg = log_named_format_or_original(message);
-        const char *colorized_msg = colorize_log_message(formatted_msg);
+        const char *colorized_msg = use_colors ? colorize_log_message(formatted_msg) : formatted_msg;
         written = safe_snprintf(p, remaining + 1, "%s", colorized_msg);
       }
       break;

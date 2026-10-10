@@ -1039,7 +1039,7 @@ static _Thread_local ui_notice_severity_t g_notice_severity;
 static _Thread_local bool g_notice_record_only;
 static _Thread_local bool g_notice_unfiltered;
 
-static void output_notice(void) {
+static void output_notice(log_level_t level, const char *file, int line, const char *func) {
   if (g_notice_record_only)
     return;
   const char *text = g_notice_text;
@@ -1048,16 +1048,29 @@ static void output_notice(void) {
   session_log_buffer_t *buffer = log_get_session_log_buffer();
   if (buffer)
     session_log_buffer_append(buffer, text);
+  // Match the same uncolored template as ordinary terminal logs, including metadata.
+  // Keep the complete body for notices that span multiple file-log records.
+  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + 512;
+  char *plain_log_line = SAFE_MALLOC(capacity, char *);
+  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
+  uint64_t time_ns = time_get_realtime_ns();
+  get_current_time_formatted(timestamp);
+  const log_template_t *format = g_log.format;
+  int plain_len = format && plain_log_line
+                      ? log_template_apply(format, plain_log_line, capacity, level, timestamp, file, line, func,
+                                           asciichat_thread_current_id(), text, false, time_ns)
+                      : -1;
   size_t start = 0, length = 0;
   if (!GET_OPTION(quiet) &&
       (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) &&
-      grep_should_output(text, &start, &length))
+      plain_len > 0 && (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
 #ifdef EMSCRIPTEN_BUILD
     log_plain("%s", text);
 #else
     if (ui_notice_present(severity, text) == ERROR_BUFFER_FULL)
       log_warn_every(US_PER_SEC_INT, "Notice display queue is full; additional notices remain in the log");
 #endif
+  SAFE_FREE(plain_log_line);
   g_notice_text = text;
 }
 
@@ -1105,7 +1118,7 @@ static void notice_logv(ui_notice_severity_t severity, bool unfiltered, const ch
     }
     g_notice_record_only = previous_record_only;
     if ((unfiltered || level >= log_get_level()) && atomic_load_int(&g_log.json_file) < 0)
-      output_notice();
+      output_notice(level, file, line, func);
   }
   g_notice_text = previous;
   g_notice_severity = previous_severity;
@@ -1173,7 +1186,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
 
     if (g_notice_text) {
-      output_notice();
+      output_notice(level, file, line, func);
       return;
     }
 
@@ -1305,7 +1318,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
 
     if (g_notice_text) {
-      output_notice();
+      output_notice(level, file, line, func);
       return;
     }
 

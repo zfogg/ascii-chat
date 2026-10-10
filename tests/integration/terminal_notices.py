@@ -127,6 +127,20 @@ def probe(library, kind, log):
         recovered = "".join(entries[i].message.decode() for i in range(count))
         assert recovered == text.replace("\n", "")
         native.session_log_buffer_destroy(buffer)
+    elif kind.startswith("filter-header-"):
+        native.grep_init.argtypes = [C.c_char_p]
+        patterns = {
+            "level": b"ERROR", "file": b"auth-handshake.c", "function": b"verify_peer",
+            "custom": b"SECURITY:ERROR", "invert": b"/ERROR/I", "long": b"LAST-BYTE",
+        }
+        variant = kind.removeprefix("filter-header-")
+        if variant == "custom":
+            native.log_set_format.argtypes = [C.c_char_p, C.c_bool]
+            assert native.log_set_format(b"SECURITY:%level %message", False) == 0
+        assert native.grep_init(patterns[variant]) == 0
+        body = b"Invalid peer signature" if variant != "long" else b"a" * 6000 + b"LAST-BYTE"
+        native.ui_notice_log(2, b"auth-handshake.c", 42, b"verify_peer", b"AUTHENTICATION REJECTED", body)
+        native.ui_notice_log(1, b"other.c", 10, b"other", b"UNRELATED WARNING", b"Other body")
     elif kind in ("filter", "json"):
         if kind == "filter":
             native.grep_init.argtypes = [C.c_char_p]
@@ -208,10 +222,17 @@ def main():
         def command(kind):
             return [sys.executable, "-X", "utf8", str(Path(__file__).resolve()), "--library", str(args.library.resolve()),
                     "--probe", kind, "--log", str(Path(directory) / (kind + ".log"))]
-        for kind in ("layout", "buffer", "log", "reject", "filter", "json", "announce-levels", "announce-filter", "announce-quiet", "announce-json", "restore-output"):
+        for kind in ("layout", "buffer", "log", "reject", "filter", "json", "announce-levels", "announce-filter", "announce-quiet", "announce-json", "restore-output",
+                     "filter-header-level", "filter-header-file", "filter-header-function", "filter-header-custom", "filter-header-invert", "filter-header-long"):
             result = subprocess.run(command(kind), input="", text=True, encoding="utf-8", capture_output=True, timeout=30)
             assert result.returncode == 0, result.stdout + result.stderr
             assert "NOTICE PROBE PASSED" in result.stdout
+            if kind.startswith("filter-header-"):
+                inverted = kind == "filter-header-invert"
+                assert ("AUTHENTICATION REJECTED" in result.stderr) != inverted
+                assert ("UNRELATED WARNING" in result.stderr) == inverted
+                if kind == "filter-header-long":
+                    assert "LAST-BYTE" in result.stderr
             if kind.startswith("announce-"):
                 output = result.stdout + result.stderr
                 assert "FILTERED INFO" not in output

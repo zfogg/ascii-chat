@@ -28,6 +28,8 @@ follows terminal capabilities, `--color`, `--color-mode`, and `--strip-ansi`.
 Redirected output has no cursor movement. Terminal boxes do not decorate file
 or JSON message bodies; existing log header formatting is retained. Log levels,
 quiet mode, and grep filtering still apply to logged notices.
+Grep matches the uncolored log template, including severity, source file,
+function, and the notice body; box decorations are not part of the filter input.
 Session invitations use `NOTICE_ANNOUNCE` to remain visible at every log level;
 quiet mode, grep filtering, and JSON output still apply to these announcements.
 
