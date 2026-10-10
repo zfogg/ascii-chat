@@ -11,10 +11,16 @@ def main():
     isolated = set()
     for entry in entries:
         source = entry["file"].replace("\\", "/")
+        command = entry.get("command", " ".join(entry.get("arguments", [])))
+        # Project modules and yyjson feed the shared library. Executable commands
+        # may legitimately override a toolchain's default -fPIC with -fPIE.
+        pic_flags = re.findall(r"(?<!\S)-f(?:PIC|PIE|pic|pie)(?!\S)", command)
+        shared_input = "-DBUILDING_ASCIICHAT_DLL" in command or source.endswith("/yyjson/src/yyjson.c")
+        if shared_input and any(flag.lower() == "-fpie" for flag in pic_flags):
+            raise RuntimeError(f"Executable-only PIE flag in shared-library input: {source}")
         if any(part in source for part in ("/.deps-cache/", "/_deps/", "/deps/", "/vcpkg_installed/")):
             continue
         checked += 1
-        command = entry.get("command", " ".join(entry.get("arguments", [])))
         match = re.search(r"/ascii/(sse2|ssse3|avx2|neon|sve)/", source)
         backend = match.group(1) if match else None
         allowed = {"-march=x86-64", "-march=armv8-a", "-msse2", "-mno-mmx"}

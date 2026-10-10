@@ -11,6 +11,10 @@ feature detection, and the dispatch table remain baseline code. Release CPU
 tuning defaults to `portable`; `native`, `custom`, and explicit x86 microarchitecture
 profiles deliberately raise the minimum CPU requirement and are for local builds.
 
+PIE compile flags apply only to executable targets. Library objects stay PIC,
+including vendored archives: ThinLTO can import TLS access into those objects,
+where PIE would produce relocations that cannot link into a shared library.
+
 The platform layer checks CPUID and OSXSAVE/XCR0 on x86 and Linux HWCAP on ARM.
 CRC32 uses the same runtime detection with function-local target attributes.
 Each thread caches an immutable luminance dispatch table. SVE kernels use the

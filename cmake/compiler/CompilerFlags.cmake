@@ -532,11 +532,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
         if(NOT WITH_DEBUG_INFO)
-            # Position Independent Code (PIC/PIE) - required for ASLR
-            # Note: -fPIE is a compile option; -pie is a linker option
-            # The linker -pie flag is added per-target in Executables.cmake to avoid
-            # applying it to shared libraries (which use -shared, not -pie)
-            add_compile_options(-fPIE)
+            # PIE assumes executable TLS access, including after ThinLTO imports.
+            # Keep library objects (including vendored libraries) PIC so they can
+            # link into shared libraries. Executable linker flags are set separately.
+            add_compile_options("$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-fPIE>")
 
             if(USE_MUSL)
                 # Static-PIE for musl builds (combines static linking with ASLR)
