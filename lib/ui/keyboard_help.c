@@ -550,6 +550,10 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   char animation_line[256];
   snprintf(animation_line, sizeof(animation_line), "(1) Matrix \"Digital Rain\" : %s", matrix_text);
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
+  snprintf(animation_line, sizeof(animation_line), "(2) Audio Waveform : %s", status_indicator(GET_OPTION(waveform)));
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
+  snprintf(animation_line, sizeof(animation_line), "(3) Audio Frequencies (FFT) : %s", status_indicator(GET_OPTION(fft)));
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
 #ifndef NDEBUG
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "(0) Sync primitives / deadlocks");

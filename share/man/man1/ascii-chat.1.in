@@ -266,7 +266,15 @@ Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
 .B Animation Controls
 .TP
 .B 1
-Toggle Matrix-style digital rain effect.
+Toggle Matrix-style digital rain effect, disabling both audio visualizations.
+.TP
+.B 2
+Toggle the live audio waveform, disabling Matrix rain and the frequency display.
+.TP
+.B 3
+Toggle the live audio frequency display (FFT), disabling Matrix rain and the waveform.
+Both visualizations use the source selected by --audio-source.
+Press the active visualization's key again to return to video.
 .PP
 .B Keyboard Configuration
 .RS

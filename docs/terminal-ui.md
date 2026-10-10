@@ -49,6 +49,22 @@ interactive warning. Recording happens before terminal presentation and is not
 suppressed by the warning. Shutdown joins the presentation thread before keyboard,
 log, option, and named-registry teardown.
 
+## Audio visualizations
+
+The keyboard help menu's Animations section lists `2` (audio waveform) and `3`
+(audio frequencies/FFT), with live on/off indicators. Either key selects its
+visualization and disables the other and Matrix rain. Matrix (`1`) disables both
+audio visualizations. Pressing the active animation key again restores video.
+Both audio visualizations follow `--audio-source` and require audio to be enabled. Mirror mode
+initializes microphone capture even without a media audio track or recording,
+so keyboard activation has an audio source available.
+
+`tests/integration/audio_visualization_keys.py --binary build/bin/ascii-chat`
+generates a changing audio signal and checks real terminal output after keyboard
+activation, help state, mutual exclusion, both off toggles, and video restoration.
+It uses the same terminal dependencies as `terminal_ui.py`, plus ffmpeg and an
+audio output device. Playback volume is zero during the test.
+
 ## Sync diagnostics (Debug builds)
 
 Press `0` to replace media or help with the sync screen; `0` or Escape restores
