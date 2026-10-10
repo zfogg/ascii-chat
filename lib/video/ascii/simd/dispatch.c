@@ -1,4 +1,5 @@
 #include <ascii-chat/video/ascii/simd/dispatch.h>
+#include <string.h>
 
 static const simd_backend_t backends[] = {
 #if SIMD_SUPPORT_SVE
@@ -29,8 +30,22 @@ const simd_backend_t *simd_select_backend(uint32_t features) {
 
 const simd_backend_t *simd_backend(void) {
   static _Thread_local const simd_backend_t *selected;
-  if (!selected)
-    selected = simd_select_backend(platform_cpu_features());
+  if (!selected) {
+    uint32_t features = platform_cpu_features();
+    selected = simd_select_backend(features);
+    const char *requested = platform_simd_override();
+    if (requested && requested[0] && strcmp(requested, "auto") != 0) {
+      // A diagnostic override can never bypass the CPU/OS safety check.
+      selected = simd_select_backend(0);
+      for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
+        if (strcmp(requested, backends[i].name) == 0 &&
+            (features & backends[i].required_features) == backends[i].required_features) {
+          selected = &backends[i];
+          break;
+        }
+      }
+    }
+  }
   return selected;
 }
 

@@ -1,4 +1,13 @@
 #include <ascii-chat/platform/cpu.h>
+#include <stdlib.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#if defined(__x86_64__) || defined(__i386__)
+#include <cpuid.h>
+#endif
 
 #if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
 #include <sys/auxv.h>
@@ -13,16 +22,23 @@
 uint32_t platform_cpu_features(void) {
   uint32_t features = 0;
 #if defined(__x86_64__) || defined(__i386__)
-  // Clang's detector includes OSXSAVE/XCR0 checks before advertising AVX2.
-  __builtin_cpu_init();
-  if (__builtin_cpu_supports("sse2"))
+  unsigned int eax, ebx, ecx, edx;
+  if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx))
+    return 0;
+  if (edx & (1u << 26))
     features |= CPU_FEATURE_SSE2;
-  if (__builtin_cpu_supports("ssse3"))
+  if (ecx & (1u << 9))
     features |= CPU_FEATURE_SSSE3;
-  if (__builtin_cpu_supports("avx2"))
-    features |= CPU_FEATURE_AVX2;
-  if (__builtin_cpu_supports("sse4.2"))
+  if (ecx & (1u << 20))
     features |= CPU_FEATURE_CRC32;
+  // XGETBV is legal only with XSAVE and OSXSAVE. AVX also needs OS-managed YMM state.
+  const unsigned int avx_state = (1u << 26) | (1u << 27) | (1u << 28);
+  if ((ecx & avx_state) == avx_state) {
+    unsigned int xcr0_low, xcr0_high;
+    __asm__ volatile("xgetbv" : "=a"(xcr0_low), "=d"(xcr0_high) : "c"(0));
+    if ((xcr0_low & 6) == 6 && __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx) && (ebx & (1u << 5)))
+      features |= CPU_FEATURE_AVX2;
+  }
 #elif defined(__linux__) && defined(__aarch64__)
   unsigned long hwcap = getauxval(AT_HWCAP);
   if (hwcap & HWCAP_ASIMD)
@@ -46,4 +62,14 @@ uint32_t platform_cpu_features(void) {
     features |= CPU_FEATURE_CRC32;
 #endif
   return features;
+}
+
+const char *platform_simd_override(void) {
+#ifdef _WIN32
+  static _Thread_local char value[32];
+  DWORD length = GetEnvironmentVariableA("ASCII_CHAT_SIMD", value, sizeof(value));
+  return length >= sizeof(value) ? "invalid" : (length ? value : NULL);
+#else
+  return getenv("ASCII_CHAT_SIMD");
+#endif
 }

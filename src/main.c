@@ -1,3 +1,4 @@
+#include <ascii-chat/video/ascii/simd/dispatch.h>
 /**
  * @file main.c
  * @ingroup main
@@ -581,6 +582,7 @@ int main(int argc, char *argv[]) {
 
   // Initialize logging colors so they're ready for help output
   log_init_colors();
+  log_debug("SIMD luminance backend: %s", simd_backend()->name);
 
   // EARLY PARSE: Find the mode position (first positional argument)
   // Binary-level options must appear BEFORE the mode

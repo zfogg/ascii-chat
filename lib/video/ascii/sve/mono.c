@@ -64,7 +64,7 @@ char *render_ascii_mono_sve(const image_t *image, const char *ascii_chars) {
       // Calculate how many pixels we can process in this iteration
       int remaining = w - x;
       (void)remaining;
-      
+
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels (3 bytes per pixel)
       int process_count = (remaining < vec_len) ? remaining : vec_len;
       svbool_t pg_active = svwhilelt_b8_s32(0, process_count);
