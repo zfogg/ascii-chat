@@ -1,4 +1,5 @@
 import type { PacketTransport } from "./Transport";
+import { recordDownload, recordUpload } from "./bandwidth";
 
 /** ACIP uses the same byte stream framing on native DataChannels and WebSockets. */
 export class WebRTCBridge implements PacketTransport {
@@ -34,6 +35,7 @@ export class WebRTCBridge implements PacketTransport {
     channel.onmessage = (event: MessageEvent<ArrayBuffer>) => {
       try {
         const bytes = new Uint8Array(event.data);
+        recordDownload(bytes.byteLength);
         this.receivedChunks++;
         this.receivedBytes += bytes.length;
         // A full ACIP packet is the common case for browser-sized ASCII
@@ -185,6 +187,7 @@ export class WebRTCBridge implements PacketTransport {
           entry.offset + chunkSize,
         );
         this.channel.send(chunk);
+        recordUpload(chunk.byteLength);
         entry.offset += chunk.length;
         this.queuedBytes -= chunk.length;
         if (entry.offset === entry.packet.length) this.queue.shift();
