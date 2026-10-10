@@ -11,6 +11,7 @@
 
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/parsers.h>
+#include <string.h>
 
 // ============================================================================
 // SECURITY CATEGORY - Security and authentication options

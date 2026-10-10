@@ -9,6 +9,7 @@
  * for TCP/WebSocket/mDNS/UPnP lifecycle management.
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +137,10 @@ static asciichat_error_t acds_init_fn(void *user_data) {
 
     log_info("Saved new identity key to %s", acds_key_path);
   }
+
+  public_key_t identity = {.type = KEY_TYPE_ED25519};
+  memcpy(identity.key, public_key, sizeof(identity.key));
+  key_identity_announce("DISCOVERY SERVER PUBLIC IDENTITY", &identity);
 
   // Display server fingerprint
   char fingerprint[65];

@@ -49,6 +49,7 @@
  * @version 2.0 (Post-Modularization)
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/ui/notice.h>
 
 #ifdef _WIN32
@@ -1473,6 +1474,14 @@ static int init_server_crypto(void) {
     g_server_private_key.type = KEY_TYPE_UNKNOWN;
     g_num_server_identity_keys = 0;
     log_info("Server running without identity key (simple mode)");
+  }
+
+  for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
+    public_key_t identity = {.type = KEY_TYPE_ED25519};
+    memcpy(identity.key, g_server_identity_keys[i].public_key, sizeof(identity.key));
+    char label[64];
+    safe_snprintf(label, sizeof(label), "SERVER PUBLIC IDENTITY %zu", i + 1);
+    key_identity_announce(label, &identity);
   }
 
   // Load client whitelist if provided

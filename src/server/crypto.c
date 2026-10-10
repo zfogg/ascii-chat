@@ -130,6 +130,7 @@
  * @see crypto/keys/keys.h For key parsing and management
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include "main.h"
 #include "client.h"
 #include "crypto.h"
@@ -694,6 +695,14 @@ int server_crypto_handshake(client_info_t *client) {
   transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
                      "Crypto handshake completed successfully for client %s", cid);
+
+  if (client->crypto_handshake_ctx.client_sent_identity) {
+    char label[160];
+    safe_snprintf(label, sizeof(label), "%s CLIENT PUBLIC IDENTITY / %s",
+                  client->crypto_handshake_ctx.client_ed25519_key_verified ? "AUTHENTICATED" : "UNVERIFIED",
+                  client->client_id);
+    key_identity_announce(label, &client->crypto_handshake_ctx.client_ed25519_key);
+  }
 
   // Send success notification to client (encrypted channel now established)
   log_info_client(client, "Encryption established - secure channel ready");
