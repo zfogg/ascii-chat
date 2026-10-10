@@ -41,28 +41,35 @@ def main():
 
     snapshot = ["--snapshot", "--snapshot-delay", "0.3", "--width", "20", "--height", "10",
                 "--splash-screen=false"]
-    diagnostic = run("mirror", ["mirror", "--test-pattern", "--errno-stacks=0.05", *snapshot], 0)
-    assert "Pending error stacks" in diagnostic
-    assert "Error registry:" in diagnostic
-    assert "SYNC_STATE:" not in diagnostic
-    sync = run("sync-only", ["mirror", "--test-pattern", "--sync-state=0.05", *snapshot], 0)
-    assert "Pending error stacks" not in sync
-    both = run("both-reports", ["mirror", "--test-pattern", "--sync-state=0.05",
-                               "--errno-stacks=0.15", *snapshot], 0)
-    assert both.count("Pending error stacks") == 1
+    help_text = subprocess.check_output([binary, "--help"], env=env, stderr=subprocess.STDOUT).decode(errors="replace")
+    for flag in ("--errno-stacks", "--sync-state"):
+        assert (flag in help_text) == args.debug_sync, (flag, args.debug_sync)
     if args.debug_sync:
+        diagnostic = run("mirror", ["mirror", "--test-pattern", "--errno-stacks=0.05", *snapshot], 0)
+        assert "Pending error stacks" in diagnostic
+        assert "Error registry:" in diagnostic
+        assert "SYNC_STATE:" not in diagnostic
+        sync = run("sync-only", ["mirror", "--test-pattern", "--sync-state=0.05", *snapshot], 0)
+        assert "Pending error stacks" not in sync
+        both = run("both-reports", ["mirror", "--test-pattern", "--sync-state=0.05",
+                                   "--errno-stacks=0.15", *snapshot], 0)
+        assert both.count("Pending error stacks") == 1
         assert sync.count("SYNC_STATE:") == 1
         assert both.count("SYNC_STATE:") == 1
         assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
-    else:
-        assert "synchronization diagnostics are unavailable in Release builds" in sync
-        assert "synchronization diagnostics are unavailable in Release builds" in both
-    # A later errno deadline must not delay or replace the earlier sync report.
-    later = run("independent-deadlines", ["mirror", "--test-pattern", "--sync-state=0.05",
-                                        "--errno-stacks=60", *snapshot], 0)
-    assert "Pending error stacks" not in later
-    if args.debug_sync:
+        # A later errno deadline must not delay or replace the earlier sync report.
+        later = run("independent-deadlines", ["mirror", "--test-pattern", "--sync-state=0.05",
+                                            "--errno-stacks=60", *snapshot], 0)
+        assert "Pending error stacks" not in later
         assert later.count("SYNC_STATE:") == 1
+    else:
+        for flag in ("--errno-stacks", "--sync-state"):
+            for suffix in ("", "=0.05"):
+                result = subprocess.run([binary, "mirror", flag + suffix, "--test-pattern", *snapshot],
+                                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+                assert result.returncode == 2, (flag, suffix, result.returncode, result.stdout)
+            print(f"PASS Release rejects {flag}", flush=True)
+        run("mirror", ["mirror", "--test-pattern", *snapshot], 0)
     missing = run("missing-media", ["mirror", "--file", str(logs / "missing.mp4"), *snapshot], 26)
     assert "Failure chain (outer context -> root cause)" in missing
     assert "Media initialization failed" in missing

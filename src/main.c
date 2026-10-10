@@ -1000,17 +1000,12 @@ int main(int argc, char *argv[]) {
   // Register shutdown callback so splash thread and other code can check for exit
   shutdown_register_callback((shutdown_check_fn)should_exit);
 
-  // Debug builds always monitor synchronization. Release builds start the worker
-  // only when the user requests diagnostics; error storage itself is always on.
-  bool start_diagnostics = IS_OPTION_EXPLICIT(debug_sync_state_time, opts) ||
-                           IS_OPTION_EXPLICIT(debug_errno_stacks_time, opts) ||
-                           IS_OPTION_EXPLICIT(debug_backtrace_time, opts) || opts->debug_memory_report_interval > 0;
+  // Diagnostic monitoring is Debug-only; error storage is available in every build.
 #ifndef NDEBUG
-  start_diagnostics = true;
-#endif
-  if (start_diagnostics && debug_stats_start_thread() != ASCIICHAT_OK) {
+  if (debug_stats_start_thread() != ASCIICHAT_OK) {
     FATAL(ERROR_THREAD, "Cannot start diagnostics worker");
   }
+#endif
 
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);

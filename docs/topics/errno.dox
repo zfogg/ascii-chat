@@ -128,12 +128,12 @@ diagnostic data is destroyed. Signal handlers only set a request flag.
 
 --errno-stacks [TIME] prints pending error stacks, handled history, error totals,
 and error registry statistics. --sync-state [TIME] prints synchronization state
-and named registry statistics (Release reports that synchronization diagnostics
-are unavailable). Each schedules its own one-shot report after TIME
+and named registry statistics. Both options are available only in Debug builds.
+Each schedules its own one-shot report after TIME
 seconds (immediately when omitted); using both produces two independent reports.
 Signal and keyboard diagnostic requests still print both reports.
-Debug builds monitor synchronization automatically; release builds start the
-worker only when diagnostics are requested. Error recording and searching are
+Debug builds monitor synchronization automatically; Release builds do not start
+the diagnostics worker. Error recording and searching are
 available in every build. Backtraces follow ENABLE_ERRNO_BACKTRACES.
 
 WASM can call the synchronous printers and debug_stats_poll from its event loop;
@@ -213,7 +213,7 @@ Build the production library tests without Criterion:
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-errno-stacks
 ctest --test-dir build -R "^errno-stacks$" --output-on-failure
-python tests/standalone/errno/smoke.py build/bin/ascii-chat
+python tests/standalone/errno/smoke.py build/bin/ascii-chat --debug-sync
 @endcode
 
 Generate a real unsupported-audio fixture with FFmpeg and exercise codec fallback:

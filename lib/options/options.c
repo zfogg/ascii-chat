@@ -1730,6 +1730,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.status_screen = status_value;
       opts.status_screen_explicitly_set = true;
     }
+
+#ifndef NDEBUG
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0 ||
          strcmp(mode_argv[i], "--errno-stacks") == 0 || strncmp(mode_argv[i], "--errno-stacks=", 15) == 0)) {
@@ -1804,6 +1806,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
       }
     }
+#endif
   }
 
   // Auto-disable splash when grep is used (since it's one-time startup screen)

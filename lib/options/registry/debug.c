@@ -11,6 +11,7 @@
 
 // clang-format off
 const registry_entry_t g_debug_entries[] = {
+#ifndef NDEBUG
     {"sync-state",
      '\0',
      OPTION_TYPE_DOUBLE,
@@ -47,7 +48,6 @@ const registry_entry_t g_debug_entries[] = {
      OPTION_MODE_ALL,
      {0},    // metadata
      NULL},  // action_fn
-#ifndef NDEBUG
     {"backtrace",
      '\0',
      OPTION_TYPE_DOUBLE,
