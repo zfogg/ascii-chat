@@ -49,6 +49,10 @@
 
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
 #include <ascii-chat/audio/client_pipeline.h>
+#include <ascii-chat/audio/spectral.h>
+extern "C" {
+#include <ascii-chat/options/options.h>
+}
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -343,6 +347,21 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     log_info("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
   }
 
+  if (options_get() && options_get()->audio_spectral) {
+    spectral_config_t spectral_config = spectral_default_config(p->config.sample_rate);
+    spectral_config.fft_size = options_get()->audio_fft_size;
+    spectral_config.noise_gate = options_get()->audio_spectral_gate;
+    spectral_config.compressor = options_get()->audio_multiband;
+    spectral_config.adaptive_eq = options_get()->audio_adaptive_eq;
+    spectral_config.pitch_correct = options_get()->audio_pitch_correct;
+    spectral_config.auto_gain = options_get()->audio_spectral_agc;
+    if (spectral_config.auto_gain)
+      p->flags.agc = false;
+    if (spectral_config.compressor)
+      p->flags.compressor = false;
+    if (spectral_create(&spectral_config, &p->spectral) != ASCIICHAT_OK)
+      goto error;
+  }
   p->initialized = true;
 
   // Initialize startup fade-in to prevent initial microphone click
@@ -359,20 +378,16 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   return p;
 
 error:
-  if (p->encoder)
-    opus_encoder_destroy(p->encoder);
-  if (p->decoder)
-    opus_decoder_destroy(p->decoder);
-  if (p->echo_canceller) {
-    delete static_cast<WebRTCAec3Wrapper *>(p->echo_canceller);
-  }
-  SAFE_FREE(p);
+  client_audio_pipeline_destroy(p);
   return NULL;
 }
 
 void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return;
+
+  spectral_destroy(pipeline->spectral);
+  pipeline->spectral = NULL;
 
   // Clean up WebRTC AEC3 AudioBuffer instances
   if (pipeline->aec3_render_buffer) {
@@ -634,6 +649,10 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed_output, capture_count);
   }
 
+  if (pipeline->spectral && capture_count > 0) {
+    spectral_process(pipeline->spectral, processed_output, processed_output, (size_t)capture_count);
+  }
+
   // Adjust gain from this frame's level. Applying agc_max_gain as a constant
   // pre-gain amplifies silence and background noise by the maximum amount.
   if (pipeline->flags.agc && capture_count > 0) {
@@ -691,6 +710,8 @@ int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
 void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return;
+
+  spectral_reset(pipeline->spectral);
 
   // Reset global counters
   g_render_frames_fed.store(0, std::memory_order_relaxed);

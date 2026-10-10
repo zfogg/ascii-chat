@@ -1,0 +1,18 @@
+{
+  "input_device": "Microphone (EMEET SmartCam Nova 4K)",
+  "output_device": "Speakers (Realtek(R) Audio)",
+  "sample_rate": 48000,
+  "duration_seconds": 17.0,
+  "input_rms": 0.042937640100717545,
+  "input_peak": 0.2696780264377594,
+  "callback_processing_max_ms": 0.9062000317499042,
+  "callback_processing_p99_ms": 0.2873149758670479,
+  "stream_status": [],
+  "source": "Open Speech Repository OSR_us_000_0010_8k.wav",
+  "source_url": "https://www.voiptroubleshooter.com/open_speech/american/OSR_us_000_0010_8k.wav",
+  "live_quiet_attenuation_db": -0.0007039779442818483,
+  "controlled_quiet_attenuation_db": -13.598071098327637,
+  "controlled_snr_before_db": 11.065739631652832,
+  "controlled_snr_after_db": 14.048519134521484,
+  "alignment_samples": 1024
+}

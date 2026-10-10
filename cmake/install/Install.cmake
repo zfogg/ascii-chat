@@ -767,6 +767,11 @@ install(FILES LICENSE.txt
     OPTIONAL
 )
 
+install(FILES "${CMAKE_SOURCE_DIR}/docs/third-party/FFTW-COPYING.txt"
+    DESTINATION share/doc/ascii-chat/third-party
+    COMPONENT Runtime
+)
+
 # Install Doxygen HTML documentation (if generated)
 # Doxygen HTML docs are generated in ${CMAKE_BINARY_DIR}/share/doc/html/
 # Similar to DLLs, we need to explicitly install from build directory
