@@ -4,6 +4,7 @@
  * @brief Client-side handshake protocol implementation
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <ascii-chat/crypto/handshake/client.h>
@@ -252,14 +253,16 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 #endif
 
     if (!skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
-      asciichat_error_t known_host_result = check_known_host(ctx->server_ip, ctx->server_port, server_identity_key);
+      uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE];
+      bool has_stored_key = false;
+      asciichat_error_t known_host_result =
+          check_known_host_with_key(ctx->server_ip, ctx->server_port, server_identity_key, stored_key, &has_stored_key);
       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
         // Key mismatch - MITM attack detected! Prompt user for confirmation
         log_error("SECURITY: Server key does NOT match known_hosts entry!\n"
                   "This indicates a possible man-in-the-middle attack!");
-        uint8_t stored_key[ZERO_KEY_SIZE] = {0}; // We don't have the stored key easily
-                                                 // accessible, use zeros for now
-        if (!display_mitm_warning(ctx->server_ip, ctx->server_port, stored_key, server_identity_key)) {
+        if (!display_mitm_warning(ctx->server_ip, ctx->server_port, has_stored_key ? stored_key : NULL,
+                                  server_identity_key)) {
           // User declined to continue - ABORT connection for security          SAFE_FREE(server_ephemeral_key);
           SAFE_FREE(server_identity_key);
           SAFE_FREE(server_signature);
@@ -302,6 +305,10 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                          known_host_result);
       }
     }
+    public_key_t identity = {.type = KEY_TYPE_ED25519};
+    memcpy(identity.key, server_identity_key, sizeof(identity.key));
+    key_identity_announce(
+        ctx->verify_server_key ? "VERIFIED SERVER PUBLIC IDENTITY" : "UNVERIFIED SERVER PUBLIC IDENTITY", &identity);
   } else if (payload_len == ctx->crypto_ctx.public_key_size) {
     // Simple format: just ephemeral key (no identity key)
     log_debug("Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no "

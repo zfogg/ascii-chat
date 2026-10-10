@@ -11,11 +11,47 @@
 
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/parsers.h>
+#include <string.h>
 
 // ============================================================================
 // SECURITY CATEGORY - Security and authentication options
 // ============================================================================
+static const char *const key_art_values[] = {"auto", "on", "off", NULL};
+static const int default_key_art = 0;
+
+static bool parse_key_art(const char *arg, void *dest, char **error_msg) {
+  if (arg && dest) {
+    for (int i = 0; key_art_values[i]; ++i) {
+      if (strcmp(arg, key_art_values[i]) == 0) {
+        *(int *)dest = i;
+        return true;
+      }
+    }
+  }
+  if (error_msg)
+    *error_msg = platform_strdup("key-art must be auto, on, or off");
+  return false;
+}
+
 const registry_entry_t g_security_entries[] = {
+    {"key-art",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, key_art),
+     &default_key_art,
+     sizeof(int),
+     "Public-key Keymask art: auto (interactive terminals), on, or off. Full fingerprints remain visible.",
+     "SECURITY",
+     "auto|on|off",
+     false,
+     "ASCII_CHAT_KEY_ART",
+     NULL,
+     parse_key_art,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {.enum_values = key_art_values, .input_type = OPTION_INPUT_ENUM},
+     NULL},
     // SECURITY GROUP (client, server, discovery)
     {"encrypt",
      'E',

@@ -90,6 +90,12 @@
  */
 asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]);
 
+/** Same trust decision; optionally return the first stored nonzero identity for diagnostics.
+ * A mismatch can have multiple stored candidates. No fabricated key is returned for no-identity entries.
+ */
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[32],
+                                            uint8_t expected_key[32], bool *has_expected_key);
+
 /**
  * @brief Check known_hosts for servers without identity key (no-identity entries)
  * @param server_ip Server IP address (IPv4 or IPv6, must not be NULL)
@@ -224,7 +230,7 @@ const char *get_known_hosts_path(void);
  * @brief Display MITM warning with key comparison and prompt user for confirmation
  * @param server_ip Server IP address (IPv4 or IPv6, must not be NULL)
  * @param port Server port number
- * @param expected_key Expected server key from known_hosts (32 bytes, must not be NULL)
+ * @param expected_key First stored server key (32 bytes), or NULL if no stored public identity is available
  * @param received_key Received server key from connection (32 bytes, must not be NULL)
  * @return true if user accepts the risk and wants to continue, false otherwise
  *

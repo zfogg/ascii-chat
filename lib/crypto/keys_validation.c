@@ -4,6 +4,7 @@
  * @brief ✅ Cryptographic key validation: fingerprint computation, format checking, and trust verification
  */
 
+#include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/crypto/keys_validation.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -454,7 +455,7 @@ asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fin
   }
 
   // Generate SHA-256 fingerprint of the key
-  if (crypto_hash_sha256(fingerprint_out, key->key, 32) != 0) {
+  if (key_fingerprint_digest(key->key, fingerprint_out) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to generate key fingerprint");
     return ERROR_CRYPTO;
   }
