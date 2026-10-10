@@ -29,6 +29,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/controller.c
     ${LIB_DIR}/ui/render_progress.c
     ${LIB_DIR}/ui/input.c
+    ${LIB_DIR}/ui/sync.c
     ${LIB_DIR}/ui/prompt.c
     ${LIB_DIR}/ui/notice.c
     ${LIB_DIR}/ui/too_small.c
@@ -478,9 +479,8 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # -----------------------------------------------------------------------------
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
-# Add FFmpeg include directories BEFORE creating the module (for media file streaming)
-# Use SYSTEM to suppress warnings from third-party headers (e.g., FFmpeg's undefined bit shift behavior)
-include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
+# FFmpeg headers are configured globally so library and application targets use
+# the same version as the linked libraries.
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 

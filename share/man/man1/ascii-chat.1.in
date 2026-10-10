@@ -77,7 +77,7 @@ notes on the official instance and its keys.
 .SS "Matrix Digital Rain"
 Use \fB\-\-matrix\fR to overlay falling Matrix-style characters on the video
 rendering. The effect uses the digital palette by default and can be combined
-with color filters. Press \fB0\fR while rendering to toggle Matrix rain.
+with color filters. Press \fB1\fR while rendering to toggle Matrix rain.
 .PP
 For example, enable Matrix rain with the default colors or a green filter:
 .PP
@@ -265,7 +265,7 @@ Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
 .PP
 .B Animation Controls
 .TP
-.B 0
+.B 1
 Toggle Matrix-style digital rain effect.
 .PP
 .B Keyboard Configuration

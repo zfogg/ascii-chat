@@ -8,6 +8,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <errno.h>
 
 // Emscripten provides pthread.h but mutexes don't work correctly with pthreads in WASM
 // The JS side is single-threaded, so we can safely make mutexes no-ops
@@ -69,6 +70,19 @@ int rwlock_init(rwlock_t *rwlock, const char *name) {
 
 int rwlock_rdlock_impl(rwlock_t *rwlock) {
   return pthread_rwlock_rdlock((pthread_rwlock_t *)rwlock);
+}
+
+asciichat_error_t rwlock_tryrdlock(rwlock_t *rwlock, bool *acquired) {
+  if (!rwlock || !acquired)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot try a null rwlock");
+  int err = pthread_rwlock_tryrdlock((pthread_rwlock_t *)rwlock);
+  *acquired = err == 0;
+  if (err == EBUSY || err == EAGAIN)
+    return ASCIICHAT_OK;
+  if (err != 0)
+    return SET_ERRNO(ERROR_THREAD,
+                     "Cannot try shared rwlock: error %d", err);
+  return ASCIICHAT_OK;
 }
 
 int rwlock_wrlock_impl(rwlock_t *rwlock) {

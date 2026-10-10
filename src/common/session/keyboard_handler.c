@@ -315,7 +315,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== MATRIX RAIN EFFECT CONTROL =====
-  case KEY_0: {
+  case KEY_1: {
     bool current_matrix = (bool)GET_OPTION(matrix_rain);
     options_set_bool("matrix_rain", !current_matrix);
     log_info("Matrix rain effect: %s", !current_matrix ? "enabled" : "disabled");

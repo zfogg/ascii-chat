@@ -973,19 +973,32 @@ void named_registry_register_packet_types(void);
  * @param user_data Opaque context passed to callback
  * @ingroup debug_named
  *
- * Safely iterates through all registered entries without holding the lock
- * for the entire iteration (entries are copied). Callback is invoked for
- * each entry. In release builds (NDEBUG), this is a no-op.
+ * Copies all names and keys, then invokes callbacks outside the registry lock.
+ * Tries the registry lock without waiting. Sets *completed to false on
+ * contention or growth during allocation, and true after visiting every entry.
+ * No callbacks run on an incomplete attempt; callers may keep their previous
+ * snapshot and retry later. Actual errors are returned with SET_ERRNO.
+ * Keys do not pin objects: use named_registry_read() before accessing an object
+ * that can be destroyed. Callbacks can block and are outside this guarantee.
  */
-void named_registry_for_each(named_iter_callback_t callback, void *user_data);
+asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *user_data, bool *completed);
 
 /**
  * Read a registered object while preventing concurrent unregistration.
  * The callback must only copy data: no logging, allocation, or registry calls.
- * Owners must unregister before freeing the object. Returns false if absent
- * or if the registered type does not match.
+ * Owners must unregister before freeing the object. Returns false if absent,
+ * if the registered type does not match, or if the registry is busy.
  */
 bool named_registry_read(uintptr_t key, const char *type, void (*read_object)(uintptr_t, void *), void *user_data);
+
+/** Nonblocking protected visit. Callbacks may only copy data (no logging,
+ * allocation, or registry calls). If capacity is insufficient, no callbacks
+ * run; required receives the current size. Objects must unregister before free.
+ */
+typedef void (*named_snapshot_fn)(uintptr_t key, uint64_t generation, const char *name, const char *type,
+                                  const char *file, int line, void *data);
+asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required, bool *completed,
+                                             named_snapshot_fn copy, void *data);
 
 /**
  * @brief Register a libwebsockets context with automatic format specifier

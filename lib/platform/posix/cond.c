@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/mutex.h>
 /**
  * @file platform/posix/cond.c
  * @ingroup platform
@@ -23,7 +24,6 @@
 int cond_init(cond_t *cond, const char *name) {
   int err = pthread_cond_init(&cond->impl, NULL);
   if (err == 0) {
-    cond->name = NAMED_REGISTER_COND(cond, name, NULL);
 #ifndef NDEBUG
     cond->last_signal_time_ns = 0;
     cond->last_broadcast_time_ns = 0;
@@ -45,6 +45,7 @@ int cond_init(cond_t *cond, const char *name) {
     cond->signal_count = 0;
     cond->broadcast_count = 0;
 #endif
+    cond->name = NAMED_REGISTER_COND(cond, name, NULL);
   }
   return err;
 }
@@ -68,10 +69,11 @@ int cond_destroy(cond_t *cond) {
  * @note This is the raw implementation - use cond_wait macro for debug tracking
  */
 int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
-  // pthread_cond_wait atomically releases mutex before waiting, then re-acquires it
-  // DO NOT manually track unlock/lock - pthread_cond_wait is atomic and doesn't call our mutex functions
-  // The mutex lock tracking continues across the wait - the mutex is still "held" from the library's perspective
+  mutex_on_unlock(mutex);
+  mutex_stack_pop((uintptr_t)mutex);
   int result = pthread_cond_wait(&cond->impl, &mutex->impl);
+  mutex_on_lock(mutex);
+  mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
   return result;
 }
 
@@ -90,16 +92,11 @@ int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   // Prevent overflow: cap deadline at UINT64_MAX
   uint64_t deadline_ns = (UINT64_MAX - now_ns < timeout_ns) ? UINT64_MAX : now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
-  // pthread_cond_timedwait atomically releases mutex before waiting, then re-acquires it
-  // DO NOT manually track unlock/lock - pthread_cond_timedwait is atomic and doesn't call our mutex functions
-  // The mutex lock tracking continues across the wait - the mutex is still "held" from the library's perspective
+  mutex_on_unlock(mutex);
+  mutex_stack_pop((uintptr_t)mutex);
   int result = pthread_cond_timedwait(&cond->impl, &mutex->impl, &ts);
-
-  // If we timed out (not signaled), decrement waiting_count
-  // cond_on_signal() is called by another thread if we were actually signaled
-  if (result == ETIMEDOUT && cond && atomic_load_u64(&cond->waiting_count) > 0) {
-    atomic_fetch_sub_u64(&cond->waiting_count, 1);
-  }
+  mutex_on_lock(mutex);
+  mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
 
   return result;
 }

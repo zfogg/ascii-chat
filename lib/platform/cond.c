@@ -49,7 +49,7 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
  * @param cond Pointer to the condition variable being signaled
  *
  * Called by platform-specific cond_signal() after waking one thread.
- * Records timing and decrements waiting count.
+ * Records timing and signal count.
  *
  * @ingroup platform
  */
@@ -58,9 +58,6 @@ void cond_on_signal(cond_t *cond) {
     return;
   cond->last_signal_time_ns = time_get_ns();
   cond->signal_count++;
-  if (atomic_load_u64(&cond->waiting_count) > 0) {
-    atomic_fetch_sub_u64(&cond->waiting_count, 1);
-  }
 }
 
 /**
@@ -77,7 +74,6 @@ void cond_on_broadcast(cond_t *cond) {
     return;
   cond->last_broadcast_time_ns = time_get_ns();
   cond->broadcast_count++;
-  atomic_store_u64(&cond->waiting_count, 0);
 }
 
 /**

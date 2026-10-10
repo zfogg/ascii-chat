@@ -207,8 +207,8 @@ void asciichat_shared_destroy(void) {
   shutdown_done = true;
 
   stats_runtime_stop();
-  ui_input_shutdown();
   ui_controller_shutdown();
+  ui_input_shutdown();
   keyboard_destroy();
   symbol_cache_destroy();
 

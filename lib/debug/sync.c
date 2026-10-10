@@ -22,6 +22,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <pthread.h>
 #include <inttypes.h>
@@ -219,30 +220,110 @@ typedef struct {
   char *buffer;
   size_t buffer_size;
   size_t offset;
+  bool truncated;
 } sync_buffer_t;
+
+static void sync_buffer_append(sync_buffer_t *buf, const char *format, ...) {
+  if (buf->offset >= buf->buffer_size - 1) {
+    buf->truncated = true;
+    return;
+  }
+  size_t remaining = buf->buffer_size - buf->offset;
+  va_list args;
+  va_start(args, format);
+  int written = vsnprintf(buf->buffer + buf->offset, remaining, format, args);
+  va_end(args);
+  if (written < 0)
+    return;
+  if ((size_t)written >= remaining) {
+    buf->offset = buf->buffer_size - 1;
+    buf->truncated = true;
+  } else {
+    buf->offset += (size_t)written;
+  }
+}
+
+static void copy_mutex_timing(uintptr_t key, void *data) {
+  const mutex_t *source = (const mutex_t *)key;
+  mutex_t *copy = data;
+  copy->last_lock_time_ns = source->last_lock_time_ns;
+  copy->last_unlock_time_ns = source->last_unlock_time_ns;
+  copy->currently_held_by_key = source->currently_held_by_key;
+  copy->lock_count = source->lock_count;
+  copy->unlock_count = source->unlock_count;
+  copy->trylock_count = source->trylock_count;
+  copy->trylock_success_count = source->trylock_success_count;
+}
+
+static void copy_rwlock_timing(uintptr_t key, void *data) {
+  const rwlock_t *source = (const rwlock_t *)key;
+  rwlock_t *copy = data;
+  copy->last_rdlock_time_ns = source->last_rdlock_time_ns;
+  copy->last_wrlock_time_ns = source->last_wrlock_time_ns;
+  copy->last_unlock_time_ns = source->last_unlock_time_ns;
+  copy->write_held_by_key = source->write_held_by_key;
+  copy->rdlock_count = source->rdlock_count;
+  copy->wrlock_count = source->wrlock_count;
+  copy->unlock_count = source->unlock_count;
+  atomic_store(&copy->read_lock_count.impl, atomic_load(&source->read_lock_count.impl));
+}
+
+static void copy_cond_timing(uintptr_t key, void *data) {
+  const cond_t *source = (const cond_t *)key;
+  cond_t *copy = data;
+  copy->last_wait_time_ns = source->last_wait_time_ns;
+  copy->last_signal_time_ns = source->last_signal_time_ns;
+  copy->last_broadcast_time_ns = source->last_broadcast_time_ns;
+  copy->last_waiting_key = source->last_waiting_key;
+  copy->wait_count = source->wait_count;
+  copy->signal_count = source->signal_count;
+  copy->broadcast_count = source->broadcast_count;
+  atomic_store(&copy->waiting_count.impl, atomic_load(&source->waiting_count.impl));
+}
+
+static void copy_atomic_t_timing(uintptr_t key, void *data) {
+  const atomic_t *source = (const atomic_t *)key;
+  atomic_t *copy = data;
+  copy->last_store_time_ns = source->last_store_time_ns;
+  copy->last_load_time_ns = source->last_load_time_ns;
+  copy->store_count = source->store_count;
+  copy->load_count = source->load_count;
+  copy->cas_count = source->cas_count;
+  copy->cas_success_count = source->cas_success_count;
+  copy->fetch_count = source->fetch_count;
+  copy->change_count = source->change_count;
+  atomic_store(&copy->impl, atomic_load(&source->impl));
+}
+
+static void copy_atomic_ptr_timing(uintptr_t key, void *data) {
+  const atomic_ptr_t *source = (const atomic_ptr_t *)key;
+  atomic_ptr_t *copy = data;
+  copy->last_store_time_ns = source->last_store_time_ns;
+  copy->last_load_time_ns = source->last_load_time_ns;
+  copy->store_count = source->store_count;
+  copy->load_count = source->load_count;
+  copy->cas_count = source->cas_count;
+  copy->cas_success_count = source->cas_success_count;
+  copy->exchange_count = source->exchange_count;
+  copy->change_count = source->change_count;
+  atomic_store(&copy->impl, atomic_load(&source->impl));
+}
 
 static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data) {
   sync_buffer_t *buf = (sync_buffer_t *)user_data;
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "mutex") != 0) {
+  mutex_t snapshot = {0};
+  if (!named_registry_read(key, "mutex", copy_mutex_timing, &snapshot))
     return;
-  }
-
-  if (!key) {
-    return;
-  }
-
-  const mutex_t *mutex = (const mutex_t *)key;
+  const mutex_t *mutex = &snapshot;
   char timing_str[256] = {0};
   format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
   // Only append if mutex has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Mutex %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Mutex %s: %s\n", name, timing_str);
   }
 }
 
@@ -251,23 +332,16 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "rwlock") != 0) {
+  rwlock_t snapshot = {0};
+  if (!named_registry_read(key, "rwlock", copy_rwlock_timing, &snapshot))
     return;
-  }
-
-  if (!key) {
-    return;
-  }
-
-  const rwlock_t *rwlock = (const rwlock_t *)key;
+  const rwlock_t *rwlock = &snapshot;
   char timing_str[512] = {0};
   format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
   // Only append if rwlock has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  RWLock %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  RWLock %s: %s\n", name, timing_str);
   }
 }
 
@@ -276,19 +350,16 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "cond") != 0) {
+  cond_t snapshot = {0};
+  if (!named_registry_read(key, "cond", copy_cond_timing, &snapshot))
     return;
-  }
-
-  const cond_t *cond = (const cond_t *)key;
+  const cond_t *cond = &snapshot;
   char timing_str[512] = {0};
   format_cond_timing(cond, timing_str, sizeof(timing_str));
 
   // Only append if condition variable has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Cond %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Cond %s: %s\n", name, timing_str);
   }
 }
 
@@ -297,19 +368,16 @@ static void atomic_t_iter_callback(uintptr_t key, const char *name, void *user_d
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "atomic") != 0) {
+  atomic_t snapshot = {0};
+  if (!named_registry_read(key, "atomic", copy_atomic_t_timing, &snapshot))
     return;
-  }
-
-  const atomic_t *atomic = (const atomic_t *)key;
+  const atomic_t *atomic = &snapshot;
   char timing_str[512] = {0};
   int bytes = debug_atomic_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
   if (bytes > 0) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Atomic %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Atomic %s: %s\n", name, timing_str);
   }
 }
 
@@ -318,19 +386,16 @@ static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "atomic_ptr") != 0) {
+  atomic_ptr_t snapshot = {0};
+  if (!named_registry_read(key, "atomic_ptr", copy_atomic_ptr_timing, &snapshot))
     return;
-  }
-
-  const atomic_ptr_t *atomic = (const atomic_ptr_t *)key;
+  const atomic_ptr_t *atomic = &snapshot;
   char timing_str[512] = {0};
   int bytes = debug_atomic_ptr_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
   if (bytes > 0) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  AtomicPtr %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  AtomicPtr %s: %s\n", name, timing_str);
   }
 }
 
@@ -341,7 +406,7 @@ static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user
 /**
  * @brief Print all thread lock stacks
  */
-static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_t *offset) {
+static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
   mutex_stack_entry_t **all_stacks = NULL;
   int *stack_counts = NULL;
   int thread_count = 0;
@@ -355,14 +420,14 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
     return;
   }
 
-  *offset += snprintf(buffer + *offset, buffer_size - *offset, "\nThread Lock Stacks:\n");
+  sync_buffer_append(buf, "\nThread Lock Stacks:\n");
 
   for (int i = 0; i < thread_count; i++) {
     int depth = stack_counts[i];
     if (depth == 0)
       continue;
 
-    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Thread %d: %d lock(s)\n", i, depth);
+    sync_buffer_append(buf, "  Thread %d: %d lock(s)\n", i, depth);
 
     for (int j = 0; j < depth; j++) {
       const mutex_stack_entry_t *entry = &all_stacks[i][j];
@@ -372,7 +437,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] mutex @ %p (%s) %s", j,
+      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j,
                           (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
@@ -397,20 +462,27 @@ void debug_sync_print_state(void) {
 
   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
+  bool completed = false;
+  bool complete = true;
   // Iterate through all registered syncs
   log_debug("[debug_sync_print_state] Iterating mutexes");
-  named_registry_for_each(mutex_iter_callback, &buf);
+  complete &= named_registry_for_each(mutex_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
   log_debug("[debug_sync_print_state] Iterating rwlocks");
-  named_registry_for_each(rwlock_iter_callback, &buf);
+  complete &= named_registry_for_each(rwlock_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
   log_debug("[debug_sync_print_state] Iterating conds");
-  named_registry_for_each(cond_iter_callback, &buf);
+  complete &= named_registry_for_each(cond_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
 
-  named_registry_for_each(atomic_t_iter_callback, &buf);
-  named_registry_for_each(atomic_ptr_iter_callback, &buf);
+  complete &= named_registry_for_each(atomic_t_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
+  complete &= named_registry_for_each(atomic_ptr_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
+
+  if (!complete)
+    log_info("SYNC_STATE: registry snapshot incomplete; some entries could not be collected");
 
   // Print lock stacks for deadlock analysis
   log_debug("[debug_sync_print_state] Getting lock stacks");
-  debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
+  debug_sync_print_lock_stacks(&buf);
+  if (buf.truncated)
+    log_info("SYNC_STATE: output truncated at %zu bytes", buf.buffer_size - 1);
 
   // Log everything in one call
   log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
@@ -785,22 +857,22 @@ int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_n
 
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number,
                          const char *function_name) {
-  // Note: pthread_cond_wait() atomically releases and re-acquires the mutex,
-  // but this happens at the kernel level. Debug tracking can't monitor this atomic
-  // operation properly, so we skip cond_on_wait() to avoid false deadlock reports.
-  (void)file_name;
-  (void)line_number;
-  (void)function_name;
-  return cond_wait_impl(cond, mutex);
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  int result = cond_wait_impl(cond, mutex);
+#ifndef NDEBUG
+  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+#endif
+  return result;
 }
 
 int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number,
                               const char *function_name) {
-  // Same as debug_sync_cond_wait(): skip tracking the atomic unlock/relock.
-  (void)file_name;
-  (void)line_number;
-  (void)function_name;
-  return cond_timedwait_impl(cond, mutex, timeout_ns);
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  int result = cond_timedwait_impl(cond, mutex, timeout_ns);
+#ifndef NDEBUG
+  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+#endif
+  return result;
 }
 
 int debug_sync_cond_signal(cond_t *cond, const char *file_name, int line_number, const char *function_name) {

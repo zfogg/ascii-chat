@@ -473,11 +473,11 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
 
   // Configure codec-specific options for quality
   AVDictionary *codec_opts = NULL;
-  if (strcmp(codec_name, "libx264") == 0) {
+  if (strcmp(codec->name, "libx264") == 0) {
     av_dict_set(&codec_opts, "preset", "ultrafast", 0);
     av_dict_set(&codec_opts, "crf", "28", 0);
     log_debug("ffmpeg_encoder: x264 preset=ultrafast crf=28");
-  } else if (strcmp(codec_name, "libx265") == 0) {
+  } else if (strcmp(codec->name, "libx265") == 0) {
     av_dict_set(&codec_opts, "preset", "ultrafast", 0);
     av_dict_set(&codec_opts, "crf", "32", 0);
     // x265 tag must be hvc1 for MP4 container compatibility (Apple/browser playback)
@@ -489,10 +489,12 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   LOG_IO("ffmpeg", { ret = avcodec_open2(enc->codec_ctx, codec, &codec_opts); });
   av_dict_free(&codec_opts);
   if (ret < 0) {
+    char error_message[AV_ERROR_MAX_STRING_SIZE];
+    av_strerror(ret, error_message, sizeof(error_message));
     avcodec_free_context(&enc->codec_ctx);
     avformat_free_context(enc->fmt_ctx);
     SAFE_FREE(enc);
-    return SET_ERRNO(ERROR_INIT, "ffmpeg: avcodec_open2 failed");
+    return SET_ERRNO(ERROR_INIT, "ffmpeg: avcodec_open2 failed for %s: %s (%d)", codec->name, error_message, ret);
   }
 
   // Copy codec parameters to stream

@@ -76,13 +76,14 @@ extern "C" {
 typedef struct {
     _Atomic(uint64_t) impl;  ///< Underlying C11 atomic value
 #ifndef NDEBUG
-    uint64_t          last_store_time_ns;
-    uint64_t          last_load_time_ns;
-    uint64_t          store_count;
-    uint64_t          load_count;
-    uint64_t          cas_count;
-    uint64_t          cas_success_count;
-    uint64_t          fetch_count;
+    _Atomic(uint64_t)          change_count;
+    _Atomic(uint64_t)          last_store_time_ns;
+    _Atomic(uint64_t)          last_load_time_ns;
+    _Atomic(uint64_t)          store_count;
+    _Atomic(uint64_t)          load_count;
+    _Atomic(uint64_t)          cas_count;
+    _Atomic(uint64_t)          cas_success_count;
+    _Atomic(uint64_t)          fetch_count;
 #endif
 } atomic_t;
 
@@ -106,13 +107,14 @@ typedef struct {
 typedef struct {
     _Atomic(void *)   impl;  ///< Underlying C11 atomic pointer
 #ifndef NDEBUG
-    uint64_t          last_store_time_ns;
-    uint64_t          last_load_time_ns;
-    uint64_t          store_count;
-    uint64_t          load_count;
-    uint64_t          cas_count;
-    uint64_t          cas_success_count;
-    uint64_t          exchange_count;
+    _Atomic(uint64_t)          change_count;
+    _Atomic(uint64_t)          last_store_time_ns;
+    _Atomic(uint64_t)          last_load_time_ns;
+    _Atomic(uint64_t)          store_count;
+    _Atomic(uint64_t)          load_count;
+    _Atomic(uint64_t)          cas_count;
+    _Atomic(uint64_t)          cas_success_count;
+    _Atomic(uint64_t)          exchange_count;
 #endif
 } atomic_ptr_t;
 

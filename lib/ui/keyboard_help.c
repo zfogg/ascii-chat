@@ -546,10 +546,14 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "───────────────────────────────");
 
-  // Format: "(0) Matrix \"Digital Rain\" : X/O"
+  // Format: "(1) Matrix \"Digital Rain\" : X/O"
   char animation_line[256];
-  snprintf(animation_line, sizeof(animation_line), "(0) Matrix \"Digital Rain\" : %s", matrix_text);
+  snprintf(animation_line, sizeof(animation_line), "(1) Matrix \"Digital Rain\" : %s", matrix_text);
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
+#ifndef NDEBUG
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                   "(0) Sync primitives / deadlocks");
+#endif
 
   // FPS Counter toggle
   char fps_line[256];

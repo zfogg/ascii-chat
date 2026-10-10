@@ -83,4 +83,9 @@ function(configure_include_directories)
             )
         endif()
     endif()
+
+    # Dependency roots (including mimalloc's vcpkg root) may also contain an
+    # older FFmpeg. Its public structs must match the selected libraries, so
+    # use a normal include path before those roots, not a trailing SYSTEM path.
+    include_directories(BEFORE ${FFMPEG_INCLUDE_DIRS})
 endfunction()

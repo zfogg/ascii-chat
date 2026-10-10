@@ -1,5 +1,8 @@
 #pragma once
 
+/** Poll debug controls without waiting for another input reader. */
+void ui_input_poll_sync(void);
+
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/ui/controller.h>

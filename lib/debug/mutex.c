@@ -84,49 +84,23 @@ static deadlock_state_t g_last_deadlock = {0};
 // Thread Registry Management
 // ============================================================================
 
-/**
- * @brief Destructor called when thread exits to free TLS data
- * Handles two cases:
- * 1. Stack is in registry and matches arg: cleanup already freed it, skip double-free
- * 2. Stack is NOT in registry or doesn't match: it's "orphaned", must free it
- *
- * Race condition scenario: If cleanup() is called while thread is registering,
- * the stack may be allocated+in-TLS but not yet in registry. The destructor
- * must handle freeing this orphaned stack.
- */
+/** Release a thread's stack and remove it from diagnostic snapshots. */
 static void tls_mutex_stack_destructor(void *arg) {
-  if (!arg) {
+  if (!arg)
     return;
-  }
-
-  // Check if this stack was already freed by cleanup()
-  // This happens if: (1) thread is in registry AND (2) registry entry matches this stack
-  bool already_freed_by_cleanup = false;
-  thread_id_t current_thread = asciichat_thread_self();
   registry_lock();
   int count = atomic_load_int(&g_thread_registry_count);
-  for (int i = 0; i < count; i++) {
-    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
-      // Found this thread's entry in registry
-      if (g_thread_registry[i].stack == arg) {
-        // Registry entry matches this stack - cleanup() already freed it
-        already_freed_by_cleanup = true;
-        // Clear the entry (optional, cleanup might have done this already)
-        g_thread_registry[i].stack = NULL;
-      }
+  for (int i = 0; i < count; ++i) {
+    // Windows FLS deletion can invoke this on the thread deleting the key.
+    // Identify the allocation, rather than assuming the current thread owns it.
+    if (g_thread_registry[i].stack == arg) {
+      g_thread_registry[i].stack = NULL;
       break;
     }
   }
-
-  // Free if cleanup() didn't already do it
-  // This includes "orphaned" stacks that were allocated after cleanup() ran
-  // but before the thread's destructor was called
-  if (!already_freed_by_cleanup) {
-    // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
-    // This avoids recursive mutex allocation during destructor execution
-    free(arg);
-  }
   registry_unlock();
+  // Matches the untracked allocation used to avoid instrumenting this tracker.
+  free(arg);
 }
 
 /**
@@ -135,10 +109,13 @@ static void tls_mutex_stack_destructor(void *arg) {
  */
 static void ensure_tls_initialized(void) {
   if (!atomic_load_bool(&g_tls_initialized)) {
+    registry_lock();
     // Try to initialize TLS key with destructor
-    if (ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
+    if (!atomic_load_bool(&g_tls_initialized) &&
+        ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
       atomic_store_bool(&g_tls_initialized, true);
     }
+    registry_unlock();
   }
 }
 
@@ -176,64 +153,34 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
   return stack;
 }
 
-/**
- * @brief Register current thread in the global registry if not already registered
- * Lock-free implementation using atomic operations - completely avoids recursion
- * This is safe from concurrent access because:
- * 1. Each thread gets a unique index via atomic compare-exchange
- * 2. Writes to the registry are ordered with atomic release semantics
- * 3. Reads from the debug thread use acquire semantics
- */
+/** Register a thread's stack, reusing retired slots and recycled thread IDs. */
 static void register_thread_if_needed(void) {
-  static __thread bool registered = false;
-
-  // Once registered, skip immediately
-  if (registered) {
+  static _Thread_local bool registered = false;
+  if (registered)
     return;
-  }
-
   thread_lock_stack_t *local_stack = get_thread_local_stack();
-  if (!local_stack) {
+  if (!local_stack)
     return;
-  }
-
   thread_id_t current_thread = asciichat_thread_self();
-
-  // Check if thread is already in registry (without lock)
-  int current_count = atomic_load_int(&g_thread_registry_count);
-  for (int i = 0; i < current_count; i++) {
-    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
-      registered = true;
-      return; // Already registered
-    }
-  }
-
-  // Try to claim a slot in the registry atomically
-  int slot;
-  while (1) {
-    int old_count = atomic_load_int(&g_thread_registry_count);
-    if (old_count >= MAX_THREADS) {
-      registered = true; // Registry is full, give up
-      return;
-    }
-
-    // Try to atomically increment the count and claim a slot
-    if (atomic_cas_int(&g_thread_registry_count, &old_count, old_count + 1)) {
-      slot = old_count;
-      break; // Successfully claimed slot
-    }
-    // If compare-exchange failed, loop and try again
-  }
-
-  // Write thread data to claimed slot (release semantics for visibility)
   registry_lock();
-  g_thread_registry[slot].thread_id = current_thread;
-  g_thread_registry[slot].stack = local_stack;
+  int count = atomic_load_int(&g_thread_registry_count);
+  int slot = -1;
+  for (int i = 0; i < count; ++i) {
+    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
+      slot = i;
+      break;
+    }
+    if (!g_thread_registry[i].stack && slot < 0)
+      slot = i;
+  }
+  if (slot < 0 && count < MAX_THREADS)
+    slot = count++;
+  if (slot >= 0) {
+    g_thread_registry[slot].thread_id = current_thread;
+    g_thread_registry[slot].stack = local_stack;
+    atomic_store_int(&g_thread_registry_count, count);
+  }
   registry_unlock();
-
-  // Memory barrier to ensure writes are visible to other threads
-  // Memory ordering is implicit in atomic operations
-
   registered = true;
 }
 
@@ -243,7 +190,7 @@ static void register_thread_if_needed(void) {
 
 #ifndef NDEBUG
 
-void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
+static void mutex_stack_push(uintptr_t mutex_key, const char *mutex_name, mutex_stack_state_t state) {
   thread_lock_stack_t *stack = get_thread_local_stack();
   if (!stack) {
     return;
@@ -259,10 +206,18 @@ void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
   }
   stack->stack[stack->depth].mutex_key = mutex_key;
   stack->stack[stack->depth].mutex_name = mutex_name;
-  stack->stack[stack->depth].state = MUTEX_STACK_STATE_PENDING;
+  stack->stack[stack->depth].state = state;
   stack->stack[stack->depth].timestamp_ns = time_get_ns();
   stack->depth++;
   stack_unlock(stack);
+}
+
+void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
+  mutex_stack_push(mutex_key, mutex_name, MUTEX_STACK_STATE_PENDING);
+}
+
+void mutex_stack_push_locked(uintptr_t mutex_key, const char *mutex_name) {
+  mutex_stack_push(mutex_key, mutex_name, MUTEX_STACK_STATE_LOCKED);
 }
 
 void mutex_stack_mark_locked(uintptr_t mutex_key) {
@@ -299,9 +254,15 @@ void mutex_stack_pop(uintptr_t mutex_key) {
     stack_unlock(stack);
     return;
   }
-  int top = stack->depth - 1;
-  if (stack->stack[top].mutex_key == mutex_key) {
-    stack->depth--;
+  // Locks may be released out of acquisition order. Remove the most recent
+  // matching acquisition, preserving any recursive acquisitions below it.
+  for (int i = stack->depth - 1; i >= 0; --i) {
+    if (stack->stack[i].mutex_key == mutex_key) {
+      memmove(&stack->stack[i], &stack->stack[i + 1],
+              (size_t)(stack->depth - i - 1) * sizeof(stack->stack[0]));
+      --stack->depth;
+      break;
+    }
   }
   stack_unlock(stack);
 
@@ -458,7 +419,7 @@ static int detect_cycle_dfs(thread_lock_stack_t *snapshots, int thread_count, in
 
   // DFS starting from start_thread
   int current = start_thread;
-  while (path_len < MAX_CYCLE_LEN && path_len < thread_count) {
+  while (path_len <= MAX_CYCLE_LEN && path_len <= thread_count) {
     if (current < 0 || current >= thread_count) {
       break; // Invalid thread
     }
@@ -475,6 +436,8 @@ static int detect_cycle_dfs(thread_lock_stack_t *snapshots, int thread_count, in
       }
     }
 
+    if (path_len == MAX_CYCLE_LEN || path_len == thread_count)
+      break;
     // Add current to path
     path[path_len++] = current;
 
@@ -492,6 +455,62 @@ static int detect_cycle_dfs(thread_lock_stack_t *snapshots, int thread_count, in
 
   *cycle_len = 0;
   return -1; // No cycle found
+}
+
+bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, size_t *count, bool *limited) {
+  // A single collector owns this scratch space. Never dereference names from
+  // copied stacks: their registry entries may have been removed meanwhile.
+  static thread_lock_stack_t snapshots[MAX_THREADS];
+  static thread_id_t ids[MAX_THREADS];
+  static atomic_flag sampling = ATOMIC_FLAG_INIT;
+  if (atomic_flag_test_and_set(&sampling))
+    return false;
+  uint64_t expected = 0;
+  if (!atomic_compare_exchange_strong(&g_registry_guard.impl, &expected, 1)) {
+    atomic_flag_clear(&sampling);
+    return false;
+  }
+  int threads = atomic_load_int_impl(&g_thread_registry_count);
+  bool complete = true;
+  for (int i = 0; i < threads; ++i) {
+    thread_lock_stack_t *stack = g_thread_registry[i].stack;
+    ids[i] = g_thread_registry[i].thread_id;
+    snapshots[i].depth = 0;
+    if (!stack)
+      continue;
+    expected = 0;
+    if (!atomic_compare_exchange_strong(&stack->guard.impl, &expected, 1)) {
+      complete = false;
+      break;
+    }
+    snapshots[i].depth = stack->depth;
+    memcpy(snapshots[i].stack, stack->stack, sizeof(stack->stack));
+    atomic_store(&stack->guard.impl, 0);
+  }
+  atomic_store(&g_registry_guard.impl, 0);
+  if (complete) {
+    *count = 0;
+    *limited = threads >= MAX_CYCLE_LEN;
+    for (int i = 0; i < threads; ++i) {
+      uintptr_t key = thread_waiting_for_mutex(&snapshots[i]);
+      *limited |= snapshots[i].depth == MUTEX_STACK_MAX_DEPTH;
+      if (!key)
+        continue;
+      if (*count == capacity) {
+        *limited = true;
+        continue;
+      }
+      int path[MAX_CYCLE_LEN], length = 0;
+      bool cycle = thread_holds_mutex(&snapshots[i], key);
+      if (detect_cycle_dfs(snapshots, threads, i, path, &length) >= 0)
+        for (int j = 0; j < length; ++j)
+          cycle |= path[j] == i;
+      waits[(*count)++] = (mutex_wait_snapshot_t){key, (uintptr_t)ids[i],
+                                                snapshots[i].stack[snapshots[i].depth - 1].timestamp_ns, cycle};
+    }
+  }
+  atomic_flag_clear(&sampling);
+  return complete;
 }
 
 /**
@@ -762,7 +781,8 @@ void debug_sync_check_cond_deadlocks(void) {
   if (debug_sync_is_cleanup_in_progress()) {
     return;
   }
-  named_registry_for_each(cond_deadlock_check_callback, NULL);
+  bool completed;
+  (void)named_registry_for_each(cond_deadlock_check_callback, NULL, &completed);
 }
 
 #endif // NDEBUG
@@ -813,25 +833,20 @@ void mutex_stack_cleanup(void) {
   // Signal shutdown to prevent new allocations from threads still running
   atomic_store_bool(&g_shutting_down, true);
 
-  // Manually free all stacks in the registry
-  // This must happen BEFORE deleting the TLS key to avoid double-free
-  // (destructor won't run on still-running threads until they exit, by which time
-  // these stacks will already be freed)
-  int count = atomic_load_int(&g_thread_registry_count);
-  for (int i = 0; i < count; i++) {
-    if (g_thread_registry[i].stack) {
-      // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
-      free(g_thread_registry[i].stack);
-      g_thread_registry[i].stack = NULL;
-    }
-  }
-
-  // Now delete the TLS key - destructors will see NULL in registry and skip freeing
-  // For any threads that haven't been registered yet, destructor will free directly
+  // Call only after tracked workers stop. Windows FLS key deletion invokes
+  // destructors; POSIX key deletion does not. Delete first so those callbacks
+  // retire their entries before we free any remaining allocations.
   if (atomic_load_bool(&g_tls_initialized)) {
     ascii_tls_key_delete(g_tls_mutex_stack);
     atomic_store_bool(&g_tls_initialized, false);
   }
+  registry_lock();
+  int count = atomic_load_int(&g_thread_registry_count);
+  for (int i = 0; i < count; ++i) {
+    free(g_thread_registry[i].stack);
+    g_thread_registry[i].stack = NULL;
+  }
+  registry_unlock();
 
   // Clear registry on cleanup using atomic operations
   atomic_store_int(&g_thread_registry_count, 0);
@@ -844,6 +859,11 @@ void mutex_stack_cleanup(void) {
 // (when debug/mutex.c is not compiled into the library)
 
 #ifdef NDEBUG
+
+void mutex_stack_push_locked(uintptr_t mutex_key, const char *mutex_name) {
+  (void)mutex_key;
+  (void)mutex_name;
+}
 
 void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
   (void)mutex_key;

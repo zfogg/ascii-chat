@@ -58,6 +58,7 @@ static char *entry_strdup(const char *s) {
  */
 typedef struct named_entry {
   uintptr_t key;
+  uint64_t generation;
   char *name;
   char *type;
   char *format_spec;
@@ -106,47 +107,24 @@ asciichat_error_t named_init(void) {
 }
 
 void named_destroy(void) {
-  // Always attempt to shut down the lifecycle, but always cleanup entries
-  lifecycle_shutdown(&g_named_registry.lifecycle);
-
+  if (!lifecycle_shutdown(&g_named_registry.lifecycle))
+    return;
   rwlock_wrlock(&g_named_registry.entries_lock);
-
-  // Find the registry's own rwlock entry (allocated during named_init bootstrap)
-  // This entry will be unregistered by rwlock_destroy, so we must not free it here
-  uintptr_t registry_lock_key = (uintptr_t)(const void *)&g_named_registry.entries_lock;
-  named_entry_t *registry_lock_entry = NULL;
-  HASH_FIND(hh, g_named_registry.entries, &registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
-
-  for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
-    named_entry_t *next = e->hh.next;
-
-    // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
-    // which calls NAMED_UNREGISTER after we release the lock
-    if (e == registry_lock_entry) {
-      e = next;
-      continue;
-    }
-
-    // Free all other entries
-    free(e->name);
-    if (e->type)
-      free(e->type);
-    if (e->format_spec)
-      free(e->format_spec);
-    if (e->file)
-      free(e->file);
-    if (e->func)
-      free(e->func);
-    free(e);
-    e = next;
+  named_entry_t *entry, *next;
+  HASH_ITER(hh, g_named_registry.entries, entry, next) {
+    // Remove each hash node so uthash releases its bucket storage as well.
+    // Unregistration is disabled after lifecycle shutdown, including for the
+    // registry lock itself; all entries must be freed here.
+    HASH_DEL(g_named_registry.entries, entry);
+    free(entry->name);
+    free(entry->type);
+    free(entry->format_spec);
+    free(entry->file);
+    free(entry->func);
+    free(entry);
   }
-
+  g_named_registry.entries_lock.name = NULL;
   rwlock_wrunlock(&g_named_registry.entries_lock);
-
-  // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
-  // 1. Acquire the lock (now safe since we released it)
-  // 2. Find and remove the lock entry from the hash
-  // 3. Free the lock entry's fields
   rwlock_destroy(&g_named_registry.entries_lock);
 }
 
@@ -157,6 +135,7 @@ static uint64_t mutex_counter = 0;
 static uint64_t rwlock_counter = 0;
 static uint64_t cond_counter = 0;
 static uint64_t atomic_counter = 0;
+static _Atomic uint64_t named_generation = 0;
 
 /**
  * @brief Initialize a named registry entry with all fields
@@ -164,6 +143,7 @@ static uint64_t atomic_counter = 0;
  */
 static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec, const char *file,
                              int line, const char *func) {
+  entry->generation = ++named_generation;
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
   entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
@@ -410,17 +390,43 @@ typedef struct {
   char name[MAX_NAME_LEN];
 } named_iter_entry_t;
 
-void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
-  if (!callback || !lifecycle_is_initialized(&g_named_registry.lifecycle)) {
-    return;
+asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *user_data, bool *completed) {
+  if (!callback || !completed)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Registry iteration requires a callback");
+  *completed = false;
+  // Logging also enumerates names during startup and teardown.
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    *completed = true;
+    return ASCIICHAT_OK;
   }
-
-  // Snapshot entries while holding read lock
-  named_iter_entry_t entries[256];
-  int count = 0;
-
-  rwlock_rdlock(&g_named_registry.entries_lock);
-  for (named_entry_t *e = g_named_registry.entries; e != NULL && count < 256; e = e->hh.next) {
+  bool acquired = false;
+  asciichat_error_t err = rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired);
+  if (err != ASCIICHAT_OK || !acquired)
+    return err;
+  size_t capacity = HASH_COUNT(g_named_registry.entries);
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  if (!capacity) {
+    *completed = true;
+    return ASCIICHAT_OK;
+  }
+  if (capacity > SIZE_MAX / sizeof(named_iter_entry_t))
+    return SET_ERRNO(ERROR_MEMORY, "Named registry snapshot size overflow");
+  // Snapshot metadata must not re-enter the registry through memory tracking.
+  named_iter_entry_t *entries = UNTRACKED_MALLOC(capacity * sizeof(*entries), named_iter_entry_t *);
+  if (!entries)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate named registry snapshot");
+  err = rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired);
+  if (err != ASCIICHAT_OK || !acquired) {
+    UNTRACKED_FREE(entries);
+    return err;
+  }
+  if (HASH_COUNT(g_named_registry.entries) > capacity) {
+    rwlock_rdunlock(&g_named_registry.entries_lock);
+    UNTRACKED_FREE(entries);
+    return ASCIICHAT_OK;
+  }
+  size_t count = 0;
+  for (named_entry_t *e = g_named_registry.entries; e != NULL; e = e->hh.next) {
     entries[count].key = e->key;
     const char *src = e->name ? e->name : "?";
     size_t src_len = strlen(src);
@@ -433,15 +439,44 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
   rwlock_rdunlock(&g_named_registry.entries_lock);
 
   // Call callback outside the lock
-  for (int i = 0; i < count; i++) {
+  for (size_t i = 0; i < count; i++) {
     callback(entries[i].key, entries[i].name, user_data);
   }
+  UNTRACKED_FREE(entries);
+  *completed = true;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required, bool *completed,
+                                             named_snapshot_fn copy, void *data) {
+  if (!required || !completed || !copy)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protected registry snapshot");
+  *completed = false;
+  *required = 0;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    *completed = true;
+    return ASCIICHAT_OK;
+  }
+  bool acquired = false;
+  asciichat_error_t result = rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired);
+  if (result != ASCIICHAT_OK || !acquired)
+    return result;
+  *required = HASH_COUNT(g_named_registry.entries);
+  if (*required <= capacity) {
+    for (named_entry_t *e = g_named_registry.entries; e; e = e->hh.next)
+      copy(e->key, e->generation, e->name, e->type, e->file, e->line, data);
+    *completed = true;
+  }
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return ASCIICHAT_OK;
 }
 
 bool named_registry_read(uintptr_t key, const char *type, void (*read_object)(uintptr_t, void *), void *user_data) {
   if (!type || !read_object || !lifecycle_is_initialized(&g_named_registry.lifecycle))
     return false;
-  rwlock_rdlock(&g_named_registry.entries_lock);
+  bool acquired = false;
+  if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+    return false;
   named_entry_t *entry = NULL;
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
   bool found = entry && entry->type && strcmp(entry->type, type) == 0;

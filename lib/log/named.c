@@ -55,8 +55,8 @@ static void check_type_callback(uintptr_t key, const char *name, void *user_data
 static bool is_type_in_registry(const char *type_str, size_t type_len) {
   struct type_check_context ctx = {.type_to_find = type_str, .type_len = type_len, .found = false};
 
-  named_registry_for_each(check_type_callback, &ctx);
-  return ctx.found;
+  bool completed = false;
+  return named_registry_for_each(check_type_callback, &ctx, &completed) == ASCIICHAT_OK && completed && ctx.found;
 }
 
 /**
