@@ -1663,8 +1663,7 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
 
   if (!formatted) {
     asciichat_error_context_t current;
-    asciichat_error_t current_error =
-        HAS_ERRNO(&current) && current.error_id > format_scope.after_id ? current.code : ASCIICHAT_OK;
+    asciichat_error_t current_error = asciichat_errno_peek_since(format_scope, &current) ? current.code : ASCIICHAT_OK;
     if (current_error == ASCIICHAT_OK) {
       current_error = SET_ERRNO(ERROR_MEMORY, "Failed to format network log message");
     }

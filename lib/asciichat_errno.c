@@ -206,7 +206,7 @@ static void push_context(asciichat_error_context_t *context) {
     return;
   }
   context->generation = thread->generation;
-  if (thread->top != NO_FRAME && g_frames[thread->top].context.error_id > thread->cause_after_id)
+  if (!context->cause_id && thread->top != NO_FRAME && g_frames[thread->top].context.error_id > thread->cause_after_id)
     context->cause_id = g_frames[thread->top].context.error_id;
 
   int reserved = (int)(thread - g_threads) * 2;
@@ -385,6 +385,34 @@ bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_err
   bool found = thread && thread->generation == scope.generation && has_code_locked(thread, scope.after_id, code);
   registry_unlock();
   return found;
+}
+
+bool asciichat_errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out) {
+  registry_lock();
+  error_thread_t *thread = find_thread(scope.thread_id);
+  bool found = thread && thread->generation == scope.generation && thread->top != NO_FRAME &&
+               g_frames[thread->top].context.error_id > scope.after_id;
+  if (found && out)
+    *out = g_frames[thread->top].context;
+  registry_unlock();
+  return found;
+}
+asciichat_error_t asciichat_errno_import(const asciichat_error_context_t *cause) {
+  if (!cause || cause->code == ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing failure snapshot");
+  if (g_recording)
+    return cause->code;
+  g_recording = true;
+  asciichat_error_context_t copy = *cause;
+  copy.cause_id = cause->error_id;
+  copy.thread_id = asciichat_thread_current_id();
+  copy.timestamp = time_ns_to_us(time_get_realtime_ns());
+  copy.created_ns = time_get_ns();
+  copy.backtrace.symbols = NULL;
+  copy.backtrace.tried_symbolize = false;
+  push_context(&copy);
+  g_recording = false;
+  return copy.code;
 }
 
 static void clear_thread(uint64_t id, bool all) {

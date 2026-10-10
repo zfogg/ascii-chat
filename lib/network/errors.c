@@ -138,49 +138,49 @@ asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t e
   return ASCIICHAT_OK;
 }
 
-bool check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, rate_event_type_t event_type,
-                                 socket_t client_socket, const char *operation_name) {
-  bool allowed = false;
-  asciichat_error_t rate_check = rate_limiter_check(rate_limiter, client_ip, event_type, NULL, &allowed);
-
-  if (rate_check != ASCIICHAT_OK || !allowed) {
-    send_error_packet_message(client_socket, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
-    log_warn("Rate limit exceeded for %s from %s", operation_name, client_ip);
-    return false;
+asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
+                                              rate_event_type_t event_type, bool *allowed) {
+  if (!allowed)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing rate-limit decision output");
+  *allowed = false;
+  asciichat_error_t result = rate_limiter_check(rate_limiter, client_ip, event_type, NULL, allowed);
+  if (result != ASCIICHAT_OK) {
+    *allowed = false;
+    return result;
   }
-
-  // Record the rate limit event
-  rate_limiter_record(rate_limiter, client_ip, event_type);
-  return true;
+  if (!*allowed)
+    return ASCIICHAT_OK;
+  result = rate_limiter_record(rate_limiter, client_ip, event_type);
+  if (result != ASCIICHAT_OK)
+    *allowed = false;
+  return result;
 }
 
-bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, socket_t client_socket,
-                                        packet_type_t packet_type) {
+asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
+                                                     packet_type_t packet_type, bool *allowed) {
+  if (!allowed)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing rate-limit decision output");
+  *allowed = false;
   // Map packet type to rate event type
   rate_event_type_t event_type;
-  const char *packet_name;
 
   switch (packet_type) {
   case PACKET_TYPE_IMAGE_FRAME:
     event_type = RATE_EVENT_IMAGE_FRAME;
-    packet_name = "IMAGE_FRAME";
     break;
 
   case PACKET_TYPE_AUDIO_BATCH:
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
     event_type = RATE_EVENT_AUDIO;
-    packet_name = "AUDIO";
     break;
 
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
     event_type = RATE_EVENT_PING;
-    packet_name = "PING";
     break;
 
   case PACKET_TYPE_CLIENT_JOIN:
     event_type = RATE_EVENT_CLIENT_JOIN;
-    packet_name = "CLIENT_JOIN";
     break;
 
   case PACKET_TYPE_CLIENT_CAPABILITIES:
@@ -188,14 +188,14 @@ bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char
   case PACKET_TYPE_STREAM_STOP:
   case PACKET_TYPE_CLIENT_LEAVE:
     event_type = RATE_EVENT_CONTROL;
-    packet_name = "CONTROL";
     break;
 
   default:
     // No rate limiting for other packet types
-    return true;
+    *allowed = true;
+    return ASCIICHAT_OK;
   }
 
   // Use the existing check_and_record_rate_limit function
-  return check_and_record_rate_limit(rate_limiter, client_ip, event_type, client_socket, packet_name);
+  return check_and_record_rate_limit(rate_limiter, client_ip, event_type, allowed);
 }

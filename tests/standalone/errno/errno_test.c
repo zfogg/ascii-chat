@@ -73,6 +73,22 @@ static void network_recovery_contract(void) {
   asciichat_errno_scope_end(notify, ASCIICHAT_ERRNO_HANDLED);
   asciichat_error_context_t preserved;
   CHECK(HAS_ERRNO(&preserved) && preserved.error_id == admission.error_id);
+  bool allowed = true;
+  asciichat_errno_scope_t limit_scope = asciichat_errno_checkpoint();
+  CHECK(check_and_record_rate_limit(NULL, "127.0.0.1", RATE_EVENT_CONNECTION, &allowed) == ERROR_INVALID_PARAM);
+  CHECK(!allowed);
+  CHECK(asciichat_errno_peek_since(limit_scope, &preserved));
+  CHECK(strstr(preserved.context_message, "Invalid rate limiter") != NULL);
+  CLEAR_ERRNO_ALL();
+  rate_limiter_t *limiter = rate_limiter_create_memory();
+  CHECK(limiter != NULL);
+  CHECK(check_and_record_rate_limit(limiter, "127.0.0.1", RATE_EVENT_CONNECTION, &allowed) == ASCIICHAT_OK);
+  CHECK(allowed);
+  for (unsigned int i = 0; i < 1000 && allowed; ++i)
+    CHECK(check_and_record_rate_limit(limiter, "127.0.0.1", RATE_EVENT_CONNECTION, &allowed) == ASCIICHAT_OK);
+  CHECK(!allowed);
+  CHECK(!HAS_ERRNO(NULL));
+  rate_limiter_destroy(limiter);
   CHECK(network_error_from_acip(255) == ERROR_INTERNAL);
   CHECK(network_error_public_code(ERROR_FILE_NOT_FOUND) == ERROR_INTERNAL);
   CHECK(network_error_action(ERROR_INVALID_PASSWORD) == NETWORK_ERROR_STOP);
@@ -96,6 +112,21 @@ static void network_recovery_contract(void) {
   CLEAR_ERRNO_ALL();
 }
 
+static void peek_contract(void) {
+  CLEAR_ERRNO_ALL();
+  SET_ERRNO(ERROR_AUDIO, "old unrelated failure");
+  asciichat_errno_scope_t operation = asciichat_errno_checkpoint();
+  asciichat_error_context_t snapshot;
+  CHECK(!asciichat_errno_peek_since(operation, &snapshot));
+  SET_ERRNO(ERROR_MEDIA_DECODE, "current operation");
+  CHECK(asciichat_errno_peek_since(operation, &snapshot));
+  CHECK(snapshot.code == ERROR_MEDIA_DECODE);
+  CHECK(strcmp(snapshot.context_message, "current operation") == 0);
+  CLEAR_ERRNO();
+  CHECK(!asciichat_errno_peek_since(operation, &snapshot));
+  CHECK(GET_ERRNO() == ERROR_AUDIO);
+  CLEAR_ERRNO_ALL();
+}
 static void stack_contract(void) {
   CLEAR_ERRNO_ALL();
   CHECK(!HAS_ERRNO(NULL));
@@ -244,6 +275,15 @@ static void cross_thread_contract(void) {
   CHECK(strcmp(snapshot.context_message, "worker 0") == 0);
   atomic_store_bool_impl(&data.release, true);
   CHECK(asciichat_thread_join(&thread, NULL) == 0);
+  asciichat_errno_scope_t import_scope = asciichat_errno_checkpoint();
+  CHECK(asciichat_errno_import(&snapshot) == ERROR_NETWORK);
+  asciichat_error_context_t imported;
+  CHECK(asciichat_errno_peek_since(import_scope, &imported));
+  CHECK(imported.error_id != snapshot.error_id && imported.cause_id == snapshot.error_id);
+  CHECK(imported.thread_id == asciichat_thread_current_id());
+  CHECK(strcmp(imported.context_message, snapshot.context_message) == 0);
+  CHECK(imported.backtrace.symbols == NULL);
+  CLEAR_ERRNO_ALL();
   SET_ERRNO(ERROR_AUDIO, "recording survives worker exit");
   CHECK(GET_ERRNO() == ERROR_AUDIO);
   CLEAR_ERRNO_ALL();
@@ -353,6 +393,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   network_recovery_contract();
+  peek_contract();
   stack_contract();
   scopes_and_history();
   capacity_contract();

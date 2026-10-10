@@ -20,6 +20,7 @@ def main():
     parser.add_argument("binary", type=Path)
     parser.add_argument("--debug-sync", action="store_true", help="Require Debug synchronization reports")
     parser.add_argument("--codec-fixture", type=Path, help="Video with an unsupported optional audio codec")
+    parser.add_argument("--failed-codec-fixture", type=Path, help="Video with a corrupt first compressed frame")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     logs = Path(tempfile.mkdtemp(prefix="ascii-errno-smoke-"))
@@ -65,6 +66,11 @@ def main():
     missing = run("missing-media", ["mirror", "--file", str(logs / "missing.mp4"), *snapshot], 26)
     assert "Failure chain (outer context -> root cause)" in missing
     assert "Media initialization failed" in missing
+
+    if args.failed_codec_fixture:
+        failure = run("failed-codec", ["mirror", "--file", str(args.failed_codec_fixture.resolve()), *snapshot], 28)
+        assert "Media capture failed" in failure
+        assert "Failure chain" in failure
 
     frame = logs / "extensionless-frame"
     frame.write_bytes(b"P6\n2 2\n255\n" + bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0]))

@@ -1096,7 +1096,7 @@ static void *ascii_chat_client_handler(void *arg) {
   if (!client) {
     asciichat_error_context_t failure;
     asciichat_error_t code = ERROR_INTERNAL;
-    if (HAS_ERRNO(&failure) && failure.error_id > admission_scope.after_id) {
+    if (asciichat_errno_peek_since(admission_scope, &failure)) {
       code = network_error_public_code(failure.code);
     }
     asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();

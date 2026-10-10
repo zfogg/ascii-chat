@@ -342,10 +342,18 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
-      // Continue with frame skipping after resolving the failed prefetch attempt.
+      ffmpeg_decoder_destroy(source->video_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
+      SAFE_FREE(source);
+      return NULL;
     }
 
-    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_DISMISSED);
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     decoder_scope = asciichat_errno_checkpoint();
     source->audio_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->audio_decoder) {
@@ -392,10 +400,18 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
-      // Continue with frame skipping after resolving the failed prefetch attempt.
+      ffmpeg_decoder_destroy(source->video_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
+      SAFE_FREE(source);
+      return NULL;
     }
 
-    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_DISMISSED);
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     source->audio_decoder = ffmpeg_decoder_create_stdin();
     if (!source->audio_decoder) {
       log_error("Failed to open stdin for audio input");

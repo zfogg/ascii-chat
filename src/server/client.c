@@ -1981,7 +1981,7 @@ void *client_receive_thread(void *arg) {
       // Handle receive errors
       if (acip_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx) && err_ctx.error_id > dispatch_scope.after_id) {
+        if (asciichat_errno_peek_since(dispatch_scope, &err_ctx)) {
           log_error("🔴 ACIP error for client %s: code=%u msg=%s", client->client_id, err_ctx.code,
                     err_ctx.context_message);
           if (err_ctx.code == ERROR_NETWORK) {
@@ -3972,10 +3972,28 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   // Rate limiting: Check and record packet-specific rate limits
   if (g_rate_limiter) {
-    if (!check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, client->socket, type)) {
-      // Rate limit exceeded - error response already sent by utility function
+    bool allowed = false;
+    asciichat_errno_scope_t limit_scope = asciichat_errno_scope_begin();
+    asciichat_error_t result = check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, type, &allowed);
+    if (result != ASCIICHAT_OK || !allowed) {
+      if (result == ASCIICHAT_OK)
+        SET_ERRNO(ERROR_RATE_LIMITED, "Packet quota exceeded");
+      LOG_ERRNO_IF_SET("Packet rate-limit enforcement rejected client");
+      asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
+      mutex_lock(&client->send_mutex);
+      asciichat_error_t sent =
+          acip_send_error(client->transport, result == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL, NULL);
+      mutex_unlock(&client->send_mutex);
+      if (sent != ASCIICHAT_OK)
+        LOG_ERRNO_IF_SET("Could not notify client about rate-limit decision");
+      asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
+      if (result == ASCIICHAT_OK)
+        asciichat_errno_scope_end(limit_scope, ASCIICHAT_ERRNO_HANDLED);
+      atomic_store_bool(&client->active, false);
       return;
     }
+    ASSERT_NO_ERRNO_SINCE(limit_scope);
+    asciichat_errno_scope_end(limit_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   // O(1) dispatch via hash table lookup

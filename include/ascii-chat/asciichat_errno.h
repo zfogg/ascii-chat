@@ -109,6 +109,11 @@ bool asciichat_has_errno(asciichat_error_context_t *context);
 bool asciichat_has_thread_errno(uint64_t thread_id, asciichat_error_context_t *context);
 bool asciichat_has_errno_code(asciichat_error_t code);
 bool asciichat_has_errno_code_tid(uint64_t thread_id, asciichat_error_t code);
+/** Copy the newest error belonging to this operation, without consuming it. */
+bool asciichat_errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out);
+/** Import an owned value snapshot into the caller's stack, linking to its original ID.
+ * Synchronization of snapshot transfer belongs to the operation owner. */
+asciichat_error_t asciichat_errno_import(const asciichat_error_context_t *cause);
 bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_error_t code);
 bool asciichat_has_wsa_error(void);
 bool asciichat_errno_scope_is_clean(asciichat_errno_scope_t scope);

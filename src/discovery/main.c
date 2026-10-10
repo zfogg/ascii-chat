@@ -454,7 +454,13 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
 
       // Capture frame from local media (webcam, test pattern, file, etc.)
       // The capture context is set up during session_client_like_run() and handles all media types
+      asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
       image_t *frame = session_capture_read_frame(capture);
+      asciichat_error_context_t capture_failure;
+      if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+        result = capture_failure.code;
+        break;
+      }
       if (frame) {
         log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
         // Inject host's frame into mixer for broadcasting
@@ -595,7 +601,13 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
           break;
         }
         uint64_t capture_start = time_get_ns();
+        asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
         image_t *frame = session_capture_read_frame(capture);
+        asciichat_error_context_t capture_failure;
+        if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+          result = capture_failure.code;
+          break;
+        }
         uint64_t capture_end = time_get_ns();
         uint64_t processing_start = capture_end;
         uint64_t processing_end = processing_start;

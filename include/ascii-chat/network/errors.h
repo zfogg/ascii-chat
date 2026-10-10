@@ -55,29 +55,28 @@ asciichat_error_t send_error_packet(socket_t sockfd, asciichat_error_t error_cod
 asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t error_code, const char *message);
 
 /**
- * @brief Check rate limit and send error if exceeded
+ * @brief Check rate limit and record an allowed event
  *
- * Helper function that checks rate limit, sends error response if exceeded,
+ * Helper function that checks rate limit
  * and records the event if allowed. Encapsulates the common pattern:
  * 1. Check rate limit
- * 2. Send ERROR_RATE_LIMITED if exceeded
+ * 2. Return allowed=false if exceeded
  * 3. Record event if allowed
  *
  * @param rate_limiter Rate limiter instance
  * @param client_ip Client IP address for logging
  * @param event_type Type of event being rate limited
- * @param client_socket Socket to send error packet on
- * @param operation_name Name of operation for logging (e.g., "SESSION_CREATE")
- * @return true if allowed (and event recorded), false if rate limited
+ * @param allowed Output quota decision; false on failure
+ * @return ASCIICHAT_OK for a completed decision, typed failure otherwise
  */
-bool check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, rate_event_type_t event_type,
-                                 socket_t client_socket, const char *operation_name);
+asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
+                                              rate_event_type_t event_type, bool *allowed);
 
 /**
  * @brief Map packet type to rate event type and check rate limit
  *
  * Maps packet_type_t to the corresponding rate_event_type_t and performs
- * rate limiting check. Sends ERROR_RATE_LIMITED response if exceeded.
+ * rate limiting check. The caller owns any error response and recovery scope.
  *
  * Packet type to rate event mapping:
  * - IMAGE_FRAME -> RATE_EVENT_IMAGE_FRAME
@@ -89,12 +88,12 @@ bool check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *clien
  *
  * @param rate_limiter Rate limiter instance
  * @param client_ip Client IP address
- * @param client_socket Client socket for sending error response
  * @param packet_type Packet type being processed
- * @return true if allowed (and event recorded), false if rate limited
+ * @param allowed Output quota decision; false on failure
+ * @return ASCIICHAT_OK for a completed decision, typed failure otherwise
  */
-bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, socket_t client_socket,
-                                        packet_type_t packet_type);
+asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
+                                                     packet_type_t packet_type, bool *allowed);
 
 #ifdef __cplusplus
 }

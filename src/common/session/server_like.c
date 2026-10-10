@@ -58,9 +58,11 @@ static void *upnp_renewal_thread(void *unused) {
       nat_upnp_context_t *mappings[] = {g_upnp_ctx, g_ws_upnp_ctx};
       for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
         if (mappings[i] && time_get_ns() >= mappings[i]->refresh_at_ns) {
+          asciichat_errno_scope_t renewal_scope = asciichat_errno_scope_begin();
           if (nat_upnp_refresh(mappings[i]) != ASCIICHAT_OK) {
             LOG_ERRNO_IF_SET("Router mapping renewal failed");
           }
+          asciichat_errno_scope_end(renewal_scope, ASCIICHAT_ERRNO_HANDLED);
         }
       }
     }
@@ -472,6 +474,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   bool ipv4_listener = tcp_config.bind_ipv4 && !ipv4_loopback;
   if (upnp_requested && ipv4_listener) {
     log_info("UPnP status: discovering (TCP port %d)", port);
+    asciichat_errno_scope_t mapping_scope = asciichat_errno_scope_begin();
     asciichat_error_t upnp_result = nat_upnp_open(port, config->upnp.description, &g_upnp_ctx);
     if (upnp_result == ASCIICHAT_OK && !nat_upnp_matches_bind_address(g_upnp_ctx, tcp_config.ipv4_address)) {
       log_warn("NAT: gateway mapping does not target the bound IPv4 listener; removing it");
@@ -488,6 +491,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
                "check router support or manually forward TCP port %d. External reachability is unverified.",
                port);
     }
+    asciichat_errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
   } else if (upnp_requested) {
     log_info("UPnP status: disabled (requires a non-loopback IPv4 listener)");
   } else {
@@ -555,9 +559,11 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   if (upnp_requested && g_websocket_thread_started) {
     // WebSocket binds independently of the raw TCP listener's address.
+    asciichat_errno_scope_t ws_mapping_scope = asciichat_errno_scope_begin();
     if (nat_upnp_open((uint16_t)GET_OPTION(websocket_port), "ascii-chat WebSocket", &g_ws_upnp_ctx) != ASCIICHAT_OK) {
       log_warn("WebSocket mapping unavailable; manually forward TCP port %d if needed", GET_OPTION(websocket_port));
     }
+    asciichat_errno_scope_end(ws_mapping_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   if (g_upnp_ctx || g_ws_upnp_ctx) {

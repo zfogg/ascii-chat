@@ -221,7 +221,14 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Read frame using session capture library
+    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
     image_t *image = session_capture_read_frame(g_capture_capture_ctx);
+    asciichat_error_context_t capture_failure;
+    if (!image && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+      asciichat_errno_request_exit(capture_failure.code);
+      signal_exit();
+      break;
+    }
 
     // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
@@ -471,10 +478,12 @@ int capture_init() {
   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
   // Create capture context using session library
+  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
   g_capture_capture_ctx = session_capture_create(&config);
   if (!g_capture_capture_ctx) {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
-    asciichat_error_t existing_error = GET_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     log_debug("session_capture_create failed, GET_ERRNO() returned: %d", existing_error);
     if (existing_error != ASCIICHAT_OK) {
       log_debug("Returning existing error code %d", existing_error);

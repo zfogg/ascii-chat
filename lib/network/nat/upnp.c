@@ -210,6 +210,7 @@ asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *des
   (*ctx)->mapped_port = internal_port;
   SAFE_STRNCPY((*ctx)->description, description, sizeof((*ctx)->description));
   log_info("UPnP: discovering a gateway for %s port %u", protocol == NAT_UPNP_UDP ? "UDP" : "TCP", internal_port);
+  asciichat_errno_scope_t mapping_scope = asciichat_errno_scope_begin();
   asciichat_error_t result = upnp_try_map_port(*ctx);
 #if defined(__APPLE__) && defined(HAVE_MINIUPNPC)
   if (result != ASCIICHAT_OK) {
@@ -218,6 +219,7 @@ asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *des
   }
 #endif
   if (result == ASCIICHAT_OK) {
+    asciichat_errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
     log_info("NAT: mapping created for %s:%u (external reachability unverified)", (*ctx)->external_ip,
              (*ctx)->mapped_port);
     return ASCIICHAT_OK;

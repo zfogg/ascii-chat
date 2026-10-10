@@ -98,6 +98,7 @@ struct ffmpeg_decoder_t {
   image_t *prefetch_image_b;          ///< Second prefetch buffer
   image_t *current_prefetch_image;    ///< Currently available prefetched frame
   bool prefetch_frame_ready;          ///< Whether current_prefetch_image has valid data
+  asciichat_error_context_t prefetch_failure;
   bool prefetch_thread_running;       ///< Whether prefetch thread is active
   bool prefetch_should_stop;          ///< Signal to stop prefetch thread
   bool seeking_in_progress;           ///< Signal to pause prefetch thread during seek
@@ -372,6 +373,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
+    asciichat_errno_scope_t decode_scope = asciichat_errno_checkpoint();
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
     mutex_unlock(&decoder->prefetch_mutex);
@@ -423,8 +425,11 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
           av_packet_unref(decoder->packet);
 
-          if (ret < 0) {
+          if (ret == AVERROR(EAGAIN))
             continue;
+          if (ret < 0) {
+            SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", ret);
+            break;
           }
 
           // Receive decoded frame
@@ -452,12 +457,13 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       // Reallocate if needed (width/height changed)
       if (decode_buffer->w != width || decode_buffer->h != height) {
-        image_destroy(decode_buffer);
-        decode_buffer = image_new((size_t)width, (size_t)height);
-        if (!decode_buffer) {
-          log_error("Failed to allocate prefetch image buffer");
+        image_t *replacement = image_new((size_t)width, (size_t)height);
+        if (!replacement) {
+          SET_ERRNO(ERROR_MEMORY, "Failed to allocate prefetch image buffer");
           break;
         }
+        image_destroy(decode_buffer);
+        decode_buffer = replacement;
         // Update decoder's pointer to the reallocated buffer
         if (use_image_a) {
           decoder->prefetch_image_a = decode_buffer;
@@ -500,7 +506,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
                                               SWS_BILINEAR, NULL, NULL, NULL);
           });
           if (!decoder->sws_ctx) {
-            log_error("Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
+            SET_ERRNO(ERROR_MEDIA_DECODE,
+                      "Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
                       pix_fmt_to_use);
             break;
           }
@@ -518,7 +525,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
           log_debug("Lazy initialized swscale context with %dx%d from pix_fmt=%d", width, height, pix_fmt_to_use);
         } else {
-          log_error("Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width, height,
+          SET_ERRNO(ERROR_MEDIA_DECODE,
+                    "Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width, height,
                     pix_fmt_to_use, AV_PIX_FMT_NONE);
           break;
         }
@@ -536,6 +544,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
                                 decoder->frame->linesize, 0, height, dst_data, dst_linesize);
+      if (ret_scale <= 0) {
+        SET_ERRNO(ERROR_MEDIA_DECODE, "Video conversion failed: %d", ret_scale);
+        break;
+      }
       if (decode_count <= 3) {
         log_info("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
         rgb_pixel_t *test_px = (rgb_pixel_t *)decode_buffer->pixels;
@@ -553,8 +565,16 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     mutex_lock(&decoder->prefetch_mutex);
 
     // Mutex now held - update prefetch state
-    if (frame_decoded) {
-      // Update shared prefetch state while mutex is held
+    bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress;
+    if (!frame_decoded && !reached_eof && !interrupted) {
+      if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
+        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed");
+        if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
+          decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
+          SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
+                       sizeof(decoder->prefetch_failure.context_message));
+        }
+      }
     }
 
     mutex_unlock(&decoder->prefetch_mutex); // Release at end of main loop iteration
@@ -577,7 +597,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;
-    } else if (!reached_eof) {
+    } else if (!reached_eof && !interrupted) {
       // A decoder error terminates prefetch; EOF waits for rewind above.
       break;
     }
@@ -1239,7 +1259,38 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
  * Video Operations
  * ============================================================================ */
 
+static image_t *take_prefetched_frame(ffmpeg_decoder_t *decoder);
+ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame,
+                                                asciichat_error_context_t *failure) {
+  if (frame)
+    *frame = NULL;
+  if (failure)
+    memset(failure, 0, sizeof(*failure));
+  if (!decoder || !frame || !failure) {
+    asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid video poll outputs");
+    if (failure && !asciichat_errno_peek_since(scope, failure))
+      failure->code = ERROR_INVALID_PARAM;
+    return FFMPEG_FRAME_FAILED;
+  }
+  *frame = take_prefetched_frame(decoder);
+  if (*frame)
+    return FFMPEG_FRAME_READY;
+  mutex_lock(&decoder->prefetch_mutex);
+  *failure = decoder->prefetch_failure;
+  mutex_unlock(&decoder->prefetch_mutex);
+  if (failure->code != ASCIICHAT_OK)
+    return FFMPEG_FRAME_FAILED;
+  return ffmpeg_decoder_at_end(decoder) ? FFMPEG_FRAME_EOF : FFMPEG_FRAME_WAITING;
+}
 image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
+  image_t *frame = NULL;
+  asciichat_error_context_t failure = {0};
+  if (ffmpeg_decoder_poll_video(decoder, &frame, &failure) == FFMPEG_FRAME_FAILED)
+    asciichat_errno_import(&failure);
+  return frame;
+}
+static image_t *take_prefetched_frame(ffmpeg_decoder_t *decoder) {
   if (!decoder || decoder->video_stream_idx < 0) {
     return NULL;
   }
@@ -1291,11 +1342,11 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
  */
 asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   if (!decoder || decoder->video_stream_idx < 0) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Decoder has no initialized video prefetch buffers");
   }
 
   if (!decoder->prefetch_image_a || !decoder->prefetch_image_b) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Decoder has no initialized video prefetch buffers");
   }
 
   // Already running
@@ -1305,6 +1356,7 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
 
   // Reset stop flag and create thread
   decoder->prefetch_should_stop = false;
+  memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
 
   int thread_err = asciichat_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
                                            ffmpeg_decoder_prefetch_thread_func, decoder);
@@ -1356,7 +1408,7 @@ bool ffmpeg_decoder_has_video(ffmpeg_decoder_t *decoder) {
 
 asciichat_error_t ffmpeg_decoder_get_video_dimensions(ffmpeg_decoder_t *decoder, int *width, int *height) {
   if (!decoder || decoder->video_stream_idx < 0) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Decoder has no video stream");
   }
 
   if (width) {
@@ -1525,7 +1577,7 @@ bool ffmpeg_decoder_has_audio(ffmpeg_decoder_t *decoder) {
 
 asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
   if (!decoder) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing decoder for rewind");
   }
 
   if (decoder->is_stdin) {
@@ -1566,7 +1618,7 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
 
 asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec) {
   if (!decoder) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing decoder for seek");
   }
 
   if (decoder->is_stdin) {

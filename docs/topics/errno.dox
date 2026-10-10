@@ -181,6 +181,31 @@ network transports, discovery, media probes and configuration. It also corrected
 positive-enum send-result checks and successful-path scope leaks. Legacy APIs
 with documented negative/status/count returns retain their own return contracts.
 
+@section errno_handoff Operation-local snapshots and worker handoff
+
+asciichat_errno_peek_since(checkpoint, &failure) copies the newest error from that
+operation, rejecting older frames and stale thread generations. Pointer-returning
+APIs use this to attribute failure without reusing unrelated pending errors.
+
+An operation can store this value snapshot under its own mutex, or publish it
+through a joined worker result. asciichat_errno_import(&failure) records a new
+caller-owned frame with the original error ID as its cause, retaining the copied
+message, source and raw backtrace even after worker exit or history eviction.
+It does not consume or clear the producer's errors. Import once when processing
+an operation result, not by polling arbitrary thread stacks.
+
+ffmpeg_decoder_poll_video distinguishes READY, WAITING, EOF and FAILED; failure
+includes an owned snapshot. The pointer compatibility API imports FAILED into
+the reading thread. Capture owners stop on new errors and the pipeline imports
+its capture failure after joining, so decoder failure cannot masquerade as
+perpetual frame starvation. Failed prefetch startup fails media creation.
+
+PortAudio software fallback and optional router mapping attempts resolve only
+their operation scopes. Router renewal failures enter bounded handled history
+when the scheduler takes responsibility for retrying; mapping state still tracks
+lease expiration. Rate-limit helpers return a typed status plus an allowed
+output; connection owners send encrypted public responses under their send lock.
+
 @section errno_tests Tests
 
 Build the production library tests without Criterion:
