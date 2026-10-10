@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/util/time.h>
-#include <limits.h>
+#include <ascii-chat/debug/debug_helpers.h>
 
 static atomic_t g_signal = {0};
 static atomic_t g_exiting = {0};
@@ -22,13 +22,11 @@ static cond_t g_condition;
 static bool g_initialized;
 static bool g_started;
 static uint64_t g_state_deadline;
+static uint64_t g_errno_deadline;
 static uint64_t g_backtrace_deadline;
 static uint64_t g_memory_deadline;
 static uint64_t g_memory_interval;
 
-static uint64_t deadline_after(uint64_t now, uint64_t delay) {
-  return delay > UINT64_MAX - now ? UINT64_MAX : now + delay;
-}
 void debug_stats_set_main_thread_id(void) {
   g_main_thread = asciichat_thread_current_id();
 }
@@ -48,40 +46,40 @@ asciichat_error_t debug_stats_init(void) {
   atomic_store_bool_impl(&g_cleaning, false);
   return ASCIICHAT_OK;
 }
-void debug_stats_print(void) {
-  debug_sync_print_state();
+static void debug_stats_print_errno(void) {
   asciichat_errno_print_stacks();
   asciichat_errno_print_history();
   asciichat_errno_print_hash_stats();
+}
+static void debug_stats_print_sync(void) {
+  debug_sync_print_state();
   named_print_hash_stats();
+}
+void debug_stats_print(void) {
+  debug_stats_print_sync();
+  debug_stats_print_errno();
 }
 void debug_stats_print_state_delayed(uint64_t delay) {
   if (!g_initialized)
     return;
-  uint64_t deadline = deadline_after(time_get_ns(), delay);
-  mutex_lock(&g_mutex);
-  // Coalesce duplicate requests at the earliest requested time.
-  if (!g_state_deadline || deadline < g_state_deadline)
-    g_state_deadline = deadline;
-  cond_signal(&g_condition);
-  mutex_unlock(&g_mutex);
+  debug_report_schedule(&g_mutex, &g_condition, &g_state_deadline, delay);
+}
+void debug_stats_print_errno_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_errno_deadline, delay);
 }
 void debug_stats_print_backtrace_delayed(uint64_t delay) {
   if (!g_initialized)
     return;
-  uint64_t deadline = deadline_after(time_get_ns(), delay);
-  mutex_lock(&g_mutex);
-  if (!g_backtrace_deadline || deadline < g_backtrace_deadline)
-    g_backtrace_deadline = deadline;
-  cond_signal(&g_condition);
-  mutex_unlock(&g_mutex);
+  debug_report_schedule(&g_mutex, &g_condition, &g_backtrace_deadline, delay);
 }
 void debug_stats_set_memory_report_interval(uint64_t interval) {
   if (!g_initialized)
     return;
   mutex_lock(&g_mutex);
   g_memory_interval = interval;
-  g_memory_deadline = interval ? deadline_after(time_get_ns(), interval) : 0;
+  g_memory_deadline = interval ? debug_report_deadline_after(time_get_ns(), interval) : 0;
   cond_signal(&g_condition);
   mutex_unlock(&g_mutex);
 }
@@ -97,7 +95,8 @@ void debug_stats_poll(void) {
   if (!g_initialized)
     return;
   uint64_t now = time_get_ns();
-  bool state = atomic_exchange_bool_impl(&g_signal, false);
+  bool all = atomic_exchange_bool_impl(&g_signal, false);
+  bool state = false;
   mutex_lock(&g_mutex);
   bool backtrace = g_backtrace_deadline && now >= g_backtrace_deadline;
   bool memory = g_memory_deadline && now >= g_memory_deadline;
@@ -105,13 +104,18 @@ void debug_stats_poll(void) {
     state = true;
     g_state_deadline = 0;
   }
+  bool errors = g_errno_deadline && now >= g_errno_deadline;
+  if (errors)
+    g_errno_deadline = 0;
   if (backtrace)
     g_backtrace_deadline = 0;
   if (memory)
-    g_memory_deadline = deadline_after(now, g_memory_interval);
+    g_memory_deadline = debug_report_deadline_after(now, g_memory_interval);
   mutex_unlock(&g_mutex);
-  if (state)
-    debug_stats_print();
+  if (all || state)
+    debug_stats_print_sync();
+  if (all || errors)
+    debug_stats_print_errno();
   if (backtrace) {
     backtrace_t trace = {0};
     backtrace_capture(&trace);
@@ -141,8 +145,8 @@ static void *debug_stats_worker(void *unused) {
     mutex_lock(&g_mutex);
     uint64_t now = time_get_ns();
     uint64_t wait = 100 * NS_PER_MS_INT;
-    uint64_t deadlines[] = {g_state_deadline, g_backtrace_deadline, g_memory_deadline};
-    for (size_t i = 0; i < 3; ++i)
+    uint64_t deadlines[] = {g_state_deadline, g_errno_deadline, g_backtrace_deadline, g_memory_deadline};
+    for (size_t i = 0; i < sizeof(deadlines) / sizeof(deadlines[0]); ++i)
       if (deadlines[i]) {
         uint64_t remaining = deadlines[i] > now ? deadlines[i] - now : 1;
         if (remaining < wait)
@@ -167,6 +171,8 @@ asciichat_error_t debug_stats_start_thread(void) {
   if (opts) {
     if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts))
       debug_stats_print_state_delayed((uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT));
+    if (IS_OPTION_EXPLICIT(debug_errno_stacks_time, opts))
+      debug_stats_print_errno_delayed((uint64_t)(opts->debug_errno_stacks_time * NS_PER_SEC_INT));
     if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts))
       debug_stats_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
     if (opts->debug_memory_report_interval > 0)
@@ -201,7 +207,7 @@ void debug_stats_destroy(void) {
     mutex_destroy(&g_mutex);
     g_initialized = false;
     atomic_store_bool_impl(&g_signal, false);
-    g_state_deadline = g_backtrace_deadline = g_memory_deadline = g_memory_interval = 0;
+    g_state_deadline = g_errno_deadline = g_backtrace_deadline = g_memory_deadline = g_memory_interval = 0;
   }
 }
 void debug_stats_final_cleanup(void) {

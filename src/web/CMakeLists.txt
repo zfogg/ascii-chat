@@ -248,6 +248,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/debug/named.c
     ${LIB_ROOT}/debug/sync.c
     ${LIB_ROOT}/debug/stats.c
+    ${LIB_ROOT}/debug/debug_helpers.c
     ${LIB_ROOT}/debug/atomic.c
     ${LIB_ROOT}/debug/mutex.c
 

@@ -18,6 +18,7 @@ def unused_port():
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("binary", type=Path)
+    parser.add_argument("--debug-sync", action="store_true", help="Require Debug synchronization reports")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     logs = Path(tempfile.mkdtemp(prefix="ascii-errno-smoke-"))
@@ -41,6 +42,22 @@ def main():
     diagnostic = run("mirror", ["mirror", "--test-pattern", "--errno-stacks=0.05", *snapshot], 0)
     assert "Pending error stacks" in diagnostic
     assert "Error registry:" in diagnostic
+    assert "SYNC_STATE:" not in diagnostic
+    sync = run("sync-only", ["mirror", "--test-pattern", "--sync-state=0.05", *snapshot], 0)
+    assert "Pending error stacks" not in sync
+    both = run("both-reports", ["mirror", "--test-pattern", "--sync-state=0.05",
+                               "--errno-stacks=0.15", *snapshot], 0)
+    assert both.count("Pending error stacks") == 1
+    if args.debug_sync:
+        assert sync.count("SYNC_STATE:") == 1
+        assert both.count("SYNC_STATE:") == 1
+        assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
+    # A later errno deadline must not delay or replace the earlier sync report.
+    later = run("independent-deadlines", ["mirror", "--test-pattern", "--sync-state=0.05",
+                                        "--errno-stacks=60", *snapshot], 0)
+    assert "Pending error stacks" not in later
+    if args.debug_sync:
+        assert later.count("SYNC_STATE:") == 1
     missing = run("missing-media", ["mirror", "--file", str(logs / "missing.mp4"), *snapshot], 26)
     assert "Failure chain (outer context -> root cause)" in missing
     assert "Media initialization failed" in missing

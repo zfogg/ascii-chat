@@ -1733,13 +1733,18 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0 ||
          strcmp(mode_argv[i], "--errno-stacks") == 0 || strncmp(mode_argv[i], "--errno-stacks=", 15) == 0)) {
-      opts.debug_sync_state_time_explicit = true;
+      bool errno_report = strncmp(mode_argv[i], "--errno-stacks", 14) == 0;
+      double *report_time = errno_report ? &opts.debug_errno_stacks_time : &opts.debug_sync_state_time;
+      if (errno_report)
+        opts.debug_errno_stacks_time_explicit = true;
+      else
+        opts.debug_sync_state_time_explicit = true;
       if (strcmp(mode_argv[i], "--sync-state") == 0 || strcmp(mode_argv[i], "--errno-stacks") == 0) {
         if (i + 1 < mode_argc) {
           char *endptr;
           double val = strtod(mode_argv[i + 1], &endptr);
           if (endptr != mode_argv[i + 1] && val > 0.0) {
-            opts.debug_sync_state_time = val;
+            *report_time = val;
             i++;
           }
         }
@@ -1749,7 +1754,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           char *endptr;
           double val = strtod(value_str, &endptr);
           if (endptr != value_str && val > 0.0) {
-            opts.debug_sync_state_time = val;
+            *report_time = val;
           }
         }
       }

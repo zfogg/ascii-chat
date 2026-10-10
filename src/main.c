@@ -1000,6 +1000,7 @@ int main(int argc, char *argv[]) {
   // Debug builds always monitor synchronization. Release builds start the worker
   // only when the user requests diagnostics; error storage itself is always on.
   bool start_diagnostics = IS_OPTION_EXPLICIT(debug_sync_state_time, opts) ||
+                           IS_OPTION_EXPLICIT(debug_errno_stacks_time, opts) ||
                            IS_OPTION_EXPLICIT(debug_backtrace_time, opts) || opts->debug_memory_report_interval > 0;
 #ifndef NDEBUG
   start_diagnostics = true;

@@ -126,8 +126,11 @@ state and backtrace requests to coexist. Duplicate requests for the same report
 coalesce at the earliest deadline. Shutdown wakes and joins the worker before
 diagnostic data is destroyed. Signal handlers only set a request flag.
 
---errno-stacks [TIME] and --sync-state [TIME] print synchronization state, pending
-error stacks, handled history, error totals, and error/named hash-table statistics.
+--errno-stacks [TIME] prints pending error stacks, handled history, error totals,
+and error registry statistics. --sync-state [TIME] prints synchronization state
+and named registry statistics. Each schedules its own one-shot report after TIME
+seconds (immediately when omitted); using both produces two independent reports.
+Signal and keyboard diagnostic requests still print both reports.
 Debug builds monitor synchronization automatically; release builds start the
 worker only when diagnostics are requested. Error recording and searching are
 available in every build. Backtraces follow ENABLE_ERRNO_BACKTRACES.

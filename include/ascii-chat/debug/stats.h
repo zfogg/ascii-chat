@@ -18,6 +18,8 @@ void debug_stats_destroy(void);
 void debug_stats_final_cleanup(void);
 bool debug_stats_is_cleanup_in_progress(void);
 void debug_stats_trigger_print(void);
+// Schedule independent one-shot synchronization and error reports.
+void debug_stats_print_errno_delayed(uint64_t delay_ns);
 void debug_stats_print_state_delayed(uint64_t delay_ns);
 void debug_stats_print_backtrace_delayed(uint64_t delay_ns);
 void debug_stats_set_memory_report_interval(uint64_t interval_ns);
