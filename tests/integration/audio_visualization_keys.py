@@ -62,6 +62,15 @@ def main():
             heading = next(line for line in help_text.splitlines() if 'Navigation & Control:' in line)
             assert 'Current Settings:' in heading, help_text
             assert heading.index('Current Settings:') > heading.index('Navigation & Control:'), help_text
+            for rows, cols in ((24, 60), (10, 100)):
+                term.resize(rows, cols)
+                text = term.expect(lambda s: 'Terminal too small' in s, 'Help rejects undersized terminal')
+                assert 'Navigation & Control:' not in text, text
+                assert 'Current Settings:' not in text, text
+                term.resize(24, 100)
+                term.expect(lambda s: 'Navigation & Control:' in s and 'Current Settings:' in s
+                            and 'Terminal too small' not in s, 'Help recovers after resize')
+            print('PASS narrow/short help fallback and resize recovery')
             term.write('1')
             term.expect(lambda s: '(1) Matrix \"Digital Rain\" : O' in s, 'Matrix enables')
             term.write('2')
