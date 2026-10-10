@@ -44,9 +44,9 @@ static void check_crc32_hw_support(void) {
 //   - Intel _mm_crc32_* intrinsics
 //   - Our software fallback asciichat_crc32_sw()
 // Process byte-by-byte to ensure cross-platform consistency with x86
-__attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(const void *data, size_t len) {
+__attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(uint32_t previous, const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFF;
+  uint32_t crc = ~previous;
 
   // Process all bytes one at a time for guaranteed consistency
   // Use CRC32-C intrinsics (__crc32cb) not CRC32 (__crc32b)
@@ -61,9 +61,10 @@ __attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(const void
 #ifdef ARCH_X86_64
 // Intel CRC32 hardware implementation using SSE4.2
 // Process byte-by-byte to ensure cross-platform consistency with ARM
-__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(const void *data, size_t len) {
+__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(uint32_t previous, const void *data,
+                                                                           size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFF;
+  uint32_t crc = ~previous;
 
   // Process all bytes one at a time for guaranteed consistency
   for (size_t i = 0; i < len; i++) {
@@ -75,7 +76,7 @@ __attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(const
 #endif
 
 // Multi-architecture hardware-accelerated CRC32
-uint32_t asciichat_crc32_hw(const void *data, size_t len) {
+uint32_t asciichat_crc32_update(uint32_t previous, const void *data, size_t len) {
   check_crc32_hw_support();
 
   if (!crc32_hw_available) {
@@ -85,7 +86,7 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
       log_debug("Using software CRC32 (no hardware acceleration)");
       logged_fallback = true;
     }
-    return asciichat_crc32_sw(data, len);
+    return asciichat_crc32_sw_update(previous, data, len);
   }
 
 #ifdef ARCH_ARM64
@@ -94,16 +95,16 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
     log_debug("Using ARM64 hardware CRC32");
     logged_arm = true;
   }
-  return crc32_arm_hw(data, len);
+  return crc32_arm_hw(previous, data, len);
 #elif defined(ARCH_X86_64)
   static _Thread_local bool logged_intel = false;
   if (!logged_intel) {
     log_debug("Using Intel x86_64 hardware CRC32 (SSE4.2)");
     logged_intel = true;
   }
-  return crc32_intel_hw(data, len);
+  return crc32_intel_hw(previous, data, len);
 #else
-  return asciichat_crc32_sw(data, len);
+  return asciichat_crc32_sw_update(previous, data, len);
 #endif
 }
 
@@ -114,9 +115,9 @@ bool crc32_hw_is_available(void) {
 
 // Software fallback implementation using CRC32-C (Castagnoli) polynomial
 // This matches the hardware implementations (__crc32* and _mm_crc32_*)
-uint32_t asciichat_crc32_sw(const void *data, size_t len) {
+uint32_t asciichat_crc32_sw_update(uint32_t previous, const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFF;
+  uint32_t crc = ~previous;
 
   // CRC32-C (Castagnoli) polynomial: 0x1EDC6F41
   // Reversed (for LSB-first): 0x82F63B78
@@ -132,4 +133,11 @@ uint32_t asciichat_crc32_sw(const void *data, size_t len) {
   }
 
   return ~crc;
+}
+
+uint32_t asciichat_crc32_hw(const void *data, size_t len) {
+  return asciichat_crc32_update(0, data, len);
+}
+uint32_t asciichat_crc32_sw(const void *data, size_t len) {
+  return asciichat_crc32_sw_update(0, data, len);
 }

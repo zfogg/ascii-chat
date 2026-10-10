@@ -203,6 +203,11 @@ typedef struct {
    * @note Should free transport-specific resources (peer connections, etc.)
    * @note May be NULL if no custom cleanup needed
    */
+  /** Borrow slices until return. Queued transports must copy into owned storage.
+   * NULL selects the contiguous fallback, preserving WebSocket/WebRTC messages.
+   */
+  asciichat_error_t (*sendv)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
+
   void (*destroy_impl)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
@@ -216,9 +221,9 @@ struct acip_transport {
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
-  uint64_t receive_timeout_ns;              ///< Optional TCP receive timeout override; zero uses the normal polling timeout
-  void *impl_data;                         ///< Transport-specific state
-  void *user_data;                         ///< Application-specific context (e.g., per-client data)
+  uint64_t receive_timeout_ns; ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  void *impl_data;             ///< Transport-specific state
+  void *user_data;             ///< Application-specific context (e.g., per-client data)
 };
 
 // =============================================================================
@@ -250,6 +255,8 @@ void acip_transport_destroy(acip_transport_t *transport);
  * @param len Data length
  * @return ASCIICHAT_OK on success, error code on failure
  */
+asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
+
 static inline asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len) {
   if (!transport || !transport->methods || !transport->methods->send) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
@@ -355,6 +362,12 @@ static inline bool acip_transport_has_pending_data(acip_transport_t *transport) 
  */
 acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
 
+/** Override the benchmark-gated kernel copy-avoidance policy for this TCP transport.
+ * Large Linux encrypted sends may pin pages; other platforms fall back to vectors.
+ * Initial policy comes from --network-zerocopy (off by default).
+ */
+asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, bool enabled);
+
 /**
  * @brief Create WebSocket client transport
  *
@@ -370,7 +383,8 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
  * @note Port defaults to 80 for ws:// and 443 for wss:// if not specified
  * @note Connection is established synchronously during creation
  */
-acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url, crypto_context_t *crypto_ctx);
+acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
+                                                         crypto_context_t *crypto_ctx);
 
 /**
  * @brief Create WebSocket server transport from existing connection
@@ -387,7 +401,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
  * @note This is for server-side only - clients use acip_websocket_client_transport_create()
  */
 struct lws;
-acip_transport_t *acip_websocket_server_transport_create(const char *name, struct lws *wsi, crypto_context_t *crypto_ctx);
+acip_transport_t *acip_websocket_server_transport_create(const char *name, struct lws *wsi,
+                                                         crypto_context_t *crypto_ctx);
 
 /**
  * @brief Create WebRTC transport from peer connection and data channel

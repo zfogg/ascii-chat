@@ -46,6 +46,10 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
+/** Send payload slices without assembling an intermediate media packet. */
+asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
+                                             const socket_buffer_t *payload, size_t count, uint32_t client_id);
+
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, uint32_t client_id);
 

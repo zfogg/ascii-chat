@@ -4,6 +4,7 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/process_title.c
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/socket_io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mutex.c
