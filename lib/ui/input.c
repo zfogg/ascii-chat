@@ -31,27 +31,27 @@ void ui_input_timeout_report(unsigned seconds, const char *consequence) {
   SET_ERRNO(ERROR_PROMPT_TIMEOUT, "Prompt timed out after %u seconds: %s", seconds, consequence);
 }
 
-static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
+static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static mutex_t g_prompt_mutex;
 static bool g_was_covered;
 
 static bool input_initialize(void) {
-  if (lifecycle_init_once(&g_lifecycle)) {
+  if (lifecycle_init_once(&g_input_lifecycle)) {
     if (mutex_init(&g_mutex, "ui_input") != 0) {
-      lifecycle_init_abort(&g_lifecycle);
+      lifecycle_init_abort(&g_input_lifecycle);
       return false;
     }
     if (mutex_init(&g_prompt_mutex, "ui_prompt_input") != 0) {
       mutex_destroy(&g_mutex);
-      lifecycle_init_abort(&g_lifecycle);
+      lifecycle_init_abort(&g_input_lifecycle);
       return false;
     }
-    NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_input_lifecycle", NULL);
+    NAMED_REGISTER_ATOMIC(&g_input_lifecycle.state, "ui_input_lifecycle", NULL);
     g_was_covered = false;
-    lifecycle_init_commit(&g_lifecycle);
+    lifecycle_init_commit(&g_input_lifecycle);
   }
-  return lifecycle_is_initialized(&g_lifecycle);
+  return lifecycle_is_initialized(&g_input_lifecycle);
 }
 
 keyboard_key_t ui_input_read_key(ui_screen_t screen) {
@@ -96,12 +96,12 @@ keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms) {
 }
 
 void ui_input_shutdown(void) {
-  if (!lifecycle_destroy_once(&g_lifecycle))
+  if (!lifecycle_destroy_once(&g_input_lifecycle))
     return;
   mutex_destroy(&g_prompt_mutex);
   mutex_destroy(&g_mutex);
-  NAMED_UNREGISTER(&g_lifecycle.state);
-  lifecycle_destroy_commit(&g_lifecycle);
+  NAMED_UNREGISTER(&g_input_lifecycle.state);
+  lifecycle_destroy_commit(&g_input_lifecycle);
 }
 
 asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {

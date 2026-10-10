@@ -665,9 +665,17 @@ if(NOT libdatachannel_POPULATED)
             endif()
         endif()
 
+        # FindOpenSSL also reads pkg-config for transitive static dependencies.
+        # Keep those hints consistent with the selected archives instead of the host OpenSSL.
+        set(_libdc_configure_command ${CMAKE_COMMAND})
+        if(USE_MUSL)
+            set(_libdc_configure_command ${CMAKE_COMMAND} -E env
+                "PKG_CONFIG_PATH=${OPENSSL_ROOT_DIR}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}"
+                ${CMAKE_COMMAND})
+        endif()
         # Build libdatachannel at configure time (not part of main build)
         execute_process(
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${_libdc_configure_command}
                 ${LIBDATACHANNEL_CMAKE_ARGS}
                 ${libdatachannel_SOURCE_DIR}
             WORKING_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}"
