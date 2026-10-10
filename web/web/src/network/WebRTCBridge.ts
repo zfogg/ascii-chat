@@ -196,6 +196,10 @@ export class WebRTCBridge implements PacketTransport {
     }
   }
 
+  getBufferedAmount(): number {
+    return this.queuedBytes + this.channel.bufferedAmount;
+  }
+
   isConnected(): boolean {
     return !this.closed && this.channel.readyState === "open";
   }

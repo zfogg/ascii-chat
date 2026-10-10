@@ -1,136 +1,139 @@
-/**
- * H.265/HEVC encoder using WebCodecs VideoEncoder API.
- * Encodes canvas frames to H.265 bitstream for transmission to server.
- * Requires Chrome 113+ or Edge (Firefox/Safari don't support H.265 encoding).
- */
+/** Browser HEVC upload encoder. ACIP carries self-contained Annex B access units. */
+export interface H265Chunk {
+  flags: number;
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
+
+type HevcConfig = VideoEncoderConfig & { hevc: { format: "annexb" } };
+
 export class H265Encoder {
   private encoder: VideoEncoder | null = null;
-  private pendingChunks: Array<{
-    flags: number;
-    width: number;
-    height: number;
-    data: Uint8Array;
-  }> = [];
-  private width = 0;
-  private height = 0;
+  private config: HevcConfig | null = null;
   private frameCount = 0;
-  private isOpen = false;
+  private generation = 0;
+  private failure: Error | null = null;
+  private resizing = false;
+
+  constructor(private output: (chunk: H265Chunk) => void) {}
 
   static isSupported(): boolean {
-    return typeof VideoEncoder !== "undefined";
-  }
-
-  async initialize(width: number, height: number, fps: number): Promise<void> {
-    console.time("[H265Encoder] Total codec check time");
-    this.width = width;
-    this.height = height;
-    this.frameCount = 0;
-
-    const bitrate = Math.max(500_000, width * height * 2 * fps);
-
-    // Test H.265 support
-    try {
-      console.time("[H265Encoder] H.265 isConfigSupported");
-      const h265Support = await VideoEncoder.isConfigSupported({
-        codec: "hvc1",
-        width,
-        height,
-        bitrate,
-        framerate: fps,
-        latencyMode: "realtime",
-      });
-      console.timeEnd("[H265Encoder] H.265 isConfigSupported");
-      console.log("[H265Encoder] H.265 support:", h265Support.supported);
-
-      if (!h265Support.supported) {
-        console.log(
-          "[H265Encoder] H.265 not supported, will use IMAGE_FRAME packets",
-        );
-        this.isOpen = false;
-        console.timeEnd("[H265Encoder] Total codec check time");
-        return;
-      }
-    } catch (err) {
-      console.log(
-        "[H265Encoder] Codec check error, will use IMAGE_FRAME packets:",
-        err,
-      );
-      this.isOpen = false;
-      console.timeEnd("[H265Encoder] Total codec check time");
-      return;
-    }
-
-    console.timeEnd("[H265Encoder] Total codec check time");
-
-    this.encoder = new VideoEncoder({
-      output: (chunk: EncodedVideoChunk) => {
-        const flags = chunk.type === "key" ? 0x01 : 0x00;
-        const buffer = new Uint8Array(chunk.byteLength);
-        chunk.copyTo(buffer);
-        this.pendingChunks.push({
-          flags,
-          width: this.width,
-          height: this.height,
-          data: buffer,
-        });
-      },
-      error: (err: DOMException) => {
-        console.error("[H265Encoder] Encoding error:", err);
-        this.isOpen = false; // Mark encoder as closed on error
-      },
-    });
-
-    this.encoder.configure({
-      codec: "hvc1", // H.265/HEVC
-      width,
-      height,
-      bitrate,
-      framerate: fps,
-      hardwareAcceleration: "prefer-hardware",
-      latencyMode: "realtime",
-    });
-    this.isOpen = true;
-    console.log(
-      `[H265Encoder] Successfully initialized with H.265: ${width}x${height} @ ${fps} FPS`,
+    return (
+      typeof VideoEncoder !== "undefined" && typeof VideoFrame !== "undefined"
     );
   }
 
-  encode(frame: VideoFrame, forceKeyframe: boolean = false): void {
-    if (!this.encoder || !this.isOpen) return;
-    // Keep capture live when the encoder cannot keep up. Encoded output must
-    // remain ordered because delta frames depend on earlier frames.
-    if (this.encoder.encodeQueueSize >= 2) return;
-
+  async initialize(width: number, height: number, fps: number): Promise<void> {
+    this.destroy();
+    const generation = this.generation;
+    if (!H265Encoder.isSupported())
+      throw new Error(
+        "HEVC encoding is unsupported: WebCodecs VideoEncoder is unavailable. Use ?encoding=raw.",
+      );
+    // Main profile, 8-bit 4:2:0. Probe the exact configuration used to encode.
+    const config: HevcConfig = {
+      codec: "hev1.1.6.L120.B0",
+      width,
+      height,
+      framerate: fps,
+      bitrate: Math.max(500_000, width * height * 2 * fps),
+      latencyMode: "realtime",
+      hardwareAcceleration: "prefer-hardware",
+      hevc: { format: "annexb" },
+    };
+    let supported = false;
     try {
-      if (forceKeyframe) {
-        this.encoder.encode(frame, { keyFrame: true });
-      } else {
-        this.encoder.encode(frame, { keyFrame: false });
-      }
-      this.frameCount++;
-    } catch (err) {
-      console.error("[H265Encoder] Failed to encode frame:", err);
-      this.isOpen = false; // Mark encoder as closed on any error
+      const result = await VideoEncoder.isConfigSupported(config);
+      supported =
+        result.supported === true &&
+        (result.config as HevcConfig).hevc?.format === "annexb";
+    } catch {
+      /* Unsupported codec/configuration is reported below. */
+    }
+    if (generation !== this.generation) return;
+    if (!supported)
+      throw new Error(
+        "HEVC encoding is unsupported by this browser/device for the requested video size and frame rate. Use ?encoding=raw.",
+      );
+    this.config = config;
+    this.failure = null;
+    this.frameCount = 0;
+    let firstOutput = true;
+    this.encoder = new VideoEncoder({
+      output: (chunk) => {
+        if (generation !== this.generation || this.failure) return;
+        try {
+          const data = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(data);
+          // Unknown WebCodecs dictionary members can be silently ignored. Never
+          // send length-prefixed HEVC without its out-of-band decoder config.
+          if (
+            !(
+              data[0] === 0 &&
+              data[1] === 0 &&
+              (data[2] === 1 || (data[2] === 0 && data[3] === 1))
+            )
+          )
+            throw new Error(
+              "Browser did not produce HEVC Annex B video. Use ?encoding=raw.",
+            );
+          this.output({
+            flags: (chunk.type === "key" ? 1 : 0) | (firstOutput ? 2 : 0),
+            width,
+            height,
+            data,
+          });
+          firstOutput = false;
+        } catch (error) {
+          this.failure =
+            error instanceof Error ? error : new Error(String(error));
+        }
+      },
+      error: (error) => {
+        if (generation === this.generation) this.failure = error;
+      },
+    });
+    try {
+      this.encoder.configure(config);
+    } catch (error) {
+      this.destroy();
+      throw new Error(
+        `HEVC encoder initialization failed: ${String(error)} Use ?encoding=raw.`,
+        { cause: error },
+      );
     }
   }
 
-  drain(): Array<{
-    flags: number;
-    width: number;
-    height: number;
-    data: Uint8Array;
-  }> {
-    const chunks = this.pendingChunks;
-    this.pendingChunks = [];
-    return chunks;
+  encode(frame: VideoFrame, fps = this.config?.framerate): void {
+    if (this.failure) throw this.failure;
+    if (!this.encoder || !this.config || this.resizing) return;
+    if (
+      frame.displayWidth !== this.config.width ||
+      frame.displayHeight !== this.config.height ||
+      fps !== this.config.framerate
+    ) {
+      this.resizing = true;
+      // Recreate instead of relabeling pending output with the new dimensions.
+      void this.initialize(frame.displayWidth, frame.displayHeight, fps ?? 30)
+        .catch((error: unknown) => {
+          this.failure =
+            error instanceof Error ? error : new Error(String(error));
+        })
+        .finally(() => {
+          this.resizing = false;
+        });
+      return;
+    }
+    if (this.encoder.encodeQueueSize >= 2) return;
+    this.encoder.encode(frame, { keyFrame: this.frameCount % 60 === 0 });
+    this.frameCount++;
   }
 
   destroy(): void {
-    this.isOpen = false;
-    if (this.encoder) {
-      this.encoder.close();
-      this.encoder = null;
-    }
-    this.pendingChunks = [];
+    this.generation++;
+    if (this.encoder && this.encoder.state !== "closed") this.encoder.close();
+    this.encoder = null;
+    this.config = null;
   }
 }

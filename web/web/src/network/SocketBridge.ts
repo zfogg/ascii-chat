@@ -423,6 +423,10 @@ export class SocketBridge {
   /**
    * Check if connected
    */
+  getBufferedAmount(): number {
+    return this.ws?.bufferedAmount ?? 0;
+  }
+
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }

@@ -9,6 +9,8 @@
  */
 
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
 
@@ -70,5 +72,23 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
   (void)reader;
   if (out_frame)
     *out_frame = NULL; // Signal EOF immediately
+  return ASCIICHAT_OK;
+}
+
+// Browser rendering has no native terminal presentation owner. Logs still use
+// the platform output sink, which forwards them to the browser console.
+bool ui_controller_is_presenting(void) {
+  return false;
+}
+
+bool ui_controller_is_owner(void) {
+  return false;
+}
+
+asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
+  if (!data || !len)
+    return ASCIICHAT_OK;
+  if (platform_write_all(fd, data, len) != len)
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write browser log output");
   return ASCIICHAT_OK;
 }

@@ -58,7 +58,6 @@ import {
   useRenderLoop,
   useClientConnection,
   useWebcamStream,
-  setMirrorWasmDimensions,
 } from "../hooks";
 import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
@@ -503,14 +502,7 @@ export function ClientPage({
     }
 
     setFps(0);
-    // The discovery canvas receives completed ASCII frames over WebRTC. Count
-    // their arrival instead of local canvas writes: the latter may be skipped
-    // while a resize or compositor update is in progress, even though the
-    // remote stream is advancing normally.
-    const frameCount = () =>
-      discoveryMode
-        ? receivedFrameCountRef.current
-        : renderedFrameCountRef.current;
+    const frameCount = () => renderedFrameCountRef.current;
     let previousFrameCount = frameCount();
     let previousTime = performance.now();
     const intervalId = window.setInterval(() => {
@@ -529,7 +521,7 @@ export function ClientPage({
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [connectionState, discoveryMode]);
+  }, [connectionState]);
 
   // Client and Discovery render through the same mirror WASM module as
   // /mirror. Apply the settings as soon as that renderer is ready instead of
@@ -558,6 +550,7 @@ export function ClientPage({
   // Use webcam stream hook
   const { startWebcam, stopWebcam, isWebcamRunning } = useWebcamStream({
     includeAudio: audioEnabled,
+    terminalDimensions,
     clientRef,
     connectionState,
     settings,
@@ -694,9 +687,6 @@ export function ClientPage({
       frameQueueRef.current = [];
       setTerminalDimensions(dims);
 
-      // Tell WASM about new dimensions (for proper ASCII rendering)
-      setMirrorWasmDimensions(dims.cols, dims.rows);
-
       // If connected, send updated dimensions to server
       if (clientRef.current && connectionState === ConnectionState.CONNECTED) {
         try {
@@ -709,6 +699,7 @@ export function ClientPage({
             settings.palette,
             settings.paletteChars,
             settings.matrixRain,
+            clientRef.current.videoCodecCapabilities,
           );
           clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
         } catch (err) {
@@ -743,6 +734,7 @@ export function ClientPage({
           settings.palette,
           settings.paletteChars,
           settings.matrixRain,
+          clientRef.current.videoCodecCapabilities,
         ),
       );
     } catch (err) {

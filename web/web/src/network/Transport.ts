@@ -1,12 +1,15 @@
 import type { ConnectionState, ParsedPacket } from "../wasm/client";
 
 export interface PacketTransport {
+  getBufferedAmount?(): number;
   send(packet: Uint8Array): void;
   close(): void;
   isConnected(): boolean;
 }
 
 export interface ClientSession {
+  videoCodecCapabilities?: number;
+  getBufferedAmount?(): number;
   readonly transportType?: "websocket" | "webrtc";
   connect(): Promise<void>;
   disconnect(): void;

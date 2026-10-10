@@ -63,6 +63,47 @@ loaders used by the website demo. A SHA-256 manifest records artifacts and C
 sources. `ASCII_CHAT_WASM_USE_PREBUILT=1` explicitly uses verified prebuilt
 artifacts; a stale source hash fails the build.
 
+## Network video encoding
+
+Both `/client` (WebSocket) and `/discovery` (WebRTC) accept `?encoding=`:
+
+- `hevc`: require browser HEVC/H.265 encoding. `hvec` and `h265` are aliases.
+  If the browser/device cannot encode the requested configuration, capture stops
+  with a visible error and a suggestion to use `?encoding=raw`. It never silently
+  sends raw frames for an explicit HEVC request.
+- `raw`: send RGB24 pixel frames without invoking WebCodecs.
+- `auto` (default): prefer HEVC when supported, otherwise use raw pixels. An
+  encoder failure also falls back to raw in this mode.
+
+Examples: `/client?encoding=hevc` and `/discovery?encoding=raw&session=blue-mountain-tiger`.
+Invalid values show an error. Mirror mode is local and does not use this setting.
+HEVC support is detected with `VideoEncoder.isConfigSupported` for the actual
+size/frame rate and Annex B output; having HEVC playback support is insufficient.
+The browser sends compressed camera pixels to the native host, which decodes
+and renders ASCII. Return traffic remains ASCII frames.
+
+The upload encoder requests keyframes on startup, every 60 encoded frames, and
+when recreated for a size/frame-rate change. Transport congestion skips input
+frames before encoding; encoded delta frames stay ordered. Camera restart or
+reconnection creates a fresh encoder. Unsupported browsers retain raw uploads.
+
+For real Chrome/native integration coverage, configure a native binary and run:
+
+```powershell
+$env:ASCII_CHAT_TEST_BINARY = 'C:/path/to/ascii-chat.exe'
+# Select a reachable LAN interface for local native WebRTC on Windows.
+$env:ASCII_CHAT_TEST_HOST = '192.168.1.100'
+vp exec playwright test --config playwright.encoding.config.ts
+```
+
+The suite starts its own native server and discovery service, uses moving
+synthetic camera input with real codecs/transports, and checks changing returned
+ASCII and actual canvas pixels, packet types, upload volume, restart, resize,
+raw/automatic fallback without WebCodecs, and startup/runtime HEVC errors.
+HEVC tests require a device with an available HEVC encoder and do not skip when
+it is unavailable. Failure tests deliberately remove WebCodecs, reject its
+configuration probe, or inject an encoder failure.
+
 ## Discovery and WebRTC
 
 Open `/discovery`, enter a native host's session name, and join. Connection

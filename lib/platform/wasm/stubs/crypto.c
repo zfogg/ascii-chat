@@ -6,6 +6,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>
@@ -60,4 +62,20 @@ const char *get_known_hosts_path(void) {
 asciichat_error_t prompt_password(const char *prompt_text, char *password_out, size_t password_max_len) {
   // Password prompts not supported in WASM
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "Password prompts not supported in WASM");
+}
+
+// Preserve the browser's existing raw-key pinning path; there is no native
+// known_hosts file or terminal identity card in the browser.
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[32],
+                                            uint8_t stored_key[32], bool *has_stored_key) {
+  if (has_stored_key)
+    *has_stored_key = false;
+  if (stored_key)
+    memset(stored_key, 0, 32);
+  return check_known_host(server_ip, port, server_key);
+}
+
+void key_identity_announce(const char *label, const public_key_t *key) {
+  (void)label;
+  (void)key;
 }

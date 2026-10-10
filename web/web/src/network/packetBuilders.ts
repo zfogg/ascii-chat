@@ -1,5 +1,3 @@
-import { H265Encoder } from "./H265Encoder";
-
 export const CAPABILITIES_PACKET_SIZE = 168; // Includes codec capabilities (added 8 bytes)
 export const STREAM_TYPE_VIDEO = 0x01;
 export const STREAM_TYPE_AUDIO = 0x02;
@@ -8,10 +6,8 @@ export const STREAM_TYPE_AUDIO = 0x02;
 export const VIDEO_CODEC_CAP_RGBA = 1 << 0; // Bit 0: RGBA support
 export const VIDEO_CODEC_CAP_H265 = 1 << 1; // Bit 1: H.265/HEVC support
 
-// Only advertise H.265 if browser supports WebCodecs encoding
-export const VIDEO_CODEC_CAP_SUPPORTED = H265Encoder.isSupported()
-  ? VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265
-  : VIDEO_CODEC_CAP_RGBA;
+// HEVC is added per session only after probing the actual encoder configuration.
+export const VIDEO_CODEC_CAP_SUPPORTED = VIDEO_CODEC_CAP_RGBA;
 
 export const AUDIO_CODEC_CAP_RAW = 1 << 0; // Bit 0: Raw PCM support
 export const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
@@ -118,6 +114,7 @@ export function buildCapabilitiesPacket(
   palette: BrowserPalette = "standard",
   paletteChars?: string,
   matrixRain = false,
+  videoCodecCapabilities = VIDEO_CODEC_CAP_SUPPORTED,
 ): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE);
   const view = new DataView(buf);
@@ -153,13 +150,13 @@ export function buildCapabilitiesPacket(
 
   // Codec capabilities (network byte order, big-endian)
   // Offset 160-163: video codec capabilities (RGBA always, H.265 if browser supports)
-  view.setUint32(160, VIDEO_CODEC_CAP_SUPPORTED, false);
+  view.setUint32(160, videoCodecCapabilities, false);
   // Offset 164-167: audio codec capabilities (supports Raw PCM, Opus)
   view.setUint32(164, AUDIO_CODEC_CAP_ALL, false);
 
   // Log capabilities packet structure for debugging
   console.log(
-    `[Client] CAPABILITIES packet: size=${bytes.length}, width=${cols}, height=${rows}, color=${colorMode}, video_caps=0x${VIDEO_CODEC_CAP_SUPPORTED.toString(
+    `[Client] CAPABILITIES packet: size=${bytes.length}, width=${cols}, height=${rows}, color=${colorMode}, video_caps=0x${videoCodecCapabilities.toString(
       16,
     )}, audio_caps=0x${AUDIO_CODEC_CAP_ALL.toString(16)}`,
   );

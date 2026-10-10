@@ -468,6 +468,10 @@ export class ClientConnection {
   /**
    * Send a packet to server
    */
+  getBufferedAmount(): number {
+    return this.socket?.getBufferedAmount?.() ?? 0;
+  }
+
   sendPacket(packetType: number, payload: Uint8Array): void {
     if (!this.socket || !this.socket.isConnected()) {
       const name = packetTypeName(packetType);
