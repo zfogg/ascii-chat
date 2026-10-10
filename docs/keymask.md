@@ -21,7 +21,7 @@ output retain their existing notice policies.
 4. Stamp features into a 32 by 16 canvas. Cheek details use markings bytes 7-10;
    bytes 0-1 select the position and side of an asymmetric stripe. Template
    tables and placement rules in `keymask.c` define the versioned mapping.
-5. Render ASCII literally; Unicode replaces only `#` with `█`. Surround the
+5. Render ASCII literally; Unicode replaces only `#` with `░`. Surround the
    canvas with a 34-column, 18-row border and display `Keymask v2 / SHA-256`
    followed by the unchanged complete fingerprint.
 

@@ -30,26 +30,6 @@ static void centered(char cells[16][32], unsigned row, const char *text) {
   stamp(cells, row, (unsigned)(32 - strlen(text)) / 2, text);
 }
 
-// Independent feature hashes keep each choice stable as other features evolve.
-static void feature_seed(const uint8_t digest[32], const char *feature, uint8_t seed[32]) {
-  static const char domain[] = "ascii-chat/keymask/v2";
-  crypto_hash_sha256_state state;
-  crypto_hash_sha256_init(&state);
-  crypto_hash_sha256_update(&state, (const unsigned char *)domain, sizeof(domain));
-  crypto_hash_sha256_update(&state, digest, 32);
-  crypto_hash_sha256_update(&state, (const unsigned char *)feature, strlen(feature));
-  crypto_hash_sha256_final(&state, seed);
-}
-
-static void stamp(char cells[16][32], unsigned row, unsigned col, const char *text) {
-  for (; *text && col < 32; ++col, ++text)
-    cells[row][col] = *text;
-}
-
-static void centered(char cells[16][32], unsigned row, const char *text) {
-  stamp(cells, row, (unsigned)(32 - strlen(text)) / 2, text);
-}
-
 asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool unicode, char *out, size_t size) {
   if (!out || !size)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing Keymask output buffer");
@@ -148,7 +128,7 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
     *p++ = '|';
     for (unsigned c = 0; c < 32; ++c) {
       if (unicode && cells[r][c] == '#') {
-        memcpy(p, "\xe2\x96\x88", 3);
+        memcpy(p, "\xe2\x96\x91", 3);
         p += 3;
       } else {
         *p++ = cells[r][c];

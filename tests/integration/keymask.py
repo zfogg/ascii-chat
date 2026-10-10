@@ -76,7 +76,7 @@ def check_core(native, directory):
         assert len(rows) == 18 and all(len(row) == 34 for row in rows)
         assert rows[0] == rows[-1] == "+" + "-" * 32 + "+"
         assert all(row.startswith("|") and row.endswith("|") for row in rows[1:-1])
-        assert render(native, digest, True).replace("█", "#") == art
+        assert render(native, digest, True).replace("░", "#") == art
         assert len(render(native, digest, True).encode()) < 1655
         pictures.add(art)
     assert len(pictures) == 256
@@ -213,7 +213,7 @@ def check_terminal(args):
             text = terminal.expect(lambda text: "SHA256:" in text, "identity notice")
             assert ("Keymask v2" in text) == expected, text
             if expected:
-                mask_rows = [line for line in text.splitlines() if "|" in line and ("█" in line or "#" in line)]
+                mask_rows = [line for line in text.splitlines() if "|" in line and ("░" in line or "#" in line)]
                 assert len(mask_rows) >= 10, text
             terminal.pump(3.5)
         finally:
