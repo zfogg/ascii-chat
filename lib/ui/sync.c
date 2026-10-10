@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/sync.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -271,7 +272,7 @@ static const char *sync_rate_color(double rate) {
   return rate >= 60 ? "\033[31m" : rate >= 10 ? "\033[33m" : rate > 0 ? "\033[32m" : "\033[34m";
 }
 
-static void sync_write_line(const char *text, int columns, bool newline) {
+static void sync_write_line(const char *text, int columns, bool newline, int *measured_width) {
   char output[2048];
   size_t used = 0;
   int visible = 0;
@@ -287,11 +288,16 @@ static void sync_write_line(const char *text, int columns, bool newline) {
       if (text[i])
         output[used++] = text[i++];
     } else {
-      if (visible >= columns - 1)
+      if (!measured_width && visible >= columns - 1)
         break;
       output[used++] = text[i++];
       ++visible;
     }
+  }
+  if (measured_width) {
+    if (visible > *measured_width)
+      *measured_width = visible;
+    return;
   }
   const char *suffix = newline ? "\033[0m\r\n" : "\033[0m";
   memcpy(output + used, suffix, strlen(suffix));
@@ -300,18 +306,16 @@ static void sync_write_line(const char *text, int columns, bool newline) {
 }
 
 void ui_sync_render(terminal_size_t size) {
-  if (size.rows < 7 || size.cols < 30) {
-    ui_controller_write(g_sync_fd, "\033[H\033[J", 6);
-    sync_write_line("Sync: resize (0 closes)", size.cols, false);
-    return;
-  }
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
   sync_row_t rows[128];
   size_t count = 0, total = 0, cycles = 0;
   uint64_t sampled = 0;
   bool waits_complete = false, limited = false;
-  int per_page = size.rows > 6 ? size.rows - 6 : 1;
+  enum { header_rows = 3, detail_rows = 2, footer_rows = 1 };
+  const int fixed_rows = header_rows + detail_rows + footer_rows;
+  int name_width = (int)strlen("Name");
+  int per_page = size.rows > fixed_rows ? size.rows - fixed_rows : 1;
   if (per_page > 128)
     per_page = 128;
   int page = atomic_load(&g_sync_page), pages = 1;
@@ -329,73 +333,97 @@ void ui_sync_render(terminal_size_t size) {
       count = per_page;
     if (count)
       memcpy(rows, s->rows + first, count * sizeof(*rows));
-    for (size_t i = 0; i < total; ++i)
+    for (size_t i = 0; i < total; ++i) {
       cycles += s->rows[i].cycle;
+      const char *name = strrchr(s->rows[i].name, '#');
+      name = name ? name + 1 : s->rows[i].name;
+      int width = (int)strlen(name);
+      if (width > name_width)
+        name_width = width;
+    }
     sampled = s->sampled_ns;
     waits_complete = s->waits_complete;
     limited = s->limited;
     atomic_flag_clear(&s->busy);
   }
-  char line[1024];
-  ui_controller_write(g_sync_fd, "\033[H", 3);
   uint64_t now = time_get_ns();
-  snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | sample age %.1fs", total, page + 1, pages,
-           sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
-  sync_write_line(line, size.cols, true);
-  snprintf(line, sizeof(line), "%s%s | %zu mutexes in wait cycles%s", cycles ? "\033[31m" : "",
-           !sampled                         ? "Waiting for registry"
-           : now - sampled > NS_PER_SEC_INT ? "STALE: collection unavailable"
-                                            : "Live",
-           cycles,
-           !waits_complete ? " | wait tracker busy"
-           : limited       ? " | wait tracker capacity reached"
-                           : "");
-  sync_write_line(line, size.cols, true);
-  const char *heading = " Type     Name                 State/value          L/s    U/s Change/s";
-  sync_write_line(heading, size.cols, true);
   int selected = atomic_load(&g_sync_selected);
   if ((size_t)selected >= count)
     selected = count ? (int)count - 1 : 0;
   atomic_store(&g_sync_selected, selected);
-  for (size_t i = 0; i < count; ++i) {
-    sync_row_t *r = &rows[i];
-    // Parent names may be media paths; keep the primitive visible in the table.
-    // The detail row identifies the source location and address.
-    const char *name = strrchr(r->name, '#');
-    name = name ? name + 1 : r->name;
-    char state[128];
-    if (!strcmp(r->type, "mutex"))
-      snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
-               r->cycle   ? "CYCLE"
-               : r->owner ? "HELD"
-                          : "FREE",
-               r->owner, r->waiters);
-    else if (!strcmp(r->type, "rwlock"))
-      snprintf(state, sizeof(state), "W=%" PRIxPTR " R=%" PRIu64, r->owner, r->value);
-    else if (!strcmp(r->type, "cond"))
-      snprintf(state, sizeof(state), "waiting=%" PRIu64, r->value);
-    else
-      snprintf(state, sizeof(state), "0x%" PRIx64 " (%" PRIu64 ")", r->value, r->value);
-    snprintf(line, sizeof(line), "%c%-8.8s %-20.20s %-18.18s %s%6.1f %s%6.1f %s%7.1f\033[0m%s",
-             (int)i == selected ? '>' : ' ', r->type, name, state, sync_rate_color(r->lock_rate), r->lock_rate,
-             sync_rate_color(r->unlock_rate), r->unlock_rate, sync_rate_color(r->change_rate), r->change_rate,
-             r->cycle ? " DEADLOCK" : "");
-    sync_write_line(line, size.cols, true);
+  int measured_width = 0;
+  for (int pass = 0; pass < 2; ++pass) {
+    int *measure = pass == 0 ? &measured_width : NULL;
+    char line[1024];
+    if (!measure)
+      ui_controller_write(g_sync_fd, "\033[H", 3);
+    snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | sample age %.1fs", total, page + 1,
+             pages, sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
+    sync_write_line(line, size.cols, true, measure);
+    snprintf(line, sizeof(line), "%s%s | %zu mutexes in wait cycles%s", cycles ? "\033[31m" : "",
+             !sampled                         ? "Waiting for registry"
+             : now - sampled > NS_PER_SEC_INT ? "STALE: collection unavailable"
+                                              : "Live",
+             cycles,
+             !waits_complete ? " | wait tracker busy"
+             : limited       ? " | wait tracker capacity reached"
+                             : "");
+    sync_write_line(line, size.cols, true, measure);
+    snprintf(line, sizeof(line), " %-8s %-*s %-18s %6s %6s %7s", "Type", name_width, "Name", "State/value", "L/s",
+             "U/s", "Change/s");
+    sync_write_line(line, size.cols, true, measure);
+    for (size_t i = 0; i < count; ++i) {
+      sync_row_t *r = &rows[i];
+      // Parent names may be media paths; keep the primitive visible in the table.
+      // The detail row identifies the source location and address.
+      const char *name = strrchr(r->name, '#');
+      name = name ? name + 1 : r->name;
+      char state[128];
+      if (!strcmp(r->type, "mutex"))
+        snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
+                 r->cycle   ? "CYCLE"
+                 : r->owner ? "HELD"
+                            : "FREE",
+                 r->owner, r->waiters);
+      else if (!strcmp(r->type, "rwlock"))
+        snprintf(state, sizeof(state), "W=%" PRIxPTR " R=%" PRIu64, r->owner, r->value);
+      else if (!strcmp(r->type, "cond"))
+        snprintf(state, sizeof(state), "waiting=%" PRIu64, r->value);
+      else
+        snprintf(state, sizeof(state), "0x%" PRIx64 " (%" PRIu64 ")", r->value, r->value);
+      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-18.18s %s%6.1f %s%6.1f %s%7.1f\033[0m%s",
+               (int)i == selected ? '>' : ' ', r->type, name_width, name, state, sync_rate_color(r->lock_rate),
+               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, sync_rate_color(r->change_rate),
+               r->change_rate, r->cycle ? " DEADLOCK" : "");
+      sync_write_line(line, size.cols, true, measure);
+    }
+    snprintf(line, sizeof(line), "\033[J\033[%d;1H", size.rows > 2 ? size.rows - 2 : 1);
+    if (!measure)
+      ui_controller_write(g_sync_fd, line, strlen(line));
+    if (count) {
+      sync_row_t *r = &rows[selected];
+      snprintf(line, sizeof(line), "%s:%d @0x%" PRIxPTR, r->file, r->line, r->key);
+      sync_write_line(line, size.cols, true, measure);
+      snprintf(line, sizeof(line),
+               "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s", r->owner,
+               r->waiter, r->value, r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0,
+               r->cycle ? " DEADLOCK" : "");
+      sync_write_line(line, size.cols, true, measure);
+    }
+    snprintf(line, sizeof(line), "\033[%d;1H", size.rows);
+    if (!measure)
+      ui_controller_write(g_sync_fd, line, strlen(line));
+    sync_write_line("0/Esc close | ? help | Left/Right page | Up/Down detail | Home/End", size.cols, false, measure);
+    if (measure) {
+      terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};
+      if (ui_too_small(size, minimum)) {
+        char output[512];
+        size_t length = ui_too_small_format(output, sizeof(output), size, minimum);
+        ui_controller_write(g_sync_fd, output, length);
+        return;
+      }
+    }
   }
-  snprintf(line, sizeof(line), "\033[J\033[%d;1H", size.rows > 2 ? size.rows - 2 : 1);
-  ui_controller_write(g_sync_fd, line, strlen(line));
-  if (count) {
-    sync_row_t *r = &rows[selected];
-    snprintf(line, sizeof(line), "%s:%d @0x%" PRIxPTR, r->file, r->line, r->key);
-    sync_write_line(line, size.cols, true);
-    snprintf(line, sizeof(line), "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64
-                                " | last operation %.2fs ago%s", r->owner, r->waiter, r->value,
-             r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0, r->cycle ? " DEADLOCK" : "");
-    sync_write_line(line, size.cols, true);
-  }
-  snprintf(line, sizeof(line), "\033[%d;1H", size.rows);
-  ui_controller_write(g_sync_fd, line, strlen(line));
-  sync_write_line("0/Esc close | ? help | Left/Right page | Up/Down detail | Home/End", size.cols, false);
 }
 
 #else

@@ -213,6 +213,7 @@ def main():
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
             if args.debug_sync:
+                mirror.resize(40, 160)
                 mirror.write("0")
                 mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
                               "Sync did not replace help")

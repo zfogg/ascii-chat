@@ -58,6 +58,10 @@ wrapped atomic, and atomic pointer. Up/Down selects a row for its address, owner
 last-operation age. Source locations start at `lib/`, `src/`, or `include/`
 and use forward slashes; media paths are omitted from the details. Home/End selects
 the first/last page. Higher-priority prompts still cover diagnostics.
+The list repaginates on live resize. The Name column fits the longest registered primitive name across all pages.
+The minimum width is measured from the rendered header, columns, details, and
+footer; the minimum height fits those lines plus one entry. The shared
+"Terminal too small" screen appears below that size; resizing back restores the list.
 
 The table shows lock/unlock rates (wait/signal rates for conditions), atomic
 values, and actual value changes per second. Repeated stores of the same value,
