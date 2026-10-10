@@ -655,6 +655,8 @@ options_t options_t_new(void) {
   // ============================================================================
   // AUDIO CATEGORY - Audio capture, playback and processing options
   // ============================================================================
+  opts.audio_fft_size = 1024;
+  opts.audio_spectral_gate = true;
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;

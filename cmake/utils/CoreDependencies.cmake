@@ -13,6 +13,7 @@
 set(ASCIICHAT_CORE_DEPS
     PORTAUDIO
     OPUS
+    FFTW
     ZSTD
     LIBSODIUM
 )

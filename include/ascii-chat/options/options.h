@@ -1053,6 +1053,13 @@ typedef struct options_state {
   // ============================================================================
   // Audio Configuration
   // ============================================================================
+  bool audio_pitch_correct;
+  bool audio_spectral_agc;
+  bool audio_spectral;
+  bool audio_spectral_gate;
+  bool audio_multiband;
+  bool audio_adaptive_eq;
+  int audio_fft_size;
   bool audio_enabled;           ///< Enable audio streaming
   audio_source_t audio_source;  ///< Visualization source (all/call/mic/media)
   audio_capture_source_t audio_capture_source; ///< Local capture/media selection policy

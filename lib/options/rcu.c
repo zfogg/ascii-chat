@@ -212,6 +212,8 @@ static const options_t g_default_options = (options_t){
     // ========================================================================
     // Audio Options
     // ========================================================================
+    .audio_fft_size = 1024,
+    .audio_spectral_gate = true,
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
     .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
     .audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT,
