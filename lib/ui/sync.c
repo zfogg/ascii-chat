@@ -344,6 +344,10 @@ void ui_sync_render(terminal_size_t size) {
   atomic_store(&g_sync_selected, selected);
   for (size_t i = 0; i < count; ++i) {
     sync_row_t *r = &rows[i];
+    // Parent names may be media paths; keep the primitive visible in the table.
+    // The detail row retains its full registry name and address.
+    const char *name = strrchr(r->name, '#');
+    name = name ? name + 1 : r->name;
     char state[128];
     if (!strcmp(r->type, "mutex"))
       snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
@@ -358,7 +362,7 @@ void ui_sync_render(terminal_size_t size) {
     else
       snprintf(state, sizeof(state), "0x%" PRIx64 " (%" PRIu64 ")", r->value, r->value);
     snprintf(line, sizeof(line), "%c%-8.8s %-20.20s %-18.18s %s%6.1f %s%6.1f %s%7.1f\033[0m%s",
-             (int)i == selected ? '>' : ' ', r->type, r->name, state, sync_rate_color(r->lock_rate), r->lock_rate,
+             (int)i == selected ? '>' : ' ', r->type, name, state, sync_rate_color(r->lock_rate), r->lock_rate,
              sync_rate_color(r->unlock_rate), r->unlock_rate, sync_rate_color(r->change_rate), r->change_rate,
              r->cycle ? " DEADLOCK" : "");
     sync_write_line(line, size.cols, true);
