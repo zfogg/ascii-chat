@@ -77,6 +77,7 @@ void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_
   if (mutex_lock(&scope->duration_mutex) != 0)
     return;
   stats_duration_snapshot_t *duration = &scope->durations[id];
+  duration->last_ns = elapsed_ns;
   if (!duration->observations || elapsed_ns < duration->min_ns)
     duration->min_ns = elapsed_ns;
   if (elapsed_ns > duration->max_ns)

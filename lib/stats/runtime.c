@@ -209,18 +209,24 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
                        "warming up");
     }
     stats_view_add(view, "");
-    stats_view_add(view, "%-28s %14s %14s", "TIMINGS", "MEAN ms", "LIFETIME MAX");
+    stats_view_add(view, "%-28s %14s %14s", "TIMINGS", "MEAN/LAST ms", "LIFETIME MAX");
     for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
       if (!snapshot->capabilities.durations[i])
         continue;
-      if (rates->duration_valid[i])
+      if (i == STATS_DURATION_ASCII_CONVERT && strcmp(g_mode, "client") == 0 &&
+          !snapshot->durations[i].observations)
+        stats_view_add(view, "%-28s %14s %14s", "ascii_convert", "n/a (server)", "n/a");
+      else if (i == STATS_DURATION_CONNECTION_SETUP && snapshot->durations[i].observations)
+        stats_view_add(view, "%-28s %14.3f %14.3f", "connection_setup (last)",
+                       (double)snapshot->durations[i].last_ns / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
+      else if (rates->duration_valid[i])
         stats_view_add(view, "%-28s %14.3f %14.3f", stats_duration_descriptor(i)->name,
                        rates->duration_mean_ns[i] / 1e6, (double)snapshot->durations[i].max_ns / 1e6);
       else if (snapshot->durations[i].observations)
-        stats_view_add(view, "%-28s %14s %14.3f", stats_duration_descriptor(i)->name, "unavailable",
+        stats_view_add(view, "%-28s %14s %14.3f", stats_duration_descriptor(i)->name, "idle",
                        (double)snapshot->durations[i].max_ns / 1e6);
       else
-        stats_view_add(view, "%-28s %14s %14s", stats_duration_descriptor(i)->name, "unavailable", "unavailable");
+        stats_view_add(view, "%-28s %14s %14s", stats_duration_descriptor(i)->name, "not sampled", "not sampled");
     }
     stats_view_add(view, "");
     for (int i = 0; i < STATS_GAUGE_COUNT; ++i)

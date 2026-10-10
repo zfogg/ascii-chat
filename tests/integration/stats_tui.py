@@ -212,6 +212,9 @@ def main():
             lambda: metric(client, "frames_received")
             and metric(client, "frames_received")[0] > 0
         )
+        assert re.search(r"ascii_convert\s+n/a \(server\)", client.text()), client.text()
+        assert re.search(r"terminal_write\s+idle", client.text()), client.text()
+        assert re.search(r"connection_setup \(last\)\s+\d+\.\d+", client.text()), client.text()
         client.capture("client-overview")
         server.open()
         wait(

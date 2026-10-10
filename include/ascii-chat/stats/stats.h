@@ -90,6 +90,7 @@ typedef struct {
   uint64_t total_ns;
   uint64_t min_ns;
   uint64_t max_ns;
+  uint64_t last_ns;
 } stats_duration_snapshot_t;
 
 typedef struct {
@@ -120,7 +121,7 @@ void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_
 
 /** Owned value copy. Concurrent snapshots are serialized. Each duration tuple is
  * coherent, but independent metrics need not describe one atomic application event.
- * Empty durations have observations/min/max/total equal to zero.
+ * Empty durations have observations/min/max/last/total equal to zero.
  */
 asciichat_error_t stats_scope_snapshot(const stats_scope_t *scope, stats_snapshot_t *out);
 

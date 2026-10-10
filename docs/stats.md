@@ -144,9 +144,12 @@ Consequently presented FPS goes to zero while stats covers the media screen.
 Connection details retain at most 64 transport rows; process totals include every
 transport, including disconnected or undisplayed peers. Mode tables are bounded
 by the shared 128-line view. Snapshots are value copies; table providers copy
-under their owners' locks and must unregister before teardown. An unmeasured or
-inactive timing is unavailable rather than a fabricated zero. RTT is explicitly
-unavailable: the current heartbeat protocol does not provide uniquely matched
+under their owners' locks and must unregister before teardown. The TUI labels
+timings with no observations as `not sampled`, and timings with
+no recent observations as `idle`. Client ASCII conversion is `n/a (server)`
+until measured locally. Connection setup displays the last attempt duration,
+retained across idle windows; its lifetime maximum remains a separate column.
+RTT is explicitly unavailable: the current heartbeat protocol does not provide uniquely matched
 round-trip probes. Disabled audio and recording are identified on the overview.
 
 `frames_enqueued` counts successful queue submissions, including separate fanout
@@ -222,7 +225,7 @@ by `stats_tui.py`, using `render_stats_capture.py`:
 | Discovery | [Capture](images/stats/discovery-overview.png) | |
 | ACDS | [Capture](images/stats/acds-overview.png) | [Session table](images/stats/acds-sessions.png) |
 
-The Linux debug build with ASan/UBSan passed all 12 statistics tests and the
+The Linux debug build with ASan/UBSan passed all 13 statistics tests and the
 terminal integration scenario, including real TCP, WebSocket, and local WebRTC
 media. Native Windows ConPTY checks passed all five modes and prompt input.
 A Linux release build also passed live mirror collection and redirected server

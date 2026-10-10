@@ -248,6 +248,29 @@ Test(stats, concurrent_recording_and_snapshots, .timeout = 30) {
   stats_scope_destroy(context.scope);
 }
 
+Test(stats, last_duration_survives_idle_and_tracks_latest_attempt) {
+  stats_scope_t *scope = make_scope();
+  stats_duration_record(scope, STATS_DURATION_CAPTURE, 900);
+  stats_duration_record(scope, STATS_DURATION_CAPTURE, 200);
+  stats_snapshot_t snapshot;
+  cr_assert_eq(stats_scope_snapshot(scope, &snapshot), ASCIICHAT_OK);
+  cr_assert_eq(snapshot.durations[STATS_DURATION_CAPTURE].last_ns, 200);
+  cr_assert_eq(snapshot.durations[STATS_DURATION_CAPTURE].max_ns, 900);
+  stats_sampler_t *sampler = make_sampler(100, 25);
+  stats_rates_t rates;
+  snapshot.sampled_ns = 100;
+  stats_sampler_update(sampler, &snapshot, &rates);
+  snapshot.sampled_ns = 300;
+  stats_sampler_update(sampler, &snapshot, &rates);
+  cr_assert_not(rates.duration_valid[STATS_DURATION_CAPTURE]);
+  cr_assert_eq(snapshot.durations[STATS_DURATION_CAPTURE].last_ns, 200);
+  stats_duration_record(scope, STATS_DURATION_CAPTURE, 0);
+  stats_scope_snapshot(scope, &snapshot);
+  cr_assert_eq(snapshot.durations[STATS_DURATION_CAPTURE].last_ns, 0);
+  stats_sampler_destroy(sampler);
+  stats_scope_destroy(scope);
+}
+
 Test(stats, descriptors) {
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
     const stats_descriptor_t *d = stats_counter_descriptor((stats_counter_id_t)i);
