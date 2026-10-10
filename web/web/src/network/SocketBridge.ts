@@ -19,6 +19,8 @@
 //   return null;
 // }
 
+import { recordDownload, recordUpload } from "./bandwidth";
+
 export type PacketCallback = (packet: Uint8Array) => void;
 export type ErrorCallback = (error: Error) => void;
 export type StateCallback = (
@@ -99,6 +101,7 @@ export class SocketBridge {
     const handleMessage = (event: Event) => {
       const msgEvent = event as MessageEvent;
       const fragment = new Uint8Array(msgEvent.data);
+      recordDownload(fragment.byteLength);
 
       console.error(
         `[SocketBridge] ★ RECEIVED MESSAGE: ${fragment.length} bytes`,
@@ -318,6 +321,13 @@ export class SocketBridge {
     } else {
       this.ws.send(packet);
     }
+    recordUpload(
+      typeof packet === "string"
+        ? new TextEncoder().encode(packet).byteLength
+        : packet instanceof Blob
+          ? packet.size
+          : packet.byteLength,
+    );
   }
 
   /**
@@ -371,7 +381,7 @@ export class SocketBridge {
       // Try to send a test message to detect dead connections
       try {
         // console.log("[SocketBridge] Heartbeat: sending test ping");
-        this.ws.send(new Uint8Array([0xff])); // Send a single byte as keep-alive
+        this.send(new Uint8Array([0xff])); // Send a single byte as keep-alive
       } catch (error) {
         console.error("[SocketBridge] Heartbeat: send failed:", error);
         // Manually trigger close to simulate what the browser should do
