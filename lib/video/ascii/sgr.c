@@ -419,13 +419,7 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   log_dev_every(4500 * US_PER_MS_INT, "image_print_color_simd called: width=%d, height=%d, use_256color=%d", image->w,
                 image->h, use_256color);
 
-#if SIMD_SUPPORT_AVX2
-  log_debug_every(10 * US_PER_SEC_INT, "Taking AVX2 path: width=%d, height=%d", image->w, image->h);
-  // AVX2 implementation would go here
-  // For now, fall through to scalar implementation
-#endif
-
-  // Fallback to scalar implementation
+  // Shared formatting calls the runtime-selected luminance kernel for each row.
   if (use_background_mode) {
     return image_print_16color_dithered_with_background(image, use_background_mode, ascii_chars);
   } else if (use_256color) {

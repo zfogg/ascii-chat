@@ -1,6 +1,10 @@
 #include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#if defined(__linux__) && defined(__aarch64__)
+#include <sys/prctl.h>
+#endif
 
 static const simd_backend_t variants[] = {
     {"scalar", 0, simd_luminance_scalar},
@@ -23,9 +27,20 @@ static const simd_backend_t variants[] = {
 
 int main(int argc, char **argv) {
   uint32_t features = platform_cpu_features();
+#if defined(__linux__) && defined(__aarch64__)
+  // Exercise the same binary at actual kernel-selected SVE vector lengths.
+  if (argc == 3) {
+    unsigned long vl = strtoul(argv[2], NULL, 10);
+    if (!(features & CPU_FEATURE_SVE) || vl == 0 || vl > 256 || vl % 16 != 0 ||
+        prctl(PR_SVE_SET_VL, vl, 0, 0, 0) != (int)vl)
+      return 6;
+  }
+  if (features & CPU_FEATURE_SVE)
+    printf("SVE vector length: %d bytes\n", prctl(PR_SVE_GET_VL, 0, 0, 0, 0) & PR_SVE_VL_LEN_MASK);
+#endif
   const simd_backend_t *selected = simd_backend();
   printf("features=0x%x selected=%s\n", features, selected->name);
-  if (argc == 2 && strcmp(argv[1], selected->name) != 0)
+  if (argc >= 2 && strcmp(argv[1], selected->name) != 0)
     return 1;
   if (simd_backend() != selected || strcmp(simd_select_backend(0)->name, "scalar") != 0)
     return 2;

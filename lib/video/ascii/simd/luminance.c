@@ -57,8 +57,10 @@ void LUMINANCE_FN(const uint8_t *rgb, uint8_t *out, size_t count) {
       b[j] = rgb[3 * (i + j) + 2];
     }
     __m256i y = _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)r)), _mm256_set1_epi16(77));
-    y = _mm256_add_epi16(y, _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)g)), _mm256_set1_epi16(150)));
-    y = _mm256_add_epi16(y, _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)b)), _mm256_set1_epi16(29)));
+    y = _mm256_add_epi16(
+        y, _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)g)), _mm256_set1_epi16(150)));
+    y = _mm256_add_epi16(
+        y, _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)b)), _mm256_set1_epi16(29)));
     y = _mm256_srli_epi16(_mm256_add_epi16(y, _mm256_set1_epi16(128)), 8);
     _mm_storeu_si128((__m128i *)(out + i), _mm_packus_epi16(_mm256_castsi256_si128(y), _mm256_extracti128_si256(y, 1)));
   }

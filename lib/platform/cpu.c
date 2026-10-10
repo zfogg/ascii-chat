@@ -12,8 +12,6 @@
 #if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
-#elif defined(_WIN32) && defined(__aarch64__)
-#include <windows.h>
 #elif defined(__APPLE__) && defined(__aarch64__)
 #include <sys/types.h>
 #include <sys/sysctl.h>

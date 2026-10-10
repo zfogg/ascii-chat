@@ -55,7 +55,6 @@ char *image_print(const image_t *p, const char *palette) {
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
 
-
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
 
@@ -429,7 +428,6 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 #include <math.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
@@ -536,7 +534,6 @@ char *image_print_256color(const image_t *image, const char *palette) {
 #include <math.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
@@ -609,7 +606,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
-      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2); // 0-63 index (same as SIMD)
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {
@@ -654,7 +651,6 @@ char *image_print_16color(const image_t *image, const char *palette) {
 #include <math.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
@@ -736,7 +732,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
-      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2); // 0-63 index (same as SIMD)
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {

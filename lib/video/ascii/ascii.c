@@ -188,17 +188,9 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
       ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
 #endif
     } else {
-#ifdef SIMD_SUPPORT
       // Standard color modes (foreground/background)
       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
-#else
-      if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
-        ascii = image_print_color_background(resized, palette_chars);
-      } else {
-        ascii = image_print_color_utf8(resized, palette_chars);
-      }
-#endif
     }
   } else {
     // Use grayscale/monochrome conversion with client's palette
@@ -890,14 +882,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   switch (color_level) {
   case TERM_COLOR_TRUECOLOR: {
     bool use_background = (render_mode == RENDER_MODE_BACKGROUND);
-#ifdef SIMD_SUPPORT
     return image_print_color_simd((image_t *)image, use_background, false, palette);
-#else
-    if (use_background) {
-      return image_print_color_background(image, palette);
-    }
-    return image_print_color_utf8(image, palette);
-#endif
   }
   case TERM_COLOR_256:
     return image_print_256color(image, palette);

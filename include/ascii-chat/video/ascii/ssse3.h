@@ -43,8 +43,7 @@ char *render_ascii_mono_ssse3(const image_t *image, const char *ascii_chars);
  *
  * @ingroup video
  */
-char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color,
-                                           const char *ascii_chars);
+char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars);
 
 /**
  * @brief Destroy SSSE3 caches

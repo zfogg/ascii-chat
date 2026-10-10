@@ -1,4 +1,3 @@
-#include <ascii-chat/video/ascii/simd/dispatch.h>
 /**
  * @file main.c
  * @ingroup main
@@ -21,6 +20,7 @@
  * Test: Running macOS builds with WebRTC Threads fix
  */
 
+#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <ascii-chat/ui/controller.h>
@@ -582,7 +582,6 @@ int main(int argc, char *argv[]) {
 
   // Initialize logging colors so they're ready for help output
   log_init_colors();
-  log_debug("SIMD luminance backend: %s", simd_backend()->name);
 
   // EARLY PARSE: Find the mode position (first positional argument)
   // Binary-level options must appear BEFORE the mode
@@ -855,6 +854,7 @@ int main(int argc, char *argv[]) {
   // Initialize colors now that logging is fully initialized
   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
   log_init_colors();
+  log_debug("SIMD luminance backend: %s", simd_backend()->name);
 
   // Apply quiet mode - disables terminal output
   // Status screen mode only disables terminal output if terminal is interactive
