@@ -1,4 +1,5 @@
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/client.c
  * @ingroup server_client
@@ -3216,11 +3217,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   // Sample a small prefix for duplicate-frame diagnostics; hashing every pixel
   // here repeats work performed by the image conversion path on every frame.
-  uint32_t incoming_pixel_hash = 2166136261u;
   size_t hash_len = data_len < 1000 ? data_len : 1000;
-  for (size_t i = 0; i < hash_len; i++) {
-    incoming_pixel_hash = (incoming_pixel_hash ^ ((const uint8_t *)pixel_data)[i]) * 16777619u;
-  }
+  uint32_t incoming_pixel_hash = hash_len ? fnv1a_hash_bytes(pixel_data, hash_len) : FNV1A_32_OFFSET_BASIS;
 
   // Per-client hash tracking to detect duplicate frames
   bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
@@ -3453,6 +3451,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   pkt->data = pkt_data;
   pkt->size = (int)data_len;
 
+  uint64_t stats_decode_start = time_get_ns();
   int send_ret = avcodec_send_packet(dec_ctx, pkt);
   if (send_ret < 0) {
     char err_buf[128];
@@ -3470,6 +3469,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   int recv_ret = avcodec_receive_frame(dec_ctx, frame);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - stats_decode_start);
   if (recv_ret == AVERROR(EAGAIN)) {
     // EAGAIN is normal - decoder is buffering frames internally
     log_dev("H.265 decoder buffering frame (EAGAIN), will output on next frame");
@@ -3497,6 +3497,8 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     log_info("[WS_TIMING] on_image_frame_h265 callback took %s (receive_frame error)", cb_duration_str);
     return;
   }
+
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DECODED, 1);
 
   // Convert YUV to RGB
   // Reuse or create persistent color converter if needed

@@ -1,4 +1,5 @@
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file client_like.c
  * @ingroup session
@@ -725,6 +726,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   while (true) {
     attempt++;
+    if (attempt > 1)
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
 
     asciichat_errno_scope_t attempt_scope = asciichat_errno_scope_begin();
     result = config->run_fn(capture, display, config->run_user_data);

@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file session/pipeline.c
  * @brief Three-thread render pipeline implementation
@@ -273,7 +274,11 @@ static void *pipeline_capture_thread(void *arg) {
     if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
       // Non-blocking: drop if queue full
       log_warn("[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
       free_frame(display_copy);
+    } else {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
     }
 
     if (pipeline->has_render_file) {
@@ -283,10 +288,13 @@ static void *pipeline_capture_thread(void *arg) {
       while (!queued && snapshot_uses_frame_target && !atomic_load_bool(&pipeline->stop))
         queued = frame_queue_push(pipeline->encode_queue, frame, 100 * NS_PER_MS_INT);
       if (!queued) {
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
         // Non-blocking: drop if queue full after 500ms
         log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
         free_frame(frame);
       } else {
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
         pipeline->frames_accepted++;
         log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }

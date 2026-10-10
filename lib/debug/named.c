@@ -304,7 +304,9 @@ void named_unregister(uintptr_t key) {
   rwlock_wrlock(&g_named_registry.entries_lock);
   named_entry_t *entry = NULL;
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
-  if (entry) {
+  // A primitive may be registered again with a parent-qualified name. Retire
+  // every entry before its owner releases the object.
+  while (entry) {
     HASH_DEL(g_named_registry.entries, entry);
     free(entry->name);
     if (entry->type)
@@ -316,6 +318,7 @@ void named_unregister(uintptr_t key) {
     if (entry->func)
       free(entry->func);
     free(entry);
+    HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
   }
   rwlock_wrunlock(&g_named_registry.entries_lock);
 }

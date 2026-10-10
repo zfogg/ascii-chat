@@ -163,6 +163,7 @@ static session_capture_ctx_t *g_display_capture_ctx = NULL;
  */
 void display_set_context(session_display_ctx_t *display_ctx) {
   g_display_ctx = display_ctx;
+  g_keyboard_enabled = display_ctx && terminal_is_stdin_tty();
 }
 
 /* ============================================================================

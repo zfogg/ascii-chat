@@ -1,5 +1,6 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/main.c
  * @ingroup server_main
@@ -1518,6 +1519,42 @@ static server_context_t g_server_ctx;
 /* ============================================================================
  * Status screen callback (populates ui_status_t from server state)
  * ============================================================================ */
+static void server_stats_provider(stats_view_t *view, void *unused) {
+  (void)unused;
+  unsigned active = 0, queued = 0;
+  if (view->page) {
+    stats_view_add(view, "");
+    stats_view_add(view, "SERVER CLIENTS   dimensions    sent    received    video drops / audio queue");
+  }
+  rwlock_rdlock(&g_client_manager_rwlock);
+  for (int i = 0; i < MAX_CLIENTS; ++i) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (!atomic_load_bool(&client->active))
+      continue;
+    active++;
+    if (client->outgoing_video_buffer && atomic_load_bool(&client->outgoing_video_buffer->new_frame_available))
+      queued++;
+    if (!view->page)
+      continue;
+    mutex_lock(&client->client_state_mutex);
+    uint64_t received =
+        client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
+    unsigned width = client->width, height = client->height;
+    mutex_unlock(&client->client_state_mutex);
+    video_frame_stats_t video = {0};
+    if (client->outgoing_video_buffer)
+      video_frame_get_stats(client->outgoing_video_buffer, &video);
+    size_t audio_depth = client->audio_queue ? packet_queue_size(client->audio_queue) : 0;
+    stats_view_add(view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height,
+                   (unsigned long long)atomic_load_u64(&client->frames_sent_count), (unsigned long long)received,
+                   (unsigned long long)video.dropped_frames, audio_depth);
+  }
+  rwlock_rdunlock(&g_client_manager_rwlock);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_CONNECTIONS_ACTIVE, active);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_VIDEO_QUEUE_DEPTH, queued);
+  stats_view_add(view, "Connected clients: %u", active);
+}
+
 static void server_status_fn(void *user_data, ui_status_t *out_status) {
   (void)user_data;
 
@@ -2067,6 +2104,7 @@ skip_acds_session:
   g_server_start_time = time(NULL);
   g_last_status_update = platform_get_monotonic_time_us();
 
+  stats_runtime_set_provider(server_stats_provider, NULL);
   log_debug("Server init_fn complete");
   return ASCIICHAT_OK;
 }
@@ -2075,6 +2113,7 @@ skip_acds_session:
  * Mode-specific cleanup callback
  * ============================================================================ */
 static void server_cleanup_fn(void *user_data) {
+  stats_runtime_set_provider(NULL, NULL);
   (void)user_data;
 
   log_debug("Server shutting down...");

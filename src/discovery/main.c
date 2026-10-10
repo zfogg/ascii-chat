@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file discovery/main.c
  * @ingroup discovery_main
@@ -194,6 +196,8 @@ static void *discovery_video_receive_thread(void *user_data) {
           if (decoded) {
             ASSERT_NO_ERRNO_SINCE(decode_scope);
             asciichat_errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
+            if (latest_text)
+              stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_SKIPPED, 1);
             SAFE_FREE(latest_text);
             latest_text = decoded;
           } else {
@@ -260,12 +264,23 @@ static discovery_session_t *g_discovery = NULL;
  */
 static void on_discovery_state_change(discovery_state_t new_state, void *user_data) {
   (void)user_data; // Unused
+  static uint64_t setup_started;
+  if (new_state == DISCOVERY_STATE_CONNECTING_ACDS)
+    setup_started = time_get_ns();
+  if (setup_started && (new_state == DISCOVERY_STATE_ACTIVE || new_state == DISCOVERY_STATE_FAILED)) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_CONNECTION_SETUP, time_get_ns() - setup_started);
+    setup_started = 0;
+  }
 
   const char *state_names[] = {"INIT",         "CONNECTING_ACDS", "CREATING_SESSION", "JOINING_SESSION",
                                "WAITING_PEER", "NEGOTIATING",     "STARTING_HOST",    "CONNECTING_HOST",
                                "ACTIVE",       "MIGRATING",       "FAILED",           "ENDED"};
 
   if (new_state >= 0 && new_state < (int)(sizeof(state_names) / sizeof(state_names[0]))) {
+    if (new_state == DISCOVERY_STATE_ACTIVE && g_discovery)
+      stats_runtime_connection_state(discovery_session_is_host(g_discovery) ? "ACTIVE / host" : "ACTIVE / participant");
+    else
+      stats_runtime_connection_state(state_names[new_state]);
     log_info("Discovery state: %s", state_names[new_state]);
   }
 }
@@ -452,6 +467,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         }
       }
 
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+      if (key != KEY_NONE)
+        session_handle_keyboard_input(capture, display, key);
       // Capture frame from local media (webcam, test pattern, file, etc.)
       // The capture context is set up during session_client_like_run() and handles all media types
       asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
@@ -593,6 +611,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       }
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
+        keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+        if (key != KEY_NONE)
+          session_handle_keyboard_input(capture, display, key);
         uint64_t iteration_start = time_get_ns();
         if (snapshot_mode && g_snapshot_first_frame_rendered_ns > 0 &&
             time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_rendered_ns, iteration_start)) >=

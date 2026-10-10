@@ -76,6 +76,7 @@
 
 #pragma once
 
+#include <ascii-chat/stats/runtime.h>
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../crypto/crypto.h"
@@ -212,6 +213,7 @@ typedef struct {
  * Specific transports extend this with their own state.
  */
 struct acip_transport {
+  stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
   uint64_t receive_timeout_ns;              ///< Optional TCP receive timeout override; zero uses the normal polling timeout

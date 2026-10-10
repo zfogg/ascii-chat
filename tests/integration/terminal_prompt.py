@@ -16,6 +16,8 @@ def probe(library, log):
     argv = (ctypes.c_char_p * 4)(b"prompt-probe", b"--no-check-update", b"mirror", None)
     native.options_init.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)]
     assert native.options_init(3, argv) == 0
+    native.stats_runtime_start.argtypes = [ctypes.c_char_p, ctypes.c_uint]
+    assert native.stats_runtime_start(b"mirror", 0) == 0
 
     class Size(ctypes.Structure):
         _fields_ = [("rows", ctypes.c_int), ("cols", ctypes.c_int)]
@@ -29,7 +31,7 @@ def probe(library, log):
     native.platform_prompt_question.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t, PromptOptions]
     response = ctypes.create_string_buffer(128)
     assert native.platform_prompt_question(b"Account name", response, len(response), PromptOptions(0, True, True, b"\0")) == 0
-    assert response.value == b"alice", response.value
+    assert response.value == b"alice=", response.value
     assert native.platform_prompt_question(b"Test passphrase", response, len(response), PromptOptions(0, False, True, b"*")) == 0
     assert response.value == b"s3cret", "Password edit result differs"
     native.platform_prompt_yes_no.argtypes = [ctypes.c_char_p, ctypes.c_bool]
@@ -61,7 +63,10 @@ def main():
                          "--probe", "--log", str(log)], rows=30, cols=80)
         try:
             term.expect(lambda s: "Account name" in s, "Text prompt did not render")
-            term.write("alicx\b" + "e\r")
+            term.write("alicx\b" + "e=")
+            text = term.expect(lambda s: "alice=" in s, "Equals must remain prompt text")
+            assert "LIVE STATS" not in text
+            term.write("\r")
             term.expect(lambda s: "Test passphrase" in s, "Password prompt did not render")
             term.write("s3cret")
             text = term.expect(lambda s: "******" in s, "Password mask did not render")

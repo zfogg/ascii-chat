@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file acds/database.c
  * @brief 💾 SQLite-based session management implementation
@@ -877,6 +878,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
     sqlite3_finalize(stmt);
 
     if (deleted > 0) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_EXPIRATIONS, (uint64_t)deleted);
       log_info("Cleaned up %d inactive sessions (>3 hours)", deleted);
     }
   }
@@ -889,10 +891,11 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or host_participant_id is NULL");
   }
 
+  bool migrating = database_session_is_migration_ready(db, session_id, 0);
   uint64_t now = database_get_current_time_ms();
 
   const char *sql = "UPDATE sessions SET "
-                    "host_established = 1, "
+                    "host_established = 1, in_migration = 0, migration_start_ns = 0, "
                     "host_participant_id = ?, "
                     "host_address = ?, "
                     "host_port = ?, "
@@ -928,6 +931,8 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
   log_info("Session host updated: participant=%02x%02x..., address=%s:%u, type=%d", host_participant_id[0],
            host_participant_id[1], host_address ? host_address : "(none)", host_port, connection_type);
 
+  if (migrating)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
   return ASCIICHAT_OK;
 }
 
@@ -1217,5 +1222,37 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
   *count_out = count;
 
   log_debug("Unique clients count: %lld", (long long)count);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
+                                          size_t *row_count, uint64_t *sessions, uint64_t *participants) {
+  if (!db || (!rows && capacity) || !row_count || !sessions || !participants)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid database stats snapshot");
+  *row_count = 0;
+  *sessions = *participants = 0;
+  sqlite3_stmt *stmt = NULL;
+  const char *sql = "SELECT session_string,current_participants,host_established,in_migration "
+                    "FROM sessions WHERE expires_at > ? ORDER BY session_string";
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
+    return SET_ERRNO(ERROR_CONFIG, "Cannot query active session statistics");
+  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT));
+  int result;
+  while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
+    (*sessions)++;
+    int count = sqlite3_column_int(stmt, 1);
+    if (count > 0)
+      *participants += (uint64_t)count;
+    if (*row_count < capacity) {
+      database_session_stats_t *row = &rows[(*row_count)++];
+      snprintf(row->session_string, sizeof(row->session_string), "%s", (const char *)sqlite3_column_text(stmt, 0));
+      row->participants = count > 0 ? (uint32_t)count : 0;
+      row->host_ready = sqlite3_column_int(stmt, 2) != 0;
+      row->migrating = sqlite3_column_int(stmt, 3) != 0;
+    }
+  }
+  sqlite3_finalize(stmt);
+  if (result != SQLITE_DONE)
+    return SET_ERRNO(ERROR_CONFIG, "Active session statistics query failed");
   return ASCIICHAT_OK;
 }

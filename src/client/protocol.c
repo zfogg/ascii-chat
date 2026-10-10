@@ -1,4 +1,5 @@
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file client/protocol.c
  * @ingroup client_protocol
@@ -527,6 +528,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     if (last_render_time_ns != 0) {
       if (render_elapsed_us > 0 && render_elapsed_us < render_interval_us) {
         // Drop this frame to maintain display FPS limit
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_SKIPPED, 1);
         log_info("[FRAME_DROPPED] 📊 Skipping frame - %lu us elapsed < %lu us interval (want ~%d FPS)",
                  render_elapsed_us, render_interval_us, client_display_fps);
         SAFE_FREE(frame_data);

@@ -482,7 +482,7 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "r / R   Cycle render mode");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "-       Toggle FPS counter");
+                   "- FPS counter   = Live statistics");
 
 #ifndef NDEBUG
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,

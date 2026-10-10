@@ -1,4 +1,5 @@
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/stats/runtime.h>
 
 /**
  * @file common.c
@@ -209,6 +210,7 @@ void asciichat_shared_destroy(void) {
   // Stop diagnostic readers before destroying symbols or synchronization state.
   debug_stats_cleanup_thread();
 
+  stats_runtime_stop();
   ui_input_shutdown();
   ui_controller_shutdown();
   keyboard_destroy();

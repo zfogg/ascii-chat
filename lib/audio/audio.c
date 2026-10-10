@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 
 /**
  * @file audio.c
@@ -501,9 +502,11 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // Log status flags (rate-limited to avoid spam)
   if (statusFlags != 0) {
     if (statusFlags & paOutputUnderflow) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_AUDIO_UNDERRUNS, 1);
       log_warn_every(LOG_RATE_FAST, "PortAudio output underflow");
     }
     if (statusFlags & paInputOverflow) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_AUDIO_OVERRUNS, 1);
       log_warn_every(LOG_RATE_FAST, "PortAudio input overflow");
     }
   }
@@ -519,6 +522,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (ctx->playback_buffer) {
       // Network mode: read from playback buffer with jitter buffering logic
       samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+      stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_AUDIO_BUFFERED_SAMPLES,
+                      audio_ring_buffer_available_read(ctx->playback_buffer));
 
       static uint64_t playback_count = 0;
       playback_count++;
@@ -695,6 +700,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   if (statusFlags & paOutputUnderflow) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_AUDIO_UNDERRUNS, 1);
     log_warn_every(LOG_RATE_FAST, "PortAudio output underflow (separate stream)");
   }
 
@@ -728,6 +734,8 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
     if (ctx->playback_buffer) {
       samples_read = audio_ring_buffer_read(ctx->playback_buffer, source_output, source_request);
+      stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_AUDIO_BUFFERED_SAMPLES,
+                      audio_ring_buffer_available_read(ctx->playback_buffer));
       if (output_cb_count <= 3) {
         log_warn("OUTPUT_CB: playback_buffer path, read %zu samples", samples_read);
       }
@@ -927,6 +935,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   }
 
   if (statusFlags & paInputOverflow) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_AUDIO_OVERRUNS, 1);
     log_warn_every(LOG_RATE_FAST, "PortAudio input overflow (separate stream)");
   }
 
@@ -1598,6 +1607,10 @@ void audio_destroy(audio_context_t *ctx) {
 
     mutex_unlock(&ctx->state_mutex);
     mutex_destroy(&ctx->state_mutex);
+
+    NAMED_UNREGISTER(&ctx->worker_should_stop);
+    NAMED_UNREGISTER(&ctx->shutting_down);
+    NAMED_UNREGISTER(ctx);
 
     log_debug("Audio system cleanup complete (all resources released)");
   } else {

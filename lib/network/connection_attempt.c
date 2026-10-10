@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file connection_attempt.c
  * @brief Connection state machine and attempt logic for TCP/WebSocket clients
@@ -165,8 +166,8 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
  * Connects to server via TCP, performs crypto handshake if enabled,
  * and creates ACIP transport for protocol communication.
  */
-asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
-                                         uint16_t server_port) {
+static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_context_t *ctx, const char *server_address,
+                                                         uint16_t server_port) {
   log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u ===", server_address, server_port);
 
   if (!ctx || !server_address) {
@@ -430,13 +431,23 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
+                                         uint16_t server_port) {
+  uint64_t started = time_get_ns();
+  stats_runtime_connection_state("connecting");
+  asciichat_error_t result = connection_attempt_tcp_measured(ctx, server_address, server_port);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_CONNECTION_SETUP, time_get_ns() - started);
+  stats_runtime_connection_state(result == ASCIICHAT_OK ? "connected" : "connection failed");
+  return result;
+}
+
 /**
  * @brief Attempt WebSocket connection (ws:// or wss://)
  *
  * Connects to server via WebSocket, performs crypto handshake if enabled,
  * and creates ACIP transport for protocol communication.
  */
-asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx, const char *ws_url) {
+static asciichat_error_t connection_attempt_websocket_measured(connection_attempt_context_t *ctx, const char *ws_url) {
   log_info("=== connection_attempt_websocket CALLED: url='%s' ===", ws_url);
 
   if (!ctx || !ws_url) {
@@ -503,4 +514,13 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   log_debug("WebSocket owner stored in connection context");
 
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx, const char *ws_url) {
+  uint64_t started = time_get_ns();
+  stats_runtime_connection_state("connecting");
+  asciichat_error_t result = connection_attempt_websocket_measured(ctx, ws_url);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_CONNECTION_SETUP, time_get_ns() - started);
+  stats_runtime_connection_state(result == ASCIICHAT_OK ? "connected" : "connection failed");
+  return result;
 }

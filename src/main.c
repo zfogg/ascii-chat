@@ -1,4 +1,5 @@
 #include <ascii-chat/debug/stats.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file main.c
  * @ingroup main
@@ -1032,10 +1033,14 @@ int main(int argc, char *argv[]) {
   } else {
     log_debug("Process title initialization was unavailable (error %d)", title_init_result);
   }
+  asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
+  if (stats_result != ASCIICHAT_OK)
+    return stats_result;
   int exit_code = mode->entry_point();
   asciichat_error_t requested_exit = asciichat_errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
+  stats_runtime_stop();
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report
