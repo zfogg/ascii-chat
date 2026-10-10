@@ -222,6 +222,11 @@ def check_terminal(args):
         try:
             text = terminal.expect(lambda text: "continue connecting" in text, "unknown-host prompt")
             assert ("Keymask v2" in text) == expected, text
+            if expected:
+                shades = [cell for row in terminal.screen.buffer.values() for cell in row.values() if cell.data == "░"]
+                assert shades and all(cell.fg == "default" and not cell.bold for cell in shades)
+                warning_row = next(i for i, line in enumerate(terminal.screen.display) if "REMOTE HOST" in line)
+                assert terminal.screen.buffer[warning_row][2].fg == "red"
             terminal.write("n\r")
             terminal.expect(lambda text: "PROMPT_RESULT=0" in text, "TOFU rejection")
         finally:

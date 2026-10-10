@@ -6,7 +6,8 @@ picture is not proof that two keys match.
 
 Art appears automatically on interactive stderr terminals outside snapshot mode,
 when the terminal has room. Redirected output keeps the textual fingerprint.
-Quiet, grep, and JSON output retain their existing notice policies.
+Art uses the terminal's default foreground, adapting to light and dark themes;
+warning text retains its severity color. Quiet, grep, and JSON output retain their existing notice policies.
 
 ## Stable v2 mapping
 

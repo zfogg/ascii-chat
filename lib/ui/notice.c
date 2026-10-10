@@ -1,4 +1,5 @@
 #include <ascii-chat/ui/notice.h>
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/common.h>
@@ -46,10 +47,19 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
   if (boxed)
     border(buffer, width, unicode ? "╔" : "+", unicode ? "═" : "-", unicode ? "╗" : "+");
   int rows = boxed ? 2 : 0;
+  const char *art_end = NULL;
   do {
+    // The Keymask formatter identifies complete plain-text blocks; input ANSI
+    // escapes still pass through the normal control-character sanitization.
+    const char *block_end = key_identity_art_end(text);
+    if (block_end)
+      art_end = block_end;
+    bool neutral = art_end && text < art_end;
     int used = 0;
     if (buffer && boxed)
       frame_buffer_printf(buffer, "%s ", side);
+    if (buffer && color && neutral)
+      frame_buffer_append(buffer, "\033[0;39m", 7);
     while (*text && *text != '\n') {
       int bytes = utf8_next_char_bytes(text, (size_t)(text_end - text));
       if (bytes <= 0)
@@ -72,6 +82,8 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
       text += bytes;
     }
     if (buffer) {
+      if (color && neutral)
+        frame_buffer_printf(buffer, "%s", notice_color(severity));
       if (boxed)
         frame_buffer_printf(buffer, "%*s %s", content - used, "", side);
       frame_buffer_append(buffer, "\n", 1);

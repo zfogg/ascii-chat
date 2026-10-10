@@ -5,6 +5,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/notice.h>
 #include <string.h>
+#include <ascii-chat/util/utf8.h>
 
 asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out,
                                       size_t size) {
@@ -56,6 +57,26 @@ asciichat_error_t key_identity_format_terminal(const public_key_t *key, char *ou
   // Notices reserve borders, padding, and the terminal's final column.
   cols = (cols > 81 ? 80 : cols - 1) - 4;
   return key_identity_format(key, art, tty && terminal_supports_utf8(), cols, out, size);
+}
+
+
+const char *key_identity_art_end(const char *text) {
+  static const char heading[] = "Keymask v2 / SHA-256\n";
+  static const char border[] = "+--------------------------------+\n";
+  if (!text || strncmp(text, heading, sizeof(heading) - 1) != 0)
+    return NULL;
+  const char *row = text + sizeof(heading) - 1;
+  if (strncmp(row, border, sizeof(border) - 1) != 0)
+    return NULL;
+  row += sizeof(border) - 1;
+  for (unsigned i = 0; i < KEYMASK_ROWS - 2; ++i) {
+    const char *end = strchr(row, '\n');
+    if (!end || end - row < 2 || row[0] != '|' || end[-1] != '|' ||
+        utf8_display_width_n(row, (size_t)(end - row)) != KEYMASK_WIDTH)
+      return NULL;
+    row = end + 1;
+  }
+  return strncmp(row, border, sizeof(border) - 1) == 0 ? row + sizeof(border) - 1 : NULL;
 }
 
 void key_identity_announce(const char *label, const public_key_t *key) {
