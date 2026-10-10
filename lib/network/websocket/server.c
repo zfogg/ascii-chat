@@ -123,7 +123,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   if (!protocol || !protocol->user) {
     log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: Missing protocol user data (protocol=%p, user=%p)", (void *)protocol,
               protocol ? protocol->user : NULL);
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_INVALID_STATE, "WebSocket protocol user data is missing");
   }
   websocket_server_t *server = (websocket_server_t *)protocol->user;
   log_debug("[LWS_CALLBACK_ESTABLISHED] Got server: %p, handler: %p", (void *)server, (void *)server->handler);
@@ -157,7 +157,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
   if (!conn_data->transport) {
     log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create WebSocket server transport");
   }
   log_debug("[LWS_CALLBACK_ESTABLISHED] Transport created: %p", (void *)conn_data->transport);
 
@@ -168,7 +168,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
     log_error("Failed to allocate client context");
     acip_transport_destroy(conn_data->transport);
     conn_data->transport = NULL;
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket client context");
   }
 
   client_ctx->transport = conn_data->transport;
@@ -192,7 +192,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
     SAFE_FREE(client_ctx);
     acip_transport_destroy(conn_data->transport);
     conn_data->transport = NULL;
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_INVALID_STATE, "WebSocket handler pool is missing");
   }
 
   // Mark the handler as owning the transport before it becomes visible to a
@@ -209,7 +209,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
     SAFE_FREE(client_ctx);
     acip_transport_destroy(conn_data->transport);
     conn_data->transport = NULL;
-    return ERROR_NETWORK;
+    return queue_result;
   }
 
   log_debug("[LWS_CALLBACK_ESTABLISHED] Handler work queued successfully");
@@ -445,8 +445,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   log_dev("🔵 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
           (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
   if (!transport_snapshot) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Transport snapshot is NULL");
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Transport snapshot is NULL");
   }
 
   if (!in || len == 0) {
