@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ascii-chat/util/utf8.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -534,75 +535,6 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
 }
 
 /**
- * Calculate the visual width of a string, excluding ANSI escape sequences.
- * ANSI escape sequences are invisible control codes that don't consume terminal columns.
- *
- * @param data     The string to measure
- * @param data_len Length of the string in bytes
- * @return         Number of visible characters (terminal columns)
- */
-static int ansi_visual_width(const char *data, int data_len) {
-  int visual_width = 0;
-  int i = 0;
-
-  while (i < data_len) {
-    if (data[i] == '\033' && i + 1 < data_len && data[i + 1] == '[') {
-      // Skip ANSI CSI sequence: ESC [ <params> <terminator>
-      i += 2; // Skip ESC [
-      while (i < data_len) {
-        char c = data[i];
-        i++;
-        // ANSI CSI sequences end with a byte in the range 0x40-0x7E (@ through ~)
-        if (c >= '@' && c <= '~') {
-          break;
-        }
-      }
-    } else {
-      // Visible character
-      visual_width++;
-      i++;
-    }
-  }
-
-  return visual_width;
-}
-
-/**
- * Truncate a string to a target visual width while preserving complete ANSI sequences.
- * Returns the byte position where truncation should occur.
- *
- * @param data         The string to truncate
- * @param data_len     Length of the string in bytes
- * @param target_width Target visual width (number of visible characters)
- * @return             Byte position to truncate at (includes all complete ANSI sequences)
- */
-static int ansi_truncate_to_visual_width(const char *data, int data_len, int target_width) {
-  int visual_width = 0;
-  int i = 0;
-
-  while (i < data_len && visual_width < target_width) {
-    if (data[i] == '\033' && i + 1 < data_len && data[i + 1] == '[') {
-      // Skip ANSI CSI sequence: ESC [ <params> <terminator>
-      i += 2; // Skip ESC [
-      while (i < data_len) {
-        char c = data[i];
-        i++;
-        // ANSI CSI sequences end with a byte in the range 0x40-0x7E (@ through ~)
-        if (c >= '@' && c <= '~') {
-          break;
-        }
-      }
-    } else {
-      // Visible character - count it and advance
-      visual_width++;
-      i++;
-    }
-  }
-
-  return i;
-}
-
-/**
  * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
  *
  * Parameters:
@@ -752,8 +684,8 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
           SET_ERRNO(ERROR_INVALID_PARAM, "ASCII source line exceeds supported length");
           return NULL;
         }
-        int copy = ansi_truncate_to_visual_width(data + start, (int)line_length, cell_width);
-        visible = ansi_visual_width(data + start, copy);
+        size_t copy = utf8_prefix_bytes_for_width(data + start, line_length, cell_width);
+        visible = utf8_display_width_n(data + start, copy);
         int padding = source_count == 1 ? (cell_width - visible) / 2 : 0;
         for (int i = 0; i < padding; ++i)
           frame_buffer_append(buf, " ", 1);
