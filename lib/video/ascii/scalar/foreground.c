@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -54,8 +55,6 @@ char *image_print(const image_t *p, const char *palette) {
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
 
-  const rgb_pixel_t *pix = p->pixels;
-
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
 
@@ -84,13 +83,14 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   // Process pixels with UTF-8 RLE emission (same approach as SIMD)
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
-    const int row_offset = y * w;
+    luminance_fn((const uint8_t *)(p->pixels + (size_t)y * w), luminance_row, (size_t)w);
 
     for (int x = 0; x < w;) {
-      const rgb_pixel_t pixel = pix[row_offset + x];
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      const int luminance = luminance_row[x];
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -103,8 +103,7 @@ char *image_print(const image_t *p, const char *palette) {
       // Find run length for same character (RLE optimization)
       int j = x + 1;
       while (j < w) {
-        const rgb_pixel_t next_pixel = pix[row_offset + j];
-        const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
+        const int next_luminance = luminance_row[j];
         uint8_t next_safe_luminance = clamp_rgb(next_luminance);
         uint8_t next_luma_idx = (uint8_t)(next_safe_luminance >> 2);        // 0-63 index (same as SIMD)
         uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
@@ -133,6 +132,7 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   ob_term(&ob);
+  SAFE_FREE(luminance_row);
   return ob.buf;
 }
 
@@ -264,14 +264,17 @@ char *image_print_color(const image_t *p, const char *palette) {
   ansi_rle_init(&rle_ctx, lines, lines_size, color_mode);
 
   // Process each pixel using the optimized RLE context
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(p->pixels + (size_t)y * w), luminance_row, (size_t)w);
     const int row_offset = y * w;
 
     for (int x = 0; x < w; x++) {
       const rgb_pixel_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       // Standard ITU-R BT.601 luminance calculation (uses original values for accuracy)
-      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      const int luminance = luminance_row[x];
 
       // Use UTF-8 character cache for proper character selection
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -302,6 +305,7 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   ansi_rle_finish(&rle_ctx);
 
+  SAFE_FREE(luminance_row);
   return lines;
 }
 
@@ -336,7 +340,10 @@ char *image_print_color_utf8(const image_t *p, const char *palette) {
   char *ptr = lines;
   const rgb_pixel_t *pix = p->pixels;
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(p->pixels + (size_t)y * w), luminance_row, (size_t)w);
     const int row_offset = y * w;
 
     for (int x = 0; x < w; x++) {
@@ -344,7 +351,7 @@ char *image_print_color_utf8(const image_t *p, const char *palette) {
 
       ptr += SAFE_SNPRINTF(ptr, 20, "\033[38;2;%d;%d;%dm", pixel.r, pixel.g, pixel.b);
 
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
       uint8_t safe_luminance = clamp_rgb(luminance);
       const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
       for (int i = 0; i < char_info->byte_len; i++) {
@@ -362,6 +369,7 @@ char *image_print_color_utf8(const image_t *p, const char *palette) {
   }
 
   *ptr = '\0';
+  SAFE_FREE(luminance_row);
   return lines;
 }
 
@@ -471,14 +479,17 @@ char *image_print_256color(const image_t *image, const char *palette) {
     return NULL;
   }
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(image->pixels + (size_t)y * w), luminance_row, (size_t)w);
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
 
       uint8_t color_index = rgb_to_256color(pixel.r, pixel.g, pixel.b);
       ptr = append_256color_fg(ptr, color_index);
 
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
 
       uint8_t safe_luminance = clamp_rgb(luminance);
 
@@ -503,6 +514,7 @@ char *image_print_256color(const image_t *image, const char *palette) {
   }
 
   *ptr = '\0';
+  SAFE_FREE(luminance_row);
   return buffer;
 }
 
@@ -578,7 +590,10 @@ char *image_print_16color(const image_t *image, const char *palette) {
     return NULL;
   }
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(image->pixels + (size_t)y * w), luminance_row, (size_t)w);
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
 
@@ -587,11 +602,11 @@ char *image_print_16color(const image_t *image, const char *palette) {
       ptr = append_16color_fg(ptr, color_index);
 
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
-      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2); // 0-63 index (same as SIMD)
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {
@@ -616,6 +631,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
   }
 
   *ptr = '\0';
+  SAFE_FREE(luminance_row);
   return buffer;
 }
 
@@ -700,7 +716,10 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
     return NULL;
   }
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(image->pixels + (size_t)y * w), luminance_row, (size_t)w);
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
 
@@ -709,11 +728,11 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
       ptr = append_16color_fg(ptr, color_index);
 
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
-      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2); // 0-63 index (same as SIMD)
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (char_info) {
@@ -739,6 +758,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 
   *ptr = '\0';
   SAFE_FREE(error_buffer); // Clean up error buffer
+  SAFE_FREE(luminance_row);
   return buffer;
 }
 
@@ -782,7 +802,10 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
     return NULL;
   }
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(image->pixels + (size_t)y * w), luminance_row, (size_t)w);
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
 
@@ -806,7 +829,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
       }
 
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -836,5 +859,6 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
 
   *ptr = '\0';
   SAFE_FREE(error_buffer); // Clean up error buffer
+  SAFE_FREE(luminance_row);
   return buffer;
 }

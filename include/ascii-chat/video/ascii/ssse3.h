@@ -20,9 +20,6 @@
 #include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_SSSE3
-#if (!defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64))
-#error "SSSE3 support required"
-#endif
 
 /**
  * @brief Render image as monochrome ASCII using SSSE3
@@ -46,8 +43,7 @@ char *render_ascii_mono_ssse3(const image_t *image, const char *ascii_chars);
  *
  * @ingroup video
  */
-char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color,
-                                           const char *ascii_chars);
+char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars);
 
 /**
  * @brief Destroy SSSE3 caches

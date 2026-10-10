@@ -12,6 +12,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/cpu.h>
 #include <time.h>
 #include <math.h>
 #include <ascii-chat/atomic.h>
@@ -523,15 +524,18 @@ void simd_caches_destroy_all(void) {
     lifecycle_shutdown(&g_utf8_cache_lc);
   }
 
-  // Call architecture-specific cache cleanup functions
-  // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
-  // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
+  // Cleanup executes only on CPUs that can enter the corresponding object file.
 #if SIMD_SUPPORT_SSSE3
-  ssse3_caches_destroy();
-#elif SIMD_SUPPORT_SSE2
-  sse2_caches_destroy();
-#elif SIMD_SUPPORT_SVE
-  sve_caches_destroy();
+  if (platform_cpu_features() & CPU_FEATURE_SSSE3)
+    ssse3_caches_destroy();
+#endif
+#if SIMD_SUPPORT_SSE2
+  if (platform_cpu_features() & CPU_FEATURE_SSE2)
+    sse2_caches_destroy();
+#endif
+#if SIMD_SUPPORT_SVE
+  if (platform_cpu_features() & CPU_FEATURE_SVE)
+    sve_caches_destroy();
 #endif
 
   log_dev("SIMD_CACHE: All SIMD caches destroyed");

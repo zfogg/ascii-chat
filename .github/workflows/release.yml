@@ -303,17 +303,7 @@ jobs:
         run: |
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
           # This ensures paths.h has the correct prefix baked in for system config
-          SIMD_MODE=auto
-          if [[ "$(uname -m)" == "aarch64" ]]; then
-            # Release binaries must run on ARM64 hosts without the build runner's optional SVE ISA.
-            SIMD_MODE=neon
-          fi
-          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE="$SIMD_MODE"
-
-          if [[ "$(uname -m)" == "aarch64" ]]; then
-            grep -qx 'ASCIICHAT_SIMD_MODE:STRING=neon' build_release/CMakeCache.txt
-            grep -q -- '-DSIMD_SUPPORT_SVE=0' build_release/build.ninja
-          fi
+          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'

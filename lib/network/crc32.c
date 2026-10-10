@@ -6,12 +6,13 @@
 
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/cpu.h>
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat/atomic.h>
 
 // Multi-architecture hardware acceleration support
-#if defined(__aarch64__)
+#if defined(__aarch64__) && defined(HAVE_CRC32_HW)
 #include <arm_acle.h>
 #define ARCH_ARM64
 #elif defined(__x86_64__) && defined(HAVE_CRC32_HW)
@@ -24,71 +25,16 @@
 #define ARCH_X86_64
 #endif
 
-// Check if CRC32 instructions are available at runtime
-static bool crc32_hw_available = false;
-static atomic_t crc32_hw_checked = {0};
-
+// Cache per thread to avoid publishing a partially initialized feature result.
+static _Thread_local bool crc32_hw_available;
+static _Thread_local bool crc32_hw_checked;
 static void check_crc32_hw_support(void) {
-  // Fast path: check if already initialized (atomic read)
-  if (atomic_load_bool(&crc32_hw_checked)) {
-    return;
-  }
-
-  // Try to claim initialization (only one thread will succeed)
-  bool expected = false;
-  if (!atomic_cas_bool(&crc32_hw_checked, &expected, true)) {
-    // Another thread is initializing or already initialized, wait for it
-    // Add backoff sleep to prevent 100% CPU burn if init thread is preempted
-    int spin_count = 0;
-    while (!atomic_load_bool(&crc32_hw_checked)) {
-      spin_count++;
-      if (spin_count > 100) {
-        // After 100 spins, sleep briefly to avoid CPU waste
-        platform_sleep_us(1); // Sleep 1 microsecond (Windows rounds up to 1ms)
-        spin_count = 0;
-      }
-    }
-    return;
-  }
-
-  // This thread won the race and will perform initialization
-
-  // clang-format off
-#ifdef ARCH_ARM64
-// On Apple Silicon, CRC32 is always available
-// On other ARM64 systems, we could check HWCAP_CRC32
-#ifdef __APPLE__
-  crc32_hw_available = true;
-#else
-  // For other ARM64 systems, we'd need to check auxiliary vector
-  // For now, assume available (can be made more sophisticated)
-  crc32_hw_available = true;
+  if (!crc32_hw_checked) {
+#if defined(ARCH_ARM64) || defined(ARCH_X86_64)
+    crc32_hw_available = (platform_cpu_features() & CPU_FEATURE_CRC32) != 0;
 #endif
-  // log_debug("ARM CRC32 hardware acceleration: %s", crc32_hw_available ? "enabled" : "disabled");
-#elif defined(ARCH_X86_64)
-  // Check for SSE4.2 support (includes CRC32 instruction)
-#ifdef _WIN32
-  int cpu_info[4];
-  __cpuid(cpu_info, 1);
-  // SSE4.2 is bit 20 of ECX
-  crc32_hw_available = (cpu_info[2] & (1 << 20)) != 0;
-#else
-  unsigned int eax, ebx, ecx, edx;
-  if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
-    crc32_hw_available = (ecx & bit_SSE4_2) != 0;
-  } else {
-    crc32_hw_available = false;
+    crc32_hw_checked = true;
   }
-#endif
-  // log_debug("Intel CRC32 hardware acceleration (SSE4.2): %s", crc32_hw_available ? "enabled" : "disabled");
-#else
-  crc32_hw_available = false;
-  // log_debug("No hardware CRC32 acceleration available for this architecture");
-#endif // clang-format on
-
-  // Initialization complete - flag was already set to true by atomic_compare_exchange_strong above
-  // The compare-exchange with memory_order_seq_cst ensures all writes to crc32_hw_available
-  // are visible to other threads when they see crc32_hw_checked == true
 }
 
 #ifdef ARCH_ARM64
@@ -98,7 +44,7 @@ static void check_crc32_hw_support(void) {
 //   - Intel _mm_crc32_* intrinsics
 //   - Our software fallback asciichat_crc32_sw()
 // Process byte-by-byte to ensure cross-platform consistency with x86
-__attribute__((target("arch=armv8-a+crc"))) static uint32_t crc32_arm_hw(const void *data, size_t len) {
+__attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
 
@@ -115,7 +61,7 @@ __attribute__((target("arch=armv8-a+crc"))) static uint32_t crc32_arm_hw(const v
 #ifdef ARCH_X86_64
 // Intel CRC32 hardware implementation using SSE4.2
 // Process byte-by-byte to ensure cross-platform consistency with ARM
-static uint32_t crc32_intel_hw(const void *data, size_t len) {
+__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
 
@@ -134,7 +80,7 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
 
   if (!crc32_hw_available) {
     // DEBUG: Log fallback to software
-    static bool logged_fallback = false;
+    static _Thread_local bool logged_fallback = false;
     if (!logged_fallback) {
       log_debug("Using software CRC32 (no hardware acceleration)");
       logged_fallback = true;
@@ -143,14 +89,14 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
   }
 
 #ifdef ARCH_ARM64
-  static bool logged_arm = false;
+  static _Thread_local bool logged_arm = false;
   if (!logged_arm) {
     log_debug("Using ARM64 hardware CRC32");
     logged_arm = true;
   }
   return crc32_arm_hw(data, len);
 #elif defined(ARCH_X86_64)
-  static bool logged_intel = false;
+  static _Thread_local bool logged_intel = false;
   if (!logged_intel) {
     log_debug("Using Intel x86_64 hardware CRC32 (SSE4.2)");
     logged_intel = true;

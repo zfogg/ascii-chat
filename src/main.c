@@ -23,6 +23,7 @@
  * Test: Running macOS builds with WebRTC Threads fix
  */
 
+#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <ascii-chat/ui/controller.h>
@@ -863,6 +864,7 @@ int main(int argc, char *argv[]) {
   // Initialize colors now that logging is fully initialized
   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
   log_init_colors();
+  log_debug("SIMD luminance backend: %s", simd_backend()->name);
 
   // Apply quiet mode - disables terminal output
   // Status screen mode only disables terminal output if terminal is interactive

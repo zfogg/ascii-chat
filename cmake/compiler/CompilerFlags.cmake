@@ -435,27 +435,12 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             list(APPEND __asciichat_cpu_flags ${__asciichat_custom_flags})
         endif()
     else()
-        # portable baseline (default) - autodetect x86-64-v2/v3 if supported
+        # Release baseline must not depend on the build runner's extensions.
         if(_actual_arch MATCHES "AMD64|x86_64|X86_64")
-            # Autodetect the highest supported x86-64 microarchitecture level
-            detect_x86_64_level(__asciichat_detected_tune)
-
-            if(__asciichat_detected_tune STREQUAL "x86-64-v3")
-                list(APPEND __asciichat_cpu_flags -march=x86-64-v3)
-                set(__asciichat_detected_tune "x86-64-v3")
-            elseif(__asciichat_detected_tune STREQUAL "x86-64-v2")
-                list(APPEND __asciichat_cpu_flags -march=x86-64-v2)
-                set(__asciichat_detected_tune "x86-64-v2")
-            else()
-                # Fall back to portable baseline
-                list(APPEND __asciichat_cpu_flags -march=x86-64)
-                set(__asciichat_detected_tune "portable")
-            endif()
+            list(APPEND __asciichat_cpu_flags -march=x86-64)
+            set(__asciichat_detected_tune "portable")
         elseif(_actual_arch MATCHES "ARM64|aarch64")
             set(__asciichat_baseline "armv8-a")
-            if(ASCIICHAT_ENABLE_CRC32_HW)
-                set(__asciichat_baseline "${__asciichat_baseline}+crc")
-            endif()
             list(APPEND __asciichat_cpu_flags "-march=${__asciichat_baseline}")
             set(__asciichat_detected_tune "portable")
         else()
@@ -547,11 +532,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
         if(NOT WITH_DEBUG_INFO)
-            # Position Independent Code (PIC/PIE) - required for ASLR
-            # Note: -fPIE is a compile option; -pie is a linker option
-            # The linker -pie flag is added per-target in Executables.cmake to avoid
-            # applying it to shared libraries (which use -shared, not -pie)
-            add_compile_options(-fPIE)
+            # PIE assumes executable TLS access, including after ThinLTO imports.
+            # Keep library objects (including vendored libraries) PIC so they can
+            # link into shared libraries. Executable linker flags are set separately.
+            add_compile_options("$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-fPIE>")
 
             if(USE_MUSL)
                 # Static-PIE for musl builds (combines static linking with ASLR)

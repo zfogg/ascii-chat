@@ -12,6 +12,7 @@
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/util/math.h>
 
 char *image_print_color_background(const image_t *p, const char *palette) {
@@ -44,7 +45,10 @@ char *image_print_color_background(const image_t *p, const char *palette) {
   char *ptr = lines;
   const rgb_pixel_t *pix = p->pixels;
 
+  uint8_t *luminance_row = SAFE_MALLOC((size_t)w, uint8_t *);
+  simd_luminance_fn luminance_fn = simd_backend()->luminance;
   for (int y = 0; y < h; y++) {
+    luminance_fn((const uint8_t *)(p->pixels + (size_t)y * w), luminance_row, (size_t)w);
     const int row_offset = y * w;
 
     for (int x = 0; x < w; x++) {
@@ -54,7 +58,7 @@ char *image_print_color_background(const image_t *p, const char *palette) {
       ptr += SAFE_SNPRINTF(ptr, 20, "\033[48;2;%d;%d;%dm", pixel.r, pixel.g, pixel.b);
 
       // Choose contrasting foreground: white on dark, black on bright
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      int luminance = luminance_row[x];
       if (luminance < 128) {
         ptr += SAFE_SNPRINTF(ptr, 20, "\033[38;2;255;255;255m");
       } else {
@@ -80,5 +84,6 @@ char *image_print_color_background(const image_t *p, const char *palette) {
   }
 
   *ptr = '\0';
+  SAFE_FREE(luminance_row);
   return lines;
 }

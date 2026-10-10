@@ -99,13 +99,13 @@ char *render_ascii_color_sve(const image_t *image, bool use_background, bool use
 
     // Process with SVE scalable vectors (adapts to hardware vector length)
     while (x < width) {
-      svbool_t pg_active = svwhilelt_b8_s32(x, width);
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels
       int remaining = width - x;
       int process_count = (remaining < vec_len) ? remaining : vec_len;
+      svbool_t pg_active = svwhilelt_b8_s32(0, process_count);
 
       // Manual deinterleave RGB components (SVE limitation vs NEON's vld3)
-      uint8_t r_array[64], g_array[64], b_array[64]; // Max SVE vector size
+      uint8_t r_array[256], g_array[256], b_array[256]; // Max SVE vector size
       for (int j = 0; j < process_count; j++) {
         if (x + j < width) {
           r_array[j] = row[x + j].r;
@@ -133,30 +133,23 @@ char *render_ascii_color_sve(const image_t *image, bool use_background, bool use
 
       // Store u16 luminance values (SVE1 compatible - no SVE2 narrowing intrinsics)
       // After right-shift by 8, values are already in 0-255 range
-      uint16_t luma_temp[64];
+      uint16_t luma_temp[256];
       svst1_u16(svptrue_b16(), luma_temp, luma);
 
       // Convert to u8 array for ASCII lookup
-      uint8_t luma_array[64];
+      uint8_t luma_array[256];
       for (int j = 0; j < process_count; j++) {
         luma_array[j] = (uint8_t)luma_temp[j];
       }
 
-      // FAST: Use svtbl_u8 to get character indices from the ramp (SVE advantage)
-      // Convert luminance to 0-63 indices
-      svuint8_t luma_vec = svld1_u8(pg_active, luma_array);             // Load luminance values
-      svuint8_t luma_idx_vec = svlsr_n_u8_x(svptrue_b8(), luma_vec, 2); // >> 2 for 0-63
-
-      // Use svtbl_u8 for fast character index lookup (scalable!)
-      svuint8_t char_lut_vec = svld1_u8(svptrue_b8(), utf8_cache->char_index_ramp);
-      svuint8_t char_indices_vec = svtbl_u8(char_lut_vec, luma_idx_vec);
-
-      uint8_t gbuf[64]; // Reuse gbuf name for compatibility
-      svst1_u8(pg_active, gbuf, char_indices_vec);
+      // A palette has 64 entries regardless of the hardware vector length.
+      uint8_t gbuf[256];
+      for (int i = 0; i < process_count; i++)
+        gbuf[i] = utf8_cache->char_index_ramp[luma_array[i] >> 2];
 
       if (use_256color) {
         // 256-color mode processing (copied from NEON logic)
-        uint8_t color_indices[64];
+        uint8_t color_indices[256];
         for (int i = 0; i < process_count; i++) {
           color_indices[i] = rgb_to_256color_sve(r_array[i], g_array[i], b_array[i]);
         }
