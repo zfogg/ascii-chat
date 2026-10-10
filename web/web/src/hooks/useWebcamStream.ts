@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
 import {
-  H265Encoder,
+  VideoUploadEncoder,
   buildStreamStartPacket,
   buildCapabilitiesPacket,
   VIDEO_CODEC_CAP_RGBA,
   VIDEO_CODEC_CAP_H265,
+  VIDEO_CODEC_CAP_H264,
   buildImageFramePayload,
   buildImageFrameH265Payload,
 } from "../network";
-import { getVideoEncoding } from "../network/videoEncoding";
+import { useVideoEncodings } from "./useVideoEncodings";
+import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
@@ -74,11 +76,17 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     includeAudio = false,
   } = options;
 
+  const {
+    preference: encodingPreference,
+    createEncoder,
+    validate: validateEncoding,
+  } = useVideoEncodings({ fps: settings.targetFps });
+
   const generationRef = useRef(0);
   const startingRef = useRef(false);
   const captureReadyRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const h265EncoderRef = useRef<H265Encoder | null>(null);
+  const videoEncoderRef = useRef<VideoUploadEncoder | null>(null);
   const webcamCaptureLoopRef = useRef<
     ((drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => void) | null
   >(null);
@@ -91,6 +99,69 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const videFrameUpdateCountRef = useRef(0); // Track actual VIDEO updates
 
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
+
+  const configureUpload = useCallback(
+    async (
+      width: number,
+      height: number,
+      generation: number,
+      after?: CompressedVideoEncoding,
+    ) => {
+      const conn = clientRef.current;
+      if (!conn) return;
+      const encoder = await createEncoder(
+        width,
+        height,
+        settings.targetFps,
+        (chunk, codec) => {
+          if (generation !== generationRef.current || !captureReadyRef.current)
+            return;
+          conn.sendPacket(
+            codec === "hevc"
+              ? PacketType.IMAGE_FRAME_H265
+              : PacketType.IMAGE_FRAME_H264,
+            buildImageFrameH265Payload(
+              chunk.flags,
+              chunk.width,
+              chunk.height,
+              chunk.data,
+            ),
+          );
+        },
+        after,
+      );
+      if (generation !== generationRef.current) {
+        encoder?.destroy();
+        return;
+      }
+      videoEncoderRef.current = encoder;
+      conn.videoCodecCapabilities =
+        VIDEO_CODEC_CAP_RGBA |
+        (encoder?.codec === "hevc"
+          ? VIDEO_CODEC_CAP_H265
+          : encoder?.codec === "h264"
+            ? VIDEO_CODEC_CAP_H264
+            : 0);
+      conn.sendPacket(
+        PacketType.CLIENT_CAPABILITIES,
+        buildCapabilitiesPacket(
+          terminalDimensions.cols || 80,
+          terminalDimensions.rows || 40,
+          settings.targetFps,
+          settings.colorMode,
+          settings.colorFilter,
+          settings.palette,
+          settings.paletteChars,
+          settings.matrixRain,
+          conn.videoCodecCapabilities,
+        ),
+      );
+      console.info(
+        `[Client] Upload encoding: ${encoder?.codec ?? "raw"} ${width}x${height}`,
+      );
+    },
+    [clientRef, settings, terminalDimensions, createEncoder],
+  );
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
   const createWebcamCaptureLoop = useCallback(() => {
@@ -135,7 +206,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             // );
           }
 
-          if (h265EncoderRef.current) {
+          if (videoEncoderRef.current) {
             const encoderCanvas = sourceCanvas ?? canvasRef.current;
             if (!encoderCanvas) return;
             let videoFrame: VideoFrame | undefined;
@@ -143,11 +214,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               videoFrame = new VideoFrame(encoderCanvas, {
                 timestamp: Math.round(now * 1000),
               });
-              h265EncoderRef.current.encode(videoFrame, settings.targetFps);
+              videoEncoderRef.current.encode(videoFrame, settings.targetFps);
             } catch (error) {
-              h265EncoderRef.current.destroy();
-              h265EncoderRef.current = null;
-              if (getVideoEncoding() === "hevc") {
+              const failedCodec = videoEncoderRef.current.codec;
+              const failedLabel = videoEncoderRef.current.label;
+              videoEncoderRef.current.destroy();
+              videoEncoderRef.current = null;
+              if (encodingPreference !== "auto") {
                 captureReadyRef.current = false;
                 streamRef.current?.getTracks().forEach((track) => track.stop());
                 streamRef.current = null;
@@ -166,13 +239,29 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 }
                 setIsWebcamRunning(false);
                 setError(
-                  `HEVC encoding failed: ${String(error)} Use ?encoding=raw.`,
+                  `${failedLabel} encoding failed: ${String(error)} Use ?encoding=raw.`,
                 );
-              } else
-                console.warn(
-                  "[Client] HEVC failed; switching to raw pixels",
-                  error,
-                );
+              } else {
+                captureReadyRef.current = false;
+                const generation = generationRef.current;
+                void configureUpload(
+                  frame.width,
+                  frame.height,
+                  generation,
+                  failedCodec,
+                )
+                  .then(() => {
+                    if (generation === generationRef.current)
+                      captureReadyRef.current = true;
+                  })
+                  .catch((fallbackError: unknown) => {
+                    if (generation === generationRef.current) {
+                      setError(
+                        `Failed to change upload encoding: ${String(fallbackError)}`,
+                      );
+                    }
+                  });
+              }
             } finally {
               videoFrame?.close();
             }
@@ -199,6 +288,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     return sendOneFrame;
   }, [
     captureFrame,
+    configureUpload,
+    encodingPreference,
     connectionState,
     clientRef,
     canvasRef,
@@ -422,12 +513,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     startingRef.current = true;
     const generation = ++generationRef.current;
     try {
-      const encoding = getVideoEncoding();
-      if (encoding === "hevc" && !H265Encoder.isSupported()) {
-        throw new Error(
-          "HEVC encoding is unsupported: WebCodecs VideoEncoder is unavailable. Use ?encoding=raw.",
-        );
-      }
+      validateEncoding();
       setError("");
       // Send STREAM_START to notify server we're about to send video
       if (clientRef.current) {
@@ -804,61 +890,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       frameIntervalRef.current = 1000 / settings.targetFps;
       frameQueueRef.current = [];
 
-      const conn = clientRef.current;
-      if (!conn) return;
-      conn.videoCodecCapabilities = VIDEO_CODEC_CAP_RGBA;
-      if (encoding !== "raw") {
-        const encoder = new H265Encoder((chunk) => {
-          if (generation !== generationRef.current || !captureReadyRef.current)
-            return;
-          conn.sendPacket(
-            PacketType.IMAGE_FRAME_H265,
-            buildImageFrameH265Payload(
-              chunk.flags,
-              chunk.width,
-              chunk.height,
-              chunk.data,
-            ),
-          );
-        });
-        h265EncoderRef.current = encoder;
-        try {
-          await encoder.initialize(
-            canvasRef.current.width,
-            canvasRef.current.height,
-            settings.targetFps,
-          );
-          if (generation !== generationRef.current) {
-            encoder.destroy();
-            return;
-          }
-          conn.videoCodecCapabilities |= VIDEO_CODEC_CAP_H265;
-        } catch (error) {
-          encoder.destroy();
-          h265EncoderRef.current = null;
-          if (encoding === "hevc") throw error;
-          console.info("[Client] HEVC unavailable; using raw pixels", error);
-        }
-      }
+      await configureUpload(
+        canvasRef.current.width,
+        canvasRef.current.height,
+        generation,
+      );
       if (generation !== generationRef.current) return;
-      // Capabilities must precede the first HEVC packet, including after a restart.
-      conn.sendPacket(
-        PacketType.CLIENT_CAPABILITIES,
-        buildCapabilitiesPacket(
-          terminalDimensions.cols || 80,
-          terminalDimensions.rows || 40,
-          settings.targetFps,
-          settings.colorMode,
-          settings.colorFilter,
-          settings.palette,
-          settings.paletteChars,
-          settings.matrixRain,
-          conn.videoCodecCapabilities,
-        ),
-      );
-      console.info(
-        `[Client] Upload encoding: ${h265EncoderRef.current ? "hevc" : "raw"} ${canvasRef.current.width}x${canvasRef.current.height}`,
-      );
       captureReadyRef.current = true;
       setIsWebcamRunning(true);
 
@@ -900,8 +937,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         setIsWebcamRunning(false);
         setError(errMsg);
       }
-      h265EncoderRef.current?.destroy();
-      h265EncoderRef.current = null;
+      videoEncoderRef.current?.destroy();
+      videoEncoderRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       testPatternSourceRef.current?.stop();
@@ -910,10 +947,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       startingRef.current = false;
     }
   }, [
+    configureUpload,
     connectionState,
     includeAudio,
+    validateEncoding,
     settings,
-    terminalDimensions,
     videoRef,
     canvasRef,
     clientRef,
@@ -964,15 +1002,38 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       videoRef.current.srcObject = null;
     }
 
-    // Clean up H.265 encoder
-    if (h265EncoderRef.current) {
-      h265EncoderRef.current.destroy();
-      h265EncoderRef.current = null;
+    // Clean up the video encoder
+    if (videoEncoderRef.current) {
+      videoEncoderRef.current.destroy();
+      videoEncoderRef.current = null;
     }
 
     frameQueueRef.current = [];
     setIsWebcamRunning(false);
   }, [clientRef, connectionState, frameQueueRef, isWebcamRunning, videoRef]);
+
+  const captureActionsRef = useRef({ startWebcam, stopWebcam });
+  captureActionsRef.current = { startWebcam, stopWebcam };
+  const previousEncodingRef = useRef(encodingPreference);
+  useEffect(() => {
+    if (previousEncodingRef.current === encodingPreference) return;
+    previousEncodingRef.current = encodingPreference;
+    if (!streamRef.current && !startingRef.current) return;
+    let cancelled = false;
+    captureActionsRef.current.stopWebcam();
+    void (async () => {
+      while (startingRef.current)
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 10));
+      if (
+        !cancelled &&
+        clientRef.current?.getState() === ConnectionState.CONNECTED
+      )
+        await captureActionsRef.current.startWebcam();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encodingPreference, clientRef]);
 
   useEffect(() => {
     const handleDevicePreferencesChanged = (event: Event) => {

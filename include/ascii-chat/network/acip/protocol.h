@@ -56,10 +56,11 @@
  * - 2003: Error packets with error codes and messages
  * - 2004: Remote logging (bidirectional log forwarding)
  *
- * **Types 3000-3002: Media Frames**
+ * **Types 3000-3003: Media Frames**
  * - 3000: ASCII art frames (pre-rendered terminal representation)
  * - 3001: Raw RGB image frames
  * - 3002: H.265/HEVC encoded video frames
+ * - 3003: H.264/AVC encoded video frames
  *
  * **Types 4000-4001: Audio Packets**
  * - 4000: Batched raw audio samples

@@ -6,8 +6,11 @@ import {
   it,
   vi,
 } from "vite-plus/test";
-import { H265Encoder } from "../../src/network/H265Encoder";
-import { getVideoEncoding } from "../../src/network/videoEncoding";
+import { VideoUploadEncoder as H265Encoder } from "../../src/network/VideoUploadEncoder";
+import {
+  getVideoEncoding,
+  selectVideoEncoder,
+} from "../../src/network/videoEncoding";
 import { buildCapabilitiesPacket } from "../../src/network/packetBuilders";
 
 class FakeEncoder {
@@ -200,4 +203,63 @@ it("advertises HEVC only after a successful per-session probe", () => {
     3,
   );
   expect(new DataView(hevc.buffer).getUint32(160)).toBe(3);
+});
+
+describe("AVC and automatic selection", () => {
+  it("accepts H.264 case-insensitively and its common aliases", () => {
+    for (const value of ["H.264", "h264", "avc", "x264"])
+      expect(getVideoEncoding(`?encoding=${value}`)).toBe("h264");
+  });
+  it("uses AVC Annex B with a startup keyframe", async () => {
+    const encoder = await selectVideoEncoder("h264", 320, 240, 30, vi.fn());
+    expect(encoder?.codec).toBe("h264");
+    expect(FakeEncoder.isConfigSupported).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        codec: "avc1.42E01F",
+        avc: { format: "annexb" },
+      }),
+    );
+    encoder!.encode(frame());
+    expect(FakeEncoder.instances[0]!.encode).toHaveBeenCalledWith(frame(), {
+      keyFrame: true,
+    });
+    encoder!.destroy();
+  });
+  it("prefers HEVC then AVC then raw, probing each configuration", async () => {
+    const hevc = await selectVideoEncoder("auto", 320, 240, 30, vi.fn());
+    expect(hevc?.codec).toBe("hevc");
+    hevc?.destroy();
+    FakeEncoder.isConfigSupported.mockImplementation(async (config) => ({
+      supported: config.codec.startsWith("avc1"),
+      config,
+    }));
+    const avc = await selectVideoEncoder("auto", 320, 240, 30, vi.fn());
+    expect(avc?.codec).toBe("h264");
+    avc?.destroy();
+    FakeEncoder.isConfigSupported.mockImplementation(async (config) => ({
+      supported: false,
+      config,
+    }));
+    expect(await selectVideoEncoder("auto", 320, 240, 30, vi.fn())).toBeNull();
+    await expect(
+      selectVideoEncoder("h264", 320, 240, 30, vi.fn()),
+    ).rejects.toThrow(/H.264.*unsupported/);
+  });
+  it("does not retry a failed codec during automatic runtime fallback", async () => {
+    const avc = await selectVideoEncoder("auto", 320, 240, 30, vi.fn(), "hevc");
+    expect(avc?.codec).toBe("h264");
+    avc?.destroy();
+    expect(
+      await selectVideoEncoder("auto", 320, 240, 30, vi.fn(), "h264"),
+    ).toBeNull();
+  });
+  it("rejects an ignored AVC Annex B option", async () => {
+    FakeEncoder.isConfigSupported.mockImplementation(async (config) => ({
+      supported: true,
+      config: { codec: config.codec, width: 320, height: 240 },
+    }));
+    await expect(
+      selectVideoEncoder("h264", 320, 240, 30, vi.fn()),
+    ).rejects.toThrow(/H.264.*unsupported/);
+  });
 });

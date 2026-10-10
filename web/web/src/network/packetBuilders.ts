@@ -4,6 +4,7 @@ export const STREAM_TYPE_AUDIO = 0x02;
 
 // Codec capability bitmasks (must match include/ascii-chat/media/codecs.h)
 export const VIDEO_CODEC_CAP_RGBA = 1 << 0; // Bit 0: RGBA support
+export const VIDEO_CODEC_CAP_H264 = 1 << 3; // Bit 2 is reserved for JPEG.
 export const VIDEO_CODEC_CAP_H265 = 1 << 1; // Bit 1: H.265/HEVC support
 
 // HEVC is added per session only after probing the actual encoder configuration.

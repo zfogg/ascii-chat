@@ -1,22 +1,33 @@
-/** Browser HEVC upload encoder. ACIP carries self-contained Annex B access units. */
-export interface H265Chunk {
+/** Browser HEVC/AVC upload encoder. ACIP carries self-contained Annex B access units. */
+export interface VideoChunk {
   flags: number;
   width: number;
   height: number;
   data: Uint8Array;
 }
 
-type HevcConfig = VideoEncoderConfig & { hevc: { format: "annexb" } };
+export type CompressedVideoEncoding = "hevc" | "h264";
+type AnnexBConfig = VideoEncoderConfig & {
+  hevc?: { format: "annexb" };
+  avc?: { format: "annexb" };
+};
 
-export class H265Encoder {
+export class VideoUploadEncoder {
   private encoder: VideoEncoder | null = null;
-  private config: HevcConfig | null = null;
+  private config: AnnexBConfig | null = null;
   private frameCount = 0;
   private generation = 0;
   private failure: Error | null = null;
   private resizing = false;
 
-  constructor(private output: (chunk: H265Chunk) => void) {}
+  constructor(
+    private output: (chunk: VideoChunk) => void,
+    readonly codec: CompressedVideoEncoding = "hevc",
+  ) {}
+
+  get label(): string {
+    return this.codec === "hevc" ? "HEVC" : "H.264";
+  }
 
   static isSupported(): boolean {
     return (
@@ -24,37 +35,60 @@ export class H265Encoder {
     );
   }
 
-  async initialize(width: number, height: number, fps: number): Promise<void> {
-    this.destroy();
-    const generation = this.generation;
-    if (!H265Encoder.isSupported())
-      throw new Error(
-        "HEVC encoding is unsupported: WebCodecs VideoEncoder is unavailable. Use ?encoding=raw.",
-      );
-    // Main profile, 8-bit 4:2:0. Probe the exact configuration used to encode.
-    const config: HevcConfig = {
-      codec: "hev1.1.6.L120.B0",
+  static configuration(
+    codec: CompressedVideoEncoding,
+    width: number,
+    height: number,
+    fps: number,
+  ): AnnexBConfig {
+    // HEVC Main / AVC constrained baseline, 8-bit 4:2:0. Probe the exact configuration used to encode.
+    return {
+      codec: codec === "hevc" ? "hev1.1.6.L120.B0" : "avc1.42E01F",
       width,
       height,
       framerate: fps,
       bitrate: Math.max(500_000, width * height * 2 * fps),
       latencyMode: "realtime",
       hardwareAcceleration: "prefer-hardware",
-      hevc: { format: "annexb" },
+      ...(codec === "hevc"
+        ? { hevc: { format: "annexb" as const } }
+        : { avc: { format: "annexb" as const } }),
     };
+  }
+
+  static async supports(config: AnnexBConfig): Promise<boolean> {
+    if (!VideoUploadEncoder.isSupported()) return false;
     let supported = false;
     try {
       const result = await VideoEncoder.isConfigSupported(config);
       supported =
         result.supported === true &&
-        (result.config as HevcConfig).hevc?.format === "annexb";
+        (result.config as AnnexBConfig)[config.hevc ? "hevc" : "avc"]
+          ?.format === "annexb";
     } catch {
       /* Unsupported codec/configuration is reported below. */
     }
+    return supported;
+  }
+
+  async initialize(width: number, height: number, fps: number): Promise<void> {
+    this.destroy();
+    const generation = this.generation;
+    if (!VideoUploadEncoder.isSupported())
+      throw new Error(
+        `${this.label} encoding is unsupported: WebCodecs VideoEncoder is unavailable. Use ?encoding=raw.`,
+      );
+    const config = VideoUploadEncoder.configuration(
+      this.codec,
+      width,
+      height,
+      fps,
+    );
+    const supported = await VideoUploadEncoder.supports(config);
     if (generation !== this.generation) return;
     if (!supported)
       throw new Error(
-        "HEVC encoding is unsupported by this browser/device for the requested video size and frame rate. Use ?encoding=raw.",
+        `${this.label} encoding is unsupported by this browser/device for the requested video size and frame rate. Use ?encoding=raw.`,
       );
     this.config = config;
     this.failure = null;
@@ -67,7 +101,7 @@ export class H265Encoder {
           const data = new Uint8Array(chunk.byteLength);
           chunk.copyTo(data);
           // Unknown WebCodecs dictionary members can be silently ignored. Never
-          // send length-prefixed HEVC without its out-of-band decoder config.
+          // send length-prefixed video without its out-of-band decoder config.
           if (
             !(
               data[0] === 0 &&
@@ -76,7 +110,7 @@ export class H265Encoder {
             )
           )
             throw new Error(
-              "Browser did not produce HEVC Annex B video. Use ?encoding=raw.",
+              `Browser did not produce ${this.label} Annex B video. Use ?encoding=raw.`,
             );
           this.output({
             flags: (chunk.type === "key" ? 1 : 0) | (firstOutput ? 2 : 0),
@@ -99,7 +133,7 @@ export class H265Encoder {
     } catch (error) {
       this.destroy();
       throw new Error(
-        `HEVC encoder initialization failed: ${String(error)} Use ?encoding=raw.`,
+        `${this.label} encoder initialization failed: ${String(error)} Use ?encoding=raw.`,
         { cause: error },
       );
     }

@@ -131,7 +131,8 @@ test.afterAll(async () => {
 });
 
 async function connect(page: Page, mode: string, encoding: string) {
-  const query = new URLSearchParams({ encoding, fps: "30" });
+  const query = new URLSearchParams({ fps: "30" });
+  if (encoding !== "default") query.set("encoding", encoding);
   if (mode === "client")
     query.set("serverUrl", `ws://${host}:${serverPort + 1}`);
   else {
@@ -162,13 +163,25 @@ async function connect(page: Page, mode: string, encoding: string) {
         requestAnimationFrame(draw);
       };
       draw();
-      return canvas.captureStream(30);
+      const stream = canvas.captureStream(30);
+      if (constraints.audio) {
+        const audio = new AudioContext();
+        const destination = audio.createMediaStreamDestination();
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        gain.gain.value = 0;
+        oscillator.connect(gain).connect(destination);
+        oscillator.start();
+        for (const track of destination.stream.getAudioTracks())
+          stream.addTrack(track);
+      }
+      return stream;
     };
   });
   await page.goto(`/${mode}?${query}`);
   // Instrument the real transport before connecting; media and codec remain real.
   await page.evaluate(async () => {
-    const probe = { raw: 0, hevc: 0, bytes: 0, keys: 0 };
+    const probe = { raw: 0, hevc: 0, h264: 0, bytes: 0, keys: 0 };
     Object.assign(window, { __encodingProbe: probe });
     for (const name of ["ClientConnection", "WebRTCSession"]) {
       const module = await import(/* @vite-ignore */ `/src/network/${name}.ts`);
@@ -177,11 +190,13 @@ async function connect(page: Page, mode: string, encoding: string) {
       prototype.sendPacket = function (type: number, payload: Uint8Array) {
         const result = send.call(this, type, payload);
         if (type === 3001) probe.raw++;
-        if (type === 3002) {
-          probe.hevc++;
+        if (type === 3002 || type === 3003) {
+          if (type === 3002) probe.hevc++;
+          else probe.h264++;
           if (payload[0]! & 1) probe.keys++;
         }
-        if (type === 3001 || type === 3002) probe.bytes += payload.length;
+        if (type === 3001 || type === 3002 || type === 3003)
+          probe.bytes += payload.length;
         return result;
       };
     }
@@ -207,6 +222,7 @@ async function probe(page: Page) {
         __encodingProbe: {
           raw: number;
           hevc: number;
+          h264: number;
           bytes: number;
           keys: number;
         };
@@ -242,7 +258,7 @@ async function pixels(page: Page) {
   });
 }
 for (const mode of ["client", "discovery"]) {
-  for (const encoding of ["raw", "hvec"]) {
+  for (const encoding of ["raw", "hvec", "H.264"]) {
     test(`${mode}: ${encoding} uploads decode into changing ASCII frames`, async ({
       page,
     }, info) => {
@@ -271,8 +287,10 @@ for (const mode of ["client", "discovery"]) {
       if (encoding === "raw") {
         expect(end.raw).toBeGreaterThan(30);
         expect(end.hevc).toBe(0);
+        expect(end.h264).toBe(0);
       } else {
-        expect(end.hevc).toBeGreaterThan(30);
+        expect(encoding === "H.264" ? end.h264 : end.hevc).toBeGreaterThan(30);
+        expect(encoding === "H.264" ? end.hevc : end.h264).toBe(0);
         expect(end.raw).toBe(0);
         expect(end.keys).toBeGreaterThan(0);
       }
@@ -409,5 +427,162 @@ for (const mode of ["client", "discovery"]) {
     await page.waitForTimeout(1000);
     expect((await probe(page)).hevc).toBe(stopped.hevc);
     expect((await probe(page)).raw).toBe(0);
+  });
+  for (const scenario of ["hevc", "h264", "raw"]) {
+    test(`${mode}: default preference chooses ${scenario}`, async ({
+      page,
+    }) => {
+      await page.addInitScript((selected) => {
+        const probe = VideoEncoder.isConfigSupported.bind(VideoEncoder);
+        VideoEncoder.isConfigSupported = async (config) => {
+          if (
+            selected === "raw" ||
+            (selected === "h264" && config.codec.startsWith("hev"))
+          )
+            return { supported: false, config };
+          return probe(config);
+        };
+      }, scenario);
+      await connect(page, mode, "default");
+      await expect
+        .poll(
+          async () => (await probe(page))[scenario as "hevc" | "h264" | "raw"],
+        )
+        .toBeGreaterThan(15);
+      await expect
+        .poll(async () => (await pixels(page)).lit)
+        .toBeGreaterThan(100);
+      const first = await pixels(page);
+      await expect
+        .poll(async () => (await pixels(page)).hash)
+        .not.toBe(first.hash);
+      await page
+        .getByRole("button", { name: "Device setup", exact: true })
+        .click();
+      const selector = page.getByLabel("Video encoding", { exact: true });
+      await expect(selector).toBeEnabled();
+      await expect(selector).toHaveValue(scenario);
+      const values = await selector
+        .locator("option")
+        .evaluateAll((options) =>
+          options.map((option) => (option as HTMLOptionElement).value),
+        );
+      expect(values).toEqual(
+        scenario === "hevc"
+          ? ["auto", "hevc", "h264", "raw"]
+          : scenario === "h264"
+            ? ["auto", "h264", "raw"]
+            : ["auto", "raw"],
+      );
+      await page.getByRole("button", { name: "Close device setup" }).click();
+      for (const other of ["hevc", "h264", "raw"] as const)
+        if (other !== scenario) expect((await probe(page))[other]).toBe(0);
+      await expect(page.getByRole("alert")).toHaveCount(0);
+    });
+  }
+  test(`${mode}: forced H.264 errors when unsupported`, async ({ page }) => {
+    await page.addInitScript(() => {
+      VideoEncoder.isConfigSupported = async (config) => ({
+        supported: false,
+        config,
+      });
+    });
+    await connect(page, mode, "H.264");
+    await expect(page.getByRole("alert")).toContainText(
+      "H.264 encoding is unsupported",
+    );
+    await expect(page.getByRole("alert")).toContainText("?encoding=raw");
+    expect((await probe(page)).raw).toBe(0);
+    expect((await probe(page)).h264).toBe(0);
+  });
+  test(`${mode}: automatic runtime fallback renders HEVC then H.264 then raw`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const codecs = new WeakMap<VideoEncoder, string>();
+      const configure = VideoEncoder.prototype.configure;
+      const encode = VideoEncoder.prototype.encode;
+      Object.assign(window, { __failedCodecs: [] as string[] });
+      VideoEncoder.prototype.configure = function (config) {
+        codecs.set(this, config.codec);
+        configure.call(this, config);
+      };
+      VideoEncoder.prototype.encode = function (frame, options) {
+        const failed = (window as unknown as { __failedCodecs: string[] })
+          .__failedCodecs;
+        if (failed.some((prefix) => codecs.get(this)?.startsWith(prefix)))
+          throw new Error("Injected codec failure");
+        encode.call(this, frame, options);
+      };
+    });
+    await connect(page, mode, "default");
+    await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
+    await page.evaluate(() =>
+      Object.assign(window, { __failedCodecs: ["hev"] }),
+    );
+    await expect.poll(async () => (await probe(page)).h264).toBeGreaterThan(15);
+    const first = await pixels(page);
+    await page.evaluate(() =>
+      Object.assign(window, { __failedCodecs: ["hev", "avc"] }),
+    );
+    await expect.poll(async () => (await probe(page)).raw).toBeGreaterThan(15);
+    await expect
+      .poll(async () => (await pixels(page)).hash)
+      .not.toBe(first.hash);
+    await expect
+      .poll(async () => (await pixels(page)).lit)
+      .toBeGreaterThan(100);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+  test(`${mode}: modal persists encoding while query overrides remain temporary`, async ({
+    page,
+  }, info) => {
+    await connect(page, mode, "default");
+    await expect.poll(async () => (await probe(page)).hevc).toBeGreaterThan(15);
+    const storage = () =>
+      page.evaluate(() => localStorage.getItem("ascii-chat.video-encoding"));
+    await page
+      .getByRole("button", { name: "Device setup", exact: true })
+      .click();
+    const selector = page.getByLabel("Video encoding", { exact: true });
+    await expect(selector).toBeEnabled();
+    await expect(selector).toHaveValue("hevc");
+    expect(await storage()).toBeNull();
+    await selector.selectOption("h264");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    expect(await storage()).toBeNull();
+    await page
+      .getByRole("button", { name: "Device setup", exact: true })
+      .click();
+    await selector.selectOption("h264");
+    await page.screenshot({
+      path: info.outputPath("encoding-selector.png"),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    expect(await storage()).toBe("h264");
+    expect(new URL(page.url()).searchParams.get("encoding")).toBe("H.264");
+    await expect.poll(async () => (await probe(page)).h264).toBeGreaterThan(15);
+    await expect
+      .poll(async () => (await pixels(page)).lit)
+      .toBeGreaterThan(100);
+    const temporary = new URL(page.url());
+    temporary.searchParams.set("encoding", "raw");
+    await page.goto(temporary.toString());
+    await page
+      .getByRole("button", { name: "Device setup", exact: true })
+      .click();
+    await expect(selector).toBeEnabled();
+    await expect(selector).toHaveValue("raw");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    expect(await storage()).toBe("h264");
+    temporary.searchParams.delete("encoding");
+    await page.goto(temporary.toString());
+    await page
+      .getByRole("button", { name: "Device setup", exact: true })
+      .click();
+    await expect(selector).toBeEnabled();
+    await expect(selector).toHaveValue("h264");
+    expect(await storage()).toBe("h264");
   });
 }

@@ -41,7 +41,7 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 
 #define HANDLER_HASH_SIZE 32    // ~50% load factor for 14-16 entries
 #define CLIENT_HANDLER_COUNT 20 // Added 6 crypto handshake handlers
-#define SERVER_HANDLER_COUNT 20 // Added 1 H.265 image frame handler
+#define SERVER_HANDLER_COUNT 21
 
 /**
  * @brief Hash table entry for packet type to handler mapping
@@ -124,6 +124,7 @@ static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
    [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       18},  // hash(1105)=17, probed->22
    [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       19},  // hash(1109)=21, probed->23
    [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
+   [27] = {PACKET_TYPE_IMAGE_FRAME_H264,          20},
    [26] = {PACKET_TYPE_IMAGE_FRAME_H265,           2},   // hash(3002)=26
 };
 // clang-format on
@@ -596,6 +597,8 @@ static asciichat_error_t handle_client_crypto_parameters(const void *payload, si
 // Forward declarations for server handlers
 static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx,
+                                                        const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
                                                         const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx,
@@ -658,6 +661,7 @@ static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] 
     handle_server_crypto_key_exchange_resp, // 17
     handle_server_crypto_auth_response,     // 18
     handle_server_crypto_no_encryption,     // 19
+    handle_server_image_frame_h264,         // 20
 };
 
 // Packet type names for debugging (matches handler table order)
@@ -667,6 +671,8 @@ static const char *g_packet_type_name(packet_type_t type) {
     return "PROTOCOL_VERSION";
   case PACKET_TYPE_IMAGE_FRAME:
     return "IMAGE_FRAME";
+  case PACKET_TYPE_IMAGE_FRAME_H264:
+    return "IMAGE_FRAME_H264";
   case PACKET_TYPE_IMAGE_FRAME_H265:
     return "IMAGE_FRAME_H265";
   case PACKET_TYPE_AUDIO_BATCH:
@@ -861,60 +867,33 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   return ASCIICHAT_OK;
 }
 
+static asciichat_error_t handle_server_encoded_frame(const void *payload, size_t payload_len, void *client_ctx,
+                                                     const acip_server_callbacks_t *callbacks, bool h264) {
+  if (!payload || payload_len <= 5)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Encoded video payload must contain a five-byte header and access unit");
+  const uint8_t *bytes = payload;
+  uint8_t flags = bytes[0];
+  uint16_t width = ((uint16_t)bytes[1] << 8) | bytes[2];
+  uint16_t height = ((uint16_t)bytes[3] << 8) | bytes[4];
+  if (!width || !height || width > 8192 || height > 8192 || (flags & ~3))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded video dimensions or flags");
+  if (h264) {
+    if (callbacks->on_image_frame_h264)
+      callbacks->on_image_frame_h264(width, height, flags, bytes + 5, payload_len - 5, client_ctx, callbacks->app_ctx);
+  } else if (callbacks->on_image_frame_h265) {
+    callbacks->on_image_frame_h265(width, height, flags, bytes + 5, payload_len - 5, client_ctx, callbacks->app_ctx);
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_server_image_frame_h264(const void *payload, size_t payload_len, void *client_ctx,
+                                                        const acip_server_callbacks_t *callbacks) {
+  return handle_server_encoded_frame(payload, payload_len, client_ctx, callbacks, true);
+}
+
 static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
                                                         const acip_server_callbacks_t *callbacks) {
-  log_info("ACIP_IMAGE_FRAME_H265_HANDLER: Received IMAGE_FRAME_H265 packet, payload_len=%zu, client_ctx=%p",
-           payload_len, client_ctx);
-
-  if (!callbacks->on_image_frame_h265) {
-    log_warn("ACIP_IMAGE_FRAME_H265_HANDLER: No callback registered for on_image_frame_h265");
-    return ASCIICHAT_OK;
-  }
-
-  // Minimum header: [flags:u8][width:u16][height:u16] = 5 bytes
-  if (payload_len < 5) {
-    log_error("ACIP_IMAGE_FRAME_H265_HANDLER: Payload too small: %zu bytes (need at least 5)", payload_len);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME_H265 payload too small: %zu bytes (need at least 5)",
-                     payload_len);
-  }
-
-  const uint8_t *payload_bytes = (const uint8_t *)payload;
-
-  // Parse header: [flags:u8][width:u16][height:u16]
-  uint8_t flags = payload_bytes[0];
-  uint16_t width = ((uint16_t)payload_bytes[1] << 8) | payload_bytes[2];
-  uint16_t height = ((uint16_t)payload_bytes[3] << 8) | payload_bytes[4];
-
-  log_info("ACIP_IMAGE_FRAME_H265_HEADER: flags=0x%02x, width=%u, height=%u", flags, width, height);
-
-  // Get H.265 encoded data (after 5-byte header)
-  const void *h265_data = (const uint8_t *)payload + 5;
-  size_t h265_data_len = payload_len - 5;
-
-  // Validate frame dimensions to prevent DoS and buffer overflow attacks
-  if (width == 0 || height == 0) {
-    log_error("Invalid H.265 frame dimensions: %ux%u (width and height must be > 0)", width, height);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid H.265 frame dimensions: %ux%u (width and height must be > 0)", width,
-                     height);
-  }
-
-  // Sanity check: prevent unreasonably large frames
-  const uint32_t MAX_WIDTH = 8192;  // 8K
-  const uint32_t MAX_HEIGHT = 8192; // 8K
-  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-    log_error("H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height, MAX_WIDTH, MAX_HEIGHT);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height,
-                     MAX_WIDTH, MAX_HEIGHT);
-  }
-
-  log_info("📹 [IMAGE_FRAME_H265_CALLBACK] Invoking on_image_frame_h265 callback: %ux%u pixels, flags=0x%02x, %zu "
-           "bytes (H.265), client_ctx=%p",
-           width, height, flags, h265_data_len, client_ctx);
-
-  callbacks->on_image_frame_h265(width, height, flags, h265_data, h265_data_len, client_ctx, callbacks->app_ctx);
-
-  log_info("✅ [IMAGE_FRAME_H265_DONE] on_image_frame_h265 callback returned successfully");
-  return ASCIICHAT_OK;
+  return handle_server_encoded_frame(payload, payload_len, client_ctx, callbacks, false);
 }
 
 static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx,

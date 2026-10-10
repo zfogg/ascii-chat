@@ -1,3 +1,8 @@
+import {
+  useVideoEncodings,
+  VIDEO_ENCODING_LABELS,
+} from "../hooks/useVideoEncodings";
+import type { VideoEncoding } from "../network/videoEncoding";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -64,6 +69,14 @@ function deduplicateDefaultDevice(
 }
 
 export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
+  const videoEncodings = useVideoEncodings({
+    fps:
+      Number(new URLSearchParams(window.location.search).get("targetFps")) ||
+      60,
+  });
+  const [encodingDraft, setEncodingDraft] = useState<VideoEncoding | null>(
+    null,
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -228,6 +241,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   useEffect(() => {
     isOpenRef.current = open;
     if (open) {
+      setEncodingDraft(null);
       setPreferences(getMediaDevicePreferences());
       void startPreview(getMediaDevicePreferences());
     } else {
@@ -261,8 +275,17 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   };
 
   const handleSave = () => {
-    saveMediaDevicePreferences(preferences);
-    onClose();
+    try {
+      if (encodingDraft !== null) videoEncodings.selectEncoding(encodingDraft);
+      saveMediaDevicePreferences(preferences);
+      onClose();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to save device preferences.",
+      );
+    }
   };
 
   const playSpeakerTest = async () => {
@@ -319,7 +342,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         <header className="flex items-start justify-between border-b border-terminal-8 px-6 py-5">
           <div>
             <h2 className="text-xl font-semibold" id="device-setup-title">
-              Audio device setup
+              Device setup
             </h2>
             <p className="mt-1 text-sm text-terminal-8">
               Choose your camera and microphone, then check your levels.
@@ -331,7 +354,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             onClick={onClose}
             type="button"
           >
-            Ã—
+            ×
           </button>
         </header>
 
@@ -348,7 +371,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               />
               {loading && (
                 <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
-                  Starting camera previewâ€¦
+                  Starting camera preview…
                 </div>
               )}
               {!loading && !streamRef.current?.getVideoTracks().length && (
@@ -383,6 +406,55 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 ))}
               </select>
             </label>
+
+            <div>
+              <label className="block text-sm">
+                <span className="mb-2 block font-medium">Video encoding</span>
+                <select
+                  className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+                  aria-label="Video encoding"
+                  disabled={videoEncodings.loading}
+                  value={encodingDraft ?? videoEncodings.selectedEncoding}
+                  onChange={(event) =>
+                    setEncodingDraft(event.currentTarget.value as VideoEncoding)
+                  }
+                >
+                  <option value="auto">
+                    Automatic (
+                    {VIDEO_ENCODING_LABELS[videoEncodings.bestEncoding]})
+                  </option>
+                  {videoEncodings.supportedEncodings.map((encoding) => (
+                    <option key={encoding} value={encoding}>
+                      {VIDEO_ENCODING_LABELS[encoding]}
+                    </option>
+                  ))}
+                  {!videoEncodings.supportedEncodings.includes(
+                    videoEncodings.selectedEncoding,
+                  ) && (
+                    <option value={videoEncodings.selectedEncoding} disabled>
+                      {VIDEO_ENCODING_LABELS[videoEncodings.selectedEncoding]}{" "}
+                      (unavailable)
+                    </option>
+                  )}
+                </select>
+              </label>
+              <p className="mt-2 text-xs text-terminal-8">
+                {videoEncodings.loading
+                  ? "Checking browser support…"
+                  : "Used for Client and Discovery uploads. Automatic prefers HEVC, then H.264, then raw pixels."}
+              </p>
+              {videoEncodings.source === "url" && (
+                <p className="mt-1 text-xs text-terminal-8">
+                  The URL overrides your saved encoding. Choose an encoding and
+                  press Done to save a new preference.
+                </p>
+              )}
+              {videoEncodings.error && (
+                <p className="mt-1 text-sm text-terminal-1">
+                  {videoEncodings.error}
+                </p>
+              )}
+            </div>
 
             <label className="block text-sm">
               <span className="mb-2 block font-medium">Speakers</span>
@@ -420,7 +492,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               }
               type="button"
             >
-              {testingSpeakers ? "Playing test toneâ€¦" : "Test speakers"}
+              {testingSpeakers ? "Playing test tone…" : "Test speakers"}
             </button>
 
             <label className="block text-sm">

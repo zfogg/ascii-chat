@@ -26,9 +26,10 @@ extern "C" {
  * @ingroup media
  */
 typedef enum {
-  VIDEO_CODEC_RGBA = 0,   ///< Raw RGBA (4 bytes per pixel, uncompressed)
-  VIDEO_CODEC_H265 = 1,   ///< H.265 (HEVC) video codec
-  VIDEO_CODEC_JPEG = 2,   ///< JPEG still frame codec
+  VIDEO_CODEC_RGBA = 0, ///< Raw RGBA (4 bytes per pixel, uncompressed)
+  VIDEO_CODEC_H265 = 1, ///< H.265 (HEVC) video codec
+  VIDEO_CODEC_JPEG = 2, ///< JPEG still frame codec
+  VIDEO_CODEC_H264 = 3, ///< H.264 (AVC) video codec
 } video_codec_t;
 
 /**
@@ -42,12 +43,13 @@ typedef enum {
 #define VIDEO_CODEC_CAP_RGBA ((uint32_t)(1 << VIDEO_CODEC_RGBA))   ///< Bit 0: RGBA support
 #define VIDEO_CODEC_CAP_H265 ((uint32_t)(1 << VIDEO_CODEC_H265))   ///< Bit 1: H.265 support
 #define VIDEO_CODEC_CAP_JPEG ((uint32_t)(1 << VIDEO_CODEC_JPEG))   ///< Bit 2: JPEG support
+#define VIDEO_CODEC_CAP_H264 ((uint32_t)(1 << VIDEO_CODEC_H264))   ///< Bit 3: H.264 support
 
 /**
  * @brief Default video codec capabilities (all codecs supported)
  * @ingroup media
  */
-#define VIDEO_CODEC_CAP_ALL (VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_JPEG)
+#define VIDEO_CODEC_CAP_ALL (VIDEO_CODEC_CAP_H264 | VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_JPEG)
 
 /**
  * @name Audio Codec Types
