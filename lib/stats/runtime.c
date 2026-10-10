@@ -174,10 +174,27 @@ static void stats_render(terminal_size_t size, const void *data) {
                       view->page ? "CONNECTIONS & MODE DETAILS" : "OVERVIEW / rates over ~1 second");
   frame_buffer_render_border(buffer, size.cols, "\033[36m");
   unsigned available = size.rows > 6 ? (unsigned)size.rows - 6 : 0;
+  unsigned remaining = view->offset < view->count ? view->count - view->offset : 0;
+  unsigned visible = remaining < available ? remaining : available;
+  unsigned top = (available - visible) / 2;
+  size_t width = 0;
+  // Use the whole page to keep columns stable while scrolling.
+  for (unsigned i = 0; i < view->count; ++i) {
+    size_t length = strlen(view->lines[i]);
+    if (length > width)
+      width = length;
+  }
+  if (width > (size_t)(size.cols - 4))
+    width = (size_t)(size.cols - 4);
+  int left = (size.cols - (int)width) / 2;
   for (unsigned i = 0; i < available; ++i) {
-    unsigned index = view->offset + i;
-    frame_buffer_printf(buffer, "%s  %-.*s\033[0m\033[K\n", view->page && index == view->selected ? "\033[7m" : "",
-                        size.cols - 3, index < view->count ? view->lines[index] : "");
+    if (i < top || i >= top + visible) {
+      frame_buffer_printf(buffer, "\033[K\n");
+      continue;
+    }
+    unsigned index = view->offset + i - top;
+    frame_buffer_printf(buffer, "%*s%s%.*s\033[0m\033[K\n", left, "",
+                        view->page && index == view->selected ? "\033[7m" : "", (int)width, view->lines[index]);
   }
   frame_buffer_render_border(buffer, size.cols, "\033[36m");
   char footer[160];
