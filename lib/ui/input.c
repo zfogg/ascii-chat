@@ -1,3 +1,5 @@
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/keyboard_help.h>
@@ -79,6 +81,11 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
                                                                                   : keyboard_read_nonblocking();
     }
     g_was_covered = state.covered;
+  }
+  if ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_SPLASH) &&
+      state.screen != UI_SCREEN_HELP && key == '=' && !log_search_is_entering()) {
+    stats_runtime_toggle();
+    key = KEY_NONE;
   }
   mutex_unlock(&g_mutex);
   return key;

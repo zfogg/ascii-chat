@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file session/display.c
  * @brief 🖥️ Unified terminal display implementation
@@ -495,6 +496,7 @@ bool session_display_has_render_file(session_display_ctx_t *ctx) {
  * ============================================================================ */
 
 char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image) {
+  uint64_t stats_start = time_get_ns();
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session_display_convert_to_ascii: ctx is NULL");
     return NULL;
@@ -708,6 +710,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
           (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
           (t_cleanup_end - t_flip_start) / 1000);
 
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - stats_start);
+  stats_counter_add(stats_runtime_scope(), result ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
   return result;
 }
 
@@ -1015,7 +1019,11 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
       render_frame = visualization_frame;
   }
 
+  uint64_t stats_record_start = time_get_ns();
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, render_frame, captured_ns);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_RECORDING, time_get_ns() - stats_record_start);
+  if (fe == ASCIICHAT_OK)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);
   SAFE_FREE(visualization_frame);
   if (fe != ASCIICHAT_OK) {
     log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));

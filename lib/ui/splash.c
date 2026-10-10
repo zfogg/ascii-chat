@@ -370,7 +370,7 @@ static void *splash_animation_thread(void *arg) {
 
   // Keyboard is pre-initialized from asciichat_shared_init()
   // Only enable if terminal is interactive (keyboard won't work in non-TTY)
-  bool keyboard_enabled = terminal_is_interactive() && !discovery_splash_snapshot().enabled;
+  bool keyboard_enabled = terminal_is_interactive();
 
   // Animate with rainbow wave effect - TIME-BASED, not frame-based
   // This ensures animation speed is consistent regardless of FPS
@@ -438,6 +438,10 @@ static void *splash_animation_thread(void *arg) {
     }
     if (keyboard_enabled) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
+      // The invitation accepts the shared stats toggle; other splash controls
+      // must not dismiss the session string while waiting for a peer.
+      if (discovery_splash_snapshot().enabled)
+        key = KEY_NONE;
       if (key == KEY_ESCAPE) {
         // Escape key: cancel grep if active, otherwise cancel splash
         if (log_search_is_active()) {

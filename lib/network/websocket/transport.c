@@ -1701,6 +1701,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
 
   // Initialize transport
   transport->methods = &websocket_methods;
+  transport->stats_peer = stats_runtime_peer_open("WebSocket");
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
@@ -1919,6 +1920,7 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
 
   // Initialize transport
   transport->methods = &websocket_methods;
+  transport->stats_peer = stats_runtime_peer_open("WebSocket");
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
