@@ -60,6 +60,8 @@ typedef struct session_display_ctx session_display_ctx_t;
  * - Volume range: [0.0, 1.0] (0% = silent, 100% = maximum/normal)
  * - Default volume: 1.0 (100%)
  * - Mute state: Remembers the previous non-zero volume when toggled back on
+ * - Volume and mute controls show a right-side bar for 1.5 seconds after the last press
+ * - Feedback works while paused; pausing alone does not show the bar
  * - Unrecognized keys are silently ignored (no error returned)
  *
  * **Thread safety:**
