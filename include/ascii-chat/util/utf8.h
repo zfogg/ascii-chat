@@ -145,6 +145,21 @@ int utf8_display_width(const char *str);
  */
 int utf8_display_width_n(const char *str, size_t max_bytes);
 
+/**
+ * @brief Return the byte length of a prefix fitting a terminal column limit
+ * @param str Input string or bounded slice (may be NULL)
+ * @param max_bytes Maximum readable bytes
+ * @param max_width Maximum terminal columns; negative values return zero
+ * @return Prefix length in bytes, without modifying the input
+ *
+ * Stops at NUL, invalid/incomplete UTF-8, or an incomplete/unsupported escape.
+ * Complete ANSI CSI sequences consume zero columns. Codepoints are never split;
+ * combining marks and trailing CSI sequences are included even at the width limit.
+ * Widths follow utf8proc_charwidth(), not grapheme-cluster or terminal-specific
+ * emoji shaping. A zero-column limit may include leading zero-width tokens.
+ */
+size_t utf8_prefix_bytes_for_width(const char *str, size_t max_bytes, int max_width);
+
 /* ============================================================================
  * UTF-8 Validation Functions
  * ========================================================================== */

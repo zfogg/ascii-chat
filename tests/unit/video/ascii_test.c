@@ -1028,3 +1028,50 @@ Test(ascii, ascii_create_grid_colored_rows_do_not_overlap) {
   cr_assert_eq(grid[size - 1], 'm'); // Ends with a complete reset, without a scrolling newline.
   SAFE_FREE(grid);
 }
+
+Test(ascii, ascii_create_grid_unicode_centering) {
+  const char *frame = "\033[31mé中😀\033[0m";
+  ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
+  size_t size;
+  char *grid = ascii_create_grid(&source, 1, 9, 1, &size);
+  cr_assert_not_null(grid);
+  cr_assert_str_eq(grid, "  \033[31mé中😀\033[0m\033[0m  ");
+  SAFE_FREE(grid);
+}
+
+Test(ascii, ascii_create_grid_unicode_clipping) {
+  const char *frame = "\033[31mé中😀x\033[0m";
+  ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
+  size_t size;
+  char *grid = ascii_create_grid(&source, 1, 4, 1, &size);
+  cr_assert_not_null(grid);
+  cr_assert_str_eq(grid, "\033[31mé中\033[0m ");
+  SAFE_FREE(grid);
+}
+
+
+Test(ascii, ascii_create_grid_unicode_separators) {
+  const char *left = "\033[31mé中😀ABCDEextra\033[0m\n";
+  const char *right = "\033[32m中é😀12345extra\033[0m\n";
+  char left_frame[512] = "", right_frame[512] = "";
+  for (int row = 0; row < 6; ++row) {
+    strcat(left_frame, left);
+    strcat(right_frame, right);
+  }
+  ascii_frame_source_t sources[] = {{left_frame, strlen(left_frame)}, {right_frame, strlen(right_frame)}};
+  size_t size;
+  char *grid = ascii_create_grid(sources, 2, 21, 6, &size);
+  cr_assert_not_null(grid);
+  const char *expected = "\033[31mé中😀ABCDE\033[0m|\033[32m中é😀12345\033[0m";
+  const char *row = grid;
+  for (int i = 0; i < 6; ++i) {
+    cr_assert_eq(strncmp(row, expected, strlen(expected)), 0);
+    row += strlen(expected);
+    if (i < 5) {
+      cr_assert_eq(strncmp(row, "\r\n", 2), 0);
+      row += 2;
+    }
+  }
+  cr_assert_eq(*row, '\0');
+  SAFE_FREE(grid);
+}

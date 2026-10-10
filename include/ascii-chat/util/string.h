@@ -264,12 +264,14 @@ const char *colored_string(log_color_t color, const char *text);
  * and wide characters (CJK = 2 columns). If truncation is needed, appends
  * a color reset (\033[0m) followed by "…" (Unicode ellipsis, 1 column).
  *
+ * Returns an empty string for nonpositive widths or when truncation is needed
+ * but the buffer cannot hold the suffix. Byte limits never split UTF-8 or CSI.
  * Safe for strings with or without ANSI codes. For plain text the reset
  * is harmless (terminals ignore redundant resets).
  *
  * @param input Input string (may contain ANSI escape sequences and UTF-8)
  * @param output Output buffer for truncated string
- * @param output_size Size of output buffer (must be >= 10 for reset + ellipsis + NUL)
+ * @param output_size Size of output buffer (8 bytes needed for reset + ellipsis + NUL)
  * @param max_width Maximum display width in columns
  *
  * @ingroup util
