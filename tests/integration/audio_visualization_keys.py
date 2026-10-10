@@ -25,11 +25,15 @@ def main():
         term = Terminal([binary, '--no-check-update', '--log-file',
                          str(root/'audio-keys-runtime.log'), 'mirror', '--file', str(media),
                          '--loop', '--audio-source', 'media', '--volume', '0', '--splash-screen=false',
-                         '--color-mode', 'truecolor'], rows=44, cols=120)
+                         '--color-mode', 'truecolor'], rows=24, cols=100)
         try:
             term.pump(5)
             term.write('?')
             term.expect(lambda s: '(2) Audio Waveform : X' in s and '(3) Audio Frequencies (FFT) : X' in s, 'Help lists audio controls')
+            help_text = term.pump(.2)
+            heading = next(line for line in help_text.splitlines() if 'Navigation & Control:' in line)
+            assert 'Current Settings:' in heading, help_text
+            assert heading.index('Current Settings:') > heading.index('Navigation & Control:'), help_text
             term.write('1')
             term.expect(lambda s: '(1) Matrix \"Digital Rain\" : O' in s, 'Matrix enables')
             term.write('2')

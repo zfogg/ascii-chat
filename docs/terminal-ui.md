@@ -51,6 +51,10 @@ log, option, and named-registry teardown.
 
 ## Audio visualizations
 
+Keyboard help places Current Settings and Animations to the right of Navigation
+& Control. Its width is measured from both columns and its height from the
+longer column; undersized terminals show the shared size warning.
+
 The keyboard help menu's Animations section lists `2` (audio waveform) and `3`
 (audio frequencies/FFT), with live on/off indicators. Either key selects its
 visualization and disables the other and Matrix rain. Matrix (`1`) disables both
