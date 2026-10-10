@@ -61,7 +61,20 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   r->line = line;
   snprintf(r->name, sizeof(r->name), "%s", name ? name : "?");
   snprintf(r->type, sizeof(r->type), "%s", type);
-  snprintf(r->file, sizeof(r->file), "%s", file ? file : "?");
+  const char *source = file ? file : "?";
+  for (const char *p = source; *p; ++p) {
+    if (p != source && p[-1] != '/' && p[-1] != '\\')
+      continue;
+    if (((!strncmp(p, "lib", 3) || !strncmp(p, "src", 3)) && (p[3] == '/' || p[3] == '\\')) ||
+        (!strncmp(p, "include", 7) && (p[7] == '/' || p[7] == '\\'))) {
+      source = p;
+      break;
+    }
+  }
+  snprintf(r->file, sizeof(r->file), "%s", source);
+  for (char *p = r->file; *p; ++p)
+    if (*p == '\\')
+      *p = '/';
   if (!strcmp(type, "mutex")) {
     const mutex_t *m = (const mutex_t *)key;
     r->owner = m->currently_held_by_key;
@@ -345,7 +358,7 @@ void ui_sync_render(terminal_size_t size) {
   for (size_t i = 0; i < count; ++i) {
     sync_row_t *r = &rows[i];
     // Parent names may be media paths; keep the primitive visible in the table.
-    // The detail row retains its full registry name and address.
+    // The detail row identifies the source location and address.
     const char *name = strrchr(r->name, '#');
     name = name ? name + 1 : r->name;
     char state[128];
@@ -371,11 +384,11 @@ void ui_sync_render(terminal_size_t size) {
   ui_controller_write(g_sync_fd, line, strlen(line));
   if (count) {
     sync_row_t *r = &rows[selected];
-    snprintf(line, sizeof(line), "%s @0x%" PRIxPTR " owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR "%s", r->name, r->key,
-             r->owner, r->waiter, r->cycle ? " DEADLOCK" : "");
+    snprintf(line, sizeof(line), "%s:%d @0x%" PRIxPTR, r->file, r->line, r->key);
     sync_write_line(line, size.cols, true);
-    snprintf(line, sizeof(line), "%s:%d | value=%" PRIu64 " | last operation %.2fs ago", r->file, r->line, r->value,
-             r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0);
+    snprintf(line, sizeof(line), "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64
+                                " | last operation %.2fs ago%s", r->owner, r->waiter, r->value,
+             r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0, r->cycle ? " DEADLOCK" : "");
     sync_write_line(line, size.cols, true);
   }
   snprintf(line, sizeof(line), "\033[%d;1H", size.rows);

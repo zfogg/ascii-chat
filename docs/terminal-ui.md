@@ -54,8 +54,9 @@ log, option, and named-registry teardown.
 Press `0` to replace media or help with the sync screen; `0` or Escape restores
 what was underneath. `?` switches to help. Matrix rain uses `1`.
 Left/Right pages through every registered mutex, rwlock, condition variable,
-wrapped atomic, and atomic pointer. Up/Down selects a row for its full name,
-address, owner/waiter, source location, and last-operation age. Home/End selects
+wrapped atomic, and atomic pointer. Up/Down selects a row for its address, owner/waiter, source location, and
+last-operation age. Source locations start at `lib/`, `src/`, or `include/`
+and use forward slashes; media paths are omitted from the details. Home/End selects
 the first/last page. Higher-priority prompts still cover diagnostics.
 
 The table shows lock/unlock rates (wait/signal rates for conditions), atomic
