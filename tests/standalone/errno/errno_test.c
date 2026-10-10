@@ -73,6 +73,14 @@ static void stack_contract(void) {
 
 static void scopes_and_history(void) {
   SET_ERRNO(ERROR_AUDIO, "unrelated older failure");
+  asciichat_error_context_t outer, propagated;
+  CHECK(HAS_ERRNO(&outer));
+  asciichat_errno_scope_t successful_query = asciichat_errno_scope_begin();
+  ASSERT_NO_ERRNO_SINCE(successful_query);
+  asciichat_errno_scope_end(successful_query, ASCIICHAT_ERRNO_DISMISSED);
+  SET_ERRNO(ERROR_NETWORK, "failure after successful optional query");
+  CHECK(HAS_ERRNO(&propagated) && propagated.cause_id == outer.error_id);
+  CLEAR_ERRNO();
   asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
   CHECK(asciichat_errno_scope_is_clean(scope));
   SET_ERRNO(ERROR_MEDIA_OPEN, "yt-dlp attempt");
@@ -190,6 +198,35 @@ static void *stress_worker(void *arg) {
   return NULL;
 }
 
+static void *publish_during_clear(void *arg) {
+  worker_data_t *data = arg;
+  asciichat_errno_suppress(true);
+  data->tid = asciichat_thread_current_id();
+  atomic_store_bool_impl(&data->ready, true);
+  while (!atomic_load_bool_impl(&data->release))
+    SET_ERRNO(ERROR_NETWORK, "concurrent publication");
+  return NULL;
+}
+static void cross_thread_history_timing(void) {
+  worker_data_t data = {0};
+  asciichat_thread_t thread;
+  CHECK(asciichat_thread_create(&thread, "errno-history-race", publish_during_clear, &data) == 0);
+  while (!atomic_load_bool_impl(&data.ready))
+    platform_sleep_ns(NS_PER_MS_INT);
+  for (int i = 0; i < 2000; ++i) {
+    asciichat_error_context_t top;
+    if (asciichat_has_thread_errno(data.tid, &top))
+      asciichat_clear_errno_if_top(data.tid, top.generation, top.error_id);
+    CLEAR_ERRNO_ALL_TID(data.tid);
+    asciichat_errno_history_t history[8];
+    size_t count = asciichat_errno_history_snapshot(history, 8);
+    for (size_t j = 0; j < count && j < sizeof(history) / sizeof(history[0]); ++j)
+      CHECK(history[j].resolved_ns >= history[j].context.created_ns);
+  }
+  atomic_store_bool_impl(&data.release, true);
+  CHECK(asciichat_thread_join(&thread, NULL) == 0);
+}
+
 static void concurrency_contract(void) {
   asciichat_thread_t threads[8];
   atomic_t done = {0};
@@ -197,7 +234,9 @@ static void concurrency_contract(void) {
     CHECK(asciichat_thread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
   while (atomic_load_int_impl(&done) < 8) {
     asciichat_errno_history_t history[4];
-    asciichat_errno_history_snapshot(history, 4);
+    size_t count = asciichat_errno_history_snapshot(history, 4);
+    for (size_t j = 0; j < count && j < sizeof(history) / sizeof(history[0]); ++j)
+      CHECK(history[j].resolved_ns >= history[j].context.created_ns);
     platform_sleep_ns(NS_PER_MS_INT);
   }
   for (size_t i = 0; i < 8; ++i)
@@ -243,6 +282,7 @@ int main(int argc, char **argv) {
   scopes_and_history();
   capacity_contract();
   cross_thread_contract();
+  cross_thread_history_timing();
   concurrency_contract();
   CHECK(debug_stats_init() == ASCIICHAT_OK);
   CHECK(debug_stats_start_thread() == ASCIICHAT_OK);

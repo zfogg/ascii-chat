@@ -200,6 +200,8 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
         /* A read timeout is the ordinary idle state for signaling sockets.
          * Do not emit an error on every polling interval. */
         asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
+        if (total_received > 0)
+          SET_ERRNO(ERROR_NETWORK, "Receive timed out after consuming %zd/%zu bytes", total_received, len);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -219,6 +221,8 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
     // Other readiness flags without POLLIN are an ordinary no-data result.
     if (!(pfd.revents & POLLIN)) {
       asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
+      if (total_received > 0)
+        SET_ERRNO(ERROR_NETWORK, "Receive stalled after consuming %zd/%zu bytes", total_received, len);
       return -1;
     }
 

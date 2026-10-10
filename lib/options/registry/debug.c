@@ -47,6 +47,7 @@ const registry_entry_t g_debug_entries[] = {
      OPTION_MODE_ALL,
      {0},    // metadata
      NULL},  // action_fn
+#ifndef NDEBUG
     {"backtrace",
      '\0',
      OPTION_TYPE_DOUBLE,
@@ -84,5 +85,6 @@ const registry_entry_t g_debug_entries[] = {
      {0},    // metadata
      NULL},  // action_fn
 
+#endif
     REGISTRY_TERMINATOR()};
 // clang-format on

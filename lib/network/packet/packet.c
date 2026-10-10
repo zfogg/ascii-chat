@@ -593,7 +593,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
   if (received < 0) {
     /* Preserve a poll timeout so callers can wait for the next signaling packet
      * without treating an idle connection as a receive failure. */
-    if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
+    if (GET_ERRNO() == ERROR_NETWORK_TIMEOUT && HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
       return PACKET_RECV_ERROR;
     }
     SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));

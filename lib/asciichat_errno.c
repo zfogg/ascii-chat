@@ -135,8 +135,8 @@ static void unregister_locked(error_thread_t *thread, uint64_t now) {
 
 #ifndef EMSCRIPTEN_BUILD
 static void error_thread_destructor(void *value) {
-  uint64_t now = time_get_ns();
   registry_lock();
+  uint64_t now = time_get_ns();
   error_thread_t *thread = value;
   if (thread && thread->generation && !g_shutdown)
     unregister_locked(thread, now);
@@ -387,8 +387,8 @@ bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_err
 }
 
 static void clear_thread(uint64_t id, bool all) {
-  uint64_t now = time_get_ns();
   registry_lock();
+  uint64_t now = time_get_ns();
   error_thread_t *thread = find_thread(id);
   if (thread) {
     do {
@@ -412,8 +412,8 @@ void asciichat_clear_errno_all(void) {
   platform_clear_error_state();
 }
 bool asciichat_clear_errno_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
-  uint64_t now = time_get_ns();
   registry_lock();
+  uint64_t now = time_get_ns();
   error_thread_t *thread = find_thread(id);
   bool matches =
       thread && thread->generation == generation && thread->depth && g_frames[thread->top].context.error_id == error_id;
