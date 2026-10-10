@@ -2,7 +2,7 @@
  * Unit tests for AsciiFrameParser
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import {
   parseAsciiFrame,
   ASCII_FRAME_HEADER_SIZE,
@@ -94,18 +94,61 @@ describe("AsciiFrameParser", () => {
     );
   });
 
-  it("should throw on compressed frames", () => {
-    const frameData = "test";
-    const payload = buildFramePayload(
-      4,
-      1,
-      frameData,
-      FrameFlags.IS_COMPRESSED,
+  // A real Zstandard frame with a four-byte RLE block containing "XXXX".
+  // Frame magic, single-segment descriptor, content size, last RLE block, value.
+  function compressedPayload() {
+    const compressed = new Uint8Array([
+      0x28, 0xb5, 0x2f, 0xfd, 0x20, 4, 0x23, 0, 0, 0x58,
+    ]);
+    const payload = new Uint8Array(ASCII_FRAME_HEADER_SIZE + compressed.length);
+    payload.set(
+      buildFramePayload(4, 1, "XXXX", FrameFlags.IS_COMPRESSED).subarray(
+        0,
+        ASCII_FRAME_HEADER_SIZE,
+      ),
     );
+    new DataView(payload.buffer).setUint32(12, compressed.length, false);
+    payload.set(compressed, ASCII_FRAME_HEADER_SIZE);
+    return payload;
+  }
 
+  it("decodes a Zstandard frame from an offset buffer", () => {
+    const payload = compressedPayload();
+    const outer = new Uint8Array(payload.length + 7);
+    outer.set(payload, 7);
+    const result = parseAsciiFrame(outer.subarray(7));
+    expect(result.ansiString).toBe("XXXX");
+    expect(result.header).toMatchObject({
+      width: 4,
+      height: 1,
+      originalSize: 4,
+      compressedSize: 10,
+    });
+  });
+
+  it("rejects compressed payloads with missing or mismatched lengths", () => {
+    const payload = compressedPayload();
+    expect(() =>
+      parseAsciiFrame(payload.subarray(0, payload.length - 1)),
+    ).toThrow("Frame payload size mismatch");
+    new DataView(payload.buffer).setUint32(12, 0, false);
     expect(() => parseAsciiFrame(payload)).toThrow(
-      "Compressed ASCII frames not supported",
+      "Frame payload size mismatch",
     );
+  });
+
+  it("rejects a decompressed size that differs from the header", () => {
+    const payload = compressedPayload();
+    new DataView(payload.buffer).setUint32(8, 5, false);
+    expect(() => parseAsciiFrame(payload)).toThrow(
+      "Decompressed ASCII frame size mismatch",
+    );
+  });
+
+  it("rejects corrupt compressed data", () => {
+    const payload = compressedPayload();
+    payload[ASCII_FRAME_HEADER_SIZE] = 0;
+    expect(() => parseAsciiFrame(payload)).toThrow();
   });
 
   it("should handle empty frame data", () => {

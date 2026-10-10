@@ -3,6 +3,7 @@ import { ClientConnection } from "../../src/network/ClientConnection";
 import {
   ConnectionState,
   PacketType,
+  configureClientCrypto,
   encryptPacket,
   initClientWasm,
 } from "../../src/wasm/client";
@@ -41,6 +42,7 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/wasm/client")>()),
   initClientWasm: vi.fn().mockResolvedValue(undefined),
   cleanupClientWasm: vi.fn(),
+  configureClientCrypto: vi.fn().mockResolvedValue(undefined),
   generateKeypair: vi.fn().mockResolvedValue("public-key"),
   setServerAddress: vi.fn(),
   registerSendPacketCallback: vi.fn(),
@@ -74,7 +76,7 @@ describe("WebSocket encryption defaults", () => {
       encrypted ? PacketType.ENCRYPTED : PacketType.IMAGE_FRAME,
     );
     expect(states).toContain(
-      encrypted ? ConnectionState.HANDSHAKE : ConnectionState.CONNECTED,
+      encrypted ? ConnectionState.CONNECTING : ConnectionState.CONNECTED,
     );
     connection.disconnect();
   });
@@ -90,7 +92,7 @@ describe("WebSocket encryption defaults", () => {
   });
 
   it.each([
-    ["ws://localhost:27226", true, ConnectionState.HANDSHAKE],
+    ["ws://localhost:27226", true, ConnectionState.CONNECTING],
     ["wss://example.com", false, ConnectionState.CONNECTED],
   ] as const)(
     "%s sends the discovery protocol version before signaling",
@@ -127,6 +129,7 @@ describe("WebSocket encryption defaults", () => {
       discoveryHandshake: true,
     });
     await connection.connect();
+    expect(configureClientCrypto).toHaveBeenCalledTimes(1);
     expect(sockets.sent).toHaveLength(1);
     Object.assign(connection, { wasEverConnected: true });
 
@@ -137,11 +140,52 @@ describe("WebSocket encryption defaults", () => {
     await Promise.resolve();
 
     expect(sockets.sent).toHaveLength(1);
+    expect(configureClientCrypto).toHaveBeenCalledTimes(1);
     finishReinit();
     await vi.waitFor(() => expect(sockets.sent).toHaveLength(2));
+    expect(configureClientCrypto).toHaveBeenCalledTimes(2);
     expect(new DataView(sockets.sent[1]!.buffer).getUint16(8, false)).toBe(
       PacketType.PROTOCOL_VERSION,
     );
+    connection.disconnect();
+  });
+  it("waits for crypto configuration before opening the socket", async () => {
+    let finishConfiguration!: () => void;
+    vi.mocked(configureClientCrypto).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishConfiguration = resolve;
+        }),
+    );
+    const connection = new ClientConnection({
+      serverUrl: "ws://localhost:27226",
+      discoveryHandshake: true,
+    });
+    const connecting = connection.connect();
+    await vi.waitFor(() =>
+      expect(configureClientCrypto).toHaveBeenCalledOnce(),
+    );
+    expect(sockets.instances).toHaveLength(0);
+    expect(sockets.sent).toHaveLength(0);
+    finishConfiguration();
+    await connecting;
+    expect(sockets.instances).toHaveLength(1);
+    expect(sockets.sent).toHaveLength(1);
+    connection.disconnect();
+  });
+
+  it("does not open a socket when crypto configuration fails", async () => {
+    vi.mocked(configureClientCrypto).mockRejectedValueOnce(
+      new Error("Invalid crypto configuration"),
+    );
+    const connection = new ClientConnection({
+      serverUrl: "ws://localhost:27226",
+    });
+    await expect(connection.connect()).rejects.toThrow(
+      "Invalid crypto configuration",
+    );
+    expect(sockets.instances).toHaveLength(0);
+    expect(sockets.sent).toHaveLength(0);
     connection.disconnect();
   });
 });
