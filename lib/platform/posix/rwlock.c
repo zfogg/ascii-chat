@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/debug/named.h>
 #include <pthread.h>
+#include <errno.h>
 
 /**
  * @brief Initialize a read-write lock with a name
@@ -24,7 +25,6 @@ int rwlock_init_impl(rwlock_t *lock) {
 int rwlock_init(rwlock_t *lock, const char *name) {
   int err = pthread_rwlock_init(&lock->impl, NULL);
   if (err == 0) {
-    lock->name = NAMED_REGISTER_RWLOCK(lock, name, NULL);
 #ifndef NDEBUG
     lock->last_rdlock_time_ns = 0;
     lock->last_wrlock_time_ns = 0;
@@ -42,6 +42,7 @@ int rwlock_init(rwlock_t *lock, const char *name) {
     lock->wrlock_count = 0;
     lock->unlock_count = 0;
 #endif
+    lock->name = NAMED_REGISTER_RWLOCK(lock, name, NULL);
   }
   return err;
 }
@@ -71,6 +72,20 @@ int rwlock_rdlock_impl(rwlock_t *lock) {
     rwlock_on_rdlock(lock);
   }
   return err;
+}
+
+asciichat_error_t rwlock_tryrdlock(rwlock_t *lock, bool *acquired) {
+  if (!lock || !acquired)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot try a null rwlock");
+  int err = pthread_rwlock_tryrdlock(&lock->impl);
+  *acquired = err == 0;
+  if (err == EBUSY || err == EAGAIN)
+    return ASCIICHAT_OK;
+  if (err != 0)
+    return SET_ERRNO(ERROR_THREAD,
+                     "Cannot try shared rwlock: error %d", err);
+  rwlock_on_rdlock(lock);
+  return ASCIICHAT_OK;
 }
 
 /**

@@ -40,14 +40,43 @@ and writes final text synchronously. The obsolete standalone FPS writer is gone;
 FPS is part of the media snapshot. CLI document generation, files, and emergency
 crash output are not live screen rendering.
 
-Screen callbacks must not submit another screen or acquire locks held by their
-producer. The stop, blocked, live-screen, and lifecycle states use custom atomics
+Screen callbacks run outside the controller mutex and may submit or remove screens.
+Producers must not hold locks needed by a callback while removing its screen. The stop, blocked, live-screen, and lifecycle states use custom atomics
 and named registry entries. Other controller state is mutex-protected.
 
 Non-terminal output and finite snapshots use synchronous output, without the
 interactive warning. Recording happens before terminal presentation and is not
 suppressed by the warning. Shutdown joins the presentation thread before keyboard,
 log, option, and named-registry teardown.
+
+## Sync diagnostics (Debug builds)
+
+Press `0` to replace media or help with the sync screen; `0` or Escape restores
+what was underneath. `?` switches to help. Matrix rain uses `1`.
+Left/Right pages through every registered mutex, rwlock, condition variable,
+wrapped atomic, and atomic pointer. Up/Down selects a row for its address, owner/waiter, source location, and
+last-operation age. Source locations start at `lib/`, `src/`, or `include/`
+and use forward slashes; media paths are omitted from the details. Home/End selects
+the first/last page. Higher-priority prompts still cover diagnostics.
+The list repaginates on live resize. The Name column fits the longest registered primitive name across all pages.
+The minimum width is measured from the rendered header, columns, details, and
+footer; the minimum height fits those lines plus one entry. The shared
+"Terminal too small" screen appears below that size; resizing back restores the list.
+
+The table shows lock/unlock rates (wait/signal rates for conditions), atomic
+values, and actual value changes per second. Repeated stores of the same value,
+failed compare/exchanges, and zero-delta fetches do not count as changes. Rates
+are red at 60 or more, yellow at 10 or more, green when nonzero, and blue at zero.
+
+`lib/ui/sync.c` collects protected copies on its own thread using try-locks.
+The presentation thread renders a separate owned mailbox; terminal output never
+holds a mailbox lock. Input continues polling independently of the main loop.
+Registry contention retains the last complete sample and displays its growing
+age. The registry snapshot grows dynamically without a 256-entry limit.
+Mutex wait cycles use the existing stack graph detector; its bounded thread,
+stack, and cycle capacities are reported when reached. An idle condition wait
+is shown as a wait, not proof of a deadlock. These are sampled diagnostics, not
+an atomic snapshot of the entire process.
 
 ## Verification
 
@@ -59,7 +88,9 @@ interrupt shutdown, and redirected snapshots.
 It requires `pyte`, `pywinpty` on Windows or `pexpect` on POSIX, and `ffmpeg`.
 
 ```sh
-python tests/integration/terminal_ui.py --binary build/bin/ascii-chat
+python tests/integration/terminal_ui.py --binary build/bin/ascii-chat --debug-sync
+cmake --build build --target test-sync-regressions
+python tests/integration/sync_regressions.py build/bin/test-sync-regressions
 ```
 
 The Criterion `ui_too_small` suite checks exact boundaries and the 1x1/unknown-size

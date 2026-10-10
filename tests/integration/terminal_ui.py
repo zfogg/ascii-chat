@@ -149,6 +149,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path)
+    parser.add_argument("--debug-sync", action="store_true")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     with tempfile.TemporaryDirectory(prefix="ascii-ui-") as directory:
@@ -211,6 +212,19 @@ def main():
             video(mirror)
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
+            if args.debug_sync:
+                mirror.resize(40, 160)
+                mirror.write("0")
+                mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
+                              "Sync did not replace help")
+                mirror.write("?")
+                mirror.expect(lambda text: "Keyboard Shortcuts" in text and "Sync primitives |" not in text,
+                              "Help did not replace sync")
+                mirror.write("0")
+                mirror.expect(lambda text: "Sync primitives" in text, "Sync did not reopen")
+                mirror.write("0")
+                mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Help did not recover")
+                print("PASS sync/help priority and independent toggle")
             mirror.resize(12, 19)
             small(mirror)
             mirror.write("?m ")

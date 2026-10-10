@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool g_atomic_debug_initialized = false;
+static _Atomic bool g_atomic_debug_initialized = false;
 
 // ============================================================================
 // Debug Initialization/Shutdown
