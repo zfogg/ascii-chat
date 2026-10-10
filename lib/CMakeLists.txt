@@ -10,6 +10,8 @@ set(CORE_SRCS
     ${LIB_DIR}/atomic.c
     ${LIB_DIR}/app_callbacks.c
     ${LIB_DIR}/lifecycle.c
+    ${LIB_DIR}/stats/stats.c
+    ${LIB_DIR}/stats/descriptors.c
     # log/
     ${LIB_DIR}/log/log.c
     ${LIB_DIR}/log/format.c
