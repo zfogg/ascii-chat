@@ -196,6 +196,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume - 0.1);
     options_set_double("speakers_volume", new_volume);
+    ui_controller_show_volume();
     double verify_volume = GET_OPTION(speakers_volume);
     log_info("Volume DOWN: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
              verify_volume * 100.0);
@@ -206,6 +207,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume + 0.1);
     options_set_double("speakers_volume", new_volume);
+    ui_controller_show_volume();
     double verify_volume = GET_OPTION(speakers_volume);
     log_info("Volume UP: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
              verify_volume * 100.0);
@@ -266,6 +268,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       double verify = GET_OPTION(speakers_volume);
       log_info("Unmuted: restored %.0f%% (verified: %.2f)", restore_volume * 100.0, verify);
     }
+    ui_controller_show_volume();
     break;
   }
 
