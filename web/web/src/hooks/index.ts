@@ -19,3 +19,5 @@ export {
 } from "./useWasmOptions";
 export type { WasmOptionsManager } from "./useWasmOptions";
 export { useWebcamStream } from "./useWebcamStream";
+
+export { useVideoEncodings } from "./useVideoEncodings";

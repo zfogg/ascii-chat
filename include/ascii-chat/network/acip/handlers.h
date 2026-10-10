@@ -153,6 +153,9 @@ typedef struct {
   void (*on_image_frame)(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx,
                          void *app_ctx);
 
+  /** @brief Called when client sends H.264-encoded image frame */
+  void (*on_image_frame_h264)(uint32_t width, uint32_t height, uint8_t flags, const void *data, size_t data_len,
+                              void *client_ctx, void *app_ctx);
   /** @brief Called when client sends H.265-encoded image frame */
   void (*on_image_frame_h265)(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data, size_t data_len,
                               void *client_ctx, void *app_ctx);

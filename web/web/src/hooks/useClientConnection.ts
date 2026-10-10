@@ -1,3 +1,4 @@
+import { useVideoEncodings } from "./useVideoEncodings";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
 import type { ClientCryptoOptions } from "../wasm/client";
@@ -74,6 +75,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     onConnectionStateChange,
   } = options;
 
+  const { validate: validateEncoding } = useVideoEncodings({
+    fps: settings.targetFps,
+  });
   const clientRef = useRef<ClientSession | null>(null);
   const [status, setStatus] = useState<string>("Disconnected");
   const [publicKey, setPublicKey] = useState<string>("");
@@ -105,6 +109,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         );
         console.log(`[Client] Starting connection attempt to: ${serverUrl}`);
 
+        validateEncoding();
         setStatus("Connecting...");
         if (showErrors) {
           setError("");
@@ -199,6 +204,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   settings.palette,
                   settings.paletteChars,
                   settings.matrixRain,
+                  conn.videoCodecCapabilities,
                 );
                 console.log(
                   `[Client] Payload size: ${capsPayload.length} bytes`,
@@ -365,6 +371,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       }
     },
     [
+      validateEncoding,
       serverUrl,
       applicationEncryption,
       cryptoOptions,

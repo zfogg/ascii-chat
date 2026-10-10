@@ -26,16 +26,27 @@ function sourceHash() {
       (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     )) {
       const path = resolve(directory, entry.name);
+      // version.h is generated for the build machine; version.h.in is the source.
+      if (
+        relative(repo, path).replaceAll("\\", "/") ===
+        "include/ascii-chat/version.h"
+      )
+        continue;
       if (entry.isDirectory()) walk(path);
       else if (/\.(c|h|cmake|txt|in)$/.test(entry.name)) {
         digest.update(relative(repo, path).replaceAll("\\", "/"));
-        digest.update(readFileSync(path));
+        digest.update(readFileSync(path, "utf8").replaceAll("\r\n", "\n"));
       }
     }
   };
   for (const directory of ["src/web", "lib", "include", "cmake"])
     walk(resolve(repo, directory));
-  digest.update(readFileSync(resolve(repo, "CMakeLists.txt")));
+  digest.update(
+    readFileSync(resolve(repo, "CMakeLists.txt"), "utf8").replaceAll(
+      "\r\n",
+      "\n",
+    ),
+  );
   return digest.digest("hex");
 }
 

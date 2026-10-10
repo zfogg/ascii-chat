@@ -422,6 +422,10 @@ export class WebRTCSession implements ClientSession {
     this.setState(ConnectionState.ERROR);
     this.options.onProgress?.(failure.message);
   }
+  getBufferedAmount(): number {
+    return this.bridge?.getBufferedAmount() ?? 0;
+  }
+
   sendPacket(type: number, payload: Uint8Array): void {
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");

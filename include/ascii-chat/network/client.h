@@ -112,11 +112,11 @@ typedef struct client_info {
   // Opus codec for audio compression/decompression
   void *opus_decoder; // opus_codec_t* - Opus decoder for this client's audio
 
-  // H.265 decoder (persistent across frames for proper video decoding)
-  void *h265_decoder_ctx; // AVCodecContext* - H.265 HEVC decoder for this client
-  void *h265_decode_frame; // AVFrame* - Persistent frame for H.265 decoding
-  void *h265_rgb_frame;    // AVFrame* - RGB frame for color space conversion
-  void *h265_sws_ctx;      // SwsContext* - Color space converter for YUV->RGB
+  // Video decoder (persistent across frames for proper video decoding)
+  void *video_decoder_ctx;  // AVCodecContext* - H.264/HEVC decoder for this client
+  void *video_decode_frame; // AVFrame* - Persistent frame for video decoding
+  void *video_rgb_frame;    // AVFrame* - RGB frame for color space conversion
+  void *video_sws_ctx;      // SwsContext* - Color space converter for YUV->RGB
 
   // Terminal capabilities (for rendering appropriate ASCII frames)
   terminal_capabilities_t terminal_caps;

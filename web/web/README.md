@@ -63,6 +63,53 @@ loaders used by the website demo. A SHA-256 manifest records artifacts and C
 sources. `ASCII_CHAT_WASM_USE_PREBUILT=1` explicitly uses verified prebuilt
 artifacts; a stale source hash fails the build.
 
+## Network video encoding
+
+Both `/client` (WebSocket) and `/discovery` (WebRTC) accept `?encoding=`:
+
+- `hevc`: require browser HEVC/H.265 encoding. `hvec` and `h265` are aliases.
+  If the browser/device cannot encode the requested configuration, capture stops
+  with a visible error and a suggestion to use `?encoding=raw`. It never silently
+  sends raw frames for an explicit HEVC request.
+- `H.264`: require browser AVC/H.264 encoding. `h264`, `avc`, and `x264` are aliases (case-insensitive). The native host must include the H.264 network decoder from this change.
+- `raw`: send RGB24 pixel frames without invoking WebCodecs.
+- `auto` (default): try HEVC, then H.264, then raw pixels. Runtime encoder failures advance through the same order. Explicit codec choices never silently fall back.
+
+Examples: `/client?encoding=hevc` and `/discovery?encoding=raw&session=blue-mountain-tiger`.
+Invalid values show an error. Mirror mode is local and does not use this setting.
+Compressed-video support is detected with `VideoEncoder.isConfigSupported` for the actual
+size/frame rate and Annex B output; having HEVC playback support is insufficient.
+The browser sends compressed camera pixels to the native host, which decodes
+and renders ASCII. Return traffic remains ASCII frames.
+
+Device setup includes a **Video encoding** selector containing the codecs this browser can encode. It initially selects the best available codec. `useVideoEncodings()` shares capability probing, the supported list, the best/current selection, and encoder creation between the connection, capture, and modal paths.
+
+Selection precedence is `?encoding=` > saved preference > automatic. Pressing **Done** after changing the selector saves `ascii-chat.video-encoding` in local storage and updates the URL. Opening the modal, accepting its unchanged selection, cancelling, and visiting a URL override do not save an encoding. Removing the query override restores the saved preference. A saved or forced codec that becomes unavailable produces an error instead of silently changing the preference.
+
+Browsers use their WebCodecs H.264 encoder. The native host decodes the AVC Annex B stream with FFmpeg; it is compatible with libx264 output. Native recording/export already uses libx264 when available. No libx264 WASM download is required.
+
+The upload encoder requests keyframes on startup, every 60 encoded frames, and
+when recreated for a size/frame-rate change. Transport congestion skips input
+frames before encoding; encoded delta frames stay ordered. Camera restart or
+reconnection creates a fresh encoder. Unsupported browsers retain raw uploads.
+
+For real Chrome/native integration coverage, configure a native binary and run:
+
+```powershell
+$env:ASCII_CHAT_TEST_BINARY = 'C:/path/to/ascii-chat.exe'
+# Select a reachable LAN interface for local native WebRTC on Windows.
+$env:ASCII_CHAT_TEST_HOST = '192.168.1.100'
+vp exec playwright test --config playwright.encoding.config.ts
+```
+
+The suite starts its own native server and discovery service, uses moving
+synthetic camera input with real codecs/transports, and checks changing returned
+ASCII and actual canvas pixels, packet types, upload volume, restart, resize,
+HEVC/H.264/raw fallback, startup/runtime errors, and modal/URL/storage precedence.
+HEVC tests require a device with an available HEVC encoder and do not skip when
+it is unavailable. Failure tests deliberately remove WebCodecs, reject its
+configuration probe, or inject an encoder failure.
+
 ## Discovery and WebRTC
 
 Open `/discovery`, enter a native host's session name, and join. Connection

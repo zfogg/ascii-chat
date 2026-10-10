@@ -278,6 +278,7 @@ export enum PacketType {
   // Video
   ASCII_FRAME = 3000,
   IMAGE_FRAME = 3001,
+  IMAGE_FRAME_H264 = 3003, // H.264/AVC encoded video frames
   IMAGE_FRAME_H265 = 3002, // H.265/HEVC encoded video frames
 
   // Audio

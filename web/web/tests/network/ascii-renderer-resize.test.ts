@@ -8,7 +8,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("keeps resize output blank until the server frame matches the new dimensions", () => {
+it("pauses during resize debounce then renders server grids at the local canvas size", () => {
   vi.stubGlobal(
     "ImageData",
     class {
@@ -70,24 +70,30 @@ it("keeps resize output blank until the server frame matches the new dimensions"
   expect(draw).toHaveBeenCalledTimes(1);
   handle.updateDimensions(60, 20);
   timeout.current = null;
-  expect(ref.current!.writeFrame("stale", { cols: 80, rows: 24 })).toBe(false);
-  expect(ref.current!.writeFrame("wrong rows", { cols: 60, rows: 24 })).toBe(
-    false,
+  expect(ref.current!.writeFrame("previous grid", { cols: 80, rows: 24 })).toBe(
+    true,
   );
-  expect(feed).toHaveBeenCalledTimes(1);
-  expect(draw).toHaveBeenCalledTimes(1);
+  expect(
+    ref.current!.writeFrame("different rows", { cols: 60, rows: 24 }),
+  ).toBe(true);
+  expect(feed).toHaveBeenCalledTimes(3);
+  expect(draw).toHaveBeenCalledTimes(3);
   expect(ref.current!.writeFrame("matching", { cols: 60, rows: 20 })).toBe(
     true,
   );
-  expect(draw).toHaveBeenCalledTimes(2);
+  expect(draw).toHaveBeenCalledTimes(4);
 
   handle.updateDimensions(100, 30);
   expect(
-    ref.current!.writeFrame("stale after growing", { cols: 60, rows: 20 }),
-  ).toBe(false);
-  expect(draw).toHaveBeenCalledTimes(2);
+    ref.current!.writeFrame("server grid after growing", {
+      cols: 60,
+      rows: 20,
+    }),
+  ).toBe(true);
+  expect(draw).toHaveBeenCalledTimes(5);
   expect(
     ref.current!.writeFrame("matching again", { cols: 100, rows: 30 }),
   ).toBe(true);
-  expect(draw).toHaveBeenCalledTimes(3);
+  expect(draw).toHaveBeenCalledTimes(6);
+  expect(ref.current!.getDimensions()).toEqual({ cols: 100, rows: 30 });
 });

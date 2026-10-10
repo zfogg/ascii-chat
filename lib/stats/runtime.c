@@ -158,7 +158,8 @@ void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_byte
     stats_counter_add(scopes[i], sent ? STATS_COUNTER_PACKETS_SENT : STATS_COUNTER_PACKETS_RECEIVED, 1);
     stats_counter_add(scopes[i], sent ? STATS_COUNTER_BYTES_SENT : STATS_COUNTER_BYTES_RECEIVED,
                       sizeof(packet_header_t) + payload_bytes);
-    if (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_IMAGE_FRAME_H265)
+    if (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_IMAGE_FRAME_H265 ||
+        type == PACKET_TYPE_IMAGE_FRAME_H264)
       stats_counter_add(scopes[i], sent ? STATS_COUNTER_FRAMES_SENT : STATS_COUNTER_FRAMES_RECEIVED, 1);
   }
 }

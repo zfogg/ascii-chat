@@ -363,6 +363,8 @@ typedef enum {
   PACKET_TYPE_IMAGE_FRAME = 3001,
   /** @brief H.265-encoded frame from client (HEVC/H.265 codec) */
   PACKET_TYPE_IMAGE_FRAME_H265 = 3002,
+  /** H.264 Annex B access unit: flags:u8, width:u16be, height:u16be, data. */
+  PACKET_TYPE_IMAGE_FRAME_H264 = 3003,
 
   // ============================================================================
   // Audio Packets (Types 4000-4999)
