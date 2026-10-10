@@ -11,6 +11,7 @@ import stats_tui as ui
 p = argparse.ArgumentParser()
 p.add_argument("--binary", required=True)
 p.add_argument("--artifacts", required=True)
+p.add_argument("--build-label", default="unspecified")
 a = p.parse_args()
 root = Path(a.artifacts).resolve()
 root.mkdir(parents=True, exist_ok=True)
@@ -29,10 +30,7 @@ pane = ui.Pane(
     root,
 )
 try:
-    ui.wait(
-        lambda: (root / "overhead.log").exists()
-        and (root / "overhead.log").read_text().count("PIPELINE_MAIN_RENDER") > 10
-    )
+    pane.wait_media()
     shell = int(ui.tmux("display-message", "-p", "-t", "overhead", "#{pane_pid}"))
     pid = int(subprocess.check_output(["pgrep", "-P", str(shell)], text=True).strip())
 
@@ -52,9 +50,12 @@ try:
     closed = sample()
     pane.open()
     opened = sample()
+    size = ui.tmux(
+        "display-message", "-p", "-t", "overhead", "#{pane_width}x#{pane_height}"
+    ).strip()
     result = {
-        "build": "Debug ASan/UBSan",
-        "source": "test pattern, 30 fps, 110x46 terminal",
+        "build": a.build_label,
+        "source": f"test pattern, 30 fps, {size} terminal",
         "sample_seconds": 5,
         "closed_cpu_percent_one_core": round(closed, 2),
         "open_cpu_percent_one_core": round(opened, 2),

@@ -1721,6 +1721,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
+    stats_runtime_peer_close(transport->stats_peer);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to create service thread");
     return NULL;

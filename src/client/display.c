@@ -72,6 +72,7 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include "display.h"
+#include "session/display.h"
 #include "main.h"
 #include "../main.h" // Global exit API
 

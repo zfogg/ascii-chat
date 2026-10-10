@@ -3,7 +3,6 @@
 
 import sys
 import xml.etree.ElementTree as ET
-import glob
 from pathlib import Path
 
 def criterion_to_junit(criterion_xml_path, output_path):
@@ -33,7 +32,7 @@ def criterion_to_junit(criterion_xml_path, output_path):
                     del testcase.attrib[attr]
 
     # Write output using the modified tree
-    tree.write(output_path, encoding='UTF-8', xml_declaration=True)
+    ET.ElementTree(testsuites).write(output_path, encoding='UTF-8', xml_declaration=True)
 
 def main():
     """Convert all Criterion XML files in a directory."""
