@@ -71,13 +71,27 @@ void session_log_buffer_append(session_log_buffer_t *buf, const char *message) {
 
   mutex_lock(&buf->mutex);
 
-  size_t pos = atomic_load_u64(&buf->write_pos);
-  uint64_t seq = atomic_fetch_add_u64(&buf->sequence, 1);
-
-  SAFE_STRNCPY(buf->entries[pos].message, message, SESSION_LOG_LINE_MAX);
-  buf->entries[pos].sequence = seq;
-
-  atomic_store_u64(&buf->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+  // Keep every line of multiline notices and split long lines at UTF-8 boundaries.
+  // Hold the lock for the entire message so concurrent producers cannot interleave it.
+  do {
+    const char *newline = strchr(message, '\n');
+    size_t length = newline ? (size_t)(newline - message) : strlen(message);
+    if (length >= SESSION_LOG_LINE_MAX) {
+      length = SESSION_LOG_LINE_MAX - 1;
+      while (length && ((unsigned char)message[length] & 0xc0) == 0x80)
+        --length;
+      if (!length)
+        length = SESSION_LOG_LINE_MAX - 1; // Malformed UTF-8 must still make progress.
+    }
+    size_t pos = atomic_load_u64(&buf->write_pos);
+    memcpy(buf->entries[pos].message, message, length);
+    buf->entries[pos].message[length] = '\0';
+    buf->entries[pos].sequence = atomic_fetch_add_u64(&buf->sequence, 1) + 1;
+    atomic_store_u64(&buf->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+    message += length;
+    if (*message == '\n')
+      ++message;
+  } while (*message);
 
   mutex_unlock(&buf->mutex);
 }

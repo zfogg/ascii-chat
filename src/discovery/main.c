@@ -31,6 +31,8 @@
  * @version 1.0
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "session.h"
@@ -782,7 +784,8 @@ int discovery_main(void) {
 
   if (session_result != ASCIICHAT_OK || discovery_error[0]) {
     log_set_terminal_output(true);
-    log_error("Discovery failed: %s", discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
+    NOTICE(WARNING, "DISCOVERY FAILED", "Discovery failed: %s",
+           discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
     if (session_result == ASCIICHAT_OK)
       session_result = discovery_error_code;
   }

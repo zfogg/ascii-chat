@@ -4,6 +4,8 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
+#include <ascii-chat/ui/notice.h>
+
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
@@ -1032,7 +1034,87 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   (void)fflush(output_stream);
 }
 
+static _Thread_local const char *g_notice_text;
+static _Thread_local ui_notice_severity_t g_notice_severity;
+static _Thread_local bool g_notice_record_only;
+
+static void output_notice(void) {
+  if (g_notice_record_only)
+    return;
+  const char *text = g_notice_text;
+  ui_notice_severity_t severity = g_notice_severity;
+  g_notice_text = NULL;
+  session_log_buffer_t *buffer = log_get_session_log_buffer();
+  if (buffer)
+    session_log_buffer_append(buffer, text);
+  size_t start = 0, length = 0;
+  if (!GET_OPTION(quiet) &&
+      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) &&
+      grep_should_output(text, &start, &length))
+#ifdef EMSCRIPTEN_BUILD
+    log_plain("%s", text);
+#else
+    if (ui_notice_present(severity, text) == ERROR_BUFFER_FULL)
+      log_warn_every(US_PER_SEC_INT, "Notice display queue is full; additional notices remain in the log");
+#endif
+  g_notice_text = text;
+}
+
+void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,
+                   const char *format, ...) {
+  if (!title || !format || !lifecycle_is_initialized(&g_log.lifecycle))
+    return;
+  va_list args;
+  va_start(args, format);
+  char *body = format_message(format, args);
+  va_end(args);
+  if (!body)
+    return;
+  size_t size = strlen(title) + strlen(body) + 2;
+  char *message = SAFE_MALLOC(size, char *);
+  if (!message) {
+    SAFE_FREE(body);
+    return;
+  }
+  safe_snprintf(message, size, "%s\n%s", title, body);
+  const char *previous = g_notice_text;
+  ui_notice_severity_t previous_severity = g_notice_severity;
+  g_notice_text = message;
+  g_notice_severity = severity;
+  log_level_t level = severity == UI_NOTICE_FATAL     ? LOG_FATAL
+                      : severity == UI_NOTICE_DANGER  ? LOG_ERROR
+                      : severity == UI_NOTICE_WARNING ? LOG_WARN
+                                                      : LOG_INFO;
+  if (strlen(message) < 3000) {
+    log_msg(level, file, line, func, "%s", message);
+  } else {
+    bool previous_record_only = g_notice_record_only;
+    g_notice_record_only = true;
+    const char *cursor = message;
+    while (*cursor) {
+      size_t bytes = strlen(cursor);
+      if (bytes > 3000) {
+        bytes = 3000;
+        while (bytes && ((unsigned char)cursor[bytes] & 0xc0) == 0x80)
+          --bytes;
+        if (!bytes)
+          bytes = 3000; // Malformed UTF-8 must still make progress.
+      }
+      log_msg(level, file, line, func, "%.*s", (int)bytes, cursor);
+      cursor += bytes;
+    }
+    g_notice_record_only = previous_record_only;
+    if (level >= log_get_level() && atomic_load_int(&g_log.json_file) < 0)
+      output_notice();
+  }
+  g_notice_text = previous;
+  g_notice_severity = previous_severity;
+  SAFE_FREE(message);
+  SAFE_FREE(body);
+}
+
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+
 
   // All state access uses atomic operations - fully lock-free
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
@@ -1050,6 +1132,19 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (level < (log_level_t)loaded_level) {
     return;
   }
+#ifndef EMSCRIPTEN_BUILD
+  if (level == LOG_FATAL && !g_notice_text) {
+    va_list args;
+    va_start(args, fmt);
+    char *message = format_message(fmt, args);
+    va_end(args);
+    if (message) {
+      ui_notice_log(UI_NOTICE_FATAL, file, line, func, "FATAL ERROR", "%s", message);
+      SAFE_FREE(message);
+    }
+    return;
+  }
+#endif
   /* =========================================================================
    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
    * ========================================================================= */
@@ -1073,6 +1168,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     validate_log_message_utf8(msg_buffer, "mmap log message");
 
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
+
+    if (g_notice_text) {
+      output_notice();
+      return;
+    }
 
     // Terminal output (check with atomic loads)
     if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked)) {
@@ -1199,6 +1299,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+    }
+
+    if (g_notice_text) {
+      output_notice();
+      return;
     }
 
     // Write to terminal (atomic state checks)
