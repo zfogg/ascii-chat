@@ -230,7 +230,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   stats_sampler_update(g_sampler, snapshot, rates);
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
-    stats_view_add(view, "Uptime %.1fs  |  Totals survive disconnected peers",
+    stats_view_add(view, "Uptime %.1fs",
                    (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
     stats_view_add(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
