@@ -27,7 +27,7 @@ static screen_t g_screens[UI_SCREEN_COUNT];
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static asciichat_thread_t g_thread;
-static atomic_t g_stop = {0};
+static atomic_t g_presentation_stop_requested = {0};
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local terminal_size_t g_render_size;
@@ -105,8 +105,9 @@ terminal_size_t ui_controller_size(void) {
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
+  uint64_t progress_render_ns = 0;
   g_fps = fps_counter_create();
-  while (!atomic_load_bool(&g_stop)) {
+  while (!atomic_load_bool(&g_presentation_stop_requested)) {
     mutex_lock(&g_mutex);
     int active = -1;
     for (int i = 0; i < UI_SCREEN_COUNT; ++i)
@@ -116,7 +117,7 @@ static void *presentation_main(void *unused) {
     g_active = active;
     if (active < 0)
       atomic_store_bool(&g_blocked, false);
-    if (active >= 0 && !shutdown_is_requested()) {
+    if (active >= 0 && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       screen_t *screen = &g_screens[active];
       terminal_size_t size = {0};
       // Measure the physical output device, never --width/--height or environment overrides.
@@ -165,10 +166,16 @@ static void *presentation_main(void *unused) {
           if (GET_OPTION(auto_height))
             options_set_int("height", size.rows);
         }
-        bool rendered = screen->dirty || transition || active != UI_SCREEN_MEDIA;
+        uint64_t now = time_get_ns();
+        bool animate = active != UI_SCREEN_MEDIA;
+        if (active == UI_SCREEN_RENDER_PROGRESS)
+          animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
+        bool rendered = screen->dirty || transition || animate;
         if (rendered) {
           fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
           screen->render(size, screen->snapshot);
+          if (active == UI_SCREEN_RENDER_PROGRESS)
+            progress_render_ns = now;
           fps_counter_frame_end(g_fps, time_get_ns());
         }
         fps_counter_render(g_fps, screen->fd, size.cols, rendered);
@@ -188,7 +195,7 @@ static void *presentation_main(void *unused) {
 
 static asciichat_error_t controller_start(void) {
   if (lifecycle_init_once(&g_lifecycle)) {
-    atomic_store_bool(&g_stop, false);
+    atomic_store_bool(&g_presentation_stop_requested, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
     g_small = false;
@@ -199,12 +206,12 @@ static asciichat_error_t controller_start(void) {
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI mutex");
     }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
-    NAMED_REGISTER_ATOMIC(&g_stop, "ui_controller_stop", NULL);
+    NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
     if (asciichat_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       NAMED_UNREGISTER(&g_live);
-      NAMED_UNREGISTER(&g_stop);
+      NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
       mutex_destroy(&g_mutex);
@@ -231,13 +238,14 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     mutex_unlock(&g_mutex);
   }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if ((!live && !platform_isatty(fd)) || GET_OPTION(snapshot_mode)) {
+  if ((!live && !platform_isatty(fd)) || (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
     // Redirected output has no terminal geometry. Avoid raising a terminal
     // error for every frame when rendering to a file, pipe, or null device.
-    if (!platform_isatty(fd) || terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
+    if (!platform_isatty(fd) || terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 ||
+        detected.rows <= 0)
       detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
     g_render_size = detected;
     g_owner = true;
@@ -304,8 +312,7 @@ ui_presentation_state_t ui_controller_state(void) {
     screen_t *screen = &g_screens[state.screen];
     terminal_size_t size = {0};
     state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
-                    size.cols <= 0 || size.rows <= 0 ||
-                    ui_too_small(size, screen->minimum);
+                    size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
   }
   mutex_unlock(&g_mutex);
   return state;
@@ -380,7 +387,7 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
 void ui_controller_shutdown(void) {
   if (!lifecycle_destroy_once(&g_lifecycle))
     return;
-  atomic_store_bool(&g_stop, true);
+  atomic_store_bool(&g_presentation_stop_requested, true);
   asciichat_thread_join(&g_thread, NULL);
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     if (g_screens[i].render)
@@ -391,7 +398,7 @@ void ui_controller_shutdown(void) {
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
   NAMED_UNREGISTER(&g_live);
-  NAMED_UNREGISTER(&g_stop);
+  NAMED_UNREGISTER(&g_presentation_stop_requested);
   NAMED_UNREGISTER(&g_blocked);
   NAMED_UNREGISTER(&g_lifecycle.state);
   lifecycle_destroy_commit(&g_lifecycle);
@@ -408,7 +415,6 @@ asciichat_error_t ui_controller_printf(int fd, const char *format, ...) {
   size_t bytes = (size_t)len < sizeof(buffer) ? (size_t)len : sizeof(buffer) - 1;
   return ui_controller_write(fd, buffer, bytes);
 }
-
 
 void ui_controller_restore_terminal(void) {
   ui_controller_shutdown();

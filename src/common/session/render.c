@@ -114,17 +114,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
     log_set_terminal_output(true);
 
-    // In snapshot mode, pass actual capture-based elapsed time to encoder for correct video duration
-    if (GET_OPTION(snapshot_mode) && display && g_snapshot_first_capture_ns > 0) {
-      uint64_t now_ns = time_get_ns();
-      uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
-      double capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-      log_info("SNAPSHOT: Pipeline finished - passing capture_elapsed=%.3f to encoder", capture_elapsed_sec);
-      session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
-    }
+    asciichat_error_t drain_err = session_pipeline_destroy(pipeline);
+    // The encoder no longer writes here. Use capture duration, excluding time spent draining.
+    if (GET_OPTION(snapshot_mode) && display && g_snapshot_first_capture_ns > 0)
+      session_display_set_snapshot_actual_duration(display, (double)g_snapshot_actual_duration_ms / 1000.0);
 
-    session_pipeline_destroy(pipeline);
-    return run_err;
+    return run_err == ASCIICHAT_OK ? drain_err : run_err;
   } else {
     log_warn("[SESSION_RENDER_LOOP] capture is NULL - will not use pipeline (capture_cb=%p)", (void *)capture_cb);
   }
@@ -307,7 +302,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           log_info_every(1 * NS_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu",
                          frames_rendered_since_first);
         }
-
 
         STOP_TIMER("render_frame");
       }

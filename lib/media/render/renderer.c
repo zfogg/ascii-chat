@@ -12,9 +12,12 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
+#include <ascii-chat/ui/render_progress.h>
 #include <ascii-chat/audio/recording.h>
 
 struct render_file_ctx_s {
+  render_progress_t *progress;
+  asciichat_error_t error;
   terminal_renderer_t *renderer;
   ffmpeg_encoder_t *encoder;
   audio_recording_t *recording;
@@ -132,6 +135,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   // Register render file context for debugging
   NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
 
+  bool binary_stdout = strcmp(output_path, "-") == 0 || strcmp(output_path, "pipe:") == 0;
+  ctx->progress = render_progress_create(!binary_stdout, output_path);
   *out = ctx;
   return ASCIICHAT_OK;
 }
@@ -143,7 +148,8 @@ void render_file_set_live_timing(render_file_ctx_t *ctx) {
   }
 }
 
-asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
+static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx, const char *ansi_frame,
+                                                          uint64_t captured_ns) {
 
   log_info("render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
 
@@ -238,6 +244,23 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   return err;
 }
 
+asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *frame, uint64_t captured_ns) {
+  if (!ctx || !frame)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render context or frame");
+  if (ctx->error != ASCIICHAT_OK)
+    return ctx->error;
+  asciichat_error_t err = render_file_write_frame_internal(ctx, frame, captured_ns);
+  render_progress_frame(ctx->progress, frame, err == ASCIICHAT_OK);
+  if (err != ASCIICHAT_OK)
+    ctx->error = err;
+  return err;
+}
+
+void render_file_begin_drain(render_file_ctx_t *ctx, uint64_t total, bool total_known) {
+  if (ctx)
+    render_progress_begin(ctx->progress, total, total_known);
+}
+
 void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec) {
   if (!ctx || !ctx->encoder)
     return;
@@ -247,6 +270,8 @@ void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double act
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;
+  NAMED_UNREGISTER(ctx);
+  render_progress_finalize(ctx->progress);
   uint64_t target = ctx->audio_target;
   asciichat_error_t err = ASCIICHAT_OK;
   while (ctx->audio_samples_written < target) {
@@ -263,6 +288,9 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   asciichat_error_t close_err = ffmpeg_encoder_destroy(ctx->encoder);
   if (err == ASCIICHAT_OK)
     err = close_err;
+  if (ctx->error != ASCIICHAT_OK)
+    err = ctx->error;
+  render_progress_destroy(ctx->progress);
   term_renderer_destroy(ctx->renderer);
   SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);
