@@ -122,9 +122,11 @@ does not introduce protocol messages or export remote measurements.
 Press `=` to open statistics in server, client, mirror, discovery, or
 discovery-service mode. `Escape` or `=` returns to the previous view. `Tab` (or
 left/right) switches between overview and connection/mode details. Up/down
-scroll the overview or select rows in details; Home returns to the first row.
-The screen supports a 60-column, 10-row minimum; smaller terminals show the
-shared size warning and recover after resizing. Prompts, help, and interactive
+select rows in details; Home returns to the first row.
+Each page measures its longest body line, full row count, and header/footer.
+If either terminal dimension is below that requirement, the shared `too_small`
+screen shows the required size. Resizing to that size restores the entire page;
+content is not clipped or scrolled to hide rows. Prompts, help, and interactive
 grep retain their input. A waiting discovery invitation also accepts `=`.
 
 A dedicated sampler refreshes at approximately 4 Hz, using a roughly one-second

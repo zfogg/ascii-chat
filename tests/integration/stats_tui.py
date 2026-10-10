@@ -80,6 +80,24 @@ class Pane:
             tmux("capture-pane", "-e", "-p", "-t", self.name)
         )
 
+    def check_fit_boundary(self):
+        tmux("resize-window", "-t", self.name, "-x", 60, "-y", 8)
+        wait(lambda: "Terminal too small" in self.text())
+        match = re.search(r"need (\d+)x(\d+)", self.text())
+        assert match, self.text()
+        width, height = map(int, match.groups())
+        for cols, rows in ((width - 1, height), (width, height - 1)):
+            tmux("resize-window", "-t", self.name, "-x", cols, "-y", rows)
+            time.sleep(0.35)
+            assert "Terminal too small" in self.text(), self.text()
+        tmux("resize-window", "-t", self.name, "-x", width, "-y", height)
+        wait(lambda: "LIVE STATS" in self.text())
+        lines = self.text().splitlines()
+        assert "ASCII-CHAT" in lines[0], self.text()
+        assert "rows" in lines[height - 2], "Page wrapped or clipped: " + self.text()
+        tmux("resize-window", "-t", self.name, "-x", 110, "-y", 54)
+        wait(lambda: "LIVE STATS" in self.text())
+
     def open(self):
         self.key("=")
         wait(lambda: "LIVE STATS" in self.text())
@@ -149,11 +167,13 @@ def main():
         assert metric(mirror, "frames_captured")[0] > first[0]
         assert metric(mirror, "frames_presented")[1] == 0, mirror.text()
         mirror.capture("mirror-overview")
+        mirror.check_fit_boundary()
         mirror.key("Tab")
         wait(lambda: "CONNECTIONS & MODE DETAILS" in mirror.text())
         mirror.capture("mirror-details")
         tmux("resize-window", "-t", "mirror", "-x", 60, "-y", 12)
         time.sleep(0.5)
+        wait(lambda: "Terminal too small" in mirror.text())
         mirror.capture("mirror-narrow")
         tmux("resize-window", "-t", "mirror", "-x", 40, "-y", 8)
         wait(lambda: "Terminal too small" in mirror.text())
@@ -216,6 +236,7 @@ def main():
         assert re.search(r"terminal_write\s+idle", client.text()), client.text()
         assert re.search(r"connection_setup \(last\)\s+\d+\.\d+", client.text()), client.text()
         client.capture("client-overview")
+        client.check_fit_boundary()
         server.open()
         wait(
             lambda: metric(server, "frames_sent")
@@ -225,9 +246,11 @@ def main():
         received = metric(server, "frames_received")[0]
         assert metric(server, "queue_drops")[0] < received / 2, server.text()
         server.capture("server-overview")
+        server.check_fit_boundary()
         server.key("Tab")
         wait(lambda: "SERVER CLIENTS" in server.text())
         server.capture("server-details")
+        server.check_fit_boundary()
         server.key("Escape")
         wait(lambda: "stats mode=server" in server.text())
         server.open()
@@ -313,14 +336,17 @@ def main():
             and metric(host, "frames_received")[1] > 0
         )
         host.capture("discovery-overview")
+        host.check_fit_boundary()
         host.key("Tab")
         wait(lambda: "CONNECTIONS & MODE DETAILS" in host.text())
         host.capture("discovery-details")
         acds.open()
         acds.capture("acds-overview")
+        acds.check_fit_boundary()
         acds.key("Tab")
         wait(lambda: session_name in acds.text())
         acds.capture("acds-sessions")
+        acds.check_fit_boundary()
         results.append(
             {"mode": "discovery/acds", "session": session_name, "session_table": "pass"}
         )
@@ -394,6 +420,10 @@ def main():
             )
         (root / "results.json").write_text(json.dumps(results, indent=2))
         print(json.dumps(results, indent=2))
+    except Exception:
+        for pane in panes:
+            pane.capture(pane.name + "-before-cleanup")
+        raise
     finally:
         failures = []
         for pane in reversed(panes):

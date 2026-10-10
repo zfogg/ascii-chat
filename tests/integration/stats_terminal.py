@@ -52,7 +52,7 @@ def main():
         p.expect(lambda s: "LIVE STATS" in s, name + " stats")
         capture(p, name)
         p.resize(12, 60)
-        p.pump(1)
+        p.expect(lambda s: "Terminal too small" in s, name + " measured minimum")
         p.resize(46, 110)
         p.expect(lambda s: "LIVE STATS" in s, name + " resize")
         p.write("\x1b")

@@ -163,6 +163,34 @@ void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_byte
   }
 }
 
+static size_t stats_body_width(const stats_view_t *view) {
+  size_t width = 0;
+  for (unsigned i = 0; i < view->count; ++i) {
+    size_t length = strlen(view->lines[i]);
+    if (length > width)
+      width = length;
+  }
+  return width;
+}
+
+static void stats_footer(const stats_view_t *view, char *footer, size_t capacity) {
+  snprintf(footer, capacity, "= / Esc close | Tab page | Up/Down select | %u rows", view->count);
+}
+
+static terminal_size_t stats_minimum(const stats_view_t *view) {
+  char title[160], footer[160];
+  snprintf(title, sizeof(title), "  ASCII-CHAT / %-20s  LIVE STATS", view->mode);
+  stats_footer(view, footer, sizeof(footer));
+  size_t width = stats_body_width(view) + 4;
+  if (strlen(title) + 1 > width)
+    width = strlen(title) + 1;
+  if (strlen(footer) + 3 > width)
+    width = strlen(footer) + 3;
+  // Both subtitles are shorter than the title. Keep one spare row and column
+  // to avoid terminal auto-wrap/scroll, in addition to the fixed header/footer.
+  return (terminal_size_t){.cols = (int)width, .rows = (int)view->count + 6};
+}
+
 static void stats_render(terminal_size_t size, const void *data) {
   const stats_view_t *view = data;
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols + 64);
@@ -177,15 +205,7 @@ static void stats_render(terminal_size_t size, const void *data) {
   unsigned remaining = view->offset < view->count ? view->count - view->offset : 0;
   unsigned visible = remaining < available ? remaining : available;
   unsigned top = (available - visible) / 2;
-  size_t width = 0;
-  // Use the whole page to keep columns stable while scrolling.
-  for (unsigned i = 0; i < view->count; ++i) {
-    size_t length = strlen(view->lines[i]);
-    if (length > width)
-      width = length;
-  }
-  if (width > (size_t)(size.cols - 4))
-    width = (size_t)(size.cols - 4);
+  size_t width = stats_body_width(view);
   int left = (size.cols - (int)width) / 2;
   for (unsigned i = 0; i < available; ++i) {
     if (i < top || i >= top + visible) {
@@ -198,8 +218,7 @@ static void stats_render(terminal_size_t size, const void *data) {
   }
   frame_buffer_render_border(buffer, size.cols, "\033[36m");
   char footer[160];
-  snprintf(footer, sizeof(footer), "= / Esc close | Tab page | Up/Down select/scroll | %u-%u/%u", view->offset + 1,
-           view->offset + available < view->count ? view->offset + available : view->count, view->count);
+  stats_footer(view, footer, sizeof(footer));
   frame_buffer_printf(buffer, "  %.*s\033[K", size.cols - 3, footer);
   ui_controller_write(g_fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   frame_buffer_destroy(buffer);
@@ -331,7 +350,7 @@ static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t 
 static void *stats_worker(void *unused) {
   (void)unused;
   uint64_t next_sample = 0, next_print = time_get_ns() + (uint64_t)g_interval * NS_PER_SEC_INT;
-  unsigned offset = 0, page = 0, selected = 0;
+  unsigned page = 0, selected = 0;
   bool was_active = false;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     bool active = stats_runtime_active();
@@ -348,18 +367,14 @@ static void *stats_worker(void *unused) {
       } else if (key == KEY_DOWN) {
         if (page)
           selected++;
-        else
-          offset++;
       } else if (key == KEY_UP) {
         if (page && selected)
           selected--;
-        else if (offset)
-          offset--;
       } else if (key == '\t' || key == KEY_LEFT || key == KEY_RIGHT) {
         page = !page;
-        offset = selected = 0;
+        selected = 0;
       } else if (key == KEY_HOME) {
-        offset = selected = 0;
+        selected = 0;
       }
     }
     if (!active && was_active) {
@@ -375,22 +390,12 @@ static void *stats_worker(void *unused) {
       stats_snapshot_t snapshot;
       stats_rates_t rates;
       build_view(&view, &snapshot, &rates);
-      if (offset >= view.count)
-        offset = view.count ? view.count - 1 : 0;
       if (selected >= view.count)
         selected = view.count ? view.count - 1 : 0;
-      if (page) {
-        terminal_size_t size = ui_controller_size();
-        unsigned visible = size.rows > 6 ? (unsigned)size.rows - 6 : 1;
-        if (selected < offset)
-          offset = selected;
-        if (selected >= offset + visible)
-          offset = selected - visible + 1;
-      }
       view.selected = selected;
-      view.offset = offset;
+      view.offset = 0;
       if (active)
-        ui_controller_submit(UI_SCREEN_STATS, g_fd, (terminal_size_t){.cols = 60, .rows = 10}, stats_render, &view,
+        ui_controller_submit(UI_SCREEN_STATS, g_fd, stats_minimum(&view), stats_render, &view,
                              sizeof(view));
       if (g_interval && now >= next_print) {
         print_summary(&snapshot, &rates);

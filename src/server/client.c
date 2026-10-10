@@ -3184,11 +3184,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   // Sample a small prefix for duplicate-frame diagnostics; hashing every pixel
   // here repeats work performed by the image conversion path on every frame.
-  uint32_t incoming_pixel_hash = 2166136261u;
   size_t hash_len = data_len < 1000 ? data_len : 1000;
-  for (size_t i = 0; i < hash_len; i++) {
-    incoming_pixel_hash = (incoming_pixel_hash ^ ((const uint8_t *)pixel_data)[i]) * 16777619u;
-  }
+  uint32_t incoming_pixel_hash = hash_len ? fnv1a_hash_bytes(pixel_data, hash_len) : FNV1A_32_OFFSET_BASIS;
 
   // Per-client hash tracking to detect duplicate frames
   bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
