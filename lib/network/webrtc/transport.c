@@ -380,22 +380,24 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
       uint16_t packet_type = NET_TO_HOST_U16(header.type);
       is_video_packet = packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME;
       if (is_video_packet) {
+        asciichat_errno_scope_t buffered_scope = asciichat_errno_scope_begin();
         asciichat_error_t buffered_result =
             webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
         if (buffered_result != ASCIICHAT_OK) {
           buffered_before_send = 0;
-          CLEAR_ERRNO();
+          asciichat_errno_scope_end(buffered_scope, ASCIICHAT_ERRNO_DISMISSED);
         }
       }
     }
   }
 
   size_t max_message_size = 16384;
+  asciichat_errno_scope_t size_scope = asciichat_errno_scope_begin();
   asciichat_error_t max_size_result =
       webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
   if (max_size_result != ASCIICHAT_OK || max_message_size == 0) {
     max_message_size = 16384;
-    CLEAR_ERRNO();
+    asciichat_errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
   }
   log_info_every(60 * NS_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes",
                  max_message_size);

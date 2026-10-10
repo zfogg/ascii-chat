@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/stats.h>
 /**
  * @file server/main.c
  * @ingroup server_main
@@ -969,6 +970,7 @@ static void *acds_receive_thread(void *arg) {
       break;
     }
 
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
     if (result != ASCIICHAT_OK) {
@@ -978,6 +980,7 @@ static void *acds_receive_thread(void *arg) {
 
       // Timeouts are normal when there are no packets - just continue waiting
       if (result == ERROR_NETWORK_TIMEOUT) {
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         continue;
       }
 
@@ -986,12 +989,8 @@ static void *acds_receive_thread(void *arg) {
       // 2. EOF/connection closed (fatal - exit thread)
       // Check the error context message to distinguish
       if (result == ERROR_NETWORK) {
-        if (has_context && strstr(err_ctx.context_message, "Failed to receive packet") != NULL) {
-          // Generic receive failure (likely timeout) - continue waiting
-          log_debug("ACDS receive timeout, continuing to wait for packets");
-          continue;
-        } else if (has_context && (strstr(err_ctx.context_message, "EOF") != NULL ||
-                                   strstr(err_ctx.context_message, "closed") != NULL)) {
+        if (has_context &&
+            (strstr(err_ctx.context_message, "EOF") != NULL || strstr(err_ctx.context_message, "closed") != NULL)) {
           // Connection actually closed
           log_warn("ACDS connection closed: %s", err_ctx.context_message);
           break;
@@ -1090,9 +1089,10 @@ static void *ascii_chat_client_handler(void *arg) {
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
   client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port);
   if (!client) {
-    if (HAS_ERRNO(&asciichat_errno_context)) {
-      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-      CLEAR_ERRNO();
+    asciichat_error_context_t error_context;
+    if (HAS_ERRNO(&error_context)) {
+      PRINT_ERRNO_CONTEXT(&error_context);
+      CLEAR_ERRNO_ALL();
     }
     tcp_server_reject_client(client_socket, "Failed to add client");
     SAFE_FREE(ctx);
@@ -2113,7 +2113,7 @@ static void server_cleanup_fn(void *user_data) {
 
   // Cleanup debug sync BEFORE destroying websocket_server
 #ifndef NDEBUG
-  debug_sync_destroy();
+  debug_stats_destroy();
 #endif
 
   // Clean up all connected clients (only if rwlock was initialized)

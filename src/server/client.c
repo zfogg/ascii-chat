@@ -928,15 +928,21 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     }
 
     log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
+    asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
     int crypto_result = server_crypto_handshake(client);
     log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
     if (crypto_result != 0) {
-      log_error("Crypto handshake failed for client %s: %s", new_client_id, network_error_string());
+      LOG_ERRNO_IF_SET("Client crypto handshake failed");
+      asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
+      log_debug("Closing client %s after failed crypto handshake", new_client_id);
       if (remove_client(server_ctx, new_client_id) != 0) {
         log_error("Failed to remove client after crypto handshake failure");
       }
       return NULL;
     }
+
+    ASSERT_NO_ERRNO_SINCE(handshake_scope);
+    asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
@@ -1984,7 +1990,7 @@ void *client_receive_thread(void *arg) {
           } else if (err_ctx.code == ERROR_CRYPTO) {
             log_error_client(
                 client, "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
-            atomic_store_bool(&g_should_exit, true);
+            // Reject this connection; other clients can continue normally.
             break;
           }
         }
@@ -2014,6 +2020,7 @@ void *client_receive_thread(void *arg) {
       log_debug("🔍 RECV_THREAD[%s]: About to call transport->recv() (transport=%p)", client->client_id,
                 (void *)transport_snapshot);
 
+      asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
       asciichat_error_t recv_result =
           transport_snapshot->methods->recv(transport_snapshot, &packet_data, &packet_len, &allocated_buffer);
 
@@ -2023,11 +2030,12 @@ void *client_receive_thread(void *arg) {
         if (HAS_ERRNO(&err_ctx)) {
           // Check for reassembly timeout (fragments arriving slowly)
           // This is NOT a connection failure - safe to retry
-          if ((err_ctx.code == ERROR_NETWORK) && err_ctx.context_message &&
+          if ((err_ctx.code == ERROR_NETWORK) && err_ctx.context_message[0] &&
               strstr(err_ctx.context_message, "reassembly timeout")) {
             // Fragments are arriving slowly - this is normal, retry without disconnecting
             log_dev_every(100000, "Client %s: fragment reassembly timeout, retrying in 10ms", client->client_id);
             APP_CALLBACK_VOID(platform_pump_events);
+            asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
             platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
             continue;              // Retry without disconnecting
           }
@@ -2116,7 +2124,6 @@ void *client_receive_thread(void *arg) {
   log_debug("Receive thread for client %s terminated", client_id_snapshot);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -2679,7 +2686,6 @@ void *client_send_thread_func(void *arg) {
   log_debug("Send thread for client %s terminated", client->client_id);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }

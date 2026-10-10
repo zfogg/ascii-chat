@@ -424,7 +424,9 @@ static int initialize_client_systems(void) {
  * @return true to attempt reconnection, false to exit
  */
 static bool client_should_reconnect(asciichat_error_t last_error, int attempt_number, void *user_data) {
-  (void)last_error;
+  if (last_error == ERROR_CRYPTO_AUTH || last_error == ERROR_CRYPTO_KEY || last_error == ERROR_CRYPTO_VERIFICATION ||
+      last_error == ERROR_CONFIG)
+    return false;
   (void)attempt_number;
   (void)user_data;
 
@@ -484,7 +486,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     // (even though protocol_start_connection was never called)
     audio_stop_thread();
     // Framework will handle retry based on config
-    log_error("Connection attempt failed");
+    LOG_ERRNO_IF_SET("Connection attempt failed");
     return connection_result;
   }
 
@@ -650,6 +652,7 @@ int client_main(void) {
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes: thread pool, display layer, app client context, server connection
+  asciichat_errno_scope_t init_scope = asciichat_errno_scope_begin();
   int init_result = initialize_client_systems();
   if (init_result != 0) {
 #ifndef NDEBUG
@@ -674,7 +677,8 @@ int client_main(void) {
       log_debug("Successfully initialized with test pattern fallback");
 
       // Clear the error state since we successfully recovered
-      CLEAR_ERRNO();
+      asciichat_errno_scope_end(init_scope, ASCIICHAT_ERRNO_DISMISSED);
+      ASSERT_NO_ERRNO_SINCE(init_scope);
     } else
 #endif
     {
@@ -900,5 +904,5 @@ int client_main(void) {
   // Log final session statistics before exit
   // Note: Frame count is logged in protocol_stop_connection() if connection was established
   // This is a fallback in case the connection never started
-  return (session_result == ASCIICHAT_OK) ? 0 : 1;
+  return session_result;
 }

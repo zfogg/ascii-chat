@@ -81,10 +81,7 @@ static int network_handle_recv_error(int error) {
 static int network_handle_select_error(int result) {
   if (result == 0) {
     // Timeout - this is expected behavior for server waiting for connections
-    asciichat_errno = ERROR_NETWORK_TIMEOUT;
-    asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
-    asciichat_errno_context.has_system_error = true;
-    asciichat_errno_context.system_errno = ETIMEDOUT;
+    asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
     return 0; // Not an error, but don't retry
   }
 
@@ -202,10 +199,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
       if (result == 0) {
         /* A read timeout is the ordinary idle state for signaling sockets.
          * Do not emit an error on every polling interval. */
-        asciichat_errno = ERROR_NETWORK_TIMEOUT;
-        asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
-        asciichat_errno_context.has_system_error = true;
-        asciichat_errno_context.system_errno = ETIMEDOUT;
+        asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -224,10 +218,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
 
     // Other readiness flags without POLLIN are an ordinary no-data result.
     if (!(pfd.revents & POLLIN)) {
-      asciichat_errno = ERROR_NETWORK_TIMEOUT;
-      asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
-      asciichat_errno_context.has_system_error = true;
-      asciichat_errno_context.system_errno = ETIMEDOUT;
+      asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
       return -1;
     }
 
@@ -275,10 +266,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
   if (result <= 0) {
     if (result == 0) {
       // Timeout is expected behavior for server waiting for connections
-      asciichat_errno = ERROR_NETWORK_TIMEOUT;
-      asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
-      asciichat_errno_context.has_system_error = true;
-      asciichat_errno_context.system_errno = ETIMEDOUT;
+      asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
       return -1;
     }
 
@@ -290,10 +278,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
   // Check if socket is ready
   if (!(pfd.revents & POLLIN)) {
-    asciichat_errno = ERROR_NETWORK_TIMEOUT;
-    asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
-    asciichat_errno_context.has_system_error = true;
-    asciichat_errno_context.system_errno = ETIMEDOUT;
+    asciichat_set_errno_with_system_error(ERROR_NETWORK_TIMEOUT, __FILE__, __LINE__, __func__, ETIMEDOUT);
     return -1;
   }
 
@@ -311,9 +296,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
     if (socket_is_invalid_socket_error(error_code)) {
       // During shutdown, don't log this as an error since it's expected behavior
-      asciichat_errno = ERROR_NETWORK;
-      asciichat_errno_context.code = ERROR_NETWORK;
-      asciichat_errno_context.has_system_error = false;
+      SET_ERRNO(ERROR_NETWORK, "Network operation failed");
     } else {
       SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", socket_get_error_string());
     }

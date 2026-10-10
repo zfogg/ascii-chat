@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/stats.h>
 /**
  * @file memory.c
  * @ingroup debug_util
@@ -175,7 +176,7 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
 // Helper: Capture thread name from named registry
 static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_size) {
   // Check if this is the main thread (saved during initialization)
-  uint64_t main_tid = debug_sync_get_main_thread_id();
+  uint64_t main_tid = debug_stats_get_main_thread_id();
   if (main_tid != 0 && tid == main_tid) {
     safe_snprintf(thread_name_buf, buf_size, "thread/main");
     return;
@@ -884,7 +885,6 @@ void debug_memory_report(void) {
   asciichat_error_t error = GET_ERRNO();
 
   // Always clean up errno, even if we're not printing
-  asciichat_errno_destroy();
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -1405,7 +1405,7 @@ void debug_memory_thread_cleanup(void) {
   cond_signal(&g_debug_memory_request.cond);
 
   // Use timeout join to prevent indefinite hang if debug thread is stuck
-  // Matches pattern used in debug_sync_cleanup_thread() which has 1 second timeout
+  // Matches pattern used in debug_stats_cleanup_thread() which has 1 second timeout
   int join_result = asciichat_thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
   if (join_result != 0) {
     // Thread didn't exit cleanly, but we still need to proceed with shutdown

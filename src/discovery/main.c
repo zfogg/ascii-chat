@@ -186,6 +186,7 @@ static void *discovery_video_receive_thread(void *user_data) {
         size_t encoded_size = is_compressed ? compressed_size : original_size;
         size_t encoded_length = length - sizeof(header);
         if (encoded_size == encoded_length && (!is_compressed || compressed_size > 0)) {
+          asciichat_errno_scope_t decode_scope = asciichat_errno_scope_begin();
           char *decoded = packet_decode_frame_data_malloc((const char *)payload + sizeof(header), encoded_length,
                                                           is_compressed, original_size, compressed_size);
           if (decoded) {
@@ -194,7 +195,7 @@ static void *discovery_video_receive_thread(void *user_data) {
           } else {
             log_warn_every(US_PER_SEC_INT, "Could not decode server ASCII frame (compressed=%d original=%u encoded=%u)",
                            is_compressed, original_size, compressed_size);
-            CLEAR_ERRNO();
+            asciichat_errno_scope_end(decode_scope, ASCIICHAT_ERRNO_DISMISSED);
           }
         } else {
           log_warn_every(US_PER_SEC_INT,

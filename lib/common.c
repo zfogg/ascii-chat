@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/stats.h>
 
 /**
  * @file common.c
@@ -26,7 +27,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>       // For RCU-based options access
 #include <ascii-chat/discovery/strings.h> // For RCU-based options access
-#include <ascii-chat/debug/sync.h>        // For debug_sync_final_cleanup, debug_sync_cleanup_thread, debug_sync_destroy
+#include <ascii-chat/debug/sync.h> // For debug_stats_final_cleanup, debug_stats_cleanup_thread, debug_stats_destroy
 #include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/atomic.h>      // For debug_atomic_shutdown()
@@ -205,6 +206,9 @@ void asciichat_shared_destroy(void) {
   }
   shutdown_done = true;
 
+  // Stop diagnostic readers before destroying symbols or synchronization state.
+  debug_stats_cleanup_thread();
+
   ui_input_shutdown();
   ui_controller_shutdown();
   keyboard_destroy();
@@ -218,27 +222,22 @@ void asciichat_shared_destroy(void) {
   terminal_stop_resize_detection();
 
 #ifndef NDEBUG
-  // Lock debug thread - must join before any lock cleanup
-  debug_sync_cleanup_thread();
 
   // Clean up all remaining mutex stacks before memory report
   mutex_stack_cleanup();
 
   // Clean up current thread's allocations
-  debug_sync_final_cleanup();
+  debug_stats_final_cleanup();
 
   // Memory debug thread - prints memory report (must be last)
 #if defined(DEBUG_MEMORY)
   debug_memory_thread_cleanup();
 #endif
 
-  // Lock debug system - set initialized=false so mutex_lock uses mutex_lock_impl directly
-  // This must happen after thread cleanup but before any subsystem that uses mutex_lock
-  debug_sync_destroy();
-
   // Atomic debug cleanup
   debug_atomic_shutdown();
 #endif
+  debug_stats_destroy();
 
   // 1. Terminal screen - cleanup frame buffer
   terminal_screen_cleanup();
@@ -286,7 +285,7 @@ void asciichat_shared_destroy(void) {
 #ifndef NDEBUG
   mutex_stack_cleanup();
   // Final cleanup: free the main thread's debug allocations
-  debug_sync_final_cleanup();
+  debug_stats_final_cleanup();
 #endif
 
   // 14. Memory stats (debug builds only) - runs with colors still available
@@ -314,7 +313,7 @@ void asciichat_shared_destroy(void) {
   options_state_destroy();
 
   // 18. Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_destroy();
+  asciichat_errno_shutdown();
 
 #ifndef NDEBUG
   // 19. Named registry - cleanup all registered thread names and debug entries

@@ -1030,6 +1030,7 @@ static void *data_reception_thread_func(void *arg) {
     // Use short 16ms timeout to allow rendering at 60 FPS
     // Instead of blocking indefinitely waiting for a packet,
     // we timeout quickly so main thread can continue rendering
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
     if (packet_count == 0) {
     }
@@ -1038,6 +1039,7 @@ static void *data_reception_thread_func(void *arg) {
       packet_count++;
       log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
     } else if (acip_result == ERROR_NETWORK_TIMEOUT) {
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
       // Network timeouts are expected - socket may have no data available
       // Continue looping to allow snapshot timer to expire
       log_debug("[FRAME_RECV_LOOP] ⏱️  TIMEOUT: No data available, retrying (packets received: %d)", packet_count);
@@ -1075,14 +1077,11 @@ static void *data_reception_thread_func(void *arg) {
         }
 
         // Check errno context for additional error details
-        asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx)) {
-          if (err_ctx.code == ERROR_CRYPTO) {
-            // Security violation - exit immediately
-            log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
-            log_error("SECURITY: This is a critical security violation - exiting immediately");
-            exit(1);
-          }
+        if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_CRYPTO)) {
+          LOG_ERRNO_IF_SET("Server violated the encryption policy");
+          asciichat_errno_request_exit(ERROR_CRYPTO);
+          signal_exit();
+          break;
         }
 
         // Other errors - still disconnect to prevent infinite loop
@@ -1132,10 +1131,8 @@ static void *data_reception_thread_func(void *arg) {
 
   atomic_store_bool(&g_data_thread_exited, true);
 
-  // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
-
-  log_warn("[FRAME_RECV_LOOP] ✅ THREAD_CLEANUP: error context destroyed, thread terminating");
+  // The platform thread wrapper unregisters pending errors on return.
+  log_debug("[FRAME_RECV_LOOP] Thread terminating");
   return NULL;
 }
 
@@ -1334,7 +1331,16 @@ void protocol_stop_connection() {
       size_t flush_buf_size = 5 + (320 * 240 * 2);
       uint8_t *flush_buf = SAFE_MALLOC(flush_buf_size, uint8_t *);
       size_t flush_size = flush_buf_size;
+      asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
       asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &flush_size);
+      if (flush_result != ASCIICHAT_OK) {
+        // The snapshot is already delivered; failure to flush optional buffered
+        // video (including an unavailable HEVC encoder) cannot undo it.
+        asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_DISMISSED);
+      } else {
+        ASSERT_NO_ERRNO_SINCE(flush_scope);
+        asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_HANDLED);
+      }
       if (flush_result == ASCIICHAT_OK && flush_size > 0) {
         log_info("[PROTOCOL_STOP] Flushed H.265 encoder: got %zu bytes of buffered frames", flush_size);
         // Send the flushed frame if we got one

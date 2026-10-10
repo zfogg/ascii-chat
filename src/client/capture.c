@@ -289,6 +289,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     asciichat_error_t send_result;
     if (use_hevc) {
+      asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,
                       processed_image->h);
       send_result = threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
@@ -297,9 +298,13 @@ static void *webcam_capture_thread_func(void *arg) {
         // Missing platform HEVC encoders should degrade video quality, not tear
         // down an otherwise healthy audio/video connection.
         log_warn("HEVC encoding is unavailable; switching this connection to raw video frames");
+        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
         force_raw_video = true;
         send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
                                                 (uint32_t)processed_image->h, 1);
+      } else if (send_result == ASCIICHAT_OK) {
+        ASSERT_NO_ERRNO_SINCE(encode_scope);
+        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
       }
     } else {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
@@ -393,7 +398,6 @@ static void *webcam_capture_thread_func(void *arg) {
   log_debug("CAPTURE_THREAD_EXIT: Thread marked as exited, cleaning up errno");
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   log_debug("CAPTURE_THREAD_EXIT: Exiting capture thread");
   return NULL;

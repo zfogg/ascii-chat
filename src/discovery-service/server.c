@@ -1057,6 +1057,7 @@ void *acds_client_handler(void *arg) {
     size_t payload_size = 0;
 
     // Receive packet (blocking with system timeout)
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     int result = receive_packet(client_socket, &packet_type, &payload, &payload_size);
 
     if (result >= 0) {
@@ -1078,7 +1079,7 @@ void *acds_client_handler(void *arg) {
 
       // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
       asciichat_error_t error = GET_ERRNO();
-      if (error == ERROR_NETWORK_TIMEOUT ||
+      if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT) ||
           (error == ERROR_NETWORK && has_context && strstr(err_ctx.context_message, "timed out") != NULL)) {
         // Check if client has been idle too long (abrupt disconnect without FIN)
         uint64_t idle_ns = time_get_ns() - last_packet_time_ns;
@@ -1090,6 +1091,7 @@ void *acds_client_handler(void *arg) {
           }
           break;
         }
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("Client %s: receive timeout, continuing to wait for packets", client_ip);
         if (payload) {
           buffer_pool_free(NULL, payload, payload_size);
@@ -1302,10 +1304,12 @@ void *acds_websocket_client_handler(void *arg) {
     size_t recv_len = 0;
     void *alloc_buffer = NULL;
 
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t recv_result = acds_receive_websocket_packet(transport, &recv_buffer, &recv_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       // Check if this is a timeout or disconnect
       if (recv_result == ERROR_NETWORK_TIMEOUT) {
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("WebSocket client %s: receive timeout, continuing to wait for packets", client_ip);
         if (alloc_buffer) {
           buffer_pool_free(NULL, alloc_buffer, 0);

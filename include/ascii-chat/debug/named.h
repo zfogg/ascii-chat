@@ -1100,6 +1100,8 @@ bool named_registry_read(uintptr_t key, const char *type, void (*read_object)(ui
     }                                                                                                                  \
   } while (0)
 
+/** Print a synchronized hash-table summary without logging under its lock. */
+void named_print_hash_stats(void);
 
 #ifdef __cplusplus
 }

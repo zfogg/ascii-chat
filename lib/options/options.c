@@ -1730,11 +1730,11 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.status_screen = status_value;
       opts.status_screen_explicitly_set = true;
     }
-#ifndef NDEBUG
     if (mode_argv[i] &&
-        (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
+        (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0 ||
+         strcmp(mode_argv[i], "--errno-stacks") == 0 || strncmp(mode_argv[i], "--errno-stacks=", 15) == 0)) {
       opts.debug_sync_state_time_explicit = true;
-      if (strcmp(mode_argv[i], "--sync-state") == 0) {
+      if (strcmp(mode_argv[i], "--sync-state") == 0 || strcmp(mode_argv[i], "--errno-stacks") == 0) {
         if (i + 1 < mode_argc) {
           char *endptr;
           double val = strtod(mode_argv[i + 1], &endptr);
@@ -1744,7 +1744,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           }
         }
       } else {
-        const char *value_str = mode_argv[i] + 13;
+        const char *value_str = strchr(mode_argv[i], '=') + 1;
         if (value_str[0] != '\0') {
           char *endptr;
           double val = strtod(value_str, &endptr);
@@ -1799,7 +1799,6 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
       }
     }
-#endif
   }
 
   // Auto-disable splash when grep is used (since it's one-time startup screen)

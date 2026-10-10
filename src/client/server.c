@@ -564,17 +564,20 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   // Perform crypto handshake if encryption is enabled
   log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
-  int handshake_result = client_crypto_handshake(g_client_transport);
+  asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
+  asciichat_error_t handshake_result = client_crypto_handshake(g_client_transport);
   if (handshake_result != 0) {
-    log_error("Crypto handshake failed");
+    LOG_ERRNO_IF_SET("Crypto handshake failed");
     log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
     acip_transport_destroy(g_client_transport);
     g_client_transport = NULL;
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    FATAL(ERROR_CRYPTO_HANDSHAKE,
+    FATAL(handshake_result,
           "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
   }
+  ASSERT_NO_ERRNO_SINCE(handshake_scope);
+  asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
   // Turn OFF terminal logging when successfully connected to server

@@ -241,6 +241,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   uint64_t receive_timeout_ns =
       transport->receive_timeout_ns != 0 ? transport->receive_timeout_ns : RECV_TIMEOUT * NS_PER_SEC_INT;
+  asciichat_errno_scope_t receive_scope = asciichat_errno_checkpoint();
   packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx,
                                                                    enforce_encryption, &envelope, receive_timeout_ns);
   log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",
@@ -255,8 +256,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
       log_error("[TCP_RECV_STATE] ❌ RECV_SECURITY_VIOLATION: Crypto error on sockfd=%d", tcp->sockfd);
       return SET_ERRNO(ERROR_CRYPTO, "Security violation");
     } else {
-      asciichat_error_context_t error_context;
-      if (HAS_ERRNO(&error_context) && error_context.code == ERROR_NETWORK_TIMEOUT) {
+      if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
         return ERROR_NETWORK_TIMEOUT;
       }
       // A non-timeout receive error is terminal for this stream. Retaining a

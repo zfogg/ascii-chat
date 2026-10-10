@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/stats.h>
 /**
  * @file main.c
  * @ingroup main
@@ -263,7 +264,7 @@ static void handle_sigterm(int sig) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
-  debug_sync_trigger_print();
+  debug_stats_trigger_print();
 #endif
 
   // Call signal_exit() to set flag AND interrupt blocking socket operations
@@ -294,7 +295,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
-  debug_sync_trigger_print();
+  debug_stats_trigger_print();
 #endif
 
   // Double Ctrl+C forces immediate exit
@@ -324,7 +325,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
  */
 static void common_handle_sigusr1(int sig) {
   (void)sig;
-  debug_sync_trigger_print();
+  debug_stats_trigger_print();
 }
 
 /**
@@ -494,13 +495,14 @@ int main(int argc, char *argv[]) {
   NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), "main", NULL);
 #endif
   // Also save main thread ID for memory reporting (must be very early)
-  debug_sync_set_main_thread_id();
+  debug_stats_set_main_thread_id();
 #endif
 
   // Preserve arguments before environment consumers or option parsing retain pointers.
+  asciichat_errno_scope_t title_init_scope = asciichat_errno_scope_begin();
   asciichat_error_t title_init_result = platform_process_title_init(argc, &argv);
   if (title_init_result != ASCIICHAT_OK) {
-    CLEAR_ERRNO();
+    asciichat_errno_scope_end(title_init_scope, ASCIICHAT_ERRNO_DISMISSED);
   }
   g_argv = argv;
   (void)atexit(platform_process_title_destroy);
@@ -916,7 +918,7 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up
   log_debug("Initializing lock debug system...");
-  int debug_sync_result = debug_sync_init();
+  int debug_sync_result = debug_stats_init();
   if (debug_sync_result != 0) {
     LOG_ERRNO_IF_SET("Debug sync system initialization failed");
     FATAL(ERROR_PLATFORM_INIT, "Debug sync system initialization failed");
@@ -995,19 +997,16 @@ int main(int argc, char *argv[]) {
   // Register shutdown callback so splash thread and other code can check for exit
   shutdown_register_callback((shutdown_check_fn)should_exit);
 
+  // Debug builds always monitor synchronization. Release builds start the worker
+  // only when the user requests diagnostics; error storage itself is always on.
+  bool start_diagnostics = IS_OPTION_EXPLICIT(debug_sync_state_time, opts) ||
+                           IS_OPTION_EXPLICIT(debug_backtrace_time, opts) || opts->debug_memory_report_interval > 0;
 #ifndef NDEBUG
-  // Start debug threads now, after initialization but before mode entry
-  // This avoids lock contention during critical initialization phase
-  // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
-  // direct pthread calls instead of mutex_init/cond_init to avoid named registry
-  // deadlock during thread startup
-  if (debug_sync_start_thread() != 0) {
-    LOG_ERRNO_IF_SET("Debug sync thread startup failed");
-    FATAL(ERROR_THREAD, "Debug sync thread startup failed");
-  }
-  log_debug("Debug sync thread started");
-
+  start_diagnostics = true;
 #endif
+  if (start_diagnostics && debug_stats_start_thread() != ASCIICHAT_OK) {
+    FATAL(ERROR_THREAD, "Cannot start diagnostics worker");
+  }
 
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);
@@ -1019,15 +1018,19 @@ int main(int argc, char *argv[]) {
   // Call the mode-specific entry point
   // Mode entry points use options_get() to access parsed options
   if (title_init_result == ASCIICHAT_OK) {
+    asciichat_errno_scope_t title_scope = asciichat_errno_scope_begin();
     asciichat_error_t title_result = platform_process_title_set_args(mode->name, argc, argv, opts->mode_arg_index);
     if (title_result != ASCIICHAT_OK) {
       log_debug("Could not set process title for %s mode", mode->name);
-      CLEAR_ERRNO();
+      asciichat_errno_scope_end(title_scope, ASCIICHAT_ERRNO_DISMISSED);
     }
   } else {
     log_debug("Process title initialization was unavailable (error %d)", title_init_result);
   }
   int exit_code = mode->entry_point();
+  asciichat_error_t requested_exit = asciichat_errno_exit_code();
+  if (requested_exit != ASCIICHAT_OK)
+    exit_code = requested_exit;
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report

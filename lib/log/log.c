@@ -1235,10 +1235,6 @@ void log_plain_msg(const char *fmt, ...) {
     return;
   }
 
-  if (shutdown_is_requested()) {
-    return;
-  }
-
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
@@ -1278,6 +1274,10 @@ void log_plain_msg(const char *fmt, ...) {
       write_to_log_file_atomic("\n", 1, NULL);
     }
   }
+
+  // Preserve diagnostics in the log file during shutdown without repainting the terminal.
+  if (shutdown_is_requested())
+    return;
 
   // Terminal output (atomic state checks)
   if (!atomic_load_u64(&g_log.terminal_output_enabled)) {

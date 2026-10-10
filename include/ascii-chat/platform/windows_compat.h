@@ -25,6 +25,14 @@
 #include <wchar.h>
 
 #include <windows.h>
+// These names belong to the application's error enum. Windows headers can be
+// included after error_codes.h, so remove their macros at this boundary too.
+#undef ERROR_BUFFER_OVERFLOW
+#undef ERROR_INVALID_STATE
+#undef ERROR_FILE_NOT_FOUND
+#undef ERROR_NOT_SUPPORTED
+#undef ERROR_INVALID_PASSWORD
+#undef ERROR_NOT_FOUND
 #pragma pack(pop)
 #endif // _WIN32
 

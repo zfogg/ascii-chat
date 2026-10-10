@@ -8,7 +8,6 @@
 
 #include <ascii-chat/options/registry/common.h>
 
-#ifndef NDEBUG
 
 // clang-format off
 const registry_entry_t g_debug_entries[] = {
@@ -18,7 +17,25 @@ const registry_entry_t g_debug_entries[] = {
      offsetof(options_t, debug_sync_state_time),
      &default_debug_sync_state_time_value,
      sizeof(double),
-     "Print synchronization primitive state with optional time offset (debug builds only).",
+     "Print locks, error stacks, handled history, and hash-table statistics after TIME seconds.",
+     "DEBUG",
+     "TIME",
+     false,  // required
+     NULL,   // env_var_name
+     NULL,   // validate_fn
+     NULL,   // parse_fn
+     false,  // owns_memory
+     true,   // optional_arg
+     OPTION_MODE_ALL,
+     {0},    // metadata
+     NULL},  // action_fn
+    {"errno-stacks",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, debug_sync_state_time),
+     &default_debug_sync_state_time_value,
+     sizeof(double),
+     "Print pending errors, handled history, and registry statistics after TIME seconds.",
      "DEBUG",
      "TIME",
      false,  // required
@@ -69,10 +86,3 @@ const registry_entry_t g_debug_entries[] = {
 
     REGISTRY_TERMINATOR()};
 // clang-format on
-
-#else
-
-// Empty registry for non-debug builds
-const registry_entry_t g_debug_entries[] = {REGISTRY_TERMINATOR()};
-
-#endif

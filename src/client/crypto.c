@@ -428,15 +428,15 @@ int client_crypto_init(void) {
  * Perform crypto handshake with server
  *
  * @param transport Client's persistent transport (wraps the connected socket)
- * @return 0 on success, -1 on failure
+ * @return ASCIICHAT_OK or a specific error with pending context
  *
  * @ingroup client_crypto
  */
-int client_crypto_handshake(acip_transport_t *transport) {
+asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   // If client has --no-encrypt, skip handshake entirely
   if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   // If we reach here, crypto must be initialized for encryption
@@ -444,7 +444,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
     log_error("Crypto not initialized but server requires encryption");
     log_error("Server requires encrypted connection but client has no encryption configured");
     log_error("Use --key to specify a client key or --password for password authentication");
-    return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
+    return SET_ERRNO(ERROR_CRYPTO_AUTH,
+                     "Crypto authentication requirements not satisfied"); // No retry - configuration error
   }
 
   log_debug("Starting crypto handshake with server...");
@@ -465,7 +466,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (result != 0) {
     log_error("Failed to send protocol version to server");
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol version sent successfully");
 
@@ -487,7 +488,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
       buffer_pool_free(NULL, alloc_buffer, 0);
     }
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   if (payload_len != sizeof(protocol_version_packet_t)) {
@@ -495,7 +496,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
               sizeof(protocol_version_packet_t));
     buffer_pool_free(NULL, alloc_buffer, 0);
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   protocol_version_packet_t server_version;
@@ -514,7 +515,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (server_mode != g_crypto_mode) {
     log_error("Server mode mismatch: got 0x%02x, expected 0x%02x", server_mode, g_crypto_mode);
     STOP_TIMER("client_crypto_handshake");
-    return CONNECTION_ERROR_AUTH_FAILED;
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
   }
 
   // Step 0c: Send crypto capabilities to server
@@ -534,7 +535,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (result != 0) {
     log_error("Failed to send crypto capabilities to server");
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Crypto capabilities sent successfully");
 
@@ -551,7 +552,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
       buffer_pool_free(NULL, alloc_buffer, 0);
     }
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   if (payload_len != sizeof(crypto_parameters_packet_t)) {
@@ -559,7 +560,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
               sizeof(crypto_parameters_packet_t));
     buffer_pool_free(NULL, alloc_buffer, 0);
     STOP_TIMER("client_crypto_handshake");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   crypto_parameters_packet_t server_params;
@@ -581,7 +582,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
   // Set the crypto parameters in the handshake context
   result = crypto_handshake_set_parameters(&g_crypto_ctx, &server_params);
   if (result != ASCIICHAT_OK) {
-    FATAL(result, "Failed to set crypto parameters");
+    return SET_ERRNO((asciichat_error_t)result, "Failed to set crypto parameters");
   }
 
   // Store verification flag - server will verify client identity (whitelist check)
@@ -596,7 +597,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (server_params.selected_kex != KEX_ALGO_X25519) {
     log_error("Server selected unsupported KEX algorithm: %u", server_params.selected_kex);
     STOP_TIMER("client_crypto_handshake");
-    return CONNECTION_ERROR_AUTH_FAILED;
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
   }
 
   // Validate cipher selection based on negotiated mode
@@ -604,12 +605,12 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (expect_cipher && server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
     log_error("Server selected unsupported cipher algorithm: %u", server_params.selected_cipher);
     STOP_TIMER("client_crypto_handshake");
-    return CONNECTION_ERROR_AUTH_FAILED;
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
   }
   if (!expect_cipher && server_params.selected_cipher != CIPHER_ALGO_NONE) {
     log_error("Server chose cipher %u but client requested no encryption", server_params.selected_cipher);
     STOP_TIMER("client_crypto_handshake");
-    return CONNECTION_ERROR_AUTH_FAILED;
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
   }
 
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully");
@@ -632,7 +633,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
                                          ED25519_PUBLIC_KEY_SIZE, 0);
 
       if (result != ASCIICHAT_OK) {
-        FATAL(result, "Failed to send CRYPTO_CLIENT_HELLO packet");
+        return SET_ERRNO((asciichat_error_t)result, "Failed to send CRYPTO_CLIENT_HELLO packet");
       }
 
       // Log the key fingerprint for debugging
@@ -657,7 +658,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
       if (alloc_buffer) {
         buffer_pool_free(NULL, alloc_buffer, 0);
       }
-      FATAL(recv_result, "Failed to receive KEY_EXCHANGE_INIT from server");
+      return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive KEY_EXCHANGE_INIT from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_key_exchange(&g_crypto_ctx, transport, packet_type, payload, payload_len);
@@ -669,7 +670,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
     // Media Foundation creates background COM threads that can block exit() if not properly shut down
     capture_cleanup();
 #endif
-    FATAL(result, "Crypto key exchange failed");
+    return SET_ERRNO((asciichat_error_t)result, "Crypto key exchange failed");
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");
 
@@ -737,14 +738,14 @@ int client_crypto_handshake(acip_transport_t *transport) {
       if (alloc_buffer) {
         buffer_pool_free(NULL, alloc_buffer, 0);
       }
-      FATAL(recv_result, "Failed to receive auth challenge from server");
+      return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive auth challenge from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_auth_response(&g_crypto_ctx, transport, packet_type, payload, payload_len);
     buffer_pool_free(NULL, alloc_buffer, 0);
   }
   if (result != ASCIICHAT_OK) {
-    FATAL(result, "Crypto authentication failed");
+    return SET_ERRNO((asciichat_error_t)result, "Crypto authentication failed");
   }
   log_debug("CLIENT_CRYPTO: Auth response sent successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Auth response completed successfully");
@@ -757,7 +758,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
     transport->crypto_ctx = (crypto_context_t *)crypto_client_get_context();
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake",
                        "Crypto handshake completed successfully (no authentication)");
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   // Step 3: Receive handshake complete message
@@ -772,14 +773,14 @@ int client_crypto_handshake(acip_transport_t *transport) {
       if (alloc_buffer) {
         buffer_pool_free(NULL, alloc_buffer, 0);
       }
-      FATAL(recv_result, "Failed to receive handshake completion from server");
+      return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive handshake completion from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_complete(&g_crypto_ctx, transport, packet_type, payload, payload_len);
     buffer_pool_free(NULL, alloc_buffer, 0);
   }
   if (result != ASCIICHAT_OK) {
-    FATAL(result, "Crypto handshake completion failed");
+    return SET_ERRNO((asciichat_error_t)result, "Crypto handshake completion failed");
   }
 
   // Propagate encryption flag to crypto context
@@ -789,7 +790,7 @@ int client_crypto_handshake(acip_transport_t *transport) {
 
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake", "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
