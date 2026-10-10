@@ -41,13 +41,17 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-simd-") as temporary:
         source = Path(temporary) / "pixels.gif"
         source.write_bytes(gif_image(67, 19))
+        log = Path(temporary) / "smoke.log"
+        # Windows' narrow argv uses the local code page; keep that CLI fixture ASCII.
+        palette = " .:+#@" if os.name == "nt" else " .:+#\u2588"
         for color, mode in [("none", "foreground"), ("truecolor", "foreground"),
                             ("truecolor", "background"), ("256", "foreground"), ("16", "foreground")]:
-            args = [binary, "mirror", "--file", str(source), "--snapshot", "--snapshot-delay", "0",
+            args = [binary, "--log-file", str(log), "mirror", "--file", str(source), "--snapshot", "--snapshot-delay", "0",
                     "--splash-screen=false", "--audio=false", "--width", "65", "--height", "17",
-                    "--color-mode", color, "--render-mode", mode, "--palette-chars", " .:+#\u2588"]
+                    "--color-mode", color, "--render-mode", mode, "--palette-chars", palette]
             reference = None
             for backend in ["scalar", *backends]:
+                log.write_bytes(b"")
                 result = subprocess.run(args, env=dict(env, ASCII_CHAT_SIMD=backend),
                                         capture_output=True, timeout=45)
                 if result.returncode:
