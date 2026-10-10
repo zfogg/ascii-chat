@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file session/pipeline.c
  * @brief Three-thread render pipeline implementation
@@ -200,6 +201,7 @@ struct session_pipeline_s {
   atomic_t stop;
   atomic_t capture_finished;
   atomic_t first_frame_ns;
+  asciichat_error_context_t capture_failure; // Read after capture joins.
   asciichat_error_t encode_error; // Encode-owned; read only after joining encode.
   uint64_t frames_accepted;       // Capture-owned; read only after joining capture.
   bool has_render_file;           // Track if render_file was set at creation time
@@ -236,9 +238,12 @@ static void *pipeline_capture_thread(void *arg) {
   }
 
   while (!atomic_load_bool(&pipeline->stop)) {
+    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
     image_t *img = session_capture_read_frame(pipeline->capture);
 
     if (!img) {
+      if (asciichat_errno_peek_since(frame_scope, &pipeline->capture_failure))
+        break;
       if (session_capture_at_end(pipeline->capture)) {
         log_info("[PIPELINE_CAPTURE] End of media reached");
         break;
@@ -269,7 +274,11 @@ static void *pipeline_capture_thread(void *arg) {
     if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
       // Non-blocking: drop if queue full
       log_warn("[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
       free_frame(display_copy);
+    } else {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
     }
 
     if (pipeline->has_render_file) {
@@ -279,10 +288,13 @@ static void *pipeline_capture_thread(void *arg) {
       while (!queued && snapshot_uses_frame_target && !atomic_load_bool(&pipeline->stop))
         queued = frame_queue_push(pipeline->encode_queue, frame, 100 * NS_PER_MS_INT);
       if (!queued) {
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
         // Non-blocking: drop if queue full after 500ms
         log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
         free_frame(frame);
       } else {
+        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
         pipeline->frames_accepted++;
         log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }
@@ -571,7 +583,11 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   frame_queue_destroy(pipeline->display_queue);
   frame_queue_destroy(pipeline->encode_queue);
   NAMED_UNREGISTER(&pipeline->capture_finished);
-  asciichat_error_t err = pipeline->encode_error;
+  asciichat_error_t err = pipeline->capture_failure.code != ASCIICHAT_OK
+                              ? asciichat_errno_import(&pipeline->capture_failure)
+                              : pipeline->encode_error;
+  if (pipeline->capture_failure.code != ASCIICHAT_OK)
+    LOG_ERRNO_IF_SET("Media capture failed");
   SAFE_FREE(pipeline);
 
   log_info("[PIPELINE] Pipeline destroyed");

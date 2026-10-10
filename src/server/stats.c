@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/stats.c
  * @ingroup server_stats
@@ -157,8 +158,8 @@
  * - frames_captured: Total frames received from all clients
  * - frames_sent: Total ASCII frames delivered to all clients
  * - frames_dropped: Frames lost due to buffer overflows or processing delays
- * - avg_capture_fps: Moving average of frame capture rate
- * - avg_send_fps: Moving average of frame delivery rate
+ * - avg_capture_fps: Lifetime average of frame ingress rate
+ * - avg_send_fps: Lifetime average of frame delivery rate
  */
 server_stats_t g_stats = {0};
 
@@ -437,75 +438,22 @@ void *stats_logger_thread(void *arg) {
   asciichat_error_stats_print();
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }
 
-/**
- * @brief Update global server statistics (placeholder)
- *
- * This function is intended to update the global server statistics structure
- * with current performance metrics. Currently unimplemented but provides
- * the framework for centralized statistics updates.
- *
- * PLANNED FUNCTIONALITY:
- * ======================
- * - Aggregate per-client frame counts into global totals
- * - Calculate moving averages for FPS metrics
- * - Update system health indicators
- * - Compute performance trend data
- *
- * IMPLEMENTATION STRATEGY:
- * - Thread-safe updates using g_stats_mutex
- * - Atomic operations for frequently updated counters
- * - Efficient aggregation algorithms
- * - Minimal performance impact
- *
- * INTEGRATION POINTS:
- * - Called by render threads when updating frame counts
- * - Invoked by client management code for connection metrics
- * - Used by packet queue systems for throughput tracking
- *
- * @todo Implement comprehensive statistics aggregation
- * @note Function currently serves as placeholder for future development
- */
+/** Copy actual lifetime event counts; disconnects do not erase history. */
 void update_server_stats(void) {
-  // Aggregate statistics from all active clients
-  uint64_t total_frames_sent = 0;
-  uint64_t total_frames_dropped = 0;
-
-  // Read-lock to safely iterate over all clients
-  rwlock_rdlock(&g_client_manager_rwlock);
-
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id[0] != '\0' && atomic_load_bool(&client->active)) {
-      // Aggregate frames sent to all clients
-      total_frames_sent += client->frames_sent;
-
-      // Get dropped frame statistics from outgoing video buffer
-      if (client->outgoing_video_buffer) {
-        video_frame_stats_t stats;
-        video_frame_get_stats(client->outgoing_video_buffer, &stats);
-        total_frames_dropped += stats.dropped_frames;
-      }
-    }
-  }
-
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  // Update global statistics atomically
+  stats_snapshot_t snapshot;
+  if (!lifecycle_is_initialized(&g_stats_lc) || stats_scope_snapshot(stats_runtime_scope(), &snapshot) != ASCIICHAT_OK)
+    return;
   mutex_lock(&g_stats_mutex);
-  g_stats.frames_sent = total_frames_sent;
-  g_stats.frames_dropped = total_frames_dropped;
-
-  // Calculate frames_captured from frames_sent and frames_dropped
-  // frames_captured = frames_sent + frames_dropped (total output frames)
-  if (total_frames_sent > 0 || total_frames_dropped > 0) {
-    g_stats.frames_captured = total_frames_sent + total_frames_dropped;
-  }
-
+  g_stats.frames_captured = snapshot.counters[STATS_COUNTER_FRAMES_RECEIVED];
+  g_stats.frames_sent = snapshot.counters[STATS_COUNTER_FRAMES_SENT];
+  g_stats.frames_dropped = snapshot.counters[STATS_COUNTER_FRAMES_DROPPED];
+  double seconds = (double)(snapshot.sampled_ns - snapshot.started_ns) / 1e9;
+  g_stats.avg_capture_fps = seconds > 0 ? (double)g_stats.frames_captured / seconds : 0;
+  g_stats.avg_send_fps = seconds > 0 ? (double)g_stats.frames_sent / seconds : 0;
   mutex_unlock(&g_stats_mutex);
 }
 
@@ -525,8 +473,8 @@ void update_server_stats(void) {
  * - frames_dropped: Frames lost due to overload or errors
  *
  * PERFORMANCE INDICATORS:
- * - avg_capture_fps: Moving average of frame capture rate
- * - avg_send_fps: Moving average of frame delivery rate
+ * - avg_capture_fps: Lifetime average of frame ingress rate
+ * - avg_send_fps: Lifetime average of frame delivery rate
  *
  * THREAD SAFETY:
  * ==============

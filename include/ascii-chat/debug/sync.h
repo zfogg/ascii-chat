@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/common/error_codes.h>
 
 /**
  * @file sync.h
@@ -67,11 +68,11 @@
  * @code
  * // In a signal handler (e.g., SIGUSR2):
  * void handle_debug_signal(int sig) {
- *     debug_sync_trigger_print();  // Schedules print on debug thread
+ *     debug_stats_trigger_print();  // Schedules print on debug thread
  * }
  *
  * // In main:
- * debug_sync_init();
+ * debug_stats_init();
  * debug_sync_start_thread();
  * signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
  * // Now: kill -USR2 <pid> triggers state dump in logs
@@ -228,225 +229,7 @@ void debug_sync_print_cond_state(void);
  */
 void debug_sync_print_state(void);
 
-/**
- * @brief Schedule delayed sync state printing on debug thread
- * @param delay_ns Delay in nanoseconds before printing (e.g., 100 * 1000000 for 100ms)
- * @ingroup debug_sync
- *
- * Schedules debug_sync_print_state() to execute on the debug thread after
- * the specified delay. Useful for capturing state snapshots at specific moments
- * in execution (e.g., "print state 50ms from now, during this critical section").
- *
- * The debug thread must be running (started via debug_sync_start_thread()).
- *
- * ## Use Cases
- *
- * @code
- * // Capture state during a suspected deadlock region
- * void critical_section(void) {
- *     // Schedule state dump 50ms from now (during execution)
- *     debug_sync_print_state_delayed(50 * 1000000);
- *
- *     // Do work...
- *     work_that_might_deadlock();
- *
- *     // By the time this returns, state was dumped if deadlock happened
- * }
- * @endcode
- *
- * @note Non-blocking: returns immediately, print happens on debug thread
- * @note Useful for production debugging with minimal impact
- * @note If multiple calls are made, they queue and execute sequentially
- *
- * @see debug_sync_start_thread() to ensure debug thread is running
- */
-void debug_sync_print_state_delayed(uint64_t delay_ns);
-
-/**
- * @brief Schedule delayed backtrace printing on debug thread
- * @param delay_ns Delay in nanoseconds before printing
- * @ingroup debug_sync
- *
- * Schedules a full backtrace capture and print on the debug thread after
- * the specified delay. Complements debug_sync_print_state_delayed() to capture
- * both lock state AND stack traces at a specific moment.
- *
- * The debug thread must be running (started via debug_sync_start_thread()).
- *
- * ## Combined Usage
- *
- * @code
- * void suspect_deadlock_region(void) {
- *     // Capture both state and stacks after 100ms
- *     debug_sync_print_state_delayed(100 * 1000000);
- *     debug_sync_print_backtrace_delayed(100 * 1000000);
- *
- *     // Execute potentially problematic code
- *     // After 100ms, both state and stacks will be printed
- * }
- * @endcode
- *
- * @note Non-blocking: returns immediately
- * @note Useful with delayed state printing for comprehensive debugging
- * @note Complements backtrace_capture_and_symbolize() for manual backtraces
- *
- * @see debug_sync_print_state_delayed()
- * @see backtrace.h for manual backtrace capture
- */
-void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
-
-/**
- * @brief Set periodic memory report interval
- * @param interval_ns Interval in nanoseconds (0 to disable)
- * @ingroup debug_sync
- *
- * Configures the debug sync thread to print memory reports at the specified interval.
- * The first report will be printed after interval_ns nanoseconds, subsequent reports
- * will follow at that interval.
- *
- * @param interval_ns Nanoseconds between reports (0 disables periodic reporting)
- *
- * Example:
- * @code
- * // Print memory report every 5 seconds
- * debug_sync_set_memory_report_interval(5 * 1000000000ULL);
- * @endcode
- *
- * @see debug_memory_report() for the memory report function being called
- */
-void debug_sync_set_memory_report_interval(uint64_t interval_ns);
-
-// ============================================================================
-// Debug Sync API - Thread management and utilities
-// ============================================================================
-
-/**
- * @brief Initialize debug synchronization system
- * @return 0 on success, non-zero on error
- * @ingroup debug_sync
- *
- * Called at startup to initialize internal structures for sync debugging.
- * Must be called before debug_sync_start_thread().
- *
- * Safe to call multiple times (idempotent).
- *
- * @see debug_sync_start_thread() to start the background debug thread
- */
-void debug_sync_set_main_thread_id(void);
-
-int debug_sync_init(void);
-
-/**
- * @brief Get the main thread ID for memory reporting
- * @return Main thread ID as uint64_t, or 0 if not initialized
- * @ingroup debug_sync
- */
-uint64_t debug_sync_get_main_thread_id(void);
-
-/**
- * @brief Start background debug thread for scheduled operations
- * @return 0 on success, non-zero on error
- * @ingroup debug_sync
- *
- * Spawns a background thread that handles scheduled delayed printing operations
- * from debug_sync_print_state_delayed() and debug_sync_print_backtrace_delayed().
- *
- * Must call debug_sync_init() first.
- *
- * ## Typical Initialization
- *
- * @code
- * // In main():
- * debug_sync_init();
- * debug_sync_start_thread();
- *
- * // Now safe to use delayed printing:
- * debug_sync_print_state_delayed(100 * 1000000);
- *
- * // At shutdown:
- * debug_sync_cleanup_thread();
- * debug_sync_destroy();
- * @endcode
- *
- * @note Thread will block until first scheduled job arrives
- * @note No overhead if no delayed jobs are scheduled
- * @note Call debug_sync_cleanup_thread() during shutdown
- *
- * @see debug_sync_cleanup_thread() for shutdown
- */
-int debug_sync_start_thread(void);
-
-/**
- * @brief Destroy debug synchronization system
- * @ingroup debug_sync
- *
- * Cleans up internal structures. Should be called during shutdown,
- * after debug_sync_cleanup_thread().
- *
- * @see debug_sync_cleanup_thread() should be called first
- */
-void debug_sync_destroy(void);
-
-/**
- * @brief Stop and clean up background debug thread
- * @ingroup debug_sync
- *
- * Gracefully shuts down the background debug thread that was started by
- * debug_sync_start_thread(). Processes any remaining queued jobs before exit.
- *
- * ## Typical Shutdown Sequence
- *
- * @code
- * // At program shutdown:
- * debug_sync_cleanup_thread();  // Stop background thread
- * debug_sync_destroy();         // Destroy system
- * @endcode
- *
- * @note Must be called before debug_sync_destroy()
- * @note Safe to call multiple times
- */
-void debug_sync_cleanup_thread(void);
-
-/**
- * @brief Final cleanup of debug allocations at shutdown
- * @ingroup debug_sync
- *
- * Cleans up any remaining thread-local allocations (mutex stacks, etc)
- * from the current thread. Must be called before debug_sync_destroy().
- */
-void debug_sync_final_cleanup(void);
-
-/**
- * @brief Trigger sync state print immediately (synchronous)
- * @ingroup debug_sync
- *
- * Immediately calls debug_sync_print_state() on the current thread.
- * Unlike debug_sync_print_state_delayed(), this is synchronous and blocking.
- *
- * Useful for:
- * - Debugging code (breakpoint followed by print)
- * - Signal handlers that need instant output
- * - Testing and validation
- *
- * ## Example: Signal Handler
- *
- * @code
- * void handle_debug_signal(int sig) {
- *     // Print state immediately in signal handler
- *     debug_sync_trigger_print();
- * }
- *
- * signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
- * // Now: kill -USR2 <pid> triggers immediate state print
- * @endcode
- *
- * @note Blocks until print is complete
- * @note Can be called from signal handlers safely
- *
- * @see debug_sync_print_state() for the underlying function
- * @see debug_sync_print_state_delayed() for scheduled printing
- */
-void debug_sync_trigger_print(void);
+#include <ascii-chat/debug/stats.h>
 
 /**
  * @brief Get synchronization statistics
@@ -514,6 +297,20 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
  * @see debug_sync_start_thread() to ensure periodic checking
  */
 void debug_sync_check_cond_deadlocks(void);
+
+// Independent worker for synchronization monitoring and reports.
+asciichat_error_t debug_sync_init(void);
+asciichat_error_t debug_sync_start_thread(void);
+void debug_sync_cleanup_thread(void);
+void debug_sync_destroy(void);
+void debug_sync_final_cleanup(void);
+bool debug_sync_is_cleanup_in_progress(void);
+void debug_sync_trigger_print(void);
+void debug_sync_print_state_delayed(uint64_t delay_ns);
+void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
+void debug_sync_print(void);
+void debug_sync_poll(void);
+
 
 #ifdef __cplusplus
 }

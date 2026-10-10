@@ -404,6 +404,7 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
   }
   if (version->feature_flags != 0) {
     uint16_t feature_flags = NET_TO_HOST_U16(version->feature_flags);
+    atomic_store_bool(&client->supports_recoverable_errors, (feature_flags & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
     log_debug("Client %u supports features: 0x%04x", client->client_id, feature_flags);
   }
 }

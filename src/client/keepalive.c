@@ -179,7 +179,7 @@ static void *ping_thread_func(void *arg) {
 
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive
     // Server timeout is 5 seconds, so 3-second pings provide safety margin
-    if (threaded_send_ping_packet() < 0) {
+    if (threaded_send_ping_packet() != ASCIICHAT_OK) {
       log_debug("Failed to send ping packet");
       // Set connection lost flag so main loop knows to reconnect
       server_connection_lost();
@@ -214,7 +214,6 @@ static void *ping_thread_func(void *arg) {
   atomic_store_bool(&g_ping_thread_exited, true);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }

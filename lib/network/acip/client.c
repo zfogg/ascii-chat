@@ -64,6 +64,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     if (recv_result == ERROR_NETWORK_TIMEOUT) {
       log_debug("[ACIP_RECV] Receive timed out while waiting for signaling data");
     } else {
+      stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
       log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
     }
     return recv_result;

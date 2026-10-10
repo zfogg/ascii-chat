@@ -1,3 +1,8 @@
+#include <ascii-chat/debug/sync.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/main.c
  * @ingroup server_main
@@ -48,6 +53,7 @@
  * @version 2.0 (Post-Modularization)
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/ui/notice.h>
 
 #ifdef _WIN32
@@ -971,8 +977,13 @@ static void *acds_receive_thread(void *arg) {
       break;
     }
 
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
+    if (result == ASCIICHAT_OK) {
+      ASSERT_NO_ERRNO_SINCE(receive_scope);
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
     if (result != ASCIICHAT_OK) {
       // Check error context to see if connection actually closed
       asciichat_error_context_t err_ctx;
@@ -980,28 +991,13 @@ static void *acds_receive_thread(void *arg) {
 
       // Timeouts are normal when there are no packets - just continue waiting
       if (result == ERROR_NETWORK_TIMEOUT) {
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         continue;
       }
 
-      // ERROR_NETWORK could be:
-      // 1. Receive timeout (non-fatal - continue waiting)
-      // 2. EOF/connection closed (fatal - exit thread)
-      // Check the error context message to distinguish
       if (result == ERROR_NETWORK) {
-        if (has_context && strstr(err_ctx.context_message, "Failed to receive packet") != NULL) {
-          // Generic receive failure (likely timeout) - continue waiting
-          log_debug("ACDS receive timeout, continuing to wait for packets");
-          continue;
-        } else if (has_context && (strstr(err_ctx.context_message, "EOF") != NULL ||
-                                   strstr(err_ctx.context_message, "closed") != NULL)) {
-          // Connection actually closed
-          log_warn("ACDS connection closed: %s", err_ctx.context_message);
-          break;
-        } else {
-          // Unknown ERROR_NETWORK - log and exit
-          log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
-          break;
-        }
+        log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
+        break;
       }
 
       // Other errors - exit thread
@@ -1081,7 +1077,15 @@ static void *ascii_chat_client_handler(void *arg) {
     asciichat_error_t rate_check =
         rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      tcp_server_reject_client(client_socket, "Connection rate limit exceeded");
+      asciichat_errno_scope_t rejection_scope = asciichat_errno_scope_begin();
+      asciichat_error_t public_code = rate_check == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL;
+      packet_envelope_t initial = {0};
+      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
+      if (initial.allocated_buffer)
+        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+      packet_send_error(client_socket, NULL, public_code, asciichat_error_string(public_code));
+      asciichat_errno_scope_end(rejection_scope, ASCIICHAT_ERRNO_HANDLED);
+      socket_close(client_socket);
       SAFE_FREE(ctx);
       return NULL;
     }
@@ -1090,17 +1094,39 @@ static void *ascii_chat_client_handler(void *arg) {
   }
 
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
-  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port);
+  asciichat_errno_scope_t admission_scope = asciichat_errno_scope_begin();
+  bool socket_consumed = false;
+  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port, &socket_consumed);
   if (!client) {
-    if (HAS_ERRNO(&asciichat_errno_context)) {
-      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-      CLEAR_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t code = ERROR_INTERNAL;
+    if (asciichat_errno_peek_since(admission_scope, &failure)) {
+      code = network_error_public_code(failure.code);
     }
-    tcp_server_reject_client(client_socket, "Failed to add client");
+    asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
+    // Consume the initial version packet before replying. Closing a socket with
+    // unread input can reset the connection and discard the rejection response.
+    if (!socket_consumed) {
+      packet_envelope_t initial = {0};
+      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
+      if (initial.allocated_buffer)
+        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+    }
+    asciichat_error_t sent =
+        socket_consumed ? ASCIICHAT_OK : packet_send_error(client_socket, NULL, code, asciichat_error_string(code));
+    if (sent != ASCIICHAT_OK)
+      LOG_ERRNO_IF_SET("Failed to report client rejection");
+    asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
+    LOG_ERRNO_IF_SET("Client admission failed");
+    asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
+    if (!socket_consumed)
+      socket_close(client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
+  ASSERT_NO_ERRNO_SINCE(admission_scope);
+  asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
   log_debug("Client %s added successfully from %s:%d", client->client_id, client_ip, client_port);
 
   // Block until client disconnects (active flag is set by receive thread)
@@ -1474,6 +1500,14 @@ static int init_server_crypto(void) {
     log_info("Server running without identity key (simple mode)");
   }
 
+  for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
+    public_key_t identity = {.type = KEY_TYPE_ED25519};
+    memcpy(identity.key, g_server_identity_keys[i].public_key, sizeof(identity.key));
+    char label[64];
+    safe_snprintf(label, sizeof(label), "SERVER PUBLIC IDENTITY %zu", i + 1);
+    key_identity_announce(label, &identity);
+  }
+
   // Load client whitelist if provided
   if (strlen(GET_OPTION(client_keys)) > 0) {
     if (parse_public_keys(GET_OPTION(client_keys), g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
@@ -1496,6 +1530,42 @@ static server_context_t g_server_ctx;
 /* ============================================================================
  * Status screen callback (populates ui_status_t from server state)
  * ============================================================================ */
+static void server_stats_provider(stats_view_t *view, void *unused) {
+  (void)unused;
+  unsigned active = 0, queued = 0;
+  if (view->page) {
+    stats_view_add(view, "");
+    stats_view_add(view, "SERVER CLIENTS   dimensions    sent    received    video drops / audio queue");
+  }
+  rwlock_rdlock(&g_client_manager_rwlock);
+  for (int i = 0; i < MAX_CLIENTS; ++i) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (!atomic_load_bool(&client->active))
+      continue;
+    active++;
+    if (client->outgoing_video_buffer && atomic_load_bool(&client->outgoing_video_buffer->new_frame_available))
+      queued++;
+    if (!view->page)
+      continue;
+    mutex_lock(&client->client_state_mutex);
+    uint64_t received =
+        client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
+    unsigned width = client->width, height = client->height;
+    mutex_unlock(&client->client_state_mutex);
+    video_frame_stats_t video = {0};
+    if (client->outgoing_video_buffer)
+      video_frame_get_stats(client->outgoing_video_buffer, &video);
+    size_t audio_depth = client->audio_queue ? packet_queue_size(client->audio_queue) : 0;
+    stats_view_add(view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height,
+                   (unsigned long long)atomic_load_u64(&client->frames_sent_count), (unsigned long long)received,
+                   (unsigned long long)video.dropped_frames, audio_depth);
+  }
+  rwlock_rdunlock(&g_client_manager_rwlock);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_CONNECTIONS_ACTIVE, active);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_VIDEO_QUEUE_DEPTH, queued);
+  stats_view_add(view, "Connected clients: %u", active);
+}
+
 static void server_status_fn(void *user_data, ui_status_t *out_status) {
   (void)user_data;
 
@@ -2045,6 +2115,7 @@ skip_acds_session:
   g_server_start_time = time(NULL);
   g_last_status_update = platform_get_monotonic_time_us();
 
+  stats_runtime_set_provider(server_stats_provider, NULL);
   log_debug("Server init_fn complete");
   return ASCIICHAT_OK;
 }
@@ -2053,6 +2124,7 @@ skip_acds_session:
  * Mode-specific cleanup callback
  * ============================================================================ */
 static void server_cleanup_fn(void *user_data) {
+  stats_runtime_set_provider(NULL, NULL);
   (void)user_data;
 
   log_debug("Server shutting down...");
@@ -2117,6 +2189,8 @@ static void server_cleanup_fn(void *user_data) {
   // Cleanup debug sync BEFORE destroying websocket_server
 #ifndef NDEBUG
   debug_sync_destroy();
+  debug_errno_destroy();
+  debug_stats_destroy();
 #endif
 
   // Clean up all connected clients (only if rwlock was initialized)

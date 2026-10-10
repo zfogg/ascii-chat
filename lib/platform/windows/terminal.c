@@ -312,7 +312,8 @@ asciichat_error_t terminal_set_echo(bool enable) {
   }
 
   if (enable) {
-    mode |= (DWORD)ENABLE_ECHO_INPUT;
+    // Windows requires line input whenever echo is enabled.
+    mode |= (DWORD)(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
   } else {
     mode &= ~(DWORD)ENABLE_ECHO_INPUT;
   }

@@ -83,6 +83,7 @@ int mirror_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
+  asciichat_errno_destroy();
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;

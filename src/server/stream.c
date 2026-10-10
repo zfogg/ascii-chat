@@ -354,6 +354,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           SAFE_STRNCPY(current_frame.source_client_id, snap->client_id, sizeof(current_frame.source_client_id) - 1);
           current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
+          // Keep the frame for reuse, but mark it consumed before the next swap.
+          atomic_store_bool(&video_buffer->new_frame_available, false);
         }
         mutex_unlock(&video_buffer->swap_mutex);
       } else {

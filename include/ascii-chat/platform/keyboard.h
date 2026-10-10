@@ -64,7 +64,10 @@ typedef enum {
   KEY_END = 262,         ///< End key (move to end of line)
   KEY_CTRL_DELETE = 263, ///< Ctrl+Delete (delete word forward)
   KEY_MINUS = '-',       ///< '-' key - toggle FPS counter
-  KEY_0 = '0',           ///< '0' key - toggle matrix rain effect
+  KEY_0 = '0',           ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',           ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',           ///< '2' key - toggle audio waveform
+  KEY_3 = '3',           ///< '3' key - toggle audio frequency display
   KEY_C = 'c',           ///< 'c' key - cycle color modes
   KEY_R = 'r',           ///< 'r' key - cycle render modes
   KEY_M = 'm',           ///< 'm' key - toggle mute

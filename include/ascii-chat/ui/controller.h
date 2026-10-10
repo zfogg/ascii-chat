@@ -11,6 +11,8 @@ typedef enum {
   UI_SCREEN_SPLASH,
   UI_SCREEN_RENDER_PROGRESS,
   UI_SCREEN_HELP,
+  UI_SCREEN_STATS,
+  UI_SCREEN_SYNC,
   UI_SCREEN_MDNS,
   UI_SCREEN_UPDATE,
   UI_SCREEN_NOTICE,
@@ -22,7 +24,9 @@ typedef void (*ui_render_fn)(terminal_size_t size, const void *snapshot);
 
 /** Copies snapshot before returning. Interactive callbacks run on the presentation thread; batch output renders
  * synchronously. Pointer members must remain valid until ui_controller_remove() returns. Callbacks may remove
- * themselves, but must not submit screens or take a lock held by their producer.
+ * themselves. Callbacks run without the controller mutex. External removal
+ * waits for an in-flight callback to finish, so producers must not hold locks
+ * needed by that callback while removing its screen.
  */
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
                                        const void *snapshot, size_t bytes);
@@ -43,6 +47,8 @@ typedef struct {
   bool covered;
 } ui_presentation_state_t;
 ui_presentation_state_t ui_controller_state(void);
+/** Last published screen priority; does not acquire application locks. */
+int ui_controller_current_screen(void);
 
 /** Final output sink. Live screen writes must originate in a presentation callback.
  * Other terminal text is suppressed while a screen owns the terminal; non-TTY output remains synchronous.

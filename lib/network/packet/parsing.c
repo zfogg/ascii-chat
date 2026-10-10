@@ -1,3 +1,5 @@
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/util/time.h>
 /**
  * @file network/packet_parsing.c
  * @ingroup packet_parsing
@@ -30,7 +32,7 @@
  */
 #define PACKET_MAX_DIMENSION 32768
 
-char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
+static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
                                       uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > PACKET_MAX_FRAME_SIZE) {
@@ -84,6 +86,15 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   // Null-terminate the frame data
   frame_data[original_size] = '\0';
   return frame_data;
+}
+
+char *packet_decode_frame_data_malloc(const char *data, size_t length, bool compressed, uint32_t original_size,
+                                      uint32_t compressed_size) {
+  uint64_t started = time_get_ns();
+  char *result = decode_frame_data_malloc(data, length, compressed, original_size, compressed_size);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - started);
+  stats_counter_add(stats_runtime_scope(), result ? STATS_COUNTER_FRAMES_DECODED : STATS_COUNTER_FRAMES_DROPPED, 1);
+  return result;
 }
 
 asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,

@@ -1,3 +1,5 @@
+#include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
 /**
  * @file session/keyboard_handler.c
  * @brief Keyboard input handler implementation
@@ -315,10 +317,41 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== MATRIX RAIN EFFECT CONTROL =====
-  case KEY_0: {
+  case KEY_1: {
     bool current_matrix = (bool)GET_OPTION(matrix_rain);
-    options_set_bool("matrix_rain", !current_matrix);
+    if (options_set_bool("waveform", false) != ASCIICHAT_OK ||
+        options_set_bool("fft", false) != ASCIICHAT_OK ||
+        options_set_bool("matrix_rain", !current_matrix) != ASCIICHAT_OK)
+      break;
     log_info("Matrix rain effect: %s", !current_matrix ? "enabled" : "disabled");
+    break;
+  }
+
+  case KEY_2: {
+    if (!GET_OPTION(audio_enabled)) {
+      log_info("Audio waveform requires audio to be enabled");
+      break;
+    }
+    bool enabled = !GET_OPTION(waveform);
+    if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
+        options_set_bool("fft", false) != ASCIICHAT_OK ||
+        options_set_bool("waveform", enabled) != ASCIICHAT_OK)
+      break;
+    log_info("Audio waveform: %s", enabled ? "enabled" : "disabled");
+    break;
+  }
+
+  case KEY_3: {
+    if (!GET_OPTION(audio_enabled)) {
+      log_info("Audio frequency display requires audio to be enabled");
+      break;
+    }
+    bool enabled = !GET_OPTION(fft);
+    if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
+        options_set_bool("waveform", false) != ASCIICHAT_OK ||
+        options_set_bool("fft", enabled) != ASCIICHAT_OK)
+      break;
+    log_info("Audio frequency display: %s", enabled ? "enabled" : "disabled");
     break;
   }
 
@@ -334,6 +367,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 #ifndef NDEBUG
   case KEY_BACKTICK: {
     debug_sync_trigger_print();
+    debug_errno_trigger_print();
+    debug_stats_trigger_print();
     log_debug("Lock state dump triggered via backtick key");
     break;
   }

@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file video/h265/decoder.c
  * @brief FFmpeg HEVC decoder for ASCII art frames
@@ -140,11 +141,14 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
     // Send packet to decoder
     av_packet_from_data(decoder->packet, (uint8_t *)hevc_data, hevc_size);
 
+    uint64_t stats_codec_start = time_get_ns();
     if (avcodec_send_packet(decoder->codec_ctx, decoder->packet) < 0) {
       return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send packet to decoder");
     }
 
-    if (avcodec_receive_frame(decoder->codec_ctx, decoder->frame) < 0) {
+    int stats_decode_result = avcodec_receive_frame(decoder->codec_ctx, decoder->frame);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - stats_codec_start);
+    if (stats_decode_result < 0) {
       return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to receive decoded frame");
     }
   } else {
@@ -176,6 +180,7 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
   decoder->last_width = width;
   decoder->last_height = height;
   decoder->total_frames++;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DECODED, 1);
 
   if (flags & H265_DECODER_FLAG_KEYFRAME) {
     decoder->keyframes++;

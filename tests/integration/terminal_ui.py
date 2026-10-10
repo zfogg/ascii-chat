@@ -121,7 +121,12 @@ class Terminal:
         self.write("\x03")
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline and self.process.isalive():
-            self.pump(0.1)
+            # The reader continues draining the PTY. Retain output without
+            # parsing queued frames while measuring the process exit deadline.
+            try:
+                self.raw.append(self.output.get(timeout=0.05))
+            except queue.Empty:
+                pass
         assert not self.process.isalive(), "UI shutdown did not join its worker"
 
     def close(self):
@@ -144,6 +149,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path)
+    parser.add_argument("--debug-sync", action="store_true")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     with tempfile.TemporaryDirectory(prefix="ascii-ui-") as directory:
@@ -202,15 +208,28 @@ def main():
                            "--audio=false", "--color-mode", "none"]
             mirror = terminal("mirror", mirror_args)
             small(mirror)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             video(mirror)
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
+            if args.debug_sync:
+                mirror.resize(40, 160)
+                mirror.write("0")
+                mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
+                              "Sync did not replace help")
+                mirror.write("?")
+                mirror.expect(lambda text: "Keyboard Shortcuts" in text and "Sync primitives |" not in text,
+                              "Help did not replace sync")
+                mirror.write("0")
+                mirror.expect(lambda text: "Sync primitives" in text, "Sync did not reopen")
+                mirror.write("0")
+                mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Help did not recover")
+                print("PASS sync/help priority and independent toggle")
             mirror.resize(12, 19)
             small(mirror)
             mirror.write("?m ")
             mirror.pump(0.4)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             help_text = mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help restoration")
             assert "100%" in help_text, "Controls were replayed after resize"
             mirror.write("?")
@@ -221,7 +240,7 @@ def main():
             assert mirror.pump(0.3) == paused, "Playback did not pause"
             mirror.resize(12, 19)
             small(mirror)
-            mirror.resize(40, 80)
+            mirror.resize(24, 100)
             video(mirror)
             # Restoring a paused screen must not resume capture.
             paused = mirror.pump(0.3)

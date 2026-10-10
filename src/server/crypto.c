@@ -130,6 +130,7 @@
  * @see crypto/keys/keys.h For key parsing and management
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include "main.h"
 #include "client.h"
 #include "crypto.h"
@@ -320,6 +321,8 @@ int server_crypto_handshake(client_info_t *client) {
 
   protocol_version_packet_t client_version;
   memcpy(&client_version, payload, sizeof(protocol_version_packet_t));
+  atomic_store_bool(&client->supports_recoverable_errors,
+                    (NET_TO_HOST_U16(client_version.feature_flags) & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %s", client->client_id);
   buffer_pool_free(NULL, payload, payload_len);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %s", client->client_id);
@@ -355,7 +358,7 @@ int server_crypto_handshake(client_info_t *client) {
   server_version.supports_encryption = client_mode;      // Echo client's mode
   server_version.compression_algorithms = 0;             // No compression for now
   server_version.compression_threshold = 0;
-  server_version.feature_flags = 0;
+  server_version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to call send_protocol_version_packet for client %u", client->client_id);
   result = send_protocol_version_packet(socket, &server_version);
@@ -694,6 +697,14 @@ int server_crypto_handshake(client_info_t *client) {
   transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
                      "Crypto handshake completed successfully for client %s", cid);
+
+  if (client->crypto_handshake_ctx.client_sent_identity) {
+    char label[160];
+    safe_snprintf(label, sizeof(label), "%s CLIENT PUBLIC IDENTITY / %s",
+                  client->crypto_handshake_ctx.client_ed25519_key_verified ? "AUTHENTICATED" : "UNVERIFIED",
+                  client->client_id);
+    key_identity_announce(label, &client->crypto_handshake_ctx.client_ed25519_key);
+  }
 
   // Send success notification to client (encrypted channel now established)
   log_info_client(client, "Encryption established - secure channel ready");

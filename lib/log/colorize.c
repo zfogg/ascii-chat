@@ -500,7 +500,7 @@ static bool is_key_value_pair(const char *str, size_t pos, size_t *key_end, size
 /**
  * @brief Colorize a log message for terminal output
  *
- * Uses 4 rotating static buffers like colored_string() to handle multiple
+ * Uses 4 rotating thread-local buffers like colored_string() to handle multiple
  * colorizations in a single expression.
  *
  * Only applies colors if output is going to a TTY (not piped/redirected).
@@ -519,9 +519,9 @@ const char *colorize_log_message(const char *message) {
     return message;
   }
 
-  // Use 4 static buffers for rotation (handles nested calls)
-  static char buffers[4][4096];
-  static int buffer_index = 0;
+  // Keep concurrent report formatting separate while allowing nested calls.
+  static _Thread_local char buffers[4][4096];
+  static _Thread_local int buffer_index = 0;
 
   char *output = buffers[buffer_index];
   buffer_index = (buffer_index + 1) % 4;

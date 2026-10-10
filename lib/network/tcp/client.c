@@ -343,6 +343,8 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
     platform_sleep_ns(delay_ns);
   }
 
+  asciichat_errno_scope_t address_scope = asciichat_errno_scope_begin();
+
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
   // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
   bool is_localhost = (strcmp(address, "localhost") == 0 || is_localhost_ipv4(address) || is_localhost_ipv6(address));
@@ -474,6 +476,9 @@ connection_success:
     return -1;
   }
 
+  // A connected socket resolves failures from earlier address candidates.
+  asciichat_errno_scope_end(address_scope, ASCIICHAT_ERRNO_HANDLED);
+
   // Extract local port for client ID
   struct sockaddr_storage local_addr = {0};
   socklen_t addr_len = sizeof(local_addr);
@@ -508,16 +513,22 @@ connection_success:
   // Initialize crypto (application must set crypto_initialized flag)
   // This is done outside this function by calling client_crypto_init()
 
+  // Socket tuning is best-effort; record failures as dismissed after reporting them.
+  asciichat_errno_scope_t socket_scope = asciichat_errno_scope_begin();
   // Configure socket options
   if (socket_set_keepalive(client->sockfd, true) < 0) {
     log_warn("Failed to set socket keepalive: %s", network_error_string());
+    asciichat_errno_scope_end(socket_scope, ASCIICHAT_ERRNO_DISMISSED);
   }
 
   asciichat_error_t sock_config_result = socket_configure_buffers(client->sockfd);
   if (sock_config_result != ASCIICHAT_OK) {
     log_warn("Failed to configure socket: %s", network_error_string());
+    asciichat_errno_scope_end(socket_scope, ASCIICHAT_ERRNO_DISMISSED);
   }
 
+  ASSERT_NO_ERRNO_SINCE(socket_scope);
+  asciichat_errno_scope_end(socket_scope, ASCIICHAT_ERRNO_HANDLED);
   log_debug("Connection established successfully to %s:%d (client_id=%u)", address, port, client->my_client_id);
   return 0;
 }

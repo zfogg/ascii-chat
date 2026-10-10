@@ -61,6 +61,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
     // Handle receive errors
     if (result != PACKET_RECV_SUCCESS) {
+      if (result != PACKET_RECV_EOF)
+        stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
       if (result == PACKET_RECV_EOF) {
         return SET_ERRNO(ERROR_NETWORK, "Connection closed (EOF)");
       } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
@@ -90,6 +92,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     uint64_t recv_end_ns = time_get_ns();
 
     if (recv_result != ASCIICHAT_OK) {
+      if (recv_result != ERROR_NETWORK_TIMEOUT)
+        stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
       char recv_duration_str[32];
       time_pretty((uint64_t)(recv_end_ns - recv_start_ns), -1, recv_duration_str, sizeof(recv_duration_str));
       log_warn("[ACIP_RECV_ERROR] recv() failed after %s (result=%d)", recv_duration_str, recv_result);

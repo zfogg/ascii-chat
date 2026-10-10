@@ -1,3 +1,6 @@
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/log/search.h>
+#include <ascii-chat/ui/sync.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/keyboard_help.h>
@@ -32,55 +35,85 @@ void ui_input_timeout_report(unsigned seconds, const char *consequence) {
 }
 
 static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
-static mutex_t g_mutex;
-static mutex_t g_prompt_mutex;
-static bool g_was_covered;
+static mutex_t g_input_mutex;
+static mutex_t g_input_prompt_mutex;
+static bool g_input_was_covered;
+static keyboard_key_t g_sync_keys[256];
+static unsigned g_sync_key_head, g_sync_key_count;
 
 static bool input_initialize(void) {
   if (lifecycle_init_once(&g_input_lifecycle)) {
-    if (mutex_init(&g_mutex, "ui_input") != 0) {
+    if (mutex_init(&g_input_mutex, "ui_input") != 0) {
       lifecycle_init_abort(&g_input_lifecycle);
       return false;
     }
-    if (mutex_init(&g_prompt_mutex, "ui_prompt_input") != 0) {
-      mutex_destroy(&g_mutex);
+    if (mutex_init(&g_input_prompt_mutex, "ui_prompt_input") != 0) {
+      mutex_destroy(&g_input_mutex);
       lifecycle_init_abort(&g_input_lifecycle);
       return false;
     }
     NAMED_REGISTER_ATOMIC(&g_input_lifecycle.state, "ui_input_lifecycle", NULL);
-    g_was_covered = false;
+    g_input_was_covered = false;
     lifecycle_init_commit(&g_input_lifecycle);
   }
   return lifecycle_is_initialized(&g_input_lifecycle);
 }
 
+void ui_input_poll_sync(void) {
+#ifndef NDEBUG
+  if (!input_initialize() || mutex_trylock(&g_input_mutex) != 0)
+    return;
+  int screen = ui_controller_current_screen();
+  if (screen >= 0 && screen <= UI_SCREEN_SYNC && !ui_controller_is_blocked()) {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    key = ui_sync_handle_key(key);
+    if (key && g_sync_key_count < 256)
+      g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
+  }
+  mutex_unlock(&g_input_mutex);
+#endif
+}
+
 keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   if (!input_initialize())
     return KEY_NONE;
-  mutex_lock(&g_mutex);
   ui_presentation_state_t state = ui_controller_state();
+  mutex_lock(&g_input_mutex);
   if (state.screen == UI_SCREEN_NOTICE) {
     keyboard_key_t notice_key = keyboard_read_nonblocking();
     if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
       ui_controller_remove(UI_SCREEN_NOTICE);
-    mutex_unlock(&g_mutex);
+    mutex_unlock(&g_input_mutex);
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
   }
   bool active =
       state.screen < 0 || state.screen == (int)screen || (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP);
   keyboard_key_t key = KEY_NONE;
   if (active) {
-    if (state.covered || g_was_covered) {
+    if (state.covered || g_input_was_covered) {
       // Drain on recovery too, including keys buffered since the last poll.
+      g_sync_key_count = 0;
       for (int i = 0; i < 256 && keyboard_read_nonblocking() != KEY_NONE; ++i) {
       }
     } else {
-      key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION
+      if (g_sync_key_count) {
+        key = g_sync_keys[g_sync_key_head];
+        g_sync_key_head = (g_sync_key_head + 1) % 256;
+        --g_sync_key_count;
+      }
+      if (key == KEY_NONE)
+        key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION
                                                                                   : keyboard_read_nonblocking();
+      key = ui_sync_handle_key(key);
     }
-    g_was_covered = state.covered;
+    g_input_was_covered = state.covered;
   }
-  mutex_unlock(&g_mutex);
+  if ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_SPLASH) &&
+      state.screen != UI_SCREEN_HELP && key == '=' && !log_search_is_entering()) {
+    stats_runtime_toggle();
+    key = KEY_NONE;
+  }
+  mutex_unlock(&g_input_mutex);
   return key;
 }
 
@@ -98,8 +131,8 @@ keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms) {
 void ui_input_shutdown(void) {
   if (!lifecycle_destroy_once(&g_input_lifecycle))
     return;
-  mutex_destroy(&g_prompt_mutex);
-  mutex_destroy(&g_mutex);
+  mutex_destroy(&g_input_prompt_mutex);
+  mutex_destroy(&g_input_mutex);
   NAMED_UNREGISTER(&g_input_lifecycle.state);
   lifecycle_destroy_commit(&g_input_lifecycle);
 }
@@ -116,7 +149,7 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
     SAFE_FREE(visible);
     return SET_ERRNO(ERROR_THREAD, "Cannot initialize prompt input lock");
   }
-  mutex_lock(&g_prompt_mutex);
+  mutex_lock(&g_input_prompt_mutex);
   size_t len = 0, cursor = 0;
   buffer[0] = '\0';
   unsigned seconds = opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60);
@@ -194,7 +227,7 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
   ui_prompt_remove();
-  mutex_unlock(&g_prompt_mutex);
+  mutex_unlock(&g_input_prompt_mutex);
   SAFE_FREE(visible);
   if (result == ERROR_PROMPT_TIMEOUT)
     ui_input_timeout_report(seconds, opts.echo ? "answer declined" : "password entry cancelled");

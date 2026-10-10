@@ -200,6 +200,7 @@ static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] 
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, const acip_client_callbacks_t *callbacks) {
+  stats_runtime_packet(transport ? transport->stats_peer : NULL, type, payload_len, false, true);
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
@@ -710,6 +711,7 @@ static const char *g_packet_type_name(packet_type_t type) {
 asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, void *client_ctx,
                                             const acip_server_callbacks_t *callbacks) {
+  stats_runtime_packet(transport ? transport->stats_peer : NULL, type, payload_len, false, true);
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }

@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file acds/server.c
  * @brief 🌐 Discovery server TCP connection manager
@@ -130,7 +131,11 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
              (unsigned long long)elapsed_ms);
 
     // Migration timed out - mark session as failed and clear migration state
-    asciichat_error_t result = database_session_clear_host(server->db, ctx->session_id);
+    bool still_migrating = database_session_is_migration_ready(server->db, ctx->session_id, 0);
+    asciichat_error_t result =
+        still_migrating ? database_session_clear_host(server->db, ctx->session_id) : ASCIICHAT_OK;
+    if (still_migrating)
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_string(result));
     }
@@ -405,6 +410,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t create_result =
         database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
     if (create_result == ASCIICHAT_OK) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
       // Build complete payload: fixed response + variable STUN/TURN servers
       size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
       size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
@@ -482,6 +488,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t create_result =
         database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
     if (create_result == ASCIICHAT_OK) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
       // Build complete payload: fixed response + variable STUN/TURN servers
       size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
       size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
@@ -573,6 +580,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
       return;
@@ -646,6 +654,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
       return;
@@ -664,6 +673,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
 
   asciichat_error_t lookup_result = database_session_lookup(server->db, session_string, &server->config, &resp);
   if (lookup_result == ASCIICHAT_OK) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_LOOKUPS, 1);
     acip_send_session_info(transport, &resp);
     log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
   } else {
@@ -685,6 +695,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
       return;
@@ -731,6 +742,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
 
   asciichat_error_t join_result = database_session_join(server->db, req, &server->config, &resp);
   if (join_result == ASCIICHAT_OK && resp.success) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_JOINS, 1);
     acip_send_session_joined(transport, &resp);
 
     // Update client data (accessed via transport->user_data)
@@ -1057,6 +1069,7 @@ void *acds_client_handler(void *arg) {
     size_t payload_size = 0;
 
     // Receive packet (blocking with system timeout)
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     int result = receive_packet(client_socket, &packet_type, &payload, &payload_size);
 
     if (result >= 0) {
@@ -1074,12 +1087,11 @@ void *acds_client_handler(void *arg) {
     if (result < 0) {
       // Check error context to distinguish timeout from actual disconnect
       asciichat_error_context_t err_ctx;
-      bool has_context = HAS_ERRNO(&err_ctx);
+      (void)HAS_ERRNO(&err_ctx);
 
       // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
       asciichat_error_t error = GET_ERRNO();
-      if (error == ERROR_NETWORK_TIMEOUT ||
-          (error == ERROR_NETWORK && has_context && strstr(err_ctx.context_message, "timed out") != NULL)) {
+      if (error == ERROR_NETWORK_TIMEOUT && HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
         // Check if client has been idle too long (abrupt disconnect without FIN)
         uint64_t idle_ns = time_get_ns() - last_packet_time_ns;
         if (idle_ns >= idle_disconnect_ns) {
@@ -1090,6 +1102,7 @@ void *acds_client_handler(void *arg) {
           }
           break;
         }
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("Client %s: receive timeout, continuing to wait for packets", client_ip);
         if (payload) {
           buffer_pool_free(NULL, payload, payload_size);
@@ -1105,6 +1118,8 @@ void *acds_client_handler(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(receive_scope);
+    asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
     log_debug("Received packet type 0x%02X from %s, length=%zu", packet_type, client_ip, payload_size);
 
     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
@@ -1302,10 +1317,12 @@ void *acds_websocket_client_handler(void *arg) {
     size_t recv_len = 0;
     void *alloc_buffer = NULL;
 
+    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
     asciichat_error_t recv_result = acds_receive_websocket_packet(transport, &recv_buffer, &recv_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       // Check if this is a timeout or disconnect
       if (recv_result == ERROR_NETWORK_TIMEOUT) {
+        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("WebSocket client %s: receive timeout, continuing to wait for packets", client_ip);
         if (alloc_buffer) {
           buffer_pool_free(NULL, alloc_buffer, 0);
@@ -1321,6 +1338,8 @@ void *acds_websocket_client_handler(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(receive_scope);
+    asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
     // Parse packet header from received data
     if (recv_len < sizeof(packet_header_t)) {
       log_warn("WebSocket client %s: received packet too small (%zu bytes)", client_ip, recv_len);

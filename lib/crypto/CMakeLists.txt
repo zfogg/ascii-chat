@@ -2,6 +2,8 @@
 
 set(CRYPTO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/keymask.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/display.c
     ${CMAKE_CURRENT_SOURCE_DIR}/keys.c
     ${CMAKE_CURRENT_SOURCE_DIR}/known_hosts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/regex.c

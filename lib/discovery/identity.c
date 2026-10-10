@@ -3,6 +3,7 @@
  * @brief Identity key management implementation
  */
 
+#include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/discovery/identity.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
@@ -132,7 +133,10 @@ void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65
 
   // Compute SHA256 hash of public key
   uint8_t hash[32];
-  crypto_hash_sha256(hash, public_key, 32);
+  if (key_fingerprint_digest(public_key, hash) != ASCIICHAT_OK) {
+    fingerprint[0] = '\0';
+    return;
+  }
 
   // Convert to hex string
   for (int i = 0; i < 32; i++) {

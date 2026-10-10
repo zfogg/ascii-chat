@@ -24,7 +24,7 @@ void backtrace_capture(backtrace_t *bt) {
   bt->count = platform_backtrace(bt->ptrs, 32);
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(ENABLE_ERRNO_BACKTRACES)
 
 void backtrace_symbolize(backtrace_t *bt) {
   if (!bt || bt->tried_symbolize) {
@@ -410,7 +410,7 @@ void backtrace_print_symbols(const char *label, char **symbols, int count, int s
 // Release Build Stubs (NDEBUG)
 // ============================================================================
 
-#ifdef NDEBUG
+#if defined(NDEBUG) && !defined(ENABLE_ERRNO_BACKTRACES)
 
 void backtrace_symbolize(backtrace_t *bt) {
   (void)bt;

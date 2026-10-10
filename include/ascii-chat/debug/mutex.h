@@ -10,6 +10,7 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -40,6 +41,9 @@ typedef struct {
  * @param mutex_name Human-readable name of mutex
  */
 void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name);
+
+/** Record an already acquired lock without publishing a transient pending wait. */
+void mutex_stack_push_locked(uintptr_t mutex_key, const char *mutex_name);
 
 /**
  * @brief Mark the top of the current thread's lock stack as LOCKED
@@ -90,6 +94,15 @@ void mutex_stack_free_all_threads(mutex_stack_entry_t **stacks, int *stack_count
  * Called periodically by debug thread (~100ms interval).
  */
 void mutex_stack_detect_deadlocks(void);
+
+/** Nonblocking diagnostic summary; no logging or application locks. */
+typedef struct {
+  uintptr_t mutex_key;
+  uintptr_t thread_key;
+  uint64_t since_ns;
+  bool cycle;
+} mutex_wait_snapshot_t;
+bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, size_t *count, bool *limited);
 
 /**
  * @brief Initialize mutex stack system

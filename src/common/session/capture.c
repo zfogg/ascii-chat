@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file session/capture.c
  * @brief 📹 Unified media capture implementation
@@ -235,11 +236,13 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->file_has_audio = false;
 
   // Create media source from config type and path
+  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
   ctx->source = media_source_create(config->type, config->path);
 
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
-    asciichat_error_t existing_error = GET_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     if (existing_error == ASCIICHAT_OK) {
       SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create media source");
     }
@@ -357,6 +360,12 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   uint64_t frame_request_time_ns = time_get_ns();
 
   image_t *frame = media_source_read_video(ctx->source);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_CAPTURE, time_get_ns() - frame_request_time_ns);
+  if (frame) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_CAPTURED, 1);
+    stats_runtime_media(frame->w, frame->h, media_source_get_position(ctx->source),
+                        media_source_get_duration(ctx->source));
+  }
 
   if (frame) {
     uint64_t frame_available_time_ns = time_get_ns();

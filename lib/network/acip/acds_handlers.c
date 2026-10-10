@@ -125,6 +125,7 @@ static const acds_hash_entry_t g_acds_handler_hash[ACDS_HASH_SIZE] = {
 asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                           size_t payload_len, const char *client_ip,
                                           const acip_acds_callbacks_t *callbacks) {
+  stats_runtime_packet(transport ? transport->stats_peer : NULL, type, payload_len, false, true);
   if (!callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid callbacks");
   }
@@ -144,7 +145,12 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
     log_info("★ ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d", idx);
   }
 
-  return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
+  uint64_t stats_start = time_get_ns();
+  asciichat_error_t result = g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_REQUEST, time_get_ns() - stats_start);
+  if (result != ASCIICHAT_OK)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_REQUEST_FAILURES, 1);
+  return result;
 }
 
 // =============================================================================

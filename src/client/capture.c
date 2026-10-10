@@ -1,3 +1,4 @@
+#include <ascii-chat/network/errors.h>
 /**
  * @file client/capture.c
  * @ingroup client_capture
@@ -220,7 +221,14 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Read frame using session capture library
+    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
     image_t *image = session_capture_read_frame(g_capture_capture_ctx);
+    asciichat_error_context_t capture_failure;
+    if (!image && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+      asciichat_errno_request_exit(capture_failure.code);
+      signal_exit();
+      break;
+    }
 
     // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
@@ -287,8 +295,10 @@ static void *webcam_capture_thread_func(void *arg) {
       log_debug("Requesting H.265 keyframe for encoder flush");
     }
 
+    asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
     asciichat_error_t send_result;
     if (use_hevc) {
+      asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,
                       processed_image->h);
       send_result = threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
@@ -297,9 +307,13 @@ static void *webcam_capture_thread_func(void *arg) {
         // Missing platform HEVC encoders should degrade video quality, not tear
         // down an otherwise healthy audio/video connection.
         log_warn("HEVC encoding is unavailable; switching this connection to raw video frames");
+        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
         force_raw_video = true;
         send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
                                                 (uint32_t)processed_image->h, 1);
+      } else if (send_result == ASCIICHAT_OK) {
+        ASSERT_NO_ERRNO_SINCE(encode_scope);
+        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
       }
     } else {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
@@ -316,6 +330,12 @@ static void *webcam_capture_thread_func(void *arg) {
     }
     uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
 
+    if (send_result != ASCIICHAT_OK && network_error_is_local_rejection(send_result)) {
+      LOG_ERRNO_IF_SET("Dropping locally rejected video frame");
+      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+      image_destroy(processed_image);
+      continue;
+    }
     if (send_result != ASCIICHAT_OK) {
       const char *codec_name = use_hevc ? "H265" : "RAW";
       log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
@@ -325,6 +345,8 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
 
+    ASSERT_NO_ERRNO_SINCE(send_scope);
+    asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
       const char *codec_name = use_hevc ? "H.265" : "RAW";
       log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",
@@ -393,7 +415,6 @@ static void *webcam_capture_thread_func(void *arg) {
   log_debug("CAPTURE_THREAD_EXIT: Thread marked as exited, cleaning up errno");
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   log_debug("CAPTURE_THREAD_EXIT: Exiting capture thread");
   return NULL;
@@ -457,10 +478,12 @@ int capture_init() {
   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
   // Create capture context using session library
+  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
   g_capture_capture_ctx = session_capture_create(&config);
   if (!g_capture_capture_ctx) {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
-    asciichat_error_t existing_error = GET_ERRNO();
+    asciichat_error_context_t failure;
+    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     log_debug("session_capture_create failed, GET_ERRNO() returned: %d", existing_error);
     if (existing_error != ASCIICHAT_OK) {
       log_debug("Returning existing error code %d", existing_error);

@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -360,6 +361,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Read packet header into memory from network socket
   packet_header_t header;
   uint64_t header_timeout_ns = RECV_TIMEOUT * NS_PER_SEC_INT;
+  asciichat_errno_scope_t receive_scope = asciichat_errno_checkpoint();
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), header_timeout_ns);
   if (received < 0) {
     // Error context is already set by recv_with_timeout
@@ -585,14 +587,14 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
 
   // Receive packet header
   packet_header_t header;
+  asciichat_errno_scope_t receive_scope = asciichat_errno_checkpoint();
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), timeout_ns);
 
   // Check for errors first (before comparing signed with unsigned)
   if (received < 0) {
     /* Preserve a poll timeout so callers can wait for the next signaling packet
      * without treating an idle connection as a receive failure. */
-    asciichat_error_context_t error_context;
-    if (HAS_ERRNO(&error_context) && error_context.code == ERROR_NETWORK_TIMEOUT) {
+    if (GET_ERRNO() == ERROR_NETWORK_TIMEOUT && HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
       return PACKET_RECV_ERROR;
     }
     SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
@@ -913,9 +915,8 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
   }
 
-  if (!message) {
-    message = "";
-  }
+  error_code = network_error_public_code(error_code);
+  message = asciichat_error_string(error_code);
 
   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {

@@ -174,7 +174,7 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
     return ASCIICHAT_OK;
   }
 
-  log_error("yt-dlp extraction failed for URL: %s", url);
+  log_debug("URL extraction failed; trying the native decoder");
 
   // For complex sites, try FFmpeg as last resort
   log_debug("yt-dlp failed, trying FFmpeg as fallback for: %s", url);
@@ -251,8 +251,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
 
-      // Explicitly re-set errno to preserve the specific error code for the caller
-      // (log_error or other calls may have cleared the thread-local errno)
+      // Add media-level context while preserving the webcam failure as its cause.
       if (webcam_error == ERROR_WEBCAM_IN_USE) {
         SET_ERRNO(ERROR_WEBCAM_IN_USE, "Webcam device %u is in use", index);
       } else {
@@ -266,6 +265,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   }
 
   case MEDIA_SOURCE_FILE: {
+    asciichat_errno_scope_t media_scope = asciichat_errno_scope_begin();
     if (!path || path[0] == '\0') {
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
       // Destroy mutexes before freeing source
@@ -316,9 +316,12 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
     // Always use separate decoders for video and audio
     // This allows independent read rates and avoids lock contention
+    asciichat_errno_scope_t decoder_scope = asciichat_errno_checkpoint();
     source->video_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->video_decoder) {
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
       NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s", effective_path);
+      LOG_ERRNO_IF_SET("Media initialization failed");
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
@@ -329,19 +332,33 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
+    ASSERT_NO_ERRNO_SINCE(decoder_scope);
+
     // Start prefetch only when a video stream exists.
     // This thread continuously reads frames into a buffer so the render loop never blocks
+    asciichat_errno_scope_t prefetch_scope = asciichat_errno_scope_begin();
     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
-      // Don't fail on prefetch error - continue with frame skipping as fallback
+      ffmpeg_decoder_destroy(source->video_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
+      SAFE_FREE(source);
+      return NULL;
     }
 
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
+    decoder_scope = asciichat_errno_checkpoint();
     source->audio_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->audio_decoder) {
-      log_error("Failed to open media file for audio: %s", effective_path);
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
+      LOG_ERRNO_IF_SET("Media initialization failed");
       ffmpeg_decoder_destroy(source->video_decoder);
       source->video_decoder = NULL;
       SAFE_FREE(source->file_path);
@@ -355,6 +372,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     }
     source->is_shared_decoder = false;
 
+    ASSERT_NO_ERRNO_SINCE(decoder_scope);
+    // Both decoders succeeded: failed extraction/prefetch attempts are resolved.
+    asciichat_errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
+    ASSERT_NO_ERRNO_SINCE(media_scope);
     log_debug("Media source: URL resolved to stream (separate video/audio decoders)");
     break;
   }
@@ -373,14 +394,24 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     }
 
     // Start prefetch thread for stdin video frames
+    asciichat_errno_scope_t prefetch_scope = asciichat_errno_scope_begin();
     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
       log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
-      // Don't fail on prefetch error - continue with frame skipping as fallback
+      ffmpeg_decoder_destroy(source->video_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
+      SAFE_FREE(source);
+      return NULL;
     }
 
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     source->audio_decoder = ffmpeg_decoder_create_stdin();
     if (!source->audio_decoder) {
       log_error("Failed to open stdin for audio input");

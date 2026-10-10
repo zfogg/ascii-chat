@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/windows_compat.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/asciichat_errno.h>
 
 /**
@@ -19,7 +20,6 @@
  */
 int mutex_init(mutex_t *mutex, const char *name) {
   InitializeCriticalSectionAndSpinCount(&mutex->impl, 4000);
-  mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
 #ifndef NDEBUG
   mutex->last_lock_time_ns = 0;
   mutex->last_unlock_time_ns = 0;
@@ -29,6 +29,7 @@ int mutex_init(mutex_t *mutex, const char *name) {
   mutex->trylock_count = 0;
   mutex->trylock_success_count = 0;
 #endif
+  mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
   return 0;
 }
 
@@ -55,7 +56,14 @@ int mutex_lock_impl(mutex_t *mutex) {
   if (mutex->impl.DebugInfo == NULL) {
     InitializeCriticalSection(&mutex->impl);
   }
-  EnterCriticalSection(&mutex->impl);
+  // Recursive acquisitions succeed immediately; never report them as waits.
+  if (TryEnterCriticalSection(&mutex->impl)) {
+    mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
+  } else {
+    mutex_stack_push_pending((uintptr_t)mutex, mutex->name);
+    EnterCriticalSection(&mutex->impl);
+    mutex_stack_mark_locked((uintptr_t)mutex);
+  }
   mutex_on_lock(mutex);
   return 0;
 }
@@ -67,6 +75,8 @@ int mutex_lock_impl(mutex_t *mutex) {
  */
 int mutex_trylock_impl(mutex_t *mutex) {
   BOOL success = TryEnterCriticalSection(&mutex->impl);
+  if (success)
+    mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
   mutex_on_trylock(mutex, success ? true : false);
   return success ? 0 : 16; // EBUSY = 16
 }
@@ -77,7 +87,16 @@ int mutex_trylock_impl(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock_impl(mutex_t *mutex) {
+#ifndef NDEBUG
+  uintptr_t owner = mutex->currently_held_by_key;
+  bool recursive = mutex->impl.RecursionCount > 1;
+#endif
   mutex_on_unlock(mutex);
+#ifndef NDEBUG
+  if (recursive)
+    mutex->currently_held_by_key = owner;
+#endif
+  mutex_stack_pop((uintptr_t)mutex);
   LeaveCriticalSection(&mutex->impl);
   return 0;
 }

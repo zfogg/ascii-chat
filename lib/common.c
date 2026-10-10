@@ -1,3 +1,6 @@
+#include <ascii-chat/debug/stats.h>
+#include <ascii-chat/debug/errno.h>
+#include <ascii-chat/stats/runtime.h>
 
 /**
  * @file common.c
@@ -26,7 +29,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>       // For RCU-based options access
 #include <ascii-chat/discovery/strings.h> // For RCU-based options access
-#include <ascii-chat/debug/sync.h>        // For debug_sync_final_cleanup, debug_sync_cleanup_thread, debug_sync_destroy
+#include <ascii-chat/debug/sync.h> // Synchronization diagnostics lifecycle
 #include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/atomic.h>      // For debug_atomic_shutdown()
@@ -205,8 +208,14 @@ void asciichat_shared_destroy(void) {
   }
   shutdown_done = true;
 
-  ui_input_shutdown();
+  // Stop diagnostic readers before destroying symbols or synchronization state.
+  debug_sync_cleanup_thread();
+  debug_errno_cleanup_thread();
+  debug_stats_cleanup_thread();
+
+  stats_runtime_stop();
   ui_controller_shutdown();
+  ui_input_shutdown();
   keyboard_destroy();
   symbol_cache_destroy();
 
@@ -218,8 +227,6 @@ void asciichat_shared_destroy(void) {
   terminal_stop_resize_detection();
 
 #ifndef NDEBUG
-  // Lock debug thread - must join before any lock cleanup
-  debug_sync_cleanup_thread();
 
   // Clean up all remaining mutex stacks before memory report
   mutex_stack_cleanup();
@@ -232,13 +239,12 @@ void asciichat_shared_destroy(void) {
   debug_memory_thread_cleanup();
 #endif
 
-  // Lock debug system - set initialized=false so mutex_lock uses mutex_lock_impl directly
-  // This must happen after thread cleanup but before any subsystem that uses mutex_lock
-  debug_sync_destroy();
-
   // Atomic debug cleanup
   debug_atomic_shutdown();
 #endif
+  debug_sync_destroy();
+  debug_errno_destroy();
+  debug_stats_destroy();
 
   // 1. Terminal screen - cleanup frame buffer
   terminal_screen_cleanup();
@@ -314,7 +320,7 @@ void asciichat_shared_destroy(void) {
   options_state_destroy();
 
   // 18. Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_destroy();
+  asciichat_errno_shutdown();
 
 #ifndef NDEBUG
   // 19. Named registry - cleanup all registered thread names and debug entries

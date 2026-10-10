@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/windows_compat.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/mutex.h>
 #include <errno.h>             // For ETIMEDOUT
 #include <ascii-chat/atomic.h> // For atomic_fetch_sub
 
@@ -21,7 +22,6 @@
  */
 int cond_init(cond_t *cond, const char *name) {
   InitializeConditionVariable(&cond->impl);
-  cond->name = NAMED_REGISTER_COND(cond, name, NULL);
 #ifndef NDEBUG
   cond->last_signal_time_ns = 0;
   cond->last_broadcast_time_ns = 0;
@@ -43,6 +43,7 @@ int cond_init(cond_t *cond, const char *name) {
   cond->signal_count = 0;
   cond->broadcast_count = 0;
 #endif
+  cond->name = NAMED_REGISTER_COND(cond, name, NULL);
   return 0;
 }
 
@@ -71,9 +72,11 @@ int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
   // SleepConditionVariableCS atomically releases mutex before waiting, then re-acquires it
   // Track the release that SleepConditionVariableCS performs
   mutex_on_unlock(mutex);
+  mutex_stack_pop((uintptr_t)mutex);
   BOOL result = SleepConditionVariableCS(&cond->impl, &mutex->impl, INFINITE);
   // Track the re-acquisition that SleepConditionVariableCS performs after signal
   mutex_on_lock(mutex);
+  mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
   return result ? 0 : -1;
 }
 
@@ -92,17 +95,16 @@ int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   // SleepConditionVariableCS atomically releases mutex before waiting, then re-acquires it
   // Track the release that SleepConditionVariableCS performs
   mutex_on_unlock(mutex);
+  mutex_stack_pop((uintptr_t)mutex);
   BOOL result = SleepConditionVariableCS(&cond->impl, &mutex->impl, timeout_ms);
+  DWORD wait_error = result ? ERROR_SUCCESS : GetLastError();
   // Track the re-acquisition that SleepConditionVariableCS performs (whether signaled or timed out)
   mutex_on_lock(mutex);
+  mutex_stack_push_locked((uintptr_t)mutex, mutex->name);
 
   if (!result) {
-    DWORD err = GetLastError();
+    DWORD err = wait_error;
     if (err == ERROR_TIMEOUT) {
-      // If we timed out (not signaled), decrement waiting_count
-      if (cond && atomic_load_u64(&cond->waiting_count) > 0) {
-        atomic_fetch_sub_u64(&cond->waiting_count, 1);
-      }
       return ETIMEDOUT; // Match POSIX pthread_cond_timedwait behavior
     }
     return -1; // Other error

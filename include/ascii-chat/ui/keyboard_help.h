@@ -28,8 +28,9 @@
 
 #pragma once
 
-#include "session/display.h"
 #include <stdbool.h>
+
+typedef struct session_display_ctx session_display_ctx_t;
 
 /* ============================================================================
  * Keyboard Help Control Functions

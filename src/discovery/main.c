@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file discovery/main.c
  * @ingroup discovery_main
@@ -188,15 +190,20 @@ static void *discovery_video_receive_thread(void *user_data) {
         size_t encoded_size = is_compressed ? compressed_size : original_size;
         size_t encoded_length = length - sizeof(header);
         if (encoded_size == encoded_length && (!is_compressed || compressed_size > 0)) {
+          asciichat_errno_scope_t decode_scope = asciichat_errno_scope_begin();
           char *decoded = packet_decode_frame_data_malloc((const char *)payload + sizeof(header), encoded_length,
                                                           is_compressed, original_size, compressed_size);
           if (decoded) {
+            ASSERT_NO_ERRNO_SINCE(decode_scope);
+            asciichat_errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
+            if (latest_text)
+              stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_SKIPPED, 1);
             SAFE_FREE(latest_text);
             latest_text = decoded;
           } else {
             log_warn_every(US_PER_SEC_INT, "Could not decode server ASCII frame (compressed=%d original=%u encoded=%u)",
                            is_compressed, original_size, compressed_size);
-            CLEAR_ERRNO();
+            asciichat_errno_scope_end(decode_scope, ASCIICHAT_ERRNO_DISMISSED);
           }
         } else {
           log_warn_every(US_PER_SEC_INT,
@@ -257,12 +264,23 @@ static discovery_session_t *g_discovery = NULL;
  */
 static void on_discovery_state_change(discovery_state_t new_state, void *user_data) {
   (void)user_data; // Unused
+  static uint64_t setup_started;
+  if (new_state == DISCOVERY_STATE_CONNECTING_ACDS)
+    setup_started = time_get_ns();
+  if (setup_started && (new_state == DISCOVERY_STATE_ACTIVE || new_state == DISCOVERY_STATE_FAILED)) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_CONNECTION_SETUP, time_get_ns() - setup_started);
+    setup_started = 0;
+  }
 
   const char *state_names[] = {"INIT",         "CONNECTING_ACDS", "CREATING_SESSION", "JOINING_SESSION",
                                "WAITING_PEER", "NEGOTIATING",     "STARTING_HOST",    "CONNECTING_HOST",
                                "ACTIVE",       "MIGRATING",       "FAILED",           "ENDED"};
 
   if (new_state >= 0 && new_state < (int)(sizeof(state_names) / sizeof(state_names[0]))) {
+    if (new_state == DISCOVERY_STATE_ACTIVE && g_discovery)
+      stats_runtime_connection_state(discovery_session_is_host(g_discovery) ? "ACTIVE / host" : "ACTIVE / participant");
+    else
+      stats_runtime_connection_state(state_names[new_state]);
     log_info("Discovery state: %s", state_names[new_state]);
   }
 }
@@ -449,23 +467,42 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         }
       }
 
+      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+      if (key != KEY_NONE)
+        session_handle_keyboard_input(capture, display, key);
       // Capture frame from local media (webcam, test pattern, file, etc.)
       // The capture context is set up during session_client_like_run() and handles all media types
+      asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
       image_t *frame = session_capture_read_frame(capture);
+      asciichat_error_context_t capture_failure;
+      if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+        result = capture_failure.code;
+        break;
+      }
       if (frame) {
         log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
         // Inject host's frame into mixer for broadcasting
-        session_host_inject_frame(host, host_participant_id, frame);
+        result = session_host_inject_frame(host, host_participant_id, frame);
+        if (result != ASCIICHAT_OK) {
+          LOG_ERRNO_IF_SET("Failed to inject host frame");
+          break;
+        }
       } else {
         log_debug_every(5 * NS_PER_SEC_INT, "No frame captured");
       }
 
       // Keep discovery session responsive (NAT negotiations, migrations)
+      asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
       result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
         log_error("Discovery session process failed: %d", result);
         break;
       }
+
+      if (result == ASCIICHAT_OK)
+        ASSERT_NO_ERRNO_SINCE(process_scope);
+      asciichat_errno_scope_end(process_scope, ASCIICHAT_ERRNO_HANDLED);
+      result = ASCIICHAT_OK;
 
       // Frame rate limiting (60 FPS)
       session_capture_sleep_for_fps(capture);
@@ -476,6 +513,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
 
     // Stop render thread before returning (display will be destroyed by caller)
     session_host_stop_render(host);
+
+    if (result != ASCIICHAT_OK)
+      return result;
 
     if (should_exit()) {
       return ASCIICHAT_OK;
@@ -571,6 +611,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       }
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
+        keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+        if (key != KEY_NONE)
+          session_handle_keyboard_input(capture, display, key);
         uint64_t iteration_start = time_get_ns();
         if (snapshot_mode && g_snapshot_first_frame_rendered_ns > 0 &&
             time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_rendered_ns, iteration_start)) >=
@@ -579,7 +622,13 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
           break;
         }
         uint64_t capture_start = time_get_ns();
+        asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
         image_t *frame = session_capture_read_frame(capture);
+        asciichat_error_context_t capture_failure;
+        if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+          result = capture_failure.code;
+          break;
+        }
         uint64_t capture_end = time_get_ns();
         uint64_t processing_start = capture_end;
         uint64_t processing_end = processing_start;

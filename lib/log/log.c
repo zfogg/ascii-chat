@@ -1356,10 +1356,6 @@ void log_plain_msg(const char *fmt, ...) {
     return;
   }
 
-  if (shutdown_is_requested()) {
-    return;
-  }
-
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
@@ -1399,6 +1395,10 @@ void log_plain_msg(const char *fmt, ...) {
       write_to_log_file_atomic("\n", 1, NULL);
     }
   }
+
+  // Preserve diagnostics in the log file during shutdown without repainting the terminal.
+  if (shutdown_is_requested())
+    return;
 
   // Terminal output (atomic state checks)
   if (!atomic_load_u64(&g_log.terminal_output_enabled)) {
@@ -1657,11 +1657,13 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
 
   va_list args_copy;
   va_copy(args_copy, args);
+  asciichat_errno_scope_t format_scope = asciichat_errno_checkpoint();
   char *formatted = format_message(fmt, args_copy);
   va_end(args_copy);
 
   if (!formatted) {
-    asciichat_error_t current_error = GET_ERRNO();
+    asciichat_error_context_t current;
+    asciichat_error_t current_error = asciichat_errno_peek_since(format_scope, &current) ? current.code : ASCIICHAT_OK;
     if (current_error == ASCIICHAT_OK) {
       current_error = SET_ERRNO(ERROR_MEMORY, "Failed to format network log message");
     }

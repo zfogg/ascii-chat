@@ -1,3 +1,5 @@
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/client.c
  * @ingroup server_client
@@ -653,7 +655,9 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   return 0;
 }
 
-client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
+client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port,
+                          bool *socket_consumed) {
+  *socket_consumed = false;
   log_info("[TCP_ADD_CLIENT] ENTER: client_ip=%s, port=%d", client_ip, port);
   // Find empty slot WITHOUT holding the global lock
   // We'll re-verify under lock after allocations complete
@@ -672,11 +676,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   log_info("[TCP_DBG] SLOT_CHECK: existing_count=%d, max_clients=%d, slot=%d", existing_count, GET_OPTION(max_clients),
            slot);
   if (existing_count >= GET_OPTION(max_clients) || slot == -1) {
-    const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
-    if (send_result < 0) {
-      log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
-    }
+    SET_ERRNO(ERROR_SESSION_FULL, "Maximum client limit reached");
     return NULL;
   }
 
@@ -769,8 +769,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     audio_ring_buffer_destroy(incoming_audio_buffer);
     video_frame_buffer_destroy(incoming_video_buffer);
 
-    const char *reject_msg = "SERVER_FULL: Slot reassigned, try again\n";
-    socket_send(socket, reject_msg, strlen(reject_msg), 0);
+    SET_ERRNO(ERROR_SESSION_FULL, "Client slot was claimed by another connection");
     return NULL;
   }
 
@@ -835,6 +834,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     goto error_cleanup;
   }
 
+  *socket_consumed = true;
   g_client_manager.client_count++;
   log_debug("Client count updated: now %d clients (added client_id=%s to slot %d)", g_client_manager.client_count,
             new_client_id, slot);
@@ -928,15 +928,21 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     }
 
     log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
+    asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
     int crypto_result = server_crypto_handshake(client);
     log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
     if (crypto_result != 0) {
-      log_error("Crypto handshake failed for client %s: %s", new_client_id, network_error_string());
+      LOG_ERRNO_IF_SET("Client crypto handshake failed");
+      asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
+      log_debug("Closing client %s after failed crypto handshake", new_client_id);
       if (remove_client(server_ctx, new_client_id) != 0) {
         log_error("Failed to remove client after crypto handshake failure");
       }
       return NULL;
     }
+
+    ASSERT_NO_ERRNO_SINCE(handshake_scope);
+    asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
@@ -1963,6 +1969,7 @@ void *client_receive_thread(void *arg) {
 
     if (client->is_tcp_client) {
       // TCP clients: use original synchronous dispatch
+      asciichat_errno_scope_t dispatch_scope = asciichat_errno_scope_begin();
       asciichat_error_t acip_result =
           acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
@@ -1975,16 +1982,16 @@ void *client_receive_thread(void *arg) {
       // Handle receive errors
       if (acip_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx)) {
+        if (asciichat_errno_peek_since(dispatch_scope, &err_ctx)) {
           log_error("🔴 ACIP error for client %s: code=%u msg=%s", client->client_id, err_ctx.code,
                     err_ctx.context_message);
           if (err_ctx.code == ERROR_NETWORK) {
             log_debug("Client %s disconnected (network error): %s", client->client_id, err_ctx.context_message);
             break;
-          } else if (err_ctx.code == ERROR_CRYPTO) {
+          } else if (HAS_ERRNO_CODE_SINCE(dispatch_scope, ERROR_CRYPTO)) {
             log_error_client(
                 client, "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
-            atomic_store_bool(&g_should_exit, true);
+            // Reject this connection; other clients can continue normally.
             break;
           }
         }
@@ -1992,6 +1999,8 @@ void *client_receive_thread(void *arg) {
                  asciichat_error_string(acip_result));
         break;
       }
+      ASSERT_NO_ERRNO_SINCE(dispatch_scope);
+      asciichat_errno_scope_end(dispatch_scope, ASCIICHAT_ERRNO_HANDLED);
     } else {
       // WebRTC/WebSocket clients: async dispatch - receive packet and queue for async processing
       void *packet_data = NULL;
@@ -2014,6 +2023,7 @@ void *client_receive_thread(void *arg) {
       log_debug("🔍 RECV_THREAD[%s]: About to call transport->recv() (transport=%p)", client->client_id,
                 (void *)transport_snapshot);
 
+      asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
       asciichat_error_t recv_result =
           transport_snapshot->methods->recv(transport_snapshot, &packet_data, &packet_len, &allocated_buffer);
 
@@ -2023,11 +2033,12 @@ void *client_receive_thread(void *arg) {
         if (HAS_ERRNO(&err_ctx)) {
           // Check for reassembly timeout (fragments arriving slowly)
           // This is NOT a connection failure - safe to retry
-          if ((err_ctx.code == ERROR_NETWORK) && err_ctx.context_message &&
-              strstr(err_ctx.context_message, "reassembly timeout")) {
+          if (recv_result == ERROR_NETWORK_INCOMPLETE &&
+              HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_INCOMPLETE)) {
             // Fragments are arriving slowly - this is normal, retry without disconnecting
             log_dev_every(100000, "Client %s: fragment reassembly timeout, retrying in 10ms", client->client_id);
             APP_CALLBACK_VOID(platform_pump_events);
+            asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
             platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
             continue;              // Retry without disconnecting
           }
@@ -2042,6 +2053,8 @@ void *client_receive_thread(void *arg) {
         break;
       }
 
+      ASSERT_NO_ERRNO_SINCE(receive_scope);
+      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
       log_dev("RECV_THREAD[%s]: recv result=%d packet_len=%zu", client->client_id, recv_result, packet_len);
 
       // Validate received packet before queueing
@@ -2116,7 +2129,6 @@ void *client_receive_thread(void *arg) {
   log_debug("Receive thread for client %s terminated", client_id_snapshot);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -2253,6 +2265,7 @@ void *client_send_thread_func(void *arg) {
 // deep audio batch on the same ordered WebRTC channel lets one client hold
 // video (and the next audio update) behind several synchronous sends.
   int loop_iteration_count = 0;
+  bool audio_error_notified = false;
   bool transport_failed = false;
   uint64_t video_rate_window_start_ns = time_get_ns();
   unsigned long video_rate_window_start_count = atomic_load_u64(&client->frames_sent_count);
@@ -2305,6 +2318,7 @@ void *client_send_thread_func(void *arg) {
         audio_packet_count = 0;
       }
 
+      asciichat_errno_scope_t audio_scope = asciichat_errno_scope_begin();
       asciichat_error_t result = ASCIICHAT_OK;
 
       // Only send audio if packets survived crypto check (count > 0 after potential drop)
@@ -2347,16 +2361,37 @@ void *client_send_thread_func(void *arg) {
           log_error("Failed to send audio to client %s: %s", client->client_id, asciichat_error_string(result));
         }
         // Network errors corrupt the TCP stream - must disconnect immediately
-        if (result == ERROR_NETWORK) {
+        if (!network_error_is_local_rejection(result)) {
           transport_failed = true;
           log_error("CLOSING_CLIENT_ON_NETWORK_ERROR: client_id=%s due to audio send failure (corrupted stream)",
                     client->client_id);
           break; // Exit send loop to trigger cleanup
         }
         log_warn("SKIP_AUDIO_ERROR: client_id=%s result=%d (continuing to send video)", client->client_id, result);
-        // Continue sending video for non-network errors (audio is optional for browser clients)
+        // Only known local construction failures can drop audio without damaging framing.
+        asciichat_errno_scope_end(audio_scope, ASCIICHAT_ERRNO_HANDLED);
+        if (!audio_error_notified) {
+          asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
+          mutex_lock(&client->send_mutex);
+          asciichat_error_t notify_result = ASCIICHAT_OK;
+          if (client->transport && atomic_load_bool(&client->supports_recoverable_errors))
+            notify_result = acip_send_error(client->transport, ERROR_AUDIO, "Audio frame unavailable; video continues");
+          mutex_unlock(&client->send_mutex);
+          if (notify_result != ASCIICHAT_OK) {
+            transport_failed = true;
+            break;
+          }
+          if (!atomic_load_bool(&client->supports_recoverable_errors) && client->socket != INVALID_SOCKET_VALUE)
+            log_warn_client(client, "Audio frame unavailable; video continues");
+          asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
+          audio_error_notified = true;
+        }
       }
 
+      if (result == ASCIICHAT_OK) {
+        ASSERT_NO_ERRNO_SINCE(audio_scope);
+        asciichat_errno_scope_end(audio_scope, ASCIICHAT_ERRNO_HANDLED);
+      }
       sent_something = true;
       uint64_t audio_done_ns = time_get_ns();
       char audio_elapsed_str[32];
@@ -2679,7 +2714,6 @@ void *client_send_thread_func(void *arg) {
   log_debug("Send thread for client %s terminated", client->client_id);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -3183,11 +3217,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   // Sample a small prefix for duplicate-frame diagnostics; hashing every pixel
   // here repeats work performed by the image conversion path on every frame.
-  uint32_t incoming_pixel_hash = 2166136261u;
   size_t hash_len = data_len < 1000 ? data_len : 1000;
-  for (size_t i = 0; i < hash_len; i++) {
-    incoming_pixel_hash = (incoming_pixel_hash ^ ((const uint8_t *)pixel_data)[i]) * 16777619u;
-  }
+  uint32_t incoming_pixel_hash = hash_len ? fnv1a_hash_bytes(pixel_data, hash_len) : FNV1A_32_OFFSET_BASIS;
 
   // Per-client hash tracking to detect duplicate frames
   bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
@@ -3420,6 +3451,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   pkt->data = pkt_data;
   pkt->size = (int)data_len;
 
+  uint64_t stats_decode_start = time_get_ns();
   int send_ret = avcodec_send_packet(dec_ctx, pkt);
   if (send_ret < 0) {
     char err_buf[128];
@@ -3437,6 +3469,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   int recv_ret = avcodec_receive_frame(dec_ctx, frame);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - stats_decode_start);
   if (recv_ret == AVERROR(EAGAIN)) {
     // EAGAIN is normal - decoder is buffering frames internally
     log_dev("H.265 decoder buffering frame (EAGAIN), will output on next frame");
@@ -3464,6 +3497,8 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     log_info("[WS_TIMING] on_image_frame_h265 callback took %s (receive_frame error)", cb_duration_str);
     return;
   }
+
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DECODED, 1);
 
   // Convert YUV to RGB
   // Reuse or create persistent color converter if needed
@@ -3939,10 +3974,28 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   // Rate limiting: Check and record packet-specific rate limits
   if (g_rate_limiter) {
-    if (!check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, client->socket, type)) {
-      // Rate limit exceeded - error response already sent by utility function
+    bool allowed = false;
+    asciichat_errno_scope_t limit_scope = asciichat_errno_scope_begin();
+    asciichat_error_t result = check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, type, &allowed);
+    if (result != ASCIICHAT_OK || !allowed) {
+      if (result == ASCIICHAT_OK)
+        SET_ERRNO(ERROR_RATE_LIMITED, "Packet quota exceeded");
+      LOG_ERRNO_IF_SET("Packet rate-limit enforcement rejected client");
+      asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
+      mutex_lock(&client->send_mutex);
+      asciichat_error_t sent =
+          acip_send_error(client->transport, result == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL, NULL);
+      mutex_unlock(&client->send_mutex);
+      if (sent != ASCIICHAT_OK)
+        LOG_ERRNO_IF_SET("Could not notify client about rate-limit decision");
+      asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
+      if (result == ASCIICHAT_OK)
+        asciichat_errno_scope_end(limit_scope, ASCIICHAT_ERRNO_HANDLED);
+      atomic_store_bool(&client->active, false);
       return;
     }
+    ASSERT_NO_ERRNO_SINCE(limit_scope);
+    asciichat_errno_scope_end(limit_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   // O(1) dispatch via hash table lookup

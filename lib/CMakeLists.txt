@@ -10,6 +10,9 @@ set(CORE_SRCS
     ${LIB_DIR}/atomic.c
     ${LIB_DIR}/app_callbacks.c
     ${LIB_DIR}/lifecycle.c
+    ${LIB_DIR}/stats/stats.c
+    ${LIB_DIR}/stats/descriptors.c
+    ${LIB_DIR}/stats/runtime.c
     # log/
     ${LIB_DIR}/log/log.c
     ${LIB_DIR}/log/format.c
@@ -26,6 +29,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/controller.c
     ${LIB_DIR}/ui/render_progress.c
     ${LIB_DIR}/ui/input.c
+    ${LIB_DIR}/ui/sync.c
     ${LIB_DIR}/ui/prompt.c
     ${LIB_DIR}/ui/notice.c
     ${LIB_DIR}/ui/too_small.c
@@ -138,6 +142,10 @@ list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/mutex.c
     ${LIB_DIR}/debug/backtrace.c
     ${LIB_DIR}/debug/sync.c
+    ${LIB_DIR}/debug/stats.c
+    ${LIB_DIR}/debug/errno.c
+    ${LIB_DIR}/debug/debug_helpers.c
+    ${LIB_DIR}/options/registry/debug.c
 )
 
 # Additional debug sources only in non-Release builds
@@ -145,7 +153,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/atomic.c
         ${LIB_DIR}/debug/memory.c
-        ${LIB_DIR}/options/registry/debug.c
     )
 endif()
 
@@ -475,9 +482,8 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # -----------------------------------------------------------------------------
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
-# Add FFmpeg include directories BEFORE creating the module (for media file streaming)
-# Use SYSTEM to suppress warnings from third-party headers (e.g., FFmpeg's undefined bit shift behavior)
-include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
+# FFmpeg headers are configured globally so library and application targets use
+# the same version as the linked libraries.
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 

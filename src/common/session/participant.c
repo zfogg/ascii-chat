@@ -302,7 +302,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     if (p->callbacks.on_error) {
       p->callbacks.on_error(p, ERROR_NETWORK_CONNECT, "Failed to connect to server", p->user_data);
     }
-    return GET_ERRNO();
+    return SET_ERRNO(ERROR_NETWORK_CONNECT, "Session participant could not connect to server");
   }
 
   log_debug("session_participant_connect: setting p->connected=true");

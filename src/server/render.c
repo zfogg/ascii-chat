@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file server/render.c
  * @ingroup server_render
@@ -530,6 +531,12 @@ void *client_video_render_thread(void *arg) {
                                                             &frame_size, NULL, &sources_count);
     STOP_TIMER_AND_LOG(dev, 0, "render_create_frame", "create_mixed_ascii_frame completed");
     uint64_t frame_create_end_ns = time_get_ns();
+    if (sources_count > 0) {
+      stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT,
+                            frame_create_end_ns - frame_create_start_ns);
+      stats_counter_add(stats_runtime_scope(),
+                        ascii_frame ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
+    }
 
     if (frame_gen_count % 120 == 0) {
       char sleep_str[32], create_str[32];
@@ -664,7 +671,6 @@ void *client_video_render_thread(void *arg) {
 #endif
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -896,7 +902,9 @@ void *client_audio_render_thread(void *arg) {
 
     int samples_mixed = 0;
     uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
+    uint64_t stats_mix_start = time_get_ns();
     samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - stats_mix_start);
 
     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%s", "Mixer for client %s: took",
                              client_id_snapshot);
@@ -1086,7 +1094,6 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // Clean up thread-local error context before exit
-  asciichat_errno_destroy();
 
   return NULL;
 }

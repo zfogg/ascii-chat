@@ -247,6 +247,9 @@ set(LIB_SRC_COMMON
     # Debug/naming (required by crypto handshake and other modules)
     ${LIB_ROOT}/debug/named.c
     ${LIB_ROOT}/debug/sync.c
+    ${LIB_ROOT}/debug/stats.c
+    ${LIB_ROOT}/debug/errno.c
+    ${LIB_ROOT}/debug/debug_helpers.c
     ${LIB_ROOT}/debug/atomic.c
     ${LIB_ROOT}/debug/mutex.c
 
@@ -289,6 +292,9 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/terminal_screen.c
     ${LIB_ROOT}/ui/frame_buffer.c
     ${LIB_ROOT}/ui/fps_counter.c
+    ${LIB_ROOT}/stats/stats.c
+    ${LIB_ROOT}/stats/descriptors.c
+    ${LIB_ROOT}/platform/wasm/stubs/stats.c
 
     # Video animations (used by display.c in both mirror and client modes)
     ${LIB_ROOT}/video/anim/digital_rain.c
@@ -487,6 +493,7 @@ apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
+    _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     # Frame processing for JavaScript control
     _mirror_init_with_args
@@ -542,6 +549,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _client_acds_join_request
     _client_configure_crypto_options

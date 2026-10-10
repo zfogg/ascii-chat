@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
 /**
  * @file session/host.c
@@ -90,7 +91,9 @@ static asciichat_error_t session_host_send_packet(session_host_client_t *client,
     return packet_send_via_transport(client->transport, type, payload, payload_len, 0);
   }
   if (client->socket != INVALID_SOCKET_VALUE) {
-    return packet_send(client->socket, type, payload, payload_len);
+    asciichat_error_t result = packet_send(client->socket, type, payload, payload_len);
+    stats_runtime_packet(NULL, type, payload_len, true, result == ASCIICHAT_OK);
+    return result;
   }
   return SET_ERRNO(ERROR_INVALID_STATE, "Session host client has no active transport");
 }
@@ -549,6 +552,7 @@ static void *receive_loop_thread(void *arg) {
         continue;
       }
 
+      stats_runtime_packet(client_transport ? client_transport->stats_peer : NULL, ptype, len, false, true);
       // Process packet based on type
       uint32_t client_id = host->clients[i].client_id;
       mutex_unlock(&host->clients_mutex);
@@ -831,8 +835,13 @@ static void *host_render_thread(void *arg) {
               image_t *img = host->clients[i].incoming_video;
 
               // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
+              uint64_t convert_start = time_get_ns();
               ascii_frames[frame_idx] =
                   ascii_convert(img, 80, 24, true, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+              stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - convert_start);
+              stats_counter_add(stats_runtime_scope(),
+                                ascii_frames[frame_idx] ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED,
+                                1);
               if (ascii_frames[frame_idx]) {
                 sources[frame_idx].frame_data = ascii_frames[frame_idx];
                 sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
@@ -978,6 +987,7 @@ static void *host_render_thread(void *arg) {
       // 4. Broadcast mixed audio via av_send_audio_opus_batch()
 
       if (host->audio_ctx && host->opus_encoder) {
+        uint64_t mix_start = time_get_ns();
         float mixed_audio[960]; // 20ms @ 48kHz
         memset(mixed_audio, 0, sizeof(mixed_audio));
 
@@ -1011,6 +1021,7 @@ static void *host_render_thread(void *arg) {
         }
         mutex_unlock(&host->clients_mutex);
 
+        stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
         audio_recording_submit(AUDIO_RECORDING_REMOTE, mixed_audio, 960, time_get_ns());
 
         // Encode to Opus
@@ -1077,7 +1088,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
     if (host->callbacks.on_error) {
       host->callbacks.on_error(host, ERROR_NETWORK_BIND, "Failed to create listen socket", host->user_data);
     }
-    return GET_ERRNO();
+    return SET_ERRNO(ERROR_NETWORK_BIND, "Session host could not create a listening socket");
   }
 
   host->running = true;

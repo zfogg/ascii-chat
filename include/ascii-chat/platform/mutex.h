@@ -39,13 +39,13 @@ typedef struct {
     CRITICAL_SECTION impl;   ///< Underlying Windows critical section
     const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
-    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
-    uint64_t lock_count;            ///< Total lock acquisitions
-    uint64_t unlock_count;          ///< Total unlocks
-    uint64_t trylock_count;         ///< Total trylock attempts
-    uint64_t trylock_success_count; ///< Successful trylocks
+    _Atomic(uint64_t) last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+    _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+    _Atomic(uint64_t) lock_count;            ///< Total lock acquisitions
+    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
+    _Atomic(uint64_t) trylock_count;         ///< Total trylock attempts
+    _Atomic(uint64_t) trylock_success_count; ///< Successful trylocks
 #endif
 } mutex_t;
 #else
@@ -58,13 +58,13 @@ typedef struct {
     pthread_mutex_t impl;    ///< Underlying POSIX mutex
     const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
-    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
-    uint64_t lock_count;            ///< Total lock acquisitions
-    uint64_t unlock_count;          ///< Total unlocks
-    uint64_t trylock_count;         ///< Total trylock attempts
-    uint64_t trylock_success_count; ///< Successful trylocks
+    _Atomic(uint64_t) last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+    _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+    _Atomic(uint64_t) lock_count;            ///< Total lock acquisitions
+    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
+    _Atomic(uint64_t) trylock_count;         ///< Total trylock attempts
+    _Atomic(uint64_t) trylock_success_count; ///< Successful trylocks
 #endif
 } mutex_t;
 #endif

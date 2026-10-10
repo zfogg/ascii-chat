@@ -165,6 +165,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_info("[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s", snapshot_mode ? "YES" : "NO");
   log_set_terminal_output(false);
 
+  asciichat_error_t capture_result = ASCIICHAT_OK;
   // Main render loop
   log_debug("session_render_loop: entering main loop");
   int loop_iteration = 0;
@@ -224,9 +225,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // EVENT-DRIVEN MODE: Frames come from callbacks
     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
     sleep_cb(user_data);
+    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
     image = capture_cb(user_data);
 
     if (!image) {
+      asciichat_error_context_t failure;
+      if (asciichat_errno_peek_since(frame_scope, &failure)) {
+        capture_result = failure.code;
+        break;
+      }
       // No frame available - this is normal in async modes (network latency, etc.)
       // Just continue to next iteration, don't exit
       continue;
@@ -471,5 +478,5 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Unregister global display context (for signal handlers)
   session_display_set_global_context(NULL);
 
-  return ASCIICHAT_OK;
+  return capture_result;
 }

@@ -4,6 +4,9 @@
  * @brief 📜 SSH known_hosts file parser for host key verification and trust management
  */
 
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/crypto/key_identity/display.h>
+#include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <stdio.h>
@@ -78,6 +81,13 @@ const char *get_known_hosts_path(void) {
 // IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat
 // IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat
 asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+  return check_known_host_with_key(server_ip, port, server_key, NULL, NULL);
+}
+
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[32],
+                                            uint8_t expected_key[32], bool *has_expected_key) {
+  if (has_expected_key)
+    *has_expected_key = false;
   // Validate parameters first
   if (!server_ip || !server_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
@@ -195,6 +205,11 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
           stored_key_is_zero = false;
           break;
         }
+      }
+
+      if (expected_key && has_expected_key && !*has_expected_key && !stored_key_is_zero) {
+        memcpy(expected_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE);
+        *has_expected_key = true;
       }
 
       // Both zero = no-identity connection (weaker security)
@@ -577,7 +592,10 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 // Compute SHA256 fingerprint of key for display
 void compute_key_fingerprint(const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL]) {
   uint8_t hash[HMAC_SHA256_SIZE];
-  crypto_hash_sha256(hash, key, ED25519_PUBLIC_KEY_SIZE);
+  if (key_fingerprint_digest(key, hash) != ASCIICHAT_OK) {
+    fingerprint[0] = '\0';
+    return;
+  }
 
   // Build hex string byte by byte to avoid buffer overflow issues
   for (int i = 0; i < HMAC_SHA256_SIZE; i++) {
@@ -633,13 +651,21 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return false; // REJECT unknown hosts in non-interactive mode
   }
 
-  char question[2048];
+  public_key_t public_key = {.type = KEY_TYPE_ED25519};
+  memcpy(public_key.key, server_key, sizeof(public_key.key));
+  char identity[KEY_IDENTITY_BUFFER_SIZE] = "";
+  // Keep the trust question and input visible in a normal 24-row terminal.
+  if (platform_isatty(STDERR_FILENO) && ui_controller_size().rows < 38)
+    (void)key_identity_format(&public_key, false, false, 80, identity, sizeof(identity));
+  else
+    (void)key_identity_format_terminal(&public_key, identity, sizeof(identity));
+  char question[KEY_IDENTITY_BUFFER_SIZE + 512];
   safe_snprintf(question, sizeof(question),
                 "REMOTE HOST IDENTIFICATION NOT KNOWN!\n\n"
                 "The authenticity of host '%s' cannot be established.\n"
-                "Ed25519 key fingerprint: SHA256:%s\n\n"
+                "%s\n"
                 "Are you sure you want to continue connecting",
-                ip_with_port, fingerprint);
+                ip_with_port, identity);
   if (ui_notice_confirm(UI_NOTICE_DANGER, question, 120)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
@@ -653,9 +679,15 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 // Returns true if user accepts the risk and wants to continue, false otherwise
 bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[32],
                           const uint8_t received_key[32]) {
-  char expected_fp[CRYPTO_HEX_KEY_SIZE_NULL], received_fp[CRYPTO_HEX_KEY_SIZE_NULL];
-  compute_key_fingerprint(expected_key, expected_fp);
-  compute_key_fingerprint(received_key, received_fp);
+  public_key_t public_key = {.type = KEY_TYPE_ED25519};
+  char expected_identity[KEY_IDENTITY_BUFFER_SIZE] = "No stored public identity available.\n";
+  char received_identity[KEY_IDENTITY_BUFFER_SIZE] = "";
+  if (expected_key) {
+    memcpy(public_key.key, expected_key, 32);
+    (void)key_identity_format_terminal(&public_key, expected_identity, sizeof(expected_identity));
+  }
+  memcpy(public_key.key, received_key, 32);
+  (void)key_identity_format_terminal(&public_key, received_identity, sizeof(received_identity));
 
   const char *known_hosts_path = get_known_hosts_path();
 
@@ -676,10 +708,10 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
          "It is also possible that the host key has just been changed.\n"
          "\n"
          "The fingerprint for the Ed25519 key sent by the remote host is:\n"
-         "SHA256:%s\n"
+         "%s\n"
          "\n"
-         "Expected fingerprint:\n"
-         "SHA256:%s\n"
+         "Stored identity (first candidate):\n"
+         "%s\n"
          "\n"
          "Please contact your system administrator.\n"
          "\n"
@@ -699,8 +731,8 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
          "\n"
          "Host key verification failed.\n"
          "\n",
-         received_fp, expected_fp, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port, escaped_ip_with_port,
-         ip_with_port, ip_with_port);
+         received_identity, expected_identity, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port,
+         escaped_ip_with_port, ip_with_port, ip_with_port);
 
   return false;
 }

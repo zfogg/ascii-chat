@@ -59,7 +59,7 @@ runs:
       run: |
         xml_dir="${{ inputs.criterion-xml-dir }}"
         if [ -d "$xml_dir" ]; then
-          xml_count=$(find "$xml_dir" -name "*.xml" -type f | wc -l)
+          xml_count=$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | wc -l)
           echo "Found $xml_count Criterion XML files in $xml_dir"
 
           if [ "$xml_count" -gt 0 ]; then
@@ -158,16 +158,20 @@ runs:
 
     # Convert Criterion XML to JUnit XML for Codecov compatibility
     - name: Convert Criterion XML to JUnit Format
+      id: junit
       if: always()
       shell: bash
       run: |
         xml_dir="${{ inputs.criterion-xml-dir }}"
-        if [ -d "$xml_dir" ] && [ "$(find "$xml_dir" -name "*.xml" -type f | wc -l)" -gt 0 ]; then
+        if [ -d "$xml_dir" ] && [ "$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | wc -l)" -gt 0 ]; then
           echo "Converting Criterion XML to JUnit format..."
           python3 .github/scripts/criterion-to-junit.py "$xml_dir" "$xml_dir"
+          files=$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | sort | paste -sd, -)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          echo "has_reports=true" >> "$GITHUB_OUTPUT"
           echo "Conversion complete"
         else
-          echo "No XML files found to convert"
+          echo "::warning::No test reports were generated; check the preceding build and test steps. Skipping Codecov test upload."
         fi
 
     - name: Set up Codecov Python runtime
@@ -184,11 +188,12 @@ runs:
 
     # Upload test results to Codecov
     - name: Upload Test Results to Codecov
-      if: always()
+      if: ${{ always() && steps.junit.outcome == 'success' && steps.junit.outputs.has_reports == 'true' && steps.codecov-cli.outcome == 'success' }}
       uses: codecov/test-results-action@v1
       with:
         binary: ${{ steps.codecov-cli.outputs.binary }}
-        files: ${{ inputs.criterion-xml-dir }}/*.xml
+        files: ${{ steps.junit.outputs.files }}
+        disable_search: true
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||

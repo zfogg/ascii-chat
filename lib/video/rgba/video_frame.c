@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 
 /**
  * @file video_frame.c
@@ -241,6 +242,8 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   mutex_lock(&vfb->swap_mutex);
   if (atomic_load_bool(&vfb->new_frame_available) && vfb->front_buffer->size > 0) {
     uint64_t drops = atomic_fetch_add_u64(&vfb->total_frames_dropped, 1) + 1;
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
     if (drops == 1 || drops % 100 == 0) {
       log_dev_every(4500 * US_PER_MS_INT, "Dropping frame for client %u (reader too slow, total drops: %llu)",
                     vfb->client_id, (unsigned long long)drops);
@@ -253,6 +256,7 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   mutex_unlock(&vfb->swap_mutex);
 
   atomic_fetch_add_u64(&vfb->total_frames_received, 1);
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
 }
 
 const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {

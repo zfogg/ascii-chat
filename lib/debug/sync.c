@@ -9,6 +9,8 @@
  */
 
 #include <ascii-chat/debug/sync.h>
+#include <ascii-chat/debug/debug_helpers.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
@@ -22,6 +24,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <pthread.h>
 #include <inttypes.h>
@@ -219,30 +222,110 @@ typedef struct {
   char *buffer;
   size_t buffer_size;
   size_t offset;
+  bool truncated;
 } sync_buffer_t;
+
+static void sync_buffer_append(sync_buffer_t *buf, const char *format, ...) {
+  if (buf->offset >= buf->buffer_size - 1) {
+    buf->truncated = true;
+    return;
+  }
+  size_t remaining = buf->buffer_size - buf->offset;
+  va_list args;
+  va_start(args, format);
+  int written = vsnprintf(buf->buffer + buf->offset, remaining, format, args);
+  va_end(args);
+  if (written < 0)
+    return;
+  if ((size_t)written >= remaining) {
+    buf->offset = buf->buffer_size - 1;
+    buf->truncated = true;
+  } else {
+    buf->offset += (size_t)written;
+  }
+}
+
+static void copy_mutex_timing(uintptr_t key, void *data) {
+  const mutex_t *source = (const mutex_t *)key;
+  mutex_t *copy = data;
+  copy->last_lock_time_ns = source->last_lock_time_ns;
+  copy->last_unlock_time_ns = source->last_unlock_time_ns;
+  copy->currently_held_by_key = source->currently_held_by_key;
+  copy->lock_count = source->lock_count;
+  copy->unlock_count = source->unlock_count;
+  copy->trylock_count = source->trylock_count;
+  copy->trylock_success_count = source->trylock_success_count;
+}
+
+static void copy_rwlock_timing(uintptr_t key, void *data) {
+  const rwlock_t *source = (const rwlock_t *)key;
+  rwlock_t *copy = data;
+  copy->last_rdlock_time_ns = source->last_rdlock_time_ns;
+  copy->last_wrlock_time_ns = source->last_wrlock_time_ns;
+  copy->last_unlock_time_ns = source->last_unlock_time_ns;
+  copy->write_held_by_key = source->write_held_by_key;
+  copy->rdlock_count = source->rdlock_count;
+  copy->wrlock_count = source->wrlock_count;
+  copy->unlock_count = source->unlock_count;
+  atomic_store(&copy->read_lock_count.impl, atomic_load(&source->read_lock_count.impl));
+}
+
+static void copy_cond_timing(uintptr_t key, void *data) {
+  const cond_t *source = (const cond_t *)key;
+  cond_t *copy = data;
+  copy->last_wait_time_ns = source->last_wait_time_ns;
+  copy->last_signal_time_ns = source->last_signal_time_ns;
+  copy->last_broadcast_time_ns = source->last_broadcast_time_ns;
+  copy->last_waiting_key = source->last_waiting_key;
+  copy->wait_count = source->wait_count;
+  copy->signal_count = source->signal_count;
+  copy->broadcast_count = source->broadcast_count;
+  atomic_store(&copy->waiting_count.impl, atomic_load(&source->waiting_count.impl));
+}
+
+static void copy_atomic_t_timing(uintptr_t key, void *data) {
+  const atomic_t *source = (const atomic_t *)key;
+  atomic_t *copy = data;
+  copy->last_store_time_ns = source->last_store_time_ns;
+  copy->last_load_time_ns = source->last_load_time_ns;
+  copy->store_count = source->store_count;
+  copy->load_count = source->load_count;
+  copy->cas_count = source->cas_count;
+  copy->cas_success_count = source->cas_success_count;
+  copy->fetch_count = source->fetch_count;
+  copy->change_count = source->change_count;
+  atomic_store(&copy->impl, atomic_load(&source->impl));
+}
+
+static void copy_atomic_ptr_timing(uintptr_t key, void *data) {
+  const atomic_ptr_t *source = (const atomic_ptr_t *)key;
+  atomic_ptr_t *copy = data;
+  copy->last_store_time_ns = source->last_store_time_ns;
+  copy->last_load_time_ns = source->last_load_time_ns;
+  copy->store_count = source->store_count;
+  copy->load_count = source->load_count;
+  copy->cas_count = source->cas_count;
+  copy->cas_success_count = source->cas_success_count;
+  copy->exchange_count = source->exchange_count;
+  copy->change_count = source->change_count;
+  atomic_store(&copy->impl, atomic_load(&source->impl));
+}
 
 static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data) {
   sync_buffer_t *buf = (sync_buffer_t *)user_data;
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "mutex") != 0) {
+  mutex_t snapshot = {0};
+  if (!named_registry_read(key, "mutex", copy_mutex_timing, &snapshot))
     return;
-  }
-
-  if (!key) {
-    return;
-  }
-
-  const mutex_t *mutex = (const mutex_t *)key;
+  const mutex_t *mutex = &snapshot;
   char timing_str[256] = {0};
   format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
   // Only append if mutex has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Mutex %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Mutex %s: %s\n", name, timing_str);
   }
 }
 
@@ -251,23 +334,16 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "rwlock") != 0) {
+  rwlock_t snapshot = {0};
+  if (!named_registry_read(key, "rwlock", copy_rwlock_timing, &snapshot))
     return;
-  }
-
-  if (!key) {
-    return;
-  }
-
-  const rwlock_t *rwlock = (const rwlock_t *)key;
+  const rwlock_t *rwlock = &snapshot;
   char timing_str[512] = {0};
   format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
   // Only append if rwlock has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  RWLock %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  RWLock %s: %s\n", name, timing_str);
   }
 }
 
@@ -276,19 +352,16 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "cond") != 0) {
+  cond_t snapshot = {0};
+  if (!named_registry_read(key, "cond", copy_cond_timing, &snapshot))
     return;
-  }
-
-  const cond_t *cond = (const cond_t *)key;
+  const cond_t *cond = &snapshot;
   char timing_str[512] = {0};
   format_cond_timing(cond, timing_str, sizeof(timing_str));
 
   // Only append if condition variable has been used
   if (timing_str[0]) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Cond %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Cond %s: %s\n", name, timing_str);
   }
 }
 
@@ -297,19 +370,16 @@ static void atomic_t_iter_callback(uintptr_t key, const char *name, void *user_d
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "atomic") != 0) {
+  atomic_t snapshot = {0};
+  if (!named_registry_read(key, "atomic", copy_atomic_t_timing, &snapshot))
     return;
-  }
-
-  const atomic_t *atomic = (const atomic_t *)key;
+  const atomic_t *atomic = &snapshot;
   char timing_str[512] = {0};
   int bytes = debug_atomic_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
   if (bytes > 0) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Atomic %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  Atomic %s: %s\n", name, timing_str);
   }
 }
 
@@ -318,19 +388,16 @@ static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user
   if (!buf)
     return;
 
-  const char *type = named_get_type(key);
-  if (!type || strcmp(type, "atomic_ptr") != 0) {
+  atomic_ptr_t snapshot = {0};
+  if (!named_registry_read(key, "atomic_ptr", copy_atomic_ptr_timing, &snapshot))
     return;
-  }
-
-  const atomic_ptr_t *atomic = (const atomic_ptr_t *)key;
+  const atomic_ptr_t *atomic = &snapshot;
   char timing_str[512] = {0};
   int bytes = debug_atomic_ptr_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
   if (bytes > 0) {
-    buf->offset +=
-        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  AtomicPtr %s: %s\n", name, timing_str);
+    sync_buffer_append(buf, "  AtomicPtr %s: %s\n", name, timing_str);
   }
 }
 
@@ -341,7 +408,7 @@ static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user
 /**
  * @brief Print all thread lock stacks
  */
-static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_t *offset) {
+static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
   mutex_stack_entry_t **all_stacks = NULL;
   int *stack_counts = NULL;
   int thread_count = 0;
@@ -355,14 +422,14 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
     return;
   }
 
-  *offset += snprintf(buffer + *offset, buffer_size - *offset, "\nThread Lock Stacks:\n");
+  sync_buffer_append(buf, "\nThread Lock Stacks:\n");
 
   for (int i = 0; i < thread_count; i++) {
     int depth = stack_counts[i];
     if (depth == 0)
       continue;
 
-    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Thread %d: %d lock(s)\n", i, depth);
+    sync_buffer_append(buf, "  Thread %d: %d lock(s)\n", i, depth);
 
     for (int j = 0; j < depth; j++) {
       const mutex_stack_entry_t *entry = &all_stacks[i][j];
@@ -372,7 +439,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] mutex @ %p (%s) %s", j,
+      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j,
                           (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
@@ -397,326 +464,49 @@ void debug_sync_print_state(void) {
 
   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
+  bool completed = false;
+  bool complete = true;
   // Iterate through all registered syncs
   log_debug("[debug_sync_print_state] Iterating mutexes");
-  named_registry_for_each(mutex_iter_callback, &buf);
+  complete &= named_registry_for_each(mutex_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
   log_debug("[debug_sync_print_state] Iterating rwlocks");
-  named_registry_for_each(rwlock_iter_callback, &buf);
+  complete &= named_registry_for_each(rwlock_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
   log_debug("[debug_sync_print_state] Iterating conds");
-  named_registry_for_each(cond_iter_callback, &buf);
+  complete &= named_registry_for_each(cond_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
 
-  named_registry_for_each(atomic_t_iter_callback, &buf);
-  named_registry_for_each(atomic_ptr_iter_callback, &buf);
+  complete &= named_registry_for_each(atomic_t_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
+  complete &= named_registry_for_each(atomic_ptr_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
+
+  if (!complete)
+    log_info("SYNC_STATE: registry snapshot incomplete; some entries could not be collected");
 
   // Print lock stacks for deadlock analysis
   log_debug("[debug_sync_print_state] Getting lock stacks");
-  debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
+  debug_sync_print_lock_stacks(&buf);
+  if (buf.truncated)
+    log_info("SYNC_STATE: output truncated at %zu bytes", buf.buffer_size - 1);
 
   // Log everything in one call
   log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
   if (buf.offset > 0) {
-    log_info("SYNC_STATE:\n%s", buf.buffer);
+    // Emit bounded lines so the logger does not truncate a large registry report.
+    log_info("SYNC_STATE:");
+    char *line = buf.buffer;
+    while (*line) {
+      char *end = strchr(line, '\n');
+      if (end)
+        *end = '\0';
+      log_info("%s", line);
+      if (!end)
+        break;
+      line = end + 1;
+    }
   } else {
     log_info("SYNC_STATE: (empty)");
   }
 
   SAFE_FREE(buffer);
 #undef SYNC_BUFFER_SIZE
-}
-
-// ============================================================================
-// Condition Variable Deadlock Detection
-// ============================================================================
-
-// ============================================================================
-// Scheduled Debug State Printing (runs on separate thread)
-// ============================================================================
-
-typedef enum {
-  DEBUG_REQUEST_STATE,         // Print sync state
-  DEBUG_REQUEST_BACKTRACE,     // Print backtrace
-  DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
-} debug_request_type_t;
-
-typedef struct {
-  debug_request_type_t request_type; // What to print
-  uint64_t delay_ns;
-  atomic_t should_run;                 // Atomic flag set by main thread
-  atomic_t should_exit;                // Atomic flag for shutdown
-  atomic_t signal_triggered;           // Flag set by SIGUSR1 handler
-  uint64_t memory_report_interval_ns;  // Interval for periodic memory reports (0 = disabled)
-  uint64_t last_memory_report_time_ns; // Timestamp of last memory report
-  mutex_t mutex;                       // Protects access to flags during locked operations
-  cond_t cond;                         // Wakes thread when signal arrives
-  bool initialized;                    // Tracks if mutex/cond are initialized
-  bool handled_sync_state_time;        // Track if --sync-state option was already processed
-  bool handled_backtrace_time;         // Track if --backtrace option was already processed
-  bool handled_memory_report;          // Track if --memory-report option was already processed
-} debug_state_request_t;
-
-static debug_state_request_t g_debug_state_request = {
-    .request_type = DEBUG_REQUEST_STATE,
-    .delay_ns = 0,
-    .should_run = {.impl = 0},
-    .should_exit = {.impl = 0},
-    .signal_triggered = {.impl = 0},
-    .memory_report_interval_ns = 0,
-    .last_memory_report_time_ns = 0,
-    .initialized = false,
-    .handled_sync_state_time = false,
-    .handled_backtrace_time = false,
-    .handled_memory_report = false,
-};
-static asciichat_thread_t g_debug_thread;
-static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory reporting
-static atomic_t g_cleanup_in_progress = {0}; // Flag to prevent deadlock checks during shutdown
-
-/**
- * @brief Thread function for scheduled debug state printing
- *
- * Handles both delayed printing and signal-triggered printing (via SIGUSR1).
- * Logging is performed on this thread, not in signal handler context,
- * avoiding potential deadlocks with logging mutexes.
- *
- * Uses a condition variable to wake up immediately when SIGUSR1 is received,
- * without polling or busy-waiting.
- */
-static void *debug_print_thread_fn(void *arg) {
-  (void)arg;
-
-  while (!atomic_load_bool(&g_debug_state_request.should_exit)) {
-    // Handle delayed printing
-    if (atomic_load_bool(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
-      platform_sleep_ns(g_debug_state_request.delay_ns);
-      g_debug_state_request.delay_ns = 0;
-    }
-
-    // Handle both scheduled and signal-triggered printing
-    mutex_lock(&g_debug_state_request.mutex);
-    bool should_run = atomic_load_bool(&g_debug_state_request.should_run);
-    bool signal_triggered = atomic_load_bool(&g_debug_state_request.signal_triggered);
-    bool should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
-
-    if ((should_run || signal_triggered) && !should_exit) {
-      debug_request_type_t request_type = g_debug_state_request.request_type;
-      mutex_unlock(&g_debug_state_request.mutex);
-
-      // Print based on request type
-      if (request_type == DEBUG_REQUEST_STATE) {
-        debug_sync_print_state();
-      } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
-        backtrace_t bt = {0};
-        backtrace_capture_and_symbolize(&bt);
-        backtrace_print("Backtrace", &bt, 0, 0, NULL);
-        backtrace_t_free(&bt);
-      }
-
-      mutex_lock(&g_debug_state_request.mutex);
-      atomic_store_bool(&g_debug_state_request.should_run, false);
-      atomic_store_bool(&g_debug_state_request.signal_triggered, false);
-      should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
-    }
-
-    // Wait for work or signal, with 100ms timeout to check should_exit
-    if (!should_exit) {
-      cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000); // 100ms
-    }
-    mutex_unlock(&g_debug_state_request.mutex);
-
-    // Periodic deadlock detection (runs every 100ms during wait timeout)
-    debug_sync_check_cond_deadlocks();
-    mutex_stack_detect_deadlocks();
-
-#ifndef NDEBUG
-    // Periodic memory report (if enabled and DEBUG_MEMORY is configured)
-#ifdef DEBUG_MEMORY
-    if (g_debug_state_request.memory_report_interval_ns > 0) {
-      uint64_t now = time_get_ns();
-      uint64_t last_time = g_debug_state_request.last_memory_report_time_ns;
-
-      // Check if enough time has passed (or first report)
-      if (last_time == 0 || (now - last_time >= g_debug_state_request.memory_report_interval_ns)) {
-        debug_memory_report();
-        g_debug_state_request.last_memory_report_time_ns = now;
-      }
-    }
-#endif
-
-    options_t *opts = options_get();
-    if (!opts) {
-      continue;
-    }
-
-    // Handle --debug-state (debug builds only)
-    // Schedule sync state printing after specified delay (execute only once, when option is first detected)
-    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
-    if (!g_debug_state_request.handled_sync_state_time && IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &&
-        opts->debug_sync_state_time > 0.0) {
-      g_debug_state_request.handled_sync_state_time = true;
-      log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
-      uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
-      debug_sync_print_state_delayed(delay_ns);
-    }
-
-    // Handle --backtrace (debug builds only)
-    // Schedule backtrace printing after specified delay (execute only once, when option is first detected)
-    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
-    if (!g_debug_state_request.handled_backtrace_time && IS_OPTION_EXPLICIT(debug_backtrace_time, opts) &&
-        opts->debug_backtrace_time > 0.0) {
-      g_debug_state_request.handled_backtrace_time = true;
-      log_info("Will print backtrace after %f seconds", opts->debug_backtrace_time);
-      uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
-      debug_sync_print_backtrace_delayed(delay_ns);
-    }
-
-    // Handle --memory-report (debug builds only)
-    // Enable periodic memory reporting at specified interval (execute only once, when option is first detected)
-    if (!g_debug_state_request.handled_memory_report && IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) &&
-        opts->debug_memory_report_interval > 0.0) {
-      g_debug_state_request.handled_memory_report = true;
-      log_info("Enabling memory reports every %f seconds", opts->debug_memory_report_interval);
-      uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
-      debug_sync_set_memory_report_interval(interval_ns);
-    }
-#else
-    options_t *opts = options_get();
-    if (!opts) {
-      continue;
-    }
-#endif
-  }
-
-  return NULL;
-}
-
-/**
- * @brief Final cleanup of all debug allocations at shutdown
- */
-void debug_sync_final_cleanup(void) {
-  // Clean up current thread's mutex stack explicitly
-  mutex_stack_cleanup_current_thread();
-}
-
-/**
- * @brief Schedule delayed debug state printing on debug thread
- * @param delay_ns Nanoseconds to sleep before printing
- */
-void debug_sync_print_state_delayed(uint64_t delay_ns) {
-  mutex_lock(&g_debug_state_request.mutex);
-  g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
-  g_debug_state_request.delay_ns = delay_ns;
-  atomic_store_bool(&g_debug_state_request.should_run, true);
-  cond_signal(&g_debug_state_request.cond);
-  mutex_unlock(&g_debug_state_request.mutex);
-}
-
-/**
- * @brief Schedule delayed backtrace printing on debug thread
- * @param delay_ns Nanoseconds to sleep before printing
- */
-void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
-  mutex_lock(&g_debug_state_request.mutex);
-  g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
-  g_debug_state_request.delay_ns = delay_ns;
-  atomic_store_bool(&g_debug_state_request.should_run, true);
-  cond_signal(&g_debug_state_request.cond);
-  mutex_unlock(&g_debug_state_request.mutex);
-}
-
-/**
- * @brief Set periodic memory report interval
- * @param interval_ns Interval in nanoseconds (0 to disable)
- */
-void debug_sync_set_memory_report_interval(uint64_t interval_ns) {
-  g_debug_state_request.memory_report_interval_ns = interval_ns;
-  g_debug_state_request.last_memory_report_time_ns = 0; // Reset timer
-}
-
-// ============================================================================
-// Debug Sync API - Thread management
-// ============================================================================
-
-void debug_sync_set_main_thread_id(void) {
-  // Save main thread ID for memory reporting (call very early)
-  g_debug_main_thread_id = asciichat_thread_current_id();
-}
-
-int debug_sync_init(void) {
-  // debug_sync_set_main_thread_id() should have already been called
-  return 0;
-}
-
-uint64_t debug_sync_get_main_thread_id(void) {
-  return g_debug_main_thread_id;
-}
-
-bool debug_sync_is_cleanup_in_progress(void) {
-  return atomic_load_bool(&g_cleanup_in_progress);
-}
-
-int debug_sync_start_thread(void) {
-  // Initialize mutex and condition variable for signal wakeup
-  if (!g_debug_state_request.initialized) {
-    mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
-    cond_init(&g_debug_state_request.cond, "debug_sync_signal");
-    g_debug_state_request.initialized = true;
-  }
-
-  atomic_store_bool(&g_debug_state_request.should_exit, false);
-  int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
-  return err;
-}
-
-void debug_sync_destroy(void) {
-  debug_sync_cleanup_thread();
-}
-
-void debug_sync_cleanup_thread(void) {
-  log_debug("[DEBUG_SYNC_CLEANUP] Starting cleanup");
-
-  // Only join if thread was actually created
-  if (!g_debug_state_request.initialized) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread not initialized, returning");
-    return;
-  }
-
-  // Set cleanup flag to prevent deadlock checks from accessing freed memory
-  // Do this after checking initialization so we don't set it unnecessarily
-  atomic_store_bool(&g_cleanup_in_progress, true);
-  log_debug("[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup");
-
-  log_debug("[DEBUG_SYNC_CLEANUP] Setting initialized to false");
-  g_debug_state_request.initialized = false; // Prevent double-join
-
-  // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-  log_debug("[DEBUG_SYNC_CLEANUP] Signaling thread to exit");
-  atomic_store_bool(&g_debug_state_request.should_exit, true);
-  cond_signal(&g_debug_state_request.cond);
-  log_debug("[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread");
-
-  // Use a timeout join to ensure we don't deadlock, but still unregister the thread
-  // The debug thread should exit quickly after should_exit is set above
-  int join_result = asciichat_thread_join_timeout(&g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
-  if (join_result == 0) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread joined successfully");
-  } else if (join_result == -2) {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread join timed out (thread may still be running)");
-    // Don't unregister if timeout - thread is still alive
-  } else {
-    log_debug("[DEBUG_SYNC_CLEANUP] Thread join failed with error %d", join_result);
-  }
-}
-
-void debug_sync_trigger_print(void) {
-  // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
-  // We don't call debug_sync_print_state() directly here to avoid logging
-  // in signal handler context, which could deadlock with logging mutexes.
-  // Uses atomic_store for thread-safe flag setting from signal handler.
-  //
-  // Signal the condition variable to wake up the debug thread immediately
-  // (without waiting for the 100ms timeout).
-  atomic_store_bool(&g_debug_state_request.signal_triggered, true);
-  cond_signal(&g_debug_state_request.cond);
 }
 
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
@@ -785,22 +575,22 @@ int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_n
 
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number,
                          const char *function_name) {
-  // Note: pthread_cond_wait() atomically releases and re-acquires the mutex,
-  // but this happens at the kernel level. Debug tracking can't monitor this atomic
-  // operation properly, so we skip cond_on_wait() to avoid false deadlock reports.
-  (void)file_name;
-  (void)line_number;
-  (void)function_name;
-  return cond_wait_impl(cond, mutex);
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  int result = cond_wait_impl(cond, mutex);
+#ifndef NDEBUG
+  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+#endif
+  return result;
 }
 
 int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number,
                               const char *function_name) {
-  // Same as debug_sync_cond_wait(): skip tracking the atomic unlock/relock.
-  (void)file_name;
-  (void)line_number;
-  (void)function_name;
-  return cond_timedwait_impl(cond, mutex, timeout_ns);
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  int result = cond_timedwait_impl(cond, mutex, timeout_ns);
+#ifndef NDEBUG
+  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+#endif
+  return result;
 }
 
 int debug_sync_cond_signal(cond_t *cond, const char *file_name, int line_number, const char *function_name) {
@@ -831,8 +621,166 @@ void debug_sync_print_state(void) {
   // No-op in release builds
 }
 
-void debug_sync_cleanup_thread(void) {
-  // No-op in release builds
-}
 
 #endif
+
+
+static atomic_t g_signal = {0};
+static atomic_t g_exiting = {0};
+static atomic_t g_cleaning = {0};
+static asciichat_thread_t g_thread;
+static mutex_t g_mutex;
+static cond_t g_condition;
+static bool g_initialized;
+static bool g_started;
+static uint64_t g_state_deadline;
+static uint64_t g_backtrace_deadline;
+
+asciichat_error_t debug_sync_init(void) {
+  if (g_initialized)
+    return ASCIICHAT_OK;
+  if (mutex_init(&g_mutex, "debug_sync") != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics mutex");
+  if (cond_init(&g_condition, "debug_sync") != 0) {
+    mutex_destroy(&g_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize diagnostics condition");
+  }
+  g_initialized = true;
+  atomic_store_bool_impl(&g_cleaning, false);
+  return ASCIICHAT_OK;
+}
+static void debug_sync_print_sync(void) {
+#ifndef NDEBUG
+  debug_sync_print_state();
+  named_print_hash_stats();
+#else
+  log_info("SYNC_STATE: synchronization diagnostics are unavailable in Release builds");
+#endif
+}
+void debug_sync_print(void) {
+  debug_sync_print_sync();
+}
+void debug_sync_print_state_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_state_deadline, delay);
+}
+void debug_sync_print_backtrace_delayed(uint64_t delay) {
+  if (!g_initialized)
+    return;
+  debug_report_schedule(&g_mutex, &g_condition, &g_backtrace_deadline, delay);
+}
+void debug_sync_trigger_print(void) {
+  // Do not signal a condition variable or invoke diagnostic hooks in a signal
+  // handler. The worker checks this flag at most 100ms after its next wakeup.
+  atomic_store_bool_impl(&g_signal, true);
+}
+bool debug_sync_is_cleanup_in_progress(void) {
+  return atomic_load_bool_impl(&g_cleaning);
+}
+void debug_sync_poll(void) {
+  if (!g_initialized)
+    return;
+  uint64_t now = time_get_ns();
+  bool all = atomic_exchange_bool_impl(&g_signal, false);
+  bool state = false;
+  mutex_lock(&g_mutex);
+  bool backtrace = g_backtrace_deadline && now >= g_backtrace_deadline;
+  if (g_state_deadline && now >= g_state_deadline) {
+    state = true;
+    g_state_deadline = 0;
+  }
+  if (backtrace)
+    g_backtrace_deadline = 0;
+  mutex_unlock(&g_mutex);
+  if (all || state)
+    debug_sync_print_sync();
+  if (backtrace) {
+    backtrace_t trace = {0};
+    backtrace_capture(&trace);
+    backtrace_symbolize(&trace);
+    if (trace.symbols)
+      backtrace_print("Diagnostics worker backtrace", &trace, 0, 0, NULL);
+    backtrace_t_free(&trace);
+  }
+}
+#ifndef EMSCRIPTEN_BUILD
+static void *debug_sync_worker(void *unused) {
+  (void)unused;
+  while (!atomic_load_bool_impl(&g_exiting)) {
+    debug_sync_poll();
+#ifndef NDEBUG
+    if (!atomic_load_bool_impl(&g_exiting)) {
+      debug_sync_check_cond_deadlocks();
+      mutex_stack_detect_deadlocks();
+    }
+#endif
+    mutex_lock(&g_mutex);
+    uint64_t now = time_get_ns();
+    uint64_t wait = 100 * NS_PER_MS_INT;
+    uint64_t deadlines[] = {g_state_deadline, g_backtrace_deadline};
+    for (size_t i = 0; i < sizeof(deadlines) / sizeof(deadlines[0]); ++i)
+      if (deadlines[i]) {
+        uint64_t remaining = deadlines[i] > now ? deadlines[i] - now : 1;
+        if (remaining < wait)
+          wait = remaining;
+      }
+    if (!atomic_load_bool_impl(&g_exiting))
+      cond_timedwait(&g_condition, &g_mutex, wait);
+    mutex_unlock(&g_mutex);
+  }
+  return NULL;
+}
+#endif
+asciichat_error_t debug_sync_start_thread(void) {
+  if (g_started)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = debug_sync_init();
+  if (result != ASCIICHAT_OK)
+    return result;
+  atomic_store_bool_impl(&g_exiting, false);
+  atomic_store_bool_impl(&g_cleaning, false);
+  options_t *opts = options_get();
+  if (opts) {
+    if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts))
+      debug_sync_print_state_delayed((uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT));
+    if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts))
+      debug_sync_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
+  }
+#ifndef EMSCRIPTEN_BUILD
+  if (asciichat_thread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
+    return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
+#endif
+  g_started = true;
+  return ASCIICHAT_OK;
+}
+void debug_sync_cleanup_thread(void) {
+  if (!g_started)
+    return;
+  atomic_store_bool_impl(&g_cleaning, true);
+  mutex_lock(&g_mutex);
+  atomic_store_bool_impl(&g_exiting, true);
+  cond_signal(&g_condition);
+  mutex_unlock(&g_mutex);
+#ifndef EMSCRIPTEN_BUILD
+  // Join fully: diagnostic data must not be destroyed while a reader is alive.
+  if (asciichat_thread_join(&g_thread, NULL) != 0)
+    FATAL(ERROR_THREAD, "Cannot join diagnostics worker");
+#endif
+  g_started = false;
+}
+void debug_sync_destroy(void) {
+  debug_sync_cleanup_thread();
+  if (g_initialized) {
+    cond_destroy(&g_condition);
+    mutex_destroy(&g_mutex);
+    g_initialized = false;
+    atomic_store_bool_impl(&g_signal, false);
+    g_state_deadline = g_backtrace_deadline = 0;
+  }
+}
+void debug_sync_final_cleanup(void) {
+#ifndef NDEBUG
+  mutex_stack_cleanup_current_thread();
+#endif
+}

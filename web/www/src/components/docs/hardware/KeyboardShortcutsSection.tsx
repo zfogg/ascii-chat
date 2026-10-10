@@ -63,7 +63,7 @@ export default function KeyboardShortcutsSection() {
           </div>
           <div className="card-standard accent-lime">
             <Heading level={4} className="text-lime-300 font-semibold mb-2">
-              0 (Zero)
+              1 (One)
             </Heading>
             <p className="text-gray-300 text-sm">
               Toggle Matrix-style digital rain effect

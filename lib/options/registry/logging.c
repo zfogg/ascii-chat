@@ -18,7 +18,26 @@
 // ============================================================================
 // LOGGING CATEGORY - Binary-level logging options
 // ============================================================================
+static const int default_stats_interval = 0;
 const registry_entry_t g_logging_entries[] = {
+    {"stats-interval",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, stats_interval),
+     &default_stats_interval,
+     sizeof(int),
+     "Write plain statistics to stdout every N seconds (0 disables). Press = for live statistics.",
+     "LOGGING",
+     "SECONDS",
+     false,
+     "ASCII_CHAT_STATS_INTERVAL",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     {.numeric_range = {0, 86400, 1}, .input_type = OPTION_INPUT_NUMERIC},
+     NULL},
     // LOGGING GROUP (binary-level)
     {"log-file",
      'L',

@@ -1,3 +1,5 @@
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/discovery/database.h>
 /**
  * @file acds/main.c
  * @brief ascii-chat Discovery Service (acds) main entry point
@@ -7,6 +9,7 @@
  * for TCP/WebSocket/mDNS/UPnP lifecycle management.
  */
 
+#include <ascii-chat/crypto/key_identity/display.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +58,30 @@ static void acds_interrupt_fn(int sig) {
       tcp->listen_socket6 = INVALID_SOCKET_VALUE;
     }
   }
+}
+
+static void acds_stats_provider(stats_view_t *view, void *data) {
+  acds_server_t *server = data;
+  database_session_stats_t rows[64];
+  size_t count = 0;
+  uint64_t sessions = 0, participants = 0;
+  if (database_stats_snapshot(server->db, rows, 64, &count, &sessions, &participants) != ASCIICHAT_OK) {
+    stats_view_add(view, "Sessions: unavailable (database query failed)");
+    return;
+  }
+  if (view->page) {
+    stats_view_add(view, "");
+    stats_view_add(view, "SESSION                          PARTICIPANTS   HOST / MIGRATION");
+    for (size_t i = 0; i < count; ++i)
+      stats_view_add(view, "%-32.32s %12u   %s / %s", rows[i].session_string, rows[i].participants,
+                     rows[i].host_ready ? "ready" : "negotiating", rows[i].migrating ? "active" : "none");
+    if (sessions > count)
+      stats_view_add(view, "Showing first %zu of %llu sessions", count, (unsigned long long)sessions);
+  }
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, sessions);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, participants);
+  stats_view_add(view, "Active sessions: %llu   Participants: %llu", (unsigned long long)sessions,
+                 (unsigned long long)participants);
 }
 
 static asciichat_error_t acds_init_fn(void *user_data) {
@@ -110,6 +137,10 @@ static asciichat_error_t acds_init_fn(void *user_data) {
 
     log_info("Saved new identity key to %s", acds_key_path);
   }
+
+  public_key_t identity = {.type = KEY_TYPE_ED25519};
+  memcpy(identity.key, public_key, sizeof(identity.key));
+  key_identity_announce("DISCOVERY SERVER PUBLIC IDENTITY", &identity);
 
   // Display server fingerprint
   char fingerprint[65];
@@ -267,11 +298,13 @@ static asciichat_error_t acds_init_fn(void *user_data) {
     return ASCIICHAT_OK;
   }
 
+  stats_runtime_set_provider(acds_stats_provider, &g_server);
   log_info("Discovery service initialized");
   return ASCIICHAT_OK;
 }
 
 static void acds_cleanup_fn(void *user_data) {
+  stats_runtime_set_provider(NULL, NULL);
   (void)user_data;
   log_info("Shutting down discovery server...");
   acds_server_shutdown(&g_server);

@@ -1,3 +1,5 @@
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/ui/sync.h>
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
@@ -8,6 +10,8 @@
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/cond.h>
+#include <stdatomic.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
@@ -17,8 +21,15 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/debug/named.h>
 
+typedef struct {
+  _Atomic unsigned references;
+  int fd;
+  _Alignas(max_align_t) char data[];
+} screen_snapshot_t;
+
 typedef struct screen {
   struct screen *next;
+  screen_snapshot_t *owned;
   void *snapshot;
   ui_render_fn render;
   terminal_size_t minimum;
@@ -29,13 +40,31 @@ typedef struct screen {
 static screen_t g_screens[UI_SCREEN_COUNT];
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
+static cond_t g_render_done;
+static int g_rendering_screen = -1;
+static uint64_t g_render_started;
+static uint64_t g_render_completed;
 static asciichat_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
+static _Thread_local screen_snapshot_t *g_render_snapshot;
 static _Thread_local terminal_size_t g_render_size;
 static terminal_size_t g_size = {.cols = 80, .rows = 24};
 static int g_active = -1;
+static _Atomic int g_published_screen = -1;
+
+int ui_controller_current_screen(void) {
+  return atomic_load(&g_published_screen);
+}
+
+static void publish_screen_locked(void) {
+  int active = -1;
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+    if (g_screens[i].render)
+      active = i;
+  atomic_store(&g_published_screen, active);
+}
 static bool g_small;
 static bool g_redraw;
 static bool g_finished;
@@ -43,6 +72,21 @@ static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static terminal_size_t g_last_minimum;
 static _Thread_local fps_counter_t *g_fps;
+static _Thread_local bool g_stats_media, g_stats_failed;
+static _Thread_local uint64_t g_stats_write_ns, g_stats_writes;
+static void stats_media_begin(bool media) {
+  g_stats_media = media;
+  g_stats_failed = false;
+  g_stats_write_ns = g_stats_writes = 0;
+}
+static void stats_media_end(void) {
+  if (g_stats_media && g_stats_writes) {
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_TERMINAL_WRITE, g_stats_write_ns);
+    stats_counter_add(stats_runtime_scope(),
+                      g_stats_failed ? STATS_COUNTER_FRAMES_DROPPED : STATS_COUNTER_FRAMES_PRESENTED, 1);
+  }
+  g_stats_media = false;
+}
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
@@ -54,9 +98,22 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   fps_counter_write_begin(g_fps);
+  uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   bool complete = platform_write_all(fd, data, len) == len;
+  if (g_stats_media) {
+    g_stats_write_ns += time_get_ns() - stats_start;
+    g_stats_writes++;
+    g_stats_failed |= !complete;
+  }
   fps_counter_write_end(g_fps, complete);
   return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
+}
+
+static void release_snapshot(screen_snapshot_t *snapshot) {
+  if (snapshot && atomic_fetch_sub(&snapshot->references, 1) == 1) {
+    platform_close(snapshot->fd);
+    SAFE_FREE(snapshot);
+  }
 }
 
 static void release_screen(screen_t *screen, bool flush_notices) {
@@ -66,9 +123,8 @@ static void release_screen(screen_t *screen, bool flush_notices) {
     if (current->render) {
       if (flush_notices)
         ui_notice_flush_snapshot(current->fd, current->snapshot);
-      platform_close(current->fd);
     }
-    SAFE_FREE(current->snapshot);
+    release_snapshot(current->owned);
     if (current != screen)
       SAFE_FREE(current);
     current = next;
@@ -77,18 +133,23 @@ static void release_screen(screen_t *screen, bool flush_notices) {
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
+  screen_t retired[UI_SCREEN_COUNT] = {0};
   bool locked = lifecycle_is_initialized(&g_lifecycle);
   if (locked) {
     mutex_lock(&g_mutex);
     g_finished = true;
-    for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
-      release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
-    }
+    memcpy(retired, g_screens, sizeof(retired));
+    memset(g_screens, 0, sizeof(g_screens));
+    atomic_store(&g_published_screen, -1);
+    uint64_t pending = g_render_started;
+    while (!g_render_snapshot && g_render_completed < pending)
+      cond_wait(&g_render_done, &g_mutex);
+    mutex_unlock(&g_mutex);
   }
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+    release_screen(&retired[i], i == UI_SCREEN_NOTICE);
   platform_write_all(fd, data, len);
   atomic_store_bool(&g_live, false);
-  if (locked)
-    mutex_unlock(&g_mutex);
 }
 
 bool ui_controller_is_blocked(void) {
@@ -124,7 +185,29 @@ static void *presentation_main(void *unused) {
   g_owner = true;
   uint64_t progress_render_ns = 0;
   g_fps = fps_counter_create();
+  bool was_sync = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    // This path must remain independent of producers, including one stuck
+    // holding the controller mutex. It reads only the collector's mailbox.
+    if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
+        ui_controller_current_screen() <= UI_SCREEN_SYNC && !shutdown_is_requested()) {
+      int fd = ui_sync_output_fd();
+      terminal_size_t size = {0};
+      g_render_fd = fd;
+      if (terminal_get_size_fd(fd, &size) == ASCIICHAT_OK && size.cols > 0 && size.rows > 0) {
+        g_render_size = size;
+        atomic_store_bool(&g_blocked, false);
+        ui_sync_render(size);
+      }
+      g_render_fd = -1;
+      was_sync = true;
+      platform_sleep_ns(50 * NS_PER_MS_INT);
+      continue;
+    }
+    if (was_sync) {
+      g_active = -1;
+      was_sync = false;
+    }
     mutex_lock(&g_mutex);
     int active = -1;
     for (int i = 0; i < UI_SCREEN_COUNT; ++i)
@@ -132,10 +215,23 @@ static void *presentation_main(void *unused) {
         active = i;
     bool changed = active != g_active;
     g_active = active;
+    bool redraw = g_redraw;
+    g_redraw = false;
+    terminal_size_t previous_size = g_size;
+    screen_t frame = {0};
+    if (active >= 0 && !g_finished && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
+      frame = g_screens[active];
+      atomic_fetch_add(&frame.owned->references, 1);
+      g_screens[active].dirty = false;
+      g_rendering_screen = active;
+      ++g_render_started;
+    }
+    mutex_unlock(&g_mutex);
     if (active < 0)
       atomic_store_bool(&g_blocked, false);
-    if (active >= 0 && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
-      screen_t *screen = &g_screens[active];
+    if (frame.render) {
+      g_render_snapshot = frame.owned;
+      screen_t *screen = &frame;
       terminal_size_t size = {0};
       // Measure the physical output device, never --width/--height or environment overrides.
       if (!platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 ||
@@ -143,12 +239,12 @@ static void *presentation_main(void *unused) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         g_small = true;
-        mutex_unlock(&g_mutex);
-        platform_sleep_ns(16 * NS_PER_MS_INT);
-        continue;
+        goto frame_complete;
       }
-      bool resized = size.cols != g_size.cols || size.rows != g_size.rows;
+      bool resized = size.cols != previous_size.cols || size.rows != previous_size.rows;
+      mutex_lock(&g_mutex);
       g_size = size;
+      mutex_unlock(&g_mutex);
       g_render_size = size;
       if (active == UI_SCREEN_PROMPT)
         screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
@@ -157,12 +253,11 @@ static void *presentation_main(void *unused) {
       bool requirement_changed =
           screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
       g_last_minimum = screen->minimum;
-      bool transition = changed || resized || requirement_changed || small != g_small || g_redraw;
+      bool transition = changed || resized || requirement_changed || small != g_small || redraw;
       bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
       transition |= fps_counter_set_visible(g_fps, show_fps);
       if (changed || small || g_small)
         fps_counter_reset(g_fps);
-      g_redraw = false;
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
       if (small) {
@@ -186,13 +281,15 @@ static void *presentation_main(void *unused) {
             options_set_int("height", size.rows);
         }
         uint64_t now = time_get_ns();
-        bool animate = active != UI_SCREEN_MEDIA;
+        bool animate = active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS;
         if (active == UI_SCREEN_RENDER_PROGRESS)
           animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
         bool rendered = screen->dirty || transition || animate;
         if (rendered) {
           fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
+          stats_media_begin(active == UI_SCREEN_MEDIA);
           screen->render(size, screen->snapshot);
+          stats_media_end();
           if (active == UI_SCREEN_RENDER_PROGRESS)
             progress_render_ns = now;
           fps_counter_frame_end(g_fps, time_get_ns());
@@ -200,10 +297,22 @@ static void *presentation_main(void *unused) {
         fps_counter_render(g_fps, screen->fd, size.cols, rendered);
       }
       g_small = small;
-      screen->dirty = false;
     }
+  frame_complete:
     g_render_fd = -1;
-    mutex_unlock(&g_mutex);
+    g_render_snapshot = NULL;
+    if (frame.render) {
+      release_snapshot(frame.owned);
+      mutex_lock(&g_mutex);
+      g_rendering_screen = -1;
+      g_render_completed = g_render_started;
+      bool live = false;
+      for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+        live |= g_screens[i].render != NULL;
+      atomic_store_bool(&g_live, live);
+      cond_broadcast(&g_render_done);
+      mutex_unlock(&g_mutex);
+    }
     platform_sleep_ns(16 * NS_PER_MS_INT);
   }
   fps_counter_destroy(g_fps);
@@ -220,9 +329,16 @@ static asciichat_error_t controller_start(void) {
     g_small = false;
     g_redraw = false;
     g_finished = false;
+    g_rendering_screen = -1;
+    g_render_started = g_render_completed = 0;
     if (mutex_init(&g_mutex, "ui_controller") != 0) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI mutex");
+    }
+    if (cond_init(&g_render_done, "ui_render_done") != 0) {
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI render completion condition");
     }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
@@ -233,6 +349,7 @@ static asciichat_error_t controller_start(void) {
       NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
+      cond_destroy(&g_render_done);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
@@ -270,7 +387,9 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     g_owner = true;
     g_render_fd = fd;
     frame_buffer_set_screen_output_fd(fd);
+    stats_media_begin(screen == UI_SCREEN_MEDIA);
     render(g_render_size, snapshot);
+    stats_media_end();
     g_owner = previous_owner;
     g_render_fd = previous_fd;
     return ASCIICHAT_OK;
@@ -278,10 +397,13 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   asciichat_error_t err = controller_start();
   if (err != ASCIICHAT_OK)
     return err;
-  void *copy = SAFE_MALLOC(bytes, void *);
+  if (bytes > SIZE_MAX - sizeof(screen_snapshot_t))
+    return SET_ERRNO(ERROR_MEMORY, "UI snapshot is too large");
+  screen_snapshot_t *copy = SAFE_MALLOC(sizeof(*copy) + bytes, screen_snapshot_t *);
   if (!copy)
     return SET_ERRNO(ERROR_MEMORY, "Cannot copy UI snapshot");
-  memcpy(copy, snapshot, bytes);
+  atomic_init(&copy->references, 1);
+  memcpy(copy->data, snapshot, bytes);
   mutex_lock(&g_mutex);
   if (g_finished) {
     mutex_unlock(&g_mutex);
@@ -290,12 +412,13 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   }
   screen_t *slot = &g_screens[screen];
   bool queue_notice = screen == UI_SCREEN_NOTICE && slot->render;
-  int output_fd = slot->render && !queue_notice ? slot->fd : platform_dup(fd);
+  int output_fd = platform_dup(slot->render && !queue_notice ? slot->fd : fd);
   if (output_fd < 0) {
     mutex_unlock(&g_mutex);
     SAFE_FREE(copy);
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
   }
+  copy->fd = output_fd;
   if (queue_notice) {
     size_t pending = 1;
     screen_t *tail = slot;
@@ -307,35 +430,42 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
       platform_close(output_fd);
       SAFE_FREE(copy);
       mutex_unlock(&g_mutex);
-      return ERROR_BUFFER_FULL;
+      return SET_ERRNO(ERROR_BUFFER_FULL, "UI notice queue is full");
     }
     screen_t *queued = SAFE_CALLOC(1, sizeof(*queued), screen_t *);
     if (!queued) {
       platform_close(output_fd);
       SAFE_FREE(copy);
       mutex_unlock(&g_mutex);
-      return ERROR_MEMORY;
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate queued UI notice");
     }
-    *queued = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
+    *queued = (screen_t){.owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum,
+                         .fd = output_fd, .dirty = true};
     tail->next = queued;
     mutex_unlock(&g_mutex);
     return ASCIICHAT_OK;
   }
-  SAFE_FREE(slot->snapshot);
+  screen_snapshot_t *retired = slot->owned;
   atomic_store_bool(&g_live, true);
-  *slot = (screen_t){.snapshot = copy, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
+  *slot = (screen_t){.owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum,
+                     .fd = output_fd, .dirty = true};
+  publish_screen_locked();
   mutex_unlock(&g_mutex);
-  return ASCIICHAT_OK;
+  release_snapshot(retired);
+  return ui_sync_start(fd);
 }
 
 void ui_controller_remove(ui_screen_t screen) {
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !lifecycle_is_initialized(&g_lifecycle))
     return;
-  if (!g_owner)
-    mutex_lock(&g_mutex);
-  if (g_screens[screen].render)
-    platform_close(g_screens[screen].fd);
-  SAFE_FREE(g_screens[screen].snapshot);
+  mutex_lock(&g_mutex);
+  // An old callback must not remove a replacement submitted while it rendered.
+  if (g_render_snapshot && g_rendering_screen == (int)screen && g_screens[screen].owned != g_render_snapshot) {
+    mutex_unlock(&g_mutex);
+    return;
+  }
+  screen_snapshot_t *retired = g_screens[screen].owned;
+  uint64_t pending = g_rendering_screen == (int)screen ? g_render_started : 0;
   screen_t *next = g_screens[screen].next;
   if (next) {
     g_screens[screen] = *next;
@@ -344,12 +474,17 @@ void ui_controller_remove(ui_screen_t screen) {
   } else {
     memset(&g_screens[screen], 0, sizeof(screen_t));
   }
-  bool live = false;
+  publish_screen_locked();
+  bool live = g_rendering_screen >= 0;
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     live |= g_screens[i].render != NULL;
   atomic_store_bool(&g_live, live);
-  if (!g_owner)
-    mutex_unlock(&g_mutex);
+  // Borrowed pointers inside snapshots may be freed as soon as remove returns.
+  // A callback removing itself retains its owned bytes until the frame ends.
+  while (!g_render_snapshot && g_render_completed < pending)
+    cond_wait(&g_render_done, &g_mutex);
+  mutex_unlock(&g_mutex);
+  release_snapshot(retired);
 }
 
 ui_presentation_state_t ui_controller_state(void) {
@@ -443,9 +578,11 @@ void ui_controller_shutdown(void) {
     return;
   atomic_store_bool(&g_presentation_stop_requested, true);
   asciichat_thread_join(&g_thread, NULL);
+  ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
   }
+  cond_destroy(&g_render_done);
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
   NAMED_UNREGISTER(&g_live);

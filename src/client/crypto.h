@@ -116,48 +116,11 @@ void client_crypto_set_mode(uint8_t mode);
 int client_crypto_init(void);
 
 /**
- * @brief Perform crypto handshake with server
- *
- * Executes the complete cryptographic handshake protocol with the server,
- * including protocol negotiation, key exchange, and authentication.
- *
- * **Handshake Steps**:
- * 1. Send CLIENT_HELLO with ephemeral public key
- * 2. Receive SERVER_HELLO with server's ephemeral public key
- * 3. Derive shared secret using ECDH (both sides)
- * 4. Receive SERVER_AUTH (server's identity proof)
- * 5. Verify server's signature against known_hosts or provided key
- * 6. Send CLIENT_AUTH (client's identity proof or password)
- * 7. Server verifies client authentication
- * 8. Encryption keys ready for payload exchange
- *
- * **Error Handling**:
- * - **Protocol Error**: Invalid format, timeout, socket error → CONNECTION_ERROR_GENERIC
- * - **Auth Failure**: Invalid password, wrong signature → CONNECTION_ERROR_AUTH_FAILED
- * - **Host Key Failure**: Server key not in known_hosts → CONNECTION_ERROR_HOST_KEY_FAILED
- *
- * **Retryability**:
- * - `CONNECTION_ERROR_GENERIC`: Retryable (network issue)
- * - `CONNECTION_ERROR_AUTH_FAILED`: Non-retryable (wrong password/key)
- * - `CONNECTION_ERROR_HOST_KEY_FAILED`: Non-retryable (need known_hosts update)
- *
- * @param socket Connected TCP socket to server (must be connected before calling)
- * @return Connection status:
- *         - 0: Handshake successful, encryption ready
- *         - CONNECTION_ERROR_GENERIC: Network or protocol error (retryable)
- *         - CONNECTION_ERROR_AUTH_FAILED: Authentication failed (non-retryable)
- *         - CONNECTION_ERROR_HOST_KEY_FAILED: Host key verification failed (non-retryable)
- *
- * @note Called by server_connection_establish() after TCP connection succeeds.
- *       If this fails with AUTH_FAILED or HOST_KEY_FAILED, the connection attempt
- *       is abandoned and the main thread does NOT retry.
- *
- * @ingroup client_crypto
- *
- * @see client_crypto_init "Initialize crypto context"
- * @see server_connection_establish "Which calls this handshake"
+ * Perform the client handshake on a connected transport.
+ * @return ASCIICHAT_OK or a specific error with a pending causal chain.
+ * The caller owns transport cleanup and the decision to terminate the session.
  */
-int client_crypto_handshake(acip_transport_t *transport);
+asciichat_error_t client_crypto_handshake(acip_transport_t *transport);
 
 /**
  * @brief Check if crypto handshake is ready

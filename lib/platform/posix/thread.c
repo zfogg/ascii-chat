@@ -73,6 +73,7 @@ void *asciichat_thread_wrapper_impl(void *arg) {
 
   log_debug("[THREAD] Wrapper freed, thread exiting");
   // Logging and tracked frees take mutexes; release their TLS stack last.
+  asciichat_errno_destroy();
   mutex_stack_cleanup_current_thread();
   return result;
 }

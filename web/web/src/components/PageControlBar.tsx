@@ -1,4 +1,5 @@
 import type { ReactNode, RefObject } from "react";
+import { BandwidthMeter } from "./BandwidthMeter";
 import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 
 export interface PageControlBarProps {
@@ -83,8 +84,8 @@ export function PageControlBar({
     <div
       className={`${compactVerticalSpacing ? "px-0 py-0 border-0" : "px-4 py-3 border-b border-terminal-8"} flex-shrink-0`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {statusDotColor && (
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${statusDotColor}`} />
@@ -108,11 +109,12 @@ export function PageControlBar({
               {targetFps && ` / ${targetFps}`}
             </span>
           )}
+          {fps !== undefined && <BandwidthMeter />}
           {statusControls && (
             <div className="flex items-center gap-2">{statusControls}</div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* File playback controls (shown when playing a video file) */}
           {isWebcamRunning &&
             mediaSource === MediaSourceType.FILE &&

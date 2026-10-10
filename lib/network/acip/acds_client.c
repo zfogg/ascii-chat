@@ -26,6 +26,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
 
+#include <ascii-chat/network/errors.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -305,9 +306,9 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   // Check response type
   if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
-      log_error("Session creation failed: server returned error packet");
+      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
       buffer_pool_free(NULL, resp_payload, resp_size);
-      return SET_ERRNO(ERROR_NETWORK, "Session creation failed");
+      return rejection;
     }
     buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
@@ -377,6 +378,11 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
   }
 
   if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
+    if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
+      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
+      buffer_pool_free(NULL, resp_payload, resp_size);
+      return rejection;
+    }
     buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
@@ -471,6 +477,11 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
   }
 
   if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
+    if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
+      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
+      buffer_pool_free(NULL, resp_payload, resp_size);
+      return rejection;
+    }
     buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
@@ -502,7 +513,9 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
     }
     memcpy(result->error_message, resp->error_message, msg_len);
     result->error_message[msg_len] = '\0';
-    log_warn("Failed to join session: %s (code %d)", result->error_message, result->error_code);
+    asciichat_error_t rejection = network_error_from_acip(result->error_code);
+    buffer_pool_free(NULL, resp_payload, resp_size);
+    return SET_ERRNO(rejection, "Session join rejected: %s", asciichat_error_string(rejection));
   }
 
   buffer_pool_free(NULL, resp_payload, resp_size);

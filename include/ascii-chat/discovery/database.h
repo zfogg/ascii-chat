@@ -252,3 +252,13 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out);
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out);
+
+/** Active-session snapshot for statistics; rows are copied and truncated to capacity. */
+typedef struct {
+  char session_string[64];
+  uint32_t participants;
+  bool host_ready;
+  bool migrating;
+} database_session_stats_t;
+asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
+                                          size_t *row_count, uint64_t *sessions, uint64_t *participants);
