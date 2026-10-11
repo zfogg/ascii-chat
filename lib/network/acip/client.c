@@ -167,34 +167,8 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   header.checksum = 0;
   header.timestamp = 0;
 
-  // Calculate total size
-  size_t total_size;
-  if (checked_size_add(sizeof(header), pixel_size, &total_size) != ASCIICHAT_OK) {
-    log_dev("★ ACIP_SEND_IMAGE_FRAME: Overflow in size calculation");
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
-  }
-
-  log_dev("★ ACIP_SEND_IMAGE_FRAME: total_size=%zu, allocating buffer", total_size);
-
-  // Allocate buffer
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    log_dev("★ ACIP_SEND_IMAGE_FRAME: Failed to allocate %zu bytes", total_size);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
-  }
-
-  // Build packet
-  memcpy(buffer, &header, sizeof(header));
-  memcpy(buffer + sizeof(header), pixel_data, pixel_size);
-
-  log_dev("★ ACIP_SEND_IMAGE_FRAME: About to send packet");
-  // Send via transport
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size, 0);
-
-  log_dev("★ ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d", result);
-
-  buffer_pool_free(NULL, buffer, total_size);
-  return result;
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {pixel_data, pixel_size}};
+  return packet_send_via_transportv(transport, PACKET_TYPE_IMAGE_FRAME, slices, 2, 0);
 }
 
 /**

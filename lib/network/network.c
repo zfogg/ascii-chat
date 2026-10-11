@@ -184,6 +184,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
 
   ssize_t total_received = 0;
   char *data = (char *)buf;
+  uint64_t receive_start = time_get_ns();
 
   while (total_received < (ssize_t)len) {
     // Set up poll for read timeout (in nanoseconds)
@@ -194,7 +195,12 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
 
     // Use provided timeout for recv() calls - don't artificially limit data packets in test mode
     // Timeouts should only apply to initial handshake, not to receiving data on active connections
-    int result = socket_poll(&pfd, 1, (int64_t)timeout_ns);
+    uint64_t elapsed = time_get_ns() - receive_start;
+    if (elapsed >= timeout_ns) {
+      SET_ERRNO(total_received ? ERROR_NETWORK : ERROR_NETWORK_TIMEOUT, "Receive deadline expired");
+      return -1;
+    }
+    int result = socket_poll(&pfd, 1, (int64_t)(timeout_ns - elapsed));
     if (result <= 0) {
       if (result == 0) {
         /* A read timeout is the ordinary idle state for signaling sockets.
@@ -213,6 +219,19 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
     // Poll can return readiness for a hangup or socket error without POLLIN.
     // Treat those as terminal network errors so callers tear down the dead
     // connection instead of retrying it as an idle timeout in a tight loop.
+    // Linux zerocopy completions also raise POLLERR with SO_ERROR == 0.
+    // The serialized sender owns the error queue and will consume those events.
+    if ((pfd.revents & POLLERR) && !(pfd.revents & (POLLHUP | POLLNVAL))) {
+      int socket_error = 0;
+      socklen_t error_len = sizeof(socket_error);
+      if (socket_getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &socket_error, &error_len) == 0 && !socket_error) {
+        pfd.revents &= (short)~POLLERR;
+        if (!(pfd.revents & POLLIN)) {
+          platform_sleep_ns(NS_PER_MS_INT);
+          continue;
+        }
+      }
+    }
     if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
       SET_ERRNO(ERROR_NETWORK, "recv_with_timeout poll reported socket flags 0x%x", pfd.revents);
       return -1;
