@@ -215,7 +215,6 @@ static asciichat_error_t create_session_display(client_like_state_t *state) {
   state->display = session_display_create(&display_config);
   if (!state->display) {
     log_debug("[SETUP_DISPLAY_EARLY] session_display_create() returned NULL");
-    log_fatal("Failed to initialize display context");
     return SET_ERRNO(ERROR_DISPLAY, "Failed to initialize display context");
   }
   log_debug("[SETUP_DISPLAY_EARLY] Display context created, will use for splash");
@@ -542,7 +541,6 @@ static asciichat_error_t create_network_capture(const session_client_like_config
 
     asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &g_stdin_reader);
     if (stdin_err != ASCIICHAT_OK) {
-      log_fatal("Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize stdin frame reader: %s",
                        asciichat_error_string(stdin_err));
     }
@@ -551,7 +549,6 @@ static asciichat_error_t create_network_capture(const session_client_like_config
     int fps = GET_OPTION(fps);
     state->capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
     if (!state->capture) {
-      log_fatal("Failed to initialize capture context for stdin rendering");
       terminal_fd_reader_destroy(g_stdin_reader);
       g_stdin_reader = NULL;
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize capture context for stdin rendering");
@@ -577,7 +574,6 @@ static asciichat_error_t create_network_capture(const session_client_like_config
     double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
     log_info("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!state->capture) {
-      log_fatal("Failed to initialize network capture context");
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize network capture context");
     }
     if (fps > 0) {
@@ -650,7 +646,6 @@ static asciichat_error_t create_local_capture(client_like_state_t *state) {
     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
     log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
     if (!state->capture) {
-      log_fatal("Failed to initialize mirror capture source");
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }
   }
