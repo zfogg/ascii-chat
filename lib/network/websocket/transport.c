@@ -1324,13 +1324,6 @@ static bool websocket_has_pending_data(acip_transport_t *transport) {
 // =============================================================================
 
 /**
- * @brief Destroy WebSocket transport and free all resources
- *
- * This is called by the generic acip_transport_destroy() after calling close().
- * Frees WebSocket-specific resources including context, receive queue,
- * and synchronization primitives.
- */
-/**
  * @brief Discard queued messages and partial data after the service thread and context have stopped.
  */
 static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
@@ -1338,10 +1331,10 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
   if (ws_data->recv_queue) {
     mutex_lock(&ws_data->recv_mutex);
 
-    websocket_recv_msg_t msg;
-    while (ringbuffer_read(ws_data->recv_queue, &msg)) {
-      if (msg.data) {
-        buffer_pool_free(NULL, msg.data, msg.len);
+    websocket_recv_msg_t recv_msg;
+    while (ringbuffer_read(ws_data->recv_queue, &recv_msg)) {
+      if (recv_msg.data) {
+        buffer_pool_free(NULL, recv_msg.data, recv_msg.len);
       }
     }
 
@@ -1352,10 +1345,10 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
     if (ws_data->send_queue) {
       // Drain send queue before destroying to free allocated message data
       // Use buffer_pool_free to match buffer_pool_alloc used for send messages
-      websocket_recv_msg_t msg;
-      while (ringbuffer_read(ws_data->send_queue, &msg)) {
-        if (msg.data) {
-          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+      websocket_recv_msg_t send_msg;
+      while (ringbuffer_read(ws_data->send_queue, &send_msg)) {
+        if (send_msg.data) {
+          buffer_pool_free(NULL, send_msg.data, LWS_PRE + send_msg.len);
         }
       }
       ringbuffer_destroy(ws_data->send_queue);
@@ -1378,6 +1371,13 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
   }
 }
 
+/**
+ * @brief Destroy WebSocket transport and free all resources
+ *
+ * This is called by the generic acip_transport_destroy() after calling close().
+ * Frees WebSocket-specific resources including context, receive queue,
+ * and synchronization primitives.
+ */
 static void websocket_destroy_impl(acip_transport_t *transport) {
   if (!transport || !transport->impl_data) {
     return;
