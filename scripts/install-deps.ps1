@@ -164,6 +164,7 @@ $RequiredPackages = @(
     "zstd",            # Compression library for frame data
     "libsodium",       # Cryptography library for encryption
     "portaudio",       # Audio I/O library for capture/playback
+    "fftw3",          # Spectral audio processing
     "opus",            # Audio codec library for real-time compression
     "sqlite3",         # Database library for discovery service
     "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)

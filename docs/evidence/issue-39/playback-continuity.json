@@ -1,0 +1,20 @@
+{
+  "network-encrypted-quiet": {
+    "inspection_seconds": [
+      5,
+      17
+    ],
+    "zero_fraction": 0.06333333333333334,
+    "zero_runs_at_least_20ms": 5,
+    "longest_zero_run_ms": 280.0
+  },
+  "network-gate-fixed": {
+    "inspection_seconds": [
+      5,
+      17
+    ],
+    "zero_fraction": 0.0,
+    "zero_runs_at_least_20ms": 0,
+    "longest_zero_run_ms": 0.0
+  }
+}

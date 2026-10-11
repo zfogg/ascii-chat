@@ -10,6 +10,7 @@
     "zstd",
     "libsodium",
     "opus",
+    "fftw3",
     "portaudio",
     "miniupnpc",
     "openssl",

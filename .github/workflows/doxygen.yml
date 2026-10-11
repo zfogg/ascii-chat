@@ -50,7 +50,7 @@ jobs:
           # publishes generated documentation.
           sudo apt-get install -y \
             doxygen graphviz cmake pkg-config ninja-build \
-            libasound2-dev portaudio19-dev libopus-dev \
+            libasound2-dev portaudio19-dev libopus-dev libfftw3-dev \
             libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev \
             libsystemd-dev libsqlite3-dev libssl-dev libminiupnpc-dev \
             libprotobuf-c-dev libavformat-dev libavcodec-dev libavutil-dev \

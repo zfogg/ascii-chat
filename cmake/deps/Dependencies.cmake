@@ -62,6 +62,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Portaudio.cmake)
 
 # Opus - Audio codec for real-time compression
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Opus.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/FFTW.cmake)
 
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
 include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
