@@ -26,7 +26,7 @@
  * - **Lifecycle**: Thread creation, monitoring, and graceful termination
  * - **Exit Coordination**: Atomic flags coordinate thread shutdown
  * - **Connection Monitoring**: Detect socket closure and network errors
- * - **Resource Management**: Clean buffer pool usage and leak prevention
+ * - **Resource Management**: Clean buffer domain usage and leak prevention
  *
  * ## Packet Type Handlers
  *
@@ -64,10 +64,10 @@
  *
  * ## Buffer Management
  *
- * Uses shared buffer pool for efficient memory management:
- * - **Allocation**: Packets allocated from global buffer pool
+ * Uses shared buffer domain for efficient memory management:
+ * - **Allocation**: Packets allocated from global buffer domain
  * - **Ownership**: Clear ownership transfer between modules
- * - **Deallocation**: Automatic cleanup with buffer pool integration
+ * - **Deallocation**: Automatic cleanup with buffer domain integration
  * - **Leak Prevention**: Comprehensive cleanup on all error paths
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -97,7 +97,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/endian.h>

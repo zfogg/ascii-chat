@@ -39,7 +39,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/options/enums.h>
             <ascii-chat/options/layout.h>
             <ascii-chat/options/colorscheme.h>
-            <ascii-chat/buffer_pool.h>
+            <ascii-chat/buffer.h>
             <ascii-chat/asciichat_errno.h>
             <ascii-chat/ringbuffer.h>
             <ascii-chat/video/ascii/palette.h>

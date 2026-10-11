@@ -1,3 +1,4 @@
+#include <ascii-chat/buffer.h>
 /**
  * @file media/render/renderer.c
  * @ingroup media
@@ -16,6 +17,7 @@
 #include <ascii-chat/audio/recording.h>
 
 struct render_file_ctx_s {
+  buffer_workspace_t pixels;
   render_progress_t *progress;
   asciichat_error_t error;
   terminal_renderer_t *renderer;
@@ -204,7 +206,10 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
   uint8_t *pixels_copy = NULL;
   if (pixels) {
     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
-    pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
+    err = buffer_workspace_reserve(&ctx->pixels, NULL, pixel_buffer_size);
+    if (err != ASCIICHAT_OK)
+      return err;
+    pixels_copy = ctx->pixels.data;
     memcpy(pixels_copy, pixels, pixel_buffer_size);
     log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)", pixel_buffer_size,
              (void *)pixels, (void *)pixels_copy);
@@ -215,8 +220,7 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }
 
-  // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
-  SAFE_FREE(pixels_copy);
+  // The encoder consumes the view synchronously; retain storage for the next frame.
 
   if (err == ASCIICHAT_OK) {
     if (ctx->frames_written == 0) {
@@ -292,6 +296,7 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
     err = ctx->error;
   render_progress_destroy(ctx->progress);
   term_renderer_destroy(ctx->renderer);
+  buffer_workspace_destroy(&ctx->pixels);
   SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);
   return err;

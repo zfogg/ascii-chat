@@ -10,7 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/network/compression.h>
@@ -388,23 +388,27 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Allocate buffer for payload
   void *payload = NULL;
   if (pkt_len > 0) {
-    payload = buffer_pool_alloc(NULL, pkt_len);
+    payload = buffer_alloc(
+        packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL,
+        pkt_len);
+    if (!payload)
+      return SET_ERRNO(ERROR_MEMORY, "Packet payload exceeds buffer budget");
 
     // Use adaptive timeout for large packets
     uint64_t recv_timeout = calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
-      buffer_pool_free(NULL, payload, pkt_len);
+      buffer_release(payload);
       return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
     }
     if (received != (ssize_t)pkt_len) {
-      buffer_pool_free(NULL, payload, pkt_len);
+      buffer_release(payload);
       return SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
     }
 
     // Validate CRC32
     if (packet_validate_crc32(payload, pkt_len, expected_crc) != ASCIICHAT_OK) {
-      buffer_pool_free(NULL, payload, pkt_len);
+      buffer_release(payload);
       // Error context is already set by packet_validate_crc32
       return ERROR_NETWORK_PROTOCOL;
     }
@@ -466,7 +470,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
         compressed_data = temp_compressed;
         log_debug("Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size, ratio * 100.0);
       } else {
-        SAFE_FREE(temp_compressed);
+        buffer_release(temp_compressed);
       }
     }
   }
@@ -478,7 +482,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
                    (void *)crypto_ctx, ready);
     asciichat_error_t result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send packet: %s", asciichat_error_string(result));
@@ -497,15 +501,15 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   // Check for integer overflow before addition
   if (final_len > SIZE_MAX - sizeof(header)) {
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
   }
   size_t plaintext_len = sizeof(header) + final_len;
-  uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_len);
+  uint8_t *plaintext = buffer_alloc(NULL, plaintext_len);
   if (!plaintext) {
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext packet");
   }
@@ -518,18 +522,18 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   // Encrypt
   // Check for integer overflow before calculating ciphertext size
   if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
-    buffer_pool_free(NULL, plaintext, plaintext_len);
+    buffer_release(plaintext);
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
   }
   size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
+  uint8_t *ciphertext = buffer_alloc(NULL, ciphertext_size);
   if (!ciphertext) {
-    buffer_pool_free(NULL, plaintext, plaintext_len);
+    buffer_release(plaintext);
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
   }
@@ -537,12 +541,12 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   size_t ciphertext_len;
   crypto_result_t result =
       crypto_encrypt(crypto_ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, &ciphertext_len);
-  buffer_pool_free(NULL, plaintext, plaintext_len);
+  buffer_release(plaintext);
 
   if (result != CRYPTO_OK) {
-    buffer_pool_free(NULL, ciphertext, ciphertext_size);
+    buffer_release(ciphertext);
     if (compressed_data) {
-      SAFE_FREE(compressed_data);
+      buffer_release(compressed_data);
     }
     return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
   }
@@ -551,10 +555,10 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
                   type);
   asciichat_error_t send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
-  buffer_pool_free(NULL, ciphertext, ciphertext_size);
+  buffer_release(ciphertext);
 
   if (compressed_data) {
-    SAFE_FREE(compressed_data);
+    buffer_release(compressed_data);
   }
 
   return send_result;
@@ -647,7 +651,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     }
 
     // Read encrypted payload
-    uint8_t *ciphertext = buffer_pool_alloc(NULL, pkt_len);
+    uint8_t *ciphertext = buffer_alloc(NULL, pkt_len);
     if (!ciphertext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
       return PACKET_RECV_ERROR;
@@ -657,33 +661,33 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
-      buffer_pool_free(NULL, ciphertext, pkt_len);
+      buffer_release(ciphertext);
       return PACKET_RECV_ERROR;
     }
 
     // Decrypt - allocate plaintext buffer with extra space
     // pkt_len is already validated to be <= MAX_PACKET_SIZE, so adding 1024 cannot overflow
     size_t plaintext_size = (size_t)pkt_len + 1024;
-    uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+    uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
     if (!plaintext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext");
-      buffer_pool_free(NULL, ciphertext, pkt_len);
+      buffer_release(ciphertext);
       return PACKET_RECV_ERROR;
     }
 
     size_t plaintext_len;
     crypto_result_t result = crypto_decrypt(crypto_ctx, ciphertext, pkt_len, plaintext, plaintext_size, &plaintext_len);
-    buffer_pool_free(NULL, ciphertext, pkt_len);
+    buffer_release(ciphertext);
 
     if (result != CRYPTO_OK) {
       SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
-      buffer_pool_free(NULL, plaintext, plaintext_size);
+      buffer_release(plaintext);
       return PACKET_RECV_ERROR;
     }
 
     if (plaintext_len < sizeof(packet_header_t)) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
-      buffer_pool_free(NULL, plaintext, plaintext_size);
+      buffer_release(plaintext);
       return PACKET_RECV_ERROR;
     }
 
@@ -701,7 +705,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     size_t payload_len = plaintext_len - sizeof(packet_header_t);
     if (payload_len != pkt_len) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted payload size mismatch: %zu != %u", payload_len, pkt_len);
-      buffer_pool_free(NULL, plaintext, plaintext_size);
+      buffer_release(plaintext);
       return PACKET_RECV_ERROR;
     }
 
@@ -710,7 +714,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
       uint32_t actual_crc = asciichat_crc32(plaintext + sizeof(packet_header_t), pkt_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_CRYPTO, "Decrypted packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-        buffer_pool_free(NULL, plaintext, plaintext_size);
+        buffer_release(plaintext);
         return PACKET_RECV_ERROR;
       }
     }
@@ -733,7 +737,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
 
   // Read payload and return header+payload in envelope (matching encrypted path format)
   size_t total_size = sizeof(packet_header_t) + pkt_len;
-  uint8_t *packet_buf = buffer_pool_alloc(NULL, total_size);
+  uint8_t *packet_buf = buffer_alloc(NULL, total_size);
   if (!packet_buf) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for packet");
     return PACKET_RECV_ERROR;
@@ -747,7 +751,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     received = recv_with_timeout(sockfd, packet_buf + sizeof(packet_header_t), pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);
-      buffer_pool_free(NULL, packet_buf, total_size);
+      buffer_release(packet_buf);
       return PACKET_RECV_ERROR;
     }
 
@@ -755,7 +759,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     uint32_t actual_crc = asciichat_crc32(packet_buf + sizeof(packet_header_t), pkt_len);
     if (actual_crc != expected_crc) {
       SET_ERRNO(ERROR_NETWORK, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-      buffer_pool_free(NULL, packet_buf, total_size);
+      buffer_release(packet_buf);
       return PACKET_RECV_ERROR;
     }
   }
@@ -860,7 +864,7 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
 
   // Allocate plaintext buffer with extra space for decryption
   size_t plaintext_size = ciphertext_len + 1024;
-  uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+  uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
   if (!plaintext) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
   }
@@ -870,12 +874,12 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
       crypto_decrypt(crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
 
   if (result != CRYPTO_OK) {
-    buffer_pool_free(NULL, plaintext, plaintext_size);
+    buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
   }
 
   if (plaintext_len < sizeof(packet_header_t)) {
-    buffer_pool_free(NULL, plaintext, plaintext_size);
+    buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
   }
 
@@ -886,14 +890,14 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
 
   // Validate inner packet length
   if (inner_len != plaintext_len - sizeof(packet_header_t)) {
-    buffer_pool_free(NULL, plaintext, plaintext_size);
+    buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Inner packet length mismatch: header=%u, actual=%zu", inner_len,
                      plaintext_len - sizeof(packet_header_t));
   }
 
   // Free the original encrypted buffer if it's different from plaintext
   if (envelope->allocated_buffer && envelope->allocated_buffer != plaintext) {
-    buffer_pool_free(NULL, envelope->allocated_buffer, envelope->allocated_size);
+    buffer_release(envelope->allocated_buffer);
   }
 
   // Update envelope with decrypted packet info
@@ -1194,7 +1198,7 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
   size_t header_size = 16; // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
   size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
   size_t total_size = header_size + frame_sizes_bytes + opus_size;
-  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  void *packet_data = buffer_alloc(NULL, total_size);
   if (!packet_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus batch packet: %zu bytes", total_size);
   }
@@ -1223,7 +1227,7 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
       send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
 
   // Clean up
-  buffer_pool_free(NULL, packet_data, total_size);
+  buffer_release(packet_data);
 
   return result;
 }
@@ -1269,7 +1273,7 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
   }
 
   // Allocate buffer for complete packet
-  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  void *packet_data = buffer_alloc(NULL, total_size);
   if (!packet_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for image frame packet: %zu bytes", total_size);
   }
@@ -1282,7 +1286,7 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
   asciichat_error_t result = packet_send(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, total_size);
 
   // Clean up
-  buffer_pool_free(NULL, packet_data, total_size);
+  buffer_release(packet_data);
 
   return result;
 }

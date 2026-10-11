@@ -113,7 +113,7 @@
  * - **@ref topic_keys "Keys Module"**: SSH/GPG key parsing and validation
  *
  * **Data Structures:**
- * - **@ref topic_buffer_pool "Buffer Pool"**: Pre-allocated memory buffers for efficient allocation
+ * - **@ref topic_buffer "Owned Buffers"**: Bounded aligned storage with explicit ownership
  * - **@ref topic_ringbuffer "Ring Buffer"**: Lock-free circular buffers for audio/video
  * - **@ref topic_packet_queue "Packet Queue"**: Thread-safe per-client packet queues
  * - **uthash library**: High-performance client ID lookup - <https://troydhanson.github.io/uthash/>
@@ -253,7 +253,7 @@
  * - **@ref topic_webcam "Webcam Capture"** - Cross-platform webcam capture functionality
  *
  * @subsection core_libs_module Core Libraries
- * - **@ref topic_buffer_pool "Buffer Pool"** - Memory management with pre-allocated buffers
+ * - **@ref topic_buffer "Owned Buffers"** - Memory management with pre-allocated buffers
  * - **@ref topic_ringbuffer "Ring Buffer"** - Circular buffer implementation
  * - **@ref topic_packet_queue "Packet Queue"** - Queue management for network packets
  *
@@ -391,7 +391,7 @@
  *     }
  *
  *     SAFE_FREE(ascii_frame);
- *     buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ *     buffer_release(envelope.allocated_buffer, envelope.allocated_size);
  * }
  * @endcode
  *
@@ -447,7 +447,7 @@
  *     // Mark client as sending video
  *     atomic_store(&client->is_sending_video, true);
  *
- *     buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ *     buffer_release(envelope.allocated_buffer, envelope.allocated_size);
  * }
  *
  * // STEP 3: Convert video to ASCII and broadcast to all clients

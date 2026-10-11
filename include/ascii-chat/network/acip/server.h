@@ -1,3 +1,4 @@
+#include <ascii-chat/network/compression.h>
 /**
  * @file network/acip/server.h
  * @brief ACIP server-side protocol API
@@ -62,8 +63,16 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height, const char *client_id);
+/** Reuse across synchronous sends from one worker (or under its existing send lock). */
+typedef struct {
+  compression_workspace_t compression;
+  buffer_workspace_t packet;
+} acip_frame_workspace_t;
+void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace);
+
+asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
+                                        const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
+                                        const char *client_id);
 
 /**
  * @brief Send clear console command to client (server → client)

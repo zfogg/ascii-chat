@@ -83,7 +83,7 @@ coverage:
         paths:
           - "lib/network/**/*"
           - "lib/network/packet/queue.*"
-          - "lib/buffer_pool.*"
+          - "lib/buffer.*"
 
       # Security components (crypto is now a directory)
       security_crypto:
@@ -378,10 +378,10 @@ component_management:
     - component_id: data_structures
       name: "Data Structures"
       paths:
-        - "lib/buffer_pool.*"
+        - "lib/buffer.*"
         - "lib/network/packet/queue.*"
         - "lib/audio/audio.*"
-        - "tests/**/buffer_pool*.c"
+        - "tests/**/buffer*.c"
         - "tests/**/packet_queue*.c"
         - "tests/**/ringbuffer*.c"
       statuses:

@@ -12,7 +12,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
@@ -444,7 +444,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   if (result != ASCIICHAT_OK) {
     log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %d: %s", result,
               asciichat_error_string(result));
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return result;
   }
 
@@ -453,14 +453,14 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
     log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype,
              PACKET_TYPE_ACIP_NETWORK_QUALITY);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   // Parse NETWORK_QUALITY
   if (len < sizeof(acip_nat_quality_t)) {
     log_error("NETWORK_QUALITY packet too small: %zu bytes", len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_SIZE;
   }
 
@@ -594,7 +594,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -605,7 +605,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     log_debug("Response mismatch: type_match=%d, len_match=%d", type == PACKET_TYPE_ACIP_SESSION_CREATED,
               len >= sizeof(acip_session_created_t));
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_CREATE");
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -621,7 +621,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
   log_info("Session created: %s", session->session_string);
 
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
 
   // Notify that session is ready
   if (session->on_session_ready) {
@@ -1230,13 +1230,13 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   if (type != PACKET_TYPE_ACIP_SESSION_JOINED || len < sizeof(acip_session_joined_t)) {
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_JOIN");
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -1245,7 +1245,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   if (!joined->success) {
     log_error("Failed to join session: %s", joined->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, joined->error_message);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -1265,7 +1265,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
   }
   if (GET_OPTION(webrtc_relay_only) && joined->session_type != SESSION_TYPE_WEBRTC) {
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return SET_ERRNO(ERROR_INVALID_STATE, "Relay only requires a WebRTC session");
   }
   if (joined->session_type == 1) { // SESSION_TYPE_WEBRTC
@@ -1277,7 +1277,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     asciichat_error_t webrtc_result = initialize_webrtc_peer_manager(session);
     if (webrtc_result != ASCIICHAT_OK) {
       log_error("Failed to initialize WebRTC peer manager: %d", webrtc_result);
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
       return webrtc_result;
     }
     log_info("WebRTC peer manager initialized successfully");
@@ -1292,7 +1292,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
     log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",
              session->host_address, session->host_port, session->session_type, session->participant_ctx);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
 
     log_info("join_session: About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
@@ -1312,14 +1312,14 @@ static asciichat_error_t join_session(discovery_session_t *session) {
       log_info("WebRTC host identified by participant ID; connecting without revealing its IP");
       set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
     }
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return ASCIICHAT_OK;
   }
 
   // No host yet - need to negotiate
   log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address,
            joined->server_port);
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
   return ASCIICHAT_OK;
@@ -1403,7 +1403,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
     if (result != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
       log_error("discovery_session_start: Failed to receive CRYPTO_PARAMETERS (got type %u)", pkt_type);
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
       set_error(session, result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL,
                 "Failed to receive CRYPTO_PARAMETERS");
       return result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
@@ -1412,14 +1412,14 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     if (pkt_len != sizeof(crypto_parameters_packet_t)) {
       log_error("discovery_session_start: Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)", pkt_len,
                 sizeof(crypto_parameters_packet_t));
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
       set_error(session, ERROR_NETWORK_PROTOCOL, "Invalid CRYPTO_PARAMETERS size");
       return ERROR_NETWORK_PROTOCOL;
     }
 
     crypto_parameters_packet_t server_params;
     memcpy(&server_params, pkt_data, sizeof(crypto_parameters_packet_t));
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
 
     // Pass params in network byte order — crypto_handshake_set_parameters
     // handles conversion internally for client (is_server=false)
@@ -1447,7 +1447,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     }
 
     result = crypto_handshake_client_key_exchange(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
 
     if (result != ASCIICHAT_OK) {
       log_error("discovery_session_start: Handshake key exchange failed");
@@ -1472,12 +1472,12 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
     if (pkt_type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
       log_error("discovery_session_start: Expected CRYPTO_HANDSHAKE_COMPLETE, got packet type %d", pkt_type);
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
       set_error(session, ERROR_NETWORK_PROTOCOL, "Invalid crypto handshake completion packet");
       return ERROR_NETWORK_PROTOCOL;
     }
 
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
   }
 
   // For ACDS, handshake completes after key exchange (no auth required)
@@ -1555,11 +1555,11 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
           log_info("Peer joined session, transitioning to negotiation");
           set_state(session, DISCOVERY_STATE_NEGOTIATING);
-          buffer_pool_free(NULL, alloc_buffer, 0);
+          buffer_release(alloc_buffer);
         } else {
           // Got some other packet, handle it or ignore
           log_debug("Received packet type %d while waiting for peer", type);
-          buffer_pool_free(NULL, alloc_buffer, 0);
+          buffer_release(alloc_buffer);
         }
       } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
         // Timeout is normal, just return
@@ -1612,10 +1612,10 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
         SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
         session->host_port = announcement->host_port;
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
         // Continue to host role determination below
       } else if (recv_result == ASCIICHAT_OK) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
     }
 
@@ -1840,7 +1840,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         if (recv_result == ASCIICHAT_OK) {
           // Dispatch to appropriate handler
           handle_acds_webrtc_packet(session, type, data, len);
-          buffer_pool_free(NULL, alloc_buffer, 0);
+          buffer_release(alloc_buffer);
         } else if (!acip_transport_is_connected(session->acds_transport)) {
           set_error(session, recv_result, "Discovery signaling connection closed during WebRTC negotiation");
           set_state(session, DISCOVERY_STATE_FAILED);
@@ -1920,7 +1920,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
         log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
         if (payload) {
-          buffer_pool_free(NULL, payload, payload_len);
+          buffer_release(payload);
         }
         set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
         session_participant_disconnect(session->participant_ctx);
@@ -1929,7 +1929,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
       if (payload_len != sizeof(protocol_version_packet_t)) {
         log_error("Invalid protocol version packet size: %zu", payload_len);
-        buffer_pool_free(NULL, payload, payload_len);
+        buffer_release(payload);
         set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
         session_participant_disconnect(session->participant_ctx);
         break;
@@ -1937,7 +1937,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
       protocol_version_packet_t server_version;
       memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
 
       if (!server_version.supports_encryption) {
         NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
@@ -2009,7 +2009,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       if (recv_result == ASCIICHAT_OK) {
         // Dispatch to appropriate handler
         handle_acds_webrtc_packet(session, type, data, len);
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
     }
 

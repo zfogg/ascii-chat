@@ -1871,7 +1871,7 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
  *
  * ERROR HANDLING:
  * - Returns -1 if client or queue is invalid
- * - Queue overflow handled by packet_queue_enqueue()
+ * - Queue overflow handled by packet_queue_push_copy()
  * - No side effects on failure
  *
  * @param client Target client to receive server state information

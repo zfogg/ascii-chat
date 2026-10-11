@@ -98,7 +98,7 @@
  *
  * Examples you can look at:
  * - `tests/unit/ascii_test.c`: Testing ASCII conversion functions
- * - `tests/unit/buffer_pool_test.c`: Testing buffer pool allocation
+ * - `tests/standalone/buffer/buffer_test.c`: Testing buffer domain allocation
  * - `tests/unit/crypto_test.c`: Testing cryptographic operations
  * - `tests/unit/palette_test.c`: Testing palette management
  *
@@ -298,7 +298,7 @@
  * ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect
  *
  * # Run tests matching a pattern
- * ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation"
+ * ctest --test-dir build -R "^buffer-ownership$" --output-on-failure
  *
  * # Run clang-tidy for code analysis
  * ./tests/scripts/run-docker-tests.ps1 -ClangTidy
@@ -369,7 +369,7 @@
  * ctest --test-dir build --label-regex "^performance$" --output-on-failure
  *
  * # Run a specific test by name pattern
- * ctest --test-dir build -R "buffer_pool" --output-on-failure
+ * ctest --test-dir build -R "buffer-ownership" --output-on-failure
  * ctest --test-dir build -R "test_unit_ascii" --output-on-failure
  * ```
  *
@@ -398,7 +398,7 @@
  * Building:
  * ---------
  * - Build all tests: `cmake --build build --target tests`
- * - Build specific test: `cmake --build build --target test_unit_buffer_pool`
+ * - Build specific test: `cmake --build build --target test-buffer-ownership`
  * - Uses Ninja for fast incremental builds
  *
  * XML Output:
@@ -521,7 +521,7 @@
  * - `tests/unit/ringbuffer_test.c`: FIFO ordering property
  * - `tests/unit/mixer_test.c`: Audio bounds property
  * - `tests/unit/ascii_test.c`: Image size property
- * - `tests/unit/buffer_pool_test.c`: Allocation roundtrip and pool reuse
+ * - `tests/standalone/buffer/buffer_test.c`: Ownership, budgets, alignment, cache reuse, and concurrent queue transfers
  * - `tests/unit/aspect_ratio_test.c`: Aspect ratio preservation
  *
  * @section testing_logging Test Logging Macros

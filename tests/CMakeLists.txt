@@ -249,6 +249,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.c ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.c ${CMAKE_CURRENT_SOURCE_DIR}/performance/*.c)
     # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
+        # Native UI fixture has its own main and is driven by the tmux harness.
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/ui_native_probe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
     )
@@ -913,4 +915,42 @@ if(TARGET ascii-chat-static)
         add_test(NAME errno-stacks COMMAND test-errno-stacks)
         set_tests_properties(errno-stacks PROPERTIES TIMEOUT 60)
     endif()
+endif()
+
+# Runs the production allocator and queue on every native platform, without Criterion.
+if(TARGET ascii-chat-static)
+    add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/buffer/buffer_test.c)
+    target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-buffer-ownership)
+    target_include_directories(test-buffer-ownership PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-buffer-ownership PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        if(TARGET tests)
+            add_dependencies(tests test-buffer-ownership)
+        endif()
+        add_test(NAME buffer-ownership COMMAND test-buffer-ownership)
+        set_tests_properties(buffer-ownership PROPERTIES TIMEOUT 120)
+    endif()
+endif()
+
+# This executable is driven by tmux_prompts.py/tmux_capture.py, not Criterion.
+if(TARGET ascii-chat-static)
+    add_executable(ui-native-probe EXCLUDE_FROM_ALL integration/ui_native_probe.c)
+    target_include_directories(ui-native-probe PRIVATE
+        ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    target_link_libraries(ui-native-probe PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(ui-native-probe PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(ui-native-probe)
+    set_target_properties(ui-native-probe PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(test_target tests tests-criterion-build)
+        if(TARGET ${test_target})
+            add_dependencies(${test_target} ui-native-probe test-buffer-ownership)
+        endif()
+    endforeach()
 endif()

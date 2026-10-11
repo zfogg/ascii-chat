@@ -52,7 +52,7 @@ extern const size_t nouns_count;
  * @brief Generate a unique client ID (noun only, no counter or port)
  *
  * Returns just the noun part without counters or transport information. Used for internal
- * client identification in thread names, buffer pools, event logs, etc.
+ * client identification in thread names, owned buffers, event logs, etc.
  *
  * @param buffer Output buffer for the generated ID
  * @param buffer_size Size of the output buffer (minimum recommended: 32 bytes)

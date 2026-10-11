@@ -58,7 +58,7 @@
  *     ascii_frame_t *frame = generate_personalized_ascii_frame(client_id);
  *     if (frame) {
  *       // Queue frame for delivery via send thread
- *       packet_queue_enqueue(client->video_packet_queue, frame, frame_size);
+ *       packet_queue_push_copy(client->video_packet_queue, PACKET_TYPE_ASCII_FRAME, frame, frame_size, 0);
  *     }
  *
  *     // Rate limit to exactly 60fps
@@ -117,8 +117,8 @@
  *
  *     if (mixed_audio) {
  *       // Queue audio for delivery via send thread
- *       packet_queue_enqueue(client->audio_packet_queue, mixed_audio,
- *                            mixed_audio_size);
+ *       packet_queue_push_copy(client->audio_packet_queue, PACKET_TYPE_AUDIO_BATCH, mixed_audio,
+ *                              mixed_audio_size, 0);
  *     }
  *
  *     // Rate limit to exactly 172fps (5.8ms intervals)

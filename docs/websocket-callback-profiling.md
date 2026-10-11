@@ -268,7 +268,7 @@ For above example:
 For CLIENT_RECEIVE with high timing:
 
 ```c
-// Check buffer pool allocation latency
+// Check buffer domain allocation latency
 // May indicate memory fragmentation or allocation stalls
 ```
 

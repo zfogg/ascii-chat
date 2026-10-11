@@ -13,7 +13,7 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/errors.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -82,7 +82,8 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
           total_size);
 
   // Allocate buffer for complete packet
-  uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
+  uint8_t *packet = buffer_alloc(
+      packet_is_handshake_type(type) || type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL, total_size);
   if (!packet) {
     log_error("★ PACKET_SEND: Memory allocation FAILED for %zu byte packet buffer", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
@@ -113,7 +114,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   }
 
   // Always free the packet buffer
-  SAFE_FREE(packet);
+  buffer_release(packet);
   return result;
 }
 
@@ -146,7 +147,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   if (recv_len < sizeof(packet_header_t)) {
     log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len, sizeof(packet_header_t));
     if (*alloc_buffer) {
-      buffer_pool_free(NULL, *alloc_buffer, recv_len);
+      buffer_release(*alloc_buffer);
       *alloc_buffer = NULL;
     }
     stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
@@ -160,7 +161,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   if (recv_len < sizeof(packet_header_t) + plen) {
     log_warn("packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)", plen, recv_len);
     if (*alloc_buffer) {
-      buffer_pool_free(NULL, *alloc_buffer, recv_len);
+      buffer_release(*alloc_buffer);
       *alloc_buffer = NULL;
     }
     stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
@@ -201,7 +202,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   size_t samples_size = num_samples * sizeof(float);
   size_t total_size = sizeof(header) + samples_size;
 
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+  uint8_t *buffer = buffer_alloc(NULL, total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }
@@ -212,7 +213,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
 
-  buffer_pool_free(NULL, buffer, total_size);
+  buffer_release(buffer);
   return result;
 }
 
@@ -245,7 +246,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   size_t sizes_len = frame_count * sizeof(uint16_t);
   size_t total_size = sizeof(header) + sizes_len + opus_len;
 
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+  uint8_t *buffer = buffer_alloc(NULL, total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }
@@ -267,7 +268,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
 
-  buffer_pool_free(NULL, buffer, total_size);
+  buffer_release(buffer);
   return result;
 }
 
@@ -328,7 +329,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
 
   // Allocate buffer for header + message
   size_t total_size = sizeof(header) + msg_len;
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+  uint8_t *buffer = buffer_alloc(NULL, total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }
@@ -341,7 +342,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size, 0);
 
-  buffer_pool_free(NULL, buffer, total_size);
+  buffer_release(buffer);
   return result;
 }
 
@@ -361,7 +362,7 @@ asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_
 
   size_t total_size = sizeof(header) + msg_len;
 
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+  uint8_t *buffer = buffer_alloc(NULL, total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }
@@ -373,7 +374,7 @@ asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
 
-  buffer_pool_free(NULL, buffer, total_size);
+  buffer_release(buffer);
   return result;
 }
 

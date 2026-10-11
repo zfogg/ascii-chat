@@ -6,7 +6,7 @@
  * ======================
  * 1. Continuous monitoring of server performance metrics
  * 2. Per-client statistics collection and reporting
- * 3. Buffer pool utilization tracking
+ * 3. buffer domain utilization tracking
  * 4. Packet queue performance analysis
  * 5. Hash table efficiency monitoring
  * 6. Periodic statistics logging for operational visibility
@@ -35,8 +35,8 @@
  * - Clients with video capabilities
  * - Connection duration and activity patterns
  *
- * BUFFER POOL PERFORMANCE:
- * - Global buffer pool utilization
+ * buffer domain PERFORMANCE:
+ * - Global buffer domain utilization
  * - Allocation/deallocation rates
  * - Peak usage patterns
  * - Memory efficiency metrics
@@ -99,7 +99,7 @@
  * INTEGRATION POINTS:
  * - client.c: Client lifecycle statistics
  * - render.c: Frame processing metrics
- * - buffer_pool.c: Memory utilization data
+ * - buffer.c: Memory utilization data
  * - packet_queue.c: Queue performance data
  *
  * WHY THIS MODULAR DESIGN:
@@ -127,7 +127,7 @@
  * @date September 2025
  * @version 2.0 (Post-Modularization)
  * @see main.c For statistics thread lifecycle management
- * @see buffer_pool.c For memory utilization monitoring
+ * @see buffer.c For memory utilization monitoring
  * @see packet_queue.c For queue performance metrics
  */
 
@@ -141,7 +141,7 @@
 #include "render.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/platform/init.h>
@@ -230,7 +230,7 @@ void stats_cleanup(void) {
  *    - Generate comprehensive performance reports
  *
  * 3. STATISTICS COLLECTION:
- *    - Global buffer pool utilization
+ *    - Global buffer domain utilization
  *    - Per-client connection and activity status
  *    - Packet queue performance metrics
  *    - Hash table efficiency statistics
@@ -265,10 +265,10 @@ void stats_cleanup(void) {
  * - Clients with video queues active
  * - Per-client connection duration
  *
- * BUFFER POOL METRICS:
+ * buffer domain METRICS:
  * - Global allocation/deallocation rates
  * - Peak memory usage patterns
- * - Buffer pool efficiency
+ * - buffer domain efficiency
  * - Memory fragmentation indicators
  *
  * PACKET QUEUE PERFORMANCE:
@@ -329,7 +329,7 @@ void *stats_logger_thread(void *arg) {
   (void)arg;
 
   while (!atomic_load_bool(&g_should_exit)) {
-    // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
+    // Log buffer domain statistics every 10 seconds with fast exit checking (10ms intervals)
     for (int i = 0; i < 1000 && !atomic_load_bool(&g_should_exit); i++) {
       platform_sleep_us(10 * US_PER_MS_INT); // 10ms sleep
     }
@@ -339,6 +339,11 @@ void *stats_logger_thread(void *arg) {
     if (atomic_load_bool(&g_should_exit)) {
       break;
     }
+
+    buffer_domain_log_stats(buffer_default_domain(), "media");
+    buffer_domain_log_stats(buffer_control_domain(), "control");
+    buffer_domain_trim(buffer_default_domain());
+    buffer_domain_trim(buffer_control_domain());
 
     // Collect all statistics data first
 #ifndef NDEBUG

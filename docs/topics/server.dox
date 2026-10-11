@@ -167,7 +167,7 @@
  * - Composite frame generation (single, 2x2, 3x3 layouts)
  * - ASCII conversion with terminal capability awareness
  * - Per-client personalized frame generation
- * - Buffer pool integration for efficient memory management
+ * - buffer domain integration for efficient memory management
  *
  * @subsubsection server_render Render Threads
  * @ingroup server_render
@@ -189,7 +189,7 @@
  * Handles:
  * - Continuous performance metric collection
  * - Per-client statistics reporting
- * - Buffer pool utilization tracking
+ * - buffer domain utilization tracking
  * - Packet queue performance analysis
  * - Hash table efficiency monitoring
  * - Periodic statistics logging (every 30 seconds)
@@ -353,7 +353,7 @@
  * - Clients with video capabilities
  * - Per-client packet queue statistics (enqueued, dequeued, dropped)
  * - Per-client video buffer statistics (total frames, dropped frames, drop rate)
- * - Buffer pool utilization (global allocation/deallocation rates)
+ * - buffer domain utilization (global allocation/deallocation rates)
  * - Lock debugging statistics (mutex/RWLock acquisitions, releases, currently held)
  * - Hash table efficiency metrics
  *
@@ -633,7 +633,7 @@
  * - **Cryptography** (@ref topic_crypto "Crypto Module"): Handshake, encryption, key management
  * - **Video Processing** (@ref topic_video "Video to ASCII"): RGB to ASCII conversion
  * - **Audio Processing** (@ref topic_audio "Audio Module"): Audio mixing and playback
- * - **Buffer Management** (@ref topic_buffer_pool "Buffer Pool"): Efficient memory allocation
+ * - **Buffer Management** (@ref topic_buffer "Owned Buffers"): Efficient memory allocation
  * - **Packet Queues** (@ref topic_packet_queue "Packet Queue"): Thread-safe packet delivery
  * - **Logging** (@ref topic_logging "Logging System"): Structured logging with levels
  * - **Error Handling** (@ref ERRNO_SYSTEM "Error System"): Typed error codes and context
@@ -656,7 +656,7 @@
  *
  * **Memory Usage**:
  * - Per-client memory: ~1-2 MB per client (buffers, queues, state)
- * - Buffer pool: Shared pool reduces allocation overhead
+ * - buffer domain: Shared pool reduces allocation overhead
  * - Scales linearly with number of clients
  *
  * **CPU Usage**:
@@ -690,7 +690,7 @@
  *
  * Performance (keeping it fast):
  * ------------------------------
- * - **Use buffer pools**: Hot paths should never call malloc() directly
+ * - **Use owned buffers**: Hot paths should never call malloc() directly
  * - **Avoid lock fighting**: If threads are waiting for locks, rethink your design
  * - **Lock-free when possible**: Ring buffers, atomics—they're your friends
  * - **Profile contention**: Use the lock debugging system to find bottlenecks

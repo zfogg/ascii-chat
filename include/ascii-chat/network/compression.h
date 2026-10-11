@@ -46,6 +46,7 @@
  */
 
 #include <stdlib.h>
+#include <ascii-chat/buffer.h>
 #include <stdbool.h>
 #include "../asciichat_errno.h"
 
@@ -76,10 +77,10 @@
  *
  * Compresses input data using zstd's compression algorithm with the specified compression level.
  * The output buffer is automatically allocated by the function and must be freed by the caller
- * using SAFE_FREE() or the appropriate memory management function.
+ * using buffer_release().
  *
- * @note The output buffer is allocated using SAFE_MALLOC(). Caller must free it
- *       with SAFE_FREE() when done using the compressed data.
+ * @note The output buffer is allocated using buffer_alloc(). Caller must release it
+ *       with buffer_release() when done using the compressed data.
  *
  * @note Compression may fail if input data is already compressed or if
  *       compression would expand the data significantly.
@@ -90,7 +91,7 @@
  * @note Compression level must be between 1 and 9. Levels above 9 are not
  *       recommended for real-time streaming due to CPU overhead.
  *
- * @warning Caller must SAFE_FREE() the output buffer to avoid memory leaks.
+ * @warning Caller must buffer_release() the output buffer to avoid memory leaks.
  */
 asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size,
                                 int compression_level);
@@ -145,3 +146,12 @@ bool should_compress(size_t original_size, size_t compressed_size);
 // Note: Frame sending functions have been moved to network.h/network.c
 
 /** @} */
+/** Zero-initialized worker-owned zstd context and reusable output storage.
+ * Output is borrowed until the next call or destruction; never queue it without
+ * copying. The caller serializes access to the workspace. */
+typedef struct {
+  void *codec;
+  buffer_workspace_t output;
+} compression_workspace_t;
+asciichat_error_t compress_workspace(compression_workspace_t *workspace, const void *input, size_t size, int level);
+void compression_workspace_destroy(compression_workspace_t *workspace);

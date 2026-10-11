@@ -17,7 +17,7 @@
 #include <ascii-chat/util/time.h>       // For monotonic timing
 #include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>         // For static_mutex_t
 #include <ascii-chat/platform/abstraction.h>  // For platform_sleep_us
@@ -252,8 +252,7 @@ static void *audio_worker_thread(void *arg) {
 
     bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
     audio_capture_source_t selection = GET_OPTION(audio_capture_source);
-    bool use_media = has_media && (selection == AUDIO_CAPTURE_SOURCE_AUTO ||
-                                   selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
+    bool use_media = has_media && (selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
                                    selection == AUDIO_CAPTURE_SOURCE_BOTH);
     bool use_mic = audio_should_enable_microphone(selection, has_media);
     if (use_media && !use_mic) {
@@ -948,8 +947,8 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
     if (ctx->input_device_rate > 0.0 && ctx->input_device_rate != AUDIO_SAMPLE_RATE) {
       // PortAudio delivers frames at the native stream rate. Convert them to
       // the pipeline's fixed 48 kHz clock before AEC3/Opus.
-      size_t output_samples = resample_capture_block(ctx, input, num_samples, normalized,
-                                                     sizeof(normalized) / sizeof(normalized[0]));
+      size_t output_samples =
+          resample_capture_block(ctx, input, num_samples, normalized, sizeof(normalized) / sizeof(normalized[0]));
       if (output_samples == 0) {
         log_warn_every(LOG_RATE_FAST, "Input callback block too large to resample safely (%zu samples)", num_samples);
         cond_signal(&ctx->worker_cond);
@@ -990,10 +989,10 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 
 static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer_enabled) {
   size_t rb_size = sizeof(audio_ring_buffer_t);
-  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(NULL, rb_size);
+  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_alloc(NULL, rb_size);
 
   if (!rb) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer pool");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer domain");
     return NULL;
   }
 
@@ -1013,7 +1012,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 
   if (mutex_init(&rb->mutex, "audio_ring_buffer") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
-    buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+    buffer_release(rb);
     return NULL;
   }
 
@@ -1036,7 +1035,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   audio_ring_buffer_unregister_atomics(rb);
 
   mutex_destroy(&rb->mutex);
-  buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+  buffer_release(rb);
 }
 
 void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *context_name) {

@@ -120,7 +120,7 @@
  * - Cursor movement optimized (relative vs absolute positioning)
  * - Typical escape sequence: `\x1b[38;2;R;G;Bm` (24-bit color)
  * - Output buffering to minimize write() syscalls
- * - Pre-allocated buffer pool to avoid malloc overhead
+ * - Pre-allocated buffer domain to avoid malloc overhead
  *
  * Optimization techniques:
  * - Delta encoding: Only emit changes from previous frame
@@ -374,7 +374,7 @@
  *
  * **Zero-Copy Techniques**:
  * - Webcam frames returned as direct memory pointers
- * - Output buffers pre-allocated in buffer pool
+ * - Output buffers pre-allocated in buffer domain
  * - Avoid malloc/memcpy in hot loops
  *
  * **SIMD Register Utilization**:

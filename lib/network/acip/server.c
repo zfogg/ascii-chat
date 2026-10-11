@@ -14,7 +14,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
@@ -106,7 +106,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
     // Parse packet header
     if (packet_len < sizeof(packet_header_t)) {
-      buffer_pool_free(NULL, allocated_buffer, packet_len);
+      buffer_release(allocated_buffer);
       return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
     }
 
@@ -128,9 +128,9 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
       // Decrypt to get inner plaintext packet (header + payload)
       size_t plaintext_size = ciphertext_len + 1024;
-      uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+      uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
       if (!plaintext) {
-        buffer_pool_free(NULL, allocated_buffer, packet_len);
+        buffer_release(allocated_buffer);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
       }
 
@@ -139,16 +139,16 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
           crypto_decrypt(transport->crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
 
       // Free the original encrypted buffer
-      buffer_pool_free(NULL, allocated_buffer, packet_len);
+      buffer_release(allocated_buffer);
 
       if (crypto_result != CRYPTO_OK) {
-        buffer_pool_free(NULL, plaintext, plaintext_size);
+        buffer_release(plaintext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt WebSocket packet: %s",
                          crypto_result_to_string(crypto_result));
       }
 
       if (plaintext_len < sizeof(packet_header_t)) {
-        buffer_pool_free(NULL, plaintext, plaintext_size);
+        buffer_release(plaintext);
         return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
       }
 
@@ -191,7 +191,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    buffer_release(envelope.allocated_buffer);
   }
 
   // Return handler result
@@ -202,9 +202,10 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 // Server Send (to client)
 // =============================================================================
 
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height, const char *client_id) {
-  if (!transport || !frame_data) {
+asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
+                                        const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
+                                        const char *client_id) {
+  if (!transport || !frame_data || !workspace) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or frame_data");
   }
 
@@ -226,14 +227,12 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   // Compress ANSI text before sending it. Native and browser clients decode zstd frames.
   const void *payload_data = frame_data;
   size_t payload_size = frame_size;
-  void *compressed_data = NULL;
   bool is_compressed = false;
-  size_t compressed_size = 0;
   if (frame_size >= COMPRESSION_MIN_SIZE &&
-      compress_data(frame_data, frame_size, &compressed_data, &compressed_size, 1) == ASCIICHAT_OK &&
-      compressed_data && compressed_size < frame_size && should_compress(frame_size, compressed_size)) {
-    payload_data = compressed_data;
-    payload_size = compressed_size;
+      compress_workspace(&workspace->compression, frame_data, frame_size, 1) == ASCIICHAT_OK &&
+      should_compress(frame_size, workspace->compression.output.length)) {
+    payload_data = workspace->compression.output.data;
+    payload_size = workspace->compression.output.length;
     is_compressed = true;
   }
 
@@ -249,7 +248,6 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   // Calculate total packet size
   size_t total_size;
   if (checked_size_add(sizeof(header), payload_size, &total_size) != ASCIICHAT_OK) {
-    SAFE_FREE(compressed_data);
     log_error("★ SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)", sizeof(header),
               payload_size);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
@@ -259,13 +257,12 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
             frame_size, total_size);
 
   // Allocate buffer
-  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    SAFE_FREE(compressed_data);
+  if (buffer_workspace_reserve(&workspace->packet, NULL, total_size) != ASCIICHAT_OK) {
     log_error("★ SEND_ASCII_FRAME: Memory allocation FAILED for %zu bytes", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
   }
 
+  uint8_t *buffer = workspace->packet.data;
   log_debug("★ SEND_ASCII_FRAME: Buffer allocated at %p", (void *)buffer);
 
   // Build packet: header + data
@@ -283,9 +280,14 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
               client_id);
   }
 
-  buffer_pool_free(NULL, buffer, total_size);
-  SAFE_FREE(compressed_data);
   return result;
+}
+
+void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace) {
+  if (!workspace)
+    return;
+  compression_workspace_destroy(&workspace->compression);
+  buffer_workspace_destroy(&workspace->packet);
 }
 
 asciichat_error_t acip_send_clear_console(acip_transport_t *transport) {

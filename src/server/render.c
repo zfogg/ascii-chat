@@ -137,7 +137,7 @@
  * ===============================
  * - All allocations are bounded and predictable
  * - Thread stacks are platform-managed
- * - Frame generation uses buffer pools
+ * - Frame generation uses owned buffers
  * - No memory leaks on thread exit
  * - Automatic resource cleanup on client disconnect
  *
@@ -557,7 +557,7 @@ void *client_video_render_thread(void *arg) {
       }
       if (current_frame_hash != last_frame_hash) {
         log_dev("RENDER_FRAME CHANGE: Client %s frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
-                 frame_size, sources_count, current_frame_hash, last_frame_hash);
+                frame_size, sources_count, current_frame_hash, last_frame_hash);
         last_frame_hash = current_frame_hash;
       } else {
         log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %s frame #%zu sources=%d hash=0x%08x (no change)",
@@ -614,8 +614,8 @@ void *client_video_render_thread(void *arg) {
                 log_dev("render commit rate: client=%s fps=%.1f", thread_client_id, commit_fps);
               }
 
-              log_dev("FRAME_COMMIT: Client %s took %s (hash=0x%08x)", thread_client_id,
-                       commit_duration_str, current_frame_hash);
+              log_dev("FRAME_COMMIT: Client %s took %s (hash=0x%08x)", thread_client_id, commit_duration_str,
+                      current_frame_hash);
 
               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
               // The send thread reads from this buffer and applies proper 60 FPS rate limiting
@@ -637,8 +637,7 @@ void *client_video_render_thread(void *arg) {
             double render_fps = (double)rendered_frames_in_window * NS_PER_SEC_INT / (double)render_rate_elapsed_ns;
             if (render_fps < (double)client_fps * 0.9 || missed_deadlines_in_window > 0) {
               log_warn("Server video render lagging client=%s fps=%.1f target=%d missed_deadlines=%llu",
-                       thread_client_id, render_fps, client_fps,
-                       (unsigned long long)missed_deadlines_in_window);
+                       thread_client_id, render_fps, client_fps, (unsigned long long)missed_deadlines_in_window);
             } else {
               log_info("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id,
                        render_fps, client_fps);
@@ -1053,20 +1052,20 @@ void *client_audio_render_thread(void *arg) {
           // Queue the properly formatted packet
           START_TIMER("audio_queue_%s", client_id_snapshot);
 
-          int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_buffer,
-                                            total_packet_size, 0, true);
+          asciichat_error_t result = packet_queue_push_copy(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH,
+                                                            packet_buffer, total_packet_size, 0);
 
           STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
                                    "Audio queue for client %s: took", client_id_snapshot);
 
-          if (result < 0) {
+          if (result != ASCIICHAT_OK) {
             log_debug("Failed to queue Opus audio for client %s", client_id_snapshot);
           } else {
             // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
             fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
           }
 
-          // Free the allocated packet buffer after queuing (packet_queue_enqueue copies data)
+          // Free the allocated packet buffer after queuing (packet_queue_push_copy copies data)
           SAFE_FREE(packet_buffer);
         }
       }

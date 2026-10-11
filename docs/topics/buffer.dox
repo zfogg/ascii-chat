@@ -1,0 +1,75 @@
+/**
+ * @defgroup buffer Owned Buffers
+ * @ingroup module_data_structures
+ * @brief Bounded aligned storage, explicit ownership and worker workspaces.
+ */
+/**
+ * @page topic_buffer Owned Buffers
+ * @ingroup buffer
+ *
+ * Payload pointers returned by buffer_alloc() are ownership tokens. Their
+ * capacity, logical length, alignment and owning domain are stored privately.
+ * buffer_release(pointer) releases one reference and clears the typed pointer.
+ * Only the owning pointer may be queried or released: interior pointers and
+ * views into stack, codec or external storage remain borrowed.
+ *
+ * @section buffer_example Ownership
+ * @code{.c}
+ * void *payload = buffer_alloc(NULL, 4096);
+ * if (!payload)
+ *   return SET_ERRNO(ERROR_MEMORY, "Payload budget exhausted");
+ * // Fill payload before publication.
+ * asciichat_error_t result = packet_queue_push_take(queue, PACKET_TYPE_PING,
+ *                                                  &payload, 4096, 0);
+ * // Success clears payload. Failure leaves it here for retry or release.
+ * buffer_release(payload);
+ * @endcode
+ *
+ * buffer_share() creates an additional immutable reference. Every recipient
+ * releases its own reference. Mutation, including changing logical length,
+ * requires exclusive ownership. Reference counting does not synchronize access
+ * to payload contents. A transport retains ownership until its actual completion
+ * contract permits release; caching memory does not extend a borrowed lifetime.
+ *
+ * @section buffer_domains Domains and limits
+ * buffer_domain_create() supplies an isolated capacity-class cache and budget.
+ * A mutex serializes allocation, return and trimming. There is no concurrent
+ * free-list reclamation, ABA-sensitive stack, or allocator-origin guessing.
+ * Backing allocations use the existing tracked allocation machinery. Manually
+ * aligning within that allocation means Windows uses the matching ordinary
+ * deallocator, without mixing aligned_malloc and free.
+ *
+ * Domain limits include backing capacity, payload headers and alignment padding.
+ * Defaults allow 512 MiB process-wide, reserving 8 MiB for control traffic.
+ * The default media domain allows 337 MiB with at most 32 MiB cached. Queue
+ * domains allow 64 MiB with at most 8 MiB cached, in addition to queue byte limits.
+ * These are bounded storage budgets, not a guarantee that every request succeeds.
+ * The process budget also accounts for domain objects, including closed domains
+ * retained by outstanding buffers. Oversized blocks are budgeted but not cached.
+ * Exhaustion returns ERROR_MEMORY; no heap fallback bypasses the limit.
+ * Control traffic has a bounded reserved allowance through buffer_control_domain().
+ * This budget covers this API's storage, not the entire process RSS or third-party
+ * codec allocations. Cache trim returns allocations to the backing allocator;
+ * it does not promise that the OS immediately reduces RSS.
+ *
+ * buffer_domain_close() stops admissions and frees cached storage. Join users of
+ * the domain pointer first. Outstanding payloads keep the domain alive and may
+ * be released afterwards, including by another thread. The last release reclaims
+ * a closed domain. Application startup/shutdown owns the default domains.
+ *
+ * @section buffer_workspaces Repeated work
+ * Zero-initialize buffer_workspace_t. buffer_workspace_reserve() retains capacity
+ * across frames and preserves existing storage on failure. Destroy the workspace
+ * when its worker stops. Compression workspaces retain the zstd context too.
+ * Frame-send workspaces retain compression and packet assembly buffers; render
+ * file contexts retain pixel-copy storage. Audio prepares storage when streams
+ * or mixer membership change, outside the sample mixing loop.
+ *
+ * @section buffer_validation Validation
+ * Build test-buffer-ownership and run ctest -R '^buffer-ownership$'. This native
+ * suite runs on Windows, Linux and macOS without Criterion. It tests alignment,
+ * size-class reuse, overflow, exhaustion, immutable sharing, failure preservation,
+ * shutdown with outstanding owners, concurrent trimming, MPMC ownership transfer,
+ * process-wide exhaustion with control reserve, queues and media storage.
+ * ASan builds poison cached payloads to expose access after the final release.
+ */

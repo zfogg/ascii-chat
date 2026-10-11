@@ -179,7 +179,7 @@ def generate_dot_file(output_file="header_deps.dot", base_dirs=["lib", "src"], u
         elif node.startswith('lib_image2ascii') or node.startswith('lib_os_'):
             return 'simd'
         elif node.startswith('lib_network') or node.startswith('lib_packet') or \
-             node.startswith('lib_buffer_pool') or node.startswith('lib_compression') or \
+             node.startswith('lib_buffer') or node.startswith('lib_compression') or \
              node.startswith('lib_crc32'):
             return 'network'
         elif node.startswith('lib_audio') or node.startswith('lib_video') or \
