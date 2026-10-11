@@ -259,8 +259,8 @@ typedef struct {
   bool required;             ///< If true, option must be provided
   const char *env_var_name;  ///< Environment variable fallback (or NULL)
 
-  // Validation - receives full options struct for cross-field validation
-  bool (*validate)(const void *options_struct, char **error_msg);
+  // Validation receives the full options struct and uses SET_ERRNO() on failure.
+  bool (*validate)(const void *options_struct);
 
   // Custom parsing (for OPTION_TYPE_CALLBACK)
   bool (*parse_fn)(const char *arg, void *dest, char **error_msg);
@@ -564,7 +564,7 @@ void options_builder_add_bool(options_builder_t *builder, const char *long_name,
  */
 void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                              int default_value, const char *help_text, const char *group, bool required,
-                             const char *env_var_name, bool (*validate)(const void *options_struct, char **error_msg));
+                             const char *env_var_name, bool (*validate)(const void *options_struct));
 
 /**
  * @brief Add integer option with metadata (for numeric ranges and examples)
@@ -576,7 +576,7 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
 void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
                                            size_t offset, int default_value, const char *help_text, const char *group,
                                            bool required, const char *env_var_name,
-                                           bool (*validate)(const void *options_struct, char **error_msg),
+                                           bool (*validate)(const void *options_struct),
                                            const option_metadata_t *metadata);
 
 /**
@@ -597,8 +597,7 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
  */
 void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 const char *default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name,
-                                bool (*validate)(const void *options_struct, char **error_msg));
+                                const char *env_var_name, bool (*validate)(const void *options_struct));
 
 /**
  * @brief Add double/float option
@@ -616,13 +615,13 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
  */
 void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 double default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name,
-                                bool (*validate)(const void *options_struct, char **error_msg), bool optional_arg);
+                                const char *env_var_name, bool (*validate)(const void *options_struct),
+                                bool optional_arg);
 
 void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
                                               size_t offset, double default_value, const char *help_text,
                                               const char *group, bool required, const char *env_var_name,
-                                              bool (*validate)(const void *options_struct, char **error_msg),
+                                              bool (*validate)(const void *options_struct),
                                               const option_metadata_t *metadata, bool optional_arg);
 
 /**

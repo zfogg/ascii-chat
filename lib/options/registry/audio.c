@@ -18,12 +18,11 @@
 // ============================================================================
 // AUDIO CATEGORY - Audio processing options
 // ============================================================================
-static bool validate_audio_fft_size(const void *data, char **error_msg) {
+static bool validate_audio_fft_size(const void *data) {
   const options_t *options = data;
   if (options->audio_fft_size == 512 || options->audio_fft_size == 1024 || options->audio_fft_size == 2048)
     return true;
-  if (error_msg)
-    *error_msg = platform_strdup("audio-fft-size must be 512, 1024, or 2048");
+  SET_ERRNO(ERROR_USAGE, "--audio-fft-size must be 512, 1024, or 2048");
   return false;
 }
 

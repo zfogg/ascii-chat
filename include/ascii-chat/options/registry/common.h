@@ -40,7 +40,7 @@ typedef struct {
   const char *arg_placeholder; ///< Custom argument placeholder (e.g., "SHELL [FILE]" instead of "STR")
   bool required;
   const char *env_var_name;
-  bool (*validate_fn)(const void *options_struct, char **error_msg);
+  bool (*validate_fn)(const void *options_struct);
   bool (*parse_fn)(const char *arg, void *dest, char **error_msg);
   bool owns_memory;
   bool optional_arg;

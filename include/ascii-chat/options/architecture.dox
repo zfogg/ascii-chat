@@ -565,10 +565,10 @@
  *
  * In registry.c:
  * ```c
- * bool validate_port(const void *options_struct, char **error_msg) {
+ * bool validate_port(const void *options_struct) {
  *     const options_t *opts = (const options_t *)options_struct;
  *     if (opts->port < 1 || opts->port > 65535) {
- *         *error_msg = strdup("Port must be between 1 and 65535");
+ *         SET_ERRNO(ERROR_USAGE, "Port must be between 1 and 65535");
  *         return false;
  *     }
  *     return true;

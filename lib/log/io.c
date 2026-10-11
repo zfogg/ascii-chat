@@ -6,74 +6,43 @@
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <string.h>
 
 #define LOG_IO_BUFFER_SIZE 8192
 
 log_io_t log_io_start(void) {
-  log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+  log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
 
-  // Save original stdout and stderr
-  capture.saved_stdout_fd = dup(STDOUT_FILENO);
-  capture.saved_stderr_fd = dup(STDERR_FILENO);
+  // A pipe cannot be drained until the wrapped call returns. A temporary file
+  // lets backend worker threads finish even when diagnostics exceed pipe capacity.
+  capture.output = platform_tmpfile();
+  if (!capture.output)
+    return capture;
 
-  if (capture.saved_stdout_fd < 0 || capture.saved_stderr_fd < 0) {
-    if (capture.saved_stdout_fd >= 0)
-      close(capture.saved_stdout_fd);
-    if (capture.saved_stderr_fd >= 0)
-      close(capture.saved_stderr_fd);
-    return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+  fflush(stdout);
+  fflush(stderr);
+  capture.saved_stdout_fd = platform_dup(STDOUT_FILENO);
+  capture.saved_stderr_fd = platform_dup(STDERR_FILENO);
+  if (capture.saved_stdout_fd < 0 || capture.saved_stderr_fd < 0)
+    goto fail;
+
+  int output_fd = fileno(capture.output);
+  if (dup2(output_fd, STDOUT_FILENO) < 0)
+    goto fail;
+  if (dup2(output_fd, STDERR_FILENO) < 0) {
+    // Restore stdout if only the first redirection succeeded.
+    dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+    goto fail;
   }
-
-  // Create a pipe for capturing output
-  int pipefd[2];
-#ifdef _WIN32
-  if (_pipe(pipefd, LOG_IO_BUFFER_SIZE, _O_BINARY) < 0) {
-#else
-  if (pipe(pipefd) < 0) {
-#endif
-    close(capture.saved_stdout_fd);
-    close(capture.saved_stderr_fd);
-    return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-  }
-
-  // pipefd[0] is read end, pipefd[1] is write end
-  int write_fd = pipefd[1];
-  capture.pipe_fd = pipefd[0];
-
-#ifndef _WIN32
-  // Make the read end non-blocking so we can drain without hanging
-  int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
-  if (flags >= 0) {
-    fcntl(capture.pipe_fd, F_SETFL, flags | O_NONBLOCK);
-  }
-
-  // Make the write end non-blocking. LOG_IO redirects the process-global stderr,
-  // so ALL threads write to this pipe. If the pipe buffer fills (64KB on Linux),
-  // blocking writes would stall other threads and potentially deadlock (e.g. x265
-  // internal threads block on stderr while avcodec_open2 can't return). Non-blocking
-  // writes silently drop excess output (EAGAIN) which is acceptable for diagnostics.
-  int wflags = fcntl(write_fd, F_GETFL, 0);
-  if (wflags >= 0) {
-    fcntl(write_fd, F_SETFL, wflags | O_NONBLOCK);
-  }
-#endif
-
-  // Redirect both stdout and stderr to the pipe
-  if (dup2(write_fd, STDOUT_FILENO) < 0 || dup2(write_fd, STDERR_FILENO) < 0) {
-    close(write_fd);
-    close(capture.pipe_fd);
-    close(capture.saved_stdout_fd);
-    close(capture.saved_stderr_fd);
-    return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-  }
-
-  // Close the write end in the parent process (we only need it in redirected streams)
-  close(write_fd);
-
   return capture;
+
+fail:
+  if (capture.saved_stdout_fd >= 0)
+    platform_close(capture.saved_stdout_fd);
+  if (capture.saved_stderr_fd >= 0)
+    platform_close(capture.saved_stderr_fd);
+  fclose(capture.output);
+  return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
 }
 
 void log_io_stop(log_io_t capture, const char *prefix) {
@@ -81,23 +50,28 @@ void log_io_stop(log_io_t capture, const char *prefix) {
     return; // Capture was not started successfully
   }
 
-  // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
+  // Flush before restoring so buffered backend output is captured.
   fflush(stdout);
   fflush(stderr);
 
   // Restore stdout and stderr
   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
   dup2(capture.saved_stderr_fd, STDERR_FILENO);
-  close(capture.saved_stdout_fd);
-  close(capture.saved_stderr_fd);
+  platform_close(capture.saved_stdout_fd);
+  platform_close(capture.saved_stderr_fd);
 
   // Read and log the captured output
-  if (capture.pipe_fd >= 0) {
+  if (capture.output) {
     char buffer[LOG_IO_BUFFER_SIZE];
-    ssize_t bytes_read;
+    size_t bytes_read;
 
-    // Read all available data from the pipe
-    while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) > 0) {
+    // Replay only after restoring the descriptors, so logger output cannot feed
+    // back into this capture. fseek synchronizes the stream with descriptor writes.
+    if (fseek(capture.output, 0, SEEK_SET) != 0) {
+      fclose(capture.output);
+      return;
+    }
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer) - 1, capture.output)) > 0) {
       buffer[bytes_read] = '\0';
 
       // Split by lines and log each line
@@ -131,6 +105,6 @@ void log_io_stop(log_io_t capture, const char *prefix) {
       }
     }
 
-    close(capture.pipe_fd);
+    fclose(capture.output);
   }
 }

@@ -41,6 +41,7 @@ static screen_t g_screens[UI_SCREEN_COUNT];
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static cond_t g_render_done;
+static cond_t g_render_requested;
 static int g_rendering_screen = -1;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
@@ -53,6 +54,73 @@ static _Thread_local terminal_size_t g_render_size;
 static terminal_size_t g_size = {.cols = 80, .rows = 24};
 static int g_active = -1;
 static _Atomic int g_published_screen = -1;
+static atomic_t g_volume_until = {0};
+static _Thread_local bool g_render_volume;
+static _Thread_local bool g_volume_caps_valid;
+static _Thread_local terminal_capabilities_t g_volume_caps;
+static _Thread_local terminal_color_mode_t g_volume_color_mode;
+static _Thread_local color_setting_t g_volume_color_setting;
+static _Thread_local utf8_setting_t g_volume_utf8_setting;
+static _Thread_local render_mode_t g_volume_render_mode;
+
+static terminal_capabilities_t volume_capabilities(void) {
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
+  color_setting_t color = GET_OPTION(color);
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  render_mode_t render = GET_OPTION(render_mode);
+  if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
+      utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
+    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities());
+    g_volume_color_mode = mode;
+    g_volume_color_setting = color;
+    g_volume_utf8_setting = utf8;
+    g_volume_render_mode = render;
+    g_volume_caps_valid = true;
+  }
+  return g_volume_caps;
+}
+
+void ui_controller_show_volume(void) {
+  if (!GET_OPTION(snapshot_mode))
+    atomic_store_u64(&g_volume_until, time_get_ns() + 1500 * NS_PER_MS_INT);
+}
+
+static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
+  if (size.cols < 8 || size.rows < 6)
+    return;
+  double volume = GET_OPTION(speakers_volume);
+  if (volume < 0.0)
+    volume = 0.0;
+  if (volume > 1.0)
+    volume = 1.0;
+  int height = size.rows - 4;
+  if (height > 10)
+    height = 10;
+  int filled = (int)(volume * height + 0.5);
+  int top = (size.rows - height - 1) / 2 + 1;
+  int col = size.cols - 5;
+  terminal_capabilities_t caps = volume_capabilities();
+  bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  utf8_setting_t utf8_setting = GET_OPTION(force_utf8);
+  bool utf8 = utf8_setting == UTF8_SETTING_TRUE || (utf8_setting == UTF8_SETTING_AUTO && caps.utf8_support);
+  frame_buffer_append(buffer, "\0337\033[0m", 6);
+  for (int row = 0; row < height; ++row) {
+    int level = height - row;
+    bool lit = level <= filled;
+    int shade = level * 3 <= height ? 31 : (level * 3 <= height * 2 ? 33 : 32);
+    frame_buffer_printf(buffer, "\033[%d;%dH", top + row, col);
+    if (color)
+      frame_buffer_printf(buffer, "\033[%dm", lit ? shade : 90);
+    const char *cells = utf8 ? (lit ? "██" : "░░") : (lit ? "##" : "..");
+    frame_buffer_printf(buffer, " %s \033[0m", cells);
+  }
+  frame_buffer_printf(buffer, "\033[%d;%dH", top + height, col);
+  if (volume <= 0.01)
+    frame_buffer_append(buffer, "MUTE", 4);
+  else
+    frame_buffer_printf(buffer, "%3d%%", (int)(volume * 100.0 + 0.5));
+  frame_buffer_append(buffer, "\033[0m\0338", 6);
+}
 
 int ui_controller_current_screen(void) {
   return atomic_load(&g_published_screen);
@@ -64,6 +132,7 @@ static void publish_screen_locked(void) {
     if (g_screens[i].render)
       active = i;
   atomic_store(&g_published_screen, active);
+  cond_signal(&g_render_requested);
 }
 static bool g_small;
 static bool g_redraw;
@@ -141,6 +210,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
     memcpy(retired, g_screens, sizeof(retired));
     memset(g_screens, 0, sizeof(g_screens));
     atomic_store(&g_published_screen, -1);
+    cond_signal(&g_render_requested);
     uint64_t pending = g_render_started;
     while (!g_render_snapshot && g_render_completed < pending)
       cond_wait(&g_render_done, &g_mutex);
@@ -186,7 +256,10 @@ static void *presentation_main(void *unused) {
   uint64_t progress_render_ns = 0;
   g_fps = fps_counter_create();
   bool was_sync = false;
+  uint64_t last_volume_until = 0;
+  bool volume_was_visible = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    uint64_t refresh_deadline = time_get_ns() + 16 * NS_PER_MS_INT;
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
@@ -254,6 +327,16 @@ static void *presentation_main(void *unused) {
           screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
       g_last_minimum = screen->minimum;
       bool transition = changed || resized || requirement_changed || small != g_small || redraw;
+      uint64_t volume_until = atomic_load_u64(&g_volume_until);
+      bool volume_visible = active == UI_SCREEN_MEDIA && !GET_OPTION(snapshot_mode) && !GET_OPTION(strip_ansi) &&
+                            time_get_ns() < volume_until;
+      // Repaint the retained clean frame on both edges, even when playback is paused.
+      // Clearing also restores overlay cells outside explicitly sized media frames.
+      bool volume_changed =
+          volume_visible != volume_was_visible || (volume_visible && volume_until != last_volume_until);
+      transition |= volume_was_visible && !volume_visible;
+      volume_was_visible = volume_visible;
+      last_volume_until = volume_until;
       bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
       transition |= fps_counter_set_visible(g_fps, show_fps);
       if (changed || small || g_small)
@@ -284,11 +367,13 @@ static void *presentation_main(void *unused) {
         bool animate = active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS;
         if (active == UI_SCREEN_RENDER_PROGRESS)
           animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
-        bool rendered = screen->dirty || transition || animate;
+        bool rendered = screen->dirty || transition || animate || volume_changed;
         if (rendered) {
           fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
           stats_media_begin(active == UI_SCREEN_MEDIA);
+          g_render_volume = volume_visible;
           screen->render(size, screen->snapshot);
+          g_render_volume = false;
           stats_media_end();
           if (active == UI_SCREEN_RENDER_PROGRESS)
             progress_render_ns = now;
@@ -313,7 +398,17 @@ static void *presentation_main(void *unused) {
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
     }
-    platform_sleep_ns(16 * NS_PER_MS_INT);
+    // New snapshots wake presentation immediately. The deadline only refreshes
+    // animations, terminal geometry and idle FPS counters; rendering time is
+    // part of the interval rather than an additional delay after each frame.
+    mutex_lock(&g_mutex);
+    int pending_screen = atomic_load(&g_published_screen);
+    bool pending = g_redraw || pending_screen != g_active ||
+                   (pending_screen >= 0 && g_screens[pending_screen].dirty);
+    uint64_t now = time_get_ns();
+    if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
+      cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
+    mutex_unlock(&g_mutex);
   }
   fps_counter_destroy(g_fps);
   g_fps = NULL;
@@ -340,6 +435,12 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI render completion condition");
     }
+    if (cond_init(&g_render_requested, "ui_render_requested") != 0) {
+      cond_destroy(&g_render_done);
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI presentation condition");
+    }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
@@ -349,6 +450,7 @@ static asciichat_error_t controller_start(void) {
       NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
+      cond_destroy(&g_render_requested);
       cond_destroy(&g_render_done);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
@@ -519,7 +621,19 @@ static void render_text(terminal_size_t size, const void *data) {
   const text_snapshot_t *text = data;
   if (!text->media || GET_OPTION(snapshot_mode) || !platform_isatty(g_render_fd >= 0 ? g_render_fd : text->fd) ||
       (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows)) {
-    ui_controller_write(text->fd, text->text, text->len);
+    if (text->media && g_render_volume) {
+      frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+      if (buffer) {
+        frame_buffer_append(buffer, text->text, text->len);
+        append_volume(buffer, size);
+        ui_controller_write(text->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+        frame_buffer_destroy(buffer);
+      } else {
+        ui_controller_write(text->fd, text->text, text->len);
+      }
+    } else {
+      ui_controller_write(text->fd, text->text, text->len);
+    }
     return;
   }
   // A paused frame can outlive its original dimensions. Clip its rows instead
@@ -540,6 +654,8 @@ static void render_text(terminal_size_t size, const void *data) {
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
     }
+    if (g_render_volume)
+      append_volume(buffer, size);
     ui_controller_write(text->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   }
   if (buffer)
@@ -553,6 +669,7 @@ void ui_controller_redraw(void) {
     return;
   mutex_lock(&g_mutex);
   g_redraw = true;
+  cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
 }
 
@@ -576,12 +693,17 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
 void ui_controller_shutdown(void) {
   if (!lifecycle_destroy_once(&g_lifecycle))
     return;
+  mutex_lock(&g_mutex);
   atomic_store_bool(&g_presentation_stop_requested, true);
+  cond_signal(&g_render_requested);
+  mutex_unlock(&g_mutex);
   asciichat_thread_join(&g_thread, NULL);
+  atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
   }
+  cond_destroy(&g_render_requested);
   cond_destroy(&g_render_done);
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);

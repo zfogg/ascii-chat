@@ -208,6 +208,14 @@ ascii-chat mirror --file music.mp4 --audio-source media --fft
 ascii-chat client --audio-source call --fft
 ```
 
+**Client video uploads:**
+
+The CLI defaults to `--video-codec auto`: it tries HEVC (H.265), then H.264, then
+uncompressed RGB. If encoding fails during a call, automatic mode advances through
+the same order. Explicit `--video-codec hevc` and `--video-codec h264` require that
+encoder and report an error if it cannot encode; `--video-codec raw` bypasses
+encoding for troubleshooting. `ASCII_CHAT_VIDEO_CODEC` sets the same preference.
+
 **Shell Completions:**
 
 Tab completion is available for Bash, Fish, Zsh, and PowerShell. Completions are auto-generated from the options registry at build time.

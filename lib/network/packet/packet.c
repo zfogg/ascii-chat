@@ -41,9 +41,9 @@
  * Calculate timeout based on packet size
  * Large packets need more time to transmit reliably
  *
- * @note Returns timeout in seconds for use with send/recv APIs
+ * @note Returns timeout in nanoseconds for use with send/recv APIs
  */
-static uint64_t calculate_packet_timeout(size_t packet_size) {
+uint64_t packet_send_timeout_ns(size_t packet_size) {
   uint64_t base_timeout = SEND_TIMEOUT * NS_PER_SEC_INT;
 
   // For large packets, increase timeout proportionally
@@ -299,6 +299,8 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
+  if (len && !data)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet payload");
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                             .type = HOST_TO_NET_U16((uint16_t)type),
                             .length = HOST_TO_NET_U32((uint32_t)len),
@@ -306,34 +308,12 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
                             .client_id = HOST_TO_NET_U32(0)}; // Always initialize client_id to 0 in network byte order
 
   // Calculate timeout based on packet size (in nanoseconds)
-  uint64_t timeout = calculate_packet_timeout(len);
+  uint64_t timeout = packet_send_timeout_ns(len);
 
-  // Send header first
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
-  if (sent < 0) {
-    // Error context is already set by send_with_timeout
-    return ERROR_NETWORK;
-  }
-  if ((size_t)sent != sizeof(header)) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet header. Sent %zd/%zu bytes", sent, sizeof(header));
-  }
-
-  // Send payload if present
-  if (len > 0 && data) {
-    // Check socket validity before sending payload to avoid race conditions
-    if (!socket_is_valid(sockfd)) {
-      return SET_ERRNO(ERROR_NETWORK, "Socket became invalid between header and payload send");
-    }
-    sent = send_with_timeout(sockfd, data, len, timeout);
-    // Check for error first to avoid signed/unsigned comparison issues
-    if (sent < 0) {
-      // Error context is already set by send_with_timeout
-      return ERROR_NETWORK;
-    }
-    if ((size_t)sent != len) {
-      return SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet payload. Sent %zd/%zu bytes", sent, len);
-    }
-  }
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {data, len}};
+  asciichat_error_t result = socket_sendv_all(sockfd, slices, 2, timeout);
+  if (result != ASCIICHAT_OK)
+    return result;
 
 #ifdef DEBUG_NETWORK
   log_debug("Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno, SAFE_STRERROR(errno));
@@ -391,7 +371,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
     payload = buffer_pool_alloc(NULL, pkt_len);
 
     // Use adaptive timeout for large packets
-    uint64_t recv_timeout = calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
       buffer_pool_free(NULL, payload, pkt_len);
@@ -653,7 +633,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
       return PACKET_RECV_ERROR;
     }
 
-    uint64_t recv_timeout = MAX(timeout_ns, calculate_packet_timeout(pkt_len));
+    uint64_t recv_timeout = MAX(timeout_ns, packet_send_timeout_ns(pkt_len));
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
@@ -743,7 +723,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
   memcpy(packet_buf, &header, sizeof(packet_header_t));
 
   if (pkt_len > 0) {
-    uint64_t recv_timeout = calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
     received = recv_with_timeout(sockfd, packet_buf + sizeof(packet_header_t), pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);

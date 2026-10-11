@@ -35,10 +35,9 @@ typedef enum {
  * It receives the full options struct and can perform cross-field validation.
  *
  * @param options_struct Full options struct (cast to void* for generic use)
- * @param error_msg Output: error message (allocated by validator, caller frees)
- * @return true if valid, false if invalid
+ * @return true if valid, false after setting error context with SET_ERRNO() if invalid
  */
-typedef bool (*builder_validate_fn_t)(const void *options_struct, char **error_msg);
+typedef bool (*builder_validate_fn_t)(const void *options_struct);
 
 /**
  * @brief Option metadata for config file parsing
