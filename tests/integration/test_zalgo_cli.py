@@ -20,10 +20,12 @@ base = [
 
 
 def run(args, environment=env):
+    """Capture one synthetic frame with optional CLI/environment overrides."""
     return subprocess.run(base + args, env=environment, capture_output=True, timeout=30)
 
 
 def marks(data):
+    """Count combining marks without counting base glyphs or whitespace."""
     return sum(bool(unicodedata.combining(c)) for c in data.decode("utf-8"))
 
 
@@ -48,6 +50,10 @@ assert marks(run(["--zalgo"]).stdout) == counts[2]
 assert marks(run(["--zalgo", "7"]).stdout) == counts[6]
 assert marks(run([], dict(env, ASCII_CHAT_ZALGO="5")).stdout) == counts[4]
 assert marks(run(["--zalgo=2"], dict(env, ASCII_CHAT_ZALGO="8")).stdout) == counts[1]
+assert marks(run(["--zalgo=3", "--utf8=true"]).stdout) == counts[2]
+disabled_utf8 = run(["--zalgo=3", "--utf8=false"])
+assert disabled_utf8.returncode != 0
+assert marks(disabled_utf8.stdout) == 0
 for value in ("0", "11", "-1", "1.5", "abc", "", "99999999999999999999"):
     result = run([f"--zalgo={value}"])
     assert result.returncode != 0, value

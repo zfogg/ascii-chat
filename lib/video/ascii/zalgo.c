@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
+/** Mix cell coordinates into a repeatable distribution without global random state. */
 static uint32_t zalgo_hash(uint32_t value) {
   value ^= value >> 16;
   value *= UINT32_C(0x7feb352d);
@@ -12,7 +13,7 @@ static uint32_t zalgo_hash(uint32_t value) {
   return value ^ (value >> 16);
 }
 
-// Preserve CSI, OSC and string controls without decorating their contents.
+/** Return the length of one escape sequence, preserving CSI, OSC and string-control contents. */
 static size_t zalgo_escape_length(const char *s, size_t n) {
   if (n < 2)
     return n;
@@ -41,7 +42,8 @@ static size_t zalgo_escape_length(const char *s, size_t n) {
   return i;
 }
 
-asciichat_error_t zalgo_apply(const char *input, size_t length, int level, char **output) {
+/** Decorate a frame within the caller's byte budget; errors leave no partially decorated output. */
+asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_t max_output_bytes, char **output) {
   if (!output)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing Zalgo output pointer");
   *output = NULL;
@@ -97,6 +99,11 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, char 
   if (!expanded)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot expand empty Zalgo frame");
   size_t n = strlen(expanded);
+  if (n > max_output_bytes) {
+    SAFE_FREE(expanded);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo frame exceeds output limit");
+  }
+  size_t mark_budget = max_output_bytes - n;
   unsigned index = (unsigned)level - 1;
   size_t factor = 1 + 2 * maximum[index];
   // Every source byte introduces at most the selected level's mark limit.
@@ -104,7 +111,8 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, char 
     SAFE_FREE(expanded);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo frame is too large");
   }
-  char *result = SAFE_MALLOC(n * factor + 1, char *);
+  size_t capacity = n * factor < max_output_bytes ? n * factor : max_output_bytes;
+  char *result = SAFE_MALLOC(capacity + 1, char *);
   char *dst = result;
   uint32_t row = 0, col = 0;
   for (size_t i = 0; i < n;) {
@@ -130,6 +138,12 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, char 
         continue;
       // A shared fraction makes mark counts monotonic as intensity increases.
       unsigned count = minimum[index] + ((hash >> 8) % 256) * (maximum[index] - minimum[index] + 1) / 256;
+      if (count * 2 > mark_budget) {
+        SAFE_FREE(expanded);
+        SAFE_FREE(result);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo decoration exceeds output limit");
+      }
+      mark_budget -= count * 2;
       for (unsigned mark = 0; mark < count; mark++) {
         uint32_t choice = zalgo_hash(hash + mark);
         uint16_t cp = mark == 0 ? short_marks[choice % 5] : stack_marks[choice % 12];

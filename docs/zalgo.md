@@ -35,6 +35,11 @@ Use a UTF-8 terminal and a font with combining-mark support. On Windows, run
 `chcp 65001` in the terminal before starting ascii-chat. Stacking and clipping
 vary by terminal and font; high levels deliberately obscure the image.
 
+`--utf8=true` overrides automatic detection. `--utf8=false` is incompatible
+with Zalgo, including piped snapshots. If decoration would exceed the
+presenter's 16 MiB frame limit (including cursor controls), the original frame
+is displayed and a rate-limited warning is logged.
+
 The effect applies locally to terminal output and text snapshots, including
 `--strip-ansi` output. It does not modify network frames, logs, status screens,
 or `--render-file` video exports. Half-block and other Unicode palettes retain

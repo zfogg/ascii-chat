@@ -2,11 +2,36 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <string.h>
+#include <ascii-chat/ui/controller.h>
+
+Test(zalgo, respects_output_budget) {
+  char *output = NULL;
+  cr_assert_eq(zalgo_apply("@", 1, 10, SIZE_MAX, &output), ASCIICHAT_OK);
+  size_t exact_size = strlen(output);
+  SAFE_FREE(output);
+  cr_assert_eq(zalgo_apply("@", 1, 10, exact_size, &output), ASCIICHAT_OK);
+  SAFE_FREE(output);
+  cr_assert_neq(zalgo_apply("@", 1, 10, exact_size - 1, &output), ASCIICHAT_OK);
+  cr_assert_null(output);
+  cr_assert_neq(zalgo_apply("abc", 3, 1, 2, &output), ASCIICHAT_OK);
+  cr_assert_null(output);
+}
+
+Test(zalgo, rejects_dense_frame_exceeding_presenter_budget) {
+  size_t length = 1024 * 1024 - 1;
+  char *input = SAFE_MALLOC(length + 1, char *);
+  memset(input, '@', length);
+  input[length] = '\0';
+  char *output = NULL;
+  cr_assert_neq(zalgo_apply(input, length, 10, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &output), ASCIICHAT_OK);
+  cr_assert_null(output);
+  SAFE_FREE(input);
+}
 
 Test(zalgo, preserves_whitespace_unicode_and_controls) {
   const char *source = " \t\r\n\xc3\xa9\x1b[31m\x1b]0;title\a\x1b[0m";
   char *output = NULL;
-  cr_assert_eq(zalgo_apply(source, strlen(source), 10, &output), ASCIICHAT_OK);
+  cr_assert_eq(zalgo_apply(source, strlen(source), 10, SIZE_MAX, &output), ASCIICHAT_OK);
   cr_assert_str_eq(output, source);
   SAFE_FREE(output);
 }
@@ -15,8 +40,8 @@ Test(zalgo, expands_rep_before_decoration) {
   char *compressed = NULL, *plain = NULL;
   const char *source = "A\x1b[19b\n";
   const char *expanded = "AAAAAAAAAAAAAAAAAAAA\n";
-  cr_assert_eq(zalgo_apply(source, strlen(source), 10, &compressed), ASCIICHAT_OK);
-  cr_assert_eq(zalgo_apply(expanded, strlen(expanded), 10, &plain), ASCIICHAT_OK);
+  cr_assert_eq(zalgo_apply(source, strlen(source), 10, SIZE_MAX, &compressed), ASCIICHAT_OK);
+  cr_assert_eq(zalgo_apply(expanded, strlen(expanded), 10, SIZE_MAX, &plain), ASCIICHAT_OK);
   cr_assert_str_eq(compressed, plain);
   SAFE_FREE(compressed);
   SAFE_FREE(plain);
@@ -24,19 +49,19 @@ Test(zalgo, expands_rep_before_decoration) {
 
 Test(zalgo, rejects_invalid_levels) {
   char *output = NULL;
-  cr_assert_neq(zalgo_apply("abc", 3, 0, &output), ASCIICHAT_OK);
+  cr_assert_neq(zalgo_apply("abc", 3, 0, SIZE_MAX, &output), ASCIICHAT_OK);
   cr_assert_null(output);
-  cr_assert_neq(zalgo_apply("abc", 3, 11, &output), ASCIICHAT_OK);
+  cr_assert_neq(zalgo_apply("abc", 3, 11, SIZE_MAX, &output), ASCIICHAT_OK);
   cr_assert_null(output);
 }
 
 Test(zalgo, rejects_unbounded_rep) {
   const char *source = "A\x1b[4294967295b";
   char *output = NULL;
-  cr_assert_neq(zalgo_apply(source, strlen(source), 10, &output), ASCIICHAT_OK);
+  cr_assert_neq(zalgo_apply(source, strlen(source), 10, SIZE_MAX, &output), ASCIICHAT_OK);
   cr_assert_null(output);
   source = "A\x1b[999999999999999999999b";
-  cr_assert_neq(zalgo_apply(source, strlen(source), 10, &output), ASCIICHAT_OK);
+  cr_assert_neq(zalgo_apply(source, strlen(source), 10, SIZE_MAX, &output), ASCIICHAT_OK);
   cr_assert_null(output);
 }
 
@@ -47,8 +72,8 @@ Test(zalgo, deterministic_bounded_and_increasing) {
   size_t previous = 1000;
   for (int level = 1; level <= 10; level++) {
     char *first = NULL, *second = NULL;
-    cr_assert_eq(zalgo_apply(input, 1000, level, &first), ASCIICHAT_OK);
-    cr_assert_eq(zalgo_apply(input, 1000, level, &second), ASCIICHAT_OK);
+    cr_assert_eq(zalgo_apply(input, 1000, level, SIZE_MAX, &first), ASCIICHAT_OK);
+    cr_assert_eq(zalgo_apply(input, 1000, level, SIZE_MAX, &second), ASCIICHAT_OK);
     cr_assert_str_eq(first, second);
     size_t length = strlen(first);
     cr_assert_geq(length, previous);
