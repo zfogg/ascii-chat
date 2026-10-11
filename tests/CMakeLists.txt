@@ -946,3 +946,31 @@ if(BUILD_TESTS)
     set_tests_properties(client-like-lifecycle PROPERTIES
         LABELS "integration" TIMEOUT 120)
 endif()
+
+# Exercises the production discovery state machine without external services.
+if(BUILD_TESTS)
+    add_executable(test-discovery-session-process standalone/discovery/session_process_test.c)
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared)
+    else()
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    endif()
+    target_include_directories(test-discovery-session-process PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated
+        ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-discovery-session-process PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-discovery-session-process)
+    set_target_properties(test-discovery-session-process PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} test-discovery-session-process)
+        endif()
+    endforeach()
+    add_test(NAME discovery-session-process COMMAND test-discovery-session-process)
+    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration" TIMEOUT 60)
+endif()

@@ -1514,11 +1514,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   }
 }
 
-asciichat_error_t discovery_session_process(discovery_session_t *session, int64_t timeout_ns) {
-  if (!session) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-  }
-
+static asciichat_error_t discovery_session_send_keepalive(discovery_session_t *session) {
   // Media traffic uses a separate transport; keep the signaling connection alive.
   if (session->acds_transport && acip_transport_is_connected(session->acds_transport)) {
     uint64_t now_ns = time_get_ns();
@@ -1529,574 +1525,605 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       session->last_acds_keepalive_ns = now_ns;
     }
   }
-  // Handle state-specific processing
-  switch (session->state) {
-  case DISCOVERY_STATE_WAITING_PEER: {
-    // Wait for PARTICIPANT_JOINED notification from ACDS
-    // Note: don't use a hard timeout here - let the outer process timeout (snapshot delay) control max wait
-    // The discovery_run() loop will keep calling this until session becomes active or process exits
-    uint64_t now_ns = time_get_ns();
-    uint64_t wait_duration = now_ns - session->waiting_peer_start_ns;
 
-    log_debug("★ WAITING_PEER: duration=%.3fs (no timeout, waiting for peer...)", wait_duration / 1e9);
+  return ASCIICHAT_OK;
+}
 
-    if (session->acds_transport && timeout_ns > 0) {
-      // Do not set socket timeout - let receive_packet_secure use its own timeout
-      // Setting a short socket timeout conflicts with its hardcoded 1-second timeout
-      packet_type_t type;
-      void *data = NULL;
-      size_t len = 0;
-      void *alloc_buffer = NULL;
+static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *session, int64_t timeout_ns) {
+  // Wait for PARTICIPANT_JOINED notification from ACDS
+  // Note: don't use a hard timeout here - let the outer process timeout (snapshot delay) control max wait
+  // The discovery_run() loop will keep calling this until session becomes active or process exits
+  uint64_t now_ns = time_get_ns();
+  uint64_t wait_duration = now_ns - session->waiting_peer_start_ns;
 
-      // Try to receive a packet
-      asciichat_error_t recv_result =
-          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-      if (recv_result == ASCIICHAT_OK) {
-        if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
-          log_info("Peer joined session, transitioning to negotiation");
-          set_state(session, DISCOVERY_STATE_NEGOTIATING);
-          buffer_pool_free(NULL, alloc_buffer, 0);
-        } else {
-          // Got some other packet, handle it or ignore
-          log_debug("Received packet type %d while waiting for peer", type);
-          buffer_pool_free(NULL, alloc_buffer, 0);
-        }
-      } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
-        // Timeout is normal, just return
+  log_debug("★ WAITING_PEER: duration=%.3fs (no timeout, waiting for peer...)", wait_duration / 1e9);
+
+  if (session->acds_transport && timeout_ns > 0) {
+    // Do not set socket timeout - let receive_packet_secure use its own timeout
+    // Setting a short socket timeout conflicts with its hardcoded 1-second timeout
+    packet_type_t type;
+    void *data = NULL;
+    size_t len = 0;
+    void *alloc_buffer = NULL;
+
+    // Try to receive a packet
+    asciichat_error_t recv_result =
+        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    if (recv_result == ASCIICHAT_OK) {
+      if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+        log_info("Peer joined session, transitioning to negotiation");
+        set_state(session, DISCOVERY_STATE_NEGOTIATING);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       } else {
-        log_debug("Packet receive error while waiting for peer: %d", recv_result);
+        // Got some other packet, handle it or ignore
+        log_debug("Received packet type %d while waiting for peer", type);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       }
+    } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
+      // Timeout is normal, just return
     } else {
-      // Fallback to sleep if no timeout or invalid transport
-      platform_sleep_us(timeout_ns / 1000);
+      log_debug("Packet receive error while waiting for peer: %d", recv_result);
     }
-    break;
+  } else {
+    // Fallback to sleep if no timeout or invalid transport
+    platform_sleep_us(timeout_ns / 1000);
+  }
+  return ASCIICHAT_OK;
+}
+
+static void discovery_session_begin_negotiation(discovery_session_t *session) {
+  // Initialize negotiation
+  negotiate_init(&session->negotiate, session->session_id, session->participant_id, session->is_initiator);
+  log_info("Starting NAT negotiation (initiator=%d)", session->is_initiator);
+
+  // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
+  asciichat_error_t send_result = send_network_quality_to_acds(session);
+  if (send_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial NETWORK_QUALITY: %d", send_result);
   }
 
-  case DISCOVERY_STATE_NEGOTIATING: {
-    // Handle NAT negotiation
-    if (session->negotiate.state == NEGOTIATE_STATE_INIT) {
-      // Initialize negotiation
-      negotiate_init(&session->negotiate, session->session_id, session->participant_id, session->is_initiator);
-      log_info("Starting NAT negotiation (initiator=%d)", session->is_initiator);
+  // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
+  // For now in discovery mode, assume we're the only one and become host immediately
+  // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
+  log_info("Proceeding as host (ACDS cannot relay peer quality in solo mode)");
+  session->negotiate.our_quality.detection_complete = true;
+  session->negotiate.peer_quality_received = true;
+  memset(&session->negotiate.peer_quality, 0, sizeof(session->negotiate.peer_quality));
+  // Mark peer quality as detected but with worst NAT type so we win host election
+  session->negotiate.peer_quality.detection_complete = true;
+  session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
+}
 
-      // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
-      asciichat_error_t send_result = send_network_quality_to_acds(session);
-      if (send_result != ASCIICHAT_OK) {
-        log_warn("Failed to send initial NETWORK_QUALITY: %d", send_result);
-      }
+static void discovery_session_receive_host_announcement(discovery_session_t *session) {
+  if (session->acds_transport && !session->is_initiator && !session->host_address[0]) {
+    packet_type_t type;
+    void *data = NULL;
+    size_t len = 0;
+    void *alloc_buffer = NULL;
 
-      // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
-      // For now in discovery mode, assume we're the only one and become host immediately
-      // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
-      log_info("Proceeding as host (ACDS cannot relay peer quality in solo mode)");
-      session->negotiate.our_quality.detection_complete = true;
-      session->negotiate.peer_quality_received = true;
-      memset(&session->negotiate.peer_quality, 0, sizeof(session->negotiate.peer_quality));
-      // Mark peer quality as detected but with worst NAT type so we win host election
-      session->negotiate.peer_quality.detection_complete = true;
-      session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
+    asciichat_error_t recv_result =
+        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
+      acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
+      log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
+      SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
+      session->host_port = announcement->host_port;
+      buffer_pool_free(NULL, alloc_buffer, 0);
+      // Continue to host role determination below
+    } else if (recv_result == ASCIICHAT_OK) {
+      buffer_pool_free(NULL, alloc_buffer, 0);
     }
+  }
+}
 
-    // Check for HOST_ANNOUNCEMENT from ACDS (in case we're waiting for host discovery)
-    if (session->acds_transport && !session->is_initiator && !session->host_address[0]) {
-      packet_type_t type;
-      void *data = NULL;
-      size_t len = 0;
-      void *alloc_buffer = NULL;
+static asciichat_error_t discovery_session_select_host(discovery_session_t *session) {
+  // Determine host role (now that peer_quality is set)
+  if (session->negotiate.peer_quality_received && session->negotiate.state != NEGOTIATE_STATE_COMPARING) {
+    log_info("Determining host role based on NAT qualities...");
+    asciichat_error_t result = negotiate_determine_result(&session->negotiate);
+    if (result == ASCIICHAT_OK) {
+      session->is_host = session->negotiate.we_are_host;
+      stats_runtime_connection_state(session->is_host ? "discovery host" : "discovery participant");
 
-      asciichat_error_t recv_result =
-          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-      if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
-        acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
-        log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
-        SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
-        session->host_port = announcement->host_port;
-        buffer_pool_free(NULL, alloc_buffer, 0);
-        // Continue to host role determination below
-      } else if (recv_result == ASCIICHAT_OK) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
-      }
-    }
+      if (session->is_host) {
+        // We become the host
+        log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)",
+                 nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
+        memcpy(session->host_id, session->participant_id, 16);
+        SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
+        session->host_port = session->negotiate.host_port;
 
-    // Determine host role (now that peer_quality is set)
-    if (session->negotiate.peer_quality_received && session->negotiate.state != NEGOTIATE_STATE_COMPARING) {
-      log_info("Determining host role based on NAT qualities...");
-      asciichat_error_t result = negotiate_determine_result(&session->negotiate);
-      if (result == ASCIICHAT_OK) {
-        session->is_host = session->negotiate.we_are_host;
-        stats_runtime_connection_state(session->is_host ? "discovery host" : "discovery participant");
-
-        if (session->is_host) {
-          // We become the host
-          log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)",
-                   nat_compute_tier(&session->negotiate.our_quality),
-                   nat_compute_tier(&session->negotiate.peer_quality));
-          memcpy(session->host_id, session->participant_id, 16);
-          SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
-          session->host_port = session->negotiate.host_port;
-
-          // Fallback to localhost if NAT detection failed to determine address
-          if (!session->host_address[0]) {
-            log_warn("NAT address empty, using localhost fallback");
-            SAFE_STRNCPY(session->host_address, "127.0.0.1", sizeof(session->host_address));
-          }
-
-          set_state(session, DISCOVERY_STATE_STARTING_HOST);
-        } else {
-          // They are host (shouldn't happen in solo mode, but handle it)
-          log_info("👤 NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)",
-                   session->negotiate.host_address, session->negotiate.host_port,
-                   nat_compute_tier(&session->negotiate.our_quality),
-                   nat_compute_tier(&session->negotiate.peer_quality));
-          SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
-          session->host_port = session->negotiate.host_port;
-
-          // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
-          if (!session->host_address[0]) {
-            log_info("Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...");
-            // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
-            break;
-          }
-
-          set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+        // Fallback to localhost if NAT detection failed to determine address
+        if (!session->host_address[0]) {
+          log_warn("NAT address empty, using localhost fallback");
+          SAFE_STRNCPY(session->host_address, "127.0.0.1", sizeof(session->host_address));
         }
+
+        set_state(session, DISCOVERY_STATE_STARTING_HOST);
       } else {
-        log_error("Failed to determine negotiation result: %d", result);
-        set_error(session, result, "Host election failed");
-      }
-    }
-    break;
-  }
+        // They are host (shouldn't happen in solo mode, but handle it)
+        log_info("👤 NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)",
+                 session->negotiate.host_address, session->negotiate.host_port,
+                 nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
+        SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
+        session->host_port = session->negotiate.host_port;
 
-  case DISCOVERY_STATE_STARTING_HOST: {
-    // Start hosting
-    if (!session->host_ctx) {
-      // Create host context with configured port
-      int host_port = GET_OPTION(port);
-
-      session_host_config_t hconfig = {
-          .port = host_port,
-          .ipv4_address = "0.0.0.0",
-          .max_clients = 32,
-          .encryption_enabled = true,
-      };
-
-      session->host_ctx = session_host_create(&hconfig);
-      if (!session->host_ctx) {
-        log_error("Failed to create host context");
-        set_error(session, ERROR_MEMORY, "Failed to create host context");
-        break;
-      }
-
-      // Start listening
-      asciichat_error_t hstart = session_host_start(session->host_ctx);
-      if (hstart != ASCIICHAT_OK) {
-        log_error("Failed to start host: %d", hstart);
-        set_error(session, hstart, "Failed to start host");
-        break;
-      }
-
-      log_info("Host started, listening for connections");
-    }
-
-    // Notify listeners that we're ready
-    if (session->on_session_ready) {
-      session->on_session_ready(session->session_string, session->callback_user_data);
-    }
-
-    // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
-    int host_port = GET_OPTION(port);
-    acip_host_announcement_t announcement = {0};
-    memcpy(announcement.session_id, session->session_id, 16);
-    memcpy(announcement.host_id, session->host_id, 16);
-    SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
-    announcement.host_port = host_port;
-    announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
-
-    if (session->acds_transport) {
-      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
-                                sizeof(announcement), 0);
-      log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
-    }
-
-    set_state(session, DISCOVERY_STATE_ACTIVE);
-    break;
-  }
-
-  case DISCOVERY_STATE_CONNECTING_HOST: {
-    // Connect to host as participant
-
-    // For WebRTC sessions, wait for DataChannel to open
-    if (session->session_type == SESSION_TYPE_WEBRTC) {
-      // Check if transport is ready (DataChannel opened)
-      if (session->webrtc_transport_ready) {
-        log_info("WebRTC DataChannel established, transitioning to ACTIVE state");
-        set_state(session, DISCOVERY_STATE_ACTIVE);
-        break;
-      }
-
-      // If not ready and we haven't initiated connection yet, initiate it
-      if (session->peer_manager && !session->webrtc_connection_initiated) {
-        log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1,
-                 GET_OPTION(webrtc_reconnect_attempts) + 1);
-
-        // Initiate connection (generates offer, triggers SDP exchange)
-        asciichat_error_t conn_result =
-            webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
-
-        if (conn_result != ASCIICHAT_OK) {
-          log_error("Failed to initiate WebRTC connection: %d", conn_result);
-          set_error(session, conn_result, "Failed to initiate WebRTC connection");
-          break;
+        // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
+        if (!session->host_address[0]) {
+          log_info("Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...");
+          // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
+          return ASCIICHAT_OK;
         }
 
-        log_info("WebRTC connection initiated, waiting for DataChannel...");
-        session->webrtc_connection_initiated = true;
-        session->webrtc_last_attempt_time_ms = APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
-      }
-
-      // Check for ICE gathering timeout on all peers
-      if (session->webrtc_connection_initiated && session->peer_manager) {
-        int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
-        int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
-
-        if (timed_out_count > 0) {
-          log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout",
-                    timed_out_count, timeout_ms);
-
-          // Check if we have retries remaining
-          int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
-          if (session->webrtc_retry_attempt < max_attempts) {
-            // Calculate exponential backoff delay
-            uint32_t backoff_ms = calculate_backoff_delay_ms(session->webrtc_retry_attempt);
-
-            log_warn("WebRTC connection attempt %d/%d failed, retrying in %ums...", session->webrtc_retry_attempt + 1,
-                     max_attempts + 1, backoff_ms);
-
-            // Wait for backoff period
-            APP_CALLBACK_VOID(platform_pump_events);
-            APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
-
-            // Destroy old peer manager
-            webrtc_peer_manager_destroy(session->peer_manager);
-            session->peer_manager = NULL;
-
-            // Re-initialize peer manager for retry
-            asciichat_error_t reinit_result = initialize_webrtc_peer_manager(session);
-            if (reinit_result != ASCIICHAT_OK) {
-              log_error("Failed to re-initialize WebRTC for retry: %d", reinit_result);
-              set_error(session, reinit_result, "Failed to re-initialize WebRTC for retry");
-
-              // If --prefer-webrtc is set, this is a fatal error
-              if (GET_OPTION(prefer_webrtc) || GET_OPTION(webrtc_relay_only)) {
-                log_fatal("WebRTC connection failed and direct fallback is disabled");
-                set_state(session, DISCOVERY_STATE_FAILED);
-                return ERROR_NETWORK_TIMEOUT;
-              }
-
-              break; // Exit this case to allow fallback to TCP
-            }
-
-            // Reset connection state for retry
-            session->webrtc_connection_initiated = false;
-            session->webrtc_retry_attempt++;
-
-            log_info("WebRTC peer manager re-initialized for attempt %d/%d", session->webrtc_retry_attempt + 1,
-                     max_attempts + 1);
-          } else {
-            // No more retries - connection failed
-            log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
-
-            // Set error state - WebRTC connection failed
-            char error_msg[256];
-            snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)",
-                     max_attempts + 1, timeout_ms);
-            set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
-
-            // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
-            if (GET_OPTION(prefer_webrtc) || GET_OPTION(webrtc_relay_only)) {
-              log_fatal("WebRTC connection failed and direct fallback is disabled");
-              set_state(session, DISCOVERY_STATE_FAILED);
-              return ERROR_NETWORK_TIMEOUT;
-            }
-
-            break; // Exit this case to allow fallback to TCP
-          }
-        }
-      }
-
-      // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
-      // while waiting for DataChannel to open
-      if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
-        packet_type_t type;
-        void *data = NULL;
-        size_t len = 0;
-        void *alloc_buffer = NULL;
-
-        asciichat_error_t recv_result =
-            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-
-        if (recv_result == ASCIICHAT_OK) {
-          // Dispatch to appropriate handler
-          handle_acds_webrtc_packet(session, type, data, len);
-          buffer_pool_free(NULL, alloc_buffer, 0);
-        } else if (!acip_transport_is_connected(session->acds_transport)) {
-          set_error(session, recv_result, "Discovery signaling connection closed during WebRTC negotiation");
-          set_state(session, DISCOVERY_STATE_FAILED);
-          return recv_result;
-        } else {
-          log_debug("Failed to receive ACDS packet: %d", recv_result);
-        }
-      }
-
-      // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
-      // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
-      break;
-    }
-
-    if (!session->participant_ctx) {
-      // Create participant context for this session
-      session_participant_config_t pconfig = {
-          .address = session->host_address,
-          .port = session->host_port,
-          .enable_audio = true,
-          .enable_video = true,
-          .encryption_enabled = true,
-      };
-
-      session->participant_ctx = session_participant_create(&pconfig);
-      if (!session->participant_ctx) {
-        log_error("Failed to create participant context");
-        set_error(session, ERROR_MEMORY, "Failed to create participant context");
-        break;
-      }
-
-      // Attempt connection
-      asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
-      if (pconn != ASCIICHAT_OK) {
-        log_error("Failed to connect as participant: %d", pconn);
-        // Stay in this state, will retry on next process() call
-        break;
-      }
-
-      log_info("Connected to host, performing crypto handshake...");
-
-      // Perform crypto handshake with server
-      // Get the socket from participant context
-      socket_t participant_socket = session_participant_get_socket(session->participant_ctx);
-      if (participant_socket == INVALID_SOCKET_VALUE) {
-        log_error("Failed to get socket from participant context");
-        set_error(session, ERROR_NETWORK, "Failed to get participant socket");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      // Step 1: Send client protocol version
-      log_debug("Sending protocol version to server...");
-      protocol_version_packet_t client_version = {0};
-      client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
-      client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-      client_version.supports_encryption = 1;                // We support encryption
-      client_version.compression_algorithms = 0;
-      client_version.compression_threshold = 0;
-      client_version.feature_flags = 0;
-
-      int result = send_protocol_version_packet(participant_socket, &client_version);
-      if (result != 0) {
-        log_error("Failed to send protocol version to server");
-        set_error(session, ERROR_NETWORK, "Failed to send protocol version");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      // Step 2: Receive server protocol version
-      log_debug("Receiving server protocol version...");
-      packet_type_t packet_type;
-      void *payload = NULL;
-      size_t payload_len = 0;
-
-      int recv_result = receive_packet(participant_socket, &packet_type, &payload, &payload_len);
-      if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-        log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
-        if (payload) {
-          buffer_pool_free(NULL, payload, payload_len);
-        }
-        set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      if (payload_len != sizeof(protocol_version_packet_t)) {
-        log_error("Invalid protocol version packet size: %zu", payload_len);
-        buffer_pool_free(NULL, payload, payload_len);
-        set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      protocol_version_packet_t server_version;
-      memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-      buffer_pool_free(NULL, payload, payload_len);
-
-      if (!server_version.supports_encryption) {
-        NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
-        set_error(session, ERROR_NETWORK, "Server does not support encryption");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      log_info("Server protocol version: %u.%u (encryption: yes)", NET_TO_HOST_U16(server_version.protocol_version),
-               NET_TO_HOST_U16(server_version.protocol_revision));
-
-      // Step 3: Send crypto capabilities
-      log_debug("Sending crypto capabilities...");
-      crypto_capabilities_packet_t client_caps = {0};
-      client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
-      client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
-      client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
-      client_caps.requires_verification = 0;
-      client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
-      client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
-      client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
-
-      result = send_crypto_capabilities_packet(participant_socket, &client_caps);
-      if (result != 0) {
-        log_error("Failed to send crypto capabilities");
-        set_error(session, ERROR_NETWORK, "Failed to send crypto capabilities");
-        session_participant_disconnect(session->participant_ctx);
-        break;
-      }
-
-      log_info("Crypto handshake initiated successfully");
-      log_warn("*** Connected to host as participant - transitioning to ACTIVE ***");
-    }
-
-    // Check if connection is established
-    bool ctx_valid = session->participant_ctx != NULL;
-    bool is_connected = ctx_valid ? session_participant_is_connected(session->participant_ctx) : false;
-    log_debug("discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d",
-              session->participant_ctx, ctx_valid, is_connected);
-
-    if (ctx_valid && !is_connected) {
-      // Log more details about why it's not connected
-      log_debug("discovery_session_process: CONNECTING_HOST - context exists but not connected yet");
-    }
-
-    if (is_connected) {
-      log_info("Participant connection confirmed, transitioning to ACTIVE state");
-      set_state(session, DISCOVERY_STATE_ACTIVE);
-    } else {
-      log_debug("discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
-                "is_connected=%d)",
-                ctx_valid, is_connected);
-    }
-    break;
-  }
-
-  case DISCOVERY_STATE_ACTIVE:
-    // Receive and handle ACDS packets for WebRTC signaling (NEW)
-    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
-        acip_transport_has_pending_data(session->acds_transport)) {
-      packet_type_t type;
-      void *data = NULL;
-      size_t len = 0;
-      void *alloc_buffer = NULL;
-
-      asciichat_error_t recv_result =
-          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-
-      if (recv_result == ASCIICHAT_OK) {
-        // Dispatch to appropriate handler
-        handle_acds_webrtc_packet(session, type, data, len);
-        buffer_pool_free(NULL, alloc_buffer, 0);
-      }
-    }
-
-    if (session->session_type == SESSION_TYPE_WEBRTC && !session->is_host && session->peer_manager) {
-      webrtc_state_t peer_state = WEBRTC_STATE_CLOSED;
-      bool peer_found = webrtc_peer_manager_get_state(session->peer_manager, session->host_id, &peer_state);
-      uint64_t now_ms = session_get_current_time_ms();
-      bool disconnected_too_long = false;
-
-      if (peer_found && peer_state == WEBRTC_STATE_DISCONNECTED) {
-        if (session->webrtc_disconnected_since_ms == 0) {
-          session->webrtc_disconnected_since_ms = now_ms;
-        } else {
-          disconnected_too_long = now_ms - session->webrtc_disconnected_since_ms >= 5000;
-        }
-      } else {
-        session->webrtc_disconnected_since_ms = 0;
-      }
-
-      bool peer_failed = !peer_found || peer_state == WEBRTC_STATE_FAILED || peer_state == WEBRTC_STATE_CLOSED;
-      if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
-        int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
-        if (session->webrtc_retry_attempt >= max_attempts) {
-          set_error(session, ERROR_NETWORK, "WebRTC peer remained disconnected after retry attempts");
-          return ERROR_NETWORK;
-        }
-
-        log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
-        if (session->participant_ctx) {
-          acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-          session_participant_set_transport(session->participant_ctx, NULL);
-          acip_transport_destroy(transport);
-        }
-
-        // The transport has now closed its borrowed peer objects. The manager
-        // can release the failed peer before creating the next offer.
-        webrtc_peer_manager_remove_peer(session->peer_manager, session->host_id);
-        session->webrtc_transport_ready = false;
-        session->webrtc_connection_initiated = false;
-        session->webrtc_disconnected_since_ms = 0;
-        session->webrtc_retry_attempt++;
         set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
-        break;
       }
+    } else {
+      log_error("Failed to determine negotiation result: %d", result);
+      set_error(session, result, "Host election failed");
+    }
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_negotiate(discovery_session_t *session) {
+  if (session->negotiate.state == NEGOTIATE_STATE_INIT) {
+    discovery_session_begin_negotiation(session);
+  }
+  discovery_session_receive_host_announcement(session);
+  return discovery_session_select_host(session);
+}
+
+static asciichat_error_t discovery_session_start_host(discovery_session_t *session) {
+  // Start hosting
+  if (!session->host_ctx) {
+    // Create host context with configured port
+    int host_port = GET_OPTION(port);
+
+    session_host_config_t hconfig = {
+        .port = host_port,
+        .ipv4_address = "0.0.0.0",
+        .max_clients = 32,
+        .encryption_enabled = true,
+    };
+
+    session->host_ctx = session_host_create(&hconfig);
+    if (!session->host_ctx) {
+      log_error("Failed to create host context");
+      set_error(session, ERROR_MEMORY, "Failed to create host context");
+      return ASCIICHAT_OK;
     }
 
-    // Session is active - check for host disconnect
-    if (!session->is_host) {
-      // We are a participant - check if host is still alive
-      asciichat_error_t host_check = discovery_session_check_host_alive(session);
-      if (host_check != ASCIICHAT_OK) {
-        // Host is down! Trigger automatic failover to pre-elected future host
-        log_warn("Host disconnect detected during ACTIVE state");
+    // Start listening
+    asciichat_error_t hstart = session_host_start(session->host_ctx);
+    if (hstart != ASCIICHAT_OK) {
+      log_error("Failed to start host: %d", hstart);
+      set_error(session, hstart, "Failed to start host");
+      return ASCIICHAT_OK;
+    }
 
-        // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
-        const options_t *opts = options_get();
-        if (opts && (opts->prefer_webrtc || opts->webrtc_relay_only)) {
-          log_fatal("WebRTC connection failed and direct fallback is disabled");
+    log_info("Host started, listening for connections");
+  }
+
+  // Notify listeners that we're ready
+  if (session->on_session_ready) {
+    session->on_session_ready(session->session_string, session->callback_user_data);
+  }
+
+  // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
+  int host_port = GET_OPTION(port);
+  acip_host_announcement_t announcement = {0};
+  memcpy(announcement.session_id, session->session_id, 16);
+  memcpy(announcement.host_id, session->host_id, 16);
+  SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
+  announcement.host_port = host_port;
+  announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+
+  if (session->acds_transport) {
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
+                              sizeof(announcement), 0);
+    log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
+  }
+
+  set_state(session, DISCOVERY_STATE_ACTIVE);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *session, int timeout_ms) {
+  int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+  if (session->webrtc_retry_attempt >= max_attempts) {
+    log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
+    char error_msg[256];
+    snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)",
+             max_attempts + 1, timeout_ms);
+    set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "%s", error_msg);
+  }
+
+  uint32_t backoff_ms = calculate_backoff_delay_ms(session->webrtc_retry_attempt);
+  log_warn("WebRTC connection attempt %d/%d failed, retrying in %ums...", session->webrtc_retry_attempt + 1,
+           max_attempts + 1, backoff_ms);
+  APP_CALLBACK_VOID(platform_pump_events);
+  APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
+
+  webrtc_peer_manager_destroy(session->peer_manager);
+  session->peer_manager = NULL;
+  asciichat_error_t result = initialize_webrtc_peer_manager(session);
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to re-initialize WebRTC for retry: %d", result);
+    set_error(session, result, "Failed to re-initialize WebRTC for retry");
+    return result;
+  }
+
+  session->webrtc_connection_initiated = false;
+  session->webrtc_retry_attempt++;
+  log_info("WebRTC peer manager re-initialized for attempt %d/%d", session->webrtc_retry_attempt + 1, max_attempts + 1);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *session) {
+  // Check if transport is ready (DataChannel opened)
+  if (session->webrtc_transport_ready) {
+    log_info("WebRTC DataChannel established, transitioning to ACTIVE state");
+    set_state(session, DISCOVERY_STATE_ACTIVE);
+    return ASCIICHAT_OK;
+  }
+
+  // If not ready and we haven't initiated connection yet, initiate it
+  if (session->peer_manager && !session->webrtc_connection_initiated) {
+    log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1,
+             GET_OPTION(webrtc_reconnect_attempts) + 1);
+
+    // Initiate connection (generates offer, triggers SDP exchange)
+    asciichat_error_t conn_result =
+        webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
+
+    if (conn_result != ASCIICHAT_OK) {
+      log_error("Failed to initiate WebRTC connection: %d", conn_result);
+      set_error(session, conn_result, "Failed to initiate WebRTC connection");
+      return ASCIICHAT_OK;
+    }
+
+    log_info("WebRTC connection initiated, waiting for DataChannel...");
+    session->webrtc_connection_initiated = true;
+    session->webrtc_last_attempt_time_ms = APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
+  }
+
+  // Check for ICE gathering timeout on all peers
+  if (session->webrtc_connection_initiated && session->peer_manager) {
+    int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
+    int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
+
+    if (timed_out_count > 0) {
+      log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
+                timeout_ms);
+
+      asciichat_error_t retry_result = discovery_session_retry_webrtc(session, timeout_ms);
+      if (retry_result != ASCIICHAT_OK) {
+        if (GET_OPTION(prefer_webrtc) || GET_OPTION(webrtc_relay_only)) {
           set_state(session, DISCOVERY_STATE_FAILED);
-          session->error = ERROR_NETWORK;
-          return ERROR_NETWORK;
+          return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "WebRTC connection failed and direct fallback is disabled");
         }
-
-        set_state(session, DISCOVERY_STATE_MIGRATING);
-        // Reason code: 1 = timeout/disconnect detected during ACTIVE session
-        discovery_session_handle_host_disconnect(session, 1);
+        return ASCIICHAT_OK;
       }
     }
-    platform_sleep_us(timeout_ns / 1000);
-    break;
+  }
 
-  case DISCOVERY_STATE_MIGRATING:
-    // Host migration in progress
-    // Check if migration has timed out (if it takes >30 seconds, give up)
-    if (session->migration.state == MIGRATION_STATE_COMPLETE) {
-      // Migration completed successfully
-      set_state(session, DISCOVERY_STATE_ACTIVE);
-      log_info("Migration complete, session resumed");
-    } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30 * MS_PER_SEC_INT) {
-      // Migration timed out after 30 seconds
-      log_error("Host migration timeout - session cannot recover");
+  // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
+  // while waiting for DataChannel to open
+  if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
+    packet_type_t type;
+    void *data = NULL;
+    size_t len = 0;
+    void *alloc_buffer = NULL;
+
+    asciichat_error_t recv_result =
+        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+
+    if (recv_result == ASCIICHAT_OK) {
+      // Dispatch to appropriate handler
+      handle_acds_webrtc_packet(session, type, data, len);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+    } else if (!acip_transport_is_connected(session->acds_transport)) {
+      set_error(session, recv_result, "Discovery signaling connection closed during WebRTC negotiation");
       set_state(session, DISCOVERY_STATE_FAILED);
-      session->error = ERROR_NETWORK;
+      return recv_result;
+    } else {
+      log_debug("Failed to receive ACDS packet: %d", recv_result);
     }
-    platform_sleep_us(timeout_ns / 1000);
-    break;
+  }
 
+  // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
+  // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_receive_protocol_version(discovery_session_t *session,
+                                                                    socket_t participant_socket) {
+  // Step 2: Receive server protocol version
+  log_debug("Receiving server protocol version...");
+  packet_type_t packet_type = 0;
+  void *payload = NULL;
+  size_t payload_len = 0;
+
+  int recv_result = receive_packet(participant_socket, &packet_type, &payload, &payload_len);
+  if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
+    log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to receive protocol version from server");
+  }
+
+  if (payload_len != sizeof(protocol_version_packet_t)) {
+    log_error("Invalid protocol version packet size: %zu", payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
+    set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Invalid protocol version packet");
+  }
+
+  protocol_version_packet_t server_version;
+  memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
+  buffer_pool_free(NULL, payload, payload_len);
+
+  if (!server_version.supports_encryption) {
+    NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
+    set_error(session, ERROR_NETWORK, "Server does not support encryption");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Server does not support encryption");
+  }
+
+  log_info("Server protocol version: %u.%u (encryption: yes)", NET_TO_HOST_U16(server_version.protocol_version),
+           NET_TO_HOST_U16(server_version.protocol_revision));
+
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_start_handshake(discovery_session_t *session) {
+  log_info("Connected to host, performing crypto handshake...");
+
+  // Perform crypto handshake with server
+  // Get the socket from participant context
+  socket_t participant_socket = session_participant_get_socket(session->participant_ctx);
+  if (participant_socket == INVALID_SOCKET_VALUE) {
+    log_error("Failed to get socket from participant context");
+    set_error(session, ERROR_NETWORK, "Failed to get participant socket");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to get participant socket");
+  }
+
+  // Step 1: Send client protocol version
+  log_debug("Sending protocol version to server...");
+  protocol_version_packet_t client_version = {0};
+  client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
+  client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
+  client_version.supports_encryption = 1;                // We support encryption
+  client_version.compression_algorithms = 0;
+  client_version.compression_threshold = 0;
+  client_version.feature_flags = 0;
+
+  int result = send_protocol_version_packet(participant_socket, &client_version);
+  if (result != 0) {
+    log_error("Failed to send protocol version to server");
+    set_error(session, ERROR_NETWORK, "Failed to send protocol version");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send protocol version");
+  }
+
+  asciichat_error_t version_result = discovery_session_receive_protocol_version(session, participant_socket);
+  if (version_result != ASCIICHAT_OK) {
+    return version_result;
+  }
+
+  // Step 3: Send crypto capabilities
+  log_debug("Sending crypto capabilities...");
+  crypto_capabilities_packet_t client_caps = {0};
+  client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
+  client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
+  client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
+  client_caps.requires_verification = 0;
+  client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
+  client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
+  client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
+
+  result = send_crypto_capabilities_packet(participant_socket, &client_caps);
+  if (result != 0) {
+    log_error("Failed to send crypto capabilities");
+    set_error(session, ERROR_NETWORK, "Failed to send crypto capabilities");
+    session_participant_disconnect(session->participant_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send crypto capabilities");
+  }
+
+  log_info("Crypto handshake initiated successfully");
+  log_warn("*** Connected to host as participant - transitioning to ACTIVE ***");
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *session) {
+  if (!session->participant_ctx) {
+    // Create participant context for this session
+    session_participant_config_t pconfig = {
+        .address = session->host_address,
+        .port = session->host_port,
+        .enable_audio = true,
+        .enable_video = true,
+        .encryption_enabled = true,
+    };
+
+    session->participant_ctx = session_participant_create(&pconfig);
+    if (!session->participant_ctx) {
+      log_error("Failed to create participant context");
+      set_error(session, ERROR_MEMORY, "Failed to create participant context");
+      return ASCIICHAT_OK;
+    }
+
+    // Attempt connection
+    asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
+    if (pconn != ASCIICHAT_OK) {
+      log_error("Failed to connect as participant: %d", pconn);
+      // Stay in this state, will retry on next process() call
+      return ASCIICHAT_OK;
+    }
+
+    if (discovery_session_start_handshake(session) != ASCIICHAT_OK) {
+      return ASCIICHAT_OK;
+    }
+  }
+
+  // Check if connection is established
+  bool ctx_valid = session->participant_ctx != NULL;
+  bool is_connected = ctx_valid ? session_participant_is_connected(session->participant_ctx) : false;
+  log_debug("discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d",
+            session->participant_ctx, ctx_valid, is_connected);
+
+  if (ctx_valid && !is_connected) {
+    // Log more details about why it's not connected
+    log_debug("discovery_session_process: CONNECTING_HOST - context exists but not connected yet");
+  }
+
+  if (is_connected) {
+    log_info("Participant connection confirmed, transitioning to ACTIVE state");
+    set_state(session, DISCOVERY_STATE_ACTIVE);
+  } else {
+    log_debug("discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
+              "is_connected=%d)",
+              ctx_valid, is_connected);
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
+  // Receive and handle ACDS packets for WebRTC signaling (NEW)
+  if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
+      acip_transport_has_pending_data(session->acds_transport)) {
+    packet_type_t type;
+    void *data = NULL;
+    size_t len = 0;
+    void *alloc_buffer = NULL;
+
+    asciichat_error_t recv_result =
+        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+
+    if (recv_result == ASCIICHAT_OK) {
+      // Dispatch to appropriate handler
+      handle_acds_webrtc_packet(session, type, data, len);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+    }
+  }
+
+  if (session->session_type == SESSION_TYPE_WEBRTC && !session->is_host && session->peer_manager) {
+    webrtc_state_t peer_state = WEBRTC_STATE_CLOSED;
+    bool peer_found = webrtc_peer_manager_get_state(session->peer_manager, session->host_id, &peer_state);
+    uint64_t now_ms = session_get_current_time_ms();
+    bool disconnected_too_long = false;
+
+    if (peer_found && peer_state == WEBRTC_STATE_DISCONNECTED) {
+      if (session->webrtc_disconnected_since_ms == 0) {
+        session->webrtc_disconnected_since_ms = now_ms;
+      } else {
+        disconnected_too_long = now_ms - session->webrtc_disconnected_since_ms >= 5000;
+      }
+    } else {
+      session->webrtc_disconnected_since_ms = 0;
+    }
+
+    bool peer_failed = !peer_found || peer_state == WEBRTC_STATE_FAILED || peer_state == WEBRTC_STATE_CLOSED;
+    if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
+      int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+      if (session->webrtc_retry_attempt >= max_attempts) {
+        set_error(session, ERROR_NETWORK, "WebRTC peer remained disconnected after retry attempts");
+        return SET_ERRNO(ERROR_NETWORK, "WebRTC connection failed");
+      }
+
+      log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
+      if (session->participant_ctx) {
+        acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
+        session_participant_set_transport(session->participant_ctx, NULL);
+        acip_transport_destroy(transport);
+      }
+
+      // The transport has now closed its borrowed peer objects. The manager
+      // can release the failed peer before creating the next offer.
+      webrtc_peer_manager_remove_peer(session->peer_manager, session->host_id);
+      session->webrtc_transport_ready = false;
+      session->webrtc_connection_initiated = false;
+      session->webrtc_disconnected_since_ms = 0;
+      session->webrtc_retry_attempt++;
+      set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+      return ASCIICHAT_OK;
+    }
+  }
+
+  // Session is active - check for host disconnect
+  if (!session->is_host) {
+    // We are a participant - check if host is still alive
+    asciichat_error_t host_check = discovery_session_check_host_alive(session);
+    if (host_check != ASCIICHAT_OK) {
+      // Host is down! Trigger automatic failover to pre-elected future host
+      log_warn("Host disconnect detected during ACTIVE state");
+
+      // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
+      const options_t *opts = options_get();
+      if (opts && (opts->prefer_webrtc || opts->webrtc_relay_only)) {
+        set_state(session, DISCOVERY_STATE_FAILED);
+        session->error = ERROR_NETWORK;
+        return SET_ERRNO(ERROR_NETWORK, "WebRTC connection failed");
+      }
+
+      set_state(session, DISCOVERY_STATE_MIGRATING);
+      // Reason code: 1 = timeout/disconnect detected during ACTIVE session
+      discovery_session_handle_host_disconnect(session, 1);
+    }
+  }
+  platform_sleep_us(timeout_ns / 1000);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_session_process_migration(discovery_session_t *session, int64_t timeout_ns) {
+  // Host migration in progress
+  // Check if migration has timed out (if it takes >30 seconds, give up)
+  if (session->migration.state == MIGRATION_STATE_COMPLETE) {
+    // Migration completed successfully
+    set_state(session, DISCOVERY_STATE_ACTIVE);
+    log_info("Migration complete, session resumed");
+  } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30 * MS_PER_SEC_INT) {
+    // Migration timed out after 30 seconds
+    log_error("Host migration timeout - session cannot recover");
+    set_state(session, DISCOVERY_STATE_FAILED);
+    session->error = ERROR_NETWORK;
+  }
+  platform_sleep_us(timeout_ns / 1000);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t discovery_session_process(discovery_session_t *session, int64_t timeout_ns) {
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
+  }
+
+  asciichat_error_t result = discovery_session_send_keepalive(session);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  // State handlers preserve deferred failures: recording a failed state does not
+  // necessarily return an error until the next iteration processes that state.
+  switch (session->state) {
+  case DISCOVERY_STATE_WAITING_PEER:
+    return discovery_session_wait_for_peer(session, timeout_ns);
+  case DISCOVERY_STATE_NEGOTIATING:
+    return discovery_session_negotiate(session);
+  case DISCOVERY_STATE_STARTING_HOST:
+    return discovery_session_start_host(session);
+  case DISCOVERY_STATE_CONNECTING_HOST:
+    return session->session_type == SESSION_TYPE_WEBRTC ? discovery_session_connect_webrtc(session)
+                                                        : discovery_session_connect_tcp(session);
+  case DISCOVERY_STATE_ACTIVE:
+    return discovery_session_process_active(session, timeout_ns);
+  case DISCOVERY_STATE_MIGRATING:
+    return discovery_session_process_migration(session, timeout_ns);
   case DISCOVERY_STATE_FAILED:
     // Session has failed - return error on further processing
     return session->error != ASCIICHAT_OK ? session->error : ERROR_NETWORK;
