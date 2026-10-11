@@ -927,12 +927,16 @@ endif()
 # Runs the production allocator and queue on every native platform, without Criterion.
 if(TARGET ascii-chat-static)
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/buffer/buffer_test.c)
-    target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ${ZLIB_LIBRARIES})
     if(WIN32)
         target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
+    elseif(APPLE)
+        target_link_libraries(test-buffer-ownership PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration")
     endif()
     apply_sanitizers_to_target(test-buffer-ownership)
-    target_include_directories(test-buffer-ownership PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    target_include_directories(test-buffer-ownership PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated
+        ${LIBWEBSOCKETS_INCLUDE_DIRS})
     set_target_properties(test-buffer-ownership PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
         if(TARGET tests)

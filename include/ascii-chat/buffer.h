@@ -26,7 +26,7 @@ typedef struct buffer_domain buffer_domain_t;
 #define BUFFER_DEFAULT_ALIGNMENT 64u
 #define BUFFER_PROCESS_LIMIT ((size_t)512 * 1024 * 1024)
 #define BUFFER_CONTROL_RESERVE ((size_t)8 * 1024 * 1024)
-#define BUFFER_DOMAIN_LIMIT ((size_t)337 * 1024 * 1024)
+#define BUFFER_DOMAIN_LIMIT (BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE)
 
 typedef struct {
   size_t limit_bytes; /**< Includes live and cached storage and headers. Zero uses the default. */

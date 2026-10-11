@@ -727,6 +727,7 @@ export default function MirrorDemoWidget({
             showFps={false}
             wasmModuleReady={wasmReady}
             matrixMode={matrixMode}
+            zalgo={selectedOption?.settings.zalgo ?? 0}
           />
         </div>
 
@@ -752,6 +753,7 @@ export default function MirrorDemoWidget({
                   {demoOptions.map((opt) => (
                     <button
                       key={opt.id}
+                      aria-pressed={selectedOptionId === opt.id}
                       onClick={() => switchOption(opt)}
                       className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                         selectedOptionId === opt.id
@@ -836,10 +838,11 @@ export default function MirrorDemoWidget({
                 </div>
               )}
               {hasOptions && (
-                <div className="absolute bottom-2 left-2 flex flex-col gap-1 z-10 pointer-events-auto">
+                <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1 z-10 pointer-events-auto max-w-[65%]">
                   {demoOptions.map((opt) => (
                     <button
                       key={opt.id}
+                      aria-pressed={selectedOptionId === opt.id}
                       onClick={() => switchOption(opt)}
                       className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
                         selectedOptionId === opt.id

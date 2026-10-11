@@ -295,6 +295,7 @@ export function MirrorPage() {
           return (
             <AsciiRenderer
               ref={rendererRef}
+              zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}

@@ -9,6 +9,7 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -27,6 +28,9 @@ typedef struct {
   uint8_t first; ///< 1 if first frame of message (or complete message)
   uint8_t final; ///< 1 if final frame of message (or complete message)
 } websocket_msg_t;
+
+/** Queue one packet, preserving its control budget through encryption and ownership transfer. */
+asciichat_error_t websocket_transport_send(acip_transport_t *transport, const void *data, size_t len);
 
 // Alias for backward compatibility
 typedef websocket_msg_t websocket_recv_msg_t;

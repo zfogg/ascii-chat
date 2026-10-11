@@ -41,7 +41,7 @@
  *
  * Domain limits include backing capacity, payload headers and alignment padding.
  * Defaults allow 512 MiB process-wide, reserving 8 MiB for control traffic.
- * The default media domain allows 337 MiB with at most 32 MiB cached. Queue
+ * The default media domain allows 504 MiB with at most 32 MiB cached. Queue
  * domains allow 64 MiB with at most 8 MiB cached, in addition to queue byte limits.
  * These are bounded storage budgets, not a guarantee that every request succeeds.
  * The process budget also accounts for domain objects, including closed domains

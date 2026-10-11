@@ -8,6 +8,10 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/atomic.h>
 #include <string.h>
+#include <ascii-chat/video/rgba/video_frame.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/network/websocket/internal.h>
+#include <libwebsockets.h>
 
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
@@ -316,6 +320,76 @@ static void media_contracts(void) {
   CHECK(!workspace.codec && !workspace.output.data);
 }
 
+static void maximum_clients_contract(void) {
+  video_frame_buffer_t *incoming[MAX_CLIENTS], *outgoing[MAX_CLIENTS];
+  audio_ring_buffer_t *audio[MAX_CLIENTS];
+  void *send[MAX_CLIENTS];
+  for (size_t i = 0; i < MAX_CLIENTS; ++i) {
+    char name[32];
+    safe_snprintf(name, sizeof(name), "budget-client-%zu", i);
+    incoming[i] = video_frame_buffer_create(name);
+    outgoing[i] = video_frame_buffer_create(name);
+    audio[i] = audio_ring_buffer_create_for_capture();
+    send[i] = buffer_alloc(NULL, MAX_FRAME_BUFFER_SIZE);
+    CHECK(incoming[i] && outgoing[i] && audio[i] && send[i]);
+  }
+  for (size_t i = 0; i < MAX_CLIENTS; ++i) {
+    video_frame_buffer_destroy(incoming[i]);
+    video_frame_buffer_destroy(outgoing[i]);
+    audio_ring_buffer_destroy(audio[i]);
+    buffer_release(send[i]);
+  }
+}
+
+static void websocket_control_reserve_contract(void) {
+  struct lws_context_creation_info info = {0};
+  info.port = CONTEXT_PORT_NO_LISTEN;
+  struct lws_context *context = lws_create_context(&info);
+  CHECK(context);
+  websocket_transport_data_t ws = {.context = context, .is_connected = true};
+  ws.send_queue = ringbuffer_create(sizeof(websocket_msg_t), 4);
+  CHECK(ws.send_queue);
+  CHECK(mutex_init(&ws.send_mutex, "reserve-send") == 0);
+  CHECK(mutex_init(&ws.state_mutex, "reserve-state") == 0);
+  crypto_context_t crypto, peer;
+  CHECK(crypto_init(&crypto) == CRYPTO_OK && crypto_init(&peer) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&crypto, peer.public_key) == CRYPTO_OK);
+  acip_transport_t transport = {.impl_data = &ws};
+  CHECK(buffer_control_domain());
+  // An oversized miss trims idle media storage, so cached blocks cannot mask pressure.
+  CHECK(buffer_alloc(NULL, BUFFER_DOMAIN_LIMIT) == NULL);
+  buffer_budget_t pressure = {0};
+  CHECK(buffer_budget_reserve(&pressure, BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE - buffer_process_reserved()) == ASCIICHAT_OK);
+  // Consume all non-control process allowance while leaving the reserved bytes available.
+  packet_type_t types[] = {PACKET_TYPE_CRYPTO_PARAMETERS, PACKET_TYPE_ERROR_MESSAGE};
+  for (int client = 0; client < 2; ++client) {
+    ws.owns_context = client != 0;
+    for (int encrypted = 0; encrypted < 2; ++encrypted) {
+      transport.crypto_ctx = encrypted ? &crypto : NULL;
+      for (size_t i = 0; i < 2; ++i) {
+        packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(types[i])};
+        CHECK(websocket_transport_send(&transport, &header, sizeof(header)) == ASCIICHAT_OK);
+        websocket_msg_t message;
+        CHECK(ringbuffer_read(ws.send_queue, &message));
+        packet_header_t wire;
+        memcpy(&wire, message.data + LWS_PRE, sizeof(wire));
+        CHECK(NET_TO_HOST_U16(wire.type) == (encrypted && types[i] == PACKET_TYPE_ERROR_MESSAGE ? PACKET_TYPE_ENCRYPTED : types[i]));
+        buffer_release(message.data);
+      }
+    }
+  }
+  transport.crypto_ctx = NULL;
+  packet_header_t media = {.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME)};
+  CHECK(websocket_transport_send(&transport, &media, sizeof(media)) == ERROR_MEMORY);
+  buffer_budget_release(&pressure);
+  crypto_destroy(&crypto);
+  crypto_destroy(&peer);
+  ringbuffer_destroy(ws.send_queue);
+  mutex_destroy(&ws.send_mutex);
+  mutex_destroy(&ws.state_mutex);
+  lws_context_destroy(context);
+}
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   buffer_system_init();
@@ -326,6 +400,8 @@ int main(void) {
   concurrent_queue_contracts();
   process_budget_contracts();
   media_contracts();
+  maximum_clients_contract();
+  websocket_control_reserve_contract();
   buffer_system_cleanup();
   CHECK(buffer_process_reserved() == 0);
   log_info("Buffer ownership, budgets, queues, concurrency and media contracts passed");

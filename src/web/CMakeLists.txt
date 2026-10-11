@@ -119,6 +119,7 @@ set(PLATFORM_SRC
 # WASM rendering components (libvterm + FreeType)
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
 set(WASM_RENDERER_SRC
+    ${LIB_ROOT}/video/ascii/zalgo.c
     ${LIB_ROOT}/media/render/terminal.c
 )
 
@@ -508,6 +509,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_help_text
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
+    _term_renderer_set_zalgo
     _term_renderer_feed
     _term_renderer_pixels
     _term_renderer_width_px
@@ -565,6 +567,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_get_crypto_error_message
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
+    _term_renderer_set_zalgo
     _term_renderer_feed
     _term_renderer_pixels
     _term_renderer_width_px

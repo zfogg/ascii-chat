@@ -19,6 +19,8 @@ export interface AsciiRendererProps {
   wasmModuleReady?: boolean;
   initializeOptions?: boolean;
   matrixMode?: boolean;
+  /** Zero disables Zalgo; 1-10 selects its intensity. */
+  zalgo?: number;
   /** Requested grid dimensions; zero fits that axis to the container. */
   columns?: number;
   rows?: number;

@@ -44,6 +44,7 @@ interface MirrorModuleExports {
   _get_help_text(mode: number, option_name: number): number;
   // Terminal renderer functions (libvterm + FreeType)
   _term_renderer_create(cfg_ptr: number, out_ptr: number): number;
+  _term_renderer_set_zalgo(r: number, level: number): number;
   _term_renderer_feed(r: number, ansi_data_ptr: number, len: number): number;
   _term_renderer_pixels(r: number): number;
   _term_renderer_width_px(r: number): number;
@@ -82,6 +83,7 @@ export interface MirrorModule extends WasmModule {
   _mirror_render_audio_visualization: MirrorModuleExports["_mirror_render_audio_visualization"];
   _get_help_text: MirrorModuleExports["_get_help_text"];
   _term_renderer_create: MirrorModuleExports["_term_renderer_create"];
+  _term_renderer_set_zalgo: MirrorModuleExports["_term_renderer_set_zalgo"];
   _term_renderer_feed: MirrorModuleExports["_term_renderer_feed"];
   _term_renderer_pixels: MirrorModuleExports["_term_renderer_pixels"];
   _term_renderer_width_px: MirrorModuleExports["_term_renderer_width_px"];

@@ -538,9 +538,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 /**
- * @brief Encrypt non-handshake packets when needed; return a borrowed payload or an owned pool buffer.
+ * @brief Encrypt non-handshake packets when needed; return a borrowed payload or an owned buffer.
  */
-static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, const void *data, size_t len,
+static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain, const void *data, size_t len,
                                                    const void **out_data, size_t *out_len,
                                                    uint8_t **out_encrypted_packet, size_t *out_encrypted_size) {
   // Check if encryption is needed (matching tcp_send logic)
@@ -556,7 +556,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
     if (!packet_is_handshake_type((packet_type_t)packet_type)) {
       // Encrypt the entire packet (header + payload)
       size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-      uint8_t *ciphertext = buffer_alloc(NULL, ciphertext_size);
+      uint8_t *ciphertext = buffer_alloc(domain, ciphertext_size);
       if (!ciphertext) {
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer for WebSocket");
       }
@@ -571,7 +571,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 
       // Build PACKET_TYPE_ENCRYPTED wrapper: header + ciphertext
       size_t total_encrypted_size = sizeof(packet_header_t) + ciphertext_len;
-      encrypted_packet = buffer_alloc(NULL, total_encrypted_size);
+      encrypted_packet = buffer_alloc(domain, total_encrypted_size);
       if (!encrypted_packet) {
         buffer_release(ciphertext);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate encrypted packet buffer");
@@ -607,7 +607,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 /**
  * @brief Copy a padded message into the appropriate send queue and wake its service thread.
  */
-static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, const void *send_data,
+static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain, const void *send_data,
                                                  size_t send_len) {
   // Server-side transports cannot call lws_write() directly
   // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
@@ -618,7 +618,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
     // The queued owner is retained until the writable callback completes.
     websocket_recv_msg_t msg;
     size_t buffer_size = LWS_PRE + send_len;
-    msg.data = buffer_alloc(NULL, buffer_size);
+    msg.data = buffer_alloc(domain, buffer_size);
     if (!msg.data) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
     }
@@ -662,10 +662,9 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
   // Allocate with LWS_PRE padding because lws_write() needs to write
   // the WebSocket frame header backwards into the LWS_PRE region
   // Queue ownership extends through the writable completion callback.
-  // of deallocating, preventing the use-after-free race condition with the compression layer.
   websocket_recv_msg_t msg;
   size_t buffer_size = LWS_PRE + send_len;
-  msg.data = buffer_alloc(NULL, buffer_size);
+  msg.data = buffer_alloc(domain, buffer_size);
   if (!msg.data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client send queue buffer");
   }
@@ -701,7 +700,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
+asciichat_error_t websocket_transport_send(acip_transport_t *transport, const void *data, size_t len) {
   // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
   // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
   // when accessed from the service thread context. See: line 325 (similar issue).
@@ -734,17 +733,27 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
                   (void *)ws_data->wsi, len);
   }
 
+  // Classify the original packet before encryption hides its type. Keep this
+  // domain through every allocation, including the asynchronous queue owner.
+  buffer_domain_t *domain = NULL;
+  if (data && len >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, data, sizeof(header));
+    packet_type_t type = NET_TO_HOST_U16(header.type);
+    if (packet_is_handshake_type(type) || type == PACKET_TYPE_ERROR_MESSAGE)
+      domain = buffer_control_domain();
+  }
   const void *send_data = NULL;
   size_t send_len = 0;
   uint8_t *encrypted_packet = NULL;
   size_t encrypted_packet_size = 0;
   asciichat_error_t result =
-      websocket_prepare_payload(transport, data, len, &send_data, &send_len, &encrypted_packet, &encrypted_packet_size);
+      websocket_prepare_payload(transport, domain, data, len, &send_data, &send_len, &encrypted_packet, &encrypted_packet_size);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
-  result = websocket_queue_payload(ws_data, send_data, send_len);
+  result = websocket_queue_payload(ws_data, domain, send_data, send_len);
   if (encrypted_packet) {
     buffer_release(encrypted_packet);
   }
@@ -1329,7 +1338,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 // =============================================================================
 
 static const acip_transport_methods_t websocket_methods = {
-    .send = websocket_send,
+    .send = websocket_transport_send,
     .recv = websocket_recv,
     .close = websocket_close,
     .get_type = websocket_get_type,
