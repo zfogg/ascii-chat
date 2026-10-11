@@ -334,23 +334,7 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
-                                        ffmpeg_encoder_t **out) {
-  log_info("[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps", output_path, width_px, height_px, fps);
-
-  if (!output_path || !out || width_px <= 0 || height_px <= 0)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_create: invalid parameters");
-
-  // Use default FPS if not specified (0 from config means "use default")
-  if (fps <= 0) {
-    fps = 60;
-    log_debug("ffmpeg_encoder_create: fps was 0, using default 60");
-  }
-
-  ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
-  enc->width_px = width_px;
-  enc->height_px = height_px;
-
+static void encoder_init_snapshot_timing(ffmpeg_encoder_t *enc, int fps) {
   // For snapshot mode, calculate output FPS based on input FPS and snapshot duration
   // If we capture for N seconds at input_fps, we'll get ~(N * input_fps) frames
   // Output duration should be snapshot_delay seconds
@@ -393,29 +377,9 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     log_info("ffmpeg_encoder_create: Snapshot mode disabled or invalid - snapshot_mode=%d, snapshot_delay=%.2f, fps=%d",
              snapshot_mode, snapshot_delay, fps);
   }
-  enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
+}
 
-  // For codec/format detection, use output_path unless it's "-" (stdout)
-  // For stdout, use "fake.mp4" to default to MP4 format
-  const char *detection_path = output_path;
-  if (output_path && strcmp(output_path, "-") == 0) {
-    detection_path = "fake.mp4"; // Fake path for format detection when piping to stdout
-    log_debug("ffmpeg_encoder_create: Using MP4 format for stdout piping");
-  }
-
-  const char *codec_name = NULL, *format_name = NULL;
-  get_codec_from_extension(detection_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
-
-  log_debug("ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)", output_path, codec_name, width_px, height_px, fps,
-            enc->is_image ? "image" : "video");
-
-  // Allocate output media context
-  int ret = avformat_alloc_output_context2(&enc->fmt_ctx, NULL, format_name, output_path);
-  if (ret < 0) {
-    SAFE_FREE(enc);
-    return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_alloc_output_context2 failed");
-  }
-
+static const AVCodec *encoder_find_video_codec(const char *codec_name) {
   // Find encoder (with fallback for FFmpeg builds without libx264)
   const AVCodec *codec = avcodec_find_encoder_by_name(codec_name);
   if (!codec && strcmp(codec_name, "libx264") == 0) {
@@ -432,6 +396,16 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
       log_info("ffmpeg: using fallback H.264 encoder '%s' (libx264 not available)", codec->name);
     }
   }
+  return codec;
+}
+
+// On failure, setup helpers release the partially initialized encoder.
+static asciichat_error_t encoder_init_video_stream(ffmpeg_encoder_t *enc, const char *codec_name) {
+  int ret;
+  int width_px = enc->width_px;
+  int height_px = enc->height_px;
+  int fps = enc->fps;
+  const AVCodec *codec = encoder_find_video_codec(codec_name);
   if (!codec) {
     avformat_free_context(enc->fmt_ctx);
     SAFE_FREE(enc);
@@ -506,6 +480,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avcodec_parameters_from_context failed");
   }
 
+  return ASCIICHAT_OK;
+}
+
+static AVDictionary *encoder_create_muxer_options(const ffmpeg_encoder_t *enc, const char *output_path) {
   // Muxer options for proper MP4 container structure
   AVDictionary *opts = NULL;
 
@@ -528,6 +506,13 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     av_dict_set(&opts, "update", "1", 0);
   }
 
+  return opts;
+}
+
+static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
+  int ret;
+  int width_px = enc->width_px;
+  int height_px = enc->height_px;
   // Allocate frames
   enc->frame = av_frame_alloc();
   enc->frame_encoded = av_frame_alloc();
@@ -572,9 +557,11 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: sws_getContext failed");
   }
 
-  // Initialize audio stream if supported
-  encoder_init_audio_stream(enc, output_path);
+  return ASCIICHAT_OK;
+}
 
+static asciichat_error_t encoder_open_output(ffmpeg_encoder_t *enc, const char *output_path, AVDictionary *opts) {
+  int ret;
   // Open output file or stdout
   if (!(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
     // For stdout output, use "pipe:1" (FFmpeg's standard for writing to stdout)
@@ -611,6 +598,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_write_header failed");
   }
 
+  return ASCIICHAT_OK;
+}
+
+static void encoder_set_snapshot_frame_duration(ffmpeg_encoder_t *enc) {
   // Now that stream->time_base is set, calculate estimated frame duration for snapshot mode
   bool snapshot_mode_after_header = GET_OPTION(snapshot_mode);
   double snapshot_delay_after_header = GET_OPTION(snapshot_delay);
@@ -624,6 +615,68 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
               (long long)enc->estimated_frame_duration, snapshot_delay_after_header, enc->estimated_frame_count,
               enc->stream->time_base.num, enc->stream->time_base.den);
   }
+}
+
+asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
+                                        ffmpeg_encoder_t **out) {
+  log_info("[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps", output_path, width_px, height_px, fps);
+
+  if (!output_path || !out || width_px <= 0 || height_px <= 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_create: invalid parameters");
+
+  // Use default FPS if not specified (0 from config means "use default")
+  if (fps <= 0) {
+    fps = 60;
+    log_debug("ffmpeg_encoder_create: fps was 0, using default 60");
+  }
+
+  ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
+  enc->width_px = width_px;
+  enc->height_px = height_px;
+
+  encoder_init_snapshot_timing(enc, fps);
+
+  enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
+
+  // For codec/format detection, use output_path unless it's "-" (stdout)
+  // For stdout, use "fake.mp4" to default to MP4 format
+  const char *detection_path = output_path;
+  if (output_path && strcmp(output_path, "-") == 0) {
+    detection_path = "fake.mp4"; // Fake path for format detection when piping to stdout
+    log_debug("ffmpeg_encoder_create: Using MP4 format for stdout piping");
+  }
+
+  const char *codec_name = NULL, *format_name = NULL;
+  get_codec_from_extension(detection_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
+
+  log_debug("ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)", output_path, codec_name, width_px, height_px, fps,
+            enc->is_image ? "image" : "video");
+
+  // Allocate output media context
+  int ret = avformat_alloc_output_context2(&enc->fmt_ctx, NULL, format_name, output_path);
+  if (ret < 0) {
+    SAFE_FREE(enc);
+    return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_alloc_output_context2 failed");
+  }
+
+  asciichat_error_t result = encoder_init_video_stream(enc, codec_name);
+  if (result != ASCIICHAT_OK)
+    return result;
+
+  AVDictionary *opts = encoder_create_muxer_options(enc, output_path);
+
+  result = encoder_init_video_frames(enc);
+  if (result != ASCIICHAT_OK)
+    return result;
+
+  // Initialize audio stream if supported
+  encoder_init_audio_stream(enc, output_path);
+
+  result = encoder_open_output(enc, output_path, opts);
+  if (result != ASCIICHAT_OK)
+    return result;
+
+  encoder_set_snapshot_frame_duration(enc);
 
   enc->frame_count = 0;
   enc->video_pts = 0;
@@ -941,13 +994,7 @@ static asciichat_error_t finish_audio_frame(ffmpeg_encoder_t *enc, const AVFrame
   return result;
 }
 
-asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
-  if (!enc)
-    return ASCIICHAT_OK;
-
-  asciichat_error_t result = ASCIICHAT_OK;
-  NAMED_UNREGISTER(enc);
-
+static void encoder_log_snapshot_duration(const ffmpeg_encoder_t *enc) {
   // In snapshot mode, calculate the FPS needed to match the target duration
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   int64_t adjusted_packet_duration = 0;
@@ -964,7 +1011,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     log_debug("  Adjusted packet duration: %lld units (%.6f seconds per frame)", (long long)adjusted_packet_duration,
               (double)adjusted_packet_duration / enc->stream->time_base.den);
   }
+}
 
+static asciichat_error_t encoder_flush_video(ffmpeg_encoder_t *enc) {
+  asciichat_error_t result = ASCIICHAT_OK;
   // Flush delayed video packets. Encoders such as VP9 may buffer every short
   // snapshot frame until this point.
   LOG_IO("ffmpeg", {
@@ -994,6 +1044,11 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     }
   });
 
+  return result;
+}
+
+static asciichat_error_t encoder_flush_audio(ffmpeg_encoder_t *enc) {
+  asciichat_error_t result = ASCIICHAT_OK;
   // Flush audio encoder if present
   if (enc->has_audio_stream && enc->audio_codec_ctx) {
     // Write any remaining partial audio samples as padding
@@ -1016,6 +1071,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       result = flush_result;
   }
 
+  return result;
+}
+
+static void encoder_set_stream_duration(ffmpeg_encoder_t *enc) {
   // Set stream duration for proper metadata (must be before trailer)
   if (enc->stream && enc->frame_count > 0) {
     int64_t duration;
@@ -1084,7 +1143,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       }
     }
   }
+}
 
+static asciichat_error_t encoder_finalize_output(ffmpeg_encoder_t *enc) {
+  asciichat_error_t result = ASCIICHAT_OK;
   // Write trailer (capture FFmpeg muxer logs and final frame statistics)
   LOG_IO("ffmpeg", {
     int trailer_ret = av_write_trailer(enc->fmt_ctx);
@@ -1107,6 +1169,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot close recording: %d", close_ret);
   }
 
+  return result;
+}
+
+static void encoder_free(ffmpeg_encoder_t *enc) {
   // Cleanup
   sws_freeContext(enc->sws_ctx);
   av_frame_free(&enc->frame);
@@ -1127,6 +1193,30 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
   log_debug("ffmpeg_encoder_destroy: wrote %d frames", enc->frame_count);
   SAFE_FREE(enc);
+}
+
+asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
+  if (!enc)
+    return ASCIICHAT_OK;
+
+  asciichat_error_t result = ASCIICHAT_OK;
+  NAMED_UNREGISTER(enc);
+
+  encoder_log_snapshot_duration(enc);
+
+  result = encoder_flush_video(enc);
+
+  asciichat_error_t audio_result = encoder_flush_audio(enc);
+  if (audio_result != ASCIICHAT_OK)
+    result = audio_result;
+
+  encoder_set_stream_duration(enc);
+
+  asciichat_error_t output_result = encoder_finalize_output(enc);
+  if (output_result != ASCIICHAT_OK)
+    result = output_result;
+
+  encoder_free(enc);
   return result;
 }
 

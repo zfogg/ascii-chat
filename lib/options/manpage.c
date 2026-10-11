@@ -231,17 +231,20 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
   return options_config_generate_manpage_template(config, program_name, mode_name, output_path, brief_description);
 }
 
-asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
-                                                         const char *mode_name, const char *output_path,
-                                                         const char *brief_description) {
-  (void)mode_name;         // Not used
-  (void)program_name;      // Not used
-  (void)brief_description; // Not used
+typedef struct {
+  bool in_auto_section;
+  char current_auto_section[128];
+  bool found_section_header;
+  bool in_merge_section;
+  bool merge_content_generated;
+  char current_merge_section[64];
+  const char **manual_env_vars;
+  const char **manual_env_descs;
+  size_t manual_env_count;
+  size_t manual_env_capacity;
+} manpage_merge_state_t;
 
-  if (!config) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "config is required for man page generation");
-  }
-
+static asciichat_error_t manpage_open_merged_output(const char *output_path, FILE **output, bool *close_output) {
   FILE *f = NULL;
   bool should_close = false;
 
@@ -272,48 +275,326 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     f = stdout;
   }
 
-  // Load template resources
-  manpage_resources_t resources;
-  memset(&resources, 0, sizeof(resources));
-  asciichat_error_t err = manpage_resources_load(&resources);
-  if (err != ASCIICHAT_OK) {
-    if (should_close)
-      fclose(f);
-    return err;
+  *output = f;
+  *close_output = should_close;
+  return ASCIICHAT_OK;
+}
+
+static const char *manpage_begin_merge(FILE *f, manpage_merge_state_t *state, const char *p, const char *line_end) {
+  state->in_merge_section = true;
+  state->merge_content_generated = false;
+  state->manual_env_count = 0; // Reset manual variable collection
+  state->manual_env_capacity = 0;
+
+  // Extract section name (e.g., "ENVIRONMENT" from "MERGE-START: ENVIRONMENT")
+  const char *section_start = strstr(p, "MERGE-START:");
+  if (section_start && section_start < line_end) {
+    section_start += strlen("MERGE-START:");
+    while (*section_start && section_start < line_end && isspace(*section_start))
+      section_start++;
+
+    const char *section_name_end = section_start;
+    // Advance until we reach line_end (the newline position)
+    while (section_name_end < line_end) {
+      section_name_end++;
+    }
+
+    // Trim trailing whitespace
+    while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
+      section_name_end--;
+    }
+
+    size_t section_name_len = (size_t)(section_name_end - section_start);
+    if (section_name_len > 0 && section_name_len < sizeof(state->current_merge_section)) {
+      // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
+      memcpy(state->current_merge_section, section_start, section_name_len);
+      state->current_merge_section[section_name_len] = '\0';
+    }
   }
 
-  if (!manpage_resources_is_valid(&resources)) {
-    if (should_close)
-      fclose(f);
-    manpage_resources_destroy(&resources);
-    return SET_ERRNO(ERROR_CONFIG, "Man page resources are not valid");
+  // Do NOT write the MERGE-START marker line - it's an internal control marker
+  // The content will be generated when MERGE-END is encountered
+
+  // For ENVIRONMENT MERGE sections, find and preserve the .SH header
+  // (skipping over any marker comment lines that might be in between)
+  if (strcmp(state->current_merge_section, "ENVIRONMENT") == 0) {
+    const char *search_line = line_end + 1;
+    bool found_header = false;
+    while (*search_line && !found_header) {
+      const char *search_line_end = strchr(search_line, '\n');
+      if (!search_line_end)
+        break;
+
+      // Check if this is the .SH header
+      if (strncmp(search_line, ".SH ", sizeof(".SH ") - 1) == 0) {
+        // Write the .SH header line
+        size_t header_len = (size_t)(search_line_end - search_line);
+        fwrite(search_line, 1, header_len + 1, f);
+        p = search_line_end + 1;
+        found_header = true;
+        break;
+      }
+
+      // Skip marker comment lines (.\" MANUAL-*, .\" MERGE-*, etc)
+      if (strncmp(search_line, ".\\\" ", sizeof(".\\\" ") - 1) == 0) {
+        search_line = search_line_end + 1;
+        continue; // Keep searching
+      }
+
+      // If we hit a non-marker, non-.SH line, stop searching
+      break;
+    }
+    if (found_header) {
+      return p;
+    }
   }
 
-  // Process template and merge AUTO sections with generated content
-  const char *template_content = resources.template_content;
-  const char *p = template_content;
+  // Skip to next line
+  p = line_end + 1;
+  return p;
+}
 
-  bool in_auto_section = false;
-  char current_auto_section[128] = "";
-  bool found_section_header = false;
+static void manpage_clear_manual_environment(manpage_merge_state_t *state) {
+  // Free collected manual variables (strings first, then arrays)
+  for (size_t i = 0; i < state->manual_env_count; i++) {
+    if (state->manual_env_vars && state->manual_env_vars[i]) {
+      char *var_name = (char *)state->manual_env_vars[i];
+      SAFE_FREE(var_name);
+    }
+    if (state->manual_env_descs && state->manual_env_descs[i]) {
+      char *var_desc = (char *)state->manual_env_descs[i];
+      SAFE_FREE(var_desc);
+    }
+  }
+  if (state->manual_env_vars) {
+    SAFE_FREE(state->manual_env_vars);
+    state->manual_env_vars = NULL;
+  }
+  if (state->manual_env_descs) {
+    SAFE_FREE(state->manual_env_descs);
+    state->manual_env_descs = NULL;
+  }
+  state->manual_env_count = 0;
+  state->manual_env_capacity = 0;
+}
 
-  // Track MERGE sections
-  bool in_merge_section = false;
-  bool merge_content_generated = false;
-  char current_merge_section[64] = {0};
+static void manpage_end_merge(FILE *f, const options_config_t *config, manpage_merge_state_t *state) {
+  // Before writing MERGE-END, generate content if not already done
+  if (!state->merge_content_generated) {
+    if (strcmp(state->current_merge_section, "ENVIRONMENT") == 0) {
+      log_debug("[MANPAGE] Generating ENVIRONMENT with %zu manual + %zu auto variables", state->manual_env_count,
+                config->num_descriptors);
+      char *env_content = manpage_content_generate_environment_with_manual(
+          config, state->manual_env_vars, state->manual_env_count, state->manual_env_descs);
+      if (env_content && *env_content != '\0') {
+        log_debug("[MANPAGE] Writing ENVIRONMENT content: %zu bytes", strlen(env_content));
+        fprintf(f, "%s", env_content);
+      } else {
+        log_warn("[MANPAGE] ENVIRONMENT content is empty!");
+      }
+      manpage_content_free_environment(env_content);
+    }
+    state->merge_content_generated = true;
+  }
 
-  // For ENVIRONMENT MERGE section: collect manual variables
-  const char **manual_env_vars = NULL;
-  const char **manual_env_descs = NULL;
-  size_t manual_env_count = 0;
-  size_t manual_env_capacity = 0;
+  state->in_merge_section = false;
+  // Do NOT write the MERGE-END marker line - it's an internal control marker
+  memset(state->current_merge_section, 0, sizeof(state->current_merge_section));
 
+  manpage_clear_manual_environment(state);
+}
+
+static void manpage_collect_environment(manpage_merge_state_t *state, const char *p, const char *line_end,
+                                        size_t line_len) {
+  // Check if line starts with ".TP" or ".B " (groff markers)
+  bool is_tp_marker = (line_len >= 3 && strncmp(p, ".TP", sizeof(".TP") - 1) == 0 && (line_len == 3 || isspace(p[3])));
+  bool is_b_marker = (line_len >= 3 && strncmp(p, ".B ", sizeof(".B ") - 1) == 0);
+
+  if (is_b_marker) {
+    // Extract variable name after ".B "
+    const char *var_start = p + 3;
+    while (*var_start && var_start < line_end && isspace(*var_start))
+      var_start++;
+
+    const char *var_end = var_start;
+    while (var_end < line_end && *var_end && *var_end != '\n') {
+      var_end++;
+    }
+
+    size_t var_len = (size_t)(var_end - var_start);
+    if (var_len > 0) {
+      char *var_name = SAFE_MALLOC(var_len + 1, char *);
+      memcpy(var_name, var_start, var_len);
+      var_name[var_len] = '\0';
+
+      // Trim trailing whitespace
+      while (var_len > 0 && isspace(var_name[var_len - 1])) {
+        var_name[--var_len] = '\0';
+      }
+
+      // Store the variable name
+      if (state->manual_env_count >= state->manual_env_capacity) {
+        state->manual_env_capacity = state->manual_env_capacity == 0 ? 16 : state->manual_env_capacity * 2;
+        state->manual_env_vars =
+            SAFE_REALLOC(state->manual_env_vars, state->manual_env_capacity * sizeof(const char *), const char **);
+        state->manual_env_descs =
+            SAFE_REALLOC(state->manual_env_descs, state->manual_env_capacity * sizeof(const char *), const char **);
+      }
+
+      state->manual_env_vars[state->manual_env_count] = var_name;
+      state->manual_env_descs[state->manual_env_count] = NULL; // Will be set from next line(s)
+      state->manual_env_count++;
+    }
+  } else if (state->manual_env_count > 0 && !is_tp_marker && !is_b_marker) {
+    // This is likely a description line following a ".B var_name" line
+    // Set description for the last collected variable
+    const char *desc_start = p;
+    while (*desc_start && desc_start < line_end && isspace(*desc_start))
+      desc_start++;
+
+    size_t desc_len = (size_t)(line_end - desc_start);
+    if (desc_len > 0 && state->manual_env_descs[state->manual_env_count - 1] == NULL) {
+      char *desc = SAFE_MALLOC(desc_len + 1, char *);
+      memcpy(desc, desc_start, desc_len);
+      desc[desc_len] = '\0';
+
+      // Trim trailing whitespace
+      while (desc_len > 0 && isspace(desc[desc_len - 1])) {
+        desc[--desc_len] = '\0';
+      }
+
+      if (desc_len > 0) {
+        state->manual_env_descs[state->manual_env_count - 1] = desc;
+      } else {
+        SAFE_FREE(desc);
+      }
+    }
+  }
+}
+
+static void manpage_begin_auto(manpage_merge_state_t *state, const char *p, const char *line_end) {
+  state->in_auto_section = true;
+  state->found_section_header = false;
+
+  // Extract section name (e.g., "SYNOPSIS" from "AUTO-START: SYNOPSIS")
+  const char *section_start = strstr(p, "AUTO-START:");
+  if (section_start && section_start < line_end) {
+    section_start += strlen("AUTO-START:");
+    while (*section_start && section_start < line_end && isspace(*section_start))
+      section_start++;
+
+    const char *section_name_end = section_start;
+    // Extract section name: everything from section_start until line_end
+    // Do NOT use a condition based on '\n' - just advance until we reach line_end
+    while (section_name_end < line_end) {
+      section_name_end++;
+    }
+
+    // Now trim trailing whitespace from the section name
+    while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
+      section_name_end--;
+    }
+
+    size_t section_name_len = (size_t)(section_name_end - section_start);
+    if (section_name_len > 0 && section_name_len < sizeof(state->current_auto_section)) {
+      // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
+      // SAFE_STRNCPY uses strlcpy which only copies size-1 bytes
+      memcpy(state->current_auto_section, section_start, section_name_len);
+      state->current_auto_section[section_name_len] = '\0';
+      log_debug("[MANPAGE] Found AUTO-START section: '%s' (%zu bytes)", state->current_auto_section, section_name_len);
+    }
+  }
+
+  // Don't write the AUTO-START marker line - it's an internal control comment
+}
+
+static void manpage_write_auto_content(FILE *f, const options_config_t *config, const manpage_merge_state_t *state) {
+  // Generate content for this AUTO section
+  if (strcmp(state->current_auto_section, "SYNOPSIS") == 0) {
+    log_debug("[MANPAGE] Generating SYNOPSIS section");
+    char *synopsis_content = NULL;
+    size_t synopsis_len = 0;
+    asciichat_error_t gen_err = manpage_merger_generate_synopsis(NULL, &synopsis_content, &synopsis_len);
+    log_debug("[MANPAGE] SYNOPSIS: err=%d, len=%zu", gen_err, synopsis_len);
+    if (gen_err == ASCIICHAT_OK && synopsis_content && synopsis_len > 0) {
+      fprintf(f, "%s", synopsis_content);
+      manpage_merger_free_content(synopsis_content);
+    }
+  } else if (strcmp(state->current_auto_section, "POSITIONAL ARGUMENTS") == 0) {
+    log_debug("[MANPAGE] Generating POSITIONAL ARGUMENTS (config has %zu args)", config->num_positional_args);
+    char *pos_content = manpage_content_generate_positional(config);
+    if (pos_content) {
+      size_t pos_len = strlen(pos_content);
+      log_debug("[MANPAGE] POSITIONAL ARGUMENTS: %zu bytes", pos_len);
+      if (*pos_content != '\0') {
+        fprintf(f, "%s", pos_content);
+      }
+    }
+    manpage_content_free_positional(pos_content);
+  } else if (strcmp(state->current_auto_section, "USAGE") == 0) {
+    log_debug("[MANPAGE] Generating USAGE (config has %zu usage lines)", config->num_usage_lines);
+    char *usage_content = NULL;
+    size_t usage_len = 0;
+    asciichat_error_t usage_err = manpage_merger_generate_usage(config, &usage_content, &usage_len);
+    log_debug("[MANPAGE] USAGE: err=%d, len=%zu", usage_err, usage_len);
+    if (usage_err == ASCIICHAT_OK && usage_content && usage_len > 0) {
+      fprintf(f, "%s", usage_content);
+      manpage_merger_free_content(usage_content);
+    }
+  } else if (strcmp(state->current_auto_section, "EXAMPLES") == 0) {
+    log_debug("[MANPAGE] Generating EXAMPLES (config has %zu examples)", config->num_examples);
+    char *examples_content = manpage_content_generate_examples(config);
+    if (examples_content) {
+      size_t ex_len = strlen(examples_content);
+      log_debug("[MANPAGE] EXAMPLES: %zu bytes", ex_len);
+      if (*examples_content != '\0') {
+        fprintf(f, "%s", examples_content);
+      }
+    }
+    manpage_content_free_examples(examples_content);
+  } else if (strcmp(state->current_auto_section, "OPTIONS") == 0) {
+    log_debug("[MANPAGE] Generating OPTIONS (config has %zu descriptors)", config->num_descriptors);
+    char *options_content = manpage_content_generate_options(config);
+    if (options_content) {
+      size_t opt_len = strlen(options_content);
+      log_debug("[MANPAGE] OPTIONS: %zu bytes", opt_len);
+      if (*options_content != '\0') {
+        fprintf(f, "%s", options_content);
+      }
+    }
+    manpage_content_free_options(options_content);
+  }
+}
+
+static void manpage_write_auto_line(FILE *f, const options_config_t *config, manpage_merge_state_t *state,
+                                    const char *p, const char *line_end, size_t line_len) {
+  // Preserve comment lines that come before the section header
+  if (!state->found_section_header && strstr(p, ".\\\"") != NULL && strstr(p, ".\\\"") < line_end) {
+    // Skip comment lines in AUTO sections that contain "auto-generated" text
+    if (strstr(p, "auto-generated") == NULL) {
+      // Non-marker comment lines can be preserved
+      fwrite(p, 1, line_len + 1, f);
+    }
+    // Skip comment lines with "auto-generated" marker text
+  } else if (!state->found_section_header && strstr(p, ".SH ") != NULL && strstr(p, ".SH ") < line_end) {
+    // If this is the section header line (.SH ...), write it and generate content
+    fwrite(p, 1, line_len + 1, f);
+    state->found_section_header = true;
+
+    manpage_write_auto_content(f, config, state);
+  }
+  // Otherwise skip old content between section header and AUTO-END
+}
+
+static void manpage_merge_template(FILE *f, const options_config_t *config, const char *p) {
+  manpage_merge_state_t storage = {0};
+  manpage_merge_state_t *state = &storage;
   while (*p) {
     // Find next line
     const char *line_end = strchr(p, '\n');
     if (!line_end) {
       // Last line without newline
-      if (!in_auto_section && !in_merge_section) {
+      if (!state->in_auto_section && !state->in_merge_section) {
         fputs(p, f);
       }
       break;
@@ -328,203 +609,20 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     }
 
     if (has_merge_start) {
-      in_merge_section = true;
-      merge_content_generated = false;
-      manual_env_count = 0; // Reset manual variable collection
-      manual_env_capacity = 0;
-
-      // Extract section name (e.g., "ENVIRONMENT" from "MERGE-START: ENVIRONMENT")
-      const char *section_start = strstr(p, "MERGE-START:");
-      if (section_start && section_start < line_end) {
-        section_start += strlen("MERGE-START:");
-        while (*section_start && section_start < line_end && isspace(*section_start))
-          section_start++;
-
-        const char *section_name_end = section_start;
-        // Advance until we reach line_end (the newline position)
-        while (section_name_end < line_end) {
-          section_name_end++;
-        }
-
-        // Trim trailing whitespace
-        while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
-          section_name_end--;
-        }
-
-        size_t section_name_len = (size_t)(section_name_end - section_start);
-        if (section_name_len > 0 && section_name_len < sizeof(current_merge_section)) {
-          // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
-          memcpy(current_merge_section, section_start, section_name_len);
-          current_merge_section[section_name_len] = '\0';
-        }
-      }
-
-      // Do NOT write the MERGE-START marker line - it's an internal control marker
-      // The content will be generated when MERGE-END is encountered
-
-      // For ENVIRONMENT MERGE sections, find and preserve the .SH header
-      // (skipping over any marker comment lines that might be in between)
-      if (strcmp(current_merge_section, "ENVIRONMENT") == 0) {
-        const char *search_line = line_end + 1;
-        bool found_header = false;
-        while (*search_line && !found_header) {
-          const char *search_line_end = strchr(search_line, '\n');
-          if (!search_line_end)
-            break;
-
-          // Check if this is the .SH header
-          if (strncmp(search_line, ".SH ", 4) == 0) {
-            // Write the .SH header line
-            size_t header_len = (size_t)(search_line_end - search_line);
-            fwrite(search_line, 1, header_len + 1, f);
-            p = search_line_end + 1;
-            found_header = true;
-            break;
-          }
-
-          // Skip marker comment lines (.\" MANUAL-*, .\" MERGE-*, etc)
-          if (strncmp(search_line, ".\\\" ", 4) == 0) {
-            search_line = search_line_end + 1;
-            continue; // Keep searching
-          }
-
-          // If we hit a non-marker, non-.SH line, stop searching
-          break;
-        }
-        if (found_header) {
-          continue; // Skip the "Skip to next line" at line 359
-        }
-      }
-
-      // Skip to next line
+      p = manpage_begin_merge(f, state, p, line_end);
+      continue;
+    } else if (state->in_merge_section && strstr(p, "MERGE-END:") != NULL && strstr(p, "MERGE-END:") < line_end) {
+      manpage_end_merge(f, config, state);
       p = line_end + 1;
       continue;
-
-    } else if (in_merge_section && strstr(p, "MERGE-END:") != NULL && strstr(p, "MERGE-END:") < line_end) {
-      // Before writing MERGE-END, generate content if not already done
-      if (!merge_content_generated) {
-        if (strcmp(current_merge_section, "ENVIRONMENT") == 0) {
-          log_debug("[MANPAGE] Generating ENVIRONMENT with %zu manual + %zu auto variables", manual_env_count,
-                    config->num_descriptors);
-          char *env_content = manpage_content_generate_environment_with_manual(config, manual_env_vars,
-                                                                               manual_env_count, manual_env_descs);
-          if (env_content && *env_content != '\0') {
-            log_debug("[MANPAGE] Writing ENVIRONMENT content: %zu bytes", strlen(env_content));
-            fprintf(f, "%s", env_content);
-          } else {
-            log_warn("[MANPAGE] ENVIRONMENT content is empty!");
-          }
-          manpage_content_free_environment(env_content);
-        }
-        merge_content_generated = true;
-      }
-
-      in_merge_section = false;
-      // Do NOT write the MERGE-END marker line - it's an internal control marker
-      memset(current_merge_section, 0, sizeof(current_merge_section));
-
-      // Free collected manual variables (strings first, then arrays)
-      for (size_t i = 0; i < manual_env_count; i++) {
-        if (manual_env_vars && manual_env_vars[i]) {
-          char *var_name = (char *)manual_env_vars[i];
-          SAFE_FREE(var_name);
-        }
-        if (manual_env_descs && manual_env_descs[i]) {
-          char *var_desc = (char *)manual_env_descs[i];
-          SAFE_FREE(var_desc);
-        }
-      }
-      if (manual_env_vars) {
-        SAFE_FREE(manual_env_vars);
-        manual_env_vars = NULL;
-      }
-      if (manual_env_descs) {
-        SAFE_FREE(manual_env_descs);
-        manual_env_descs = NULL;
-      }
-      manual_env_count = 0;
-      manual_env_capacity = 0;
-
-      p = line_end + 1;
-      continue;
-
-    } else if (in_merge_section) {
-      // Within MERGE section: collect manual environment variables for ENVIRONMENT section
-      if (strcmp(current_merge_section, "ENVIRONMENT") == 0) {
-        // Check if line starts with ".TP" or ".B " (groff markers)
-        bool is_tp_marker = (line_len >= 3 && strncmp(p, ".TP", 3) == 0 && (line_len == 3 || isspace(p[3])));
-        bool is_b_marker = (line_len >= 3 && strncmp(p, ".B ", 3) == 0);
-
-        if (is_b_marker) {
-          // Extract variable name after ".B "
-          const char *var_start = p + 3;
-          while (*var_start && var_start < line_end && isspace(*var_start))
-            var_start++;
-
-          const char *var_end = var_start;
-          while (var_end < line_end && *var_end && *var_end != '\n') {
-            var_end++;
-          }
-
-          size_t var_len = (size_t)(var_end - var_start);
-          if (var_len > 0) {
-            char *var_name = SAFE_MALLOC(var_len + 1, char *);
-            memcpy(var_name, var_start, var_len);
-            var_name[var_len] = '\0';
-
-            // Trim trailing whitespace
-            while (var_len > 0 && isspace(var_name[var_len - 1])) {
-              var_name[--var_len] = '\0';
-            }
-
-            // Store the variable name
-            if (manual_env_count >= manual_env_capacity) {
-              manual_env_capacity = manual_env_capacity == 0 ? 16 : manual_env_capacity * 2;
-              manual_env_vars =
-                  SAFE_REALLOC(manual_env_vars, manual_env_capacity * sizeof(const char *), const char **);
-              manual_env_descs =
-                  SAFE_REALLOC(manual_env_descs, manual_env_capacity * sizeof(const char *), const char **);
-            }
-
-            manual_env_vars[manual_env_count] = var_name;
-            manual_env_descs[manual_env_count] = NULL; // Will be set from next line(s)
-            manual_env_count++;
-          }
-        } else if (manual_env_count > 0 && !is_tp_marker && !is_b_marker) {
-          // This is likely a description line following a ".B var_name" line
-          // Set description for the last collected variable
-          const char *desc_start = p;
-          while (*desc_start && desc_start < line_end && isspace(*desc_start))
-            desc_start++;
-
-          size_t desc_len = (size_t)(line_end - desc_start);
-          if (desc_len > 0 && manual_env_descs[manual_env_count - 1] == NULL) {
-            char *desc = SAFE_MALLOC(desc_len + 1, char *);
-            memcpy(desc, desc_start, desc_len);
-            desc[desc_len] = '\0';
-
-            // Trim trailing whitespace
-            while (desc_len > 0 && isspace(desc[desc_len - 1])) {
-              desc[--desc_len] = '\0';
-            }
-
-            if (desc_len > 0) {
-              manual_env_descs[manual_env_count - 1] = desc;
-            } else {
-              SAFE_FREE(desc);
-            }
-          }
-        }
-        // For ENVIRONMENT MERGE sections, do NOT write template content
-        // All content will be generated at MERGE-END
-        p = line_end + 1;
-        continue;
+    } else if (state->in_merge_section) {
+      if (strcmp(state->current_merge_section, "ENVIRONMENT") == 0) {
+        manpage_collect_environment(state, p, line_end, line_len);
       } else {
-        // For other MERGE sections (if any), write template content as-is
         fwrite(p, 1, line_len + 1, f);
-        p = line_end + 1;
-        continue;
       }
+      p = line_end + 1;
+      continue;
     }
 
     // Check for AUTO-START marker (only in current line)
@@ -545,117 +643,15 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     }
 
     if (has_auto_start) {
-      in_auto_section = true;
-      found_section_header = false;
-
-      // Extract section name (e.g., "SYNOPSIS" from "AUTO-START: SYNOPSIS")
-      const char *section_start = strstr(p, "AUTO-START:");
-      if (section_start && section_start < line_end) {
-        section_start += strlen("AUTO-START:");
-        while (*section_start && section_start < line_end && isspace(*section_start))
-          section_start++;
-
-        const char *section_name_end = section_start;
-        // Extract section name: everything from section_start until line_end
-        // Do NOT use a condition based on '\n' - just advance until we reach line_end
-        while (section_name_end < line_end) {
-          section_name_end++;
-        }
-
-        // Now trim trailing whitespace from the section name
-        while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
-          section_name_end--;
-        }
-
-        size_t section_name_len = (size_t)(section_name_end - section_start);
-        if (section_name_len > 0 && section_name_len < sizeof(current_auto_section)) {
-          // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
-          // SAFE_STRNCPY uses strlcpy which only copies size-1 bytes
-          memcpy(current_auto_section, section_start, section_name_len);
-          current_auto_section[section_name_len] = '\0';
-          log_debug("[MANPAGE] Found AUTO-START section: '%s' (%zu bytes)", current_auto_section, section_name_len);
-        }
-      }
-
-      // Don't write the AUTO-START marker line - it's an internal control comment
-
+      manpage_begin_auto(state, p, line_end);
     } else if (strstr(p, "AUTO-END:") != NULL && strstr(p, "AUTO-END:") < line_end) {
-      in_auto_section = false;
+      state->in_auto_section = false;
       // Don't write the AUTO-END marker line - it's an internal control comment
-      memset(current_auto_section, 0, sizeof(current_auto_section));
-      found_section_header = false;
+      memset(state->current_auto_section, 0, sizeof(state->current_auto_section));
+      state->found_section_header = false;
 
-    } else if (in_auto_section) {
-      // Preserve comment lines that come before the section header
-      if (!found_section_header && strstr(p, ".\\\"") != NULL && strstr(p, ".\\\"") < line_end) {
-        // Skip comment lines in AUTO sections that contain "auto-generated" text
-        if (strstr(p, "auto-generated") == NULL) {
-          // Non-marker comment lines can be preserved
-          fwrite(p, 1, line_len + 1, f);
-        }
-        // Skip comment lines with "auto-generated" marker text
-      } else if (!found_section_header && strstr(p, ".SH ") != NULL && strstr(p, ".SH ") < line_end) {
-        // If this is the section header line (.SH ...), write it and generate content
-        fwrite(p, 1, line_len + 1, f);
-        found_section_header = true;
-
-        // Generate content for this AUTO section
-        if (strcmp(current_auto_section, "SYNOPSIS") == 0) {
-          log_debug("[MANPAGE] Generating SYNOPSIS section");
-          char *synopsis_content = NULL;
-          size_t synopsis_len = 0;
-          asciichat_error_t gen_err = manpage_merger_generate_synopsis(NULL, &synopsis_content, &synopsis_len);
-          log_debug("[MANPAGE] SYNOPSIS: err=%d, len=%zu", gen_err, synopsis_len);
-          if (gen_err == ASCIICHAT_OK && synopsis_content && synopsis_len > 0) {
-            fprintf(f, "%s", synopsis_content);
-            manpage_merger_free_content(synopsis_content);
-          }
-        } else if (strcmp(current_auto_section, "POSITIONAL ARGUMENTS") == 0) {
-          log_debug("[MANPAGE] Generating POSITIONAL ARGUMENTS (config has %zu args)", config->num_positional_args);
-          char *pos_content = manpage_content_generate_positional(config);
-          if (pos_content) {
-            size_t pos_len = strlen(pos_content);
-            log_debug("[MANPAGE] POSITIONAL ARGUMENTS: %zu bytes", pos_len);
-            if (*pos_content != '\0') {
-              fprintf(f, "%s", pos_content);
-            }
-          }
-          manpage_content_free_positional(pos_content);
-        } else if (strcmp(current_auto_section, "USAGE") == 0) {
-          log_debug("[MANPAGE] Generating USAGE (config has %zu usage lines)", config->num_usage_lines);
-          char *usage_content = NULL;
-          size_t usage_len = 0;
-          asciichat_error_t usage_err = manpage_merger_generate_usage(config, &usage_content, &usage_len);
-          log_debug("[MANPAGE] USAGE: err=%d, len=%zu", usage_err, usage_len);
-          if (usage_err == ASCIICHAT_OK && usage_content && usage_len > 0) {
-            fprintf(f, "%s", usage_content);
-            manpage_merger_free_content(usage_content);
-          }
-        } else if (strcmp(current_auto_section, "EXAMPLES") == 0) {
-          log_debug("[MANPAGE] Generating EXAMPLES (config has %zu examples)", config->num_examples);
-          char *examples_content = manpage_content_generate_examples(config);
-          if (examples_content) {
-            size_t ex_len = strlen(examples_content);
-            log_debug("[MANPAGE] EXAMPLES: %zu bytes", ex_len);
-            if (*examples_content != '\0') {
-              fprintf(f, "%s", examples_content);
-            }
-          }
-          manpage_content_free_examples(examples_content);
-        } else if (strcmp(current_auto_section, "OPTIONS") == 0) {
-          log_debug("[MANPAGE] Generating OPTIONS (config has %zu descriptors)", config->num_descriptors);
-          char *options_content = manpage_content_generate_options(config);
-          if (options_content) {
-            size_t opt_len = strlen(options_content);
-            log_debug("[MANPAGE] OPTIONS: %zu bytes", opt_len);
-            if (*options_content != '\0') {
-              fprintf(f, "%s", options_content);
-            }
-          }
-          manpage_content_free_options(options_content);
-        }
-      }
-      // Otherwise skip old content between section header and AUTO-END
+    } else if (state->in_auto_section) {
+      manpage_write_auto_line(f, config, state, p, line_end, line_len);
     } else {
       // Write all manual content (not in AUTO section)
       // Skip marker comment lines: .\" AUTO-*, .\" MANUAL-*, .\" MERGE-*
@@ -671,6 +667,44 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     // Move to next line
     p = line_end + 1;
   }
+}
+
+asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
+                                                         const char *mode_name, const char *output_path,
+                                                         const char *brief_description) {
+  (void)mode_name;         // Not used
+  (void)program_name;      // Not used
+  (void)brief_description; // Not used
+
+  if (!config) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "config is required for man page generation");
+  }
+
+  FILE *f = NULL;
+  bool should_close = false;
+  asciichat_error_t err = manpage_open_merged_output(output_path, &f, &should_close);
+  if (err != ASCIICHAT_OK) {
+    return err;
+  }
+
+  // Load template resources
+  manpage_resources_t resources;
+  memset(&resources, 0, sizeof(resources));
+  err = manpage_resources_load(&resources);
+  if (err != ASCIICHAT_OK) {
+    if (should_close)
+      fclose(f);
+    return err;
+  }
+
+  if (!manpage_resources_is_valid(&resources)) {
+    if (should_close)
+      fclose(f);
+    manpage_resources_destroy(&resources);
+    return SET_ERRNO(ERROR_CONFIG, "Man page resources are not valid");
+  }
+
+  manpage_merge_template(f, config, resources.template_content);
 
   manpage_resources_destroy(&resources);
 

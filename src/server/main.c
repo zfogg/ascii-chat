@@ -1581,24 +1581,20 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
 /* ============================================================================
  * Mode-specific initialization callback
  * ============================================================================ */
-static asciichat_error_t server_init_fn(void *user_data) {
-  (void)user_data;
-  int port = GET_OPTION(port);
+typedef struct {
+  const char *password;
+  bool has_password;
+  bool has_identity;
+  bool explicit_expose;
+  bool expose_ip;
+} server_discovery_policy_t;
 
-  // Get TCP server from server_like (it's already initialized at this point)
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
-  if (!tcp) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
-  }
+typedef struct {
+  char session_string[64];
+  bool mdns_only;
+} server_discovery_startup_t;
 
-  // Point server context at the server_like-owned TCP server
-  g_server_ctx.tcp_server = tcp;
-
-  // A local mapping behind upstream NAT must not suppress WebRTC discovery.
-  nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
-  bool upnp_succeeded =
-      nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private && is_internet_ipv4(upnp_ctx->external_ip);
-
+static asciichat_error_t server_init_client_manager_lock(void) {
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize client manager rwlock");
@@ -1608,19 +1604,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
   // Register global sync primitives for debugging
   NAMED_REGISTER_RWLOCK(&g_client_manager_rwlock, "client_manager_rwlock", NULL);
 
-  // Check if SIGINT/SIGTERM was received during initialization
-  if (atomic_load_bool(&g_should_exit)) {
-    log_info("Shutdown signal received during initialization, skipping server startup");
-    return ASCIICHAT_OK;
-  }
+  return ASCIICHAT_OK;
+}
 
-  // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
-  // We only need to initialize the mutex
-  mutex_init(&g_client_manager.mutex, "client_manager");
-
-  // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
-  g_client_manager.clients_by_id = NULL;
-
+static asciichat_error_t server_init_rate_limiter(void) {
   // Initialize connection rate limiter (prevents DoS attacks)
   if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing connection rate limiter...");
@@ -1635,6 +1622,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
     }
   }
 
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t server_init_audio_mixer(void) {
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing audio mixer for per-client audio rendering...");
@@ -1651,6 +1642,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
     }
   }
 
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t server_init_h265(void) {
   // Initialize H.265 codec server context (always enabled on server)
   if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing H.265 codec server context...");
@@ -1667,6 +1662,10 @@ static asciichat_error_t server_init_fn(void *user_data) {
     }
   }
 
+  return ASCIICHAT_OK;
+}
+
+static void server_init_session_host(tcp_server_t *tcp, int port) {
   // Session Host Creation (for discovery mode support)
   // Create session_host to track clients in a transport-agnostic way.
   if (!atomic_load_bool(&g_should_exit)) {
@@ -1693,423 +1692,488 @@ static asciichat_error_t server_init_fn(void *user_data) {
       log_debug("Session host created for discovery mode support");
     }
   }
+}
+
+static bool server_allow_discovery(server_discovery_policy_t *policy) {
+  if (policy->has_password || policy->has_identity) {
+    // Auto-enable privacy: IP revealed only after verification
+    policy->expose_ip = false;
+    log_plain("ACDS privacy enabled: IP disclosed only after %s verification",
+              policy->has_password ? "password" : "identity");
+  } else if (policy->explicit_expose) {
+    // Explicit opt-in to public IP disclosure
+    // Only prompt if running interactively (can prompt user)
+    // When non-interactive (automated/scripted), treat explicit flag as confirmation
+    bool is_interactive = terminal_can_prompt_user();
+
+    if (is_interactive) {
+      if (!ui_notice_confirm(UI_NOTICE_DANGER,
+                             "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
+                             "address.\n\nDo you want to proceed",
+                             30)) {
+        log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
+        return false;
+      }
+    }
+
+    // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
+    policy->expose_ip = true;
+    NOTICE(DANGER, "PUBLIC IP DISCLOSURE ENABLED",
+           "Public IP disclosure CONFIRMED.\n"
+           "Your IP address will be visible to anyone with the session string");
+  } else {
+    // Security violation: No password, no identity, no explicit opt-in
+    NOTICE(DANGER, "DISCOVERY DISABLED: SECURITY REQUIRED",
+           "Cannot create ACDS session: No security configured!\n"
+           "You must either:\n"
+           "1. Set a password: --password \"your-secret\"\n"
+           "2. Use identity key: --key ~/.ssh/id_ed25519\n"
+           "3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n"
+           "\n"
+           "Server will run WITHOUT discovery service.");
+    return false;
+  }
+
+  return true;
+}
+
+static void server_prepare_discovery_request(acds_session_create_params_t *params,
+                                             const server_discovery_policy_t *policy, int port,
+                                             nat_upnp_context_t *upnp_ctx, bool upnp_succeeded) {
+  // Use server's Ed25519 identity public key if available
+  if (g_server_encryption_enabled && policy->has_identity) {
+    memcpy(params->identity_pubkey, g_server_private_key.public_key, 32);
+    log_debug("Using server identity key for ACDS session");
+  } else {
+    // No identity key available - use zero key
+    // ACDS will accept this if identity verification is not required
+    memset(params->identity_pubkey, 0, 32);
+    log_debug("No server identity key - using zero key for ACDS session");
+  }
+
+  params->capabilities = 0x03; // Video + Audio
+  params->max_participants = GET_OPTION(max_clients);
+  log_debug("ACDS: max_clients option value = %d", GET_OPTION(max_clients));
+
+  // Set password if configured
+  params->has_password = policy->has_password;
+  if (policy->has_password) {
+    // TODO: Hash password with Argon2id
+    SAFE_STRNCPY(params->password, policy->password, sizeof(params->password));
+  }
+
+  // Set IP disclosure policy (determined above)
+  params->acds_expose_ip = policy->expose_ip;
+  log_info("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
+           params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
+
+  // Set session type (Direct TCP or WebRTC)
+  // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
+  // Exception: If bind address is 0.0.0.0, server is on public IP - use Direct TCP
+  const char *bind_addr = GET_OPTION(address);
+  bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
+
+  // Determine session type: prefer WebRTC by default (unless explicitly disabled)
+  // Priority: explicit --webrtc flag > connection type detection > UPnP > default
+  if (GET_OPTION(webrtc)) {
+    // Explicit WebRTC request
+    params->session_type = SESSION_TYPE_WEBRTC;
+    log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
+  } else if (bind_all_interfaces) {
+    // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
+    params->session_type = SESSION_TYPE_WEBRTC;
+    log_info("ACDS session type: WebRTC (default for 0.0.0.0 binding, provides NAT-agnostic connections)");
+  } else if (upnp_succeeded) {
+    // UPnP port mapping worked - can use direct TCP
+    params->session_type = SESSION_TYPE_DIRECT_TCP;
+    log_info("ACDS session type: Direct TCP (router mapping created; external reachability unverified)");
+  } else {
+    // UPnP failed and not on public IP - use WebRTC for NAT traversal
+    params->session_type = SESSION_TYPE_WEBRTC;
+    log_info("ACDS session type: WebRTC (no router mapping or direct connection type selected)");
+  }
+
+  // Server connection information (where clients should connect)
+  // If bind address is 0.0.0.0, leave server_address empty for ACDS to auto-detect public IP
+  if (bind_all_interfaces) {
+    params->server_address[0] = '\0'; // Empty - ACDS will use connection source IP
+    log_debug("Bind address is 0.0.0.0, ACDS will auto-detect public IP from connection");
+  } else {
+    SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
+  }
+  params->server_port = port;
+  if (params->session_type == SESSION_TYPE_DIRECT_TCP) {
+    if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) !=
+        ASCIICHAT_OK) {
+      params->session_type = SESSION_TYPE_WEBRTC;
+      log_info("ACDS session type: WebRTC (router mapping expired before registration)");
+    }
+  }
+
+  // DEBUG: Log what we're sending to ACDS
+  log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
+           params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
+}
+
+static void server_join_discovery_session(const acds_session_create_params_t *params,
+                                          acds_session_create_result_t *result, const char *session_string,
+                                          const server_discovery_policy_t *policy) {
+  // Server must join its own session so ACDS can route signaling messages
+  log_debug("Server joining session as first participant for WebRTC signaling...");
+  acds_session_join_params_t join_params = {0};
+  join_params.session_string = session_string;
+
+  // Use same identity key as session creation
+  memcpy(join_params.identity_pubkey, params->identity_pubkey, 32);
+
+  // Include password if session is password-protected
+  if (policy->has_password) {
+    join_params.has_password = true;
+    SAFE_STRNCPY(join_params.password, policy->password, sizeof(join_params.password));
+  }
+
+  acds_session_join_result_t join_result = {0};
+  asciichat_error_t join_err = acds_session_join(g_acds_client, &join_params, &join_result);
+  if (join_err != ASCIICHAT_OK || !join_result.success) {
+    log_error("Failed to join own session: %s (error: %s)", asciichat_error_string(join_err),
+              join_result.error_message[0] ? join_result.error_message : "unknown");
+    // Continue anyway - this is not fatal for Direct TCP sessions
+  } else {
+    log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
+              join_result.participant_id[1]);
+    // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
+    memcpy(g_server_participant_id, join_result.participant_id, 16);
+    log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
+              g_server_participant_id[1]);
+    memcpy(result->session_id, join_result.session_id, 16);
+  }
+}
+
+static void server_start_discovery_keepalive(void) {
+  // Keep ACDS connection alive for WebRTC signaling relay
+  log_debug("Server staying connected to ACDS for signaling relay");
+
+  // Create ACDS transport wrapper for sending signaling packets
+  g_acds_transport = acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, NULL);
+  if (!g_acds_transport) {
+    log_error("Failed to create ACDS transport wrapper");
+  } else {
+    log_debug("ACDS transport wrapper created for signaling");
+
+    // Start ACDS ping thread to keep connection alive (for ALL session types)
+    int ping_thread_result = asciichat_thread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
+    if (ping_thread_result != 0) {
+      log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
+    } else {
+      log_debug("ACDS ping thread started to keep connection alive");
+      g_acds_ping_thread_started = true;
+    }
+  }
+}
+
+static int server_configure_stun(stun_server_t stun_servers[4]) {
+  static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
+  static int stun_count = 0; // Store actual count separately
+
+  if (lifecycle_init(&g_stun_lc, "stun")) {
+    log_debug("Parsing STUN servers from options: '%s'", GET_OPTION(stun_servers));
+    int count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+    if (count > 0) {
+      stun_count = count;
+      log_debug("Parsed %d STUN servers", count);
+      for (int i = 0; i < count; i++) {
+        log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
+      }
+    } else {
+      log_warn("Failed to parse STUN servers, using defaults");
+      stun_count =
+          stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+      log_debug("Using default STUN servers, count=%d", stun_count);
+      for (int i = 0; i < stun_count; i++) {
+        log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
+      }
+    }
+  }
+
+  return stun_count;
+}
+
+static size_t server_configure_turn(turn_server_t turn_servers[4], const char *turn_username,
+                                    const char *turn_credential) {
+  size_t turn_count = 0;
+  if (turn_username[0] && turn_credential[0]) {
+    char urls[OPTIONS_BUFF_SIZE];
+    SAFE_STRNCPY(urls, GET_OPTION(turn_servers), sizeof(urls));
+    char *saveptr = NULL;
+    char *url = platform_strtok_r(urls, ",", &saveptr);
+    while (url && turn_count < 4) {
+      while (*url == ' ' || *url == '\t')
+        url++;
+      size_t len = strlen(url);
+      while (len && (url[len - 1] == ' ' || url[len - 1] == '\t'))
+        url[--len] = '\0';
+      if (len && len < sizeof(turn_servers[0].url)) {
+        turn_server_t *turn = &turn_servers[turn_count++];
+        SAFE_STRNCPY(turn->url, url, sizeof(turn->url));
+        SAFE_STRNCPY(turn->username, turn_username, sizeof(turn->username));
+        SAFE_STRNCPY(turn->credential, turn_credential, sizeof(turn->credential));
+        turn->url_len = (uint8_t)len;
+        turn->username_len = (uint8_t)strlen(turn->username);
+        turn->credential_len = (uint8_t)strlen(turn->credential);
+      }
+      url = platform_strtok_r(NULL, ",", &saveptr);
+    }
+  }
+
+  return turn_count;
+}
+
+static void server_init_webrtc(void) {
+  log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
+
+  // Initialize WebRTC library (libdatachannel)
+  asciichat_error_t webrtc_init_result = webrtc_init();
+  if (webrtc_init_result != ASCIICHAT_OK) {
+    log_error("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_init_result));
+    g_webrtc_peer_manager = NULL;
+  } else {
+    log_debug("WebRTC library initialized successfully");
+
+    // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
+    static stun_server_t stun_servers[4] = {0};
+    int stun_count = server_configure_stun(stun_servers);
+
+    static turn_server_t turn_servers[4];
+    static char turn_auth_username[128];
+    static char turn_auth_credential[128];
+    size_t turn_count = 0;
+    const char *turn_username = GET_OPTION(turn_username);
+    const char *turn_credential = GET_OPTION(turn_credential);
+    SAFE_STRNCPY(turn_auth_username, turn_username, sizeof(turn_auth_username));
+    SAFE_STRNCPY(turn_auth_credential, turn_credential, sizeof(turn_auth_credential));
+    turn_count = server_configure_turn(turn_servers, turn_username, turn_credential);
+
+    // Configure peer_manager
+    const char *server_address = GET_OPTION(address);
+    bool bind_webrtc_to_server_address = server_address && server_address[0] &&
+                                         strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
+    webrtc_peer_manager_config_t pm_config = {
+        .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+        // Honor an explicitly selected server interface for ICE. With a
+        // wildcard bind, let libdatachannel gather candidates on all interfaces.
+        .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
+        .stun_servers = stun_servers,
+        .stun_count = stun_count,
+        .turn_servers = turn_servers,
+        .turn_count = turn_count,
+        .relay_only = GET_OPTION(webrtc_relay_only),
+        .turn_username = turn_auth_username,
+        .turn_credential = turn_auth_credential,
+        .on_transport_ready = on_webrtc_transport_ready,
+        .user_data = &g_server_ctx,
+        .crypto_ctx = NULL // WebRTC handles crypto internally
+    };
+
+    // Configure signaling callbacks for relaying SDP/ICE via ACDS
+    webrtc_signaling_callbacks_t signaling_callbacks = {
+        .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
+
+    // Create peer_manager
+    asciichat_error_t pm_result = webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
+    if (pm_result != ASCIICHAT_OK) {
+      log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
+      g_webrtc_peer_manager = NULL;
+    } else {
+      log_debug("WebRTC peer_manager initialized successfully");
+
+      // Start ACDS receive thread for WebRTC signaling relay
+      int thread_result = asciichat_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
+      if (thread_result != 0) {
+        log_error("Failed to create ACDS receive thread: %d", thread_result);
+        // Cleanup peer_manager since signaling won't work
+        webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+        g_webrtc_peer_manager = NULL;
+      } else {
+        log_debug("ACDS receive thread started for WebRTC signaling relay");
+        g_acds_receive_thread_started = true;
+      }
+    }
+  }
+}
+
+static void server_register_discovery(server_discovery_startup_t *startup, int port, nat_upnp_context_t *upnp_ctx,
+                                      bool upnp_succeeded) {
+  if (!GET_OPTION(discovery)) {
+    log_info("ACDS registration disabled (use --acds to enable)");
+    return;
+  }
+  const char *password = GET_OPTION(password);
+  const char *encrypt_key = GET_OPTION(encrypt_key);
+  server_discovery_policy_t policy = {
+      .password = password,
+      .has_password = password && strlen(password) > 0,
+      .has_identity = encrypt_key && strlen(encrypt_key) > 0,
+      .explicit_expose = GET_OPTION(discovery_expose_ip) != 0,
+  };
+  if (!server_allow_discovery(&policy)) {
+    return;
+  }
+  // Security is configured, proceed with ACDS connection
+  const char *acds_server = GET_OPTION(discovery_server);
+  uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
+
+  log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
+
+  acds_client_config_t acds_config;
+  acds_client_config_init_defaults(&acds_config);
+  SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
+  acds_config.server_port = acds_port;
+  acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
+
+  // Allocate ACDS client on heap for server lifecycle
+  g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
+  if (!g_acds_client) {
+    log_error("Failed to allocate ACDS client");
+    return;
+  }
+
+  asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
+  if (acds_connect_result != ASCIICHAT_OK) {
+    log_error("Failed to connect to ACDS server at %s:%d: %s", acds_server, acds_port,
+              asciichat_error_string(acds_connect_result));
+    return;
+  }
+  acds_session_create_params_t create_params = {0};
+  server_prepare_discovery_request(&create_params, &policy, port, upnp_ctx, upnp_succeeded);
+  acds_session_create_result_t create_result;
+  asciichat_error_t result = acds_session_create(g_acds_client, &create_params, &create_result);
+  if (result != ASCIICHAT_OK) {
+    log_warn("Failed to create session on ACDS server (server will run without discovery)");
+    if (g_acds_client) {
+      acds_client_disconnect(g_acds_client);
+      SAFE_FREE(g_acds_client);
+      g_acds_client = NULL;
+    }
+    return;
+  }
+  SAFE_STRNCPY(startup->session_string, create_result.session_string, sizeof(startup->session_string));
+  SAFE_STRNCPY(g_session_string, create_result.session_string, sizeof(g_session_string));
+  startup->mdns_only = false;
+  log_info("Session created: %s", startup->session_string);
+  server_join_discovery_session(&create_params, &create_result, startup->session_string, &policy);
+  server_start_discovery_keepalive();
+  if (create_params.session_type == SESSION_TYPE_WEBRTC) {
+    server_init_webrtc();
+  } else {
+    log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
+  }
+  advertise_mdns_with_session(startup->session_string, (uint16_t)port);
+}
+
+static asciichat_error_t server_announce_session(server_discovery_startup_t *startup, int port) {
+  // Fallback: If no session string was set by ACDS (either disabled or failed),
+  // generate a random session string for mDNS discovery only
+  if (startup->session_string[0] == '\0' && session_server_like_get_mdns_ctx()) {
+    log_debug("No ACDS session string available, generating random session for mDNS");
+
+    // Use the proper session string generation from discovery module
+    // This generates adjective-noun-noun format using the full wordlists
+    if (acds_string_generate(startup->session_string, sizeof(startup->session_string)) != ASCIICHAT_OK) {
+      log_error("Failed to generate session string for mDNS");
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to generate session string for mDNS");
+    }
+
+    log_debug("Generated random session string for mDNS: '%s'", startup->session_string);
+
+    // Mark that this session is mDNS-only (not globally discoverable via ACDS)
+    startup->mdns_only = true;
+
+    // Advertise mDNS with random session string
+    advertise_mdns_with_session(startup->session_string, (uint16_t)port);
+  }
+
+  if (startup->session_string[0] != '\0') {
+    if (startup->mdns_only) {
+      NOTICE_ANNOUNCE("SESSION READY",
+                      "Session String: %s (LAN only via "
+                      "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
+                      "%s",
+                      startup->session_string, startup->session_string);
+    } else {
+      NOTICE_ANNOUNCE("SESSION READY",
+                      "Session String: %s\nShare this "
+                      "globally to join:\n   ascii-chat %s",
+                      startup->session_string, startup->session_string);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t server_init_fn(void *user_data) {
+  (void)user_data;
+  int port = GET_OPTION(port);
+
+  // Get TCP server from server_like (it's already initialized at this point)
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (!tcp) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
+  }
+
+  // Point server context at the server_like-owned TCP server
+  g_server_ctx.tcp_server = tcp;
+
+  // A local mapping behind upstream NAT must not suppress WebRTC discovery.
+  nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
+  bool upnp_succeeded =
+      nat_upnp_is_active(upnp_ctx) && !upnp_ctx->external_is_private && is_internet_ipv4(upnp_ctx->external_ip);
+
+  asciichat_error_t result = server_init_client_manager_lock();
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  // Check if SIGINT/SIGTERM was received during initialization
+  if (atomic_load_bool(&g_should_exit)) {
+    log_info("Shutdown signal received during initialization, skipping server startup");
+    return ASCIICHAT_OK;
+  }
+
+  // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
+  // We only need to initialize the mutex
+  mutex_init(&g_client_manager.mutex, "client_manager");
+
+  // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
+  g_client_manager.clients_by_id = NULL;
+
+  result = server_init_rate_limiter();
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  result = server_init_audio_mixer();
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  result = server_init_h265();
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  server_init_session_host(tcp, port);
 
   // Update server context fields that depend on init results
   g_server_ctx.rate_limiter = g_rate_limiter;
   g_server_ctx.audio_mixer = g_audio_mixer;
   g_server_ctx.h265_server = g_h265_server; // Sync H.265 context created in this function
 
-  // ACDS Session Creation: Register this server with discovery service
-  // This also determines the session string for mDNS (if --acds is enabled)
-  char session_string[64] = {0};
-  bool session_is_mdns_only = false;
-
-  // ACDS Registration (conditional on --discovery flag)
-  if (GET_OPTION(discovery)) {
-    // Security Requirement Check (Issue #239):
-    // Server IP must be protected by password, identity verification, or explicit opt-in
-
-    // Auto-detection: Check if password or identity verification is configured
-    const char *password = GET_OPTION(password);
-    bool has_password = password && strlen(password) > 0;
-    const char *encrypt_key = GET_OPTION(encrypt_key);
-    bool has_identity = encrypt_key && strlen(encrypt_key) > 0;
-    bool explicit_expose = GET_OPTION(discovery_expose_ip) != 0;
-
-    // Validate security configuration BEFORE attempting ACDS connection
-    bool acds_expose_ip_flag = false;
-
-    if (has_password || has_identity) {
-      // Auto-enable privacy: IP revealed only after verification
-      acds_expose_ip_flag = false;
-      log_plain("ACDS privacy enabled: IP disclosed only after %s verification",
-                has_password ? "password" : "identity");
-    } else if (explicit_expose) {
-      // Explicit opt-in to public IP disclosure
-      // Only prompt if running interactively (can prompt user)
-      // When non-interactive (automated/scripted), treat explicit flag as confirmation
-      bool is_interactive = terminal_can_prompt_user();
-
-      if (is_interactive) {
-        if (!ui_notice_confirm(UI_NOTICE_DANGER,
-                               "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
-                               "address.\n\nDo you want to proceed",
-                               30)) {
-          log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
-          goto skip_acds_session;
-        }
-      }
-
-      // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
-      acds_expose_ip_flag = true;
-      NOTICE(DANGER, "PUBLIC IP DISCLOSURE ENABLED",
-             "Public IP disclosure CONFIRMED.\n"
-             "Your IP address will be visible to anyone with the session string");
-    } else {
-      // Security violation: No password, no identity, no explicit opt-in
-      NOTICE(DANGER, "DISCOVERY DISABLED: SECURITY REQUIRED",
-             "Cannot create ACDS session: No security configured!\n"
-             "You must either:\n"
-             "1. Set a password: --password \"your-secret\"\n"
-             "2. Use identity key: --key ~/.ssh/id_ed25519\n"
-             "3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n"
-             "\n"
-             "Server will run WITHOUT discovery service.");
-      goto skip_acds_session;
-    }
-
-    // Security is configured, proceed with ACDS connection
-    const char *acds_server = GET_OPTION(discovery_server);
-    uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
-
-    log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
-
-    acds_client_config_t acds_config;
-    acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
-    acds_config.server_port = acds_port;
-    acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
-
-    // Allocate ACDS client on heap for server lifecycle
-    g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
-    if (!g_acds_client) {
-      log_error("Failed to allocate ACDS client");
-      goto skip_acds_session;
-    }
-
-    asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
-    if (acds_connect_result != ASCIICHAT_OK) {
-      log_error("Failed to connect to ACDS server at %s:%d: %s", acds_server, acds_port,
-                asciichat_error_string(acds_connect_result));
-      goto skip_acds_session;
-    }
-    if (acds_connect_result == ASCIICHAT_OK) {
-      // Prepare session creation parameters
-      acds_session_create_params_t create_params;
-      memset(&create_params, 0, sizeof(create_params));
-
-      // Use server's Ed25519 identity public key if available
-      if (g_server_encryption_enabled && has_identity) {
-        memcpy(create_params.identity_pubkey, g_server_private_key.public_key, 32);
-        log_debug("Using server identity key for ACDS session");
-      } else {
-        // No identity key available - use zero key
-        // ACDS will accept this if identity verification is not required
-        memset(create_params.identity_pubkey, 0, 32);
-        log_debug("No server identity key - using zero key for ACDS session");
-      }
-
-      create_params.capabilities = 0x03; // Video + Audio
-      create_params.max_participants = GET_OPTION(max_clients);
-      log_debug("ACDS: max_clients option value = %d", GET_OPTION(max_clients));
-
-      // Set password if configured
-      create_params.has_password = has_password;
-      if (has_password) {
-        // TODO: Hash password with Argon2id
-        SAFE_STRNCPY(create_params.password, password, sizeof(create_params.password));
-      }
-
-      // Set IP disclosure policy (determined above)
-      create_params.acds_expose_ip = acds_expose_ip_flag;
-      log_info("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
-               create_params.acds_expose_ip, explicit_expose, has_password, has_identity);
-
-      // Set session type (Direct TCP or WebRTC)
-      // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
-      // Exception: If bind address is 0.0.0.0, server is on public IP - use Direct TCP
-      const char *bind_addr = GET_OPTION(address);
-      bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
-
-      // Determine session type: prefer WebRTC by default (unless explicitly disabled)
-      // Priority: explicit --webrtc flag > connection type detection > UPnP > default
-      if (GET_OPTION(webrtc)) {
-        // Explicit WebRTC request
-        create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
-      } else if (bind_all_interfaces) {
-        // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
-        create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (default for 0.0.0.0 binding, provides NAT-agnostic connections)");
-      } else if (upnp_succeeded) {
-        // UPnP port mapping worked - can use direct TCP
-        create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-        log_info("ACDS session type: Direct TCP (router mapping created; external reachability unverified)");
-      } else {
-        // UPnP failed and not on public IP - use WebRTC for NAT traversal
-        create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (no router mapping or direct connection type selected)");
-      }
-
-      // Server connection information (where clients should connect)
-      // If bind address is 0.0.0.0, leave server_address empty for ACDS to auto-detect public IP
-      if (bind_all_interfaces) {
-        create_params.server_address[0] = '\0'; // Empty - ACDS will use connection source IP
-        log_debug("Bind address is 0.0.0.0, ACDS will auto-detect public IP from connection");
-      } else {
-        SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
-      }
-      create_params.server_port = port;
-      if (create_params.session_type == SESSION_TYPE_DIRECT_TCP) {
-        if (nat_upnp_get_endpoint(upnp_ctx, create_params.server_address, sizeof(create_params.server_address),
-                                  &create_params.server_port) != ASCIICHAT_OK) {
-          create_params.session_type = SESSION_TYPE_WEBRTC;
-          log_info("ACDS session type: WebRTC (router mapping expired before registration)");
-        }
-      }
-
-      // DEBUG: Log what we're sending to ACDS
-      log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
-               create_params.acds_expose_ip, create_params.server_address, create_params.server_port,
-               create_params.session_type);
-
-      // Create session
-      acds_session_create_result_t create_result;
-      asciichat_error_t create_err = acds_session_create(g_acds_client, &create_params, &create_result);
-
-      if (create_err == ASCIICHAT_OK) {
-        SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-        SAFE_STRNCPY(g_session_string, create_result.session_string, sizeof(g_session_string));
-        session_is_mdns_only = false; // Session is now registered with ACDS (globally discoverable)
-        log_info("Session created: %s", session_string);
-
-        // Server must join its own session so ACDS can route signaling messages
-        log_debug("Server joining session as first participant for WebRTC signaling...");
-        acds_session_join_params_t join_params = {0};
-        join_params.session_string = session_string;
-
-        // Use same identity key as session creation
-        memcpy(join_params.identity_pubkey, create_params.identity_pubkey, 32);
-
-        // Include password if session is password-protected
-        if (has_password) {
-          join_params.has_password = true;
-          SAFE_STRNCPY(join_params.password, password, sizeof(join_params.password));
-        }
-
-        acds_session_join_result_t join_result = {0};
-        asciichat_error_t join_err = acds_session_join(g_acds_client, &join_params, &join_result);
-        if (join_err != ASCIICHAT_OK || !join_result.success) {
-          log_error("Failed to join own session: %s (error: %s)", asciichat_error_string(join_err),
-                    join_result.error_message[0] ? join_result.error_message : "unknown");
-          // Continue anyway - this is not fatal for Direct TCP sessions
-        } else {
-          log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
-                    join_result.participant_id[1]);
-          // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
-          memcpy(g_server_participant_id, join_result.participant_id, 16);
-          log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
-                    g_server_participant_id[1]);
-          memcpy(create_result.session_id, join_result.session_id, 16);
-        }
-
-        // Keep ACDS connection alive for WebRTC signaling relay
-        log_debug("Server staying connected to ACDS for signaling relay");
-
-        // Create ACDS transport wrapper for sending signaling packets
-        g_acds_transport = acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, NULL);
-        if (!g_acds_transport) {
-          log_error("Failed to create ACDS transport wrapper");
-        } else {
-          log_debug("ACDS transport wrapper created for signaling");
-
-          // Start ACDS ping thread to keep connection alive (for ALL session types)
-          int ping_thread_result = asciichat_thread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
-          if (ping_thread_result != 0) {
-            log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
-          } else {
-            log_debug("ACDS ping thread started to keep connection alive");
-            g_acds_ping_thread_started = true;
-          }
-        }
-
-        // Initialize WebRTC peer_manager if session type is WebRTC
-        if (create_params.session_type == SESSION_TYPE_WEBRTC) {
-          log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
-
-          // Initialize WebRTC library (libdatachannel)
-          asciichat_error_t webrtc_init_result = webrtc_init();
-          if (webrtc_init_result != ASCIICHAT_OK) {
-            log_error("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_init_result));
-            g_webrtc_peer_manager = NULL;
-          } else {
-            log_debug("WebRTC library initialized successfully");
-
-            // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
-            static stun_server_t stun_servers[4] = {0};
-            static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
-            static int stun_count = 0; // Store actual count separately
-
-            if (lifecycle_init(&g_stun_lc, "stun")) {
-              log_debug("Parsing STUN servers from options: '%s'", GET_OPTION(stun_servers));
-              int count =
-                  stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
-              if (count > 0) {
-                stun_count = count;
-                log_debug("Parsed %d STUN servers", count);
-                for (int i = 0; i < count; i++) {
-                  log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
-                }
-              } else {
-                log_warn("Failed to parse STUN servers, using defaults");
-                stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                                stun_servers, 4);
-                log_debug("Using default STUN servers, count=%d", stun_count);
-                for (int i = 0; i < stun_count; i++) {
-                  log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
-                }
-              }
-            }
-
-            static turn_server_t turn_servers[4];
-            static char turn_auth_username[128];
-            static char turn_auth_credential[128];
-            size_t turn_count = 0;
-            const char *turn_username = GET_OPTION(turn_username);
-            const char *turn_credential = GET_OPTION(turn_credential);
-            SAFE_STRNCPY(turn_auth_username, turn_username, sizeof(turn_auth_username));
-            SAFE_STRNCPY(turn_auth_credential, turn_credential, sizeof(turn_auth_credential));
-            if (turn_username[0] && turn_credential[0]) {
-              char urls[OPTIONS_BUFF_SIZE];
-              SAFE_STRNCPY(urls, GET_OPTION(turn_servers), sizeof(urls));
-              char *saveptr = NULL;
-              char *url = platform_strtok_r(urls, ",", &saveptr);
-              while (url && turn_count < 4) {
-                while (*url == ' ' || *url == '\t')
-                  url++;
-                size_t len = strlen(url);
-                while (len && (url[len - 1] == ' ' || url[len - 1] == '\t'))
-                  url[--len] = '\0';
-                if (len && len < sizeof(turn_servers[0].url)) {
-                  turn_server_t *turn = &turn_servers[turn_count++];
-                  SAFE_STRNCPY(turn->url, url, sizeof(turn->url));
-                  SAFE_STRNCPY(turn->username, turn_username, sizeof(turn->username));
-                  SAFE_STRNCPY(turn->credential, turn_credential, sizeof(turn->credential));
-                  turn->url_len = (uint8_t)len;
-                  turn->username_len = (uint8_t)strlen(turn->username);
-                  turn->credential_len = (uint8_t)strlen(turn->credential);
-                }
-                url = platform_strtok_r(NULL, ",", &saveptr);
-              }
-            }
-
-            // Configure peer_manager
-            const char *server_address = GET_OPTION(address);
-            bool bind_webrtc_to_server_address = server_address && server_address[0] &&
-                                                 strcmp(server_address, "0.0.0.0") != 0 &&
-                                                 strcmp(server_address, "::") != 0;
-            webrtc_peer_manager_config_t pm_config = {
-                .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-                // Honor an explicitly selected server interface for ICE. With a
-                // wildcard bind, let libdatachannel gather candidates on all interfaces.
-                .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
-                .stun_servers = stun_servers,
-                .stun_count = stun_count,
-                .turn_servers = turn_servers,
-                .turn_count = turn_count,
-                .relay_only = GET_OPTION(webrtc_relay_only),
-                .turn_username = turn_auth_username,
-                .turn_credential = turn_auth_credential,
-                .on_transport_ready = on_webrtc_transport_ready,
-                .user_data = &g_server_ctx,
-                .crypto_ctx = NULL // WebRTC handles crypto internally
-            };
-
-            // Configure signaling callbacks for relaying SDP/ICE via ACDS
-            webrtc_signaling_callbacks_t signaling_callbacks = {
-                .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
-
-            // Create peer_manager
-            asciichat_error_t pm_result =
-                webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
-            if (pm_result != ASCIICHAT_OK) {
-              log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
-              g_webrtc_peer_manager = NULL;
-            } else {
-              log_debug("WebRTC peer_manager initialized successfully");
-
-              // Start ACDS receive thread for WebRTC signaling relay
-              int thread_result =
-                  asciichat_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
-              if (thread_result != 0) {
-                log_error("Failed to create ACDS receive thread: %d", thread_result);
-                // Cleanup peer_manager since signaling won't work
-                webrtc_peer_manager_destroy(g_webrtc_peer_manager);
-                g_webrtc_peer_manager = NULL;
-              } else {
-                log_debug("ACDS receive thread started for WebRTC signaling relay");
-                g_acds_receive_thread_started = true;
-              }
-            }
-          } // Close else block from webrtc_init() success
-        } else {
-          log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
-        }
-
-        // Advertise mDNS with ACDS session string
-        // This ensures both mDNS and ACDS discovery return the same session string
-        advertise_mdns_with_session(session_string, (uint16_t)port);
-      } else {
-        log_warn("Failed to create session on ACDS server (server will run without discovery)");
-        // Clean up failed ACDS client
-        if (g_acds_client) {
-          acds_client_disconnect(g_acds_client);
-          SAFE_FREE(g_acds_client);
-          g_acds_client = NULL;
-        }
-      }
-    } else {
-      log_warn("Could not connect to ACDS server at %s:%d (server will run without discovery)", acds_server, acds_port);
-    }
-  } else {
-    log_info("ACDS registration disabled (use --acds to enable)");
-  }
-
-skip_acds_session:
-  // Fallback: If no session string was set by ACDS (either disabled or failed),
-  // generate a random session string for mDNS discovery only
-  if (session_string[0] == '\0' && session_server_like_get_mdns_ctx()) {
-    log_debug("No ACDS session string available, generating random session for mDNS");
-
-    // Use the proper session string generation from discovery module
-    // This generates adjective-noun-noun format using the full wordlists
-    if (acds_string_generate(session_string, sizeof(session_string)) != ASCIICHAT_OK) {
-      log_error("Failed to generate session string for mDNS");
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to generate session string for mDNS");
-    }
-
-    log_debug("Generated random session string for mDNS: '%s'", session_string);
-
-    // Mark that this session is mDNS-only (not globally discoverable via ACDS)
-    session_is_mdns_only = true;
-
-    // Advertise mDNS with random session string
-    advertise_mdns_with_session(session_string, (uint16_t)port);
-  }
-
-  // ====================================================================
-  // Display session string prominently as the FINAL startup message
-  // This ensures users see the connection info clearly without logs
-  // wiping it away
-  // ====================================================================
-  if (session_string[0] != '\0') {
-    if (session_is_mdns_only) {
-      NOTICE_ANNOUNCE("SESSION READY",
-                      "Session String: %s (LAN only via "
-                      "mDNS)\nShare with others on your LAN to join:\n   ascii-chat "
-                      "%s",
-                      session_string, session_string);
-    } else {
-      NOTICE_ANNOUNCE("SESSION READY",
-                      "Session String: %s\nShare this "
-                      "globally to join:\n   ascii-chat %s",
-                      session_string, session_string);
-    }
+  server_discovery_startup_t startup = {0};
+  server_register_discovery(&startup, port, upnp_ctx, upnp_succeeded);
+  result = server_announce_session(&startup, port);
+  if (result != ASCIICHAT_OK) {
+    return result;
   }
 
   // Copy session info to globals for status screen display
-  SAFE_STRNCPY(g_session_string, session_string, sizeof(g_session_string));
-  g_session_is_mdns_only = session_is_mdns_only;
+  SAFE_STRNCPY(g_session_string, startup.session_string, sizeof(g_session_string));
+  g_session_is_mdns_only = startup.mdns_only;
 
   // Initialize status screen timestamps
   g_server_start_time = time(NULL);
@@ -2123,17 +2187,7 @@ skip_acds_session:
 /* ============================================================================
  * Mode-specific cleanup callback
  * ============================================================================ */
-static void server_cleanup_fn(void *user_data) {
-  stats_runtime_set_provider(NULL, NULL);
-  (void)user_data;
-
-  log_debug("Server shutting down...");
-  memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
-
-  // Wake up any threads that might be blocked on condition variables
-  // (like packet queues) to ensure responsive shutdown
-  static_cond_broadcast(&g_shutdown_cond);
-
+static void server_close_client_sockets(void) {
   // Close all client sockets immediately to unblock receive threads.
   // Only do this if initialization succeeded and created the rwlock.
   log_debug("Closing all client sockets to unblock receive threads...");
@@ -2148,9 +2202,9 @@ static void server_cleanup_fn(void *user_data) {
     }
     rwlock_wrunlock(&g_client_manager_rwlock);
   }
+}
 
-  log_debug("Signaling all clients to stop (sockets closed, g_should_exit set)...");
-
+static void server_stop_workers(void) {
   // Stop and destroy server worker thread pool (stats logger, etc.)
   if (g_server_worker_pool) {
     thread_pool_destroy(g_server_worker_pool);
@@ -2163,7 +2217,9 @@ static void server_cleanup_fn(void *user_data) {
     rate_limiter_destroy(g_rate_limiter);
     g_rate_limiter = NULL;
   }
+}
 
+static void server_wait_for_clients(void) {
   // Wait for all client handler threads to exit (only if rwlock was initialized)
   if (g_client_manager_rwlock_initialized) {
     int retry_count = 0;
@@ -2185,14 +2241,9 @@ static void server_cleanup_fn(void *user_data) {
     }
     log_debug("Client handler threads cleaned up");
   }
+}
 
-  // Cleanup debug sync BEFORE destroying websocket_server
-#ifndef NDEBUG
-  debug_sync_destroy();
-  debug_errno_destroy();
-  debug_stats_destroy();
-#endif
-
+static void server_remove_remaining_clients(void) {
   // Clean up all connected clients (only if rwlock was initialized)
   log_debug("Cleaning up connected clients...");
   char clients_to_remove[MAX_CLIENTS][MAX_CLIENT_ID_LEN];
@@ -2222,7 +2273,9 @@ static void server_cleanup_fn(void *user_data) {
     client_info_t *current_client = g_client_manager.clients_by_id;
     HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
   }
+}
 
+static void server_destroy_media(void) {
   // Clean up audio mixer
   if (g_audio_mixer) {
     mixer_t *mixer_to_destroy = g_audio_mixer;
@@ -2238,18 +2291,9 @@ static void server_cleanup_fn(void *user_data) {
     h265_server_context_destroy(h265_to_destroy);
     log_debug("H.265 codec server context shut down");
   }
+}
 
-  // Clean up synchronization primitives (only if they were initialized)
-  if (g_client_manager_rwlock_initialized) {
-    rwlock_destroy(&g_client_manager_rwlock);
-    g_client_manager_rwlock_initialized = false;
-  }
-  mutex_destroy(&g_client_manager.mutex);
-
-#ifndef NDEBUG
-  stats_cleanup();
-#endif
-
+static void server_destroy_session_host(void) {
   // Destroy session host
   if (g_server_ctx.session_host) {
     log_debug("Destroying session host");
@@ -2263,9 +2307,9 @@ static void server_cleanup_fn(void *user_data) {
     h265_server_context_destroy(g_server_ctx.h265_server);
     g_server_ctx.h265_server = NULL;
   }
+}
 
-  // TCP server, WebSocket server, mDNS, UPnP are destroyed by server_like.
-
+static void server_stop_discovery(void) {
   // Join ACDS threads (if started)
   if (g_acds_ping_thread_started) {
     log_debug("Joining ACDS ping thread");
@@ -2302,6 +2346,54 @@ static void server_cleanup_fn(void *user_data) {
     SAFE_FREE(g_acds_client);
     g_acds_client = NULL;
   }
+}
+
+static void server_cleanup_fn(void *user_data) {
+  stats_runtime_set_provider(NULL, NULL);
+  (void)user_data;
+
+  log_debug("Server shutting down...");
+  memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
+
+  // Wake up any threads that might be blocked on condition variables
+  // (like packet queues) to ensure responsive shutdown
+  static_cond_broadcast(&g_shutdown_cond);
+
+  server_close_client_sockets();
+
+  log_debug("Signaling all clients to stop (sockets closed, g_should_exit set)...");
+
+  server_stop_workers();
+
+  server_wait_for_clients();
+
+  // Cleanup debug sync BEFORE destroying websocket_server
+#ifndef NDEBUG
+  debug_sync_destroy();
+  debug_errno_destroy();
+  debug_stats_destroy();
+#endif
+
+  server_remove_remaining_clients();
+
+  server_destroy_media();
+
+  // Clean up synchronization primitives (only if they were initialized)
+  if (g_client_manager_rwlock_initialized) {
+    rwlock_destroy(&g_client_manager_rwlock);
+    g_client_manager_rwlock_initialized = false;
+  }
+  mutex_destroy(&g_client_manager.mutex);
+
+#ifndef NDEBUG
+  stats_cleanup();
+#endif
+
+  server_destroy_session_host();
+
+  // TCP server, WebSocket server, mDNS, UPnP are destroyed by server_like.
+
+  server_stop_discovery();
 
   // Clean up platform-specific resources
   socket_cleanup();
