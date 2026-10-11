@@ -1481,7 +1481,7 @@ static struct lws_context *websocket_create_client_context(void) {
  */
 static acip_transport_t *websocket_allocate_client_transport(const char *name) {
   // Allocate transport structure
-  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
     return NULL;

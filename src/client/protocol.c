@@ -427,7 +427,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // Handle snapshot mode timing
-  bool take_snapshot = false;
   if (GET_OPTION(snapshot_mode)) {
     static uint64_t first_frame_time_ns = 0;
     static bool first_frame_recorded = false;
@@ -445,7 +444,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
       if (GET_OPTION(snapshot_delay) == 0) {
         log_debug("Snapshot captured immediately (delay=0)!");
-        take_snapshot = true;
         signal_exit();
       } else {
         log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
@@ -469,7 +467,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("🎬 SNAPSHOT TIMEOUT FIRED: Snapshot captured after %s! (target=%.3f) AT handle_ascii_frame_packet",
                  duration_str, snapshot_delay);
-        take_snapshot = true;
         signal_exit();
       }
     }
@@ -506,57 +503,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     return;
   }
 
-  // Client-side FPS limiting for rendering (display)
-  // Server may send at 144fps for high-refresh displays, but this client renders at its requested FPS
-  static uint64_t last_render_time_ns = 0;
-
-  // Don't limit frame rate in snapshot mode - always render the final frame
-  if (!take_snapshot) {
-    // Get the client's desired FPS (what we told the server we can display)
-    int fps = GET_OPTION(fps);
-    int client_display_fps = fps > 0 ? fps : DEFAULT_MAX_FPS;
-    uint64_t render_interval_us = US_PER_SEC_INT / (uint64_t)client_display_fps;
-
-    uint64_t render_time_ns = time_get_ns();
-    uint64_t render_elapsed_us = 0;
-
-    if (last_render_time_ns != 0) {
-      render_elapsed_us = time_ns_to_us(time_elapsed_ns(last_render_time_ns, render_time_ns));
-    }
-
-    // Skip rendering if not enough time has passed (frame rate limiting)
-    if (last_render_time_ns != 0) {
-      if (render_elapsed_us > 0 && render_elapsed_us < render_interval_us) {
-        // Drop this frame to maintain display FPS limit
-        stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_SKIPPED, 1);
-        log_info("[FRAME_DROPPED] 📊 Skipping frame - %lu us elapsed < %lu us interval (want ~%d FPS)",
-                 render_elapsed_us, render_interval_us, client_display_fps);
-        SAFE_FREE(frame_data);
-        return;
-      }
-    }
-
-    // Update last render time
-    last_render_time_ns = render_time_ns;
-  }
-
-  // TODO/FIXME: WebSocket FPS performance gap vs TCP
-  // Test commands to verify and compare:
-  //   ./scripts/debug-fps.zsh --proto tcp   # ~56 FPS (baseline) ✓
-  //   ./scripts/debug-fps.zsh --proto ws    # ~49 FPS (gap: 7 FPS, 87% of TCP)
-  //   ./scripts/debug-fps.zsh --proto wss   # ~49 FPS (matches WS) ✓
-  //
-  // Root cause: libwebsockets' buffering + service loop timing vs direct TCP socket.
-  // WebSocket is solid; optimization needed in frame dispatch in service thread.
-  //
-  // Investigation areas:
-  // - Optimize lws_service() loop frequency and timing in websocket/transport.c
-  // - Check if frame reassembly or buffering can be more aggressive
-  // - Profile service thread wakeup latency vs actual packet arrival
-  // - Consider frame batching or predictive dispatch in lws callbacks
-  // - Reduce latency between packet arrival and frame processing in service loop
-  //
-  // Success criteria: ws/wss FPS within 2% of TCP using --proto option in debug-fps.zsh
+  // The server paces frames using our negotiated desired_fps. Present received
+  // frames without a second arrival-time limiter: network jitter can deliver a
+  // correctly paced frame just before its nominal interval. The UI controller
+  // coalesces pending frames if the terminal cannot keep up.
 
   // Frame counting now handled in session_display_write_ascii() which is called
   // by both client and host/discovery modes for consistent metrics

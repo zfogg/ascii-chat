@@ -30,9 +30,9 @@ static inline uint64_t crc32_load_le64(const uint8_t *bytes) {
 #endif
 
 #ifdef ARCH_ARM64
-__attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(const void *data, size_t len) {
+__attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(uint32_t previous, const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFFu;
+  uint32_t crc = ~previous;
   while (len >= sizeof(uint64_t)) {
     crc = __crc32cd(crc, crc32_load_le64(bytes));
     bytes += sizeof(uint64_t);
@@ -45,9 +45,9 @@ __attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(const void
 #endif
 
 #ifdef ARCH_X86_64
-__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(const void *data, size_t len) {
+__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(uint32_t previous, const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFFu;
+  uint32_t crc = ~previous;
   while (len >= sizeof(uint64_t)) {
     crc = (uint32_t)_mm_crc32_u64(crc, crc32_load_le64(bytes));
     bytes += sizeof(uint64_t);
@@ -59,12 +59,12 @@ __attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(const
 }
 #endif
 
-typedef uint32_t (*crc32_fn)(const void *, size_t);
+typedef uint32_t (*crc32_fn)(uint32_t, const void *, size_t);
 
 static crc32_fn crc32_backend(void) {
   static _Thread_local crc32_fn selected;
   if (!selected) {
-    selected = asciichat_crc32_sw;
+    selected = asciichat_crc32_sw_update;
 #if defined(ARCH_ARM64) || defined(ARCH_X86_64)
     if (platform_cpu_features() & CPU_FEATURE_CRC32) {
 #ifdef ARCH_ARM64
@@ -78,12 +78,12 @@ static crc32_fn crc32_backend(void) {
   return selected;
 }
 
-uint32_t asciichat_crc32_hw(const void *data, size_t len) {
-  return crc32_backend()(data, len);
+uint32_t asciichat_crc32_update(uint32_t previous, const void *data, size_t len) {
+  return crc32_backend()(previous, data, len);
 }
 
 bool crc32_hw_is_available(void) {
-  return crc32_backend() != asciichat_crc32_sw;
+  return crc32_backend() != asciichat_crc32_sw_update;
 }
 
 // For each byte value, apply eight reflected Castagnoli steps using 0x82F63B78.
@@ -120,10 +120,18 @@ static const uint32_t crc32c_table[256] = {
     0xbe2da0a5u, 0x4c4623a6u, 0x5f16d052u, 0xad7d5351u,
 };
 
-uint32_t asciichat_crc32_sw(const void *data, size_t len) {
+uint32_t asciichat_crc32_sw_update(uint32_t previous, const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFFu;
+  uint32_t crc = ~previous;
   for (size_t i = 0; i < len; i++)
     crc = (crc >> 8) ^ crc32c_table[(crc ^ bytes[i]) & 0xFFu];
   return ~crc;
+}
+
+uint32_t asciichat_crc32_hw(const void *data, size_t len) {
+  return asciichat_crc32_update(0, data, len);
+}
+
+uint32_t asciichat_crc32_sw(const void *data, size_t len) {
+  return asciichat_crc32_sw_update(0, data, len);
 }

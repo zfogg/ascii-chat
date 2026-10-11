@@ -653,7 +653,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
   }
 
   // Allocate transport structure
-  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebRTC transport");
     return NULL;

@@ -1023,10 +1023,10 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
       return NULL;
     }
 
-    // The unencrypted socket receive path retains the wire header in its
-    // allocation. Packet handlers always consume payload-only data, matching
-    // the encrypted and ACIP-dispatch paths.
-    if (envelope.data == envelope.allocated_buffer) {
+    // Secure receive retains the wire header for plaintext packets. Pending
+    // handshake packets come from receive_packet(), which already strips it.
+    // Pointer equality alone cannot distinguish these two allocation layouts.
+    if (!used_pending_packet && envelope.data == envelope.allocated_buffer) {
       const packet_header_t *header = (const packet_header_t *)envelope.allocated_buffer;
       envelope.type = (packet_type_t)NET_TO_HOST_U16(header->type);
       envelope.data = (uint8_t *)envelope.allocated_buffer + sizeof(*header);

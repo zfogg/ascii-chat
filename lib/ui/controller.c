@@ -41,6 +41,7 @@ static screen_t g_screens[UI_SCREEN_COUNT];
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static cond_t g_render_done;
+static cond_t g_render_requested;
 static int g_rendering_screen = -1;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
@@ -131,6 +132,7 @@ static void publish_screen_locked(void) {
     if (g_screens[i].render)
       active = i;
   atomic_store(&g_published_screen, active);
+  cond_signal(&g_render_requested);
 }
 static bool g_small;
 static bool g_redraw;
@@ -208,6 +210,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
     memcpy(retired, g_screens, sizeof(retired));
     memset(g_screens, 0, sizeof(g_screens));
     atomic_store(&g_published_screen, -1);
+    cond_signal(&g_render_requested);
     uint64_t pending = g_render_started;
     while (!g_render_snapshot && g_render_completed < pending)
       cond_wait(&g_render_done, &g_mutex);
@@ -256,6 +259,7 @@ static void *presentation_main(void *unused) {
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    uint64_t refresh_deadline = time_get_ns() + 16 * NS_PER_MS_INT;
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
@@ -394,7 +398,17 @@ static void *presentation_main(void *unused) {
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
     }
-    platform_sleep_ns(16 * NS_PER_MS_INT);
+    // New snapshots wake presentation immediately. The deadline only refreshes
+    // animations, terminal geometry and idle FPS counters; rendering time is
+    // part of the interval rather than an additional delay after each frame.
+    mutex_lock(&g_mutex);
+    int pending_screen = atomic_load(&g_published_screen);
+    bool pending = g_redraw || pending_screen != g_active ||
+                   (pending_screen >= 0 && g_screens[pending_screen].dirty);
+    uint64_t now = time_get_ns();
+    if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
+      cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
+    mutex_unlock(&g_mutex);
   }
   fps_counter_destroy(g_fps);
   g_fps = NULL;
@@ -421,6 +435,12 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI render completion condition");
     }
+    if (cond_init(&g_render_requested, "ui_render_requested") != 0) {
+      cond_destroy(&g_render_done);
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI presentation condition");
+    }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
@@ -430,6 +450,7 @@ static asciichat_error_t controller_start(void) {
       NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
+      cond_destroy(&g_render_requested);
       cond_destroy(&g_render_done);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
@@ -648,6 +669,7 @@ void ui_controller_redraw(void) {
     return;
   mutex_lock(&g_mutex);
   g_redraw = true;
+  cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
 }
 
@@ -671,13 +693,17 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
 void ui_controller_shutdown(void) {
   if (!lifecycle_destroy_once(&g_lifecycle))
     return;
+  mutex_lock(&g_mutex);
   atomic_store_bool(&g_presentation_stop_requested, true);
+  cond_signal(&g_render_requested);
+  mutex_unlock(&g_mutex);
   asciichat_thread_join(&g_thread, NULL);
   atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
   }
+  cond_destroy(&g_render_requested);
   cond_destroy(&g_render_done);
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);

@@ -7,6 +7,7 @@
  */
 
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/test_pattern.h>
 #include <ascii-chat/audio/visualization.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/client_pipeline.h>
@@ -243,7 +244,8 @@ static void *audio_worker_thread(void *arg) {
                render_available, playback_available, WORKER_BATCH_SAMPLES);
     }
 
-    if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source) {
+    if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source &&
+        !GET_OPTION(test_audio)) {
       // Timeout with no data - continue waiting
       continue;
     }
@@ -252,23 +254,31 @@ static void *audio_worker_thread(void *arg) {
 
     bool has_media = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
     audio_capture_source_t selection = GET_OPTION(audio_capture_source);
-    bool use_media = has_media && (selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
-                                   selection == AUDIO_CAPTURE_SOURCE_BOTH);
-    bool use_mic = audio_should_enable_microphone(selection, has_media);
-    if (use_media && !use_mic) {
+    bool test_audio = GET_OPTION(test_audio);
+    bool use_media = !test_audio && has_media &&
+                     (selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
+                      selection == AUDIO_CAPTURE_SOURCE_BOTH);
+    bool use_mic = !test_audio && audio_should_enable_microphone(selection, has_media);
+    if (test_audio || (use_media && !use_mic)) {
       uint64_t now = time_get_ns();
       uint64_t due = (now - media_start_ns) / 1000000ULL * 48;
       float media[960];
       while (media_samples < due) {
         size_t count = due - media_samples > 960 ? 960 : (size_t)(due - media_samples);
-        size_t read = media_source_read_audio(ctx->capture_media_source, media, count);
+        size_t read = count;
+        if (test_audio)
+          audio_test_pattern(media, count, media_samples, AUDIO_SAMPLE_RATE);
+        else
+          read = media_source_read_audio(ctx->capture_media_source, media, count);
         if (read < count)
           memset(media + read, 0, (count - read) * sizeof(float));
         audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
                                media_start_ns + media_samples * 1000000000ULL / 48000);
         audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, count);
-        audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
-        if (ctx->monitor_local_media)
+        // Mirror monitoring has no network sender to drain a capture queue.
+        if (!test_audio || !ctx->monitor_local_media)
+          audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
+        if (!test_audio && ctx->monitor_local_media)
           audio_ring_buffer_write(ctx->playback_buffer, media, (int)count);
         media_samples += count;
       }
@@ -458,6 +468,23 @@ static void *audio_worker_thread(void *arg) {
  * Heavy processing (AEC3, RMS, resampling) moved to audio_worker_thread().
  * Worker runs non-real-time, can take 50-80ms without blocking callback.
  */
+// Mix the local test monitor into the same output frames as received audio.
+// Appending it to the network playback queue would stretch time and cause drops.
+static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count, uint32_t rate) {
+  if (!GET_OPTION(test_audio) || !output)
+    return;
+  float samples[480];
+  float volume = fmaxf(0, fminf(1, GET_OPTION(speakers_volume)));
+  for (size_t offset = 0; offset < count;) {
+    size_t block = count - offset > 480 ? 480 : count - offset;
+    audio_test_pattern(samples, block, ctx->test_audio_playback_position, rate);
+    for (size_t i = 0; i < block; ++i)
+      output[offset + i] = fmaxf(-1, fminf(1, output[offset + i] + samples[i] * volume));
+    ctx->test_audio_playback_position += block;
+    offset += block;
+  }
+}
+
 static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
                            void *userData) {
@@ -566,6 +593,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     }
   }
 
+  audio_monitor_test(ctx, output, num_samples, AUDIO_SAMPLE_RATE);
+
   // STEP 2: Copy raw mic samples → worker for AEC3 processing (~0.5ms)
   // Skip microphone capture in playback-only mode (mirror with file/URL audio)
   // When files (--file) or URLs (--url) are being played, microphone input is completely disabled
@@ -579,9 +608,9 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   // STEP 3: Copy raw speaker samples → worker for AEC3 reference (~0.5ms)
-  // This is CRITICAL for AEC3 - worker needs exact render signal at same time as capture
-  // In playback-only mode, we still write the render reference for consistency
-  if (output && ctx->raw_render_rb) {
+  // AEC3 needs the render signal aligned with capture. Playback-only mode has
+  // no microphone consumer, so it must not fill an unused reference queue.
+  if (output && ctx->raw_render_rb && !ctx->playback_only) {
     audio_ring_buffer_write(ctx->raw_render_rb, output, (int)num_samples);
   }
 
@@ -758,7 +787,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
 
       // Keep the AEC render reference in the pipeline's 48 kHz domain.
-      if (ctx->render_buffer && samples_read > 0) {
+      if (ctx->render_buffer && samples_read > 0 && !ctx->playback_only) {
         audio_ring_buffer_write(ctx->render_buffer, source, (int)samples_read);
       }
 
@@ -821,8 +850,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
                   (num_samples - samples_read) * sizeof(float));
     }
 
+    audio_monitor_test(ctx, output, num_samples,
+                       (uint32_t)(ctx->output_device_rate > 0 ? ctx->output_device_rate : AUDIO_SAMPLE_RATE));
+
     // STEP 2: Copy to render buffer for input callback (AEC3 reference)
-    if (!resample_output && ctx->render_buffer && samples_read > 0) {
+    if (!resample_output && ctx->render_buffer && samples_read > 0 && !ctx->playback_only) {
       audio_ring_buffer_write(ctx->render_buffer, output, (int)samples_read);
     }
   }
@@ -1653,9 +1685,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   bool media_audio = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
-  if (!audio_should_enable_microphone(GET_OPTION(audio_capture_source), media_audio))
+  ctx->test_audio_playback_position = 0;
+  if (GET_OPTION(test_audio) || !audio_should_enable_microphone(GET_OPTION(audio_capture_source), media_audio))
     ctx->playback_only = true;
-  bool media_only = media_audio && ctx->playback_only;
+  bool media_only = GET_OPTION(test_audio) || (media_audio && ctx->playback_only);
 
   // Media-only recording can run through the software worker without an audio
   // device. Initialize PortAudio opportunistically so monitoring still works
@@ -1998,7 +2031,12 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 start_worker:
 
-  audio_set_realtime_priority();
+  {
+    asciichat_errno_scope_t priority_scope = asciichat_errno_scope_begin();
+    if (audio_set_realtime_priority() != ASCIICHAT_OK)
+      log_warn("Audio realtime priority unavailable; continuing at normal priority");
+    asciichat_errno_scope_end(priority_scope, ASCIICHAT_ERRNO_HANDLED);
+  }
 
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {

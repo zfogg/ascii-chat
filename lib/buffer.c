@@ -66,6 +66,22 @@ size_t buffer_process_reserved(void) {
   return (size_t)atomic_load_u64(&process_bytes);
 }
 
+asciichat_error_t buffer_budget_reserve(buffer_budget_t *budget, size_t bytes) {
+  if (!budget || budget->bytes || !bytes)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Expected an empty buffer budget lease");
+  if (!process_reserve(bytes, false))
+    return SET_ERRNO(ERROR_MEMORY, "Process buffer budget exhausted reserving platform storage");
+  budget->bytes = bytes;
+  return ASCIICHAT_OK;
+}
+
+void buffer_budget_release(buffer_budget_t *budget) {
+  if (budget && budget->bytes) {
+    atomic_fetch_sub_u64(&process_bytes, budget->bytes);
+    budget->bytes = 0;
+  }
+}
+
 /* The back pointer lives immediately before the aligned payload. It is never
  * inspected for foreign allocations; those use their original deallocator. */
 static buffer_header_t *header(const void *data) {

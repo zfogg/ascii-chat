@@ -1,0 +1,23 @@
+{
+  "512": {
+    "max_reconstruction_error": 5.960464477539063e-08,
+    "latency_ms": 10.666666666666666,
+    "wall_seconds_per_audio_second": 0.007637200003955513,
+    "all_effects_wall_seconds_per_audio_second": 0.09625839994987473
+  },
+  "1024": {
+    "max_reconstruction_error": 5.960464477539063e-08,
+    "latency_ms": 21.333333333333332,
+    "wall_seconds_per_audio_second": 0.00835029996233061,
+    "all_effects_wall_seconds_per_audio_second": 0.22342870000284165
+  },
+  "2048": {
+    "max_reconstruction_error": 5.960464477539063e-08,
+    "latency_ms": 42.666666666666664,
+    "wall_seconds_per_audio_second": 0.008288800017908216,
+    "all_effects_wall_seconds_per_audio_second": 0.34383720002369955
+  },
+  "gate_attenuation_db": -17.999524744225944,
+  "compressed_rms": 0.18878509104251862,
+  "corrected_pitch_hz": 440.0
+}

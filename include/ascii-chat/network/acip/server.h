@@ -66,7 +66,6 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 /** Reuse across synchronous sends from one worker (or under its existing send lock). */
 typedef struct {
   compression_workspace_t compression;
-  buffer_workspace_t packet;
 } acip_frame_workspace_t;
 void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace);
 

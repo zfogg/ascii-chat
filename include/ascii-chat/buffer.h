@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/buffer/budget.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
@@ -57,6 +58,12 @@ void buffer_domain_trim(buffer_domain_t *domain);
 void buffer_domain_stats(buffer_domain_t *domain, buffer_stats_t *out);
 void buffer_domain_log_stats(buffer_domain_t *domain, const char *name);
 size_t buffer_process_reserved(void);
+
+/** Budget lease for platform storage that cannot be recycled (e.g. pinned mappings).
+ * Zero-initialize, reserve before allocation, release only after disposing storage.
+ * A failed reservation preserves the lease. Never copy a live lease. */
+asciichat_error_t buffer_budget_reserve(buffer_budget_t *budget, size_t bytes);
+void buffer_budget_release(buffer_budget_t *budget);
 
 /** NULL domain selects the default process domain. Failure leaves *out NULL. */
 asciichat_error_t buffer_acquire(buffer_domain_t *domain, size_t size, size_t alignment, void **out);

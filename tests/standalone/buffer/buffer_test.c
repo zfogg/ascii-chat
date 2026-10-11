@@ -258,6 +258,14 @@ static void concurrent_queue_contracts(void) {
 
 static void process_budget_contracts(void) {
   size_t baseline = buffer_process_reserved();
+  buffer_budget_t lease = {0};
+  CHECK(buffer_budget_reserve(&lease, 4096) == ASCIICHAT_OK);
+  CHECK(buffer_process_reserved() == baseline + 4096);
+  CHECK(buffer_budget_reserve(&lease, 1) != ASCIICHAT_OK && lease.bytes == 4096);
+  buffer_budget_release(&lease);
+  buffer_budget_release(&lease);
+  CHECK(!lease.bytes && buffer_process_reserved() == baseline);
+  CHECK(buffer_budget_reserve(&lease, BUFFER_PROCESS_LIMIT) != ASCIICHAT_OK && !lease.bytes);
   buffer_domain_t *media = NULL, *control = NULL;
   buffer_domain_config_t config = {BUFFER_PROCESS_LIMIT, 0, 0, false};
   CHECK(buffer_domain_create(&config, &media) == ASCIICHAT_OK);

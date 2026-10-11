@@ -49,7 +49,10 @@
  * Exhaustion returns ERROR_MEMORY; no heap fallback bypasses the limit.
  * Control traffic has a bounded reserved allowance through buffer_control_domain().
  * This budget covers this API's storage, not the entire process RSS or third-party
- * codec allocations. Cache trim returns allocations to the backing allocator;
+ * codec allocations. Platform mappings hold buffer_budget_t leases against the same
+ * process cap; they are unmapped instead of recycled after zero-copy cancellation.
+ * Kernel-pinned pages may outlive a discarded mapping until the kernel releases them.
+ * Cache trim returns allocations to the backing allocator;
  * it does not promise that the OS immediately reduces RSS.
  *
  * buffer_domain_close() stops admissions and frees cached storage. Join users of
@@ -61,7 +64,7 @@
  * Zero-initialize buffer_workspace_t. buffer_workspace_reserve() retains capacity
  * across frames and preserves existing storage on failure. Destroy the workspace
  * when its worker stops. Compression workspaces retain the zstd context too.
- * Frame-send workspaces retain compression and packet assembly buffers; render
+ * Frame-send workspaces retain compression storage; vectored sends borrow slices. Render
  * file contexts retain pixel-copy storage. Audio prepares storage when streams
  * or mixer membership change, outside the sample mixing loop.
  *

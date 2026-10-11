@@ -329,6 +329,7 @@ typedef struct {
   int max_sources;
   /** @brief Sample rate in Hz (e.g., 44100) */
   int sample_rate;
+  struct spectral_processor *spectral[MIXER_MAX_SOURCES + 1];
 
   /** @brief Array of pointers to client audio ring buffers */
   audio_ring_buffer_t **source_buffers;
