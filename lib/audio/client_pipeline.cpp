@@ -50,7 +50,7 @@
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/audio/spectral.h>
-#include <ascii-chat/audio/opus_config.h>
+#include <ascii-chat/audio/opus.h>
 extern "C" {
 #include <ascii-chat/options/options.h>
 }

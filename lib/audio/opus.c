@@ -5,7 +5,6 @@
  */
 
 #include <ascii-chat/audio/opus.h>
-#include <ascii-chat/audio/opus_config.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>
@@ -17,16 +16,15 @@
  * Encoder Creation
  * ============================================================================ */
 
-asciichat_error_t audio_opus_configure_encoder(void *encoder, int bitrate) {
+asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate) {
   if (!encoder || bitrate < 6000 || bitrate > 510000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder or bitrate: %d", bitrate);
-  OpusEncoder *opus = (OpusEncoder *)encoder;
-  int result = opus_encoder_ctl(opus, OPUS_SET_BITRATE(bitrate));
+  int result = opus_encoder_ctl(encoder, OPUS_SET_BITRATE(bitrate));
   if (result == OPUS_OK)
-    result = opus_encoder_ctl(opus, OPUS_SET_VBR(1));
+    result = opus_encoder_ctl(encoder, OPUS_SET_VBR(1));
   // Ordered streams retain silence packets so playout timing remains continuous.
   if (result == OPUS_OK)
-    result = opus_encoder_ctl(opus, OPUS_SET_DTX(0));
+    result = opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
   if (result != OPUS_OK)
     return SET_ERRNO(ERROR_AUDIO, "Opus configuration failed: %s", opus_strerror(result));
   return ASCIICHAT_OK;
