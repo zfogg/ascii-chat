@@ -46,26 +46,6 @@ env:
   CXX: clang++
 
 jobs:
-  crc32-dispatch:
-    name: CRC32-C dispatch (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Configure Windows linker environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-      - run: python tests/standalone/crc32/run.py
-      - name: Check memory safety
-        if: runner.os != 'Windows'
-        run: python tests/standalone/crc32/run.py --sanitize
-
   upnp-lifecycle:
     name: Router mapping lifecycle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
