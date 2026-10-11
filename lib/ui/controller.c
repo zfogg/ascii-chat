@@ -75,8 +75,10 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   int filled = (int)(volume * height + 0.5);
   int top = (size.rows - height - 1) / 2 + 1;
   int col = size.cols - 5;
-  bool color = terminal_get_effective_color_mode() != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  bool utf8 = terminal_supports_utf8();
+  terminal_capabilities_t caps = apply_color_mode_override(detect_terminal_capabilities());
+  bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  utf8_setting_t utf8_setting = GET_OPTION(force_utf8);
+  bool utf8 = utf8_setting == UTF8_SETTING_TRUE || (utf8_setting == UTF8_SETTING_AUTO && caps.utf8_support);
   frame_buffer_append(buffer, "\0337\033[0m", 6);
   for (int row = 0; row < height; ++row) {
     int level = height - row;
@@ -89,7 +91,7 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
     frame_buffer_printf(buffer, " %s \033[0m", cells);
   }
   frame_buffer_printf(buffer, "\033[%d;%dH", top + height, col);
-  if (volume == 0.0)
+  if (volume <= 0.01)
     frame_buffer_append(buffer, "MUTE", 4);
   else
     frame_buffer_printf(buffer, "%3d%%", (int)(volume * 100.0 + 0.5));

@@ -16,6 +16,53 @@ import time
 from terminal_ui import Terminal, free_port
 
 
+def capability_smoke(binary, artifacts):
+    for utf8 in ("false", "true"):
+        term = Terminal([
+            str(binary.resolve()), "--no-check-update", "--log-file",
+            str((artifacts / f"utf8-{utf8}.log").resolve()), "mirror", "--test-pattern", "0",
+            "--splash-screen=false", "--audio=false", "--color-mode", "none", f"--utf8={utf8}",
+            "--fps", "10",
+        ], rows=24, cols=100)
+        try:
+            term.expect(lambda text: len(text.strip()) > 100, "Expected test pattern")
+            term.pump(0.3)
+            term.write("\x1b[B")
+            term.expect(lambda text: "90%" in text, "Expected volume feedback")
+            cells = term.screen.display[8][95:97]
+            assert cells == ("##" if utf8 == "false" else "██"), repr(cells)
+            print(f"PASS explicit utf8={utf8}")
+        finally:
+            term.close()
+
+    # POSIX auto mode must resolve a terminal without color capability to monochrome.
+    if os.name != "nt":
+        previous = {key: os.environ.get(key) for key in ("TERM", "COLORTERM", "CLAUDECODE")}
+        try:
+            os.environ["TERM"] = "dumb"
+            os.environ.pop("COLORTERM", None)
+            os.environ.pop("CLAUDECODE", None)
+            term = Terminal([
+                str(binary.resolve()), "--no-check-update", "--log-file",
+                str((artifacts / "auto-monochrome.log").resolve()), "mirror", "--test-pattern", "0",
+                "--splash-screen=false", "--audio=false", "--color-mode", "auto", "--fps", "10",
+            ], rows=24, cols=100)
+            try:
+                term.expect(lambda text: len(text.strip()) > 100, "Expected monochrome test pattern")
+                term.write("\x1b[B")
+                term.expect(lambda text: "90%" in text, "Expected monochrome feedback")
+                assert all(term.screen.buffer[y][95].fg == "default" for y in range(6, 16))
+                print("PASS auto color on TERM=dumb")
+            finally:
+                term.close()
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+
 def network_smoke(binary, media, artifacts, directory):
     """Exercise the shared feedback through TCP client and discovery mode input."""
     # Loopback UI fixtures do not need credentials or changes to the user's known_hosts.
@@ -99,8 +146,11 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--modes", nargs="*", default=["none", "16", "truecolor"])
     parser.add_argument("--network", action="store_true")
+    parser.add_argument("--capabilities", action="store_true")
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
+    if args.capabilities:
+        capability_smoke(args.binary, args.artifacts)
     with tempfile.TemporaryDirectory(prefix="volume-bar-") as directory:
         media = Path(directory) / "test.mp4"
         subprocess.run([
@@ -159,7 +209,7 @@ def main():
                 term.pump(0.9)
                 assert "100%" in term.pump(0.05), "Repeated control did not refresh expiry at maximum"
                 term.expect(absent, "Refreshed overlay did not expire", timeout=3)
-                term.write("\x1b[B" * 12)
+                term.write("\x1b[B" * 10)
                 volume("MUTE")
                 term.expect(absent, "Minimum overlay did not expire", timeout=3)
                 assert term.pump(0.2) == clean, "Volume keys resumed or damaged paused media"
