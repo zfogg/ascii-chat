@@ -31,6 +31,9 @@ def capability_smoke(binary, artifacts):
             term.expect(lambda text: "90%" in text, "Expected volume feedback")
             cells = term.screen.display[8][95:97]
             assert cells == ("##" if utf8 == "false" else "██"), repr(cells)
+            term.write("c")
+            term.expect(lambda text: term.screen.buffer[8][95].fg == "green",
+                        "Visible overlay did not follow the live color-mode change", timeout=1)
             print(f"PASS explicit utf8={utf8}")
         finally:
             term.close()
@@ -155,7 +158,7 @@ def main():
         media = Path(directory) / "test.mp4"
         subprocess.run([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-            "testsrc2=size=160x120:rate=10", "-t", "5", "-c:v", "libx264",
+            "testsrc2=size=160x120:rate=10", "-t", "5", "-c:v", "mpeg4",
             "-pix_fmt", "yuv420p", str(media)
         ], check=True)
         for mode in args.modes:

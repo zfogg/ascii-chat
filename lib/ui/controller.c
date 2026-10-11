@@ -55,6 +55,29 @@ static int g_active = -1;
 static _Atomic int g_published_screen = -1;
 static atomic_t g_volume_until = {0};
 static _Thread_local bool g_render_volume;
+static _Thread_local bool g_volume_caps_valid;
+static _Thread_local terminal_capabilities_t g_volume_caps;
+static _Thread_local terminal_color_mode_t g_volume_color_mode;
+static _Thread_local color_setting_t g_volume_color_setting;
+static _Thread_local utf8_setting_t g_volume_utf8_setting;
+static _Thread_local render_mode_t g_volume_render_mode;
+
+static terminal_capabilities_t volume_capabilities(void) {
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
+  color_setting_t color = GET_OPTION(color);
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  render_mode_t render = GET_OPTION(render_mode);
+  if (!g_volume_caps_valid || mode != g_volume_color_mode || color != g_volume_color_setting ||
+      utf8 != g_volume_utf8_setting || render != g_volume_render_mode) {
+    g_volume_caps = apply_color_mode_override(detect_terminal_capabilities());
+    g_volume_color_mode = mode;
+    g_volume_color_setting = color;
+    g_volume_utf8_setting = utf8;
+    g_volume_render_mode = render;
+    g_volume_caps_valid = true;
+  }
+  return g_volume_caps;
+}
 
 void ui_controller_show_volume(void) {
   if (!GET_OPTION(snapshot_mode))
@@ -75,7 +98,7 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   int filled = (int)(volume * height + 0.5);
   int top = (size.rows - height - 1) / 2 + 1;
   int col = size.cols - 5;
-  terminal_capabilities_t caps = apply_color_mode_override(detect_terminal_capabilities());
+  terminal_capabilities_t caps = volume_capabilities();
   bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
   utf8_setting_t utf8_setting = GET_OPTION(force_utf8);
   bool utf8 = utf8_setting == UTF8_SETTING_TRUE || (utf8_setting == UTF8_SETTING_AUTO && caps.utf8_support);
@@ -584,6 +607,8 @@ static void render_text(terminal_size_t size, const void *data) {
         append_volume(buffer, size);
         ui_controller_write(text->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
         frame_buffer_destroy(buffer);
+      } else {
+        ui_controller_write(text->fd, text->text, text->len);
       }
     } else {
       ui_controller_write(text->fd, text->text, text->len);
