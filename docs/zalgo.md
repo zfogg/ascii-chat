@@ -45,7 +45,15 @@ their original glyphs, so use `--render-mode foreground` for ASCII decoration.
 These are actual terminal screenshots, using a 90 by 26 foreground grid and
 UTF-8 output. The webcam captures use device 1 (2K Webcam).
 
-| Source | Level 3 | Level 10 |
+| Level | Test pattern | Webcam |
 | --- | --- | --- |
-| Test pattern | ![Test pattern at level 3](images/zalgo/test-pattern-3.png) | ![Test pattern at level 10](images/zalgo/test-pattern-10.png) |
-| Webcam | ![Webcam at level 3](images/zalgo/webcam-3.png) | ![Webcam at level 10](images/zalgo/webcam-10.png) |
+| 1 | ![Test pattern at level 1](images/zalgo/test-pattern-1.png) | ![Webcam at level 1](images/zalgo/webcam-1.png) |
+| 2 | ![Test pattern at level 2](images/zalgo/test-pattern-2.png) | ![Webcam at level 2](images/zalgo/webcam-2.png) |
+| 3 | ![Test pattern at level 3](images/zalgo/test-pattern-3.png) | ![Webcam at level 3](images/zalgo/webcam-3.png) |
+| 4 | ![Test pattern at level 4](images/zalgo/test-pattern-4.png) | ![Webcam at level 4](images/zalgo/webcam-4.png) |
+| 5 | ![Test pattern at level 5](images/zalgo/test-pattern-5.png) | ![Webcam at level 5](images/zalgo/webcam-5.png) |
+| 6 | ![Test pattern at level 6](images/zalgo/test-pattern-6.png) | ![Webcam at level 6](images/zalgo/webcam-6.png) |
+| 7 | ![Test pattern at level 7](images/zalgo/test-pattern-7.png) | ![Webcam at level 7](images/zalgo/webcam-7.png) |
+| 8 | ![Test pattern at level 8](images/zalgo/test-pattern-8.png) | ![Webcam at level 8](images/zalgo/webcam-8.png) |
+| 9 | ![Test pattern at level 9](images/zalgo/test-pattern-9.png) | ![Webcam at level 9](images/zalgo/webcam-9.png) |
+| 10 | ![Test pattern at level 10](images/zalgo/test-pattern-10.png) | ![Webcam at level 10](images/zalgo/webcam-10.png) |
