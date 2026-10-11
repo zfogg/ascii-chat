@@ -156,6 +156,7 @@
 #include <math.h>
 
 #include "render.h"
+#include "events.h"
 #include "client.h"
 #include "main.h"
 #include "stream.h"
@@ -552,6 +553,8 @@ void *client_video_render_thread(void *arg) {
     // DEBUG: Log frame generation details
     uint32_t current_frame_hash = 0;
     if (ascii_frame && frame_size > 0) {
+      if (client->event_driven)
+        server_event_video(client, ascii_frame, frame_size, width_snapshot, height_snapshot, sources_count);
       for (size_t i = 0; i < frame_size && i < 1000; i++) {
         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
@@ -1053,8 +1056,9 @@ void *client_audio_render_thread(void *arg) {
           // Queue the properly formatted packet
           START_TIMER("audio_queue_%s", client_id_snapshot);
 
-          int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_buffer,
-                                            total_packet_size, 0, true);
+          int result = client->event_driven ? server_event_audio(client, packet_buffer, total_packet_size)
+                                            : packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH,
+                                                                   packet_buffer, total_packet_size, 0, true);
 
           STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
                                    "Audio queue for client %s: took", client_id_snapshot);

@@ -64,6 +64,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <ascii-chat/platform/event.h>
 #include "../../atomic.h"
 #include "../../common.h"
 #include "../../platform/socket.h"
@@ -143,6 +144,7 @@ typedef struct {
   bool bind_ipv6;                        ///< Whether to bind IPv6 socket
   double accept_timeout_sec;             ///< select() timeout in seconds (supports decimals, e.g. 0.05 for 50ms)
   tcp_client_handler_fn client_handler;  ///< Client handler callback
+  platform_event_accept_fn event_handler; ///< Asynchronous handler, takes precedence over client_handler
   void *user_data;                       ///< User data passed to each client handler
   tcp_status_update_fn status_update_fn; ///< Optional status update callback (called on timeout, NULL to disable)
   void *status_update_data;              ///< User data passed to status update callback
@@ -168,6 +170,7 @@ struct tcp_client_entry {
  * Maintains server sockets, client registry, and runtime state.
  */
 struct tcp_server {
+  platform_event_loop_t *event_loop; ///< Owned while the asynchronous server runs
   socket_t listen_socket;     ///< IPv4 listen socket
   socket_t listen_socket6;    ///< IPv6 listen socket
   atomic_t running;           ///< Server running flag (set false to shutdown)

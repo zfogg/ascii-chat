@@ -84,6 +84,9 @@ typedef struct client_info {
   participant_type_t participant_type; // Network (socket) or memory (direct injection)
   socket_t socket;
   bool is_tcp_client;                // True for TCP clients, false for WebRTC (for cleanup logic)
+  bool event_driven;                 // Network callbacks own lifetime; only render threads are per-client
+  atomic_t event_ready;
+  atomic_t event_cleanup;
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
   asciichat_thread_t receive_thread; // Thread for receiving client data
   asciichat_thread_t send_thread;    // Thread for sending data to client

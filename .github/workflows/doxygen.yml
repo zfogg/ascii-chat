@@ -55,7 +55,7 @@ jobs:
             libsystemd-dev libsqlite3-dev libssl-dev libminiupnpc-dev \
             libprotobuf-c-dev libavformat-dev libavcodec-dev libavutil-dev \
             libswscale-dev libswresample-dev libabsl-dev libx264-dev libx265-dev \
-            libwebsockets-dev libvterm-dev libfreetype6-dev libfontconfig1-dev
+            libwebsockets-dev libuv1-dev libvterm-dev libfreetype6-dev libfontconfig1-dev
 
       - name: Restore configure and build caches
         id: cache-build

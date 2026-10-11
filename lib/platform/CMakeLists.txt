@@ -13,6 +13,10 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
 )
 
+if(NOT EMSCRIPTEN)
+    list(APPEND PLATFORM_SRCS_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/event.c)
+endif()
+
 if(EMSCRIPTEN)
     # WebAssembly / Emscripten build - check this FIRST before PLATFORM_POSIX
     set(PLATFORM_SRCS

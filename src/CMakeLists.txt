@@ -5,6 +5,7 @@ set(APP_SRCS
     # Server mode
     ${CMAKE_CURRENT_SOURCE_DIR}/server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/events.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/protocol.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/stream.c

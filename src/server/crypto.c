@@ -134,6 +134,7 @@
 #include "main.h"
 #include "client.h"
 #include "crypto.h"
+#include <ascii-chat/network/acip/send.h>
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
@@ -717,6 +718,124 @@ int server_crypto_handshake(client_info_t *client) {
  * @param client_id Client ID to check
  * @return true if encryption is ready, false otherwise
  */
+asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, packet_type_t type, const void *payload,
+                                      size_t length, bool *ready) {
+  *ready = false;
+  crypto_handshake_context_t *ctx = &client->crypto_handshake_ctx;
+  acip_transport_t *transport = client->transport;
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (*step == 0) {
+    if (type != PACKET_TYPE_PROTOCOL_VERSION) {
+      if (type != PACKET_TYPE_CLIENT_CAPABILITIES || !GET_OPTION(no_encrypt) || !GET_OPTION(no_auth))
+        return SET_ERRNO(ERROR_CRYPTO, "Expected protocol version before application traffic");
+      *ready = true;
+      return ASCIICHAT_OK;
+    }
+    if (length != sizeof(protocol_version_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
+    protocol_version_packet_t version;
+    memcpy(&version, payload, sizeof(version));
+    if (version.supports_encryption == ACIP_CRYPTO_NONE)
+      return SET_ERRNO(ERROR_CRYPTO, "Client does not support crypto negotiation");
+    const options_t *opts = options_get();
+    const char *password = opts ? opts->password : "";
+    result = password[0] ? crypto_handshake_init_with_password("server_async", ctx, true, password)
+                         : crypto_handshake_init("server_async", ctx, true);
+    if (result != ASCIICHAT_OK)
+      return result;
+    client->crypto_initialized = true;
+    client->encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(version.supports_encryption);
+    if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+      ctx->server_private_key = g_server_private_key;
+      ctx->server_public_key.type = KEY_TYPE_ED25519;
+      memcpy(ctx->server_public_key.key, g_server_private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
+    }
+    ctx->require_client_auth = g_num_whitelisted_clients > 0 || GET_OPTION(require_server_verify);
+    ctx->client_whitelist = g_client_whitelist;
+    ctx->num_whitelisted_clients = g_num_whitelisted_clients;
+    version.protocol_version = HOST_TO_NET_U16(1);
+    version.protocol_revision = 0;
+    version.compression_algorithms = 0;
+    version.compression_threshold = 0;
+    version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
+    result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+    *step = 1;
+    return result;
+  }
+  if (*step == 1) {
+    if (type != PACKET_TYPE_CRYPTO_CAPABILITIES || length != sizeof(crypto_capabilities_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected crypto capabilities");
+    crypto_capabilities_packet_t capabilities;
+    memcpy(&capabilities, payload, sizeof(capabilities));
+    crypto_parameters_packet_t parameters = {0};
+    parameters.selected_kex = KEX_ALGO_X25519;
+    parameters.selected_cipher = client->encrypt_data ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    parameters.selected_auth = g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519
+                                   ? AUTH_ALGO_ED25519
+                                   : AUTH_ALGO_NONE;
+    parameters.verification_enabled = g_num_whitelisted_clients > 0;
+    parameters.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE;
+    parameters.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE;
+    parameters.nonce_size = CRYPTO_NONCE_SIZE;
+    parameters.mac_size = CRYPTO_MAC_SIZE;
+    parameters.hmac_size = CRYPTO_HMAC_SIZE;
+    if (parameters.selected_auth == AUTH_ALGO_ED25519) {
+      parameters.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+      parameters.signature_size = ED25519_SIGNATURE_SIZE;
+    }
+    result = crypto_handshake_set_parameters(ctx, &parameters);
+    if (result != ASCIICHAT_OK)
+      return result;
+    parameters.kex_public_key_size = HOST_TO_NET_U16(parameters.kex_public_key_size);
+    parameters.auth_public_key_size = HOST_TO_NET_U16(parameters.auth_public_key_size);
+    parameters.signature_size = HOST_TO_NET_U16(parameters.signature_size);
+    parameters.shared_secret_size = HOST_TO_NET_U16(parameters.shared_secret_size);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, &parameters, sizeof(parameters), 0);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (g_num_server_identity_keys > 0 && capabilities.requires_verification) {
+      *step = 2;
+      return ASCIICHAT_OK;
+    }
+    *step = 3;
+    return crypto_handshake_server_start(ctx, transport);
+  }
+  if (*step == 2) {
+    if (type != PACKET_TYPE_CRYPTO_CLIENT_HELLO || length != ED25519_PUBLIC_KEY_SIZE)
+      return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+    bool found = false;
+    for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
+      if (sodium_memcmp(payload, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+        ctx->server_private_key = g_server_identity_keys[i];
+        ctx->server_public_key.type = KEY_TYPE_ED25519;
+        memcpy(ctx->server_public_key.key, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE);
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+      return SET_ERRNO(ERROR_CRYPTO, "Unknown pinned server identity");
+    *step = 3;
+    return crypto_handshake_server_start(ctx, transport);
+  }
+  if (*step == 3) {
+    result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, length);
+    *step = 4;
+  } else if (*step == 4) {
+    result = crypto_handshake_server_complete(ctx, transport, type, payload, length);
+  } else {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Unexpected server handshake step");
+  }
+  if (result == ASCIICHAT_OK && ctx->state == CRYPTO_HANDSHAKE_READY) {
+    client->crypto_initialized = true;
+    ctx->crypto_ctx.encrypt_data = client->encrypt_data;
+    transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(ctx);
+    *ready = true;
+    *step = 5;
+  }
+  return result;
+}
+
 bool crypto_server_is_ready(const char *client_id) {
   if (GET_OPTION(no_encrypt)) {
     return false;

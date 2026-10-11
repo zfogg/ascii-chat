@@ -71,6 +71,9 @@ if(NOT TARGET ascii-chat::static)
         pkg_check_modules(_PCRE2 QUIET IMPORTED_TARGET libpcre2-8)
         pkg_check_modules(_SQLITE3 QUIET IMPORTED_TARGET sqlite3)
         pkg_check_modules(_LWS QUIET IMPORTED_TARGET libwebsockets)
+        pkg_check_modules(_LIBUV REQUIRED IMPORTED_TARGET libuv)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES PkgConfig::_LIBUV)
 
         # Optional: mimalloc (only if ascii-chat was built with it)
         set(_ASCIICHAT_BUILT_WITH_MIMALLOC @USE_MIMALLOC@)
@@ -106,6 +109,9 @@ if(NOT TARGET ascii-chat::static)
         endforeach()
     else()
         # Fallback: try to find libraries without pkg-config
+        find_library(_LIBUV_LIB NAMES uv libuv uv_a REQUIRED)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES ${_LIBUV_LIB})
         find_library(_LIBSODIUM_LIB sodium REQUIRED)
         find_library(_ZSTD_LIB zstd REQUIRED)
         find_library(_PORTAUDIO_LIB portaudio REQUIRED)

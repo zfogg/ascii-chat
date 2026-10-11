@@ -1,4 +1,7 @@
 #pragma once
+#include <ascii-chat/platform/event.h>
+
+void acds_event_accept(platform_event_stream_t *, void *);
 
 /**
  * @file acds/server.h

@@ -103,6 +103,7 @@
  */
 
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/network/tcp/async.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -583,6 +584,11 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
     log_warn("Failed to send initial server state to client %s: %s", client_id, asciichat_error_string(packet_result));
   } else {
     log_debug("Sent initial server state to client %s: %u connected clients", client_id, state.connected_client_count);
+  }
+
+  if (client->event_driven) {
+    atomic_store_bool(&client->event_ready, true);
+    return create_client_render_threads(server_ctx, client);
   }
 
   // Step 1: Create receive thread
@@ -1190,6 +1196,7 @@ static void server_client_initialize_webrtc_slot(server_context_t *server_ctx, c
   client->is_tcp_client = false;         // WebRTC client - threads managed directly
   client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
   client->transport = transport; // Use provided transport
+  client->event_driven = acip_async_tcp_transport_is(transport);
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = 0; // WebRTC doesn't use port numbers
@@ -1267,50 +1274,23 @@ static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *cl
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t server_client_initialize_webrtc_sync(server_context_t *server_ctx, client_info_t *client,
-                                                              const char *new_client_id) {
-  // Register this client's audio buffer with the mixer
-  if (g_audio_mixer && client->incoming_audio_buffer) {
-    if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
-      log_warn("Failed to add WebRTC client %s to audio mixer", new_client_id);
-    } else {
-#ifdef DEBUG_AUDIO
-      log_debug("Added WebRTC client %s to audio mixer", new_client_id);
-#endif
-    }
+static asciichat_error_t server_client_initialize_webrtc_sync(client_info_t *client, const char *new_client_id) {
+  // Finish synchronization before publishing this client in the registry.
+  if (mutex_init(&client->client_state_mutex, "client_state") != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client state mutex");
+  if (mutex_init(&client->send_mutex, "client_send") != ASCIICHAT_OK) {
+    mutex_destroy(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client send mutex");
   }
-
-  // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
-    log_error("Failed to initialize client state mutex for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, new_client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
+  if (cond_init(&client->dispatch_queue_cond, "dispatch_queue_cond") != ASCIICHAT_OK) {
+    mutex_destroy(&client->send_mutex);
+    mutex_destroy(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client dispatch condition");
   }
-
   initialize_default_render_capabilities(client);
-
-  // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex, "client_send") != 0) {
-    log_error("Failed to initialize send mutex for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, client->client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
-  }
-
-  // Initialize condition variable for dispatch thread wake-up
-  if (cond_init(&client->dispatch_queue_cond, "dispatch_queue_cond") != 0) {
-    log_error("Failed to initialize dispatch queue condition variable for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, client->client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
-  }
-
-  // For WebRTC clients, the capabilities packet will be received by the receive thread
-  // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
-  // WebRTC uses the transport abstraction which handles packet reception automatically.
-  log_debug("WebRTC client %s initialized - receive thread will process capabilities", new_client_id);
-
+  if (g_audio_mixer && client->incoming_audio_buffer &&
+      mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0)
+    log_warn("Failed to add client %s to audio mixer", new_client_id);
   return ASCIICHAT_OK;
 }
 
@@ -1427,7 +1407,8 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
 
   server_client_initialize_webrtc_slot(server_ctx, client, transport, new_client_id, client_ip, slot);
 
-  if (server_client_allocate_webrtc_buffers(client, new_client_id) != ASCIICHAT_OK) {
+  if (server_client_allocate_webrtc_buffers(client, new_client_id) != ASCIICHAT_OK ||
+      server_client_initialize_webrtc_sync(client, new_client_id) != ASCIICHAT_OK) {
     goto error_cleanup_webrtc;
   }
 
@@ -1440,14 +1421,11 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   log_debug("Added WebRTC client %s to uthash table", new_client_id);
 
   // Release the write lock IMMEDIATELY after adding to hash table
-  // All subsequent operations (mutex init, mixer registration) don't need global client manager lock
+  // The client is fully initialized before other threads can look it up.
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  if (server_client_initialize_webrtc_sync(server_ctx, client, new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  server_client_send_webrtc_state(client, new_client_id);
+  if (!client->event_driven)
+    server_client_send_webrtc_state(client, new_client_id);
 
   // Register client with session_host (for discovery mode support)
   // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
@@ -1486,6 +1464,7 @@ error_cleanup_webrtc:
   // NOTE: This label is reached when allocation or initialization fails BEFORE
   // the client is added to the hash table. Don't call remove_client() here.
   cleanup_client_all_buffers(client);
+  memset(client, 0, sizeof(*client));
   rwlock_wrunlock(&g_client_manager_rwlock);
   return NULL;
 }
@@ -1507,6 +1486,11 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (strcmp(client->client_id, client_id) == 0 && client->client_id[0] != '\0') {
+      if (client->event_driven && !atomic_load_bool(&client->event_cleanup)) {
+        acip_transport_close(client->transport);
+        rwlock_wrunlock(&g_client_manager_rwlock);
+        return ASCIICHAT_OK;
+      }
       // Check if already being removed by another thread
       // This prevents double-free and use-after-free crashes during concurrent cleanup
       if (atomic_load_bool(&client->shutting_down)) {
@@ -1592,7 +1576,9 @@ static void server_client_stop_threads(server_context_t *server_ctx, const char 
   log_debug("Stopping all threads for client %s (socket %d, is_tcp=%d)", client_id, removal->socket,
             removal->client ? removal->client->is_tcp_client : -1);
 
-  if (removal->client && removal->client->is_tcp_client) {
+  if (removal->client && removal->client->event_driven) {
+    stop_client_render_threads(removal->client);
+  } else if (removal->client && removal->client->is_tcp_client) {
     // TCP client: use tcp_server thread pool
     // This joins threads in stop_id order: receive(1), render(2), send(3)
     // Use saved client_socket for lookup (tcp_server needs original socket as key)
@@ -1657,7 +1643,8 @@ static void server_client_close_transport(const char *client_id, server_client_r
   // For WebSocket clients: LWS_CALLBACK_CLOSED already closed and destroyed the transport
   // Trying to destroy it again causes heap-use-after-free since LWS callbacks might still fire
   // For TCP clients: transport is ours to clean up
-  if (removal->client && removal->client->transport && removal->client->is_tcp_client) {
+  if (removal->client && removal->client->transport &&
+      (removal->client->is_tcp_client || removal->client->event_driven)) {
     acip_transport_destroy(removal->client->transport);
     removal->client->transport = NULL;
     log_debug("Destroyed ACIP transport for TCP client %s", client_id);
@@ -1837,6 +1824,10 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 
 // Forward declaration for ACIP server callbacks (defined later in file)
 static const acip_server_callbacks_t g_acip_server_callbacks;
+
+asciichat_error_t server_event_dispatch(client_info_t *client, packet_type_t type, const void *data, size_t length) {
+  return acip_handle_server_packet(client->transport, type, data, length, client, &g_acip_server_callbacks);
+}
 
 /**
  * @brief Async dispatch thread - processes queued received packets
@@ -2928,7 +2919,13 @@ void broadcast_server_state_to_all_clients(void) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Release lock BEFORE sending (snapshot pattern)
-  // Sending while holding lock blocks all client operations
+  for (int i = 0; i < MAX_CLIENTS; ++i) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->event_driven && atomic_load_bool(&client->event_ready) && atomic_load_bool(&client->active) &&
+        client->transport)
+      acip_send_server_state(client->transport, &net_state);
+  }
+  // Event transports only enqueue above; legacy blocking writes follow after unlock.
   uint64_t lock_held_final_ns = time_get_ns();
   uint64_t lock_held_ns = time_elapsed_ns(lock_start_ns, lock_held_final_ns);
   rwlock_rdunlock(&g_client_manager_rwlock);

@@ -165,10 +165,41 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   return ASCIICHAT_OK;
 }
 
+static void tcp_event_tick(void *arg) {
+  tcp_server_t *server = arg;
+  if (!atomic_load_bool(&server->running))
+    platform_event_loop_stop(server->event_loop);
+}
+
+static asciichat_error_t tcp_server_run_events(tcp_server_t *server) {
+  asciichat_error_t result = platform_event_loop_create(&server->event_loop);
+  if (result != ASCIICHAT_OK)
+    return result;
+  platform_event_listener_t *listener = NULL;
+  if (server->listen_socket != INVALID_SOCKET_VALUE)
+    result = platform_event_listen(server->event_loop, &server->listen_socket, server->config.event_handler,
+                                   server->config.user_data, &listener);
+  if (result == ASCIICHAT_OK && server->listen_socket6 != INVALID_SOCKET_VALUE)
+    result = platform_event_listen(server->event_loop, &server->listen_socket6, server->config.event_handler,
+                                   server->config.user_data, &listener);
+  if (result == ASCIICHAT_OK)
+    result = platform_event_loop_tick(server->event_loop, 50, tcp_event_tick, server);
+  if (result != ASCIICHAT_OK)
+    platform_event_loop_stop(server->event_loop);
+  log_info("TCP event backend: %s", platform_event_backend());
+  platform_event_loop_run(server->event_loop);
+  asciichat_error_t cleanup = platform_event_loop_destroy(server->event_loop);
+  server->event_loop = NULL;
+  return result != ASCIICHAT_OK ? result : cleanup;
+}
+
 asciichat_error_t tcp_server_run(tcp_server_t *server) {
   if (!server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
   }
+
+  if (server->config.event_handler)
+    return tcp_server_run_events(server);
 
   if (!server->config.client_handler) {
     return SET_ERRNO(ERROR_INVALID_PARAM,

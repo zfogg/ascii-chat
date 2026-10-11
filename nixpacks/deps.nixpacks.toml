@@ -65,6 +65,7 @@ nixPkgs = [
   "x264", # X264.cmake
   "x265", # X265.cmake
   "yyjson", # Yyjson.cmake
+  "libuv",
   "libwebsockets", # Libwebsockets.cmake
   "libdatachannel", # Libdatachannel.cmake
   "libvterm", # Libvterm.cmake
@@ -101,6 +102,7 @@ nixLibs = [
   "x264",
   "x265",
   "yyjson",
+  "libuv",
   "libwebsockets",
   "libdatachannel",
   "mimalloc",

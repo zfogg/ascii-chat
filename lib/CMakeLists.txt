@@ -349,6 +349,9 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-platform PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 target_link_libraries(ascii-chat-platform PRIVATE
     ascii-chat-util
     ascii-chat-data-structures
@@ -1519,6 +1522,10 @@ add_library(ascii-chat-static-lib-deps INTERFACE)
 # BearSSL and WebRTC AEC3 are embedded in the static library
 # BearSSL is required
 target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${BEARSSL_LIBRARIES})
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 if(WEBRTC_AEC3_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${WEBRTC_AEC3_LIBRARIES})
 endif()

@@ -176,6 +176,7 @@ typedef struct session_server_like_config {
 
   /** Per-connection handler callback (required). */
   tcp_client_handler_fn tcp_handler;
+  platform_event_accept_fn tcp_event_handler;
 
   /** User data passed to each tcp_handler invocation. */
   void *tcp_user_data;

@@ -81,6 +81,7 @@
 #include "main.h"
 #include "../main.h" // For should_exit() and signal_exit() API
 #include "common/session/server_like.h"
+#include "events.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -504,11 +505,11 @@ static void server_handle_sigint(int sig) {
   tcp_server_t *tcp = session_server_like_get_tcp_server();
   if (tcp) {
     atomic_store_bool(&tcp->running, false);
-    if (tcp->listen_socket != INVALID_SOCKET_VALUE) {
+    if (!tcp->config.event_handler && tcp->listen_socket != INVALID_SOCKET_VALUE) {
       socket_close(tcp->listen_socket);
       tcp->listen_socket = INVALID_SOCKET_VALUE;
     }
-    if (tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
+    if (!tcp->config.event_handler && tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
       socket_close(tcp->listen_socket6);
       tcp->listen_socket6 = INVALID_SOCKET_VALUE;
     }
@@ -2481,6 +2482,7 @@ int server_main(void) {
       .status_fn = server_status_fn,
       .status_user_data = NULL,
       .tcp_handler = ascii_chat_client_handler,
+      .tcp_event_handler = GET_OPTION(network_zerocopy) ? NULL : server_event_accept,
       .tcp_user_data = &g_server_ctx,
       .websocket =
           {

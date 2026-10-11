@@ -70,6 +70,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -565,7 +566,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   // Create the persistent TCP transport before handshake.
   // It starts with NULL crypto; client_crypto_handshake() sets crypto_ctx on success.
-  g_client_transport = acip_tcp_transport_create("client", g_sockfd, NULL);
+  if (!GET_OPTION(network_zerocopy)) {
+    socket_set_keepalive(g_sockfd, true);
+    socket_configure_buffers(g_sockfd);
+    g_client_transport = acip_async_tcp_client_create(&g_sockfd, NULL);
+  } else {
+    g_client_transport = acip_tcp_transport_create("client", g_sockfd, NULL);
+  }
   if (!g_client_transport) {
     log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);
@@ -600,12 +607,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Configure socket options for optimal performance
-  if (socket_set_keepalive(g_sockfd, true) < 0) {
+  if (g_sockfd != INVALID_SOCKET_VALUE && socket_set_keepalive(g_sockfd, true) < 0) {
     log_warn("Failed to set socket keepalive: %s", network_error_string());
   }
 
   // Configure socket buffers and TCP_NODELAY for optimal performance
-  asciichat_error_t sock_config_result = socket_configure_buffers(g_sockfd);
+  asciichat_error_t sock_config_result =
+      g_sockfd == INVALID_SOCKET_VALUE ? ASCIICHAT_OK : socket_configure_buffers(g_sockfd);
   if (sock_config_result != ASCIICHAT_OK) {
     log_warn("Failed to configure socket: %s", network_error_string());
   }
@@ -906,6 +914,7 @@ static void server_connection_interrupt_websocket_recv(void) {
  * @ingroup client_connection
  */
 void server_connection_shutdown() {
+  acip_async_tcp_transport_interrupt(g_client_transport);
   // NOTE: This function may be called from:
   //   - Signal handlers on Unix (async-signal-safe context)
   //   - SetConsoleCtrlHandler callback thread on Windows (separate thread context)

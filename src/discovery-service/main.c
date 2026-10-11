@@ -48,12 +48,12 @@ static void acds_interrupt_fn(int sig) {
   tcp_server_t *tcp = session_server_like_get_tcp_server();
   if (tcp) {
     atomic_store_bool(&tcp->running, false);
-    // Close listen sockets to interrupt select()
-    if (tcp->listen_socket != INVALID_SOCKET_VALUE) {
+    // Event listeners close on their owner loop; legacy listeners interrupt select().
+    if (!tcp->config.event_handler && tcp->listen_socket != INVALID_SOCKET_VALUE) {
       socket_close(tcp->listen_socket);
       tcp->listen_socket = INVALID_SOCKET_VALUE;
     }
-    if (tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
+    if (!tcp->config.event_handler && tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
       socket_close(tcp->listen_socket6);
       tcp->listen_socket6 = INVALID_SOCKET_VALUE;
     }
@@ -332,6 +332,7 @@ int acds_main(void) {
 
       // TCP handler
       .tcp_handler = acds_client_handler,
+      .tcp_event_handler = acds_event_accept,
       .tcp_user_data = &g_server,
 
       // WebSocket

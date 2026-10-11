@@ -9,6 +9,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/crc32.c
     # packet/
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/packet.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/packet/decoder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
     ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
@@ -64,6 +65,10 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/mdns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/discovery.c
 )
+
+if(NOT EMSCRIPTEN)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c)
+endif()
 
 # Third-party code properties (mdns)
 set_source_files_properties(

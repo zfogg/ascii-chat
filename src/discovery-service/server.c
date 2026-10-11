@@ -39,6 +39,9 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
+#include <ascii-chat/network/packet/decoder.h>
+#include <ascii-chat/network/tcp/async.h>
+#include <ascii-chat/crypto/handshake/server.h>
 
 /**
  * @brief Find or create migration context for a session
@@ -975,6 +978,185 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_network_quality = acds_on_network_quality,
     .app_ctx = NULL // Set dynamically to server instance
 };
+
+typedef struct {
+  acds_server_t *server;
+  acds_client_data_t client;
+  platform_event_stream_t *stream;
+  packet_decoder_t decoder;
+  char ip[INET6_ADDRSTRLEN];
+  const void *input;
+  size_t input_length;
+  unsigned handshake_step;
+  bool initialized, registered, received_packet;
+  uint64_t partial_since;
+  asciichat_error_t result;
+} acds_event_client_t;
+
+static asciichat_error_t acds_event_packet(const void *data, size_t length, void *arg) {
+  acds_event_client_t *connection = arg;
+  acds_client_data_t *client = &connection->client;
+  acip_transport_t *transport = client->transport;
+  packet_header_t header;
+  memcpy(&header, data, sizeof(header));
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  const void *payload = (const uint8_t *)data + sizeof(header);
+  size_t size = length - sizeof(header);
+  connection->received_packet = true;
+  if (!client->handshake_complete) {
+    asciichat_error_t result;
+    switch (connection->handshake_step) {
+    case 0:
+      if (type != PACKET_TYPE_PROTOCOL_VERSION || size != sizeof(protocol_version_packet_t))
+        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected discovery protocol version");
+      result = crypto_handshake_server_send_parameters(&client->handshake_ctx, transport);
+      if (result == ASCIICHAT_OK)
+        result = crypto_handshake_server_start(&client->handshake_ctx, transport);
+      break;
+    case 1:
+      result = crypto_handshake_server_auth_challenge(&client->handshake_ctx, transport, type, payload, size);
+      break;
+    case 2:
+      result = crypto_handshake_server_complete(&client->handshake_ctx, transport, type, payload, size);
+      break;
+    default:
+      return SET_ERRNO(ERROR_CRYPTO, "Invalid discovery handshake state");
+    }
+    if (result != ASCIICHAT_OK)
+      return result;
+    ++connection->handshake_step;
+    client->handshake_complete = client->handshake_ctx.state == CRYPTO_HANDSHAKE_READY;
+    return ASCIICHAT_OK;
+  }
+  atomic_fetch_add_u64(&connection->server->stats.bytes_received, length);
+  atomic_fetch_add_u64(&connection->server->stats.packets_received, 1);
+  if (client->in_multikey_session_create && type != PACKET_TYPE_ACIP_SESSION_CREATE && type != PACKET_TYPE_PING &&
+      type != PACKET_TYPE_PONG)
+    return acip_send_error(transport, ERROR_INVALID_PARAM,
+                           "Only SESSION_CREATE/PING/PONG allowed during session creation");
+  acip_acds_callbacks_t callbacks = g_acds_callbacks;
+  callbacks.app_ctx = connection->server;
+  return acip_handle_acds_packet(transport, type, payload, size, connection->ip, &callbacks);
+}
+
+static void acds_event_work(void *arg) {
+  acds_event_client_t *connection = arg;
+  acds_client_data_t *client = &connection->client;
+  if (!connection->initialized) {
+    connection->result = crypto_handshake_init("discovery_async", &client->handshake_ctx, true);
+    if (connection->result != ASCIICHAT_OK)
+      return;
+    connection->initialized = true;
+    client->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
+    client->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
+    memcpy(client->handshake_ctx.server_public_key.key, connection->server->identity_public, 32);
+    memcpy(client->handshake_ctx.server_private_key.key.ed25519, connection->server->identity_secret, 64);
+  }
+  connection->received_packet = false;
+  connection->result = packet_decoder_feed(&connection->decoder, connection->input, connection->input_length,
+                                           acds_event_packet, connection);
+}
+
+static void acds_event_work_done(platform_event_stream_t *stream, void *arg, bool closing) {
+  acds_event_client_t *connection = arg;
+  if (closing)
+    return;
+  if (connection->result != ASCIICHAT_OK) {
+    platform_event_stream_close(stream, connection->result);
+    return;
+  }
+  if (connection->client.handshake_complete) {
+    // Incomplete frames get one fixed deadline, unaffected by trickling bytes.
+    if (packet_decoder_pending(&connection->decoder)) {
+      if (!connection->partial_since || connection->received_packet)
+        connection->partial_since = time_get_ns();
+      uint64_t elapsed = time_get_ns() - connection->partial_since;
+      if (elapsed >= 5 * NS_PER_SEC_INT) {
+        platform_event_stream_close(stream, ERROR_NETWORK_TIMEOUT);
+        return;
+      }
+      platform_event_stream_deadline(stream, (5 * NS_PER_SEC_INT - elapsed) / NS_PER_MS_INT + 1);
+    } else {
+      connection->partial_since = 0;
+      platform_event_stream_deadline(stream, 60000);
+    }
+  }
+  // Before READY, retain the original absolute handshake deadline.
+  if (platform_event_stream_resume(stream) != ASCIICHAT_OK)
+    platform_event_stream_close(stream, ERROR_NETWORK);
+}
+
+static void acds_event_read(platform_event_stream_t *stream, const void *data, size_t length, void *arg) {
+  acds_event_client_t *connection = arg;
+  connection->input = data;
+  connection->input_length = length;
+  asciichat_error_t result = platform_event_stream_work(stream, acds_event_work, acds_event_work_done, connection);
+  if (result != ASCIICHAT_OK)
+    platform_event_stream_close(stream, result);
+}
+
+static void acds_event_cleanup(void *arg) {
+  acds_event_client_t *connection = arg;
+  if (connection->client.joined_session)
+    acds_remove_client_from_session(connection->server, &connection->client);
+  if (connection->registered)
+    tcp_server_remove_client(connection->server->tcp_server, connection->client.registry_id);
+  if (connection->initialized)
+    crypto_handshake_destroy(&connection->client.handshake_ctx);
+  acip_transport_destroy(connection->client.transport);
+  packet_decoder_reset(&connection->decoder);
+}
+
+static void acds_event_freed(void *arg) {
+  acds_event_client_t *connection = arg;
+  SAFE_FREE(connection);
+}
+
+static void acds_event_closed(void *arg, asciichat_error_t reason) {
+  (void)reason;
+  acds_event_client_t *connection = arg;
+  acip_async_tcp_transport_detach(connection->client.transport);
+  // The loop stays alive for this cleanup job, including during server shutdown.
+  if (platform_event_loop_work(connection->server->tcp_server->event_loop, acds_event_cleanup, acds_event_freed,
+                               connection) != ASCIICHAT_OK) {
+    acds_event_cleanup(connection);
+    acds_event_freed(connection);
+  }
+}
+
+void acds_event_accept(platform_event_stream_t *stream, void *arg) {
+  acds_server_t *server = arg;
+  static int next_id = -2;
+  if (tcp_server_get_client_count(server->tcp_server) >= 512 || next_id == INT_MIN) {
+    platform_event_stream_close(stream, ERROR_NETWORK_SIZE);
+    return;
+  }
+  acds_event_client_t *connection = SAFE_CALLOC(1, sizeof(*connection), acds_event_client_t *);
+  connection->server = server;
+  connection->stream = stream;
+  connection->decoder.max_payload = 65536;
+  struct sockaddr_storage peer;
+  socklen_t length = sizeof(peer);
+  if (platform_event_stream_peer(stream, &peer, &length) == ASCIICHAT_OK)
+    format_ip_address(peer.ss_family, (struct sockaddr *)&peer, connection->ip, sizeof(connection->ip));
+  connection->client.transport = acip_async_tcp_transport_create(stream, NULL);
+  if (!connection->client.transport) {
+    SAFE_FREE(connection);
+    platform_event_stream_close(stream, ERROR_MEMORY);
+    return;
+  }
+  connection->client.transport->user_data = &connection->client;
+  // Separate from WebSocket synthetic IDs, which descend from INT_MAX.
+  connection->client.registry_id = next_id--;
+  asciichat_error_t result = platform_event_stream_start(stream, acds_event_read, acds_event_closed, connection);
+  if (result == ASCIICHAT_OK)
+    result = tcp_server_add_client(server->tcp_server, connection->client.registry_id, &connection->client);
+  connection->registered = result == ASCIICHAT_OK;
+  if (result == ASCIICHAT_OK)
+    result = platform_event_stream_deadline(stream, 30000);
+  if (result != ASCIICHAT_OK)
+    platform_event_stream_close(stream, result);
+}
 
 void *acds_client_handler(void *arg) {
   tcp_client_context_t *ctx = (tcp_client_context_t *)arg;

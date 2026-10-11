@@ -997,6 +997,33 @@ if(BUILD_TESTS AND TARGET ascii-chat)
 endif()
 
 # Production transport tests run natively on Windows, macOS, and Linux without Criterion.
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    add_test(NAME event-io-integration COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/event_io.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(event-io-integration PROPERTIES LABELS "integration" TIMEOUT 180)
+endif()
+
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-network-events EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c)
+    target_link_libraries(test-network-events PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
+    apply_sanitizers_to_target(test-network-events)
+    target_include_directories(test-network-events PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-network-events PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        add_test(NAME network-events COMMAND test-network-events)
+        set_tests_properties(network-events PROPERTIES TIMEOUT 60)
+        if(WIN32)
+            set_property(TEST network-events PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        if(TARGET tests)
+            add_dependencies(tests test-network-events)
+        endif()
+    endif()
+endif()
+
 if(TARGET ascii-chat-static)
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
     target_link_libraries(test-network-vectors PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
