@@ -75,6 +75,7 @@
 #include "audio.h"
 #include "capture.h"
 #include <ascii-chat/audio/analysis.h>
+#include <ascii-chat/media/source.h>
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
@@ -1014,8 +1015,8 @@ int audio_client_init() {
   lifecycle_init_commit(&g_audio_client_init_lc);
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
-  client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
-  pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
+  bool has_media_audio = media_source_has_audio(capture_get_media_source());
+  client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_config_for_source(has_media_audio);
 
   // Enable echo cancellation, AGC, and essential processing for clear audio
   // Noise suppression and VAD can destroy music quality, so keep them disabled
@@ -1029,10 +1030,9 @@ int audio_client_init() {
   pipeline_config.flags.highpass = true;        // ENABLE: remove rumble and low-frequency feedback
   pipeline_config.flags.lowpass = false;        // DISABLED: preserve high-frequency content
 
-  // Set jitter buffer margin for smooth playback without excessive delay
-  // 100ms is conservative - AEC3 will adapt to actual network delay automatically
-  // We don't tune this; let the system adapt to its actual conditions
-  pipeline_config.jitter_margin_ns = 100;
+  // Applied before streams start; actual underflows increase this bounded target.
+  audio_ring_buffer_set_jitter_target(g_audio_context.playback_buffer,
+                                      (uint32_t)pipeline_config.jitter_margin_ms * 48);
 
   log_debug("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);

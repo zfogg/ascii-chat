@@ -732,8 +732,10 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     int decoded = audio_decode_opus(opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
 
     if (decoded <= 0) {
-      log_warn("Failed to decode Opus frame %d in batch, decoded=%d", i, decoded);
-      break;
+      log_warn("Concealing invalid Opus frame %d in batch", i);
+      decoded = audio_decode_opus(NULL, 0, frame_buffer, samples_per_frame);
+      if (decoded <= 0)
+        break;
     }
 
     total_decoded_samples += decoded;
