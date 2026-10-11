@@ -987,3 +987,11 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME server-client-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_client_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(server-client-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+endif()
