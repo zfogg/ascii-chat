@@ -26,7 +26,8 @@ static bool validate_audio_fft_size(const void *data) {
   return false;
 }
 
-static const bool default_audio_spectral = false;
+static const bool default_audio_spectral = true;
+static const bool default_audio_spectral_mixer = false;
 static const bool default_audio_spectral_gate = true;
 static const bool default_audio_multiband = false;
 static const bool default_audio_adaptive_eq = false;
@@ -95,7 +96,7 @@ const registry_entry_t g_audio_entries[] = {
      offsetof(options_t, audio_spectral),
      &default_audio_spectral,
      sizeof(bool),
-     "Enable FFTW capture/mixer processing (adds FFT-size samples of latency).",
+     "Process microphone audio with FFTW (default on; media/test audio bypass it). Disable with --audio-spectral=false.",
      "AUDIO",
      NULL,
      false,
@@ -105,6 +106,24 @@ const registry_entry_t g_audio_entries[] = {
      false,
      false,
      OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"audio-spectral-mixer",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, audio_spectral_mixer),
+     &default_audio_spectral_mixer,
+     sizeof(bool),
+     "Opt in to FFTW processing of the entire server mix, including media and test signals (default off).",
+     "AUDIO",
+     NULL,
+     false,
+     "ASCII_CHAT_AUDIO_SPECTRAL_MIXER",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
      {0},
      NULL},
     {"audio-spectral-gate",

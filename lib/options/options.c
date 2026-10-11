@@ -657,6 +657,8 @@ options_t options_t_new(void) {
   // ============================================================================
   opts.audio_fft_size = 1024;
   opts.test_audio = false;
+  opts.audio_spectral = true;
+  opts.audio_spectral_mixer = false;
   opts.audio_spectral_gate = true;
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;

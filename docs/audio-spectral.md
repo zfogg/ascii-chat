@@ -1,15 +1,21 @@
 # FFTW spectral audio processing
 
-Opt in on the microphone sender, the server mixer, or both:
+Microphone spectral noise reduction is enabled by default. Media files and
+`--test-audio` bypass microphone processing. When microphone and media are mixed,
+media samples are added after the microphone processor. Other spectral effects
+remain opt-in.
 
 ```sh
-ascii-chat client localhost --audio --audio-spectral
-ascii-chat server --audio-spectral --audio-multiband --audio-spectral-gate=false
+ascii-chat client localhost --audio=true
+ascii-chat client localhost --audio-spectral=false
 ```
 
-`--audio-spectral` defaults off. With it enabled, the spectral noise gate defaults
-on; other effects default off. Enabling processing at both ends adds both
-processors' latency. Use capture-side gating to remove noise before transmission.
+Server mixing does not apply spectral processing by default, including when a
+discovery client hosts the call. `--audio-spectral-mixer=true` explicitly enables
+processing of the entire mixed output, including any media/test sources. This is
+separate from `--audio-spectral`, which controls microphone capture only. Enabling
+both adds both processors' latency. Existing server configurations that used
+`--audio-spectral=true` for mix processing must switch to the new mixer flag.
 
 | Option | Effect |
 | --- | --- |

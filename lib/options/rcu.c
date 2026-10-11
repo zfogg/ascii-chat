@@ -214,6 +214,8 @@ static const options_t g_default_options = (options_t){
     // ========================================================================
     .audio_fft_size = 1024,
     .test_audio = false,
+    .audio_spectral = true,
+    .audio_spectral_mixer = false,
     .audio_spectral_gate = true,
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
     .audio_source = OPT_AUDIO_SOURCE_DEFAULT,

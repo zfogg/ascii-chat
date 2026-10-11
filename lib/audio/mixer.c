@@ -385,7 +385,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     return NULL;
   }
   compressor_init(&mixer->compressor, (float)sample_rate);
-  if (GET_OPTION(audio_spectral)) {
+  if (GET_OPTION(audio_spectral_mixer)) {
     spectral_config_t config = spectral_default_config(sample_rate);
     config.fft_size = GET_OPTION(audio_fft_size);
     config.noise_gate = GET_OPTION(audio_spectral_gate);

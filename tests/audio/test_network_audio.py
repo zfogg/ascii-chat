@@ -64,7 +64,7 @@ def main():
                 "--port",
                 str(args.port),
                 "--status-screen=false",
-                "--audio-spectral=true",
+                "--audio-spectral-mixer=true",
                 *security,
             ],
         )
