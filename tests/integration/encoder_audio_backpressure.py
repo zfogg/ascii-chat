@@ -10,11 +10,17 @@ import sys
 import tempfile
 
 
-source = Path(sys.argv[1] if len(sys.argv) > 1 else "lib/media/ffmpeg_encoder.c").read_text()
+source = Path(sys.argv[1] if len(sys.argv) > 1 else "lib/media/ffmpeg_encoder.c").read_text(encoding="utf-8")
 helper_start = source.find("static asciichat_error_t finish_audio_frame(")
-helper = source[helper_start:source.index("asciichat_error_t ffmpeg_encoder_destroy(")] if helper_start >= 0 else ""
-start = source.index("  // Flush audio encoder if present", source.index("asciichat_error_t ffmpeg_encoder_destroy("))
-block = source[start:source.index("  // Set stream duration", start)]
+helper = source[helper_start:source.index("\n}\n", helper_start) + 3] if helper_start >= 0 else ""
+flush_start = source.find("static asciichat_error_t encoder_flush_audio(")
+if flush_start >= 0:
+    helper += source[flush_start:source.index("\n}\n", flush_start) + 3]
+    block = "result = encoder_flush_audio(enc);\n"
+else:
+    # Support testing the pre-extraction implementation as a baseline.
+    start = source.index("  // Flush audio encoder if present", source.index("asciichat_error_t ffmpeg_encoder_destroy("))
+    block = source[start:source.index("  // Set stream duration", start)]
 
 fixture = r'''
 #include <assert.h>
