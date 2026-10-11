@@ -1069,7 +1069,7 @@ typedef struct options_state {
   // Image Options
   // ============================================================================
   bool stretch;         ///< Allow aspect ratio distortion
-  char video_codec[64]; ///< Video codec (raw, hevc) - default: hevc
+  char video_codec[64]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
   // ============================================================================
   // Output Options

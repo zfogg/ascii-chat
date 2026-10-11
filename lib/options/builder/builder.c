@@ -681,7 +681,7 @@ void options_builder_add_bool(options_builder_t *builder, const char *long_name,
 
 void options_builder_add_int(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                              int default_value, const char *help_text, const char *group, bool required,
-                             const char *env_var_name, bool (*validate)(const void *, char **)) {
+                             const char *env_var_name, bool (*validate)(const void *)) {
   ensure_descriptor_capacity(builder);
 
   if (g_int_defaults_counter >= 256) {
@@ -711,7 +711,7 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
 void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
                                            size_t offset, int default_value, const char *help_text, const char *group,
                                            bool required, const char *env_var_name,
-                                           bool (*validate)(const void *options_struct, char **error_msg),
+                                           bool (*validate)(const void *options_struct),
                                            const option_metadata_t *metadata) {
   ensure_descriptor_capacity(builder);
 
@@ -742,7 +742,7 @@ void options_builder_add_int_with_metadata(options_builder_t *builder, const cha
 
 void options_builder_add_string(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 const char *default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name, bool (*validate)(const void *, char **)) {
+                                const char *env_var_name, bool (*validate)(const void *)) {
   ensure_descriptor_capacity(builder);
 
   // Store default string pointer in static storage to avoid stack-use-after-return
@@ -779,7 +779,7 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
 
 void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 double default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name, bool (*validate)(const void *, char **), bool optional_arg) {
+                                const char *env_var_name, bool (*validate)(const void *), bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   // Increased from 256 to 1024 to support multiple test builders without overflow
@@ -814,8 +814,8 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
 void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
                                               size_t offset, double default_value, const char *help_text,
                                               const char *group, bool required, const char *env_var_name,
-                                              bool (*validate)(const void *, char **),
-                                              const option_metadata_t *metadata, bool optional_arg) {
+                                              bool (*validate)(const void *), const option_metadata_t *metadata,
+                                              bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   static double defaults[1024];
@@ -1939,14 +1939,12 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
     if (!desc->validate)
       continue;
 
-    char *custom_error = NULL;
-    if (!desc->validate(options_struct, &custom_error)) {
-      if (error_message) {
-        *error_message = custom_error;
-      } else {
-        free(custom_error);
-      }
-      return ERROR_USAGE;
+    asciichat_errno_scope_t validation_scope = asciichat_errno_checkpoint();
+    if (!desc->validate(options_struct)) {
+      asciichat_error_context_t error;
+      if (asciichat_errno_peek_since(validation_scope, &error))
+        return error.code;
+      return SET_ERRNO(ERROR_USAGE, "Option '--%s' failed validation", desc->long_name);
     }
   }
 

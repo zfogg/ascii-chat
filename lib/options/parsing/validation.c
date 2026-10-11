@@ -95,7 +95,7 @@ int validate_opt_port(const char *value_str, char *error_msg, size_t error_msg_s
  * Validate port option callback (matches option_descriptor validate signature)
  * Used during options parsing to validate port values with PCRE2
  */
-bool validate_port_callback(const void *options_struct, char **error_msg) {
+bool validate_port_callback(const void *options_struct) {
   const options_t *opts = (const options_t *)options_struct;
 
   // Port is stored as an int, but we need to validate it as a string
@@ -105,9 +105,7 @@ bool validate_port_callback(const void *options_struct, char **error_msg) {
 
   // Instead, check if the port value is in range (this will catch the range but not format issues)
   if (opts->port < 1 || opts->port > 65535) {
-    if (error_msg) {
-      *error_msg = platform_strdup("Port must be between 1 and 65535");
-    }
+    SET_ERRNO(ERROR_USAGE, "Port must be between 1 and 65535");
     return false;
   }
 

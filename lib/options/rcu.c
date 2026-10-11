@@ -648,13 +648,13 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
 
   // Cross-field validate_fn (future-proofing)
   if (entry->validate_fn) {
-    char *error_msg = NULL;
-    if (!entry->validate_fn(new_opts, &error_msg)) {
-      log_error("Option '%s' rejected by validator: %s", opt_name, error_msg ? error_msg : "unknown error");
-      SAFE_FREE(error_msg);
+    asciichat_errno_scope_t validation_scope = asciichat_errno_checkpoint();
+    if (!entry->validate_fn(new_opts)) {
+      asciichat_error_context_t error;
+      if (asciichat_errno_peek_since(validation_scope, &error))
+        return error.code;
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' failed validation", opt_name);
     }
-    SAFE_FREE(error_msg);
   }
 
   // Numeric range check. Float-valued callback options store their value as a

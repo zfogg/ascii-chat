@@ -56,13 +56,13 @@
 extern crypto_handshake_context_t g_crypto_ctx;
 
 /**
- * @brief Global H.265 encoder context for client video streaming
+ * @brief Global compressed video encoder context for client video streaming
  *
- * Encodes captured RGB frames to H.265/HEVC format before transmission.
- * Initialized in client_main() and used by capture thread.
+ * Encodes captured RGB frames to HEVC or H.264 before transmission.
+ * Created lazily and used by the capture thread.
  * Set to NULL during shutdown to prevent use-after-free.
  */
-extern h265_encoder_t *volatile g_h265_encoder;
+extern h265_encoder_t *volatile g_video_encoder;
 
 /**
  * @brief Global client worker thread pool
