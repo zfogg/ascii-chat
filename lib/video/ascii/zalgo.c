@@ -13,6 +13,28 @@ static uint32_t zalgo_hash(uint32_t value) {
   return value ^ (value >> 16);
 }
 
+static const unsigned zalgo_maximum[] = {1, 1, 1, 1, 2, 3, 4, 5, 7, 10};
+
+unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[10]) {
+  if (level < 1 || level > 10 || !marks)
+    return 0;
+  static const unsigned coverage[] = {3, 6, 10, 18, 28, 40, 55, 70, 85, 100};
+  static const unsigned minimum[] = {1, 1, 1, 1, 1, 1, 2, 3, 4, 6};
+  static const uint16_t short_marks[] = {0x0334, 0x0335, 0x0336, 0x0337, 0x0338};
+  static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a,
+                                         0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
+  unsigned index = (unsigned)level - 1;
+  uint32_t hash = zalgo_hash(row * UINT32_C(0x9e3779b9) ^ col ^ UINT32_C(0x5a17));
+  if (hash % 100 >= coverage[index])
+    return 0;
+  unsigned count = minimum[index] + ((hash >> 8) % 256) * (zalgo_maximum[index] - minimum[index] + 1) / 256;
+  for (unsigned mark = 0; mark < count; mark++) {
+    uint32_t choice = zalgo_hash(hash + mark);
+    marks[mark] = mark == 0 ? short_marks[choice % 5] : stack_marks[choice % 12];
+  }
+  return count;
+}
+
 /** Return the length of one escape sequence, preserving CSI, OSC and string-control contents. */
 static size_t zalgo_escape_length(const char *s, size_t n) {
   if (n < 2)
@@ -82,12 +104,6 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     i = j;
   }
 
-  static const unsigned coverage[] = {3, 6, 10, 18, 28, 40, 55, 70, 85, 100};
-  static const unsigned minimum[] = {1, 1, 1, 1, 1, 1, 2, 3, 4, 6};
-  static const unsigned maximum[] = {1, 1, 1, 1, 2, 3, 4, 5, 7, 10};
-  static const uint16_t short_marks[] = {0x0334, 0x0335, 0x0336, 0x0337, 0x0338};
-  static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a,
-                                         0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
   char *expanded = NULL;
   if (has_rep) {
     expanded = ansi_expand_rle(input, length);
@@ -104,8 +120,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo frame exceeds output limit");
   }
   size_t mark_budget = max_output_bytes - n;
-  unsigned index = (unsigned)level - 1;
-  size_t factor = 1 + 2 * maximum[index];
+  size_t factor = 1 + 2 * zalgo_maximum[level - 1];
   // Every source byte introduces at most the selected level's mark limit.
   if (n > (SIZE_MAX - 1) / factor) {
     SAFE_FREE(expanded);
@@ -133,11 +148,9 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     } else if (c == '\t') {
       col = (col / 8 + 1) * 8;
     } else if (c >= 0x20 && c < 0x7f) {
-      uint32_t hash = zalgo_hash(row * UINT32_C(0x9e3779b9) ^ col++ ^ UINT32_C(0x5a17));
-      if (c == ' ' || hash % 100 >= coverage[index])
-        continue;
-      // A shared fraction makes mark counts monotonic as intensity increases.
-      unsigned count = minimum[index] + ((hash >> 8) % 256) * (maximum[index] - minimum[index] + 1) / 256;
+      uint16_t marks[10];
+      unsigned count = c == ' ' ? 0 : zalgo_cell_marks(row, col, level, marks);
+      col++;
       if (count * 2 > mark_budget) {
         SAFE_FREE(expanded);
         SAFE_FREE(result);
@@ -145,8 +158,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
       }
       mark_budget -= count * 2;
       for (unsigned mark = 0; mark < count; mark++) {
-        uint32_t choice = zalgo_hash(hash + mark);
-        uint16_t cp = mark == 0 ? short_marks[choice % 5] : stack_marks[choice % 12];
+        uint16_t cp = marks[mark];
         *dst++ = (char)(0xc0 | (cp >> 6));
         *dst++ = (char)(0x80 | (cp & 0x3f));
       }

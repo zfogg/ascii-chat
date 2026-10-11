@@ -1431,6 +1431,7 @@ export function ClientPage({
           rendererRequested ? (
             <AsciiRenderer
               ref={rendererRef}
+              zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}

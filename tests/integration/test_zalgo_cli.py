@@ -46,7 +46,7 @@ for level in range(1, 11):
             previous = character
     assert text.count("\n") == plain.stdout.count(b"\n")
 assert counts[0] > 0 and counts == sorted(counts)
-assert marks(run(["--zalgo"]).stdout) == counts[2]
+assert marks(run(["--zalgo"]).stdout) == counts[6]
 assert marks(run(["--zalgo", "7"]).stdout) == counts[6]
 assert marks(run([], dict(env, ASCII_CHAT_ZALGO="5")).stdout) == counts[4]
 assert marks(run(["--zalgo=2"], dict(env, ASCII_CHAT_ZALGO="8")).stdout) == counts[1]

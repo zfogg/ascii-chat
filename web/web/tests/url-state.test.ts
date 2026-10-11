@@ -201,3 +201,17 @@ test("existing default params are removed on mount", () => {
   expect(location.search).toBe("?other=keep");
   hook.unmount();
 });
+
+test("Zalgo levels round trip and reject invalid intensities", () => {
+  const defaults = { zalgo: 0 };
+  for (let zalgo = 1; zalgo <= 10; zalgo++) {
+    writeUrlValue("render", { zalgo }, false, defaults);
+    expect(readUrlValue("render", defaults)).toEqual({ zalgo });
+  }
+  for (const invalid of ["-1", "11", "1.5", "NaN", ""]) {
+    window.history.replaceState({}, "", `/mirror?zalgo=${invalid}`);
+    expect(readUrlValue("render", defaults)).toEqual(defaults);
+  }
+  writeUrlValue("render", defaults, false, defaults);
+  expect(new URLSearchParams(location.search).has("zalgo")).toBe(false);
+});

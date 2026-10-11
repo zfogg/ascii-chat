@@ -2,6 +2,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <string.h>
+#include <ascii-chat/font.h>
+#include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/ui/controller.h>
 
 Test(zalgo, respects_output_budget) {
@@ -98,4 +100,33 @@ Test(zalgo, deterministic_bounded_and_increasing) {
     SAFE_FREE(first);
     SAFE_FREE(second);
   }
+}
+
+
+Test(zalgo, raster_levels_are_distinct_and_disable_restores_frame) {
+  term_renderer_config_t cfg = {.cols = 80, .rows = 24, .font_size_pt = 12.0,
+                               .theme = TERM_RENDERER_THEME_DARK,
+                               .font_data = g_font_default, .font_data_size = g_font_default_size};
+  terminal_renderer_t *renderer = NULL;
+  cr_assert_eq(term_renderer_create(&cfg, &renderer), ASCIICHAT_OK);
+  const char *frame = "\x1b[0m\x1b[H\x1b[37m@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
+  cr_assert_eq(term_renderer_feed(renderer, frame, strlen(frame)), ASCIICHAT_OK);
+  size_t bytes = (size_t)term_renderer_pitch(renderer) * term_renderer_height_px(renderer);
+  uint8_t *baseline = SAFE_MALLOC(bytes, uint8_t *);
+  uint8_t *previous = SAFE_MALLOC(bytes, uint8_t *);
+  memcpy(baseline, term_renderer_pixels(renderer), bytes);
+  memcpy(previous, baseline, bytes);
+  for (int level = 1; level <= 10; level++) {
+    cr_assert_eq(term_renderer_set_zalgo(renderer, level), ASCIICHAT_OK);
+    cr_assert_eq(term_renderer_feed(renderer, frame, strlen(frame)), ASCIICHAT_OK);
+    cr_assert_neq(memcmp(previous, term_renderer_pixels(renderer), bytes), 0, "level %d", level);
+    memcpy(previous, term_renderer_pixels(renderer), bytes);
+  }
+  cr_assert_neq(term_renderer_set_zalgo(renderer, 11), ASCIICHAT_OK);
+  cr_assert_eq(term_renderer_set_zalgo(renderer, 0), ASCIICHAT_OK);
+  cr_assert_eq(term_renderer_feed(renderer, frame, strlen(frame)), ASCIICHAT_OK);
+  cr_assert_eq(memcmp(baseline, term_renderer_pixels(renderer), bytes), 0);
+  term_renderer_destroy(renderer);
+  SAFE_FREE(baseline);
+  SAFE_FREE(previous);
 }

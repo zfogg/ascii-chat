@@ -9,7 +9,7 @@ ascii-chat mirror --zalgo=1
 ascii-chat mirror --webcam-index 1 --zalgo=10
 ```
 
-Bare `--zalgo` uses intensity 3. Both `--zalgo=7` and `--zalgo 7` select an
+Bare `--zalgo` uses intensity 7. Both `--zalgo=7` and `--zalgo 7` select an
 explicit intensity. Values must be integers from 1 to 10. A following session
 name is not consumed as the optional number. `ASCII_CHAT_ZALGO` accepts 1-10.
 
@@ -44,6 +44,19 @@ The effect applies locally to terminal output and text snapshots, including
 `--strip-ansi` output. It does not modify network frames, logs, status screens,
 or `--render-file` video exports. Half-block and other Unicode palettes retain
 their original glyphs, so use `--render-mode foreground` for ASCII decoration.
+
+## Browser rendering
+
+The web app offers **Zalgo: Off / Level 1-10** in Settings for Mirror, Client,
+and Discovery. The level is saved in the URL (`?zalgo=7`). The website's
+[display effects demo](https://ascii-chat.com/docs/display#zalgo) starts at 7
+and offers all ten levels with the demo video or webcam.
+
+Browser canvases reuse the native distribution and mark selection. A separate
+combining font is composited after all cell backgrounds, so marks can cross
+rows and work alongside Matrix without being erased. The precise glyph
+stacking can differ from a terminal's font shaping. This is a local display
+effect; network frames are unchanged.
 
 ## Windows Terminal captures
 

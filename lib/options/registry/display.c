@@ -19,7 +19,7 @@
 
 /** Parse an optional intensity; callback error strings follow the parser's free() ownership contract. */
 static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
-  int level = 3;
+  int level = 7;
   if (arg) {
     if (strlen(arg) == 1 && arg[0] >= '1' && arg[0] <= '9') {
       level = arg[0] - '0';
@@ -27,7 +27,7 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
       level = 10;
     } else {
       // Callback errors are released with free() by the option parser.
-      *error_msg = platform_strdup("--zalgo requires an integer from 1 to 10 (bare --zalgo uses 3)");
+      *error_msg = platform_strdup("--zalgo requires an integer from 1 to 10 (bare --zalgo uses 7)");
       return false;
     }
   }
@@ -43,7 +43,7 @@ const registry_entry_t g_display_entries[] = {
      .type = OPTION_TYPE_CALLBACK,
      .offset = offsetof(options_t, zalgo),
      .default_value_size = sizeof(int),
-     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 3). Omit to disable. Terminal/text output only.",
+     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
      .group = "DISPLAY",
      .arg_placeholder = "LEVEL",
      .env_var_name = "ASCII_CHAT_ZALGO",
