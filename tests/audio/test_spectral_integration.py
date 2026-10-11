@@ -16,7 +16,8 @@ args = [
         library_path.parent / ("ascii-chat.exe" if os.name == "nt" else "ascii-chat")
     ).encode(),
     b"server",
-    b"--audio-spectral",
+    b"--spectral-audio=true",
+    b"--audio-spectral-mixer=true",
     b"--audio-spectral-gate=false",
     b"--no-audio-mixer",
 ]

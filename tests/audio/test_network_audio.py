@@ -64,7 +64,7 @@ def main():
                 "--port",
                 str(args.port),
                 "--status-screen=false",
-                "--audio-spectral=true",
+                "--audio-spectral-mixer=true",
                 *security,
             ],
         )
@@ -75,7 +75,7 @@ def main():
             "--test-pattern",
             "0",
             "--audio=true",
-            "--audio-spectral=true",
+            "--spectral-audio=true",
             *security,
             "--speakers-volume",
             "0",

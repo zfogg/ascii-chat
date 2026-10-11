@@ -347,7 +347,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     log_info("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
   }
 
-  if (options_get() && options_get()->audio_spectral) {
+  if (options_get() && options_get()->audio_spectral && !options_get()->test_audio) {
     spectral_config_t spectral_config = spectral_default_config(p->config.sample_rate);
     spectral_config.fft_size = options_get()->audio_fft_size;
     spectral_config.noise_gate = options_get()->audio_spectral_gate;

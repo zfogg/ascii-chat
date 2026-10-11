@@ -1059,6 +1059,7 @@ typedef struct options_state {
   bool test_audio; ///< Replace microphone capture with a repeating audible test signal
   bool audio_spectral_agc;
   bool audio_spectral;
+  bool audio_spectral_mixer; ///< Explicit post-mix processing; disabled by default
   bool audio_spectral_gate;
   bool audio_multiband;
   bool audio_adaptive_eq;
