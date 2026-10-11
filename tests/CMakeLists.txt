@@ -974,3 +974,16 @@ if(BUILD_TESTS)
     add_test(NAME discovery-session-process COMMAND test-discovery-session-process)
     set_tests_properties(discovery-session-process PROPERTIES LABELS "integration" TIMEOUT 60)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} ascii-chat)
+        endif()
+    endforeach()
+    add_test(NAME server-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+endif()
