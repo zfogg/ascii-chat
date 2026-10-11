@@ -23,31 +23,31 @@ static unsigned int slept;
 static bool exiting;
 static const char *scenario;
 static uint32_t expected_fps = 60;
-static bool should_exit(void) {
+static bool client_like_should_exit(void) {
   return exiting;
 }
-static void stop_audio(void) {
+static void client_like_stop_audio(void) {
   stops++;
 }
-static void sleep_ms(unsigned int ms) {
+static void client_like_sleep_ms(unsigned int ms) {
   assert(ms <= 100);
   slept += ms;
   if (!strcmp(scenario, "interrupt"))
     exiting = true;
 }
-static asciichat_error_t prepare(void *data) {
+static asciichat_error_t client_like_prepare(void *data) {
   assert(data == &calls);
   prepares++;
   if (!strcmp(scenario, "shutdown"))
     exiting = true;
   return !strcmp(scenario, "prepare-error") ? ERROR_INVALID_STATE : ASCIICHAT_OK;
 }
-static bool retry(asciichat_error_t error, int attempt, void *data) {
+static bool client_like_retry(asciichat_error_t error, int attempt, void *data) {
   assert(error != ASCIICHAT_OK && attempt == calls && data == &retries);
   retries++;
   return strcmp(scenario, "veto") != 0;
 }
-static asciichat_error_t run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *data) {
+static asciichat_error_t client_like_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *data) {
   assert(capture && display && data == &calls);
   assert(session_capture_get_target_fps(capture) == expected_fps);
   calls++;
@@ -87,14 +87,16 @@ int main(int argc, char **argv) {
   opts.width = 40;
   opts.height = 12;
   assert(options_state_set(&opts) == ASCIICHAT_OK);
-  app_callbacks_t cb = {.should_exit = should_exit, .platform_sleep_ms = sleep_ms, .audio_stop_thread = stop_audio};
+  app_callbacks_t cb = {.should_exit = client_like_should_exit,
+                        .platform_sleep_ms = client_like_sleep_ms,
+                        .audio_stop_thread = client_like_stop_audio};
   app_callbacks_register(&cb);
-  session_client_like_config_t config = {.run_fn = run,
-                                         .prepare_fn = prepare,
+  session_client_like_config_t config = {.run_fn = client_like_run,
+                                         .prepare_fn = client_like_prepare,
                                          .run_user_data = &calls,
                                          .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
                                          .max_reconnect_attempts = 3,
-                                         .should_reconnect_callback = retry,
+                                         .should_reconnect_callback = client_like_retry,
                                          .reconnect_user_data = &retries,
                                          .reconnect_delay_ms = 250};
   if (!strcmp(scenario, "no-retry"))
