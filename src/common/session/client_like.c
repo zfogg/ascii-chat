@@ -292,100 +292,57 @@ static void configure_session_logging(const session_client_like_config_t *config
   log_debug("session_client_like_run(): Terminal logging setup complete, starting media source setup");
 }
 
-static void configure_url_capture(client_like_state_t *state, int user_fps, bool fps_explicitly_set) {
-  // Network URL takes priority
+static void configure_url_capture(client_like_state_t *state) {
   log_info("Using network URL: %s (webcam disabled)", state->media_url_val);
   state->capture_config.type = MEDIA_SOURCE_FILE;
   state->capture_config.path = state->media_url_val;
-  state->capture_config.loop = false; // Network URLs cannot be looped
-
-  if (fps_explicitly_set) {
-    state->capture_config.target_fps = (uint32_t)user_fps;
-    log_info("Using user-specified FPS: %u", state->capture_config.target_fps);
-  } else {
-    // Always probe FPS for HTTP URLs, even in snapshot mode
-    // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
-    log_debug("Probing FPS for HTTP URL");
-    asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
-    state->probe_source = media_source_create(MEDIA_SOURCE_FILE, state->media_url_val);
-    if (state->probe_source) {
-      ASSERT_NO_ERRNO_SINCE(probe_scope);
-      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
-      double url_fps = media_source_get_video_fps(state->probe_source);
-      log_info("Detected HTTP stream video FPS: %.1f", url_fps);
-      if (url_fps > 0.0) {
-        state->capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-      } else {
-        log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
-        state->capture_config.target_fps = 60;
-      }
-    } else {
-      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
-      log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
-      state->capture_config.target_fps = 60;
-    }
-  }
+  state->capture_config.loop = false;
 }
 
-static void configure_file_capture(client_like_state_t *state, int user_fps, bool fps_explicitly_set) {
-  // Local file or stdin
-  log_info("DEBUG: media_file_val='%s', strcmp result=%d", state->media_file_val, strcmp(state->media_file_val, "-"));
+static void configure_file_capture(client_like_state_t *state) {
   if (strcmp(state->media_file_val, "-") == 0) {
     log_info("Using stdin for media streaming (webcam disabled)");
     state->capture_config.type = MEDIA_SOURCE_STDIN;
     state->capture_config.path = NULL;
     state->capture_config.loop = false;
-    if (fps_explicitly_set) {
-      state->capture_config.target_fps = (uint32_t)user_fps;
-    } else {
-      log_debug("Probing FPS from buffered stdin media");
-      asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
-      state->probe_source = media_source_create(MEDIA_SOURCE_STDIN, NULL);
-      if (state->probe_source) {
-        ASSERT_NO_ERRNO_SINCE(probe_scope);
-        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
-        double stdin_fps = media_source_get_video_fps(state->probe_source);
-        log_info("Detected stdin video FPS: %.1f", stdin_fps);
-        state->capture_config.target_fps = stdin_fps > 0.0 ? (uint32_t)(stdin_fps + 0.5) : 60;
-      } else {
-        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
-        log_warn("Failed to probe stdin FPS, using default 60 FPS");
-        state->capture_config.target_fps = 60;
-      }
-    }
   } else {
     log_info("Using media file: %s (webcam disabled)", state->media_file_val);
     state->capture_config.type = MEDIA_SOURCE_FILE;
     state->capture_config.path = state->media_file_val;
     state->capture_config.loop = GET_OPTION(media_loop);
+  }
+}
 
-    if (fps_explicitly_set) {
-      state->capture_config.target_fps = (uint32_t)user_fps;
-      log_info("Using user-specified FPS: %u", state->capture_config.target_fps);
-    } else {
-      // Always probe FPS for local files, even in snapshot mode
-      // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
-      log_debug("Probing FPS for local file");
-      asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
-      state->probe_source = media_source_create(MEDIA_SOURCE_FILE, state->media_file_val);
-      if (state->probe_source) {
-        ASSERT_NO_ERRNO_SINCE(probe_scope);
-        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
-        double file_fps = media_source_get_video_fps(state->probe_source);
-        log_info("Detected file video FPS: %.1f", file_fps);
-        if (file_fps > 0.0) {
-          state->capture_config.target_fps = (uint32_t)(file_fps + 0.5);
-        } else {
-          log_warn("FPS detection failed, using default 60 FPS");
-          state->capture_config.target_fps = 60;
-        }
-      } else {
-        asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
-        log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
-        state->capture_config.target_fps = 60;
+static uint32_t select_capture_fps(client_like_state_t *state) {
+  if (GET_OPTION(fps_explicitly_set)) {
+    uint32_t fps = (uint32_t)GET_OPTION(fps);
+    log_info("Using user-specified FPS: %u", fps);
+    return fps;
+  }
+
+  // Files, URLs, and buffered stdin expose a fixed source FPS. Webcam and test
+  // sources have no fixed FPS metadata, so they use the fallback below.
+  if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
+    log_debug("Probing media source FPS");
+    asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
+    state->probe_source = media_source_create(state->capture_config.type, state->capture_config.path);
+    if (state->probe_source) {
+      ASSERT_NO_ERRNO_SINCE(probe_scope);
+      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
+      double source_fps = media_source_get_video_fps(state->probe_source);
+      // Keep conversion in range and never select zero after rounding.
+      if (source_fps >= 0.5 && source_fps <= UINT32_MAX - 0.5) {
+        uint32_t fps = (uint32_t)(source_fps + 0.5);
+        log_info("Using detected source FPS: %u", fps);
+        return fps;
       }
+      log_warn("Media source has no usable FPS, using default 60 FPS");
+    } else {
+      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
+      log_warn("Failed to probe media source FPS, using default 60 FPS");
     }
   }
+  return 60;
 }
 
 static asciichat_error_t configure_media_capture(const session_client_like_config_t *config,
@@ -395,12 +352,6 @@ static asciichat_error_t configure_media_capture(const session_client_like_confi
   state->capture_config.resize_for_network = config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY;
   state->capture_config.should_exit_callback = capture_should_exit_adapter;
   state->capture_config.callback_data = NULL;
-
-  // Determine FPS explicitly set by user
-  log_debug("session_client_like_run(): Getting FPS option");
-  int user_fps = GET_OPTION(fps);
-  bool fps_explicitly_set = GET_OPTION(fps_explicitly_set);
-  log_debug("session_client_like_run(): FPS=%d (explicitly_set=%d)", user_fps, fps_explicitly_set);
 
   // Select media source based on options (priority order)
   log_debug("session_client_like_run(): Getting media_url option");
@@ -412,16 +363,15 @@ static asciichat_error_t configure_media_capture(const session_client_like_confi
             state->media_file_val ? state->media_file_val : "(null)");
 
   if (state->media_url_val && strlen(state->media_url_val) > 0) {
-    configure_url_capture(state, user_fps, fps_explicitly_set);
+    configure_url_capture(state);
   } else if (state->media_file_val && strlen(state->media_file_val) > 0) {
-    configure_file_capture(state, user_fps, fps_explicitly_set);
+    configure_file_capture(state);
   } else if (GET_OPTION(test_pattern)) {
     // Test pattern
     log_debug("session_client_like_run(): Using test pattern");
     log_info("Using test pattern");
     state->capture_config.type = MEDIA_SOURCE_TEST;
     state->capture_config.path = NULL;
-    state->capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     state->capture_config.loop = false;
   } else {
     // Default: Try webcam if stdout is a TTY, otherwise use test pattern
@@ -436,7 +386,6 @@ static asciichat_error_t configure_media_capture(const session_client_like_confi
       safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
       state->capture_config.path = webcam_index_str;
       log_info("Using webcam device index %u", GET_OPTION(webcam_index));
-      state->capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
       state->capture_config.loop = false;
     } else {
       // Piped output mode: use test pattern (webcam + pipes often fails)
@@ -444,10 +393,11 @@ static asciichat_error_t configure_media_capture(const session_client_like_confi
       log_info("Stdout is piped - using test pattern instead of webcam");
       state->capture_config.type = MEDIA_SOURCE_TEST;
       state->capture_config.path = NULL;
-      state->capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
       state->capture_config.loop = false;
     }
   }
+
+  state->capture_config.target_fps = select_capture_fps(state);
 
   // Apply initial seek if specified
   log_debug("session_client_like_run(): Getting media_seek_timestamp option");
@@ -546,8 +496,7 @@ static asciichat_error_t create_network_capture(const session_client_like_config
     }
 
     // For stdin render mode, create a minimal capture context for compatibility
-    int fps = GET_OPTION(fps);
-    state->capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
+    state->capture = session_network_capture_create(state->capture_config.target_fps);
     if (!state->capture) {
       terminal_fd_reader_destroy(g_stdin_reader);
       g_stdin_reader = NULL;
@@ -568,17 +517,14 @@ static asciichat_error_t create_network_capture(const session_client_like_config
   if (!state->stdin_render_mode && networked_mode && !discovery_has_local_source) {
     // Network mode: create minimal capture context without media source
     log_debug("Network mode detected - using network capture (no local media source)");
-    int fps = GET_OPTION(fps);
     uint64_t net_cap_start = time_get_ns();
-    state->capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
+    state->capture = session_network_capture_create(state->capture_config.target_fps);
     double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
     log_info("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize network capture context");
     }
-    if (fps > 0) {
-      log_debug("Network capture FPS set to %d from options", fps);
-    }
+    log_debug("Network capture FPS set to %u", state->capture_config.target_fps);
   }
   return ASCIICHAT_OK;
 }

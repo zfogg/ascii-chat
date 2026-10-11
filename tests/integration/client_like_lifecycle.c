@@ -22,6 +22,7 @@ static int calls, prepares, stops, retries;
 static unsigned int slept;
 static bool exiting;
 static const char *scenario;
+static uint32_t expected_fps = 60;
 static bool should_exit(void) {
   return exiting;
 }
@@ -48,6 +49,7 @@ static bool retry(asciichat_error_t error, int attempt, void *data) {
 }
 static asciichat_error_t run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *data) {
   assert(capture && display && data == &calls);
+  assert(session_capture_get_target_fps(capture) == expected_fps);
   calls++;
   assert(session_client_like_get_render_should_exit());
   if (!strcmp(scenario, "discovery-destroy")) {
@@ -55,17 +57,27 @@ static asciichat_error_t run(session_capture_ctx_t *capture, session_display_ctx
     session_display_set_global_context_public(NULL);
     return ASCIICHAT_OK;
   }
-  if (!strcmp(scenario, "success") || !strcmp(scenario, "mirror") ||
+  if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") ||
       (!strcmp(scenario, "retry-success") && calls == 3) || (!strcmp(scenario, "backoff") && calls == 2))
     return ASCIICHAT_OK;
   return !strcmp(scenario, "backoff") ? ERROR_RATE_LIMITED : ERROR_NETWORK;
 }
 int main(int argc, char **argv) {
-  assert(argc == 2);
+  assert(argc == 2 || argc == 3);
   scenario = argv[1];
   assert(asciichat_shared_init(NULL, false, true) == ASCIICHAT_OK);
   assert(options_state_init() == ASCIICHAT_OK);
   options_t opts = options_t_new();
+  if (!strncmp(scenario, "fps-", 4)) {
+    assert(argc == 3);
+    bool explicit_fps = strstr(scenario, "override") != NULL;
+    char *fps_value = strstr(scenario, "60") ? "60" : "12";
+    char *mode = strstr(scenario, "mirror") ? "mirror" : "client";
+    char *fps_args[] = {"ascii-chat", mode, "--file", argv[2], "--fps", fps_value, NULL};
+    assert(options_init(explicit_fps ? 6 : 4, fps_args) == ASCIICHAT_OK);
+    opts = *options_get();
+    expected_fps = explicit_fps ? (strstr(scenario, "60") ? 60 : 12) : 24;
+  }
   opts.test_pattern = true;
   opts.audio_enabled = false;
   opts.snapshot_mode = true;
@@ -87,7 +99,7 @@ int main(int argc, char **argv) {
                                          .reconnect_delay_ms = 250};
   if (!strcmp(scenario, "no-retry"))
     config.max_reconnect_attempts = 0;
-  if (!strcmp(scenario, "mirror"))
+  if (strstr(scenario, "mirror"))
     config.kind = SESSION_CLIENT_LIKE_KIND_MIRROR;
   if (!strcmp(scenario, "discovery-destroy")) {
     config.kind = SESSION_CLIENT_LIKE_KIND_DISCOVERY;
@@ -101,7 +113,8 @@ int main(int argc, char **argv) {
     assert(result == ERROR_INVALID_STATE && calls == 0);
   else if (!strcmp(scenario, "shutdown"))
     assert(result == ASCIICHAT_OK && calls == 0);
-  else if (!strcmp(scenario, "success") || !strcmp(scenario, "mirror") || !strcmp(scenario, "discovery-destroy"))
+  else if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") ||
+           !strcmp(scenario, "discovery-destroy"))
     assert(result == ASCIICHAT_OK && calls == 1);
   else if (!strcmp(scenario, "retry-success"))
     assert(result == ASCIICHAT_OK && calls == 3 && retries == 2 && slept == 500);
