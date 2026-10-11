@@ -104,9 +104,70 @@ for block in range(100):
     assert np.isfinite(out).all()
     energy += float(out @ out)
 assert energy > 1, energy
+# Playback must fade quiet decoded audio, not hard-cut entire Opus frames.
+# Compare against a separate decoder to isolate gate gain from codec artifacts.
+lib.opus_codec_create_encoder.argtypes = [c.c_int, c.c_int, c.c_int]
+lib.opus_codec_create_encoder.restype = c.c_void_p
+lib.opus_codec_create_decoder.argtypes = [c.c_int]
+lib.opus_codec_create_decoder.restype = c.c_void_p
+lib.opus_codec_encode.argtypes = [
+    c.c_void_p,
+    c.POINTER(c.c_float),
+    c.c_int,
+    c.c_void_p,
+    c.c_size_t,
+]
+lib.opus_codec_encode.restype = c.c_size_t
+lib.opus_codec_decode.argtypes = [
+    c.c_void_p,
+    c.c_void_p,
+    c.c_size_t,
+    c.POINTER(c.c_float),
+    c.c_int,
+]
+lib.opus_codec_destroy.argtypes = [c.c_void_p]
+lib.client_audio_pipeline_playback.argtypes = [
+    c.c_void_p,
+    c.c_void_p,
+    c.c_int,
+    c.POINTER(c.c_float),
+    c.c_int,
+]
+encoder = lib.opus_codec_create_encoder(2049, 48000, 128000)
+decoder = lib.opus_codec_create_decoder(48000)
+assert encoder and decoder
+packet = (c.c_uint8 * 4096)()
+plain = np.zeros(960, dtype="float32")
+gated = np.zeros_like(plain)
+closed_frames = 0
+release_gains = []
+for block in range(20):
+    amplitude = 0.1 if block < 10 else 0.0002
+    signal = (
+        amplitude * np.sin(2 * np.pi * 1000 * (np.arange(960) + block * 960) / 48000)
+    ).astype("float32")
+    size = lib.opus_codec_encode(encoder, ptr(signal), 960, packet, len(packet))
+    assert 0 < size <= len(packet)
+    assert lib.opus_codec_decode(decoder, packet, size, ptr(plain), 960) == 960
+    assert (
+        lib.client_audio_pipeline_playback(pipeline, packet, size, ptr(gated), 960)
+        == 960
+    )
+    if block > 10 and np.max(np.abs(plain)) < 0.0008:
+        closed_frames += 1
+        gain = np.linalg.norm(gated) / np.linalg.norm(plain)
+        assert 0 < gain < 1, (block, gain)
+        release_gains.append(gain)
+assert closed_frames >= 5, closed_frames
+assert all(
+    0.5 < after / before < 0.85
+    for before, after in zip(release_gains, release_gains[1:])
+), release_gains
+lib.opus_codec_destroy(encoder)
+lib.opus_codec_destroy(decoder)
 lib.client_audio_pipeline_destroy(pipeline)
 print(
-    "PASS: empty mixer, independent delayed recipient streams, production capture pipeline"
+    "PASS: empty mixer, independent delayed recipient streams, production capture pipeline, playback gate release"
 )
 
 

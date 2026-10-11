@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import wavfile
+from scipy.signal import spectrogram
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--input", required=True)
@@ -38,7 +39,7 @@ gs = fig.add_gridspec(
 fig.text(
     0.08,
     0.94,
-    "Network audio: the complete path now passes",
+    "Network audio: playback gate timing corrected",
     fontsize=23,
     weight="bold",
     color="#18324c",
@@ -61,7 +62,7 @@ fig.text(
 for col, (title, data, color) in enumerate(
     [
         ("Microphone input · before AEC / spectral processing", capture, "#207c91"),
-        ("Remote client · decoded server audio", received, "#7953ac"),
+        ("Remote client · after decode and playback gate", received, "#7953ac"),
     ]
 ):
     ax = fig.add_subplot(gs[0, col])
@@ -74,8 +75,19 @@ for col, (title, data, color) in enumerate(
     )
     ax.grid(alpha=0.15)
     ax = fig.add_subplot(gs[1, col])
-    ax.specgram(
-        data, NFFT=1024, Fs=rate, noverlap=768, cmap="magma", vmin=-110, vmax=-30
+    frequencies, times, power = spectrogram(
+        data,
+        fs=rate,
+        window=np.hanning(1024),
+        nperseg=1024,
+        noverlap=768,
+        detrend=False,
+        scaling="density",
+    )
+    # Zero power is below the displayed floor, not missing image data.
+    db = 10 * np.log10(np.maximum(power, 1e-11))
+    ax.pcolormesh(
+        times, frequencies, db, cmap="magma", vmin=-110, vmax=-30, shading="auto"
     )
     ax.set(
         ylim=(0, 4500),
@@ -86,7 +98,7 @@ for col, (title, data, color) in enumerate(
 fig.text(
     0.08,
     0.18,
-    f"PASS   {result['transport']} • Windows / Clang Debug • spectral capture + mixer enabled",
+    f"{result['transport']} • Windows / Clang Debug • spectral capture + mixer enabled",
     color="#176344",
     weight="bold",
     fontsize=12,

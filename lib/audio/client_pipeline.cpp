@@ -333,8 +333,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     noise_gate_init(&p->playback_noise_gate, sample_rate);
     noise_gate_set_params(&p->playback_noise_gate,
                           0.002f, // -54dB threshold - only cut near-silence
-                          1.0f,   // 1ms attack - fast open
-                          50.0f,  // 50ms release - smooth close
+                          1 * NS_PER_MS_INT,  // 1ms attack - fast open
+                          50 * NS_PER_MS_INT, // 50ms release - smooth close
                           0.4f);  // Hysteresis
     log_info("✓ Playback noise gate: threshold=0.002 (-54dB)");
 

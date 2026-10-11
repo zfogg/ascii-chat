@@ -46,9 +46,11 @@ server spectral mixing, and recording at the remote client's decoder.
 - [Network measurements](network-results.json)
 - [Unencrypted regression measurements](network-plaintext-results.json)
 
-Both modes passed: 32.02 seconds received over unencrypted TCP and 32.04 seconds
-over encrypted TCP; both clients exited 0 in each run. The plot and WAV files
-show the encrypted run. Ephemeral host identity checking was disabled only for
+The initial connectivity checks received 32.02 seconds over unencrypted TCP and
+32.04 seconds over encrypted TCP, with both clients exiting 0 in each run.
+Those checks missed a playback gate timing bug; they did not establish continuity.
+The corrected encrypted run received 32.02 seconds and both clients exited 0.
+The plot and WAV files now show that corrected run. Ephemeral host identity checking was disabled only for
 the encrypted test's child processes; server identity authentication was not
 tested. Native build and compiled DSP/integration checks also passed again.
 
@@ -59,6 +61,22 @@ capability packets, at least 25 seconds of finite nonzero received audio, and
 silence returned to the original sender (self exclusion).
 The chart uses independent recording clocks; it is not delay-aligned and does
 not claim an SNR improvement. WAV exports are 48 kHz, 16-bit mono.
+
+### Playback continuity correction
+
+The earlier received spectrogram contained white stripes because exact-zero power
+became negative infinity in the plot. These represented real hard-muted audio
+blocks, not absent WAV samples. Playback gate attack/release values intended as
+1/50 milliseconds were passed as 1/50 nanoseconds, making transitions immediate.
+The fix uses explicit nanosecond units. A compiled Opus playback regression failed
+before the fix (gain exactly zero) and now verifies a smooth 50 ms release.
+
+In the same 5–17 second inspection window, the old recording had five zero runs
+of at least 20 ms (longest 280 ms; 6.33% exact-zero samples); the corrected recording
+has none. See [continuity measurements](playback-continuity.json). These are separate
+physical recordings of the same speech fixture, not a sample-identical SNR test.
+The network regression now checks this window for hard-muted blocks. The plot also
+maps zero power to the bottom of its color scale instead of rendering it white.
 
 The successful regression uses warning-level client logs and info-level server
 logs. An exploratory run with verbose client logging stalled during audio startup;
