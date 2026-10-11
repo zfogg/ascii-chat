@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     opts = *options_get();
     expected_fps = explicit_fps ? (strstr(scenario, "60") ? 60 : 12) : 24;
   }
-  opts.test_pattern = true;
+  opts.test_pattern = opts.media_file[0] == '\0';
   opts.audio_enabled = false;
   opts.snapshot_mode = true;
   opts.snapshot_delay = 0;

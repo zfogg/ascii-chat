@@ -1949,6 +1949,10 @@ static void finalize_dimensions(options_t *opts) {
 }
 
 static asciichat_error_t finalize_media_options(options_t *opts) {
+  if (opts->test_pattern && opts->media_file[0] != '\0') {
+    return SET_ERRNO(ERROR_USAGE, "--test-pattern and --file are mutually exclusive; choose one video source");
+  }
+
   // Apply --no-compress interaction with audio encoding
   js_log_options("Before --no-compress check");
   if (opts->no_compress) {

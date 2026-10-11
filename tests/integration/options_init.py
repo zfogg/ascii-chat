@@ -59,6 +59,16 @@ def main():
         ]:
             check(arguments, False, message)
 
+        # Source conflicts must be rejected before capture starts, in either order.
+        for mode in [["mirror"], ["client"], []]:
+            for sources in [
+                ["--test-pattern", "--file", "video.mp4"],
+                ["--file", "video.mp4", "--test-pattern"],
+                ["--test-pattern=0", "--file", "video.mp4"],
+                ["--test-pattern=1", "-f", "-"],
+            ]:
+                check([*mode, *sources], False, "--test-pattern and --file are mutually exclusive")
+
         # Deferred actions run only after mode parsing, validation, and publication.
         check(["--show-capabilities"], True, "Terminal Capabilities:")
         for mode in [["mirror"], ["client"]]:
