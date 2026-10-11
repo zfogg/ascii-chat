@@ -1,3 +1,4 @@
+#include <ascii-chat/video/ascii/zalgo.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file session/display.c
@@ -170,6 +171,11 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
 }
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
+  if (GET_OPTION(zalgo) > 0 && terminal_is_stdout_tty() &&
+      (!detect_terminal_capabilities().utf8_support || GET_OPTION(force_utf8) == UTF8_SETTING_FALSE)) {
+    SET_ERRNO(ERROR_USAGE, "--zalgo requires UTF-8 terminal output (on Windows, run chcp 65001 first)");
+    return NULL;
+  }
   // Auto-create config from command-line options if NULL
   session_display_config_t auto_config = {0};
   if (!config) {
@@ -833,6 +839,18 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     }
   }
 
+  char *zalgo_frame = NULL;
+  int zalgo_level = GET_OPTION(zalgo);
+  if (zalgo_level > 0) {
+    asciichat_error_t err = zalgo_apply(display_frame, frame_len, zalgo_level, &zalgo_frame);
+    if (err == ASCIICHAT_OK) {
+      display_frame = zalgo_frame;
+      frame_len = strlen(zalgo_frame);
+    } else {
+      log_warn_every(5 * NS_PER_SEC_INT, "Cannot apply Zalgo: %s", asciichat_error_string(err));
+    }
+  }
+
   char *plain_frame = NULL;
   if (GET_OPTION(strip_ansi)) {
     // Expand REP before stripping escapes so repeated cells are preserved.
@@ -864,6 +882,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       g_snapshot_first_frame_rendered_ns = time_get_ns();
     }
     SAFE_FREE(plain_frame);
+    SAFE_FREE(zalgo_frame);
     SAFE_FREE(rain_result);
     SAFE_FREE(visualization_frame);
     return;
@@ -971,6 +990,7 @@ cleanup_frame:
 
   // Clean up digital rain result if allocated
   SAFE_FREE(plain_frame);
+  SAFE_FREE(zalgo_frame);
   if (rain_result) {
     SAFE_FREE(rain_result);
   }

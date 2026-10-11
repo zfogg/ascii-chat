@@ -1,0 +1,10 @@
+#pragma once
+
+#include <ascii-chat/asciichat_errno.h>
+#include <stddef.h>
+
+/** Decorate an ANSI frame with deterministic combining marks. Caller frees *output.
+ * REP is expanded before decoration. Only printable ASCII bases are decorated;
+ * whitespace, existing UTF-8, and escape sequences are preserved.
+ */
+asciichat_error_t zalgo_apply(const char *input, size_t length, int level, char **output);

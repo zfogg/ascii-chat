@@ -14,11 +14,41 @@
 #include <ascii-chat/options/registry/metadata.h>
 
 #include <ascii-chat/options/parsers.h>
+#include <ascii-chat/common.h>
+#include <string.h>
+
+static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
+  int level = 3;
+  if (arg) {
+    if (strlen(arg) == 1 && arg[0] >= '1' && arg[0] <= '9') {
+      level = arg[0] - '0';
+    } else if (strcmp(arg, "10") == 0) {
+      level = 10;
+    } else {
+      SAFE_STRDUP(*error_msg, "--zalgo requires an integer from 1 to 10 (bare --zalgo uses 3)");
+      return false;
+    }
+  }
+  *(int *)dest = level;
+  return true;
+}
 
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
 const registry_entry_t g_display_entries[] = {
+    {.long_name = "zalgo",
+     .type = OPTION_TYPE_CALLBACK,
+     .offset = offsetof(options_t, zalgo),
+     .default_value_size = sizeof(int),
+     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 3). Omit to disable. Terminal/text output only.",
+     .group = "DISPLAY",
+     .arg_placeholder = "LEVEL",
+     .env_var_name = "ASCII_CHAT_ZALGO",
+     .parse_fn = parse_zalgo,
+     .optional_arg = true,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     .metadata = {.numeric_range = {1, 10, 1}, .input_type = OPTION_INPUT_NUMERIC}},
     {"waveform",
      '\0',
      OPTION_TYPE_BOOL,
