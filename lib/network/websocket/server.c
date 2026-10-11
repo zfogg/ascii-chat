@@ -393,8 +393,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   websocket_recv_msg_t msg;
   msg.data = buffer_alloc(NULL, len);
   if (!msg.data) {
-    log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_MEMORY, "Cannot admit WebSocket fragment (%zu bytes)", len);
   }
 
   memcpy(msg.data, in, len);
@@ -421,12 +420,13 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
 
   bool success = ringbuffer_write(ws_data->recv_queue, &msg);
   if (!success) {
-    // Queue is full - drop fragment (flow control would deadlock the dispatch thread)
-    log_warn("[WS_FLOW] Receive queue FULL - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first, is_final);
+    // Reject the connection rather than losing part of an ordered packet.
+    log_warn("[WS_FLOW] Receive queue FULL - closing connection (len=%zu, first=%d, final=%d)", len, is_first,
+             is_final);
     buffer_release(msg.data);
 
     mutex_unlock(&ws_data->recv_mutex);
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_BUFFER, "WebSocket receive queue exhausted");
   }
 
   // Signal waiting recv() call that a fragment is available

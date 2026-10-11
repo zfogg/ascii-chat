@@ -325,15 +325,15 @@ static void websocket_on_established(struct lws *wsi, websocket_transport_data_t
 /**
  * @brief Queue an incoming client fragment for the blocking receiver.
  */
-static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_data, void *in, size_t len) {
+static int websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_data, void *in, size_t len) {
   // Received data from server - may be fragmented for large messages
   if (atomic_load_bool(&ws_data->is_destroying)) {
-    return;
+    return 0;
   }
   uint64_t now_ns = time_get_ns();
   if (!in || len == 0) {
     log_debug("CLIENT_RECEIVE: in=%p, len=%zu - skipping", in, len);
-    return;
+    return 0;
   }
 
   // Detect first/final bits from WebSocket frame using the LWS API
@@ -352,7 +352,7 @@ static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws
   msg.data = buffer_alloc(NULL, len);
   if (!msg.data) {
     log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
-    return;
+    return -1;
   }
 
   memcpy(msg.data, in, len);
@@ -363,16 +363,18 @@ static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws
   mutex_lock(&ws_data->recv_mutex);
   bool success = ringbuffer_write(ws_data->recv_queue, &msg);
   if (!success) {
-    // Queue is full - drop the fragment and log warning
-    log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first, is_final);
+    // Closing preserves packet boundaries when a fragment cannot be admitted.
+    log_warn("WebSocket receive queue full - closing connection (len=%zu, first=%d, final=%d)", len, is_first,
+             is_final);
     buffer_release(msg.data);
     mutex_unlock(&ws_data->recv_mutex);
-    return;
+    return -1;
   }
 
   // Signal waiting recv() call that a fragment is available
   cond_signal(&ws_data->recv_cond);
   mutex_unlock(&ws_data->recv_mutex);
+  return 0;
 }
 
 /**
@@ -509,8 +511,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_RECEIVE:
-    websocket_on_receive(wsi, ws_data, in, len);
-    break;
+    return websocket_on_receive(wsi, ws_data, in, len);
 
   case LWS_CALLBACK_CLIENT_CLOSED:
   case LWS_CALLBACK_CLOSED:
@@ -801,12 +802,11 @@ static asciichat_error_t websocket_wait_for_connection(websocket_transport_data_
 }
 
 /**
- * @brief Return one packet, save trailing bytes, and release recv_mutex and the assembly buffer.
+ * @brief Transfer one assembled packet, save trailing bytes, and release recv_mutex.
  */
 static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data_t *ws_data, uint8_t *assembled_buffer,
-                                                        size_t assembled_size, size_t assembled_capacity,
-                                                        size_t expected_size, void **buffer, size_t *out_len,
-                                                        void **out_allocated_buffer) {
+                                                        size_t assembled_size, size_t expected_size, void **buffer,
+                                                        size_t *out_len, void **out_allocated_buffer) {
   // Check for leftover data after this packet
   size_t leftover_size = assembled_size - expected_size;
   if (leftover_size > 0) {
@@ -822,25 +822,18 @@ static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data
       ws_data->partial_capacity = leftover_size;
     } else {
       log_error("[WS_REASSEMBLE] Failed to allocate leftover buffer (%zu bytes)", leftover_size);
-      // Fall through - return the packet anyway, we'll lose the leftover
+      buffer_release(assembled_buffer);
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot preserve WebSocket packet boundary");
     }
   }
 
-  // Create a new buffer with just the complete packet (not the leftover)
-  uint8_t *packet_buffer = buffer_alloc(NULL, expected_size);
-  if (!packet_buffer) {
-    log_error("[WS_REASSEMBLE] Failed to allocate packet buffer (%zu bytes)", expected_size);
-    buffer_release(assembled_buffer);
-    mutex_unlock(&ws_data->recv_mutex);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
-  }
-
-  memcpy(packet_buffer, assembled_buffer, expected_size);
-  buffer_release(assembled_buffer);
-
-  *buffer = packet_buffer;
+  // Capacity metadata lets the receiver own the original assembly even when
+  // its backing allocation is larger than the logical packet.
+  (void)buffer_set_size(assembled_buffer, expected_size);
+  *buffer = assembled_buffer;
   *out_len = expected_size;
-  *out_allocated_buffer = packet_buffer;
+  *out_allocated_buffer = assembled_buffer;
   mutex_unlock(&ws_data->recv_mutex);
   return ASCIICHAT_OK;
 }
@@ -1080,7 +1073,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments (payload=%u)",
                         expected_size, fragment_count, msg_payload_len);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, assembled_capacity,
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
                                                 expected_size, buffer, out_len, out_allocated_buffer);
         }
         // Need more fragments to complete this message
@@ -1104,7 +1097,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete ACIP packet: %zu bytes in %d fragments", expected_size,
                         fragment_count);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, assembled_capacity,
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
                                                 expected_size, buffer, out_len, out_allocated_buffer);
         } else {
           // ACIP packet is incomplete even though WebSocket frame is final

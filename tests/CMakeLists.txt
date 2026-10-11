@@ -251,6 +251,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set(TEST_EXCLUDES
         # Native UI fixture has its own main and is driven by the tmux harness.
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/ui_native_probe.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
     )
@@ -840,6 +841,11 @@ if(TARGET ascii-chat-shared)
     set_target_properties(test-sync-regressions PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        add_test(NAME sync-regressions COMMAND test-sync-regressions sync
+            "${CMAKE_CURRENT_BINARY_DIR}/sync-regressions.log")
+        set_tests_properties(sync-regressions PROPERTIES TIMEOUT 60)
+    endif()
+    if(BUILD_TESTS)
         add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
         set_target_properties(test-shared-lib PROPERTIES LINKER_LANGUAGE CXX)
         set(TEST_SHARED_DEFAULT "built by default")
@@ -950,7 +956,10 @@ if(TARGET ascii-chat-static)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     foreach(test_target tests tests-criterion-build)
         if(TARGET ${test_target})
-            add_dependencies(${test_target} ui-native-probe test-buffer-ownership)
+            add_dependencies(${test_target} ui-native-probe test-buffer-ownership test-errno-stacks)
+            if(TARGET test-sync-regressions)
+                add_dependencies(${test_target} test-sync-regressions test-shared-lib)
+            endif()
         endif()
     endforeach()
 endif()
