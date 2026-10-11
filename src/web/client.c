@@ -395,6 +395,7 @@ void client_cleanup(void) {
   g_has_client_identity_key = false;
   g_has_expected_server_identity_key = false;
   options_state_destroy();
+  buffer_system_cleanup();
   platform_destroy();
 }
 
