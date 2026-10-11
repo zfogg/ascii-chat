@@ -1,4 +1,5 @@
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/buffer.h>
 /**
  * @file session/pipeline.c
  * @brief Three-thread render pipeline implementation
@@ -34,7 +35,7 @@ extern bool g_snapshot_first_frame_rendered;
  * ============================================================================ */
 
 typedef struct {
-  uint8_t *pixels; // SAFE_MALLOC'd copy
+  const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t captured_ns; // wall-clock timestamp
 } pipeline_frame_t;
@@ -148,16 +149,26 @@ static pipeline_frame_t *make_frame_copy(const image_t *src) {
   f->w = src->w;
   f->h = src->h;
   f->captured_ns = time_get_ns();
-  size_t bytes = src->w * src->h * 3;
-  f->pixels = SAFE_MALLOC(bytes, uint8_t *);
-  memcpy(f->pixels, src->pixels, bytes);
+  if (src->w <= 0 || src->h <= 0 || (size_t)src->w > SIZE_MAX / sizeof(rgb_pixel_t) / (size_t)src->h) {
+    SAFE_FREE(f);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pipeline frame dimensions");
+    return NULL;
+  }
+  size_t bytes = (size_t)src->w * (size_t)src->h * sizeof(rgb_pixel_t);
+  void *pixels = buffer_alloc(NULL, bytes);
+  if (!pixels) {
+    SAFE_FREE(f);
+    return NULL;
+  }
+  memcpy(pixels, src->pixels, bytes);
+  f->pixels = pixels;
   return f;
 }
 
 static void free_frame(pipeline_frame_t *f) {
   if (!f)
     return;
-  SAFE_FREE(f->pixels);
+  buffer_release(f->pixels);
   SAFE_FREE(f);
 }
 
@@ -257,6 +268,10 @@ static void *pipeline_capture_thread(void *arg) {
 
     // Copy frame
     pipeline_frame_t *frame = make_frame_copy(img);
+    if (!frame) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
+      continue;
+    }
 
     // Record first frame timestamp for snapshot timer
     uint64_t zero = 0;
@@ -265,8 +280,7 @@ static void *pipeline_capture_thread(void *arg) {
     // Fan out: display queue (fast, can drop), encode queue (slow, keep all)
     pipeline_frame_t *display_copy = SAFE_MALLOC(sizeof(*display_copy), pipeline_frame_t *);
     memcpy(display_copy, frame, sizeof(*display_copy));
-    display_copy->pixels = SAFE_MALLOC(frame->w * frame->h * 3, uint8_t *);
-    memcpy(display_copy->pixels, frame->pixels, frame->w * frame->h * 3);
+    display_copy->pixels = buffer_share(frame->pixels);
 
     uint64_t push_time_ns = time_get_ns();
     log_info("[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns", display_copy->w,

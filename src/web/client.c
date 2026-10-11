@@ -61,7 +61,7 @@ unsigned int get_font_default_size(void) {
   return (unsigned int)g_font_default_size;
 }
 #include <ascii-chat/common.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/magic.h>
 #include <opus.h>
@@ -395,6 +395,7 @@ void client_cleanup(void) {
   g_has_client_identity_key = false;
   g_has_expected_server_identity_key = false;
   options_state_destroy();
+  buffer_system_cleanup();
   platform_destroy();
 }
 
@@ -564,12 +565,12 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
   // The raw packet pointer from JS cannot be passed directly because the crypto
-  // handshake function calls buffer_pool_free() on the payload when done.
+  // handshake function calls buffer_release() on the payload when done.
   uint8_t *payload = NULL;
   if (payload_len > 0) {
-    payload = buffer_pool_alloc(NULL, payload_len);
+    payload = buffer_alloc(NULL, payload_len);
     if (!payload) {
       g_connection_state = CONNECTION_STATE_ERROR;
       return -1;
@@ -628,10 +629,10 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Allocate payload copy from buffer pool
+  // Allocate payload copy from buffer domain
   uint8_t *payload = NULL;
   if (payload_len > 0) {
-    payload = buffer_pool_alloc(NULL, payload_len);
+    payload = buffer_alloc(NULL, payload_len);
     if (!payload) {
       g_connection_state = CONNECTION_STATE_ERROR;
       return -1;
@@ -645,7 +646,7 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 
   // Free payload
   if (payload) {
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
   }
 
   if (result != ASCIICHAT_OK) {
@@ -679,10 +680,10 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
   uint8_t *payload = NULL;
   if (payload_len > 0) {
-    payload = buffer_pool_alloc(NULL, payload_len);
+    payload = buffer_alloc(NULL, payload_len);
     if (!payload) {
       g_connection_state = CONNECTION_STATE_ERROR;
       return -1;
@@ -725,10 +726,10 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
   const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
   uint8_t *payload = NULL;
   if (payload_len > 0) {
-    payload = buffer_pool_alloc(NULL, payload_len);
+    payload = buffer_alloc(NULL, payload_len);
     if (!payload) {
       g_connection_state = CONNECTION_STATE_ERROR;
       return -1;

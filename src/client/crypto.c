@@ -163,7 +163,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/discovery_keys.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/mdns/discovery.h> // For pubkey_to_hex
@@ -483,7 +483,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   if (result == ASCIICHAT_OK && packet_type == PACKET_TYPE_ERROR_MESSAGE) {
     asciichat_error_t rejection = network_error_decode(packet_type, payload, payload_len);
     if (alloc_buffer)
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
     STOP_TIMER("client_crypto_handshake");
     return rejection;
   }
@@ -495,7 +495,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (alloc_buffer) {
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
     }
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
@@ -504,14 +504,14 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   protocol_version_packet_t server_version;
   memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
 
   // Convert from network byte order
   uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
@@ -559,7 +559,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     log_error("Failed to receive server crypto parameters (got type %u)", packet_type);
     if (alloc_buffer) {
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
     }
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
@@ -568,14 +568,14 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
   if (payload_len != sizeof(crypto_parameters_packet_t)) {
     log_error("Invalid crypto parameters packet size: %zu, expected %zu", payload_len,
               sizeof(crypto_parameters_packet_t));
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
 
   crypto_parameters_packet_t server_params;
   memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
 
   // Convert from network byte order
   uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
@@ -667,13 +667,13 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
     int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive KEY_EXCHANGE_INIT from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_key_exchange(&g_crypto_ctx, transport, packet_type, payload, payload_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
   }
   if (result != ASCIICHAT_OK) {
 #ifdef _WIN32
@@ -734,13 +734,13 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
     int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive auth challenge from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_auth_response(&g_crypto_ctx, transport, packet_type, payload, payload_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
   }
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO((asciichat_error_t)result, "Crypto authentication failed");
@@ -769,13 +769,13 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
     int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       return SET_ERRNO((asciichat_error_t)recv_result, "Failed to receive handshake completion from server");
     }
     // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_complete(&g_crypto_ctx, transport, packet_type, payload, payload_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
   }
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO((asciichat_error_t)result, "Crypto handshake completion failed");

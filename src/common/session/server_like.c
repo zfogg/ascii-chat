@@ -15,7 +15,7 @@
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -304,11 +304,11 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
 
     if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
       log_warn("Expected PROTOCOL_VERSION, got packet type %u", pkt_type);
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected PROTOCOL_VERSION packet");
     }
 
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     log_debug("Received PROTOCOL_VERSION from client");
   }
 
@@ -340,7 +340,7 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
     }
 
     result = crypto_handshake_server_auth_challenge(ctx, transport, pkt_type, pkt_data, pkt_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
 
     if (result != ASCIICHAT_OK) {
       log_warn("Crypto auth challenge failed");
@@ -362,7 +362,7 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
     }
 
     result = crypto_handshake_server_complete(ctx, transport, pkt_type, pkt_data, pkt_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
 
     if (result != ASCIICHAT_OK) {
       log_warn("Crypto handshake completion failed");

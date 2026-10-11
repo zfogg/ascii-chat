@@ -13,7 +13,7 @@
  */
 
 #include <ascii-chat/network/acip/acds_client.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
@@ -56,12 +56,12 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
   result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
   if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_PARAMETERS ||
       payload_len != sizeof(crypto_parameters_packet_t)) {
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS crypto parameters response");
   }
   crypto_parameters_packet_t parameters;
   memcpy(&parameters, payload, sizeof(parameters));
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
 
   result = crypto_handshake_set_parameters(ctx, &parameters);
   if (result != ASCIICHAT_OK) {
@@ -73,11 +73,11 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
   payload_len = 0;
   result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
   if (result != ASCIICHAT_OK) {
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Failed to receive ACDS key exchange");
   }
   result = crypto_handshake_client_key_exchange(ctx, client->transport, type, payload, payload_len);
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -87,10 +87,10 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
   payload_len = 0;
   result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
   if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
-    buffer_pool_free(NULL, alloc_buffer, 0);
+    buffer_release(alloc_buffer);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS handshake completion response");
   }
-  buffer_pool_free(NULL, alloc_buffer, 0);
+  buffer_release(alloc_buffer);
   return ASCIICHAT_OK;
 }
 
@@ -307,16 +307,16 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
       asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_pool_free(NULL, resp_payload, resp_size);
+      buffer_release(resp_payload);
       return rejection;
     }
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   // Parse SESSION_CREATED response
   if (resp_size < sizeof(acip_session_created_t)) {
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_CREATED response too small: %zu bytes", resp_size);
   }
 
@@ -334,7 +334,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
 
   log_info("Session created: %s (expires at %llu)", result->session_string, (unsigned long long)result->expires_at);
 
-  buffer_pool_free(NULL, resp_payload, resp_size);
+  buffer_release(resp_payload);
   return ASCIICHAT_OK;
 }
 
@@ -380,15 +380,15 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
   if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
       asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_pool_free(NULL, resp_payload, resp_size);
+      buffer_release(resp_payload);
       return rejection;
     }
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   if (resp_size < sizeof(acip_session_info_t)) {
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_INFO response too small");
   }
 
@@ -416,7 +416,7 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
     log_info("Session not found: %s", session_string);
   }
 
-  buffer_pool_free(NULL, resp_payload, resp_size);
+  buffer_release(resp_payload);
   return ASCIICHAT_OK;
 }
 
@@ -479,15 +479,15 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
   if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
       asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_pool_free(NULL, resp_payload, resp_size);
+      buffer_release(resp_payload);
       return rejection;
     }
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   if (resp_size < sizeof(acip_session_joined_t)) {
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_JOINED response too small");
   }
 
@@ -514,11 +514,11 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
     memcpy(result->error_message, resp->error_message, msg_len);
     result->error_message[msg_len] = '\0';
     asciichat_error_t rejection = network_error_from_acip(result->error_code);
-    buffer_pool_free(NULL, resp_payload, resp_size);
+    buffer_release(resp_payload);
     return SET_ERRNO(rejection, "Session join rejected: %s", asciichat_error_string(rejection));
   }
 
-  buffer_pool_free(NULL, resp_payload, resp_size);
+  buffer_release(resp_payload);
   return ASCIICHAT_OK;
 }
 

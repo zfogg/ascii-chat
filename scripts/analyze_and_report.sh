@@ -231,7 +231,7 @@ The receive queue (ringbuffer_t) buffers fragments waiting for the handler threa
 - **Callback handler**: `lib/network/websocket/server.c:websocket_server_callback()`
 - **Fragmentation logic**: Lines 594-741 (RECEIVE callback)
 - **Lock management**: `lib/platform/mutex.c`
-- **Buffer pool**: `lib/buffer_pool.c`
+- **Buffer pool**: `lib/buffer.c`
 
 ### Instrumentation
 

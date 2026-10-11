@@ -1562,7 +1562,16 @@ asciichat_error_t config_create_default(const char *config_path) {
     // Write buffer to file
     size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
     if (written != builder.size) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
+      asciichat_error_t error =
+          SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
+      SAFE_FCLOSE(output_file);
+      return error;
+    }
+    // Publish buffered bytes before returning, including builds without defer instrumentation.
+    int close_result = fclose(output_file);
+    output_file = NULL;
+    if (close_result != 0) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to close config file: %s", config_path_expanded);
     }
   } else {
     // No filepath provided - write buffer to stdout with automatic retry on transient errors

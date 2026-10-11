@@ -87,7 +87,7 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 
 #include <string.h>
 #include <stdarg.h>
@@ -1116,7 +1116,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   // Build Opus packet with header (outside mutex - no blocking I/O yet)
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
   size_t total_size = header_size + opus_size;
-  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  void *packet_data = buffer_alloc(NULL, total_size);
   if (!packet_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
   }
@@ -1137,7 +1137,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
       packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, 0);
 
   // Clean up
-  buffer_pool_free(NULL, packet_data, total_size);
+  buffer_release(packet_data);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -1272,7 +1272,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   }
   h265_encoder_t *encoder = g_video_encoder;
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
-  uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+  uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
   if (!output_buffer)
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate video output buffer: %zu bytes", output_buffer_size);
 
@@ -1282,7 +1282,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
       h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &total_size);
   if (encode_result != ASCIICHAT_OK || total_size == 0) {
     *encoding_failed = encode_result != ASCIICHAT_OK;
-    buffer_pool_free(NULL, output_buffer, output_buffer_size);
+    buffer_release(output_buffer);
     return encode_result;
   }
 
@@ -1296,7 +1296,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   if (!transport || !server_connection_is_active()) {
     mutex_unlock(&g_send_mutex);
     log_info("[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
-    buffer_pool_free(NULL, output_buffer, output_buffer_size);
+    buffer_release(output_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
@@ -1311,7 +1311,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   mutex_unlock(&g_send_mutex);
   log_info("[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
 
-  buffer_pool_free(NULL, output_buffer, output_buffer_size);
+  buffer_release(output_buffer);
   log_info("[H265_SEND_FRAME_9] ✅ Freed output buffer");
 
   // If send failed due to network error, signal connection loss

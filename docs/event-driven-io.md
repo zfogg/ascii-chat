@@ -40,6 +40,9 @@ packet queue; that consumer does not perform socket I/O.
 
 - Each stream permits at most 16 MiB or 4096 pending writes, including submitted
   writes. The client receive queue permits 16 MiB or 4096 packets.
+- Packet assembly, encryption workspace, and queued payloads also use the shared
+  process buffer budget. Exhaustion rejects the operation instead of bypassing
+  that budget with an untracked payload allocation.
 - New ASCII frames are skipped while output exceeds 256 KiB. New audio batches
   are skipped above 512 KiB. Already queued encrypted packets are never removed
   or reordered. Control traffic can use the remaining queue capacity; exhaustion
@@ -79,6 +82,6 @@ Use `.exe` executable names on Windows. The standalone test covers fragmented
 and coalesced packets, corrupt and oversized input, worker-driven echo, deadlines,
 queue saturation, and exactly-once cancellation. Integration tests exercise
 encrypted snapshots with stalled peers, reconnects, password, pinned identity and plaintext modes,
-WebSocket coexistence, discovery sessions, and graceful shutdown. With
+WebSocket coexistence, legacy TCP peers, discovery sessions, and graceful shutdown. With
 `BUILD_TESTS=ON`, the new tests register as `network-events` and
 `event-io-integration` in CTest.

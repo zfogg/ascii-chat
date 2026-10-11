@@ -61,7 +61,15 @@ def main():
                  server_options(port, ws_port) + ["--key", str(identity)]) as server:
         server.wait_for("TCP event backend:")
         check_client(binary, directory, f"127.0.0.1:{port}", "pinned-client", ["--server-key", str(pinned)])
-    print("PASS: stalled peers, encrypted snapshots, password, pinned identity, plaintext, WebSocket, shutdown", flush=True)
+    for legacy_server in (False, True):
+        port, ws_port = free_port(), free_port()
+        name = "legacy-server" if legacy_server else "legacy-client"
+        with running(binary, directory, name, "server", server_options(port, ws_port) +
+                     (["--network-zerocopy"] if legacy_server else [])) as server:
+            server.wait_for("Server accepting connections")
+            check_client(binary, directory, f"127.0.0.1:{port}", name + "-peer",
+                         [] if legacy_server else ["--network-zerocopy"])
+    print("PASS: stalled peers, crypto modes, legacy peers, WebSocket, reconnects, shutdown", flush=True)
 
 
 if __name__ == "__main__":

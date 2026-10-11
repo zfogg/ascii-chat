@@ -49,7 +49,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/parsing.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/terminal.h>
 
@@ -216,7 +216,7 @@ static void *discovery_video_receive_thread(void *user_data) {
         result = discovery_audio_play_packet(ctx, type, payload, length);
       }
       if (allocated)
-        buffer_pool_free(NULL, allocated, 0);
+        buffer_release(allocated);
       if (result != ASCIICHAT_OK) {
         SAFE_FREE(latest_text);
         ctx->result = result;
@@ -574,7 +574,7 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         audio.playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio);
         log_info("Discovery audio input: media=%d, microphone=%d", has_media_audio,
                  audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio));
-        client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+        client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(has_media_audio);
         config.flags.jitter_buffer = false;
         receiver.audio_pipeline = client_audio_pipeline_create(&config);
         if (!receiver.audio_pipeline) {

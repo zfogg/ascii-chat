@@ -21,7 +21,6 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>
@@ -40,22 +39,25 @@ typedef struct {
  * Test Helpers
  * ============================================================================ */
 
-void cleanup() {
+static void cleanup(void) {
   asciichat_pcre2_cleanup_all();
 }
+
+// Keep each category isolated without spawning a process for every table row.
+TestSuite(url_validator, .fini = cleanup);
 
 /**
  * Verify that a URL is validated correctly
  */
 static void assert_url_valid(const char *url, const char *note) {
-  cr_assert(url_is_valid(url), "Expected valid URL: %s %s", url, note ? note : "");
+  cr_expect(url_is_valid(url), "Expected valid URL: %s %s", url, note ? note : "");
 }
 
 /**
  * Verify that a URL is rejected correctly
  */
 static void assert_url_invalid(const char *url, const char *note) {
-  cr_assert_not(url_is_valid(url), "Expected invalid URL: %s %s", url, note ? note : "");
+  cr_expect_not(url_is_valid(url), "Expected invalid URL: %s %s", url, note ? note : "");
 }
 
 /* ============================================================================
@@ -91,12 +93,11 @@ static url_test_case_t bynens_valid_urls[] = {
     {"https://foo_bar.example.com/", "underscore in host"},
 };
 
-ParameterizedTestParameters(url_validator, bynens_valid) {
-  return cr_make_param_array(url_test_case_t, bynens_valid_urls, sizeof(bynens_valid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, bynens_valid, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, bynens_valid) {
+  for (size_t i = 0; i < sizeof(bynens_valid_urls) / sizeof(bynens_valid_urls[0]); ++i) {
+    const url_test_case_t *test = &bynens_valid_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -131,13 +132,11 @@ static url_test_case_t bynens_invalid_urls[] = {
     {"http://123.123.123", "three octets"},
 };
 
-ParameterizedTestParameters(url_validator, bynens_invalid) {
-  return cr_make_param_array(url_test_case_t, bynens_invalid_urls,
-                             sizeof(bynens_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, bynens_invalid, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, bynens_invalid) {
+  for (size_t i = 0; i < sizeof(bynens_invalid_urls) / sizeof(bynens_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &bynens_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -166,12 +165,11 @@ static url_test_case_t bare_hostname_urls[] = {
     {"http://z", "single-char z"},
 };
 
-ParameterizedTestParameters(url_validator, bare_hostnames) {
-  return cr_make_param_array(url_test_case_t, bare_hostname_urls, sizeof(bare_hostname_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, bare_hostnames) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, bare_hostnames) {
+  for (size_t i = 0; i < sizeof(bare_hostname_urls) / sizeof(bare_hostname_urls[0]); ++i) {
+    const url_test_case_t *test = &bare_hostname_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -210,12 +208,11 @@ static url_test_case_t domain_urls[] = {
     {"http://www.example.com.", "FQDN www"},
 };
 
-ParameterizedTestParameters(url_validator, domains) {
-  return cr_make_param_array(url_test_case_t, domain_urls, sizeof(domain_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, domains, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, domains) {
+  for (size_t i = 0; i < sizeof(domain_urls) / sizeof(domain_urls[0]); ++i) {
+    const url_test_case_t *test = &domain_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -260,12 +257,11 @@ static url_test_case_t tld_urls[] = {
     {"https://日本語.jp", "Japanese IDN"},
 };
 
-ParameterizedTestParameters(url_validator, tlds) {
-  return cr_make_param_array(url_test_case_t, tld_urls, sizeof(tld_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, tlds) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, tlds) {
+  for (size_t i = 0; i < sizeof(tld_urls) / sizeof(tld_urls[0]); ++i) {
+    const url_test_case_t *test = &tld_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -283,12 +279,11 @@ static url_test_case_t fragment_urls[] = {
     {"http://example.com#:~:text=hello", "Chrome text fragment"},
 };
 
-ParameterizedTestParameters(url_validator, fragments) {
-  return cr_make_param_array(url_test_case_t, fragment_urls, sizeof(fragment_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, fragments, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, fragments) {
+  for (size_t i = 0; i < sizeof(fragment_urls) / sizeof(fragment_urls[0]); ++i) {
+    const url_test_case_t *test = &fragment_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -305,12 +300,11 @@ static url_test_case_t query_urls[] = {
     {"http://example.com?redirect=http://other.com", "URL in query"},
 };
 
-ParameterizedTestParameters(url_validator, queries) {
-  return cr_make_param_array(url_test_case_t, query_urls, sizeof(query_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, queries) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, queries) {
+  for (size_t i = 0; i < sizeof(query_urls) / sizeof(query_urls[0]); ++i) {
+    const url_test_case_t *test = &query_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -329,12 +323,11 @@ static url_test_case_t path_urls[] = {
     {"http://example.com/path,with,commas", "commas in path"},
 };
 
-ParameterizedTestParameters(url_validator, paths) {
-  return cr_make_param_array(url_test_case_t, path_urls, sizeof(path_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, paths, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, paths) {
+  for (size_t i = 0; i < sizeof(path_urls) / sizeof(path_urls[0]); ++i) {
+    const url_test_case_t *test = &path_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -393,12 +386,11 @@ static url_test_case_t ipv4_valid_urls[] = {
     {"http://169.254.255.254", "169.254.255.254"},
 };
 
-ParameterizedTestParameters(url_validator, ipv4_valid) {
-  return cr_make_param_array(url_test_case_t, ipv4_valid_urls, sizeof(ipv4_valid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ipv4_valid) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, ipv4_valid) {
+  for (size_t i = 0; i < sizeof(ipv4_valid_urls) / sizeof(ipv4_valid_urls[0]); ++i) {
+    const url_test_case_t *test = &ipv4_valid_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -431,12 +423,11 @@ static url_test_case_t ipv6_urls[] = {
     {"http://[::1]:8080/path?q=1#frag", "IPv6+all"},
 };
 
-ParameterizedTestParameters(url_validator, ipv6) {
-  return cr_make_param_array(url_test_case_t, ipv6_urls, sizeof(ipv6_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ipv6, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, ipv6) {
+  for (size_t i = 0; i < sizeof(ipv6_urls) / sizeof(ipv6_urls[0]); ++i) {
+    const url_test_case_t *test = &ipv6_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -454,12 +445,11 @@ static url_test_case_t ipv6_invalid_urls[] = {
     {"http://[2001:db8::xyz]", "invalid hex characters"},
 };
 
-ParameterizedTestParameters(url_validator, ipv6_invalid) {
-  return cr_make_param_array(url_test_case_t, ipv6_invalid_urls, sizeof(ipv6_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ipv6_invalid, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, ipv6_invalid) {
+  for (size_t i = 0; i < sizeof(ipv6_invalid_urls) / sizeof(ipv6_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &ipv6_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -479,12 +469,11 @@ static url_test_case_t port_urls[] = {
     {"http://example.com:8080/p?q=1#s", "port+all"},
 };
 
-ParameterizedTestParameters(url_validator, ports_valid) {
-  return cr_make_param_array(url_test_case_t, port_urls, sizeof(port_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ports_valid, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, ports_valid) {
+  for (size_t i = 0; i < sizeof(port_urls) / sizeof(port_urls[0]); ++i) {
+    const url_test_case_t *test = &port_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -498,12 +487,11 @@ static url_test_case_t port_invalid_urls[] = {
     {"http://example.com:8.0", "float port"},      {"http://example.com:80 ", "space after port"},
 };
 
-ParameterizedTestParameters(url_validator, ports_invalid) {
-  return cr_make_param_array(url_test_case_t, port_invalid_urls, sizeof(port_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ports_invalid) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, ports_invalid) {
+  for (size_t i = 0; i < sizeof(port_invalid_urls) / sizeof(port_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &port_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -522,12 +510,11 @@ static url_test_case_t userinfo_urls[] = {
     {"http://user:pass@myserver:8080/", "user:pass@LAN+port"},
 };
 
-ParameterizedTestParameters(url_validator, userinfo) {
-  return cr_make_param_array(url_test_case_t, userinfo_urls, sizeof(userinfo_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, userinfo) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, userinfo) {
+  for (size_t i = 0; i < sizeof(userinfo_urls) / sizeof(userinfo_urls[0]); ++i) {
+    const url_test_case_t *test = &userinfo_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -544,12 +531,11 @@ static url_test_case_t scheme_valid_urls[] = {
     {"wss://example.com", "websocket secure"},
 };
 
-ParameterizedTestParameters(url_validator, schemes_valid) {
-  return cr_make_param_array(url_test_case_t, scheme_valid_urls, sizeof(scheme_valid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, schemes_valid, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, schemes_valid) {
+  for (size_t i = 0; i < sizeof(scheme_valid_urls) / sizeof(scheme_valid_urls[0]); ++i) {
+    const url_test_case_t *test = &scheme_valid_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 static url_test_case_t scheme_invalid_urls[] = {
@@ -578,13 +564,11 @@ static url_test_case_t scheme_invalid_urls[] = {
     {"http+secure://example.com", "http+secure"},
 };
 
-ParameterizedTestParameters(url_validator, schemes_invalid) {
-  return cr_make_param_array(url_test_case_t, scheme_invalid_urls,
-                             sizeof(scheme_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, schemes_invalid, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, schemes_invalid) {
+  for (size_t i = 0; i < sizeof(scheme_invalid_urls) / sizeof(scheme_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &scheme_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -627,12 +611,11 @@ static url_test_case_t malformed_urls[] = {
     {"http://.com", "bare dot TLD"},
 };
 
-ParameterizedTestParameters(url_validator, malformed) {
-  return cr_make_param_array(url_test_case_t, malformed_urls, sizeof(malformed_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, malformed, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, malformed) {
+  for (size_t i = 0; i < sizeof(malformed_urls) / sizeof(malformed_urls[0]); ++i) {
+    const url_test_case_t *test = &malformed_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -655,13 +638,11 @@ static url_test_case_t schemeless_valid_urls[] = {
     {"192.168.1.1", "bare IP (defaults to http)"},
 };
 
-ParameterizedTestParameters(url_validator, schemeless_valid) {
-  return cr_make_param_array(url_test_case_t, schemeless_valid_urls,
-                             sizeof(schemeless_valid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, schemeless_valid, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, schemeless_valid) {
+  for (size_t i = 0; i < sizeof(schemeless_valid_urls) / sizeof(schemeless_valid_urls[0]); ++i) {
+    const url_test_case_t *test = &schemeless_valid_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 static url_test_case_t schemeless_invalid_urls[] = {
@@ -673,13 +654,11 @@ static url_test_case_t schemeless_invalid_urls[] = {
     {"user:pass@example.com", "userinfo requires scheme"},
 };
 
-ParameterizedTestParameters(url_validator, schemeless_invalid) {
-  return cr_make_param_array(url_test_case_t, schemeless_invalid_urls,
-                             sizeof(schemeless_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, schemeless_invalid, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, schemeless_invalid) {
+  for (size_t i = 0; i < sizeof(schemeless_invalid_urls) / sizeof(schemeless_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &schemeless_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -704,12 +683,11 @@ static url_test_case_t ipv4_invalid_urls[] = {
     {"http://1.2.3.256", "invalid IP (octet > 255)"},
 };
 
-ParameterizedTestParameters(url_validator, ipv4_invalid) {
-  return cr_make_param_array(url_test_case_t, ipv4_invalid_urls, sizeof(ipv4_invalid_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, ipv4_invalid, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, ipv4_invalid) {
+  for (size_t i = 0; i < sizeof(ipv4_invalid_urls) / sizeof(ipv4_invalid_urls[0]); ++i) {
+    const url_test_case_t *test = &ipv4_invalid_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -735,12 +713,11 @@ static url_test_case_t whitespace_urls[] = {
     {"http://foo.bar/foo(bar)baz quux", "space in path with parens"},
 };
 
-ParameterizedTestParameters(url_validator, whitespace) {
-  return cr_make_param_array(url_test_case_t, whitespace_urls, sizeof(whitespace_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, whitespace, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, whitespace) {
+  for (size_t i = 0; i < sizeof(whitespace_urls) / sizeof(whitespace_urls[0]); ++i) {
+    const url_test_case_t *test = &whitespace_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -762,12 +739,11 @@ static url_test_case_t invalid_char_urls[] = {
     {"http://exam`ple.com", "backtick in host"},
 };
 
-ParameterizedTestParameters(url_validator, invalid_characters) {
-  return cr_make_param_array(url_test_case_t, invalid_char_urls, sizeof(invalid_char_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, invalid_characters, .fini = cleanup) {
-  assert_url_invalid(test->url, test->note);
+Test(url_validator, invalid_characters) {
+  for (size_t i = 0; i < sizeof(invalid_char_urls) / sizeof(invalid_char_urls[0]); ++i) {
+    const url_test_case_t *test = &invalid_char_urls[i];
+    assert_url_invalid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -804,12 +780,11 @@ static url_test_case_t integration_urls[] = {
     {"https://[::1]:8443/admin", "IPv6 localhost HTTPS"},
 };
 
-ParameterizedTestParameters(url_validator, integration) {
-  return cr_make_param_array(url_test_case_t, integration_urls, sizeof(integration_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, integration, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, integration) {
+  for (size_t i = 0; i < sizeof(integration_urls) / sizeof(integration_urls[0]); ++i) {
+    const url_test_case_t *test = &integration_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -844,12 +819,11 @@ static url_test_case_t tcp_urls[] = {
     {"tcp://user@example.com:5000", "TCP with user only"},
 };
 
-ParameterizedTestParameters(url_validator, tcp_urls) {
-  return cr_make_param_array(url_test_case_t, tcp_urls, sizeof(tcp_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, tcp_urls, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, tcp_urls) {
+  for (size_t i = 0; i < sizeof(tcp_urls) / sizeof(tcp_urls[0]); ++i) {
+    const url_test_case_t *test = &tcp_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }
 
 /* ============================================================================
@@ -889,7 +863,6 @@ Test(url_validator, tcp_detection_url_is_tcp_scheme) {
  * Test Suite: Edge Cases
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(url_validator);
 
 Test(url_validator, edge_cases_very_long_url) {
   // Construct a very long but valid URL
@@ -912,10 +885,9 @@ static url_test_case_t edge_case_urls[] = {
     {"http://example.com?q={1,2,3}", "curly brackets"},
 };
 
-ParameterizedTestParameters(url_validator, edge_cases) {
-  return cr_make_param_array(url_test_case_t, edge_case_urls, sizeof(edge_case_urls) / sizeof(url_test_case_t));
-}
-
-ParameterizedTest(url_test_case_t *test, url_validator, edge_cases, .fini = cleanup) {
-  assert_url_valid(test->url, test->note);
+Test(url_validator, edge_cases) {
+  for (size_t i = 0; i < sizeof(edge_case_urls) / sizeof(edge_case_urls[0]); ++i) {
+    const url_test_case_t *test = &edge_case_urls[i];
+    assert_url_valid(test->url, test->note);
+  }
 }

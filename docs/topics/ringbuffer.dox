@@ -185,7 +185,7 @@
  * typedef struct {
  *     uint32_t magic;  // FRAME_MAGIC (0xDEADBEEF) for corruption detection
  *     size_t size;     // Actual frame size
- *     char *data;      // Frame data (allocated from buffer pool, NOT owned by consumer)
+ *     char *data;      // Frame data (owned by consumer after read)
  * } frame_t;
  *
  * typedef struct {
@@ -194,8 +194,7 @@
  * } framebuffer_t;
  * @endcode
  *
- * @note Frame data is allocated from the buffer pool for efficiency. The buffer pool
- * owns the memory - consumers should NOT free frame.data manually.
+ * @note Reading transfers ownership to the consumer, which must buffer_release(frame.data).
  *
  * The magic number serves as a sanity check. When you read a frame, you can verify that
  * `frame.magic == FRAME_MAGIC` to make sure you got a valid frame and not corrupted memory.
@@ -218,19 +217,15 @@
  * if (framebuffer_read_frame(fb, &frame)) {
  *     if (frame.magic == FRAME_MAGIC) {
  *         render_frame(frame.data, frame.size);
- *         // DO NOT free frame.data - buffer pool owns it!
- *         // Data is automatically freed when framebuffer_clear() or
- *         // framebuffer_destroy() is called.
+ *         buffer_release(frame.data);
  *     }
  * }
  *
- * // Cleanup (automatically frees all frame data via buffer pool)
+ * // Cleanup (automatically frees all frame data via buffer domain)
  * framebuffer_destroy(fb);
  * @endcode
  *
- * @note Frame data is managed by the buffer pool, NOT owned by the consumer.
- * Do NOT call SAFE_FREE() on frame.data - it will be automatically freed when
- * the buffer is cleared or destroyed.
+ * @note Clearing or destroying a framebuffer releases only frames still queued.
  *
  * @subsection ringbuffer_multi Multi-Source Frame Buffer
  *
@@ -591,22 +586,20 @@
  * to delay everything. For critical data, you might want to block until there's room. It depends
  * on your use case.
  *
- * **Frame data is managed by buffer pool**
+ * **Reading transfers frame ownership**
  *
- * Frame data is allocated from the buffer pool and automatically managed. Do NOT free
- * frame data manually - the buffer pool handles cleanup when framebuffer_clear() or
- * framebuffer_destroy() is called.
+ * After a successful read or peek, release the returned owning payload after use.
  *
  * @code{.c}
  * frame_t frame;
  * if (framebuffer_read_frame(fb, &frame)) {
  *     process_frame(frame.data, frame.size);
- *     // DO NOT call SAFE_FREE(frame.data) - buffer pool owns it!
+ *     buffer_release(frame.data);
  * }
  * @endcode
  *
- * The buffer pool automatically reclaims frame memory when the buffer is cleared or destroyed.
- * Calling SAFE_FREE() on frame data will cause double-free errors or corruption.
+ * Clearing the queue does not release payloads already handed to consumers.
+ * Owning buffers use buffer_release(), never SAFE_FREE().
  *
  * **Validate magic numbers**
  *

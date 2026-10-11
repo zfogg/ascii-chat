@@ -20,7 +20,7 @@
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/math.h>
@@ -431,7 +431,7 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/math.h>
@@ -537,7 +537,7 @@ char *image_print_256color(const image_t *image, const char *palette) {
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/math.h>
@@ -654,7 +654,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/math.h>

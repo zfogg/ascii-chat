@@ -58,12 +58,19 @@
 #include <stdint.h>
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Forward Declarations
  * ============================================================================ */
 
 typedef struct OpusEncoder OpusEncoder;
 typedef struct OpusDecoder OpusDecoder;
+
+/** Configure continuous VBR output consistently for native encoders. */
+asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate);
 
 /* ============================================================================
  * Opus Application Modes
@@ -234,5 +241,9 @@ asciichat_error_t opus_codec_set_dtx(opus_codec_t *codec, int enable);
  * @ingroup audio
  */
 void opus_codec_destroy(opus_codec_t *codec);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

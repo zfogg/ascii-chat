@@ -81,27 +81,22 @@ Test(image, image_destroy_multiple_times) {
 }
 
 /* ============================================================================
- * Image Buffer Pool Tests
+ * Image Ownership Tests
  * ============================================================================ */
 
-Test(image, image_new_from_pool_basic) {
-  image_t *img = image_new_from_pool(10, 10);
+Test(image, image_new_basic) {
+  image_t *img = image_new(10, 10);
   cr_assert_not_null(img);
   cr_assert_eq(img->w, 10);
   cr_assert_eq(img->h, 10);
   cr_assert_not_null(img->pixels);
 
-  image_destroy_to_pool(img);
+  image_destroy(img);
 }
 
-Test(image, image_new_from_pool_zero_dimensions) {
-  image_t *img = image_new_from_pool(0, 0);
+Test(image, image_new_zero_dimensions) {
+  image_t *img = image_new(0, 0);
   cr_assert_null(img); // Should return NULL for zero dimensions
-}
-
-Test(image, image_destroy_to_pool_null) {
-  // Should not crash when destroying NULL image
-  image_destroy_to_pool(NULL);
 }
 
 /* ============================================================================
@@ -490,7 +485,7 @@ ParameterizedTest(precalc_palette_test_case_t *tc, image, precalc_rgb_palettes_v
 Test(image, image_operations_with_null_image) {
   // Test operations that do handle NULL gracefully
   image_destroy(NULL);
-  image_destroy_to_pool(NULL);
+  image_destroy(NULL);
 
   char *result = image_print(NULL, "test");
   cr_assert_null(result);

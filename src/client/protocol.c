@@ -26,7 +26,7 @@
  * - **Lifecycle**: Thread creation, monitoring, and graceful termination
  * - **Exit Coordination**: Atomic flags coordinate thread shutdown
  * - **Connection Monitoring**: Detect socket closure and network errors
- * - **Resource Management**: Clean buffer pool usage and leak prevention
+ * - **Resource Management**: Clean buffer domain usage and leak prevention
  *
  * ## Packet Type Handlers
  *
@@ -64,10 +64,10 @@
  *
  * ## Buffer Management
  *
- * Uses shared buffer pool for efficient memory management:
- * - **Allocation**: Packets allocated from global buffer pool
+ * Uses shared buffer domain for efficient memory management:
+ * - **Allocation**: Packets allocated from global buffer domain
  * - **Ownership**: Clear ownership transfer between modules
- * - **Deallocation**: Automatic cleanup with buffer pool integration
+ * - **Deallocation**: Automatic cleanup with buffer domain integration
  * - **Leak Prevention**: Comprehensive cleanup on all error paths
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -97,7 +97,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/endian.h>
@@ -732,8 +732,10 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     int decoded = audio_decode_opus(opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
 
     if (decoded <= 0) {
-      log_warn("Failed to decode Opus frame %d in batch, decoded=%d", i, decoded);
-      break;
+      log_warn("Concealing invalid Opus frame %d in batch", i);
+      decoded = audio_decode_opus(NULL, 0, frame_buffer, samples_per_frame);
+      if (decoded <= 0)
+        break;
     }
 
     total_decoded_samples += decoded;

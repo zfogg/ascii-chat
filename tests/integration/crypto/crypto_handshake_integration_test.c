@@ -20,7 +20,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/tests/logging.h>
 
 TestSuite(crypto_handshake_integration);
@@ -90,10 +90,10 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   if (recv_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     return -1;
   }
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // Send server's PROTOCOL_VERSION
   protocol_version_packet_t server_version = {0};
@@ -108,10 +108,10 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   if (recv_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
     if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     return -1;
   }
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // Send server's CRYPTO_PARAMETERS
   crypto_parameters_packet_t server_params = {0};
@@ -150,10 +150,10 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   if (recv_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     return -1;
   }
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // Send client's CRYPTO_CAPABILITIES
   crypto_capabilities_packet_t client_caps = {0};
@@ -168,13 +168,13 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   if (recv_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
       pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     if (payload)
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     return -1;
   }
 
   crypto_parameters_packet_t server_params;
   memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   return crypto_handshake_set_parameters(client_ctx, &server_params);
 }
@@ -209,10 +209,10 @@ static void *handshake_client_thread(void *arg) {
   // Client key exchange
   if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) !=
       ASCIICHAT_OK) {
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
     return NULL;
   }
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // Receive server's AUTH_CHALLENGE or HANDSHAKE_COMPLETE
   payload = NULL;
@@ -221,10 +221,10 @@ static void *handshake_client_thread(void *arg) {
 
   if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) !=
       ASCIICHAT_OK) {
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
     return NULL;
   }
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // If authenticating, receive HANDSHAKE_COMPLETE
   if (args->ctx->state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
@@ -232,10 +232,10 @@ static void *handshake_client_thread(void *arg) {
     if (recv_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
       return NULL;
     if (crypto_handshake_client_complete(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
       return NULL;
     }
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
   }
 
   args->result = 0;
@@ -280,7 +280,7 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
   asciichat_error_t auth_result =
       crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len);
   cr_assert_eq(auth_result, ASCIICHAT_OK);
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   // If authenticating, receive client auth response and complete
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
@@ -289,7 +289,7 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
     cr_assert_eq(
         crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len),
         ASCIICHAT_OK);
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
   }
 
   pthread_join(client_thread, NULL);
@@ -349,13 +349,13 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   size_t payload_len = 0;
   recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len);
   crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len);
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
 
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
     recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len);
     crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len);
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
   }
 
   pthread_join(client_thread, NULL);

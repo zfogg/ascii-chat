@@ -108,6 +108,7 @@ static asciichat_error_t session_host_send_packet(session_host_client_t *client,
  * Contains server state, client list, and callback configuration.
  */
 typedef struct session_host {
+  acip_frame_workspace_t frame_workspace; // Protected by clients_mutex.
   /** @brief Port to listen on */
   int port;
 
@@ -242,6 +243,7 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   if (mutex_init(&host->clients_mutex, "host_clients") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize clients mutex");
     SAFE_FREE(host->clients);
+    acip_frame_workspace_destroy(&host->frame_workspace);
     SAFE_FREE(host);
     return NULL;
   }
@@ -302,6 +304,7 @@ void session_host_destroy(session_host_t *host) {
   memset(host->password, 0, sizeof(host->password));
 
   host->initialized = false;
+  acip_frame_workspace_destroy(&host->frame_workspace);
   SAFE_FREE(host);
 }
 
@@ -546,7 +549,7 @@ static void *receive_loop_thread(void *arg) {
       if (result != ASCIICHAT_OK) {
         log_warn("Failed to receive packet from client %u: %d", host->clients[i].client_id, result);
         if (transport_buffer) {
-          buffer_pool_free(NULL, transport_buffer, transport_buffer_len);
+          buffer_release(transport_buffer);
         }
         // Client disconnected or error - will be cleaned up by timeout mechanism
         continue;
@@ -744,10 +747,10 @@ static void *receive_loop_thread(void *arg) {
 
       // Free packet data
       if (transport_buffer) {
-        buffer_pool_free(NULL, transport_buffer, transport_buffer_len);
+        buffer_release(transport_buffer);
       } else if (data) {
         // packet_receive returns a pooled payload, just like the transport path.
-        buffer_pool_free(NULL, data, len);
+        buffer_release(data);
       }
 
       mutex_lock(&host->clients_mutex);
@@ -885,8 +888,8 @@ static void *host_render_thread(void *arg) {
                     }
 
                     if (active_video_count != 1 && client_width == output_width && client_height == output_height) {
-                      acip_send_ascii_frame(host->clients[i].transport, grid_frame, grid_size, output_width,
-                                            output_height, "session-host");
+                      acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid_frame, grid_size,
+                                            output_width, output_height, "session-host");
                     } else {
                       // The terminal renderer's line feeds rely on the grid
                       // width. Rebuild the source cells at this client's grid
@@ -910,15 +913,15 @@ static void *host_render_thread(void *arg) {
                           }
                         }
                         if (active_video_count == 1 && client_frames[0]) {
-                          acip_send_ascii_frame(host->clients[i].transport, client_frames[0], strlen(client_frames[0]),
-                                                client_width, client_height, "session-host");
+                          acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_frames[0],
+                                                strlen(client_frames[0]), client_width, client_height, "session-host");
                         } else {
                           size_t client_grid_size = 0;
                           char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
                                                                 client_height, &client_grid_size);
                           if (client_grid) {
-                            acip_send_ascii_frame(host->clients[i].transport, client_grid, client_grid_size,
-                                                  client_width, client_height, "session-host");
+                            acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_grid,
+                                                  client_grid_size, client_width, client_height, "session-host");
                             SAFE_FREE(client_grid);
                           }
                         }
@@ -1548,8 +1551,8 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].active && host->clients[i].transport) {
-      asciichat_error_t send_result =
-          acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24, "session-host");
+      asciichat_error_t send_result = acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame,
+                                                            frame_len - 1, 80, 24, "session-host");
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
         result = send_result;
@@ -1584,7 +1587,8 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
     if (host->clients[i].client_id == client_id && host->clients[i].active) {
       asciichat_error_t result =
           host->clients[i].transport
-              ? acip_send_ascii_frame(host->clients[i].transport, frame, frame_len - 1, 80, 24, "session-host")
+              ? acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame, frame_len - 1, 80, 24,
+                                      "session-host")
               : (host->clients[i].socket != INVALID_SOCKET_VALUE
                      ? packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame, frame_len)
                      : ERROR_NOT_FOUND);

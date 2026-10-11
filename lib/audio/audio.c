@@ -18,7 +18,7 @@
 #include <ascii-chat/util/time.h>       // For monotonic timing
 #include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>         // For static_mutex_t
 #include <ascii-chat/platform/abstraction.h>  // For platform_sleep_us
@@ -979,8 +979,8 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
     if (ctx->input_device_rate > 0.0 && ctx->input_device_rate != AUDIO_SAMPLE_RATE) {
       // PortAudio delivers frames at the native stream rate. Convert them to
       // the pipeline's fixed 48 kHz clock before AEC3/Opus.
-      size_t output_samples = resample_capture_block(ctx, input, num_samples, normalized,
-                                                     sizeof(normalized) / sizeof(normalized[0]));
+      size_t output_samples =
+          resample_capture_block(ctx, input, num_samples, normalized, sizeof(normalized) / sizeof(normalized[0]));
       if (output_samples == 0) {
         log_warn_every(LOG_RATE_FAST, "Input callback block too large to resample safely (%zu samples)", num_samples);
         cond_signal(&ctx->worker_cond);
@@ -1021,10 +1021,10 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 
 static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer_enabled) {
   size_t rb_size = sizeof(audio_ring_buffer_t);
-  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(NULL, rb_size);
+  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_alloc(NULL, rb_size);
 
   if (!rb) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer pool");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer domain");
     return NULL;
   }
 
@@ -1041,14 +1041,31 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
   rb->last_sample = 0.0f;
   atomic_store_u64(&rb->underrun_count, 0);
   rb->jitter_buffer_enabled = jitter_buffer_enabled;
+  rb->jitter_initial_samples = 2880; // 60 ms at 48 kHz
+  rb->jitter_target_samples = rb->jitter_initial_samples;
+  rb->jitter_stable_samples = 0;
+  rb->jitter_drift_phase = 0;
 
   if (mutex_init(&rb->mutex, "audio_ring_buffer") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
-    buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+    buffer_release(rb);
     return NULL;
   }
 
   return rb;
+}
+
+void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples) {
+  if (!rb)
+    return;
+  if (samples < 960)
+    samples = 960;
+  if (samples > 7680)
+    samples = 7680;
+  rb->jitter_initial_samples = samples;
+  rb->jitter_target_samples = samples;
+  rb->jitter_stable_samples = 0;
+  rb->jitter_drift_phase = 0;
 }
 
 audio_ring_buffer_t *audio_ring_buffer_create(void) {
@@ -1067,7 +1084,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   audio_ring_buffer_unregister_atomics(rb);
 
   mutex_destroy(&rb->mutex);
-  buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+  buffer_release(rb);
 }
 
 void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *context_name) {
@@ -1119,6 +1136,12 @@ void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
   atomic_store_bool(&rb->discard_pending, false);
   atomic_store_u64(&rb->discard_to_index, 0);
   rb->last_sample = 0.0f;
+  atomic_store_bool(&rb->jitter_buffer_filled, !rb->jitter_buffer_enabled);
+  atomic_store_u64(&rb->crossfade_samples_remaining, 0);
+  atomic_store_bool(&rb->crossfade_fade_in, false);
+  rb->jitter_target_samples = rb->jitter_initial_samples;
+  rb->jitter_stable_samples = 0;
+  rb->jitter_drift_phase = 0;
   // Clear the actual data to zeros to prevent any stale audio
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
   mutex_unlock(&rb->mutex);
@@ -1272,7 +1295,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
   if (!jitter_filled && rb->jitter_buffer_enabled) {
     // Check if we've accumulated enough samples to start playback
-    if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
+    if (available >= rb->jitter_target_samples) {
       atomic_store_u64(&rb->jitter_buffer_filled, true);
       atomic_store_u64(&rb->crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES);
       atomic_store_u64(&rb->crossfade_fade_in, true);
@@ -1284,49 +1307,73 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     } else {
       // Log buffer fill progress every second
       log_debug_every(NS_PER_MS_INT, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
-                      AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
+                      rb->jitter_target_samples, (100.0f * available) / rb->jitter_target_samples);
       return 0; // Return 0 samples - caller will pad with silence
     }
   }
 
   // Periodic buffer health logging (every 5 seconds when healthy)
   unsigned int underruns = atomic_load_u64(&rb->underrun_count);
-  log_dev_every(5 * NS_PER_MS_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
+  log_dev_every(5 * NS_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
-  // Low buffer handling: DON'T pause playback - continue reading what's available
-  // and fill the rest with silence. Pausing causes a feedback loop where:
-  // 1. Underrun -> pause reading -> buffer overflows from incoming samples
-  // 2. Threshold reached -> resume reading -> drains too fast -> underrun again
-  //
-  // Instead: always consume samples to prevent overflow, use silence for missing data
-  if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
-    unsigned int underrun_count = atomic_fetch_add_u64(&rb->underrun_count, 1) + 1;
-    log_warn_every(LOG_RATE_FAST,
-                   "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
-                   underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
-    // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
+  bool underrun = rb->jitter_buffer_enabled && available < samples;
+  if (underrun) {
+    atomic_fetch_add_u64(&rb->underrun_count, 1);
+    // One bounded refill after a real shortage avoids alternating tiny fragments
+    // and silence when packets resume. Low occupancy alone is not an underrun.
+    rb->jitter_target_samples = rb->jitter_target_samples < 6720 ? rb->jitter_target_samples + 960 : 7680;
+    rb->jitter_stable_samples = 0;
+    rb->jitter_drift_phase = 0;
+    atomic_store_bool(&rb->jitter_buffer_filled, false);
+  } else if (rb->jitter_buffer_enabled) {
+    rb->jitter_stable_samples += samples;
+    if (rb->jitter_stable_samples >= 480000) {
+      if (rb->jitter_target_samples > rb->jitter_initial_samples)
+        rb->jitter_target_samples -= 480;
+      rb->jitter_stable_samples = 0;
+      rb->jitter_drift_phase = 0;
+    }
   }
 
   size_t to_read = (samples > available) ? available : samples;
-
-  // Optimize: copy in chunks instead of one sample at a time
-  size_t remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
-
-  if (to_read <= remaining) {
-    // Can copy in one chunk
-    SAFE_MEMCPY(data, to_read * sizeof(float), &rb->data[read_idx], to_read * sizeof(float));
-  } else {
-    // Need to wrap around - copy in two chunks
-    SAFE_MEMCPY(data, remaining * sizeof(float), &rb->data[read_idx], remaining * sizeof(float));
-    SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0],
-                (to_read - remaining) * sizeof(float));
+  size_t consumed = to_read;
+  if (rb->jitter_buffer_enabled && !underrun && samples > 1 && available > samples) {
+    // Slowly reconcile independent device clocks. Bound interpolation to one
+    // sample per block and a maximum average rate correction of 1000 ppm.
+    double error = ((double)available - rb->jitter_target_samples) / AUDIO_SAMPLE_RATE;
+    double correction = fmax(-0.001, fmin(0.001, error * 0.02));
+    rb->jitter_drift_phase += correction * samples;
+    if (rb->jitter_drift_phase >= 1.0) {
+      consumed++;
+      rb->jitter_drift_phase -= 1.0;
+    } else if (rb->jitter_drift_phase <= -1.0) {
+      consumed--;
+      rb->jitter_drift_phase += 1.0;
+    }
   }
 
-  // LOCK-FREE: Store new read_index with release ordering
-  // This ensures all data reads above complete before the index update
-  unsigned int new_read_idx = (read_idx + (unsigned int)to_read) % AUDIO_RING_BUFFER_SIZE;
-  atomic_store_u64(&rb->read_index, new_read_idx);
+  if (consumed != to_read) {
+    for (size_t i = 0; i < to_read; ++i) {
+      double position = (double)i * (consumed - 1) / (to_read - 1);
+      size_t first = (size_t)position;
+      size_t next = first + 1 < consumed ? first + 1 : first;
+      float fraction = (float)(position - first);
+      float a = rb->data[(read_idx + first) % AUDIO_RING_BUFFER_SIZE];
+      float b = rb->data[(read_idx + next) % AUDIO_RING_BUFFER_SIZE];
+      data[i] = a + fraction * (b - a);
+    }
+  } else {
+    size_t remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
+    if (to_read <= remaining) {
+      SAFE_MEMCPY(data, to_read * sizeof(float), &rb->data[read_idx], to_read * sizeof(float));
+    } else {
+      SAFE_MEMCPY(data, remaining * sizeof(float), &rb->data[read_idx], remaining * sizeof(float));
+      SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0],
+                  (to_read - remaining) * sizeof(float));
+    }
+  }
+  atomic_store_u64(&rb->read_index, (read_idx + (unsigned int)consumed) % AUDIO_RING_BUFFER_SIZE);
 
   // Apply fade-in if recovering from underrun
   if (fade_in && crossfade_remaining > 0) {
@@ -1344,6 +1391,12 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       atomic_store_u64(&rb->crossfade_fade_in, false);
       log_debug("Audio fade-in complete");
     }
+  }
+
+  if (underrun && to_read > 0) {
+    size_t fade_samples = to_read < AUDIO_CROSSFADE_SAMPLES ? to_read : AUDIO_CROSSFADE_SAMPLES;
+    for (size_t i = 0; i < fade_samples; ++i)
+      data[to_read - fade_samples + i] *= (float)(fade_samples - i - 1) / (float)fade_samples;
   }
 
   // Save last sample for potential fade-out

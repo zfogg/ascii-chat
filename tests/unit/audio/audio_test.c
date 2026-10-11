@@ -8,7 +8,7 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/buffer_pool.h> // For buffer_pool_init_global
+#include <ascii-chat/buffer.h> // For buffer_system_init
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -49,7 +49,7 @@ Test(audio, multiple_init_cleanup_cycles) {
 }
 
 Test(audio, discard_pending_audio_on_consumer_read) {
-  buffer_pool_init_global();
+  buffer_system_init();
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   cr_assert_not_null(rb);
 
@@ -69,7 +69,7 @@ Test(audio, discard_pending_audio_on_consumer_read) {
 }
 
 Test(audio, flush_playback_buffers_discards_queued_audio) {
-  buffer_pool_init_global();
+  buffer_system_init();
   audio_context_t ctx = {0};
   ctx.initialized = true;
   ctx.playback_buffer = audio_ring_buffer_create();
@@ -127,7 +127,7 @@ ParameterizedTestParameters(audio, ringbuffer_operations) {
 }
 
 ParameterizedTest(ringbuffer_operation_test_case_t *tc, audio, ringbuffer_operations) {
-  buffer_pool_init_global(); // Initialize buffer pool for ring buffer allocation
+  buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
@@ -199,7 +199,7 @@ ParameterizedTestParameters(audio, ringbuffer_capacity_scenarios) {
 }
 
 ParameterizedTest(ringbuffer_capacity_test_case_t *tc, audio, ringbuffer_capacity_scenarios) {
-  buffer_pool_init_global(); // Initialize buffer pool for ring buffer allocation
+  buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
@@ -287,7 +287,7 @@ Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
 }
 
 Test(audio, ringbuffer_basic_operations) {
-  buffer_pool_init_global(); // Initialize buffer pool for ring buffer allocation
+  buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
@@ -300,7 +300,7 @@ Test(audio, ringbuffer_basic_operations) {
 }
 
 Test(audio, ringbuffer_write_read) {
-  buffer_pool_init_global(); // Initialize buffer pool for ring buffer allocation
+  buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   // Use capture buffer which disables jitter buffering for basic read/write testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();

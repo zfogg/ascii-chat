@@ -50,6 +50,7 @@
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/audio/spectral.h>
+#include <ascii-chat/audio/opus.h>
 extern "C" {
 #include <ascii-chat/options/options.h>
 }
@@ -108,10 +109,11 @@ extern "C" {
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
   return (client_audio_pipeline_config_t){
       .sample_rate = CLIENT_AUDIO_PIPELINE_SAMPLE_RATE,
-      .frame_size_ns = CLIENT_AUDIO_PIPELINE_FRAME_MS,
-      .opus_bitrate = 24000,
+      .frame_duration_ms = CLIENT_AUDIO_PIPELINE_FRAME_MS,
+      .opus_bitrate = 32000,
+      .opus_application = OPUS_APPLICATION_VOIP,
 
-      .echo_filter_ns = 250,
+      .echo_filter_ms = 250,
 
       .noise_suppress_db = -25,
       .agc_level = 16000, // Increased from 8000 for louder output
@@ -119,8 +121,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
       // Jitter margin: wait this long before starting playback
       // Lower = less latency but more risk of underruns
-      // Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h.
-      .jitter_margin_ns = 20, // 20ms = 1 Opus packet (optimized for LAN)
+      .jitter_margin_ms = 60,
 
       // Higher cutoff to cut low-frequency rumble and feedback
       .highpass_hz = 150.0f, // Was 80Hz, increased to break rumble feedback loop
@@ -143,6 +144,19 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
+}
+
+client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_media_audio) {
+  client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+  const options_t *options = options_get();
+  if (options) {
+    bool media = options->test_audio ||
+                 (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
+                  options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
+    config.opus_application = media ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
+    config.opus_bitrate = media ? 128000 : 32000;
+  }
+  return config;
 }
 
 // ============================================================================
@@ -173,23 +187,20 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   }
 
   p->flags = p->config.flags;
-  p->frame_size = p->config.sample_rate * p->config.frame_size_ns / 1000;
+  p->frame_size = p->config.sample_rate * p->config.frame_duration_ms / 1000;
   p->agc_current_gain = 1.0f;
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 
   // Initialize Opus encoder/decoder first (no exceptions)
   int opus_error = 0;
-  p->encoder = opus_encoder_create(p->config.sample_rate, 1, OPUS_APPLICATION_VOIP, &opus_error);
+  p->encoder = opus_encoder_create(p->config.sample_rate, 1, p->config.opus_application, &opus_error);
   if (!p->encoder || opus_error != OPUS_OK) {
     log_error("Failed to create Opus encoder: %d", opus_error);
     goto error;
   }
-  opus_encoder_ctl(p->encoder, OPUS_SET_BITRATE(p->config.opus_bitrate));
-
-  // TODO: investigate this claim from Claude: DTX stops sending frames during silence, perhaps causing audible
-  // clicks/beeps when audio resumes. For now leave it enabled.
-  opus_encoder_ctl(p->encoder, OPUS_SET_DTX(0));
+  if (audio_opus_configure_encoder(p->encoder, p->config.opus_bitrate) != ASCIICHAT_OK)
+    goto error;
 
   // Create Opus decoder
   p->decoder = opus_decoder_create(p->config.sample_rate, 1, &opus_error);
@@ -327,17 +338,6 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
              20.0f * log10f(p->config.gate_threshold + 1e-10f));
 
-    // Initialize PLAYBACK noise gate - cuts quiet received audio before speakers
-    // Very low threshold - only cut actual silence, not quiet voice audio
-    // The server sends audio with RMS=0.01-0.02, so threshold must be below that
-    noise_gate_init(&p->playback_noise_gate, sample_rate);
-    noise_gate_set_params(&p->playback_noise_gate,
-                          0.002f, // -54dB threshold - only cut near-silence
-                          1 * NS_PER_MS_INT,  // 1ms attack - fast open
-                          50 * NS_PER_MS_INT, // 50ms release - smooth close
-                          0.4f);  // Hysteresis
-    log_info("✓ Playback noise gate: threshold=0.002 (-54dB)");
-
     // Initialize highpass filter (removes low-frequency rumble)
     highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
     log_info("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);
@@ -370,7 +370,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->capture_fadein_remaining = (p->config.sample_rate * 200) / 1000; // 200ms worth of samples
   log_info("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
-  log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus", p->config.sample_rate, p->config.frame_size_ns,
+  log_info("Audio pipeline created: %dHz, %llums frames, %dkbps Opus", p->config.sample_rate,
+           (unsigned long long)p->config.frame_duration_ms,
            p->config.opus_bitrate / 1000);
 
   (void)NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline", NULL);
@@ -481,7 +482,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
  */
 int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint8_t *opus_in, int opus_len,
                                    float *output, int num_samples) {
-  if (!pipeline || !opus_in || !output) {
+  if (!pipeline || !output || num_samples <= 0 || opus_len < 0 || (!opus_in && opus_len != 0)) {
     return -1;
   }
 
@@ -495,10 +496,7 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // Apply playback noise gate - cut quiet background audio before it reaches speakers
-  if (decoded_samples > 0) {
-    noise_gate_process_buffer(&pipeline->playback_noise_gate, output, decoded_samples);
-  }
+  // Received streams can contain quiet media; microphone gating belongs at capture.
 
   // NOTE: Render signal is queued to AEC3 in output_callback() when audio plays,
   // not here. The capture thread drains the queue and processes AEC3.
@@ -701,7 +699,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
 int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return 0;
-  return pipeline->config.jitter_margin_ns;
+  return pipeline->config.jitter_margin_ms;
 }
 
 /**

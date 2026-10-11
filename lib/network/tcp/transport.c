@@ -15,7 +15,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/debug/named.h>
@@ -64,7 +64,7 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     size_t capacity = sizeof(header) + len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
     socket_send_buffer_t wire = {0};
     if (tcp->zerocopy_disabled) {
-      wire.data = buffer_pool_alloc(NULL, capacity);
+      wire.data = buffer_alloc(NULL, capacity);
       wire.capacity = capacity;
       result = wire.data ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot allocate ciphertext");
     } else {
@@ -77,7 +77,7 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     uint8_t *gathered = NULL;
     const uint8_t *plaintext = buffers[0].data;
     if (count > 1) {
-      gathered = buffer_pool_alloc(NULL, len);
+      gathered = buffer_alloc(NULL, len);
       if (!gathered) {
         socket_send_buffer_free(&wire);
         mutex_unlock(&tcp->send_mutex);
@@ -95,7 +95,7 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     uint8_t *ciphertext = (uint8_t *)wire.data + sizeof(header);
     crypto_result_t encrypted =
         crypto_encrypt(transport->crypto_ctx, plaintext, len, ciphertext, capacity - sizeof(header), &ciphertext_len);
-    buffer_pool_free(NULL, gathered, len);
+    buffer_release(gathered);
     if (encrypted != CRYPTO_OK) {
       socket_send_buffer_free(&wire);
       mutex_unlock(&tcp->send_mutex);
@@ -199,11 +199,15 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;
 
-  // The decrypted allocation already starts with its authenticated inner header.
-  // Transfer it directly; buffer_pool_free tracks the original allocation size.
+  // The decrypted header remains at the allocation base. Return that complete
+  // packet directly rather than copying and releasing the envelope's storage.
   if (envelope.data != envelope.allocated_buffer) {
     *buffer = envelope.allocated_buffer;
     *out_len = sizeof(packet_header_t) + envelope.len;
+  }
+  if (*out_len >= sizeof(packet_header_t)) {
+    const packet_header_t *hdr = (const packet_header_t *)*buffer;
+    log_debug("TCP received packet type=%u, bytes=%zu", NET_TO_HOST_U16(hdr->type), *out_len);
   }
 
   return ASCIICHAT_OK;
@@ -310,7 +314,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   log_info("[TCP_CREATE_STATE] 🟢 CREATE_START: sockfd=%d, crypto=%s", sockfd, crypto_ctx ? "yes" : "no");
 
   // Allocate transport structure
-  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     log_error("[TCP_CREATE_STATE] ❌ ALLOC_TRANSPORT_FAILED: size=%zu", sizeof(acip_transport_t));
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate TCP transport");

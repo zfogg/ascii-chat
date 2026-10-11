@@ -855,7 +855,7 @@
  * capture_cleanup();          // Stop webcam
  * audio_cleanup();            // Stop audio
  * display_cleanup();          // Restore terminal
- * buffer_pool_cleanup_global(); // Free buffer pools
+ * buffer_system_cleanup(); // Free owned buffers
  * platform_disable_keepawake();
  * symbol_cache_destroy();
  * asciichat_errno_destroy();

@@ -35,7 +35,7 @@ def main():
                 terminal.write("0")
                 text = terminal.expect(lambda text: "Sync primitives" in text and "sync_fixture_value" in text,
                                        "Sync screen did not open with the main thread blocked")
-                assert re.search(r"buffer_pool\.global_allocations_bypassing_pool\.\d+\s+0x", text), text
+                assert re.search(r"buffer\.process_reserved_bytes\.\d+\s+0x", text), text
                 state_column = text.splitlines()[2].index("State/value")
                 if mode == "deadlock":
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")

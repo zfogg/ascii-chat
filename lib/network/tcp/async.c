@@ -4,7 +4,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/packet/decoder.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
 
@@ -54,7 +54,11 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
   } else if (size > CRYPTO_MAX_PLAINTEXT_SIZE) {
     result = SET_ERRNO(ERROR_NETWORK_SIZE, "Encrypted async packet too large");
   } else {
-    uint8_t *plaintext = SAFE_MALLOC(size, uint8_t *);
+    uint8_t *plaintext = buffer_alloc(NULL, size);
+    if (!plaintext) {
+      mutex_unlock(&tcp->mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Async encryption exceeds buffer budget");
+    }
     size_t offset = 0;
     for (size_t i = 0; i < count; ++i) {
       if (buffers[i].len)
@@ -62,10 +66,15 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
       offset += buffers[i].len;
     }
     size_t capacity = size + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-    uint8_t *ciphertext = SAFE_MALLOC(capacity, uint8_t *);
+    uint8_t *ciphertext = buffer_alloc(NULL, capacity);
+    if (!ciphertext) {
+      buffer_release(plaintext);
+      mutex_unlock(&tcp->mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Async encryption exceeds buffer budget");
+    }
     size_t length = 0;
     crypto_result_t encrypted = crypto_encrypt(transport->crypto_ctx, plaintext, size, ciphertext, capacity, &length);
-    SAFE_FREE(plaintext);
+    buffer_release(plaintext);
     if (encrypted == CRYPTO_OK) {
       packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                                .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
@@ -77,7 +86,7 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     } else {
       result = SET_ERRNO(ERROR_CRYPTO, "Async packet encryption failed");
     }
-    SAFE_FREE(ciphertext);
+    buffer_release(ciphertext);
   }
   if (result != ASCIICHAT_OK) {
     // Encryption sequence may already have advanced. Never continue this stream.
@@ -144,7 +153,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
   }
   mutex_unlock(&tcp->mutex);
   if (result != ASCIICHAT_OK) {
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    buffer_release(envelope.allocated_buffer);
     mutex_lock(&tcp->mutex);
     platform_event_stream_request_close(tcp->stream, result);
     mutex_unlock(&tcp->mutex);
@@ -207,7 +216,7 @@ static void async_destroy(acip_transport_t *transport) {
     while (tcp->head) {
       async_packet_t *packet = tcp->head;
       tcp->head = packet->next;
-      buffer_pool_free(NULL, packet->data, packet->size);
+      buffer_release(packet->data);
       SAFE_FREE(packet);
     }
     cond_destroy(&tcp->received);
@@ -261,7 +270,7 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
   }
   async_packet_t *packet = SAFE_CALLOC(1, sizeof(*packet), async_packet_t *);
   packet->size = length;
-  packet->data = buffer_pool_alloc(NULL, length);
+  packet->data = buffer_alloc(NULL, length);
   if (!packet->data) {
     SAFE_FREE(packet);
     mutex_unlock(&tcp->mutex);

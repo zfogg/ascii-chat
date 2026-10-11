@@ -7,7 +7,7 @@
  * 2. Create composite video layouts (single client, 2x2, 3x3 grids)
  * 3. Generate client-specific ASCII art with terminal capability awareness
  * 4. Process latest frames from double-buffer system for real-time performance
- * 5. Manage memory efficiently with buffer pools and zero-copy operations
+ * 5. Manage memory efficiently with owned buffers and zero-copy operations
  * 6. Support advanced rendering modes (half-block, color, custom palettes)
  *
  * VIDEO MIXING ARCHITECTURE:
@@ -54,7 +54,7 @@
  * PERFORMANCE OPTIMIZATIONS:
  * - Per-client palette caches (avoid repeated initialization)
  * - Double-buffer system for smooth frame delivery
- * - Buffer pool allocation to reduce malloc/free overhead
+ * - buffer domain allocation to reduce malloc/free overhead
  * - Aggressive frame dropping under load
  * - Zero-copy operations where possible
  *
@@ -65,7 +65,7 @@
  * THREAD SAFETY MECHANISMS:
  * - Double-buffer thread safety (atomic operations)
  * - Reader-writer locks on client manager (allows concurrent reads)
- * - Buffer pool thread safety (lock-free where possible)
+ * - buffer domain thread safety (lock-free where possible)
  * - Atomic snapshot operations for client state
  *
  * PERFORMANCE CHARACTERISTICS:
@@ -82,7 +82,7 @@
  * - Always provides the latest available frame
  * - No frame caching complexity or stale data concerns
  * - Professional-grade real-time performance like Zoom/Google Meet
- * - Memory managed via buffer pools
+ * - Memory managed via owned buffers
  *
  * BUFFER OVERFLOW HANDLING:
  * When clients send frames faster than processing:
@@ -114,7 +114,7 @@
  *
  * MEMORY MANAGEMENT PHILOSOPHY:
  * ==============================
- * - All allocations use buffer pools where possible
+ * - All allocations use owned buffers where possible
  * - Frame data is reference-counted (avoid copies)
  * - Double-buffer system eliminates need for frame copies
  * - Automatic cleanup on client disconnect
@@ -141,7 +141,7 @@
 #include "client.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -345,8 +345,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         }
 
         // We have frame data - copy ONLY the correct amount based on dimensions
-        // Use SAFE_MALLOC (not buffer pool - image_new_from_pool uses pool and causes overlap)
-        current_frame.data = SAFE_MALLOC(correct_frame_size, void *);
+        current_frame.data = buffer_alloc(NULL, correct_frame_size);
 
         if (current_frame.data) {
           memcpy(current_frame.data, frame->data, correct_frame_size);
@@ -384,7 +383,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
                   "Per-client: Invalid image dimensions from client %s: %ux%u (data may be corrupted)", snap->client_id,
                   img_width, img_height);
         if (got_new_frame) {
-          SAFE_FREE(current_frame.data);
+          buffer_release(current_frame.data);
         }
         source_count++;
         continue;
@@ -398,7 +397,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %s: %ux%u",
                     snap->client_id, img_width, img_height);
           if (got_new_frame) {
-            SAFE_FREE(current_frame.data);
+            buffer_release(current_frame.data);
           }
           source_count++;
           continue;
@@ -410,7 +409,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
                   "Per-client: Frame size mismatch from client %s: got %zu, expected %zu for %ux%u image",
                   snap->client_id, frame_to_use->size, expected_size, img_width, img_height);
         if (got_new_frame) {
-          SAFE_FREE(current_frame.data);
+          buffer_release(current_frame.data);
         }
         source_count++;
         continue;
@@ -419,12 +418,12 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       // Extract pixel data pointer
       rgb_pixel_t *pixels = (rgb_pixel_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
 
-      // Create image from buffer pool for consistent video pipeline management
-      image_t *img = image_new_from_pool(img_width, img_height);
+      // Create image from buffer domain for consistent video pipeline management
+      image_t *img = image_new(img_width, img_height);
       if (!img) {
-        log_error("Per-client: image_new_from_pool failed for %ux%u", img_width, img_height);
+        log_error("Per-client: image_new failed for %ux%u", img_width, img_height);
         if (got_new_frame) {
-          SAFE_FREE(current_frame.data);
+          buffer_release(current_frame.data);
         }
         continue;
       }
@@ -434,12 +433,12 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       // Free temporary frame buffer - image has its own pixel data now
       if (got_new_frame) {
-        SAFE_FREE(current_frame.data);
+        buffer_release(current_frame.data);
       }
     } else {
       // frame_to_use check failed - clean up allocated frame data
       if (got_new_frame && current_frame.data) {
-        SAFE_FREE(current_frame.data);
+        buffer_release(current_frame.data);
       }
     }
 
@@ -669,7 +668,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
   int composite_height_px = height * PIXELS_PER_CHAR_HEIGHT; // chars * 2 = pixels vertically
 
   // Create composite with final dimensions - no recreation needed
-  image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
+  image_t *composite = image_new(composite_width_px, composite_height_px);
   image_clear(composite);
 
   // Place each source in the grid
@@ -710,7 +709,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
                   target_width_px, target_height_px, (src_aspect > cell_visual_aspect) ? "WIDTH" : "HEIGHT");
 
     // Create resized image with standard allocation
-    image_t *resized = image_new_from_pool(target_width_px, target_height_px);
+    image_t *resized = image_new(target_width_px, target_height_px);
     image_resize(sources[i].image, resized);
 
     // Calculate cell position in pixels (after any composite recreation)
@@ -762,7 +761,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
       }
     }
 
-    image_destroy_to_pool(resized);
+    image_destroy(resized);
   }
 
   return composite;
@@ -913,7 +912,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
  * FRAME BUFFER MANAGEMENT:
  * - Aggressive frame dropping: always read latest available
  * - Double-buffer system: ensures smooth frame delivery
- * - Buffer pool allocation: reduces malloc/free overhead
+ * - buffer domain allocation: reduces malloc/free overhead
  * - Zero-copy operations where possible
  *
  * CONCURRENCY OPTIMIZATIONS:
@@ -946,7 +945,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
  *
  * MEMORY MANAGEMENT:
  * ==================
- * - All image operations use buffer pool allocation
+ * - All image operations use buffer domain allocation
  * - Frame data is properly freed after use
  * - Cached frames use deep copies (prevent corruption)
  * - Automatic cleanup on function exit
@@ -961,7 +960,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
  *
  * @note This function is called at 60fps per client by render threads
  * @note Generated frame is customized for target client's capabilities
- * @note Memory allocated from buffer pool - caller must free properly
+ * @note Memory allocated from buffer domain - caller must free properly
  *
  * @warning Function performs extensive validation - invalid input returns NULL
  * @warning Client capabilities must be received before frame generation
@@ -1016,7 +1015,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   }
 
   log_dev_every(333 * NS_PER_MS_INT, "FRAME_GEN_START: target_client=%s sources=%d collect=%.1fms", target_client_id,
-               sources_with_video, (collect_end_ns - collect_start_ns) / NS_PER_MS);
+                sources_with_video, (collect_end_ns - collect_start_ns) / NS_PER_MS);
 
   // Return the source count for debugging/tracking
   if (out_sources_count) {
@@ -1179,17 +1178,11 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 
   START_TIMER("image_cleanup");
   if (composite) {
-    // For single source, composite is a malloc-allocated copy, not from pool
-    // Check alloc method to determine correct destroy function
-    if (composite->alloc_method == IMAGE_ALLOC_POOL) {
-      image_destroy_to_pool(composite);
-    } else {
-      image_destroy(composite);
-    }
+    image_destroy(composite);
   }
   for (int i = 0; i < source_count; i++) {
     if (sources[i].image) {
-      image_destroy_to_pool(sources[i].image);
+      image_destroy(sources[i].image);
     }
   }
   STOP_TIMER_AND_LOG(dev, 500000, "image_cleanup", "Image cleanup (composite + sources)");
@@ -1245,9 +1238,9 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  * MEMORY MANAGEMENT:
  * ==================
  * - Creates temporary packet buffer for header+data combination
- * - packet_queue_enqueue() copies data (safe to free temp buffer)
+ * - packet_queue_push_copy() copies data (safe to free temp buffer)
  * - No memory leaks on success or failure paths
- * - Buffer pool allocation not used here (temporary buffer)
+ * - buffer domain allocation not used here (temporary buffer)
  *
  * ERROR HANDLING:
  * ===============
@@ -1266,7 +1259,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  * @note Queue overflow drops frames to maintain real-time performance
  * @note Checksums enable client-side integrity verification
  *
- * @see packet_queue_enqueue() For underlying queue implementation
+ * @see packet_queue_push_copy() For underlying queue implementation
  * @see asciichat_crc32() For checksum generation
  */
 // REMOVED: queue_ascii_frame_for_client - video now uses double buffer directly in client->outgoing_video_buffer
@@ -1311,7 +1304,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  *
  * @note Audio has priority over video in send thread
  * @note Real-time audio requires queue overflow handling
- * @see packet_queue_enqueue() For underlying queue implementation
+ * @see packet_queue_push_copy() For underlying queue implementation
  * @see mixer.c For audio mixing implementation
  */
 int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t data_size) {
@@ -1319,7 +1312,9 @@ int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t
     return -1;
   }
 
-  return packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO_BATCH, audio_data, data_size, 0, true);
+  return packet_queue_push_copy(client->audio_queue, PACKET_TYPE_AUDIO_BATCH, audio_data, data_size, 0) == ASCIICHAT_OK
+             ? 0
+             : -1;
 }
 
 /**

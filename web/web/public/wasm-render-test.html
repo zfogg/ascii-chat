@@ -24,11 +24,7 @@
 
   const status = document.querySelector("#status");
   try {
-    const wasmBinary = await fetch("/wasm/client.wasm").then((r) =>
-      r.arrayBuffer(),
-    );
     const module = await ClientModuleFactory({
-      wasmBinary,
       locateFile: (name) => `/wasm/${name}`,
     });
     const config = module._malloc(544);

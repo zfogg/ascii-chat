@@ -7,7 +7,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
@@ -52,7 +52,7 @@ static asciichat_error_t consume_packet(const void *data, size_t length, void *a
   asciichat_error_t result = ASCIICHAT_OK;
   mutex_lock(&client->client_state_mutex);
   if (type == PACKET_TYPE_ENCRYPTED) {
-    envelope.allocated_buffer = buffer_pool_alloc(NULL, length);
+    envelope.allocated_buffer = buffer_alloc(NULL, length);
     envelope.allocated_size = length;
     if (!envelope.allocated_buffer) {
       mutex_unlock(&client->client_state_mutex);
@@ -85,7 +85,7 @@ static asciichat_error_t consume_packet(const void *data, size_t length, void *a
     result = server_event_dispatch(client, envelope.type, envelope.data, envelope.len);
   }
   if (envelope.allocated_buffer)
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    buffer_release(envelope.allocated_buffer);
   return result;
 }
 
@@ -178,8 +178,8 @@ void server_event_accept(platform_event_stream_t *stream, void *arg) {
     platform_event_stream_close(stream, result);
 }
 
-void server_event_video(client_info_t *client, const char *data, size_t length, uint32_t width, uint32_t height,
-                        int sources) {
+void server_event_video(client_info_t *client, acip_frame_workspace_t *workspace, const char *data, size_t length,
+                        uint32_t width, uint32_t height, int sources) {
   mutex_lock(&client->client_state_mutex);
   mutex_lock(&client->send_mutex);
   acip_transport_t *transport = client->transport;
@@ -193,7 +193,7 @@ void server_event_video(client_info_t *client, const char *data, size_t length, 
         acip_send_clear_console(transport);
         atomic_store_u64(&client->last_sent_grid_sources, (uint64_t)sources);
       }
-      if (acip_send_ascii_frame(transport, data, length, width, height, client->client_id) == ASCIICHAT_OK)
+      if (acip_send_ascii_frame(transport, workspace, data, length, width, height, client->client_id) == ASCIICHAT_OK)
         atomic_fetch_add_u64(&client->frames_sent_count, 1);
     }
   }

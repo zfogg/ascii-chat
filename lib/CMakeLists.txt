@@ -1738,7 +1738,7 @@ endif()
 # Create an alias that links all modules for test compatibility
 # This allows tests to link against ascii-chat-lib instead of individual modules
 # Note: Libraries with circular dependencies must be listed in correct order:
-# - core needs symbols from network (buffer_pool) and crypto (known_hosts)
+# - core needs symbols from network (buffer domains) and crypto (known_hosts)
 # - network needs symbols from core
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)

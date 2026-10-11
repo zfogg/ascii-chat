@@ -32,7 +32,7 @@
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/debug/named.h>
@@ -149,11 +149,11 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
   size_t dropped_audio = 0;
   for (size_t i = 0; i < count; i++) {
     if (video_to_discard && queued_message_is_video(&queued[i])) {
-      buffer_pool_free(NULL, queued[i].data, queued[i].len);
+      buffer_release(queued[i].data);
       video_to_discard--;
       dropped_video++;
     } else if (audio_to_discard && queued_message_is_audio(&queued[i])) {
-      buffer_pool_free(NULL, queued[i].data, queued[i].len);
+      buffer_release(queued[i].data);
       audio_to_discard--;
       dropped_audio++;
     } else {
@@ -198,7 +198,16 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (capacity > limit) {
       capacity = limit;
     }
-    wrtc->partial = SAFE_REALLOC(wrtc->partial, capacity, uint8_t *);
+    uint8_t *next = buffer_alloc(NULL, capacity);
+    if (!next) {
+      mutex_unlock(&wrtc->queue_mutex);
+      webrtc_datachannel_close(channel);
+      return;
+    }
+    if (wrtc->partial_len)
+      memcpy(next, wrtc->partial, wrtc->partial_len);
+    buffer_release(wrtc->partial);
+    wrtc->partial = next;
     wrtc->partial_capacity = capacity;
   }
   memcpy(wrtc->partial + wrtc->partial_len, data, len);
@@ -217,7 +226,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     size_t packet_len = sizeof(header) + payload_len;
     if (wrtc->partial_len - offset < packet_len)
       break;
-    webrtc_recv_msg_t msg = {.data = buffer_pool_alloc(NULL, packet_len), .len = packet_len};
+    webrtc_recv_msg_t msg = {.data = buffer_alloc(NULL, packet_len), .len = packet_len};
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
@@ -229,7 +238,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       if (media) {
         log_warn_every(US_PER_SEC_INT, "WebRTC receive queue saturated; dropping newest media packet");
       }
-      buffer_pool_free(NULL, msg.data, msg.len);
+      buffer_release(msg.data);
       if (media) {
         offset += packet_len;
         continue;
@@ -583,7 +592,7 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
     webrtc_recv_msg_t msg;
     while (ringbuffer_read(wrtc->recv_queue, &msg)) {
       if (msg.data) {
-        buffer_pool_free(NULL, msg.data, msg.len);
+        buffer_release(msg.data);
         msg.data = NULL;
       }
     }
@@ -593,7 +602,7 @@ static void webrtc_destroy_impl(acip_transport_t *transport) {
     wrtc->recv_queue = NULL;
   }
 
-  SAFE_FREE(wrtc->partial);
+  buffer_release(wrtc->partial);
   wrtc->partial = NULL;
   wrtc->partial_len = 0;
   wrtc->partial_capacity = 0;
@@ -644,7 +653,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
   }
 
   // Allocate transport structure
-  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebRTC transport");
     return NULL;

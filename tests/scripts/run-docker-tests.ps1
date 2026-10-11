@@ -13,7 +13,7 @@
 #   ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c  # Run clang-tidy on specific file
 #   ./tests/scripts/run-docker-tests.ps1 unit options             # Run unit tests matching "options"
 #   ./tests/scripts/run-docker-tests.ps1 -Filter "buffer"         # Run tests matching "buffer"
-#   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool    # Run specific test
+#   ./tests/scripts/run-docker-tests.ps1 test-buffer-ownership    # Run specific test
 
 [CmdletBinding(PositionalBinding=$false)]
 param(

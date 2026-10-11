@@ -1,4 +1,5 @@
 #include <ascii-chat/platform/event.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/decoder.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/crc32.h>
@@ -165,6 +166,11 @@ int main(void) {
   event_test(false, false);
   event_test(true, false);
   event_test(false, true);
+  buffer_stats_t buffers;
+  buffer_domain_stats(buffer_default_domain(), &buffers);
+  CHECK(buffers.outstanding == 0);
+  buffer_system_cleanup();
+  CHECK(buffer_process_reserved() == 0);
   socket_cleanup();
   log_warn("Event I/O checks passed (%s)", platform_event_backend());
   log_destroy();

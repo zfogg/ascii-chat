@@ -18,7 +18,7 @@
  * **Key Responsibilities**:
  * - Continuous monitoring of server performance metrics
  * - Per-client statistics collection and reporting
- * - Buffer pool utilization tracking
+ * - buffer domain utilization tracking
  * - Packet queue performance analysis
  * - Hash table efficiency monitoring
  * - Periodic statistics logging (every 30 seconds)
@@ -106,23 +106,21 @@
  * rwlock_rdunlock(&g_client_manager_rwlock);
  * @endcode
  *
- * @subsection server_stats_buffer_pool Buffer Pool Performance
+ * @subsection server_stats_buffers buffer domain Performance
  *
- * **Buffer Pool Metrics**:
- * - Global buffer pool utilization
+ * **buffer domain Metrics**:
+ * - Global buffer domain utilization
  * - Allocation/deallocation rates
  * - Peak usage patterns
  * - Memory efficiency metrics
- * - Buffer pool fragmentation indicators
+ * - buffer domain fragmentation indicators
  *
  * **Collection Process**:
  * @code{.c}
- * // Collect buffer pool statistics
- * buffer_pool_stats_t stats = buffer_pool_get_statistics();
- *
- * log_info("Buffer Pool: %zu allocated, %zu peak, %zu total, %.2f%% utilization",
- *          stats.allocated, stats.peak, stats.total,
- *          (stats.allocated * 100.0) / stats.total);
+ * buffer_stats_t stats;
+ * buffer_domain_stats(buffer_default_domain(), &stats);
+ * log_info("Buffers: reserved=%zu live=%zu cached=%zu outstanding=%zu",
+ *          stats.reserved_bytes, stats.live_bytes, stats.cached_bytes, stats.outstanding);
  * @endcode
  *
  * @subsection server_stats_packet_queue Packet Queue Performance
@@ -201,7 +199,7 @@
  *
  * @code{.bash}
  * [STATS] Client Count: 3 active (2 audio, 3 video)
- * [STATS] Buffer Pool: 45/100 allocated (45.00% utilization), 52 peak
+ * [STATS] buffer domain: 45/100 allocated (45.00% utilization), 52 peak
  * [STATS] Packet Queues: avg_depth=12.3, max_depth=25, drops=3
  * [STATS] Hash Table: 3 entries, 16 capacity (18.75% load), 0 collisions
  * [STATS] Frames: 5420 captured, 5340 sent, 80 dropped (1.48% drop rate)
@@ -209,7 +207,7 @@
  *
  * **Report Sections**:
  * 1. Client Statistics: Active client count and capabilities
- * 2. Buffer Pool: Memory utilization and efficiency
+ * 2. buffer domain: Memory utilization and efficiency
  * 3. Packet Queues: Queue performance and overflow incidents
  * 4. Hash Table: Lookup performance and efficiency
  * 5. Frame Processing: Frame generation and delivery metrics
@@ -241,16 +239,16 @@
  * - Connection duration metrics
  * - Client capability statistics
  *
- * @subsection server_stats_buffer_pool Integration with Buffer Pool
+ * @subsection server_stats_buffers Integration with buffer domain
  *
  * **Monitored From**:
- * - Global buffer pool utilization
+ * - Global buffer domain utilization
  * - Allocation/deallocation rates
  * - Memory efficiency metrics
  *
  * **Provides To**:
  * - Memory usage reports
- * - Buffer pool performance analysis
+ * - buffer domain performance analysis
  * - Memory leak detection indicators
  *
  * @subsection server_stats_packet_queue Integration with Packet Queues
@@ -282,14 +280,14 @@
  * @subsection server_stats_troubleshooting Troubleshooting Support
  *
  * **Performance Bottleneck Identification**:
- * - Buffer pool utilization identifies memory pressure
+ * - buffer domain utilization identifies memory pressure
  * - Packet queue depths identify network congestion
  * - Frame drop rates identify processing bottlenecks
  * - Hash table collisions identify lookup inefficiency
  *
  * **System Health Monitoring**:
  * - Client count trends indicate connection stability
- * - Buffer pool peak usage identifies memory leaks
+ * - buffer domain peak usage identifies memory leaks
  * - Packet queue overflow identifies network issues
  * - Frame processing rates identify performance degradation
  *
@@ -352,7 +350,7 @@
  * @see src/server/stats.h
  * @see @ref topic_server "Server Overview"
  * @see @ref topic_server_main "Server Main Entry Point"
- * @see topic_buffer_pool
+ * @see topic_buffer
  * @see topic_packet_queue
  * @see uthash library for hash table implementation
  */

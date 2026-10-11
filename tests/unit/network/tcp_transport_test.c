@@ -6,7 +6,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/acds_server.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <sodium.h>
 
 #ifndef _WIN32
@@ -130,7 +130,7 @@ Test(tcp_transport, error_response_hides_internal_details) {
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_INTERNAL);
   cr_assert_str_eq(message, asciichat_error_string(ERROR_INTERNAL));
-  buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+  buffer_release(envelope.allocated_buffer);
   socket_close(sockets[0]);
   socket_close(sockets[1]);
 }

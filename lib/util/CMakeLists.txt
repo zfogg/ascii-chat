@@ -27,7 +27,7 @@ endif()
 # Data structures (from lib/ root)
 set(DATA_STRUCTURES_SRCS
     ${CMAKE_SOURCE_DIR}/lib/ringbuffer.c
-    ${CMAKE_SOURCE_DIR}/lib/buffer_pool.c
+    ${CMAKE_SOURCE_DIR}/lib/buffer.c
     ${CMAKE_SOURCE_DIR}/lib/thread_pool.c
 )
 

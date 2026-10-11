@@ -3,10 +3,11 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <ascii-chat/buffer.h>
 
 void packet_decoder_reset(packet_decoder_t *decoder) {
   if (decoder) {
-    SAFE_FREE(decoder->packet);
+    buffer_release(decoder->packet);
     memset(decoder, 0, sizeof(*decoder));
   }
 }
@@ -38,7 +39,11 @@ asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *dat
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid incremental packet header");
       }
       decoder->size = sizeof(header) + payload;
-      decoder->packet = SAFE_MALLOC(decoder->size, uint8_t *);
+      decoder->packet = buffer_alloc(NULL, decoder->size);
+      if (!decoder->packet) {
+        decoder->failed = true;
+        return SET_ERRNO(ERROR_MEMORY, "Incremental packet exceeds buffer budget");
+      }
       memcpy(decoder->packet, &header, sizeof(header));
       decoder->used = sizeof(header);
     }
@@ -58,7 +63,7 @@ asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *dat
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incremental packet CRC mismatch");
     }
     asciichat_error_t result = emit(decoder->packet, decoder->size, arg);
-    SAFE_FREE(decoder->packet);
+    buffer_release(decoder->packet);
     decoder->packet = NULL;
     decoder->header_used = decoder->used = decoder->size = 0;
     if (result != ASCIICHAT_OK) {

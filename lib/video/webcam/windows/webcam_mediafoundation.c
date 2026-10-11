@@ -604,17 +604,14 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Allocate or reuse cached frame (allocated once, reused for each call)
   // This matches the documented API contract: "Subsequent calls reuse the same buffer"
   if (!ctx->cached_frame || ctx->cached_frame->w != (int)width || ctx->cached_frame->h != (int)height) {
-    // Free old cached frame if it exists with different dimensions
-    if (ctx->cached_frame) {
-      image_destroy(ctx->cached_frame);
+    image_t *img = image_new((int)width, (int)height);
+    if (!img) {
+      IMFMediaBuffer_Unlock(buffer);
+      IMFMediaBuffer_Release(buffer);
+      IMFSample_Release(sample);
+      return NULL;
     }
-
-    // Create new image_t structure
-    image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
-    img->w = (int)(unsigned int)width;
-    img->h = (int)(unsigned int)height;
-    // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-    img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
+    image_destroy(ctx->cached_frame);
     ctx->cached_frame = img;
   }
 

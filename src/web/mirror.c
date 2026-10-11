@@ -23,6 +23,7 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/visualization.h>
 
 // Global digital rain effect context
@@ -93,6 +94,7 @@ void mirror_cleanup(void) {
     g_last_rain_output = NULL;
   }
   options_state_destroy();
+  buffer_system_cleanup();
   platform_destroy();
 }
 
@@ -177,7 +179,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   }
 
   // Create image structure
-  image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
+  image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels};
 
   // Get palette characters based on selected palette type
   const char *palette_chars;

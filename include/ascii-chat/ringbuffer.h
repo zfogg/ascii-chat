@@ -225,6 +225,11 @@ typedef struct audio_ring_buffer {
   atomic_t underrun_count;
   /** @brief Whether jitter buffering is enabled (false for capture, true for playback) */
   bool jitter_buffer_enabled;
+  /** Consumer-owned adaptive target and stable-playback counter (48 kHz samples). */
+  uint32_t jitter_target_samples;
+  uint32_t jitter_initial_samples;
+  uint64_t jitter_stable_samples;
+  double jitter_drift_phase; ///< Consumer-owned fractional clock correction
   /** @brief Mutex for SLOW PATH only (clear/destroy operations, not regular read/write) */
   mutex_t mutex;
 } audio_ring_buffer_t;
@@ -385,7 +390,7 @@ typedef struct {
   uint64_t magic;
   /** @brief Actual size of frame data in bytes */
   size_t size;
-  /** @brief Pointer to frame data (not owned by this struct) */
+  /** @brief Owning frame payload; release with buffer_release() after reading */
   char *data;
 } frame_t;
 
@@ -408,7 +413,7 @@ typedef struct {
   uint32_t timestamp;
   /** @brief Actual size of frame data in bytes */
   size_t size;
-  /** @brief Pointer to frame data (not owned by this struct) */
+  /** @brief Owning frame payload; release with buffer_release() after reading */
   char *data;
 } multi_source_frame_t;
 
@@ -499,14 +504,11 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
  * @param frame Pointer to frame_t struct to be filled (must not be NULL)
  * @return true if successful, false if buffer is empty
  *
- * Reads a single-source frame from the buffer. The frame data pointer
- * points to data owned by the buffer until the frame is cleared or
- * the buffer is destroyed.
+ * Reads a single-source frame and transfers its payload ownership to the caller.
  *
  * @note Thread-safe: Protected by mutex for concurrent access.
  *
- * @note The caller must not free the frame data pointer - it's owned
- *       by the buffer until the frame is consumed.
+ * @note The caller must buffer_release(frame->data) after use.
  *
  * @ingroup ringbuffer
  */
@@ -556,14 +558,11 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
  * @param frame Pointer to multi_source_frame_t struct to be filled (must not be NULL)
  * @return true if successful, false if buffer is empty
  *
- * Reads a multi-source frame from the buffer along with its metadata.
- * The frame data pointer points to data owned by the buffer until the
- * frame is cleared or the buffer is destroyed.
+ * Reads a multi-source frame and transfers its payload ownership to the caller.
  *
  * @note Thread-safe: Protected by mutex for concurrent access.
  *
- * @note The caller must not free the frame data pointer - it's owned
- *       by the buffer until the frame is consumed.
+ * @note The caller must buffer_release(frame->data) after use.
  *
  * @ingroup ringbuffer
  */
@@ -580,8 +579,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
  *
  * @note Thread-safe: Protected by mutex for concurrent access.
  *
- * @note The frame data pointer is valid only until the buffer is modified.
- *       Do not use the data pointer after subsequent buffer operations.
+ * @note Returns an independent owning copy. The caller must buffer_release(frame->data).
  *
  * @ingroup ringbuffer
  */

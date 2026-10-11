@@ -1,6 +1,6 @@
 /** Portable vectored sends and owned Linux copy-avoidance storage. */
 #include <ascii-chat/platform/socket.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
 #include <limits.h>
 #include <string.h>
@@ -11,6 +11,7 @@
 #endif
 #ifdef __linux__
 #include <sys/mman.h>
+#include <unistd.h>
 #include <linux/errqueue.h>
 #endif
 
@@ -191,14 +192,25 @@ asciichat_error_t socket_send_buffer_alloc(size_t capacity, socket_send_buffer_t
   *buffer = (socket_send_buffer_t){0};
 #ifdef __linux__
   if (capacity >= SOCKET_ZEROCOPY_THRESHOLD) {
+    // Charge page rounding as well as the requested mapping length.
+    long page = sysconf(_SC_PAGESIZE);
+    if (page <= 0 || capacity > SIZE_MAX - (size_t)page + 1)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot size send mapping");
+    size_t charge = ((capacity + (size_t)page - 1) / (size_t)page) * (size_t)page;
+    asciichat_error_t reserved = buffer_budget_reserve(&buffer->budget, charge);
+    if (reserved != ASCIICHAT_OK)
+      return reserved;
     void *data = mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (data != MAP_FAILED) {
-      *buffer = (socket_send_buffer_t){data, capacity, true};
+      buffer->data = data;
+      buffer->capacity = capacity;
+      buffer->mapped = true;
       return ASCIICHAT_OK;
     }
+    buffer_budget_release(&buffer->budget);
   }
 #endif
-  buffer->data = buffer_pool_alloc(NULL, capacity);
+  buffer->data = buffer_alloc(NULL, capacity);
   if (!buffer->data)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate send buffer");
   buffer->capacity = capacity;
@@ -213,7 +225,8 @@ void socket_send_buffer_free(socket_send_buffer_t *buffer) {
     munmap(buffer->data, buffer->capacity);
   else
 #endif
-    buffer_pool_free(NULL, buffer->data, buffer->capacity);
+    buffer_release(buffer->data);
+  buffer_budget_release(&buffer->budget);
   *buffer = (socket_send_buffer_t){0};
 }
 

@@ -6,7 +6,7 @@
 
 #include "nat.h"
 
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
@@ -399,13 +399,13 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
   }
 
   if (response_type != PACKET_TYPE_ACIP_BANDWIDTH_RESULT) {
-    POOL_FREE(response_data, response_len);
+    buffer_release(response_data);
     log_warn("Unexpected packet type %d (expected BANDWIDTH_RESULT)", response_type);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Wrong packet type in bandwidth test response");
   }
 
   if (response_len != sizeof(acip_bandwidth_result_t)) {
-    POOL_FREE(response_data, response_len);
+    buffer_release(response_data);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid bandwidth result size");
   }
 
@@ -417,7 +417,7 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
   quality->jitter_ns = results->jitter_ns;
   quality->packet_loss_pct = results->packet_loss_pct;
 
-  POOL_FREE(response_data, response_len);
+  buffer_release(response_data);
 
   log_debug("Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%lu ns", quality->upload_kbps,
             quality->download_kbps, quality->rtt_to_acds_ns);

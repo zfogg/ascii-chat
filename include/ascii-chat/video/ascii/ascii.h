@@ -19,7 +19,7 @@
  * - Terminal frame output and management
  * - Frame padding and layout utilities (horizontal and vertical)
  * - Grid layout for multiple frames (multi-user support)
- * - Buffer pool integration for efficient memory management
+ * - buffer domain integration for efficient memory management
  * - SIMD-optimized conversion for performance
  *
  * CONVERSION MODES:

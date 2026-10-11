@@ -130,7 +130,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
@@ -696,7 +696,7 @@ static asciichat_error_t server_client_allocate_tcp_buffers(server_client_buffer
   // Keep the per-client queue allocation independent. Registering a 1000-node
   // pool for every client can block a second client while the first client's
   // debug registrations are being retired during disconnect.
-  buffers->audio_queue = packet_queue_create(500);
+  buffers->audio_queue = packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
   log_info("[TCP_DBG] AUDIO_QUEUE_DONE");
   if (!buffers->audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
@@ -716,7 +716,7 @@ static asciichat_error_t server_client_allocate_tcp_buffers(server_client_buffer
     return SET_ERRNO(ERROR_MEMORY, "Failed to create outgoing video buffer for client %s", new_client_id);
   }
 
-  buffers->send_buffer = SAFE_MALLOC_ALIGNED(MAX_FRAME_BUFFER_SIZE, 64, void *);
+  buffers->send_buffer = buffer_alloc(NULL, MAX_FRAME_BUFFER_SIZE);
   if (!buffers->send_buffer) {
     log_error("Failed to allocate send buffer for client %s", new_client_id);
     video_frame_buffer_destroy(buffers->outgoing_video_buffer);
@@ -934,7 +934,7 @@ static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t
     if (result != PACKET_RECV_SUCCESS) {
       log_error("Failed to receive initial capabilities packet from client %s: result=%d", client->client_id, result);
       if (envelope.allocated_buffer) {
-        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+        buffer_release(envelope.allocated_buffer);
       }
       if (remove_client(server_ctx, client->client_id) != 0) {
         log_error("Failed to remove client after crypto handshake failure");
@@ -947,7 +947,7 @@ static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t
     log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %s", envelope.type,
               client->client_id);
     if (envelope.allocated_buffer) {
-      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+      buffer_release(envelope.allocated_buffer);
     }
     if (remove_client(server_ctx, client->client_id) != 0) {
       log_error("Failed to remove client after crypto handshake failure");
@@ -975,7 +975,7 @@ static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t
 
   // Free the packet data
   if (envelope.allocated_buffer) {
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    buffer_release(envelope.allocated_buffer);
   }
   log_debug("Successfully received and processed initial capabilities for client %s", client->client_id);
 
@@ -1064,7 +1064,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // Re-check slot availability under lock (another thread might have taken it)
   if (g_client_manager.clients[slot].client_id[0] != '\0') {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    SAFE_FREE(buffers.send_buffer);
+    buffer_release(buffers.send_buffer);
     video_frame_buffer_destroy(buffers.outgoing_video_buffer);
     packet_queue_destroy(buffers.audio_queue);
     audio_ring_buffer_destroy(buffers.incoming_audio_buffer);
@@ -1185,7 +1185,7 @@ static void server_client_initialize_webrtc_slot(server_context_t *server_ctx, c
     client->incoming_audio_buffer = NULL;
   }
   if (client->send_buffer) {
-    SAFE_FREE(client->send_buffer);
+    buffer_release(client->send_buffer);
     client->send_buffer = NULL;
   }
 
@@ -1242,7 +1242,7 @@ static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *cl
   }
 
   // Create packet queues for outgoing data
-  client->audio_queue = packet_queue_create_with_pools(500, 1000, false);
+  client->audio_queue = packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
   if (!client->audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for WebRTC client");
     return SET_ERRNO(ERROR_MEMORY, "Failed to create audio queue for WebRTC client %s", new_client_id);
@@ -1250,7 +1250,7 @@ static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *cl
 
   // Create packet queue for async dispatch: received packets waiting to be processed
   // Capacity of 100 packets allows buffering of ~10-50 frames (depending on fragmentation)
-  client->received_packet_queue = packet_queue_create_with_pools(100, 500, false);
+  client->received_packet_queue = packet_queue_create(100);
   if (!client->received_packet_queue) {
     LOG_ERRNO_IF_SET("Failed to create received packet queue for client");
     return SET_ERRNO(ERROR_MEMORY, "Failed to create received packet queue for WebRTC client %s", new_client_id);
@@ -1265,7 +1265,7 @@ static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *cl
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
   client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
-  client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
+  client->send_buffer = buffer_alloc(NULL, client->send_buffer_size);
   if (!client->send_buffer) {
     log_error("Failed to allocate send buffer for WebRTC client %s", new_client_id);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer for WebRTC client %s", new_client_id);
@@ -2188,7 +2188,7 @@ void *client_receive_thread(void *arg) {
         log_warn("RECV_THREAD[%s]: Received packet too small (%zu < %zu), dropping", client->client_id, packet_len,
                  sizeof(packet_header_t));
         if (allocated_buffer) {
-          buffer_pool_free(NULL, allocated_buffer, packet_len);
+          buffer_release(allocated_buffer);
         }
         continue;
       }
@@ -2207,20 +2207,21 @@ void *client_receive_thread(void *arg) {
 
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
-      // The queue copies the packet; release the transport buffer afterward.
+      // Transfer ownership; failed admission leaves the buffer with this thread.
       uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
       // Pair queue publication and notification with the dispatch wait lock.
       mutex_lock(&client->client_state_mutex);
-      int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
-                                                client_id_hash, true);
-      if (enqueue_result >= 0)
+      asciichat_error_t enqueue_result = packet_queue_push_take(client->received_packet_queue, pkt_type,
+                                                                &allocated_buffer, packet_len, client_id_hash);
+      if (enqueue_result == ASCIICHAT_OK)
         cond_signal(&client->dispatch_queue_cond);
       mutex_unlock(&client->client_state_mutex);
-      buffer_pool_free(NULL, allocated_buffer, packet_len);
+      buffer_release(allocated_buffer);
 
-      if (enqueue_result < 0) {
+      if (enqueue_result != ASCIICHAT_OK) {
         log_error("🔴 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
                   client->client_id);
+        break; // Preserve control-packet ordering by closing an overloaded connection.
       } else {
         log_dev("RECV_THREAD[%s]: queued type=%d len=%zu", client->client_id, pkt_type, packet_len);
       }
@@ -2377,6 +2378,9 @@ void *client_send_thread_func(void *arg) {
   log_info("SEND_THREAD_LOOP_START: client_id=%s active=%d shutting_down=%d running=%d", client->client_id,
            atomic_load_bool(&client->active), atomic_load_bool(&client->shutting_down),
            atomic_load_bool(&client->send_thread_running));
+
+  acip_frame_workspace_t frame_workspace = {0};
+  buffer_workspace_t snapshot = {0};
 
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
@@ -2610,7 +2614,8 @@ void *client_send_thread_func(void *arg) {
           frame_size = frame->size;
           width = frame->width;
           height = frame->height;
-          frame_data_snapshot = SAFE_MALLOC(frame_size, char *);
+          if (buffer_workspace_reserve(&snapshot, NULL, frame_size) == ASCIICHAT_OK)
+            frame_data_snapshot = snapshot.data;
           if (frame_data_snapshot) {
             memcpy(frame_data_snapshot, frame->data, frame_size);
             atomic_store_bool(&outgoing_buffer->new_frame_available, false);
@@ -2651,7 +2656,7 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
-          SAFE_FREE(frame_data_snapshot);
+          frame_data_snapshot = NULL;
           log_warn("BREAK_CLEAR_CONSOLE: client_id=%s shutting_down=%d transport=%p", client->client_id,
                    atomic_load_bool(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
@@ -2692,7 +2697,7 @@ void *client_send_thread_func(void *arg) {
       if (!crypto_ready) {
         log_info("⚠️  SKIP_SEND_CRYPTO: client_id=%s crypto_initialized=%d no_encrypt=%d", client->client_id,
                  client->crypto_initialized, GET_OPTION(no_encrypt));
-        SAFE_FREE(frame_data_snapshot);
+        frame_data_snapshot = NULL;
         continue; // Skip this frame, will try again on next loop iteration
       }
       log_info_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
@@ -2720,7 +2725,7 @@ void *client_send_thread_func(void *arg) {
       mutex_lock(&client->send_mutex);
       if (atomic_load_bool(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
-        SAFE_FREE(frame_data_snapshot);
+        frame_data_snapshot = NULL;
         log_warn("BREAK_FRAME_SEND: client_id=%s shutting_down=%d transport=%p loop_iter=%d", client->client_id,
                  atomic_load_bool(&client->shutting_down), (void *)client->transport, loop_iteration_count);
         break; // Client is shutting down, exit thread
@@ -2731,10 +2736,10 @@ void *client_send_thread_func(void *arg) {
       uint64_t send_start_ns = time_get_ns();
       log_dev_every(4500 * US_PER_MS_INT, "[SEND_LOOP_%d] FRAME_SEND_START: client_id=%s size=%zu",
                     loop_iteration_count, client->client_id, frame_size);
-      asciichat_error_t send_result =
-          acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height, client->client_id);
+      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, &frame_workspace, frame_data, frame_size,
+                                                            width, height, client->client_id);
       mutex_unlock(&client->send_mutex);
-      SAFE_FREE(frame_data_snapshot);
+      frame_data_snapshot = NULL;
       uint64_t send_end_ns = time_get_ns();
       char send_elapsed_str[32];
       time_pretty(send_end_ns - send_start_ns, -1, send_elapsed_str, sizeof(send_elapsed_str));
@@ -2837,6 +2842,8 @@ void *client_send_thread_func(void *arg) {
     }
   }
 
+  acip_frame_workspace_destroy(&frame_workspace);
+  buffer_workspace_destroy(&snapshot);
   log_debug("Send thread for client %s terminated", client->client_id);
 
   // Clean up thread-local error context before exit
@@ -3061,7 +3068,7 @@ void cleanup_client_media_buffers(client_info_t *client) {
 
   // Clean up pre-allocated send buffer
   if (client->send_buffer) {
-    SAFE_FREE(client->send_buffer);
+    buffer_release(client->send_buffer);
     client->send_buffer = NULL;
     client->send_buffer_size = 0;
   }
@@ -3142,14 +3149,18 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
                              uint32_t *sender_id) {
   if (!crypto_server_is_ready(client->client_id)) {
     log_error("Received encrypted packet but crypto not ready for client %s", client->client_id);
-    buffer_pool_free(NULL, *data, *len);
+    buffer_release(*data);
     *data = NULL;
     return -1;
   }
 
   // Store original allocation size before it gets modified
   size_t original_alloc_size = *len;
-  void *decrypted_data = buffer_pool_alloc(NULL, original_alloc_size);
+  void *decrypted_data = buffer_alloc(NULL, original_alloc_size);
+  if (!decrypted_data) {
+    buffer_release(*data);
+    return -1;
+  }
   size_t decrypted_len;
   int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t *)*data, *len,
                                                     (uint8_t *)decrypted_data, original_alloc_size, &decrypted_len);
@@ -3157,15 +3168,15 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   if (decrypt_result != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to process encrypted packet from client %s (result=%d)", client->client_id,
               decrypt_result);
-    buffer_pool_free(NULL, *data, original_alloc_size);
-    buffer_pool_free(NULL, decrypted_data, original_alloc_size);
+    buffer_release(*data);
+    buffer_release(decrypted_data);
     *data = NULL;
     return -1;
   }
 
   // Replace encrypted data with decrypted data
-  // Use original allocation size for freeing the encrypted buffer
-  buffer_pool_free(NULL, *data, original_alloc_size);
+  // Release the encrypted owner after decryption
+  buffer_release(*data);
 
   *data = decrypted_data;
   *len = decrypted_len;
@@ -3173,7 +3184,7 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   // Now process the decrypted packet by parsing its header
   if (*len < sizeof(packet_header_t)) {
     SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small for header from client %s", client->client_id);
-    buffer_pool_free(NULL, *data, *len);
+    buffer_release(*data);
     *data = NULL;
     return -1;
   }
@@ -3182,9 +3193,9 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   *type = (packet_type_t)NET_TO_HOST_U16(header->type);
   *sender_id = NET_TO_HOST_U32(header->client_id);
 
-  // Adjust data pointer to skip header
-  *data = (uint8_t *)*data + sizeof(packet_header_t);
+  // Compact the payload while preserving the owning allocation pointer
   *len -= sizeof(packet_header_t);
+  memmove(*data, (uint8_t *)*data + sizeof(packet_header_t), *len);
 
   return 0;
 }

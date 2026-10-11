@@ -8,7 +8,7 @@
 
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/gpg/gpg.h>

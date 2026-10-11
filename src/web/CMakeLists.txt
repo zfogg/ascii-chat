@@ -158,7 +158,7 @@ set(LIB_SRC_COMMON
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
-    ${LIB_ROOT}/buffer_pool.c
+    ${LIB_ROOT}/buffer.c
     ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system

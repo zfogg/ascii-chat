@@ -36,7 +36,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/websocket.h>
 #include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/system.h>
@@ -90,40 +90,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 // Service Thread (Client-side only)
 // =============================================================================
-
-/**
- * @brief Queue a buffer for deferred freeing to prevent use-after-free with compression
- *
- * Permessage-deflate compression holds buffer references asynchronously after lws_write().
- * This function queues buffers for later freeing instead of immediate deallocation.
- */
-static void deferred_buffer_free(websocket_transport_data_t *ws_data, uint8_t *ptr, size_t size) {
-  if (!ws_data || !ptr)
-    return;
-
-  pending_free_item_t item = {.ptr = ptr, .size = size};
-  mutex_lock(&ws_data->pending_free_mutex);
-  ringbuffer_write(ws_data->pending_free_queue, &item);
-  mutex_unlock(&ws_data->pending_free_mutex);
-}
-
-/**
- * @brief Drain pending-free queue to actually free deferred buffers
- *
- * Called periodically from the service thread to free buffers that were
- * queued for deferred freeing after their associated compression operations complete.
- */
-static void drain_pending_free_queue(websocket_transport_data_t *ws_data) {
-  if (!ws_data)
-    return;
-
-  pending_free_item_t item;
-  mutex_lock(&ws_data->pending_free_mutex);
-  while (ringbuffer_read(ws_data->pending_free_queue, &item)) {
-    buffer_pool_free(NULL, item.ptr, item.size);
-  }
-  mutex_unlock(&ws_data->pending_free_mutex);
-}
 
 /**
  * @brief Request a writable callback when connected; return false after connection failure.
@@ -229,12 +195,6 @@ static void *websocket_service_thread(void *arg) {
         log_info("[LOOP %d] Destroying flag set or context NULL, exiting service thread", loop_count);
       }
       break;
-    }
-
-    // Periodically drain pending-free queue to free buffers deferred from compression
-    // Do this at the start of each loop to ensure buffers are freed after compression completes
-    if (loop_count % 10 == 0) {
-      drain_pending_free_queue(ws_data);
     }
 
     // ALWAYS log first 10 loops to debug why queue checks aren't working
@@ -365,15 +325,15 @@ static void websocket_on_established(struct lws *wsi, websocket_transport_data_t
 /**
  * @brief Queue an incoming client fragment for the blocking receiver.
  */
-static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_data, void *in, size_t len) {
+static int websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_data, void *in, size_t len) {
   // Received data from server - may be fragmented for large messages
   if (atomic_load_bool(&ws_data->is_destroying)) {
-    return;
+    return 0;
   }
   uint64_t now_ns = time_get_ns();
   if (!in || len == 0) {
     log_debug("CLIENT_RECEIVE: in=%p, len=%zu - skipping", in, len);
-    return;
+    return 0;
   }
 
   // Detect first/final bits from WebSocket frame using the LWS API
@@ -389,10 +349,10 @@ static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws
   // Instead, queue each fragment with metadata, and let the receiver decide on reassembly.
 
   websocket_recv_msg_t msg;
-  msg.data = buffer_pool_alloc(NULL, len);
+  msg.data = buffer_alloc(NULL, len);
   if (!msg.data) {
     log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
-    return;
+    return -1;
   }
 
   memcpy(msg.data, in, len);
@@ -403,16 +363,18 @@ static void websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws
   mutex_lock(&ws_data->recv_mutex);
   bool success = ringbuffer_write(ws_data->recv_queue, &msg);
   if (!success) {
-    // Queue is full - drop the fragment and log warning
-    log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first, is_final);
-    buffer_pool_free(NULL, msg.data, msg.len);
+    // Closing preserves packet boundaries when a fragment cannot be admitted.
+    log_warn("WebSocket receive queue full - closing connection (len=%zu, first=%d, final=%d)", len, is_first,
+             is_final);
+    buffer_release(msg.data);
     mutex_unlock(&ws_data->recv_mutex);
-    return;
+    return -1;
   }
 
   // Signal waiting recv() call that a fragment is available
   cond_signal(&ws_data->recv_cond);
   mutex_unlock(&ws_data->recv_mutex);
+  return 0;
 }
 
 /**
@@ -467,88 +429,37 @@ static void websocket_on_connection_error(struct lws *wsi, websocket_transport_d
 /**
  * @brief Drain client messages from the send queue on the service thread.
  */
-static void websocket_on_writable(struct lws *wsi, websocket_transport_data_t *ws_data) {
-  // Socket is writable - process queued messages with FRAGMENTATION
-  // Fragment large messages into ~4KB chunks to avoid internal buffering
-  // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
-  uint64_t now_ns = time_get_ns();
-  log_dev("LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu", (void *)wsi,
-          (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
-
-  if (!ws_data || atomic_load_bool(&ws_data->is_destroying)) {
+void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data_t *ws_data) {
+  if (!ws_data || atomic_load_bool(&ws_data->is_destroying))
     return;
-  }
-
-  // Don't try to write if not fully connected
-  // libwebsockets can hit assertion if we write before connection establishment completes
-  mutex_lock(&ws_data->state_mutex);
-  bool connected = ws_data->is_connected;
-  mutex_unlock(&ws_data->state_mutex);
-
-  if (!connected) {
-    log_debug("    [CLIENT_WRITEABLE] Skipping write - not connected yet");
-    return;
-  }
-
-  websocket_recv_msg_t msg;
-  int message_count = 0;
-
-  // Process all messages in queue until pipe is choked or queue is empty
-  // Do NOT hold send_mutex while calling lws_write()
-  // lws_write() can block for seconds during TLS operations, causing other threads to deadlock
-  while (1) {
-    // Dequeue one message (lock only for queue access)
-    mutex_lock(&ws_data->send_mutex);
-    if (!ringbuffer_peek(ws_data->send_queue, &msg)) {
-      // Queue is empty
-      mutex_unlock(&ws_data->send_mutex);
-      break;
-    }
-    // Check pipe state BEFORE dequeuing
-    if (lws_send_pipe_choked(ws_data->wsi)) {
-      log_debug("Pipe choked, stopping message processing");
-      mutex_unlock(&ws_data->send_mutex);
-      break;
-    }
-    // Dequeue the message
-    ringbuffer_read(ws_data->send_queue, &msg);
-    mutex_unlock(&ws_data->send_mutex); // Release mutex BEFORE calling lws_write()
-
-    log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len, message_count + 1);
-
-    // Let libwebsockets handle fragmentation internally
-    // We send the entire message at once with LWS_WRITE_BINARY
-    // libwebsockets automatically fragments based on its MTU and manages FIN bits
-    log_debug("WebSocket sending %zu bytes (first=%d) with LWS_WRITE_BINARY", msg.len, msg.first);
-
-    int result = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
-
-    if (result < 0) {
-      // Error - pipe is full or other error
-      log_debug("WebSocket write returned %d (pipe choked), re-queueing", result);
-      // Re-queue the message (lock only for queue access)
-      mutex_lock(&ws_data->send_mutex);
-      ringbuffer_write(ws_data->send_queue, &msg);
-      mutex_unlock(&ws_data->send_mutex);
-      break; // Stop processing, wait for next writeable callback
-    } else {
-      // Success - lws_write handles ALL fragmentation internally
-      // The entire message is queued for sending (fragmented internally by libwebsockets)
-      deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-      message_count++;
-      log_debug("Message queued for send, will be fragmented by libwebsockets");
-    }
-  } // End while loop - continues until queue empty or pipe choked
-
-  // Request another callback if more messages are queued
-  // Must request even if pipe was choked so we drain queue once TCP buffer drains
+  /* lws suppresses writable callbacks until previously buffered output is
+   * consumed. Keep one owner until this completion boundary, or connection
+   * teardown; elapsed service-loop iterations are not a completion signal. */
+  buffer_release(ws_data->inflight_buffer);
+  websocket_recv_msg_t msg = {0};
   mutex_lock(&ws_data->send_mutex);
-  bool has_more = ringbuffer_peek(ws_data->send_queue, &msg);
+  bool available = ringbuffer_read(ws_data->send_queue, &msg);
   mutex_unlock(&ws_data->send_mutex);
-
-  if (has_more) {
-    lws_callback_on_writable(ws_data->wsi);
+  if (!available)
+    return;
+  ws_data->inflight_buffer = msg.data;
+  int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+  if (written < 0 || (size_t)written < msg.len) {
+    mutex_lock(&ws_data->state_mutex);
+    ws_data->is_connected = false;
+    ws_data->connection_failed = true;
+    cond_broadcast(&ws_data->state_cond);
+    mutex_unlock(&ws_data->state_mutex);
+    lws_set_timeout(wsi, PENDING_TIMEOUT_CLOSE_SEND, LWS_TO_KILL_ASYNC);
+    return;
   }
+  /* Exactly one write per callback. Request a completion callback even if
+   * there is no next message, so the final owner is promptly released. */
+  lws_callback_on_writable(wsi);
+}
+
+static void websocket_on_writable(struct lws *wsi, websocket_transport_data_t *ws_data) {
+  websocket_transport_write_pending(wsi, ws_data);
 }
 
 /**
@@ -600,8 +511,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_RECEIVE:
-    websocket_on_receive(wsi, ws_data, in, len);
-    break;
+    return websocket_on_receive(wsi, ws_data, in, len);
 
   case LWS_CALLBACK_CLIENT_CLOSED:
   case LWS_CALLBACK_CLOSED:
@@ -628,9 +538,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 /**
- * @brief Encrypt non-handshake packets when needed; return a borrowed payload or an owned pool buffer.
+ * @brief Encrypt non-handshake packets when needed; return a borrowed payload or an owned buffer.
  */
-static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, const void *data, size_t len,
+static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain, const void *data, size_t len,
                                                    const void **out_data, size_t *out_len,
                                                    uint8_t **out_encrypted_packet, size_t *out_encrypted_size) {
   // Check if encryption is needed (matching tcp_send logic)
@@ -646,8 +556,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
     if (!packet_is_handshake_type((packet_type_t)packet_type)) {
       // Encrypt the entire packet (header + payload)
       size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-      // Use SAFE_MALLOC (not buffer pool - encrypted_packet also uses pool and causes overlap)
-      uint8_t *ciphertext = SAFE_MALLOC(ciphertext_size, uint8_t *);
+      uint8_t *ciphertext = buffer_alloc(domain, ciphertext_size);
       if (!ciphertext) {
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer for WebSocket");
       }
@@ -656,15 +565,15 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
       crypto_result_t result =
           crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
       if (result != CRYPTO_OK) {
-        SAFE_FREE(ciphertext);
+        buffer_release(ciphertext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
       }
 
       // Build PACKET_TYPE_ENCRYPTED wrapper: header + ciphertext
       size_t total_encrypted_size = sizeof(packet_header_t) + ciphertext_len;
-      encrypted_packet = buffer_pool_alloc(NULL, total_encrypted_size);
+      encrypted_packet = buffer_alloc(domain, total_encrypted_size);
       if (!encrypted_packet) {
-        SAFE_FREE(ciphertext);
+        buffer_release(ciphertext);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate encrypted packet buffer");
       }
 
@@ -677,7 +586,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 
       memcpy(encrypted_packet, &encrypted_header, sizeof(encrypted_header));
       memcpy(encrypted_packet + sizeof(encrypted_header), ciphertext, ciphertext_len);
-      SAFE_FREE(ciphertext);
+      buffer_release(ciphertext);
 
       send_data = encrypted_packet;
       send_len = total_encrypted_size;
@@ -698,7 +607,7 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 /**
  * @brief Copy a padded message into the appropriate send queue and wake its service thread.
  */
-static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, const void *send_data,
+static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain, const void *send_data,
                                                  size_t send_len) {
   // Server-side transports cannot call lws_write() directly
   // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
@@ -706,11 +615,10 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
     // Queue the data for server-side sending
     // Allocate with LWS_PRE padding because lws_write() needs to write
     // the WebSocket frame header backwards into the LWS_PRE region
-    // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with
-    // permessage-deflate compression (same issue as client-side sends)
+    // The queued owner is retained until the writable callback completes.
     websocket_recv_msg_t msg;
     size_t buffer_size = LWS_PRE + send_len;
-    msg.data = buffer_pool_alloc(NULL, buffer_size);
+    msg.data = buffer_alloc(domain, buffer_size);
     if (!msg.data) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
     }
@@ -727,7 +635,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
       mutex_unlock(&ws_data->send_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
                 WEBSOCKET_SEND_QUEUE_SIZE);
-      buffer_pool_free(NULL, msg.data, buffer_size);
+      buffer_release(msg.data);
 
       return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
     }
@@ -753,13 +661,10 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
   // libwebsockets handles automatic fragmentation internally when needed
   // Allocate with LWS_PRE padding because lws_write() needs to write
   // the WebSocket frame header backwards into the LWS_PRE region
-  // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with permessage-deflate
-  // compression. libwebsockets may buffer this data asynchronously after lws_write() returns,
-  // so we can't free it immediately. buffer_pool_free() safely returns it to the pool instead
-  // of deallocating, preventing the use-after-free race condition with the compression layer.
+  // Queue ownership extends through the writable completion callback.
   websocket_recv_msg_t msg;
   size_t buffer_size = LWS_PRE + send_len;
-  msg.data = buffer_pool_alloc(NULL, buffer_size);
+  msg.data = buffer_alloc(domain, buffer_size);
   if (!msg.data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client send queue buffer");
   }
@@ -776,7 +681,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
     mutex_unlock(&ws_data->send_mutex);
     log_error("WebSocket client send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
               WEBSOCKET_SEND_QUEUE_SIZE);
-    buffer_pool_free(NULL, msg.data, buffer_size);
+    buffer_release(msg.data);
 
     return SET_ERRNO(ERROR_NETWORK, "Client send queue full (cannot queue %zu bytes)", send_len);
   }
@@ -795,7 +700,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
+asciichat_error_t websocket_transport_send(acip_transport_t *transport, const void *data, size_t len) {
   // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
   // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
   // when accessed from the service thread context. See: line 325 (similar issue).
@@ -828,34 +733,29 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
                   (void *)ws_data->wsi, len);
   }
 
+  // Classify the original packet before encryption hides its type. Keep this
+  // domain through every allocation, including the asynchronous queue owner.
+  buffer_domain_t *domain = NULL;
+  if (data && len >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, data, sizeof(header));
+    packet_type_t type = NET_TO_HOST_U16(header.type);
+    if (packet_is_handshake_type(type) || type == PACKET_TYPE_ERROR_MESSAGE)
+      domain = buffer_control_domain();
+  }
   const void *send_data = NULL;
   size_t send_len = 0;
   uint8_t *encrypted_packet = NULL;
   size_t encrypted_packet_size = 0;
   asciichat_error_t result =
-      websocket_prepare_payload(transport, data, len, &send_data, &send_len, &encrypted_packet, &encrypted_packet_size);
+      websocket_prepare_payload(transport, domain, data, len, &send_data, &send_len, &encrypted_packet, &encrypted_packet_size);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
-  // libwebsockets requires LWS_PRE bytes before the payload for protocol headers
-  // Allocate a temporary buffer for this send to avoid thread-safety issues
-  // Each send() call gets its own buffer, preventing race conditions with concurrent sends
-  size_t required_size = LWS_PRE + send_len;
-  uint8_t *send_buffer = SAFE_MALLOC(required_size, uint8_t *);
-  if (!send_buffer) {
-    if (encrypted_packet)
-      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket send buffer");
-  }
-
-  // Copy data after LWS_PRE offset
-  memcpy(send_buffer + LWS_PRE, send_data, send_len);
-
-  result = websocket_queue_payload(ws_data, send_data, send_len);
-  SAFE_FREE(send_buffer);
+  result = websocket_queue_payload(ws_data, domain, send_data, send_len);
   if (encrypted_packet) {
-    buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    buffer_release(encrypted_packet);
   }
   return result;
 }
@@ -911,12 +811,11 @@ static asciichat_error_t websocket_wait_for_connection(websocket_transport_data_
 }
 
 /**
- * @brief Return one packet, save trailing bytes, and release recv_mutex and the assembly buffer.
+ * @brief Transfer one assembled packet, save trailing bytes, and release recv_mutex.
  */
 static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data_t *ws_data, uint8_t *assembled_buffer,
-                                                        size_t assembled_size, size_t assembled_capacity,
-                                                        size_t expected_size, void **buffer, size_t *out_len,
-                                                        void **out_allocated_buffer) {
+                                                        size_t assembled_size, size_t expected_size, void **buffer,
+                                                        size_t *out_len, void **out_allocated_buffer) {
   // Check for leftover data after this packet
   size_t leftover_size = assembled_size - expected_size;
   if (leftover_size > 0) {
@@ -924,7 +823,7 @@ static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data
     log_info("[WS_REASSEMBLE] Saving %zu bytes leftover for next recv() call", leftover_size);
 
     // Create buffer for leftover (or reuse if we can)
-    uint8_t *leftover_buffer = buffer_pool_alloc(NULL, leftover_size);
+    uint8_t *leftover_buffer = buffer_alloc(NULL, leftover_size);
     if (leftover_buffer) {
       memcpy(leftover_buffer, assembled_buffer + expected_size, leftover_size);
       ws_data->partial_buffer = leftover_buffer;
@@ -932,25 +831,18 @@ static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data
       ws_data->partial_capacity = leftover_size;
     } else {
       log_error("[WS_REASSEMBLE] Failed to allocate leftover buffer (%zu bytes)", leftover_size);
-      // Fall through - return the packet anyway, we'll lose the leftover
+      buffer_release(assembled_buffer);
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot preserve WebSocket packet boundary");
     }
   }
 
-  // Create a new buffer with just the complete packet (not the leftover)
-  uint8_t *packet_buffer = buffer_pool_alloc(NULL, expected_size);
-  if (!packet_buffer) {
-    log_error("[WS_REASSEMBLE] Failed to allocate packet buffer (%zu bytes)", expected_size);
-    buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-    mutex_unlock(&ws_data->recv_mutex);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
-  }
-
-  memcpy(packet_buffer, assembled_buffer, expected_size);
-  buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-
-  *buffer = packet_buffer;
+  // Capacity metadata lets the receiver own the original assembly even when
+  // its backing allocation is larger than the logical packet.
+  (void)buffer_set_size(assembled_buffer, expected_size);
+  *buffer = assembled_buffer;
   *out_len = expected_size;
-  *out_allocated_buffer = packet_buffer;
+  *out_allocated_buffer = assembled_buffer;
   mutex_unlock(&ws_data->recv_mutex);
   return ASCIICHAT_OK;
 }
@@ -978,14 +870,14 @@ static asciichat_error_t websocket_append_fragment(websocket_recv_msg_t frag, ui
     if (new_capacity > MAX_REASSEMBLY_SIZE) {
       log_error("[WS_REASSEMBLE] Frame too large: need %zu bytes, max allowed is %zu", new_capacity,
                 MAX_REASSEMBLY_SIZE);
-      buffer_pool_free(NULL, frag.data, frag.len);
+      buffer_release(frag.data);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket frame exceeds maximum size (4MB)");
     }
 
-    uint8_t *new_buffer = buffer_pool_alloc(NULL, new_capacity);
+    uint8_t *new_buffer = buffer_alloc(NULL, new_capacity);
     if (!new_buffer) {
       log_error("[WS_REASSEMBLE] Failed to allocate reassembly buffer (%zu bytes)", new_capacity);
-      buffer_pool_free(NULL, frag.data, frag.len);
+      buffer_release(frag.data);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
     }
 
@@ -996,7 +888,7 @@ static asciichat_error_t websocket_append_fragment(websocket_recv_msg_t frag, ui
 
     // Free old buffer
     if (assembled_buffer) {
-      buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      buffer_release(assembled_buffer);
     }
 
     assembled_buffer = new_buffer;
@@ -1011,7 +903,7 @@ static asciichat_error_t websocket_append_fragment(websocket_recv_msg_t frag, ui
     if (assembled_size + frag.len > assembled_capacity) {
       log_error("[WS_REASSEMBLE] CRITICAL: Buffer overflow detected! assembled_size=%zu, frag.len=%zu, capacity=%zu",
                 assembled_size, frag.len, assembled_capacity);
-      buffer_pool_free(NULL, frag.data, frag.len);
+      buffer_release(frag.data);
       return SET_ERRNO(ERROR_MEMORY, "Fragment reassembly buffer overflow");
     }
 
@@ -1019,11 +911,11 @@ static asciichat_error_t websocket_append_fragment(websocket_recv_msg_t frag, ui
     assembled_size += frag.len;
   }
 
-  // Free fragment data after copying (allocated in LWS callback with buffer_pool_alloc)
+  // Free fragment data after copying (allocated in LWS callback with buffer_alloc)
   if (frag.data) {
     // Use the fragment length that was stored when we allocated it
-    // This must match the size passed to buffer_pool_alloc in the LWS callback
-    buffer_pool_free(NULL, frag.data, frag.len);
+    // This must match the size passed to buffer_alloc in the LWS callback
+    buffer_release(frag.data);
     frag.data = NULL; // Prevent accidental double-free
   }
 
@@ -1119,7 +1011,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (!still_connected && assembled_size == 0) {
         // Connection closed and no data yet
         if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+          buffer_release(assembled_buffer);
         }
         mutex_unlock(&ws_data->recv_mutex);
         return SET_ERRNO(ERROR_NETWORK, "Connection closed");
@@ -1134,7 +1026,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     bool success = ringbuffer_read(ws_data->recv_queue, &frag);
     if (!success) {
       if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        buffer_release(assembled_buffer);
       }
       mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
@@ -1152,9 +1044,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Sanity check: first fragment must have first=1, continuations must have first=0
     if (assembled_size == 0 && !frag.first) {
       log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
-      buffer_pool_free(NULL, frag.data, frag.len);
+      buffer_release(frag.data);
       if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        buffer_release(assembled_buffer);
       }
       mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
@@ -1163,7 +1055,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     result = websocket_append_fragment(frag, &assembled_buffer, &assembled_size, &assembled_capacity);
     if (result != ASCIICHAT_OK) {
       if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        buffer_release(assembled_buffer);
       }
       mutex_unlock(&ws_data->recv_mutex);
       return result;
@@ -1190,7 +1082,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments (payload=%u)",
                         expected_size, fragment_count, msg_payload_len);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, assembled_capacity,
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
                                                 expected_size, buffer, out_len, out_allocated_buffer);
         }
         // Need more fragments to complete this message
@@ -1214,14 +1106,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete ACIP packet: %zu bytes in %d fragments", expected_size,
                         fragment_count);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, assembled_capacity,
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
                                                 expected_size, buffer, out_len, out_allocated_buffer);
         } else {
           // ACIP packet is incomplete even though WebSocket frame is final
           // This shouldn't happen - WebSocket is delivering corrupt data
           log_error("[WS_REASSEMBLE] ERROR: WebSocket final fragment but incomplete ACIP packet (have %zu, need %zu)",
                     assembled_size, expected_size);
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+          buffer_release(assembled_buffer);
           mutex_unlock(&ws_data->recv_mutex);
           return SET_ERRNO(ERROR_NETWORK, "WebSocket final fragment but incomplete ACIP packet");
         }
@@ -1334,7 +1226,7 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
     websocket_recv_msg_t recv_msg;
     while (ringbuffer_read(ws_data->recv_queue, &recv_msg)) {
       if (recv_msg.data) {
-        buffer_pool_free(NULL, recv_msg.data, recv_msg.len);
+        buffer_release(recv_msg.data);
       }
     }
 
@@ -1344,11 +1236,11 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
 
     if (ws_data->send_queue) {
       // Drain send queue before destroying to free allocated message data
-      // Use buffer_pool_free to match buffer_pool_alloc used for send messages
+      // Use buffer_release to match buffer_alloc used for send messages
       websocket_recv_msg_t send_msg;
       while (ringbuffer_read(ws_data->send_queue, &send_msg)) {
         if (send_msg.data) {
-          buffer_pool_free(NULL, send_msg.data, LWS_PRE + send_msg.len);
+          buffer_release(send_msg.data);
         }
       }
       ringbuffer_destroy(ws_data->send_queue);
@@ -1356,15 +1248,9 @@ static void websocket_discard_buffers(websocket_transport_data_t *ws_data) {
     }
   }
 
-  // Free send buffer
-  if (ws_data->send_buffer) {
-    SAFE_FREE(ws_data->send_buffer);
-    ws_data->send_buffer = NULL;
-  }
-
   // Free partial buffer (leftover data from previous recv())
   if (ws_data->partial_buffer) {
-    buffer_pool_free(NULL, ws_data->partial_buffer, ws_data->partial_capacity);
+    buffer_release(ws_data->partial_buffer);
     ws_data->partial_buffer = NULL;
     ws_data->partial_size = 0;
     ws_data->partial_capacity = 0;
@@ -1425,6 +1311,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     ws_data->context = NULL;
   }
 
+  buffer_release(ws_data->inflight_buffer);
   websocket_discard_buffers(ws_data);
 
   // Destroy synchronization primitives
@@ -1433,13 +1320,6 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   cond_destroy(&ws_data->recv_cond);
   mutex_destroy(&ws_data->recv_mutex);
   mutex_destroy(&ws_data->send_mutex);
-  mutex_destroy(&ws_data->pending_free_mutex);
-
-  // Destroy pending-free queue
-  if (ws_data->pending_free_queue) {
-    ringbuffer_destroy(ws_data->pending_free_queue);
-    ws_data->pending_free_queue = NULL;
-  }
 
   // Deregister websocket implementation data
   NAMED_UNREGISTER(ws_data);
@@ -1458,7 +1338,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 // =============================================================================
 
 static const acip_transport_methods_t websocket_methods = {
-    .send = websocket_send,
+    .send = websocket_transport_send,
     .recv = websocket_recv,
     .close = websocket_close,
     .get_type = websocket_get_type,
@@ -1610,7 +1490,7 @@ static struct lws_context *websocket_create_client_context(void) {
  */
 static acip_transport_t *websocket_allocate_client_transport(const char *name) {
   // Allocate transport structure
-  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
     return NULL;
@@ -1694,21 +1574,6 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     return NULL;
   }
 
-  // Allocate initial send buffer
-  ws_data->send_buffer_capacity = LWS_PRE + 524288; // Match tx_packet_size (512KB)
-  ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
-  if (!ws_data->send_buffer) {
-    mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->send_queue);
-    ringbuffer_destroy(ws_data->recv_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer");
-    return NULL;
-  }
-
   transport->impl_data = ws_data;
   return transport;
 }
@@ -1750,7 +1615,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   ws_data->context = websocket_create_client_context();
 
   if (!ws_data->context) {
-    SAFE_FREE(ws_data->send_buffer);
     cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
@@ -1793,7 +1657,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   log_debug("lws_client_connect_via_info returned: %p", (void *)ws_data->wsi);
   if (!ws_data->wsi) {
     lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
     cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
@@ -1820,7 +1683,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     log_error("Failed to create WebSocket service thread");
     ws_data->service_running = false;
     lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
     cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
@@ -1892,25 +1754,11 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     return NULL;
   }
 
-  // Initialize pending-free queue for deferred buffer freeing
-  // permessage-deflate compression holds buffer references asynchronously,
-  // so we defer freeing to prevent use-after-free errors
-  ws_data->pending_free_queue = ringbuffer_create(sizeof(pending_free_item_t), 256);
-  if (!ws_data->pending_free_queue) {
-    ringbuffer_destroy(ws_data->recv_queue);
-    ringbuffer_destroy(ws_data->send_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_MEMORY, "Failed to create pending-free queue");
-    return NULL;
-  }
-
   // Initialize synchronization primitives with transport-aware names
-  char recv_name[64], send_name[64], state_name[64], pending_free_name[64];
+  char recv_name[64], send_name[64], state_name[64];
   snprintf(recv_name, sizeof(recv_name), "recv_%s", name);
   snprintf(send_name, sizeof(send_name), "send_%s", name);
   snprintf(state_name, sizeof(state_name), "state_%s", name);
-  snprintf(pending_free_name, sizeof(pending_free_name), "pending_free_%s", name);
 
   if (mutex_init(&ws_data->recv_mutex, recv_name) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
@@ -1966,38 +1814,6 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state condition variable");
     return NULL;
   }
-
-  if (mutex_init(&ws_data->pending_free_mutex, pending_free_name) != 0) {
-    cond_destroy(&ws_data->state_cond);
-    mutex_destroy(&ws_data->state_mutex);
-    mutex_destroy(&ws_data->send_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    ringbuffer_destroy(ws_data->send_queue);
-    ringbuffer_destroy(ws_data->pending_free_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_NETWORK, "Failed to initialize pending-free mutex");
-    return NULL;
-  }
-
-  // Allocate send buffer with LWS_PRE padding
-  size_t initial_capacity = 4096 + LWS_PRE;
-  ws_data->send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
-  if (!ws_data->send_buffer) {
-    mutex_destroy(&ws_data->state_mutex);
-    mutex_destroy(&ws_data->send_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    ringbuffer_destroy(ws_data->send_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer");
-    return NULL;
-  }
-  ws_data->send_buffer_capacity = initial_capacity;
 
   transport->impl_data = ws_data;
   return transport;

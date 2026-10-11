@@ -2,6 +2,7 @@
 #include <ascii-chat/common.h>
 #include <uv.h>
 #include <string.h>
+#include <ascii-chat/buffer.h>
 
 #define EVENT_COMMAND_LIMIT 1024
 #define EVENT_WRITE_LIMIT (16U * 1024U * 1024U)
@@ -63,7 +64,7 @@ typedef struct event_write {
   void *arg;
   size_t size;
   struct event_write *next;
-  char bytes[];
+  char *bytes;
 } event_write_t;
 
 static asciichat_error_t event_error(int status, const char *operation) {
@@ -103,6 +104,7 @@ void platform_event_stream_close(platform_event_stream_t *stream, asciichat_erro
     uv_mutex_unlock(&stream->mutex);
     if (pending->done)
       pending->done(pending->arg, ERROR_NETWORK);
+    buffer_release(pending->bytes);
     SAFE_FREE(pending);
     pending = next;
   }
@@ -428,6 +430,7 @@ static void write_complete(uv_write_t *request, int status) {
   uv_mutex_unlock(&stream->mutex);
   if (write->done)
     write->done(write->arg, status < 0 ? ERROR_NETWORK : ASCIICHAT_OK);
+  buffer_release(write->bytes);
   SAFE_FREE(write);
   if (status < 0)
     platform_event_stream_close(stream, ERROR_NETWORK);
@@ -484,8 +487,14 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, c
     uv_mutex_unlock(&stream->mutex);
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Asynchronous output queue full");
   }
-  event_write_t *write = SAFE_MALLOC(sizeof(*write) + size, event_write_t *);
+  event_write_t *write = SAFE_MALLOC(sizeof(*write), event_write_t *);
   *write = (event_write_t){.stream = stream, .done = done, .arg = arg, .size = size};
+  write->bytes = buffer_alloc(NULL, size);
+  if (!write->bytes) {
+    SAFE_FREE(write);
+    uv_mutex_unlock(&stream->mutex);
+    return SET_ERRNO(ERROR_MEMORY, "Async output exceeds process buffer budget");
+  }
   write->request.data = write;
   size_t offset = 0;
   for (size_t i = 0; i < count; ++i) {
