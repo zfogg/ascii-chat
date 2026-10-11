@@ -468,6 +468,54 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
  *
  * @ingroup platform
  */
+/** Borrowed slices remain valid until the synchronous send returns. */
+#define SOCKET_IOV_MAX 16
+#define SOCKET_ZEROCOPY_THRESHOLD (64 * 1024)
+#define SOCKET_SEND_BUFFER_MAX (32 * 1024 * 1024)
+typedef struct {
+  const void *data;
+  size_t len;
+} socket_buffer_t;
+
+/** One send attempt; would-block/interruption return OK with zero progress.
+ * Windows honors the socket blocking mode. No platform vector types escape here.
+ */
+asciichat_error_t socket_sendv(socket_t sock, const socket_buffer_t *buffers, size_t count, size_t *sent);
+/** Send all slices under one deadline. Caller serializes the whole packet.
+ * A failure after bytes are sent shuts down the stream to preserve framing.
+ */
+asciichat_error_t socket_sendv_all(socket_t sock, const socket_buffer_t *buffers, size_t count, uint64_t timeout_ns);
+
+/** Per-thread diagnostics; reset/snapshot around a workload without global locks. */
+typedef struct {
+  uint64_t send_calls;
+  uint64_t sent_bytes;
+  uint64_t zerocopy_calls;
+  uint64_t zerocopy_completions;
+  uint64_t zerocopy_copied;
+} socket_io_stats_t;
+socket_io_stats_t socket_io_stats_get(void);
+void socket_io_stats_reset(void);
+
+/** Owned send storage. Large Linux allocations use private mappings: unmapping
+ * after cancellation cannot recycle pages still pinned by the network stack.
+ * Other platforms and small allocations use the existing buffer pool.
+ */
+typedef struct {
+  void *data;
+  size_t capacity;
+  bool mapped;
+} socket_send_buffer_t;
+asciichat_error_t socket_send_buffer_alloc(size_t capacity, socket_send_buffer_t *buffer);
+void socket_send_buffer_free(socket_send_buffer_t *buffer);
+
+/** Synchronous Linux copy avoidance. Only one caller may use the socket's
+ * zerocopy error queue, serialized with all packet sends. Returns supported=false
+ * without sending anything when unavailable. Never resubmit a partially sent packet.
+ */
+asciichat_error_t socket_send_zerocopy(socket_t sock, const socket_send_buffer_t *buffer, size_t len,
+                                       uint64_t timeout_ns, bool *supported, bool *copied);
+
 ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags);
 
 /**

@@ -225,13 +225,13 @@ static mutex_t g_send_mutex = {0};
 crypto_handshake_context_t g_crypto_ctx = {0};
 
 /**
- * @brief Global H.265 encoder context for client video streaming
+ * @brief Global video encoder context for client video streaming
  *
- * Encodes captured RGB frames to H.265/HEVC format before transmission.
- * Initialized in client_main() and used by capture thread.
+ * Encodes captured RGB frames to HEVC or H.264 format before transmission.
+ * Created lazily and used by the capture thread.
  * Set to NULL during shutdown to prevent use-after-free.
  */
-h265_encoder_t *volatile g_h265_encoder = NULL;
+h265_encoder_t *volatile g_video_encoder = NULL;
 
 /**
  * @brief Flag indicating whether encryption is enabled for this connection
@@ -1245,47 +1245,37 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_t width, uint32_t height) {
-  if (!pixel_data) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
+asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint32_t width, uint32_t height,
+                                                    video_codec_t codec, bool *encoding_failed) {
+  if (!encoding_failed)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing video encoding status output");
+  *encoding_failed = false;
+  if (!pixel_data || width > UINT16_MAX || height > UINT16_MAX) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid video frame");
   }
-
-  // Get encoder - may be NULL if not initialized
-  h265_encoder_t *encoder = g_h265_encoder;
-  if (!encoder) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "H.265 encoder not initialized");
+  // The capture thread creates the selected encoder only when a frame is ready.
+  if (!g_video_encoder) {
+    g_video_encoder = video_encoder_create(codec, (uint16_t)width, (uint16_t)height);
+    if (!g_video_encoder) {
+      *encoding_failed = true;
+      return GET_ERRNO();
+    }
   }
-
-  // Allocate buffer and encode frame WITHOUT holding the send mutex.
-  // This avoids long critical section that can cause deadlocks with named registry operations.
-  log_info("[H265_SEND_FRAME_1] Allocating buffer and encoding frame (no mutex held)");
-  size_t output_buffer_size = 5 + (width * height * 2);
+  h265_encoder_t *encoder = g_video_encoder;
+  size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
-  if (!output_buffer) {
-    log_error("Failed to allocate output buffer for frame");
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
-  }
+  if (!output_buffer)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate video output buffer: %zu bytes", output_buffer_size);
 
-  // Encode frame
-  size_t encoded_size = output_buffer_size - 5;
-  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-                                                output_buffer + 5, &encoded_size);
-  log_info("[H265_SEND_FRAME_2] ✅ Frame encoded, encoded_size=%zu, result=%d", encoded_size, encode_result);
-
-  if (encode_result != ASCIICHAT_OK) {
-    log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
+  // h265_encode already writes the five-byte ACIP envelope for either codec.
+  size_t total_size = output_buffer_size;
+  asciichat_error_t encode_result =
+      h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &total_size);
+  if (encode_result != ASCIICHAT_OK || total_size == 0) {
+    *encoding_failed = encode_result != ASCIICHAT_OK;
     buffer_pool_free(NULL, output_buffer, output_buffer_size);
     return encode_result;
   }
-
-  // Prepare packet header: [flags:u8][width:u16][height:u16][h265_data...]
-  output_buffer[0] = 0; // flags: no flags set by default
-  output_buffer[1] = (width >> 8) & 0xFF;
-  output_buffer[2] = width & 0xFF;
-  output_buffer[3] = (height >> 8) & 0xFF;
-  output_buffer[4] = height & 0xFF;
-
-  size_t total_size = 5 + encoded_size;
 
   // NOW acquire the send mutex just for the actual network transmission
   log_info("[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
@@ -1301,10 +1291,11 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
-  // Send H.265 frame with socket lock held (short critical section)
+  // Send compressed frame with socket lock held (short critical section)
   log_info("[H265_SEND_FRAME_6] Sending packet via transport (%zu bytes)", total_size);
-  asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+  asciichat_error_t result = packet_send_via_transport(
+      transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265, output_buffer,
+      total_size, 0);
   log_info("[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes

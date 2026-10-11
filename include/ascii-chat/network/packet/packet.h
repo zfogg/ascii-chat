@@ -1527,3 +1527,6 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
                                           uint8_t format);
 
 /** @} */
+
+/** Shared size-adjusted packet I/O budget, in nanoseconds. */
+uint64_t packet_send_timeout_ns(size_t packet_size);

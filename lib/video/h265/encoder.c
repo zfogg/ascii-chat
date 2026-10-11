@@ -36,6 +36,7 @@ static int h265_thread_count(void) {
 
 typedef struct h265_encoder {
   AVCodecContext *codec_ctx;
+  const AVCodec *codec;
   AVFrame *frame;
   AVPacket *packet;
 
@@ -48,12 +49,21 @@ typedef struct h265_encoder {
   bool codec_opened;
   bool request_keyframe;
 
+  uint64_t frames_submitted;
   uint64_t total_frames;
   uint64_t keyframes;
   uint32_t avg_bitrate;
 } h265_encoder_t;
 
 h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_height) {
+  return video_encoder_create(VIDEO_CODEC_H265, initial_width, initial_height);
+}
+
+h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_width, uint16_t initial_height) {
+  if (codec_type != VIDEO_CODEC_H265 && codec_type != VIDEO_CODEC_H264) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Expected HEVC or H.264 codec");
+    return NULL;
+  }
   if (initial_width == 0 || initial_height == 0) {
     SET_ERRNO(ERROR_MEDIA_INIT, "Frame dimensions must be non-zero");
     return NULL;
@@ -65,31 +75,13 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     return NULL;
   }
 
-  // Find best available HEVC encoder (try by ID first, then by name for specific implementations)
-  const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_HEVC);
-
-  // If generic HEVC encoder not found, try specific implementations by name
+  const AVCodec *codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
   if (!codec) {
-    codec = avcodec_find_encoder_by_name("libx265");
-  }
-  if (!codec) {
-    codec = avcodec_find_encoder_by_name("hevc_vaapi");
-  }
-  if (!codec) {
-    codec = avcodec_find_encoder_by_name("hevc_videotoolbox");
-  }
-  if (!codec) {
-    codec = avcodec_find_encoder_by_name("hevc_nvenc");
-  }
-  if (!codec) {
-    codec = avcodec_find_encoder_by_name("hevc_qsv");
-  }
-
-  if (!codec) {
-    SET_ERRNO(ERROR_MEDIA_INIT, "HEVC encoder not found");
+    SET_ERRNO(ERROR_MEDIA_INIT, "%s encoder not found", codec_type == VIDEO_CODEC_H264 ? "H.264" : "HEVC");
     SAFE_FREE(enc);
     return NULL;
   }
+  enc->codec = codec;
 
   enc->codec_ctx = avcodec_alloc_context3(codec);
   if (!enc->codec_ctx) {
@@ -152,7 +144,7 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     return NULL;
   }
 
-  log_info("FFmpeg HEVC encoder created: %ux%u (codec: %s)", initial_width, initial_height, codec->name);
+  log_info("FFmpeg video encoder created: %ux%u (codec: %s)", initial_width, initial_height, codec->name);
 
   // Register encoder for debugging
   NAMED_REGISTER_H265_ENCODER(enc, "h265_encoder", NULL);
@@ -171,8 +163,7 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
     av_packet_free(&encoder->packet);
   }
   if (encoder->codec_ctx) {
-    // Capture x265 encoder cleanup output (final frame stats, etc.)
-    LOG_IO("hevc", { avcodec_free_context(&encoder->codec_ctx); });
+    LOG_IO("video encoder", { avcodec_free_context(&encoder->codec_ctx); });
   }
   if (encoder->yuv_buf) {
     SAFE_FREE(encoder->yuv_buf);
@@ -183,10 +174,10 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
 static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16_t width, uint16_t height) {
   // Free existing context if re-opening at a different resolution
   if (encoder->codec_ctx) {
-    avcodec_free_context(&encoder->codec_ctx);
+    LOG_IO("video encoder", { avcodec_free_context(&encoder->codec_ctx); });
   }
 
-  const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_HEVC);
+  const AVCodec *codec = encoder->codec;
   encoder->codec_ctx = avcodec_alloc_context3(codec);
   if (!encoder->codec_ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate codec context for %ux%u", width, height);
@@ -198,6 +189,8 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
   encoder->codec_ctx->time_base = (AVRational){1, 30};
   encoder->codec_ctx->framerate = (AVRational){30, 1};
   encoder->codec_ctx->thread_count = h265_thread_count();
+  encoder->codec_ctx->max_b_frames = 0;
+  encoder->codec_ctx->gop_size = 30;
 
   if (av_opt_set(encoder->codec_ctx->priv_data, "preset", "ultrafast", 0) < 0) {
     log_warn("Failed to set preset to ultrafast");
@@ -208,10 +201,10 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
 
   log_dev("[H265_OPEN] avcodec_open2 for %ux%u (threads=%d)", width, height, encoder->codec_ctx->thread_count);
   int codec_open_result = 0;
-  LOG_IO("hevc", { codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL); });
+  LOG_IO("video encoder", { codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL); });
 
   if (codec_open_result < 0) {
-    return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC encoder for %ux%u", width, height);
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open %s encoder for %ux%u", codec->name, width, height);
   }
 
   // Resize YUV buffer if needed
@@ -231,7 +224,7 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
   encoder->codec_opened = true;
   encoder->request_keyframe = true;
 
-  log_info("HEVC encoder opened for %ux%u", width, height);
+  log_info("Video encoder %s opened for %ux%u", codec->name, width, height);
   return ASCIICHAT_OK;
 }
 
@@ -293,12 +286,17 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder arguments");
   }
 
+  if (!width || !height || (width & 1) || (height & 1)) {
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Video encoding requires non-zero even dimensions, got %ux%u", width, height);
+  }
+
   if (*output_size < 5) {
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
   log_info("[H265_ENCODE_2] Reconfigure %ux%u -> %ux%u", encoder->current_width, encoder->current_height, width,
            height);
+  bool size_changed = width != encoder->current_width || height != encoder->current_height;
   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
   log_info("[H265_ENCODE_3] Reconfigure returned %d", result);
   if (result != ASCIICHAT_OK) {
@@ -319,6 +317,9 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   encoder->frame->width = width;
   encoder->frame->height = height;
   encoder->frame->format = AV_PIX_FMT_YUV420P;
+
+  encoder->frame->pts = (int64_t)encoder->frames_submitted++;
+  encoder->frame->pict_type = AV_PICTURE_TYPE_NONE;
 
   // Request keyframe if needed
   if (encoder->request_keyframe) {
@@ -353,12 +354,12 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   log_debug("H265_ENCODE: Got packet: size=%d", (int)encoder->packet->size);
 
   uint8_t flags = 0;
-  if (encoder->frame->pict_type == AV_PICTURE_TYPE_I) {
+  if (encoder->packet->flags & AV_PKT_FLAG_KEY) {
     flags |= H265_ENCODER_FLAG_KEYFRAME;
     encoder->keyframes++;
   }
 
-  if (width != encoder->current_width || height != encoder->current_height) {
+  if (size_changed) {
     flags |= H265_ENCODER_FLAG_SIZE_CHANGE;
   }
 
@@ -405,6 +406,11 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
+  if (!encoder->codec_opened) {
+    *output_size = 0;
+    return ASCIICHAT_OK;
+  }
+
   // Send NULL frame to signal end of stream (flushes encoder)
   log_debug("H265_FLUSH: Sending NULL frame to encoder to flush buffered data");
   uint64_t stats_codec_start = time_get_ns();
@@ -447,7 +453,7 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
 
   // Write header: [flags][width:u16][height:u16]
   uint8_t flags = 0;
-  if (encoder->frame->pict_type == AV_PICTURE_TYPE_I) {
+  if (encoder->packet->flags & AV_PKT_FLAG_KEY) {
     flags |= H265_ENCODER_FLAG_KEYFRAME;
     encoder->keyframes++;
   }

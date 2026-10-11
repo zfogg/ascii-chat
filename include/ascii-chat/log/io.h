@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,13 +31,13 @@ extern "C" {
 typedef struct {
   int saved_stdout_fd;  ///< Saved stdout file descriptor
   int saved_stderr_fd;  ///< Saved stderr file descriptor
-  int pipe_fd;          ///< Read end of pipe for captured output
+  FILE *output;         ///< Temporary capture file, deleted on close
 } log_io_t;
 
 /**
  * @brief Start capturing stdout and stderr
  *
- * Redirects both stdout and stderr to a pipe so their output can be
+ * Redirects both stdout and stderr to a temporary file so their output can be
  * captured and logged. Call log_io_stop() to end capture and
  * log the accumulated output.
  *
@@ -50,7 +52,7 @@ log_io_t log_io_start(void);
  * @brief Stop capturing and log the accumulated output
  *
  * Restores stdout and stderr to their original state, reads all captured
- * output from the pipe, and logs it at INFO level with the given prefix.
+ * output from the temporary file, and logs it at DEBUG level with the given prefix.
  *
  * @param capture Capture handle returned by log_io_start()
  * @param prefix Prefix to use in log messages (e.g., "ffmpeg", "portaudio")
