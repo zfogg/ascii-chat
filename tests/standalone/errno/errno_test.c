@@ -105,7 +105,7 @@ static void network_recovery_contract(void) {
   CHECK(!network_error_is_local_rejection(ERROR_CRYPTO));
   acip_transport_methods_t methods = {.send = failing_send};
   acip_transport_t transport = {.methods = &methods};
-  CHECK(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 30 * 1024 * 1024, 0) == ERROR_INVALID_PARAM);
+  CHECK(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 30 * 1024 * 1024, 0) == ERROR_NETWORK_SIZE);
   CHECK(fake_send_calls == 0);
   CHECK(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 0, 0) == ERROR_NETWORK);
   CHECK(fake_send_calls == 1);

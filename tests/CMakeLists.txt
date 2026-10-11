@@ -249,6 +249,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.c ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.c ${CMAKE_CURRENT_SOURCE_DIR}/performance/*.c)
     # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
     )
@@ -915,6 +916,86 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
+# The lifecycle probe takes scenario names, not Criterion command-line options.
+if(BUILD_TESTS)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared)
+    else()
+        target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    endif()
+    target_include_directories(test-client-like-lifecycle PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated
+        ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-client-like-lifecycle)
+    set_target_properties(test-client-like-lifecycle PROPERTIES
+        LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    # Cover both the documented tests target and the Criterion run targets.
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} test-client-like-lifecycle)
+        endif()
+    endforeach()
+    add_test(NAME client-like-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.py
+            $<TARGET_FILE:test-client-like-lifecycle>)
+    set_tests_properties(client-like-lifecycle PROPERTIES
+        LABELS "integration" TIMEOUT 120)
+endif()
+
+# Exercises the production discovery state machine without external services.
+if(BUILD_TESTS)
+    add_executable(test-discovery-session-process standalone/discovery/session_process_test.c)
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared)
+    else()
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    endif()
+    target_include_directories(test-discovery-session-process PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated
+        ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-discovery-session-process PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-discovery-session-process)
+    set_target_properties(test-discovery-session-process PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} test-discovery-session-process)
+        endif()
+    endforeach()
+    add_test(NAME discovery-session-process COMMAND test-discovery-session-process)
+    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration" TIMEOUT 60)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} ascii-chat)
+        endif()
+    endforeach()
+    add_test(NAME server-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME server-client-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_client_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(server-client-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+endif()
+
 # Production transport tests run natively on Windows, macOS, and Linux without Criterion.
 if(TARGET ascii-chat-static)
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
@@ -938,4 +1019,12 @@ if(TARGET ascii-chat-static)
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
     endif()
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME manpage-generation
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/manpage_generation.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(manpage-generation PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()
