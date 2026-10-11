@@ -1,3 +1,4 @@
+#include <ascii-chat/buffer.h>
 /**
  * @file mixer.c
  * @ingroup audio
@@ -41,12 +42,8 @@ static void mixer_distribute_samples(mixer_t *mixer) {
         if (listener == source || !mixer->source_ids[listener])
           continue;
         mixer_listener_buffer_t *queue = mixer->listener_buffers[listener][source];
-        if (!queue) {
-          queue = SAFE_CALLOC(1, sizeof(*queue), mixer_listener_buffer_t *);
-          if (!queue)
-            continue;
-          mixer->listener_buffers[listener][source] = queue;
-        }
+        if (!queue)
+          continue;
         if (queue->count + count > MIXER_LISTENER_SAMPLES) {
           size_t discard = queue->count + count - MIXER_LISTENER_SAMPLES;
           queue->read = (queue->read + discard) % MIXER_LISTENER_SAMPLES;
@@ -349,7 +346,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer);
     return NULL;
   }
-  mixer->mix_buffer = SAFE_MALLOC(mix_buffer_size, float *);
+  mixer->mix_buffer = buffer_alloc(NULL, mix_buffer_size);
   if (!mixer->mix_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
     SAFE_FREE(mixer->source_buffers);
@@ -365,7 +362,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer->mix_buffer);
+    buffer_release(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }
@@ -380,7 +377,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer->mix_buffer);
+    buffer_release(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }
@@ -434,7 +431,7 @@ void mixer_destroy(mixer_t *mixer) {
   SAFE_FREE(mixer->source_buffers);
   SAFE_FREE(mixer->source_ids);
   SAFE_FREE(mixer->source_active);
-  SAFE_FREE(mixer->mix_buffer);
+  buffer_release(mixer->mix_buffer);
   SAFE_FREE(mixer);
   log_debug("Audio mixer destroyed");
 }
@@ -478,6 +475,12 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
     mixer->source_buffers[slot] = NULL;
     rwlock_wrunlock(&mixer->source_lock);
     return -1;
+  }
+  for (int other = 0; other < mixer->max_sources; other++) {
+    if (other == slot || !mixer->source_ids[other])
+      continue;
+    mixer->listener_buffers[slot][other] = SAFE_CALLOC(1, sizeof(mixer_listener_buffer_t), void *);
+    mixer->listener_buffers[other][slot] = SAFE_CALLOC(1, sizeof(mixer_listener_buffer_t), void *);
   }
   mixer->source_active[slot] = true;
   mixer->num_sources++;

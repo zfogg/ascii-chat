@@ -49,7 +49,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/parsing.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/terminal.h>
 
@@ -216,7 +216,7 @@ static void *discovery_video_receive_thread(void *user_data) {
         result = discovery_audio_play_packet(ctx, type, payload, length);
       }
       if (allocated)
-        buffer_pool_free(NULL, allocated, 0);
+        buffer_release(allocated);
       if (result != ASCIICHAT_OK) {
         SAFE_FREE(latest_text);
         ctx->result = result;

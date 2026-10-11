@@ -72,7 +72,7 @@
  * **Stage 3: Response Generation** (via packet queues):
  * @code{.c}
  * // Queue response packet for delivery
- * packet_queue_enqueue(client->video_packet_queue, response_packet, response_len);
+ * packet_queue_push_copy(client->video_packet_queue, PACKET_TYPE_ASCII_FRAME, response_packet, response_len, 0);
  *
  * // Send thread will deliver packet asynchronously
  * // (no blocking I/O in handler functions)

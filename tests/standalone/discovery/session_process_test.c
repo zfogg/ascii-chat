@@ -1,7 +1,7 @@
 /** Regression checks for discovery processing against the production library. */
 #include "discovery/session.h"
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/endian.h>
@@ -51,7 +51,7 @@ static asciichat_error_t discovery_session_receive(acip_transport_t *transport, 
   receives++;
   if (recv_result != ASCIICHAT_OK)
     return recv_result;
-  packet_header_t *header = buffer_pool_alloc(NULL, sizeof(*header));
+  packet_header_t *header = buffer_alloc(NULL, sizeof(*header));
   CHECK(header);
   *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(incoming_type)};
   *buffer = *allocation = header;
@@ -82,7 +82,7 @@ static void *discovery_session_server(void *data) {
   CHECK(receive_packet(socket, &type, &payload, &len) == ASCIICHAT_OK);
   CHECK(type == PACKET_TYPE_PROTOCOL_VERSION && len == sizeof(protocol_version_packet_t));
   CHECK(((protocol_version_packet_t *)payload)->supports_encryption == 1);
-  buffer_pool_free(NULL, payload, len);
+  buffer_release(payload);
   payload = NULL;
   protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(1),
                                        .supports_encryption = server->scenario != 3};
@@ -92,7 +92,7 @@ static void *discovery_session_server(void *data) {
   if (server->scenario == 0) {
     CHECK(receive_packet(socket, &type, &payload, &len) == ASCIICHAT_OK);
     CHECK(type == PACKET_TYPE_CRYPTO_CAPABILITIES && len == sizeof(crypto_capabilities_packet_t));
-    buffer_pool_free(NULL, payload, len);
+    buffer_release(payload);
     payload = NULL;
   }
   socket_close(socket);

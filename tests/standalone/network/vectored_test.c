@@ -8,7 +8,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
@@ -63,7 +63,7 @@ static void *receive_packets(void *opaque) {
     CHECK(NET_TO_HOST_U16(header.type) == PACKET_TYPE_IMAGE_FRAME);
     CHECK(NET_TO_HOST_U32(header.length) == ctx->len);
     CHECK(memcmp((uint8_t *)data + sizeof(header), ctx->expected, ctx->len) == 0);
-    buffer_pool_free(NULL, allocation, len);
+    buffer_release(allocation);
   }
   return NULL;
 }
@@ -81,7 +81,7 @@ static asciichat_error_t assembled_send(socket_t sock, crypto_context_t *crypto,
     return socket_sendv_all(sock, &slice, 1, BUDGET);
   }
   size_t capacity = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_pool_alloc(NULL, capacity);
+  uint8_t *ciphertext = buffer_alloc(NULL, capacity);
   CHECK(ciphertext);
   size_t encrypted_len = 0;
   CHECK(crypto_encrypt(crypto, data, len, ciphertext, capacity, &encrypted_len) == CRYPTO_OK);
@@ -91,14 +91,14 @@ static asciichat_error_t assembled_send(socket_t sock, crypto_context_t *crypto,
                            .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, encrypted_len)),
                            .client_id = 0};
   size_t wire_size = sizeof(outer) + encrypted_len;
-  uint8_t *wire = buffer_pool_alloc(NULL, wire_size);
+  uint8_t *wire = buffer_alloc(NULL, wire_size);
   CHECK(wire);
   memcpy(wire, &outer, sizeof(outer));
   memcpy(wire + sizeof(outer), ciphertext, encrypted_len);
   socket_buffer_t slice = {wire, wire_size};
   asciichat_error_t result = socket_sendv_all(sock, &slice, 1, BUDGET);
-  buffer_pool_free(NULL, wire, wire_size);
-  buffer_pool_free(NULL, ciphertext, capacity);
+  buffer_release(wire);
+  buffer_release(ciphertext);
   return result;
 }
 
@@ -113,14 +113,14 @@ static void roundtrip(size_t len, bool encrypted, size_t iterations, bool baseli
   acip_transport_t *receiver = acip_tcp_transport_create("vector-recv", sockets[1], encrypted ? &b : NULL);
   CHECK(sender && receiver);
   CHECK(acip_tcp_transport_set_zerocopy(sender, true) == ASCIICHAT_OK);
-  uint8_t *payload = buffer_pool_alloc(NULL, len ? len : 1);
+  uint8_t *payload = buffer_alloc(NULL, len ? len : 1);
   CHECK(payload);
   for (size_t i = 0; i < len; ++i)
     payload[i] = (uint8_t)(i % 251);
   receive_context_t ctx = {receiver, payload, len, iterations};
   asciichat_thread_t thread;
   CHECK(asciichat_thread_create(&thread, "vector-receiver", receive_packets, &ctx) == 0);
-  uint64_t *durations = buffer_pool_alloc(NULL, iterations * sizeof(uint64_t));
+  uint64_t *durations = buffer_alloc(NULL, iterations * sizeof(uint64_t));
   CHECK(durations);
   socket_io_stats_reset();
   uint64_t start = time_get_ns();
@@ -128,7 +128,7 @@ static void roundtrip(size_t len, bool encrypted, size_t iterations, bool baseli
     uint64_t before = time_get_ns();
     if (baseline) {
       size_t size = sizeof(packet_header_t) + len;
-      uint8_t *assembled = buffer_pool_alloc(NULL, size);
+      uint8_t *assembled = buffer_alloc(NULL, size);
       CHECK(assembled);
       packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                                 .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
@@ -138,7 +138,7 @@ static void roundtrip(size_t len, bool encrypted, size_t iterations, bool baseli
       memcpy(assembled, &header, sizeof(header));
       memcpy(assembled + sizeof(header), payload, len);
       CHECK(assembled_send(sockets[0], encrypted ? &a : NULL, assembled, size) == ASCIICHAT_OK);
-      buffer_pool_free(NULL, assembled, size);
+      buffer_release(assembled);
     } else {
       size_t split = len / 3;
       socket_buffer_t slices[] = {{payload, split}, {NULL, 0}, {payload + split, len - split}};
@@ -158,8 +158,8 @@ static void roundtrip(size_t len, bool encrypted, size_t iterations, bool baseli
            (unsigned long long)stats.send_calls, (unsigned long long)stats.sent_bytes,
            (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions,
            (unsigned long long)stats.zerocopy_copied);
-  buffer_pool_free(NULL, durations, iterations * sizeof(uint64_t));
-  buffer_pool_free(NULL, payload, len);
+  buffer_release(durations);
+  buffer_release(payload);
   acip_transport_destroy(sender);
   acip_transport_destroy(receiver);
   crypto_destroy(&a);
@@ -194,7 +194,7 @@ static void deadline_and_validation(void) {
   CHECK(socket_setsockopt(sockets[0], SOL_SOCKET, SO_SNDBUF, &small, sizeof(small)) == 0);
   CHECK(socket_setsockopt(sockets[1], SOL_SOCKET, SO_RCVBUF, &small, sizeof(small)) == 0);
   size_t len = 8 * 1024 * 1024;
-  uint8_t *data = buffer_pool_alloc(NULL, len);
+  uint8_t *data = buffer_alloc(NULL, len);
   CHECK(data);
   memset(data, 0x5a, len);
   socket_buffer_t slices[] = {{data, 17}, {data + 17, len - 17}};
@@ -205,7 +205,7 @@ static void deadline_and_validation(void) {
   CHECK(blocked != ASCIICHAT_OK);
   CHECK(time_get_ns() - before < 2 * NS_PER_SEC_INT);
   CHECK(socket_sendv_all(sockets[0], slices, 2, NS_PER_MS_INT) != ASCIICHAT_OK);
-  buffer_pool_free(NULL, data, len);
+  buffer_release(data);
   socket_close(sockets[0]);
   socket_close(sockets[1]);
 }
@@ -252,7 +252,7 @@ static void full_duplex(void) {
   acip_transport_t *transports[2] = {acip_tcp_transport_create("duplex-a", sockets[0], &crypto[0]),
                                      acip_tcp_transport_create("duplex-b", sockets[1], &crypto[1])};
   size_t len = 128 * 1024;
-  uint8_t *payload = buffer_pool_alloc(NULL, len);
+  uint8_t *payload = buffer_alloc(NULL, len);
   CHECK(payload && transports[0] && transports[1]);
   CHECK(acip_tcp_transport_set_zerocopy(transports[0], true) == ASCIICHAT_OK);
   CHECK(acip_tcp_transport_set_zerocopy(transports[1], true) == ASCIICHAT_OK);
@@ -270,7 +270,7 @@ static void full_duplex(void) {
     crypto_destroy(&crypto[i]);
     socket_close(sockets[i]);
   }
-  buffer_pool_free(NULL, payload, len);
+  buffer_release(payload);
 }
 
 static size_t capture_calls;
@@ -421,7 +421,9 @@ static void media_wire_compatibility(void) {
   CHECK(acip_send_audio_batch(&transport, samples, 4, 1) == ASCIICHAT_OK);
   CHECK(acip_send_audio_opus_batch(&transport, "abcdef", 6, sizes, 2, 48000, 20) == ASCIICHAT_OK);
   CHECK(acip_send_image_frame(&transport, "abcdefghijkl", 2, 2, 0) == ASCIICHAT_OK);
-  CHECK(acip_send_ascii_frame(&transport, text, sizeof(text), 64, 64, "test") == ASCIICHAT_OK);
+  acip_frame_workspace_t workspace = {0};
+  CHECK(acip_send_ascii_frame(&transport, &workspace, text, sizeof(text), 64, 64, "test") == ASCIICHAT_OK);
+  acip_frame_workspace_destroy(&workspace);
   CHECK(media_messages == 4);
 }
 
@@ -436,7 +438,7 @@ static void peer_exchange(socket_t sock, bool server) {
   acip_transport_t *transport = acip_tcp_transport_create("cross-os-peer", sock, &crypto);
   CHECK(transport);
   CHECK(acip_tcp_transport_set_zerocopy(transport, true) == ASCIICHAT_OK);
-  uint8_t *payload = buffer_pool_alloc(NULL, 256 * 1024);
+  uint8_t *payload = buffer_alloc(NULL, 256 * 1024);
   CHECK(payload);
   for (size_t i = 0; i < 256 * 1024; ++i)
     payload[i] = (uint8_t)(i % 251);
@@ -454,7 +456,7 @@ static void peer_exchange(socket_t sock, bool server) {
   log_warn("Cross-OS encrypted exchange passed; zerocopy=%llu completions=%llu copied=%llu",
            (unsigned long long)stats.zerocopy_calls, (unsigned long long)stats.zerocopy_completions,
            (unsigned long long)stats.zerocopy_copied);
-  buffer_pool_free(NULL, payload, 256 * 1024);
+  buffer_release(payload);
   acip_transport_destroy(transport);
   crypto_destroy(&crypto);
   socket_close(sock);

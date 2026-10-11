@@ -17,7 +17,7 @@
  * - Platform initialization (Windows/POSIX compatibility)
  * - Logging and configuration setup
  * - Network socket creation and binding (IPv4 and IPv6)
- * - Global resource initialization (audio mixer, buffer pools, crypto)
+ * - Global resource initialization (audio mixer, owned buffers, crypto)
  * - Background thread management (statistics logging)
  * - Main connection accept loop with client lifecycle management
  * - Signal handling for graceful shutdown (SIGINT, SIGTERM)
@@ -235,7 +235,7 @@ HASH_ITER(hh, g_client_manager.clients_by_id, ...);
  * socket_close(listenfd);
  * socket_close(listenfd6);
  * simd_caches_destroy_all();
- * data_buffer_pool_cleanup_global();
+ * data_buffer_system_cleanup();
  * log_destroy();
  * @endcode
  *

@@ -10,7 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdlib.h>
@@ -46,103 +46,30 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   vfb->front_buffer = &vfb->frames[0];
   vfb->back_buffer = &vfb->frames[1];
 
-  // DEBUG: Log buffer initialization
-  log_info("VFB_INIT: vfb=%p, vfb->frames=%p, &frames[0]=%p, &frames[1]=%p, setting back_buffer=%p", (void *)vfb,
-           (void *)vfb->frames, (void *)&vfb->frames[0], (void *)&vfb->frames[1], (void *)vfb->back_buffer);
-
-  // Pre-allocate frame data buffers (2MB each for HD video)
   const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
-  buffer_pool_t *pool = buffer_pool_get_global();
-
-  log_info("VFB_ALLOC_START: client_id=%s, frame_size=%zu (2MB=%zu), pool=%p", client_id, frame_size,
-           (size_t)(2 * 1024 * 1024), (void *)pool);
-
-  // Initialize frames - size starts at 0 until actual data is written!
-  vfb->frames[0].size = 0; // Start with 0 - will be set when data is written
-  vfb->frames[1].size = 0; // Start with 0 - will be set when data is written
-  vfb->frames[0].data = NULL;
-  vfb->frames[1].data = NULL;
-
-  // Initialize allocated_buffer_size to 0 - will be set AFTER successful allocation
-  vfb->allocated_buffer_size = 0;
-
-  // Attempt pool allocation
-  if (pool) {
-    vfb->frames[0].data = buffer_pool_alloc(pool, frame_size);
-    vfb->frames[1].data = buffer_pool_alloc(pool, frame_size);
-    log_info("VFB_POOL_ALLOC: frame[0].data=%p, frame[1].data=%p (from pool)", (void *)vfb->frames[0].data,
-             (void *)vfb->frames[1].data);
-  } else {
-    log_warn("VFB_NO_POOL: pool is NULL, will use malloc fallback");
-  }
-
-  // Fallback to aligned malloc if pool allocation failed or returned undersized buffer
-  // Note: buffer_pool_alloc may return undersized buffers if pool is exhausted and falls back to SAFE_MALLOC
+  vfb->frames[0].data = buffer_alloc(NULL, frame_size);
+  vfb->frames[1].data = buffer_alloc(NULL, frame_size);
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
-    log_info("VFB_MALLOC_FALLBACK: frame[0]=%s, frame[1]=%s", vfb->frames[0].data ? "OK" : "allocating",
-             vfb->frames[1].data ? "OK" : "allocating");
-    // 64-byte cache-line alignment improves performance for large video frames
-    // CRITICAL: Always use SAFE_MALLOC_ALIGNED for fallback to guarantee minimum size and alignment
-    if (!vfb->frames[0].data) {
-      vfb->frames[0].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
-      if (vfb->frames[0].data) {
-        log_info("VFB_MALLOC_FRAME0: allocated %zu bytes with 64-byte alignment", frame_size);
-      }
-    }
-    if (!vfb->frames[1].data) {
-      vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
-      if (vfb->frames[1].data) {
-        log_info("VFB_MALLOC_FRAME1: allocated %zu bytes with 64-byte alignment", frame_size);
-      }
-    }
-    log_info("VFB_MALLOC_RESULT: frame[0].data=%p, frame[1].data=%p (allocated with malloc)",
-             (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
-  }
-
-  // CRITICAL: Only set allocated_buffer_size after BOTH buffers are successfully allocated
-  // This prevents claiming 2MB buffers when actual allocation failed or returned smaller buffers
-  if (!vfb->frames[0].data || !vfb->frames[1].data) {
-    log_error("VFB_ALLOC_FAILED: frame[0].data=%p, frame[1].data=%p (cannot create frame buffer)",
-              (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffers");
-    video_frame_buffer_destroy(vfb);
+    buffer_release(vfb->frames[0].data);
+    buffer_release(vfb->frames[1].data);
+    SAFE_FREE(vfb->client_id);
+    SAFE_FREE(vfb);
+    SET_ERRNO(ERROR_MEMORY, "Video frame buffers exceed memory budget");
     return NULL;
   }
-
-  // CRITICAL: Verify we actually got 2MB buffers, not undersized fallbacks
-  // The buffer pool may return undersized buffers if exhausted, but we REQUIRE full-sized allocations
-  // Do this by checking if allocations came from fallback or if pool returned a pointer we got
-  // Since we can't check actual size from buffer_pool_alloc(), we enforce that both allocations succeeded
-  // and use SAFE_MALLOC_ALIGNED as fallback which guarantees correct size
-
-  // After our allocation logic above:
-  // - Pool allocations go through buffer_pool_alloc (may be undersized)
-  // - Fallback allocations use SAFE_MALLOC_ALIGNED (guaranteed 2MB)
-  // We verify BOTH succeeded with the fallback already ensuring size
-
-  vfb->allocated_buffer_size = frame_size; // Set to requested size
-
-  log_info("VFB_ALLOC_FINAL: allocated_buffer_size=%zu (requested=%zu), frame[0].data=%p, frame[1].data=%p",
-           vfb->allocated_buffer_size, frame_size, (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
-
-  log_info("VFB_ALLOC_SUCCESS: client_id=%s, allocated_buffer_size=%zu, frames[0].data=%p, frames[1].data=%p",
-           client_id, vfb->allocated_buffer_size, (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
-
-  // When buffers are allocated from the pool, they may contain leftover data from previous clients
-  // This ensures frames with size=0 are truly empty, preventing ghost frames during reconnection
-  if (vfb->frames[0].data) {
-    memset(vfb->frames[0].data, 0, frame_size);
-  }
-  if (vfb->frames[1].data) {
-    memset(vfb->frames[1].data, 0, frame_size);
-  }
+  vfb->allocated_buffer_size = frame_size;
+  memset(vfb->frames[0].data, 0, frame_size);
+  memset(vfb->frames[1].data, 0, frame_size);
 
   // Initialize synchronization
   log_info("VFB_MUTEX_INIT_START: About to init mutex for client_id=%s", client_id);
   if (mutex_init(&vfb->swap_mutex, "video_frame_swap") != 0) {
     log_error("VFB_MUTEX_INIT_FAILED: mutex_init returned error");
     SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize mutex for video frame buffer");
-    video_frame_buffer_destroy(vfb);
+    buffer_release(vfb->frames[0].data);
+    buffer_release(vfb->frames[1].data);
+    SAFE_FREE(vfb->client_id);
+    SAFE_FREE(vfb);
     return NULL;
   }
   log_info("VFB_MUTEX_INIT_DONE: mutex initialized successfully");
@@ -187,22 +114,8 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
 
   vfb->active = false;
 
-  // Free frame data
-  buffer_pool_t *pool = buffer_pool_get_global();
-  if (vfb->frames[0].data) {
-    if (pool) {
-      buffer_pool_free(pool, vfb->frames[0].data, vfb->allocated_buffer_size);
-    } else {
-      SAFE_FREE(vfb->frames[0].data);
-    }
-  }
-  if (vfb->frames[1].data) {
-    if (pool) {
-      buffer_pool_free(pool, vfb->frames[1].data, vfb->allocated_buffer_size);
-    } else {
-      SAFE_FREE(vfb->frames[1].data);
-    }
-  }
+  buffer_release(vfb->frames[0].data);
+  buffer_release(vfb->frames[1].data);
 
   mutex_destroy(&vfb->swap_mutex);
 

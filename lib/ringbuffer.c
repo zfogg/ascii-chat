@@ -7,7 +7,7 @@
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
 #include <ascii-chat/atomic.h>
@@ -238,19 +238,19 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     if (ringbuffer_read(fb->rb, &old_frame)) {
       if (IS_FRAME_VALID(&old_frame)) {
         MARK_FRAME_FREED(&old_frame);
-        // Use buffer_pool_free since data was allocated with buffer_pool_alloc
-        buffer_pool_free(NULL, old_frame.data, old_frame.size);
+        // Use buffer_release since data was allocated with buffer_alloc
+        buffer_release(old_frame.data);
       } else if (!IS_MAGIC_VALID(old_frame.magic, FRAME_MAGIC)) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
       }
     }
   }
 
-  // Allocate a copy of the frame data using buffer pool for better performance
-  char *frame_copy = (char *)buffer_pool_alloc(NULL, frame_size + 1);
+  // Allocate a copy of the frame data using buffer domain for better performance
+  char *frame_copy = (char *)buffer_alloc(NULL, frame_size + 1);
   if (!frame_copy) {
     mutex_unlock(&fb->mutex);
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer domain for frame", frame_size + 1);
     return false;
   }
 
@@ -264,7 +264,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
 
   if (!result) {
     // If we still couldn't write to ringbuffer, return the buffer to pool
-    buffer_pool_free(NULL, frame_copy, frame_size + 1);
+    buffer_release(frame_copy);
     SET_ERRNO(ERROR_INVALID_STATE, "Failed to write frame to ringbuffer even after dropping oldest");
   }
 
@@ -307,7 +307,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
 
     if (frame->size > 10 * 1024 * 1024) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Frame size too large: %zu", frame->size);
-      SAFE_FREE(frame->data);
+      buffer_release(frame->data);
       frame->data = NULL;
       frame->size = 0;
       mutex_unlock(&fb->mutex);
@@ -333,7 +333,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &multi_frame)) {
       if (IS_FRAME_VALID((frame_t *)&multi_frame)) {
         MARK_FRAME_FREED((frame_t *)&multi_frame); // Mark as freed to detect use-after-free
-        buffer_pool_free(NULL, multi_frame.data, multi_frame.size);
+        buffer_release(multi_frame.data);
       } else if (!IS_MAGIC_VALID(multi_frame.magic, FRAME_MAGIC) && multi_frame.magic != 0) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x during clear",
                   multi_frame.magic);
@@ -345,7 +345,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &frame)) {
       if (IS_FRAME_VALID(&frame)) {
         MARK_FRAME_FREED(&frame); // Mark as freed to detect use-after-free
-        buffer_pool_free(NULL, frame.data, frame.size);
+        buffer_release(frame.data);
       } else if (!IS_MAGIC_VALID(frame.magic, FRAME_MAGIC) && frame.magic != 0) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
       }
@@ -381,10 +381,10 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
     return false;
   }
 
-  // Allocate memory for frame data using buffer pool for better performance
-  char *data_copy = (char *)buffer_pool_alloc(NULL, frame_size);
+  // Allocate memory for frame data using buffer domain for better performance
+  char *data_copy = (char *)buffer_alloc(NULL, frame_size);
   if (!data_copy) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for multi-source frame", frame_size);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer domain for multi-source frame", frame_size);
     return false;
   }
 
@@ -414,7 +414,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   bool success = ringbuffer_write(fb->rb, &multi_frame);
   if (!success) {
     // Buffer full, return the buffer to pool
-    buffer_pool_free(NULL, data_copy, frame_size);
+    buffer_release(data_copy);
     log_debug("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
   }
 
@@ -490,9 +490,9 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
 
     // IMPORTANT: We need to make a copy of the data since we're not consuming the frame
     // The original data pointer will remain valid in the ring buffer
-    // Caller is responsible for freeing this copy with buffer_pool_free()
+    // Caller is responsible for freeing this copy with buffer_release()
     char *data_copy;
-    data_copy = (char *)buffer_pool_alloc(NULL, frame->size);
+    data_copy = (char *)buffer_alloc(NULL, frame->size);
     if (!data_copy) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for frame data copy in peek");
       mutex_unlock(&fb->mutex);

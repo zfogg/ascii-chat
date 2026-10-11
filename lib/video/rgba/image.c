@@ -26,7 +26,7 @@
 
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/buffer_pool.h> // For buffer pool allocation functions
+#include <ascii-chat/buffer.h> // For buffer domain allocation functions
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/math.h>
@@ -36,170 +36,27 @@
 // ansi_fast functions are declared in ansi_fast.h (already included)
 
 image_t *image_new(size_t width, size_t height) {
-  image_t *p;
-
-  p = SAFE_MALLOC(sizeof(image_t), image_t *);
-
-  // Validate dimensions are non-zero and within bounds
-  if (image_validate_dimensions(width, height) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions invalid or too large: %zu x %zu", width, height);
-    SAFE_FREE(p);
+  if (image_validate_dimensions(width, height) != ASCIICHAT_OK)
     return NULL;
-  }
-
-  // Calculate pixel count with overflow checking
-  size_t total_pixels;
-  if (checked_size_mul(width, height, &total_pixels) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions would cause overflow: %zu x %zu", width, height);
-    SAFE_FREE(p);
-    return NULL;
-  }
-
-  // Calculate total pixel buffer size with overflow checking
   size_t pixels_size;
-  if (checked_size_mul(total_pixels, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel buffer size would cause overflow");
-    SAFE_FREE(p);
+  if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK ||
+      pixels_size > IMAGE_MAX_PIXELS_SIZE)
     return NULL;
-  }
-
-  if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %zu x %zu (%zu bytes)", width, height,
-              pixels_size);
-    SAFE_FREE(p);
+  const size_t offset = (sizeof(image_t) + BUFFER_DEFAULT_ALIGNMENT - 1) & ~(size_t)(BUFFER_DEFAULT_ALIGNMENT - 1);
+  size_t total;
+  if (checked_size_add(offset, pixels_size, &total) != ASCIICHAT_OK)
     return NULL;
-  }
-
-  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_pixel_t *);
-  if (!p->pixels) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate image pixels: %zu bytes", pixels_size);
-    SAFE_FREE(p);
+  image_t *image = buffer_alloc(NULL, total);
+  if (!image)
     return NULL;
-  }
-
-  p->w = (int)width;
-  p->h = (int)height;
-  p->alloc_method = IMAGE_ALLOC_SIMD; // Track allocation method for correct deallocation
-  return p;
-}
-
-void image_destroy(image_t *p) {
-  if (!p) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy: p is NULL");
-    return;
-  }
-
-  // Check allocation method and deallocate appropriately
-  if (p->alloc_method == IMAGE_ALLOC_POOL) {
-    // Pool-allocated images: free entire contiguous buffer (image + pixels)
-    // Validate dimensions before calculating size (guard against corruption)
-    if (p->w <= 0 || p->h <= 0) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy: invalid dimensions %dx%d (pool-allocated)", p->w, p->h);
-      return;
-    }
-
-    // Calculate original allocation size for proper buffer pool free
-    size_t w = (size_t)p->w;
-    size_t h = (size_t)p->h;
-    size_t pixels_size;
-    if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: dimensions would overflow: %dx%d", p->w, p->h);
-      return;
-    }
-    size_t total_size;
-    if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: total size would overflow: %dx%d", p->w, p->h);
-      return;
-    }
-
-    // Free the entire contiguous buffer back to pool
-    buffer_pool_free(NULL, p, total_size);
-  } else {
-    // SIMD-allocated images: free pixels and structure separately
-    // SAFE_MALLOC_SIMD allocates with aligned allocation (posix_memalign on macOS, aligned_alloc on Linux)
-    // These can be freed with standard free() / SAFE_FREE()
-    SAFE_FREE(p->pixels);
-    SAFE_FREE(p);
-  }
-}
-
-// Buffer pool allocation for video pipeline (consistent memory management)
-image_t *image_new_from_pool(size_t width, size_t height) {
-  if (width == 0 || height == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: invalid dimensions %zux%zu", width, height);
-    return NULL;
-  }
-
-  if (width > IMAGE_MAX_WIDTH || height > IMAGE_MAX_HEIGHT) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height,
-              IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
-    return NULL;
-  }
-
-  // Calculate total allocation size (structure + pixel data in single buffer)
-  // Check for integer overflow before multiplication
-  size_t pixels_size;
-  if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions would overflow: %zux%zu", width, height);
-    return NULL;
-  }
-
-  size_t total_size;
-  if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: total size would overflow");
-    return NULL;
-  }
-
-  // Allocate from buffer pool as single contiguous block
-  void *buffer = buffer_pool_alloc(NULL, total_size);
-  if (!buffer) {
-    SET_ERRNO(ERROR_MEMORY, "image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size,
-              width, height);
-    return NULL;
-  }
-
-  // Set up image structure at start of buffer
-  image_t *image = (image_t *)buffer;
   image->w = (int)width;
   image->h = (int)height;
-  // Pixel data immediately follows the image structure
-  image->pixels = (rgb_pixel_t *)((uint8_t *)buffer + sizeof(image_t));
-  image->alloc_method = IMAGE_ALLOC_POOL; // Track allocation method for correct deallocation
-
+  image->pixels = (rgb_pixel_t *)((uint8_t *)image + offset);
   return image;
 }
 
-void image_destroy_to_pool(image_t *image) {
-  if (!image) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy_to_pool: image is NULL");
-    return;
-  }
-
-  // Validate dimensions before calculating size (guard against corruption)
-  if (image->w <= 0 || image->h <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy_to_pool: invalid dimensions %dx%d", image->w, image->h);
-    return;
-  }
-
-  // Calculate original allocation size for proper buffer pool free
-  // Check for overflow (defensive - should match original allocation)
-  size_t w = (size_t)image->w;
-  size_t h = (size_t)image->h;
-  size_t pixels_size;
-  if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: dimensions would overflow: %dx%d", image->w, image->h);
-    return;
-  }
-  size_t total_size;
-  if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: total size would overflow: %dx%d", image->w, image->h);
-    return;
-  }
-
-  // Free the entire contiguous buffer back to pool
-  buffer_pool_free(NULL, image, total_size);
-  // Note: Don't set image = NULL here since caller owns the pointer
+void image_destroy(image_t *image) {
+  buffer_release(image);
 }
 
 void image_clear(image_t *p) {

@@ -14,7 +14,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
@@ -74,7 +74,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   log_debug("[ACIP_RECV] HEADER_CHECK: packet_len=%zu, header_size=%zu", packet_len, sizeof(packet_header_t));
   if (packet_len < sizeof(packet_header_t)) {
     log_error("[ACIP_RECV] ❌ HEADER_TOO_SMALL: %zu < %zu", packet_len, sizeof(packet_header_t));
-    buffer_pool_free(NULL, allocated_buffer, packet_len);
+    buffer_release(allocated_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
   }
 
@@ -98,7 +98,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   if (envelope.len != packet_len - sizeof(packet_header_t)) {
     log_error("[ACIP_RECV] ❌ LENGTH_MISMATCH: header=%u, actual=%zu", envelope.len,
               packet_len - sizeof(packet_header_t));
-    buffer_pool_free(NULL, allocated_buffer, packet_len);
+    buffer_release(allocated_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
                      packet_len - sizeof(packet_header_t));
   }
@@ -109,7 +109,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     asciichat_error_t decrypt_result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
     if (decrypt_result != ASCIICHAT_OK) {
       log_error("[ACIP_RECV] ❌ DECRYPT_FAILED: %d", decrypt_result);
-      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+      buffer_release(envelope.allocated_buffer);
       return decrypt_result;
     }
   }
@@ -130,7 +130,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer,
             envelope.allocated_size);
   if (envelope.allocated_buffer) {
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    buffer_release(envelope.allocated_buffer);
   }
 
   log_debug("[ACIP_RECV] ✅ RECV_COMPLETE: type=%u, result=%d", envelope.type,
@@ -196,7 +196,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   // Use 2x multiplier to account for worst-case frame content
   size_t output_buffer_size = 5 + (width * height * 2);
   log_dev("[ACIP_SEND_H265_1] About to allocate output buffer (%zu bytes)", output_buffer_size);
-  uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+  uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
   log_dev("[ACIP_SEND_H265_2] ✅ Allocated output buffer");
   if (!output_buffer) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
@@ -212,7 +212,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   if (encode_result != ASCIICHAT_OK) {
     log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
-    buffer_pool_free(NULL, output_buffer, output_buffer_size);
+    buffer_release(output_buffer);
     return encode_result;
   }
 
@@ -233,7 +233,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
-  buffer_pool_free(NULL, output_buffer, output_buffer_size);
+  buffer_release(output_buffer);
   log_dev("[ACIP_SEND_H265_7] ✅ Freed output buffer, returning from acip_send_image_frame_h265");
   return result;
 }

@@ -1,3 +1,4 @@
+#include <ascii-chat/buffer.h>
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
@@ -184,7 +185,7 @@ Theory((size_t data_size), compression, compression_roundtrip_property) {
                "Compression roundtrip must preserve data for size %zu", data_size);
 
   SAFE_FREE(original_data);
-  SAFE_FREE(compressed_data);
+  buffer_release(compressed_data);
   SAFE_FREE(decompressed_data);
 }
 
@@ -218,7 +219,7 @@ Theory((size_t data_size), compression, compressible_data_property) {
       }
       SAFE_FREE(decompressed_data);
     }
-    SAFE_FREE(compressed_data);
+    buffer_release(compressed_data);
   }
 
   SAFE_FREE(original_data);

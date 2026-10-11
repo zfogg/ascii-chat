@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/buffer/budget.h>
 
 /**
  * @file platform/socket.h
@@ -499,12 +500,13 @@ void socket_io_stats_reset(void);
 
 /** Owned send storage. Large Linux allocations use private mappings: unmapping
  * after cancellation cannot recycle pages still pinned by the network stack.
- * Other platforms and small allocations use the existing buffer pool.
+ * Other platforms and small allocations use owned buffers. All storage is budgeted.
  */
 typedef struct {
   void *data;
   size_t capacity;
   bool mapped;
+  buffer_budget_t budget;
 } socket_send_buffer_t;
 asciichat_error_t socket_send_buffer_alloc(size_t capacity, socket_send_buffer_t *buffer);
 void socket_send_buffer_free(socket_send_buffer_t *buffer);

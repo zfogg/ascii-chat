@@ -15,7 +15,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
-#include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
+#include <ascii-chat/network/acip/transport.h> // For acip_transport_t
 #include <ascii-chat/network/connection_handle.h>
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>
@@ -101,7 +101,7 @@ typedef struct client_info {
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;
-  bool wants_stretch;           // Client wants stretched output (ignore aspect ratio)
+  bool wants_stretch;        // Client wants stretched output (ignore aspect ratio)
   atomic_t is_sending_video; // Thread-safe video stream state
   atomic_t is_sending_audio; // Thread-safe audio stream state
 
@@ -142,8 +142,8 @@ typedef struct client_info {
   atomic_t protocol_disconnect_requested; // Set when protocol violation requires disconnect
   time_t connected_at;
   uint64_t frames_sent;
-  uint64_t frames_received;          // Track incoming frames from this client
-  uint32_t frames_received_logged;   // Track for periodic logging (thread-safe via client_state_mutex)
+  uint64_t frames_received;        // Track incoming frames from this client
+  uint32_t frames_received_logged; // Track for periodic logging (thread-safe via client_state_mutex)
   uint64_t video_receive_rate_window_ns;
   uint32_t video_receive_rate_window_frames;
   uint32_t last_received_frame_hash; // Hash of last frame received from this client
@@ -161,7 +161,7 @@ typedef struct client_info {
   // Async dispatch: queue for received packets (async processing)
   packet_queue_t *received_packet_queue; // Queue of complete received packets waiting for dispatch
   asciichat_thread_t dispatch_thread;    // Async dispatch thread processes queued packets
-  atomic_t dispatch_thread_running;   // Flag to signal dispatch thread to exit
+  atomic_t dispatch_thread_running;      // Flag to signal dispatch thread to exit
   cond_t dispatch_queue_cond;            // Condition variable to wake dispatch thread when packets arrive
 
   // Dedicated send thread for this client
@@ -174,7 +174,7 @@ typedef struct client_info {
   // Frame statistics for debugging
   atomic_t frames_sent_count; // Total ASCII frames sent to this client
 
-  // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer pool contention)
+  // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer domain contention)
   void *send_buffer;
   size_t send_buffer_size;
   void *crypto_plaintext_buffer; // For encryption plaintext (frame + header)
@@ -196,7 +196,7 @@ typedef struct client_info {
   crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
   bool transport_encrypted; ///< TLS or DTLS already encrypts this client's transport.
-  bool encrypt_data; // Whether payload encryption is enabled (false = auth-only mode)
+  bool encrypt_data;        // Whether payload encryption is enabled (false = auth-only mode)
 
   // Pending packet storage for --no-encrypt mode
   // When client uses --no-encrypt, the first packet (e.g., CLIENT_JOIN) arrives

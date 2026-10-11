@@ -90,7 +90,7 @@ cat >> "$OUTPUT_FILE" << 'EOF'
 - **Total time**: Sum of all operations
 
 **Critical Operations**:
-- `buffer_pool_alloc()`: Allocates frame buffer (~10-50 µs typical)
+- `buffer_alloc()`: Allocates frame buffer (~10-50 µs typical)
 - `mutex_lock()`: Acquires queue protection (~1-5 µs typical)
 - `ringbuffer_write()`: Enqueues frame (~2-10 µs typical)
 - `memcpy()`: Copies frame data (proportional to frame size)

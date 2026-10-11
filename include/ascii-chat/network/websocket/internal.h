@@ -9,6 +9,7 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -28,18 +29,11 @@ typedef struct {
   uint8_t final; ///< 1 if final frame of message (or complete message)
 } websocket_msg_t;
 
+/** Queue one packet, preserving its control budget through encryption and ownership transfer. */
+asciichat_error_t websocket_transport_send(acip_transport_t *transport, const void *data, size_t len);
+
 // Alias for backward compatibility
 typedef websocket_msg_t websocket_recv_msg_t;
-
-/**
- * @brief Pending buffer free item for deferred cleanup
- * Used to defer buffer freeing when permessage-deflate compression
- * may still hold references asynchronously
- */
-typedef struct {
-  uint8_t *ptr; ///< Pointer to buffer to free
-  size_t size;  ///< Size of buffer
-} pending_free_item_t;
 
 /**
  * @brief WebSocket transport implementation data
@@ -57,8 +51,6 @@ typedef struct {
   bool connection_failed;      ///< Connection attempt failed (for client-side detection)
   mutex_t state_mutex;         ///< Protect state changes
   cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
-  uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
-  size_t send_buffer_capacity; ///< Current send buffer capacity
 
   // Service thread for client-side transports
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
@@ -74,17 +66,15 @@ typedef struct {
   int fragment_count;           ///< Fragment count for current reassembly
   bool reassembling;            ///< True if currently assembling a message
 
-  // Deferred buffer freeing for compression layer compatibility
-  // permessage-deflate holds buffer references asynchronously after lws_write()
-  // We defer freeing to prevent use-after-free in the compression layer
-  ringbuffer_t *pending_free_queue; ///< Queue of buffers pending delayed free
-  mutex_t pending_free_mutex;       ///< Protect pending_free_queue operations
+  uint8_t *inflight_buffer; ///< Owned until the next writable callback or teardown.
 
   // Graceful shutdown flag for thread-safe destruction
   // When destroying the transport, this flag is set to true to signal all threads
   // to exit send/recv operations before mutexes are destroyed.
-  atomic_t is_destroying;        ///< True when destruction has started
+  atomic_t is_destroying; ///< True when destruction has started
 
 } websocket_transport_data_t;
+
+void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data_t *ws_data);
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H

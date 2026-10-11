@@ -96,7 +96,7 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/util/time.h>   // For time macros
 #include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/client.h>
@@ -298,7 +298,7 @@ static void shutdown_client() {
 
   // Cleanup core systems
   // WORKAROUND: Skip cleanup during shutdown to avoid hanging
-  // buffer_pool_cleanup_global();
+  // buffer_system_cleanup();
 
   // Disable keepawake mode (re-allow OS to sleep)
   platform_disable_keepawake();
@@ -317,7 +317,7 @@ static void shutdown_client() {
  * @return 0 on success, non-zero error code on failure
  */
 static int initialize_client_systems(void) {
-  // All shared subsystem initialization (timer, logging, platform, buffer pool)
+  // All shared subsystem initialization (timer, logging, platform, buffer domain)
   // is now done by asciichat_shared_init() in src/main.c BEFORE options_init()
 
   // Initialize client worker thread pool (needed for network protocol threads)
@@ -899,7 +899,7 @@ int client_main(void) {
   log_debug("[CLIENT_MAIN] shutdown_client() returned");
   fflush(stderr);
 
-  // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
+  // Cleanup remaining shared subsystems (buffer domain, platform, etc.)
   log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
   asciichat_shared_destroy();
 

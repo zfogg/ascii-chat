@@ -202,7 +202,7 @@ EXAMPLES:
     $0 unit_ascii                         # Run single test binary without test_ prefix
     $0 bin/test_unit_ascii                # Run single test binary by relative path
     $0 unit options                       # Run test_unit_options by type and name
-    $0 unit options audio buffer_pool      # Run multiple unit tests
+    $0 unit options audio packet_queue      # Run multiple unit tests
     $0 integration crypto_network          # Run test_integration_crypto_network
     $0 test_unit_ascii -f "basic"         # Run tests matching "*basic*" (wildcards added automatically)
     $0 test_unit_ascii -f "*basic*"       # Same as above (asterisks stripped if provided)

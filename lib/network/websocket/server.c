@@ -20,7 +20,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
@@ -296,131 +296,13 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
 }
 
 static void websocket_send_queued_messages(struct lws *wsi, websocket_connection_data_t *conn_data) {
-  START_TIMER("server_writeable");
-  uint64_t writeable_callback_start_ns = time_get_ns();
   atomic_fetch_add_u64(&g_writeable_callback_count, 1);
-  log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
-            (unsigned long long)writeable_callback_start_ns);
-
-  // Validate preconditions
-  if (!conn_data) {
-    log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
+  if (!conn_data || conn_data->cleaning_up || !conn_data->transport)
     return;
-  }
-
-  if (conn_data->cleaning_up) {
-    log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
-    return;
-  }
-
-  acip_transport_t *transport_snapshot = conn_data->transport;
-  if (!transport_snapshot) {
-    log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
-    return;
-  }
-
-  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
-  if (!ws_data || !ws_data->send_queue) {
-    log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No ws_data or send_queue");
-    return;
-  }
-
-  // Dequeue and send messages until pipe is choked or queue is empty
-  // This follows the libwebsockets reference pattern (protocol_lws_mirror.c)
-  websocket_recv_msg_t msg = {0};
-
-  do {
-    // Dequeue one message
-    mutex_lock(&ws_data->send_mutex);
-    if (ringbuffer_is_empty(ws_data->send_queue)) {
-      mutex_unlock(&ws_data->send_mutex);
-      break; // No more messages
-    }
-    if (!ringbuffer_read(ws_data->send_queue, &msg)) {
-      mutex_unlock(&ws_data->send_mutex);
-      break; // Failed to read
-    }
-    mutex_unlock(&ws_data->send_mutex);
-
-    if (!msg.data || msg.len == 0) {
-      log_error("SERVER_WRITEABLE: Dequeued invalid message (data=%p, len=%zu)", (void *)msg.data, msg.len);
-      if (msg.data) {
-        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
-      }
-      continue;
-    }
-
-    // Let libwebsockets handle ALL fragmentation and FIN bit management internally
-    // This avoids manual fragmentation bugs with FIN bit handling
-    // lws_write() with LWS_WRITE_BINARY automatically fragments based on MTU
-    // and properly manages continuation frames and FIN bits
-
-    log_debug("  SERVER sending complete message: %zu bytes", msg.len);
-
-    START_TIMER("lws_write");
-    int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
-    STOP_TIMER_AND_LOG(dev, 0, "lws_write", "[LWS_WRITE]");
-
-    if (written < 0) {
-      log_error("Server WebSocket write error: %d", written);
-      // Connection error
-      buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
-      break;
-    }
-
-    size_t total_written = (size_t)written;
-
-    if (total_written < msg.len) {
-      // Partial send - re-queue the unsent portion for the next callback
-      log_debug("Server WebSocket partial message: sent %zu/%zu bytes (re-queueing %zu bytes for next callback)",
-                total_written, msg.len, msg.len - total_written);
-
-      // Create new message for the unsent data
-      websocket_recv_msg_t unsent_msg;
-      unsent_msg.data = msg.data; // Keep the same buffer allocation
-      unsent_msg.len = msg.len - total_written;
-      unsent_msg.first = 0;         // No longer first fragment
-      unsent_msg.final = msg.final; // Preserve final flag
-
-      // Re-queue unsent portion
-      mutex_lock(&ws_data->send_mutex);
-      bool requeue_success = ringbuffer_write(ws_data->send_queue, &unsent_msg);
-      if (!requeue_success) {
-        mutex_unlock(&ws_data->send_mutex);
-        log_error("Failed to re-queue unsent data (%zu bytes)", unsent_msg.len);
-        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
-        break;
-      }
-      mutex_unlock(&ws_data->send_mutex);
-
-      // Request immediate callback to continue sending
-      lws_callback_on_writable(wsi);
-      break; // Stop processing more messages, let next callback retry
-    }
-
-    log_debug(">>> lws_write() sent %zu/%zu bytes (fragmented), wsi=%p", total_written, msg.len, (void *)wsi);
-    // Only free buffer when entire message was sent successfully
-    buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
-
-    // Continue sending while pipe is not choked and we have data
-    // This matches lws_mirror.c line 396: } while (!lws_send_pipe_choked(wsi));
-  } while (!lws_send_pipe_choked(wsi));
-
-  // If messages still queued and pipe not choked, request callback for next batch
-  mutex_lock(&ws_data->send_mutex);
-  bool has_more = !ringbuffer_is_empty(ws_data->send_queue);
-  mutex_unlock(&ws_data->send_mutex);
-
-  if (has_more && !lws_send_pipe_choked(wsi)) {
-    log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: More messages queued, requesting callback");
-    lws_callback_on_writable(wsi);
-  }
-
-  // Record timing for this callback
-  uint64_t writeable_callback_end_ns = time_get_ns();
-  websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns,
-                                   writeable_callback_end_ns);
-  STOP_TIMER_AND_LOG(dev, 0, "server_writeable", "[SERVER_WRITEABLE] callback completed");
+  uint64_t started = time_get_ns();
+  websocket_transport_data_t *ws_data = conn_data->transport->impl_data;
+  websocket_transport_write_pending(wsi, ws_data);
+  websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, started, time_get_ns());
 }
 
 static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_connection_data_t *conn_data, void *in,
@@ -509,10 +391,9 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   }
 
   websocket_recv_msg_t msg;
-  msg.data = buffer_pool_alloc(NULL, len);
+  msg.data = buffer_alloc(NULL, len);
   if (!msg.data) {
-    log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_MEMORY, "Cannot admit WebSocket fragment (%zu bytes)", len);
   }
 
   memcpy(msg.data, in, len);
@@ -525,7 +406,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   if (!ws_data->recv_queue) {
     log_warn("recv_queue was cleared during lock wait, dropping fragment");
     mutex_unlock(&ws_data->recv_mutex);
-    buffer_pool_free(NULL, msg.data, msg.len);
+    buffer_release(msg.data);
     return ASCIICHAT_OK;
   }
 
@@ -539,12 +420,13 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
 
   bool success = ringbuffer_write(ws_data->recv_queue, &msg);
   if (!success) {
-    // Queue is full - drop fragment (flow control would deadlock the dispatch thread)
-    log_warn("[WS_FLOW] Receive queue FULL - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first, is_final);
-    buffer_pool_free(NULL, msg.data, msg.len);
+    // Reject the connection rather than losing part of an ordered packet.
+    log_warn("[WS_FLOW] Receive queue FULL - closing connection (len=%zu, first=%d, final=%d)", len, is_first,
+             is_final);
+    buffer_release(msg.data);
 
     mutex_unlock(&ws_data->recv_mutex);
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_BUFFER, "WebSocket receive queue exhausted");
   }
 
   // Signal waiting recv() call that a fragment is available

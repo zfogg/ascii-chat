@@ -15,7 +15,7 @@
  * ==============
  * - RGB image data structures (packed and SIMD-aligned)
  * - Image allocation and memory management
- * - Buffer pool integration for video pipeline efficiency
+ * - buffer domain integration for video pipeline efficiency
  * - Image-to-ASCII conversion with multiple color modes
  * - Color quantization and palette generation
  * - Image resizing (nearest-neighbor and bilinear interpolation)
@@ -28,7 +28,7 @@
  * - Standard RGB24 format (packed, 3 bytes per pixel)
  * - SIMD-aligned RGB format (4-byte aligned for NEON/AVX optimization)
  * - Maximum 4K resolution (3840x2160)
- * - Memory-efficient buffer pool allocation
+ * - Memory-efficient buffer domain allocation
  *
  * COLOR MODES:
  * ============
@@ -40,7 +40,7 @@
  * - Dithering: Floyd-Steinberg dithering for color accuracy
  *
  * @note All image allocation functions must be matched with corresponding
- *       destroy functions (image_destroy() or image_destroy_to_pool()).
+ *       destroy functions (image_destroy() or image_destroy()).
  * @note ASCII conversion functions return allocated strings that must be
  *       freed by the caller.
  * @note Image structures are compatible with webcam capture (image_t).
@@ -107,20 +107,6 @@ typedef struct {
 } ALIGNED_ATTR(16) rgb_pixel_simd_t;
 
 /**
- * @brief Pixel allocation method tracking
- *
- * Tracks which allocation method was used for image pixels to ensure
- * correct deallocation. Must match the allocation method used when
- * creating the image.
- *
- * @ingroup video
- */
-typedef enum {
-  IMAGE_ALLOC_SIMD = 0, ///< Pixels allocated with SAFE_MALLOC_SIMD()
-  IMAGE_ALLOC_POOL = 1  ///< Pixels allocated with buffer_pool_alloc()
-} image_alloc_method_t;
-
-/**
  * @brief Image structure
  *
  * Complete image structure containing dimensions and pixel data.
@@ -128,23 +114,21 @@ typedef enum {
  * order. Compatible with webcam capture and image processing pipeline.
  *
  * MEMORY LAYOUT:
- * - pixels array is allocated separately from image structure (except for pool alloc)
+ * - structure and pixels share one allocation, with pixels aligned to 64 bytes
  * - pixels array size: width * height * sizeof(rgb_pixel_t)
  * - Pixel access: pixels[row * width + col]
  * - Row-major order (first row, then second row, etc.)
  *
- * @note Pixel array must be allocated (by image_new() or image_new_from_pool()).
- * @note Image structure and pixels array can be freed separately if needed.
+ * @note Pixel array must be allocated (by image_new()).
+ * @note Only image_destroy() releases an owned image; pixels are a borrowed view.
  * @note Compatible with webcam capture functions (webcam_read_context()).
- * @note alloc_method tracks allocation source for correct deallocation.
  *
  * @ingroup video
  */
 typedef struct {
-  int w;                ///< Image width in pixels (must be > 0)
-  int h;                ///< Image height in pixels (must be > 0)
-  rgb_pixel_t *pixels;  ///< Pixel data array (width * height RGB pixels, row-major order)
-  uint8_t alloc_method; ///< Allocation method (image_alloc_method_t) for correct deallocation
+  int w;               ///< Image width in pixels (must be > 0)
+  int h;               ///< Image height in pixels (must be > 0)
+  rgb_pixel_t *pixels; ///< Pixel data array (width * height RGB pixels, row-major order)
 } image_t;
 
 /* ============================================================================
@@ -233,56 +217,12 @@ image_t *image_new(size_t width, size_t height);
  * the pixels array.
  *
  * @note Safe to call with NULL pointer (no-op).
- * @note Must NOT be used for images allocated with image_new_from_pool().
- * @note Use image_destroy_to_pool() for pool-allocated images.
+ * @note Must NOT be used for images allocated with image_new().
+ * @note Use image_destroy() for pool-allocated images.
  *
  * @ingroup video
  */
 void image_destroy(image_t *p);
-
-/**
- * @brief Create a new image from buffer pool
- * @param width Image width in pixels (must be > 0 and <= IMAGE_MAX_WIDTH)
- * @param height Image height in pixels (must be > 0 and <= IMAGE_MAX_HEIGHT)
- * @return Allocated image structure from pool, or NULL on error
- *
- * Allocates a new image structure and pixel data from the buffer pool
- * for efficient memory management in video pipeline. Buffer pool
- * reduces allocation overhead and improves performance for high-frequency
- * operations (video frame capture/processing).
- *
- * @note Caller must free with image_destroy_to_pool() when done.
- * @note Returns NULL on error (invalid dimensions, pool exhaustion).
- * @note Buffer pool allocation is faster than standard malloc().
- *
- * @par Example
- * @code
- * image_t *img = image_new_from_pool(1920, 1080);
- * if (img) {
- *     // Process video frame...
- *     image_destroy_to_pool(img);
- * }
- * @endcode
- *
- * @ingroup video
- */
-image_t *image_new_from_pool(size_t width, size_t height);
-
-/**
- * @brief Destroy an image allocated from buffer pool
- * @param image Image to destroy (can be NULL, no-op if NULL)
- *
- * Returns an image structure and its pixel data to the buffer pool
- * for reuse. This is faster than standard free() because buffers
- * are reused instead of being deallocated.
- *
- * @note Safe to call with NULL pointer (no-op).
- * @note Must NOT be used for images allocated with image_new().
- * @note Use image_destroy() for standard-allocated images.
- *
- * @ingroup video
- */
-void image_destroy_to_pool(image_t *image);
 
 /**
  * @brief Clear image (set all pixels to black)

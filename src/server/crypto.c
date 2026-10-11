@@ -285,7 +285,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_info("Client %s disconnected during crypto handshake (connection error)", client->client_id);
     if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     }
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
@@ -313,7 +313,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_release(payload);
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
     return -1;
@@ -324,7 +324,7 @@ int server_crypto_handshake(client_info_t *client) {
   atomic_store_bool(&client->supports_recoverable_errors,
                     (NET_TO_HOST_U16(client_version.feature_flags) & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %s", client->client_id);
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %s", client->client_id);
 
   // Convert from network byte order
@@ -381,7 +381,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_info("Client %s disconnected during crypto capabilities exchange", client->client_id);
     if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     }
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
@@ -394,7 +394,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
     }
     log_info("Client %s disconnected due to protocol mismatch in crypto capabilities", client->client_id);
     client->crypto_initialized = false;
@@ -407,7 +407,7 @@ int server_crypto_handshake(client_info_t *client) {
               "Invalid crypto capabilities packet size: %zu (expected %zu) - we should disconnect this client",
               payload_len, sizeof(crypto_capabilities_packet_t));
     if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+      buffer_release(payload);
       payload = NULL;
     }
     client->crypto_initialized = false;
@@ -429,7 +429,7 @@ int server_crypto_handshake(client_info_t *client) {
   memcpy(&client_caps, payload, sizeof(crypto_capabilities_packet_t));
 
   // Free the buffer after use
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_release(payload);
   payload = NULL; // Clear reference to prevent use-after-free
 
   // Convert from network byte order
@@ -523,7 +523,7 @@ int server_crypto_handshake(client_info_t *client) {
     if (result != ASCIICHAT_OK) {
       log_info("Client %s disconnected during handshake initialization", client->client_id);
       if (hello_payload) {
-        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        buffer_release(hello_payload);
       }
       client->crypto_initialized = false;
       STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
@@ -534,7 +534,7 @@ int server_crypto_handshake(client_info_t *client) {
       // Client sent expected server key - select matching key
       if (hello_payload_len != ED25519_PUBLIC_KEY_SIZE) {
         log_error("Invalid CRYPTO_CLIENT_HELLO size: %zu (expected %d)", hello_payload_len, ED25519_PUBLIC_KEY_SIZE);
-        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        buffer_release(hello_payload);
         client->crypto_initialized = false;
         STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
         return -1;
@@ -566,20 +566,20 @@ int server_crypto_handshake(client_info_t *client) {
       if (!key_found) {
         // Client requested a key we don't have - reject connection
         log_error("Client %s requested unknown server key %s - rejecting connection", client->client_id, hex_expected);
-        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        buffer_release(hello_payload);
         client->crypto_initialized = false;
         STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
         return -1;
       }
 
-      buffer_pool_free(NULL, hello_payload, hello_payload_len);
+      buffer_release(hello_payload);
     } else {
       // Client didn't send CLIENT_HELLO
       // This is ONLY acceptable for single-key servers (backward compatibility)
       if (g_num_server_identity_keys > 1) {
         log_error("Client %u must send CRYPTO_CLIENT_HELLO when server has multiple keys (got packet type %u)",
                   client->client_id, hello_packet_type);
-        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        buffer_release(hello_payload);
         client->crypto_initialized = false;
         STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
         return -1;
@@ -631,7 +631,7 @@ int server_crypto_handshake(client_info_t *client) {
     }
     result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, transport, step2_type, step2_payload,
                                                     step2_len);
-    buffer_pool_free(NULL, step2_payload, step2_len);
+    buffer_release(step2_payload);
   }
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", client->client_id,
@@ -668,7 +668,7 @@ int server_crypto_handshake(client_info_t *client) {
     }
     result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, transport, step3_type, step3_payload,
                                               step3_len);
-    buffer_pool_free(NULL, step3_payload, step3_len);
+    buffer_release(step3_payload);
   }
   if (result != ASCIICHAT_OK) {
     if (result == ERROR_NETWORK || result == ERROR_NETWORK_PROTOCOL || result == ERROR_CRYPTO_AUTH ||

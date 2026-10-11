@@ -372,7 +372,7 @@ ascii-chat is built on a modern, reusable C library called **libasciichat** that
 - **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization. File media support via ffmpeg.
 - **Cryptography**: End-to-end encryption with libsodium (X25519 key exchange, XSalsa20-Poly1305 AEAD, Ed25519 signatures) and SSH key authentication with agent support.
 - **Debugging & Profiling**: Built-in memory leak detection with source file/line tracking, lock contention analysis, AddressSanitizer integration, and comprehensive logging infrastructure.
-- **Memory Management**: High-performance buffer pooling, lock-free ring buffers, and thread-safe packet queues designed for real-time video/audio applications.
+- **Memory Management**: Bounded aligned buffers with explicit ownership, reusable worker storage, and packet queues with byte limits and explicit overflow policies.
 
 **Install libasciichat:**
 
@@ -535,7 +535,7 @@ ctest --test-dir build --label-regex "^integration$" --output-on-failure
 ctest --test-dir build --label-regex "^performance$" --output-on-failure
 
 # Run specific tests by name pattern
-ctest --test-dir build -R "buffer_pool" --output-on-failure
+ctest --test-dir build -R "buffer-ownership" --output-on-failure
 
 # List available tests
 ctest --test-dir build -N

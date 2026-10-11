@@ -102,7 +102,7 @@
  * @endcode
  *
  * **Server Entry Point** (`src/server/main.c`):
- * - Initializes server subsystems (crypto, audio mixer, buffer pools)
+ * - Initializes server subsystems (crypto, audio mixer, owned buffers)
  * - Binds to listening sockets (IPv4 and IPv6)
  * - Accepts client connections in main loop
  * - Coordinates per-client threading (receive, send, render threads)

@@ -18,7 +18,7 @@
  *
  * @copybrief module_data_structures
  *
- * - @subpage topic_buffer_pool
+ * - @subpage topic_buffer
  * - @subpage topic_ringbuffer
  * - @subpage topic_packet_queue
  * - @subpage uthash library

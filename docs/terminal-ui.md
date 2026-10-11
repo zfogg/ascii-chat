@@ -147,16 +147,12 @@ python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
 ```
 
-For the debug ASan/UBSan build, compile the native prompt fixture against the
-same shared library (replace `build` below if using a different build directory):
+Build the native prompt fixture with the same compiler, library and sanitizer
+settings as the application:
 
 ```sh
-clang -g -fsanitize=address,undefined -shared-libasan \
-  -Iinclude -Ideps -Isrc/common -Ibuild/generated \
-  tests/integration/ui_native_probe.c -Lbuild/lib -lasciichat -lm \
-  -Wl,-rpath,"$PWD/build/lib" \
-  -Wl,-rpath,"$(clang -print-resource-dir)/lib/linux" -o /tmp/ui-native-probe
-python tests/integration/tmux_prompts.py --probe /tmp/ui-native-probe \
+cmake --build build --target ui-native-probe
+python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
   --artifacts /tmp/render-evidence
 ```
 
@@ -205,7 +201,7 @@ The additional deterministic fixture holds `LOG_IO` active for five seconds and
 requires both the small-terminal warning and restored frame before capture ends:
 
 ```sh
-python tests/integration/tmux_capture.py --probe /tmp/ui-native-probe \
+python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
   --artifacts /tmp/render-evidence
 python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence --count 40 --color-mode 16

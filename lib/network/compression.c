@@ -5,6 +5,7 @@
  */
 
 #include <zstd.h>
+#include <ascii-chat/buffer.h>
 #include <string.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/common.h>
@@ -34,7 +35,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   }
 
   unsigned char *compressed_data = NULL;
-  compressed_data = SAFE_MALLOC(compressed_size, unsigned char *);
+  compressed_data = buffer_alloc(NULL, compressed_size);
 
   if (!compressed_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate compressed data buffer");
@@ -44,7 +45,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, compression_level);
 
   if (ZSTD_isError(ret)) {
-    SAFE_FREE(compressed_data);
+    buffer_release(compressed_data);
     return SET_ERRNO(ERROR_GENERAL, "zstd compression failed: %s", ZSTD_getErrorName(ret));
   }
 
@@ -77,4 +78,34 @@ bool should_compress(size_t original_size, size_t compressed_size) {
 
   float ratio = (float)compressed_size / (float)original_size;
   return ratio < COMPRESSION_RATIO_THRESHOLD;
+}
+
+asciichat_error_t compress_workspace(compression_workspace_t *workspace, const void *input, size_t size, int level) {
+  if (!workspace || !input || !size || level < 1 || level > 9)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid compression workspace request");
+  workspace->output.length = 0;
+  size_t bound = ZSTD_compressBound(size);
+  if (!bound || bound > 256 * 1024 * 1024)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Compression workspace exceeds maximum size");
+  asciichat_error_t result = buffer_workspace_reserve(&workspace->output, NULL, bound);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (!workspace->codec)
+    workspace->codec = ZSTD_createCCtx();
+  if (!workspace->codec)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot create compression context");
+  size_t written = ZSTD_compressCCtx(workspace->codec, workspace->output.data, buffer_capacity(workspace->output.data),
+                                     input, size, level);
+  if (ZSTD_isError(written))
+    return SET_ERRNO(ERROR_GENERAL, "Compression failed: %s", ZSTD_getErrorName(written));
+  workspace->output.length = written;
+  return buffer_set_size(workspace->output.data, written);
+}
+
+void compression_workspace_destroy(compression_workspace_t *workspace) {
+  if (!workspace)
+    return;
+  ZSTD_freeCCtx(workspace->codec);
+  workspace->codec = NULL;
+  buffer_workspace_destroy(&workspace->output);
 }

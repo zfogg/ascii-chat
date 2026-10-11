@@ -104,7 +104,7 @@
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
 #include "session/h265/server.h"
@@ -799,8 +799,8 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
     return;
   }
 
-  log_debug("Received WebRTC ICE candidate from participant %02x%02x%02x%02x...", ice->sender_id[0],
-            ice->sender_id[1], ice->sender_id[2], ice->sender_id[3]);
+  log_debug("Received WebRTC ICE candidate from participant %02x%02x%02x%02x...", ice->sender_id[0], ice->sender_id[1],
+            ice->sender_id[2], ice->sender_id[3]);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_ice(g_webrtc_peer_manager, ice);
@@ -1082,7 +1082,7 @@ static void *ascii_chat_client_handler(void *arg) {
       packet_envelope_t initial = {0};
       receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
       if (initial.allocated_buffer)
-        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+        buffer_release(initial.allocated_buffer);
       packet_send_error(client_socket, NULL, public_code, asciichat_error_string(public_code));
       asciichat_errno_scope_end(rejection_scope, ASCIICHAT_ERRNO_HANDLED);
       socket_close(client_socket);
@@ -1110,7 +1110,7 @@ static void *ascii_chat_client_handler(void *arg) {
       packet_envelope_t initial = {0};
       receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
       if (initial.allocated_buffer)
-        buffer_pool_free(NULL, initial.allocated_buffer, initial.allocated_size);
+        buffer_release(initial.allocated_buffer);
     }
     asciichat_error_t sent =
         socket_consumed ? ASCIICHAT_OK : packet_send_error(client_socket, NULL, code, asciichat_error_string(code));
@@ -1349,7 +1349,7 @@ static void *websocket_client_handler(void *arg) {
  * 1. Platform initialization (Windows/POSIX compatibility)
  * 2. Logging and configuration setup
  * 3. Network socket creation and binding
- * 4. Global resource initialization (audio mixer, buffer pools, etc.)
+ * 4. Global resource initialization (audio mixer, owned buffers, etc.)
  * 5. Background thread management (statistics logging)
  * 6. Main connection accept loop with client lifecycle management
  * 7. Graceful shutdown with proper resource cleanup

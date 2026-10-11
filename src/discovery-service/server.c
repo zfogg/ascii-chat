@@ -32,7 +32,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/ip.h>
@@ -1098,14 +1098,14 @@ void *acds_client_handler(void *arg) {
           log_info("Client %s: idle for %llu seconds, disconnecting", client_ip,
                    (unsigned long long)(idle_ns / NS_PER_SEC_INT));
           if (payload) {
-            buffer_pool_free(NULL, payload, payload_size);
+            buffer_release(payload);
           }
           break;
         }
         asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("Client %s: receive timeout, continuing to wait for packets", client_ip);
         if (payload) {
-          buffer_pool_free(NULL, payload, payload_size);
+          buffer_release(payload);
         }
         continue;
       }
@@ -1113,7 +1113,7 @@ void *acds_client_handler(void *arg) {
       // Actual disconnect or fatal error
       log_info("Client %s disconnected", client_ip);
       if (payload) {
-        buffer_pool_free(NULL, payload, payload_size);
+        buffer_release(payload);
       }
       break;
     }
@@ -1138,7 +1138,7 @@ void *acds_client_handler(void *arg) {
 
         // Free payload and continue
         if (payload) {
-          buffer_pool_free(NULL, payload, payload_size);
+          buffer_release(payload);
         }
         continue;
       }
@@ -1157,9 +1157,9 @@ void *acds_client_handler(void *arg) {
                asciichat_error_string(dispatch_result));
     }
 
-    // Free payload (allocated by receive_packet via buffer_pool_alloc)
+    // Free payload (allocated by receive_packet via buffer_alloc)
     if (payload) {
-      buffer_pool_free(NULL, payload, payload_size);
+      buffer_release(payload);
     }
 
     // Keep handler running after session_established
@@ -1204,18 +1204,18 @@ static asciichat_error_t acds_receive_websocket_packet(acip_transport_t *transpo
   if (NET_TO_HOST_U16(header->type) != PACKET_TYPE_ENCRYPTED || ciphertext_len != *length - sizeof(packet_header_t)) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Plain WebSocket discovery packets must be encrypted");
   }
-  uint8_t *plaintext = buffer_pool_alloc(NULL, ciphertext_len);
+  uint8_t *plaintext = buffer_alloc(NULL, ciphertext_len);
   if (!plaintext)
     return SET_ERRNO(ERROR_MEMORY, "Could not allocate decrypted discovery packet");
   size_t plaintext_len = 0;
   crypto_result_t decrypted = crypto_decrypt(transport->crypto_ctx, (const uint8_t *)*buffer + sizeof(*header),
                                              ciphertext_len, plaintext, ciphertext_len, &plaintext_len);
   if (decrypted != CRYPTO_OK || plaintext_len < sizeof(packet_header_t)) {
-    buffer_pool_free(NULL, plaintext, ciphertext_len);
+    buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt discovery packet");
   }
   if (*allocation)
-    buffer_pool_free(NULL, *allocation, 0);
+    buffer_release(*allocation);
   *buffer = plaintext;
   *allocation = plaintext;
   *length = plaintext_len;
@@ -1325,7 +1325,7 @@ void *acds_websocket_client_handler(void *arg) {
         asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
         log_debug("WebSocket client %s: receive timeout, continuing to wait for packets", client_ip);
         if (alloc_buffer) {
-          buffer_pool_free(NULL, alloc_buffer, 0);
+          buffer_release(alloc_buffer);
         }
         continue;
       }
@@ -1333,7 +1333,7 @@ void *acds_websocket_client_handler(void *arg) {
       // Actual disconnect or fatal error
       log_info("WebSocket client %s disconnected", client_ip);
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       break;
     }
@@ -1344,7 +1344,7 @@ void *acds_websocket_client_handler(void *arg) {
     if (recv_len < sizeof(packet_header_t)) {
       log_warn("WebSocket client %s: received packet too small (%zu bytes)", client_ip, recv_len);
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       continue;
     }
@@ -1359,7 +1359,7 @@ void *acds_websocket_client_handler(void *arg) {
       log_warn("WebSocket client %s: packet size mismatch (expected %zu, got %zu)", client_ip,
                sizeof(packet_header_t) + payload_size, recv_len);
       if (alloc_buffer) {
-        buffer_pool_free(NULL, alloc_buffer, 0);
+        buffer_release(alloc_buffer);
       }
       continue;
     }
@@ -1378,7 +1378,7 @@ void *acds_websocket_client_handler(void *arg) {
         acip_send_error(transport, ERROR_INVALID_PARAM,
                         "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
         if (alloc_buffer) {
-          buffer_pool_free(NULL, alloc_buffer, 0);
+          buffer_release(alloc_buffer);
         }
         continue;
       }
@@ -1397,7 +1397,7 @@ void *acds_websocket_client_handler(void *arg) {
     }
 
     if (alloc_buffer) {
-      buffer_pool_free(NULL, alloc_buffer, 0);
+      buffer_release(alloc_buffer);
     }
   }
 

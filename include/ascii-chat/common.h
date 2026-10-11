@@ -443,7 +443,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 /* POSIX case-insensitive string comparison (Windows uses _stricmp/_strnicmp) */
 #ifdef _WIN32
 #include <string.h>
-#define strcasecmp  _stricmp
+#define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 /* POSIX access() mode flags */
 #ifndef R_OK
@@ -556,7 +556,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * Shared Initialization
  * ============================================================================
  * Common initialization code shared between client and server modes.
- * This function handles platform setup, logging, buffer pools, cleanup
+ * This function handles platform setup, logging, owned buffers, cleanup
  * registration, and other shared initialization tasks.
  */
 
@@ -568,8 +568,8 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * - Platform initialization (Winsock, etc.)
  * - Logging setup with default filename
  * - Palette configuration
- * - Buffer pool initialization
- * - Cleanup registration (errno, known_hosts, platform, buffer pool)
+ * - buffer domain initialization
+ * - Cleanup registration (errno, known_hosts, platform, buffer domain)
  * - Mimalloc debug registration (if enabled)
  *
  * Note: Memory debugging setup is handled separately by each mode due to

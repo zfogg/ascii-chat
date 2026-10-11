@@ -18,7 +18,7 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
@@ -29,7 +29,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>       // For RCU-based options access
 #include <ascii-chat/discovery/strings.h> // For RCU-based options access
-#include <ascii-chat/debug/sync.h> // Synchronization diagnostics lifecycle
+#include <ascii-chat/debug/sync.h>        // Synchronization diagnostics lifecycle
 #include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/atomic.h>      // For debug_atomic_shutdown()
@@ -170,8 +170,8 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
     }
 
-    // 4. BUFFER POOL - Initialize global shared buffer pool
-    buffer_pool_init_global();
+    // 4. buffer domain - Initialize global shared buffer domain
+    buffer_system_init();
 
     // Mark that we've initialized (prevents re-registration of subsystems)
     g_shared_initialized = true;
@@ -265,8 +265,8 @@ void asciichat_shared_destroy(void) {
   // 6. Options state - cleanup RCU-based options
   options_state_destroy();
 
-  // 7. Buffer pool - cleanup global buffer pool
-  buffer_pool_cleanup_global();
+  // 7. buffer domain - cleanup global buffer domain
+  buffer_system_cleanup();
 
   // 8. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
@@ -343,10 +343,10 @@ void asciichat_shared_destroy(void) {
   // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
   symbol_cache_destroy();
 
-  // 24. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
+  // 24. Clean up global buffer domain (explicitly, as atexit may not run on Ctrl-C)
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
-  // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
-  buffer_pool_cleanup_global();
+  // Safe to call even if atexit() runs - it checks the default domain and sets it to NULL
+  buffer_system_cleanup();
 
 #ifndef NDEBUG
   // 25. Symbol cache cleanup

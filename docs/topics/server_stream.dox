@@ -19,7 +19,7 @@
  * - Create composite video layouts (single client, 2x2, 3x3 grids)
  * - Generate client-specific ASCII art with terminal capability awareness
  * - Process latest frames from double-buffer system for real-time performance
- * - Manage memory efficiently with buffer pools and zero-copy operations
+ * - Manage memory efficiently with owned buffers and zero-copy operations
  * - Support advanced rendering modes (half-block, color, custom palettes)
  *
  * @section server_stream_architecture Video Mixing Architecture
@@ -95,7 +95,7 @@
  * - Aspect ratio preservation in grid cells
  * - High-quality scaling (bilinear interpolation)
  * - Support for different grid sizes (1x1, 2x2, 3x3)
- * - Efficient memory usage via buffer pools
+ * - Efficient memory usage via owned buffers
  *
  * **Stage 4: ASCII Conversion**
  * @code{.c}
@@ -127,7 +127,7 @@
  * ascii_frame_packet_t *packet = create_ascii_frame_packet(ascii_frame);
  *
  * // Queue packet for delivery via send thread
- * packet_queue_enqueue(client->video_packet_queue, packet, packet_size);
+ * packet_queue_push_copy(client->video_packet_queue, PACKET_TYPE_ASCII_FRAME, packet, packet_size, 0);
  * @endcode
  *
  * **Packet Features**:
@@ -196,7 +196,7 @@
  * - Always provides latest available frame
  * - No frame caching complexity or stale data concerns
  * - Professional-grade real-time performance
- * - Memory managed via buffer pools
+ * - Memory managed via owned buffers
  *
  * **Buffer Overflow Handling**:
  * When clients send frames faster than processing:
@@ -207,24 +207,24 @@
  *
  * @subsection server_stream_memory_management Memory Management
  *
- * **Buffer Pool Integration**:
+ * **buffer domain Integration**:
  * @code{.c}
- * // All allocations use buffer pools
- * image_t *composite = image_create_from_pool(terminal_width, terminal_height);
+ * // Images use owned, aligned storage
+ * image_t *composite = image_new(terminal_width, terminal_height);
  *
- * // Automatic cleanup on return
- * buffer_pool_return(composite);
+ * // Explicit release after use
+ * image_destroy(composite);
  * @endcode
  *
  * **Zero-Copy Operations**:
  * - Frame data is reference-counted (avoid copies)
  * - Double-buffer system eliminates need for frame copies
- * - Efficient memory usage via buffer pools
+ * - Efficient memory usage via owned buffers
  * - Automatic cleanup on client disconnect
  *
  * **Memory Efficiency**:
  * - Frame data is shared across clients where possible
- * - Buffer pool reduces malloc/free overhead
+ * - buffer domain reduces malloc/free overhead
  * - Automatic cleanup prevents memory leaks
  * - Graceful degradation on allocation failures
  *
@@ -373,20 +373,20 @@
  * **Frame Generation Speed**:
  * - 60fps per client with precise timing
  * - SIMD-optimized ASCII conversion
- * - Efficient memory usage via buffer pools
+ * - Efficient memory usage via owned buffers
  * - Minimal CPU overhead
  *
  * **Memory Usage**:
  * - Per-client composite buffers (temporary)
  * - Frame data shared across clients
- * - Buffer pool reduces malloc/free overhead
+ * - buffer domain reduces malloc/free overhead
  * - Automatic cleanup on client disconnect
  *
  * @section server_stream_best_practices Best Practices
  *
  * **DO**:
  * - Always use latest available frame (aggressive frame dropping)
- * - Use buffer pools for all allocations
+ * - Use owned buffers for all allocations
  * - Check client active status before operations
  * - Use snapshot pattern for client state access
  * - Optimize for terminal capabilities
@@ -396,7 +396,7 @@
  * - Don't hold locks during frame generation
  * - Don't skip frame dropping under load
  * - Don't ignore terminal capabilities
- * - Don't allocate without buffer pools
+ * - Don't allocate without owned buffers
  *
  * @see src/server/stream.c
  * @see src/server/stream.h

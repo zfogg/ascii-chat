@@ -23,7 +23,7 @@ PowerShell script to run tests via Docker using ctest. This is the recommended w
 ./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
 
 # Run a specific test
-./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool
+./tests/scripts/run-docker-tests.ps1 test-buffer-ownership
 
 # Run clang-tidy analysis
 ./tests/scripts/run-docker-tests.ps1 -ClangTidy
@@ -53,7 +53,7 @@ ctest --test-dir build --label-regex "^integration$" --output-on-failure
 ctest --test-dir build --label-regex "^performance$" --output-on-failure
 
 # Run specific test by name pattern
-ctest --test-dir build -R "buffer_pool" --output-on-failure
+ctest --test-dir build -R "buffer-ownership" --output-on-failure
 
 # Verbose output
 ctest --test-dir build --output-on-failure --verbose
