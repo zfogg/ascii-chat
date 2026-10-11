@@ -4,6 +4,9 @@
 #include <ascii-chat/platform/terminal.h>
 #include <stddef.h>
 
+/** Maximum complete frame size accepted by the presenter, including cursor controls. */
+#define UI_CONTROLLER_MAX_FRAME_BYTES (16 * 1024 * 1024)
+
 /** Rendering priority, from background to modal. */
 typedef enum {
   UI_SCREEN_STATUS,

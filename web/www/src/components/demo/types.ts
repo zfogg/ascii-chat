@@ -12,6 +12,7 @@ export interface DemoSettings {
   palette?: Palette;
   paletteChars?: string;
   matrixRain?: boolean;
+  zalgo?: number;
   waveform?: boolean;
   fft?: boolean;
   flipX?: boolean;

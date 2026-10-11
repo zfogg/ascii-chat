@@ -38,6 +38,7 @@ it("pauses during resize debounce then renders server grids at the local canvas 
         HEAPU8: new Uint8Array(4096),
         _malloc: () => 1,
         _free: vi.fn(),
+        _term_renderer_set_zalgo: vi.fn(() => 0),
         _term_renderer_feed: feed,
         _term_renderer_pixels: () => 1,
         _term_renderer_pitch: () => 40,
