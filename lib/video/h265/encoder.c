@@ -7,6 +7,7 @@
 #include <ascii-chat/video/h265/encoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/system.h>
 
@@ -162,7 +163,7 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
     av_packet_free(&encoder->packet);
   }
   if (encoder->codec_ctx) {
-    avcodec_free_context(&encoder->codec_ctx);
+    LOG_IO("video encoder", { avcodec_free_context(&encoder->codec_ctx); });
   }
   if (encoder->yuv_buf) {
     SAFE_FREE(encoder->yuv_buf);
@@ -173,7 +174,7 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
 static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16_t width, uint16_t height) {
   // Free existing context if re-opening at a different resolution
   if (encoder->codec_ctx) {
-    avcodec_free_context(&encoder->codec_ctx);
+    LOG_IO("video encoder", { avcodec_free_context(&encoder->codec_ctx); });
   }
 
   const AVCodec *codec = encoder->codec;
@@ -199,7 +200,8 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
   }
 
   log_dev("[H265_OPEN] avcodec_open2 for %ux%u (threads=%d)", width, height, encoder->codec_ctx->thread_count);
-  int codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL);
+  int codec_open_result = 0;
+  LOG_IO("video encoder", { codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL); });
 
   if (codec_open_result < 0) {
     return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open %s encoder for %ux%u", codec->name, width, height);
