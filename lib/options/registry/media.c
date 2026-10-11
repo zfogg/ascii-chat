@@ -22,12 +22,12 @@
 // ============================================================================
 
 static bool validate_video_codec(const void *opts_struct, char **error_msg) {
+  (void)error_msg;
   const options_t *opts = (const options_t *)opts_struct;
   if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 ||
       strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
     return true;
-  if (error_msg)
-    *error_msg = platform_strdup("--video-codec must be auto, hevc, h264, or raw");
+  SET_ERRNO(ERROR_USAGE, "--video-codec must be auto, hevc, h264, or raw");
   return false;
 }
 
