@@ -1020,3 +1020,11 @@ if(TARGET ascii-chat-static)
         endif()
     endif()
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME manpage-generation
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/manpage_generation.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(manpage-generation PROPERTIES LABELS "integration" TIMEOUT 120)
+endif()
