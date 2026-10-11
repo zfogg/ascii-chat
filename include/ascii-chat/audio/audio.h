@@ -165,6 +165,7 @@ typedef struct {
   // Audio pipeline and device info
   void *audio_pipeline;       ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
   bool monitor_local_media;   ///< Play local file audio in solo sessions
+  uint64_t test_audio_playback_position; ///< Output callback's synthesized monitor sample clock
   void *capture_media_source; ///< Borrowed local media audio; configure before starting duplex
   double sample_rate;         ///< Actual sample rate of streams (48kHz)
   double input_device_rate;   ///< Native sample rate of input device

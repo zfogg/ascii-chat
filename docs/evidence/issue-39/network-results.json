@@ -1,0 +1,19 @@
+{
+  "client_exits": [
+    0,
+    0
+  ],
+  "server_alive": true,
+  "capabilities_bytes": [
+    168,
+    168
+  ],
+  "received_seconds": 32.02,
+  "received_rms": 0.138767667549643,
+  "received_peak": 0.9802720546722412,
+  "self_excluded_peak": 0.0,
+  "decoded_packets_logged": 25,
+  "transport": "TCP loopback, encrypted",
+  "spectral_capture": true,
+  "spectral_mixer": true
+}

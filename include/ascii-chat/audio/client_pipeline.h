@@ -232,6 +232,7 @@ typedef struct {
 
   /** WebRTC AEC3 echo cancellation (opaque pointer to webrtc::EchoCanceller3) */
   void *echo_canceller;
+  struct spectral_processor *spectral;
   /** Speex preprocessor state (noise/AGC/VAD) */
   SpeexPreprocessState *preprocess;
 

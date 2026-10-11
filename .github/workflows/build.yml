@@ -121,8 +121,8 @@ jobs:
           - os: Windows
             arch: amd64
             runner: windows-2022
-            vcpkg-packages: "zstd portaudio libsodium opus openssl"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc opus openssl"
+            vcpkg-packages: "zstd portaudio libsodium fftw3 opus openssl"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc fftw3 opus openssl"
             vcpkg-triplet: "x64-windows"
             vcpkg-static-triplet: "x64-windows-static"
 
@@ -130,8 +130,8 @@ jobs:
           - os: Windows
             arch: arm64
             runner: windows-11-arm
-            vcpkg-packages: "zstd portaudio libsodium opus openssl"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc opus openssl"
+            vcpkg-packages: "zstd portaudio libsodium fftw3 opus openssl"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc fftw3 opus openssl"
             vcpkg-triplet: "arm64-windows"
             vcpkg-static-triplet: "arm64-windows-static"
 

@@ -1,5 +1,6 @@
 /bin/*
 /build/*
+/node_modules/
 /.claude/settings.local.json
 
 # Auto-generated version header (created by CMake)

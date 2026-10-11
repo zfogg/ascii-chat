@@ -1,0 +1,20 @@
+{
+  "Generated source (one loop)": {
+    "seconds": 20.0,
+    "sample_rate": 48000,
+    "rms": 0.05734718218445778,
+    "peak": 0.15997314453125
+  },
+  "Windows received from Mac": {
+    "seconds": 60.04,
+    "sample_rate": 48000,
+    "rms": 0.054394397884607315,
+    "peak": 0.161712646484375
+  },
+  "Mac received from Windows": {
+    "seconds": 60.04,
+    "sample_rate": 48000,
+    "rms": 0.054382506757974625,
+    "peak": 0.159576416015625
+  }
+}

@@ -1753,3 +1753,8 @@ target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
 # Static Library Archive Creation (custom command handles basename collisions)
 # =============================================================================
 # See cmake/scripts/create_static_archive.cmake for implementation details
+
+# FFTW symbols are used unconditionally by the native audio module.
+target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})

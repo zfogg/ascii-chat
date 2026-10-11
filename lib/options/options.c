@@ -628,6 +628,11 @@ options_t options_t_new(void) {
   // ============================================================================
   // AUDIO CATEGORY - Audio capture, playback and processing options
   // ============================================================================
+  opts.audio_fft_size = 1024;
+  opts.test_audio = false;
+  opts.audio_spectral = true;
+  opts.audio_spectral_mixer = false;
+  opts.audio_spectral_gate = true;
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;
@@ -1547,9 +1552,11 @@ static void record_explicit_fps(options_t *opts, int mode_argc, char **mode_argv
   opts->fps_explicitly_set = fps_set_by_config || fps_set_by_cli || (fps_env && fps_env[0] != '\0');
 }
 
-static asciichat_error_t publish_options_for_validation(const options_t *opts) {
+static asciichat_error_t publish_options_for_validation(options_t *opts) {
   // Publish options to RCU as soon as they're parsed
   // This ensures GET_OPTION() works during cleanup even if validation fails
+  if (opts->test_audio)
+    opts->audio_enabled = true;
   log_debug("Publishing parsed options to RCU before validation");
   asciichat_error_t early_publish = options_state_set(opts);
   if (early_publish != ASCIICHAT_OK) {

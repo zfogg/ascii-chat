@@ -66,7 +66,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
-    ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
+    ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 yyjson \
     libvterm freetype fontconfig expat \
     >/dev/null 2>&1 || true
@@ -141,7 +141,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       cmake ninja-build \
       musl-tools musl-dev \
       nasm \
-      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libsystemd-dev \
+      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
       libcriterion-dev libffi-dev libsqlite3-dev \
       libssl-dev \
       libminiupnpc-dev \
@@ -309,7 +309,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
-      mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
+      mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel fftw-devel \
       criterion-devel libffi-devel sqlite-devel \
       openssl-devel \
       miniupnpc-devel \
@@ -338,7 +338,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       nasm \
       cmake ninja make \
       musl mimalloc \
-      zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
+      zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       x264 x265 \
       openssl \
       abseil-cpp \
