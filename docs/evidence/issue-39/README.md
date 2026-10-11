@@ -1,5 +1,8 @@
 # Issue 39 validation evidence
 
+Audio recordings are generated locally by the reproduction scripts and are not
+stored in the repository. The plots and measurement summaries are retained.
+
 Windows Debug build, Clang 23, 48 kHz mono. These recordings use the compiled
 `spectral_process` implementation from `asciichat.dll`, driven in 480-sample
 PortAudio callbacks through Python sounddevice. The physical loop used Realtek
@@ -7,11 +10,6 @@ speakers and the EMEET SmartCam Nova 4K microphone. It did not traverse the netw
 
 ![Spectral audio analysis](analysis.png)
 
-- [Physical microphone, before](microphone-before.wav)
-- [Physical microphone, after spectral gating](microphone-after.wav)
-- [Controlled speech plus noise, before](controlled-before.wav)
-- [Controlled speech plus noise, after spectral gating](controlled-after.wav)
-- [Clean reference speech](reference.wav)
 - [Measurements](analysis.json) and [DSP tests / benchmarks](spectral-results.json)
 
 The physical WAVs preserve the processor's 1024-sample delay. The plot and controlled
@@ -41,8 +39,6 @@ server spectral mixing, and recording at the remote client's decoder.
 
 ![Native network audio analysis](network-analysis.png)
 
-- [Network microphone input](network-microphone.wav)
-- [Remote decoded audio](network-received.wav)
 - [Network measurements](network-results.json)
 - [Unencrypted regression measurements](network-plaintext-results.json)
 
@@ -50,7 +46,7 @@ The initial connectivity checks received 32.02 seconds over unencrypted TCP and
 32.04 seconds over encrypted TCP, with both clients exiting 0 in each run.
 Those checks missed a playback gate timing bug; they did not establish continuity.
 The corrected encrypted run received 32.02 seconds and both clients exited 0.
-The plot and WAV files now show that corrected run. Ephemeral host identity checking was disabled only for
+The plot shows that corrected run. Ephemeral host identity checking was disabled only for
 the encrypted test's child processes; server identity authentication was not
 tested. Native build and compiled DSP/integration checks also passed again.
 
@@ -100,14 +96,14 @@ modulated harmonics, and a deliberate two-second rest. No microphone is opened.
 
 ![Generated and received audio](test-audio-analysis.png)
 
-[Source loop](test-audio-source.wav) · [Windows received from Mac](test-audio-windows-received.wav) · [Mac received from Windows](test-audio-mac-received.wav) · [Measurements](test-audio-results.json) · [Call validation](test-audio-call.json)
+[Measurements](test-audio-results.json) · [Call validation](test-audio-call.json)
 
 Native Debug builds passed on Windows and Intel macOS with Clang/Ninja. The
 one-minute encrypted TCP call through SSH reverse forwarding completed with
 both clients exiting 0. Both peer-only received recordings contain 60.04 seconds
 of audio. Neither client logged an output underrun or capture queue overflow in
 that run. The user confirmed the pattern was audible from both computers.
-The 48 kHz mono WAVs above are PCM16 exports of the received float recordings;
+The measurements used 48 kHz mono PCM16 exports of the received float recordings;
 measurements are calculated from those exports. Local monitoring is excluded
 from these receive recordings. The clocks are independent; the Mac started first.
 
@@ -139,5 +135,5 @@ speaker indices for the machine as needed; Windows used Realtek device 6 and the
 Mac used its default builtin speakers. To regenerate the chart:
 
 ```sh
-python tests/audio/analyze_test_audio.py --source docs/evidence/issue-39/test-audio-source.wav --windows-received docs/evidence/issue-39/test-audio-windows-received.wav --mac-received docs/evidence/issue-39/test-audio-mac-received.wav --output docs/evidence/issue-39
+python tests/audio/analyze_test_audio.py --source build/test-audio-source.wav --windows-received build/test-audio-windows-received.wav --mac-received build/test-audio-mac-received.wav --output build/test-audio-report
 ```
