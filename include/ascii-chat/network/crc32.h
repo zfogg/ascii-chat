@@ -31,20 +31,20 @@
  * SOFTWARE FALLBACK:
  * ==================
  * - Always available on all platforms
- * - Polynomial: IEEE 802.3 (CRC-32)
+ * - Polynomial: Castagnoli (CRC32-C)
  * - Optimized lookup table implementation
  * - Reliable for packet integrity verification
  *
  * PERFORMANCE:
  * =============
  * Hardware acceleration provides:
- * - 10-100x faster than software implementation
- * - Zero overhead when hardware is available
+ * - Processes eight bytes per hardware CRC instruction
+ * - Caches the selected function pointer per thread
  * - Automatic fallback ensures compatibility
  *
  * @note Use the asciichat_crc32() macro for automatic hardware dispatch.
  * @note Hardware acceleration is detected at runtime, so no compile-time
- *       configuration is required.
+ *       CPU-specific compiler flags are required for callers.
  * @note CRC32 is used primarily for network packet integrity verification
  *       to detect transmission errors.
  *
@@ -58,7 +58,7 @@
 
 /**
  * @brief Compute CRC32 checksum with hardware acceleration (if available)
- * @param data Data to compute checksum for (must not be NULL)
+ * @param data Data to compute checksum for (may be NULL when len is zero)
  * @param len Length of data in bytes
  * @return CRC32 checksum value (32-bit unsigned integer)
  *
@@ -76,8 +76,8 @@
  * @note For consistent performance testing or when hardware detection is
  *       not desired, use asciichat_crc32_sw() directly.
  *
- * @note The CRC32 polynomial used is IEEE 802.3 (CRC-32), which is
- *       compatible with standard CRC32 implementations.
+ * @note The CRC32 polynomial used is Castagnoli (CRC32-C), which is
+ *       compatible with SSE4.2 and ARM CRC32-C instructions.
  */
 /** Extend a finalized CRC32-C; pass zero for the first slice. */
 uint32_t asciichat_crc32_update(uint32_t previous, const void *data, size_t len);
@@ -87,21 +87,20 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len);
 
 /**
  * @brief Compute CRC32 checksum using software implementation only
- * @param data Data to compute checksum for (must not be NULL)
+ * @param data Data to compute checksum for (may be NULL when len is zero)
  * @param len Length of data in bytes
  * @return CRC32 checksum value (32-bit unsigned integer)
  *
  * Computes CRC32 checksum using a software lookup table implementation.
  * Always uses software implementation regardless of hardware availability.
  *
- * @note This function provides consistent performance across all platforms,
- *       which is useful for testing and benchmarking.
+ * @note This function bypasses runtime dispatch for testing and benchmarking.
  *
  * @note For production code, prefer asciichat_crc32() macro which
  *       automatically uses hardware acceleration when available.
  *
- * @note The CRC32 polynomial used is IEEE 802.3 (CRC-32), which is
- *       compatible with standard CRC32 implementations.
+ * @note The CRC32 polynomial used is Castagnoli (CRC32-C), which is
+ *       compatible with SSE4.2 and ARM CRC32-C instructions.
  */
 uint32_t asciichat_crc32_sw(const void *data, size_t len);
 
@@ -112,7 +111,7 @@ uint32_t asciichat_crc32_sw(const void *data, size_t len);
  * Performs runtime CPU feature detection to determine if hardware
  * CRC32 acceleration can be used on the current platform.
  *
- * @note Detection is performed once per program execution and cached.
+ * @note Detection is performed once per thread and cached.
  *       Subsequent calls return the cached result.
  *
  * @note Hardware acceleration is available on:

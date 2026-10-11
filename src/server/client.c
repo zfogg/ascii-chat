@@ -3375,14 +3375,16 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
     client->video_sws_ctx = sws;
     if (!sws)
       return;
-    int rgb_size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+    // swscale SIMD output needs aligned rows, including padding after the last row.
+    int rgb_size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 32);
+    size_t packed_size = (size_t)frame->width * frame->height * 3;
     if (rgb_size <= 0 || !client->incoming_video_buffer ||
-        (size_t)rgb_size + 8 > client->incoming_video_buffer->allocated_buffer_size)
+        packed_size + 8 > client->incoming_video_buffer->allocated_buffer_size)
       return;
-    uint8_t *pixels = SAFE_MALLOC((size_t)rgb_size, uint8_t *);
+    uint8_t *pixels = SAFE_MALLOC((size_t)rgb_size + AV_INPUT_BUFFER_PADDING_SIZE, uint8_t *);
     if (!pixels)
       return;
-    av_image_fill_arrays(rgb->data, rgb->linesize, pixels, AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+    av_image_fill_arrays(rgb->data, rgb->linesize, pixels, AV_PIX_FMT_RGB24, frame->width, frame->height, 32);
     int rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data,
                          rgb->linesize);
     if (rows == frame->height) {
@@ -3391,8 +3393,11 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
       if (vf && vf->data) {
         uint32_t dimensions[2] = {HOST_TO_NET_U32(width), HOST_TO_NET_U32(height)};
         memcpy(vf->data, dimensions, sizeof(dimensions));
-        memcpy((uint8_t *)vf->data + sizeof(dimensions), pixels, (size_t)rgb_size);
-        vf->size = sizeof(dimensions) + (size_t)rgb_size;
+        for (int y = 0; y < frame->height; y++) {
+          memcpy((uint8_t *)vf->data + sizeof(dimensions) + (size_t)y * width * 3,
+                 rgb->data[0] + (size_t)y * rgb->linesize[0], (size_t)width * 3);
+        }
+        vf->size = sizeof(dimensions) + packed_size;
         vf->width = width;
         vf->height = height;
         vf->is_keyframe = (flags & 1) != 0;

@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/media/codecs.h>
 
 typedef struct h265_encoder h265_encoder_t;
 
@@ -41,6 +42,11 @@ typedef struct h265_encoder h265_encoder_t;
  * @return Encoder handle, or NULL on error
  */
 h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_height);
+
+/** Create an HEVC or H.264 RGB24 upload encoder with the shared frame envelope.
+ * The legacy h265 encode/destroy functions also operate on H.264 instances.
+ */
+h265_encoder_t *video_encoder_create(video_codec_t codec, uint16_t initial_width, uint16_t initial_height);
 
 /**
  * Destroy an x265 encoder

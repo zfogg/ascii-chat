@@ -196,7 +196,14 @@ static void *webcam_capture_thread_func(void *arg) {
   static uint64_t capture_frame_count = 0;
   static uint64_t last_capture_frame_time_ns = 0;
   static image_t *last_frame = NULL; // Cache last frame to render when paused
-  bool force_raw_video = false;
+  const char *video_codec = GET_OPTION(video_codec);
+  bool automatic_codec = strcmp(video_codec, "auto") == 0;
+  video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
+                                 : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264
+                                                                    : VIDEO_CODEC_H265;
+  // Each connection starts at the requested codec with a fresh bitstream.
+  h265_encoder_destroy(g_video_encoder);
+  g_video_encoder = NULL;
   if (!fps_tracker_initialized) {
     int target_fps = (int)session_capture_get_target_fps(g_capture_capture_ctx);
     fps_init(&fps_tracker, target_fps, "WEBCAM_TX");
@@ -281,45 +288,42 @@ static void *webcam_capture_thread_func(void *arg) {
 
     uint64_t send_start_ns = time_get_ns();
 
-    // Determine which codec to use based on --video-codec option
-    const char *video_codec = GET_OPTION(video_codec);
-    bool use_hevc = !force_raw_video && video_codec && strcmp(video_codec, "raw") != 0;
-
-    // Request keyframe periodically to force encoder flush (every 30 frames)
-    // This ensures we get some encoded output even when the encoder is buffering inter-frames
-    static uint32_t keyframe_interval = 30;
-    static uint32_t frames_since_keyframe = 0;
-    if (use_hevc && (frames_since_keyframe++ >= keyframe_interval)) {
-      h265_encoder_request_keyframe(g_h265_encoder);
-      frames_since_keyframe = 0;
-      log_debug("Requesting H.265 keyframe for encoder flush");
-    }
-
     asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
     asciichat_error_t send_result;
-    if (use_hevc) {
-      asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
-      log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,
-                      processed_image->h);
-      send_result = threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
-                                                   (uint32_t)processed_image->h);
-      if (send_result == ERROR_MEDIA_INIT) {
-        // Missing platform HEVC encoders should degrade video quality, not tear
-        // down an otherwise healthy audio/video connection.
-        log_warn("HEVC encoding is unavailable; switching this connection to raw video frames");
-        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
-        force_raw_video = true;
-        send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+    bool encoding_failed = false;
+    for (;;) {
+      if (selected_codec == VIDEO_CODEC_RGBA) {
+        send_result = threaded_send_image_frame(processed_image->pixels, (uint32_t)processed_image->w,
                                                 (uint32_t)processed_image->h, 1);
-      } else if (send_result == ASCIICHAT_OK) {
-        ASSERT_NO_ERRNO_SINCE(encode_scope);
-        asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
       }
-    } else {
-      log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
-                      processed_image->h);
-      send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
-                                              (uint32_t)processed_image->h, 1); // pixel_format = 1 (RGB24)
+      asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
+      send_result = threaded_send_image_frame_encoded(processed_image->pixels, (uint32_t)processed_image->w,
+                                                      (uint32_t)processed_image->h, selected_codec, &encoding_failed);
+      if (!encoding_failed || !automatic_codec || send_result == ERROR_MEMORY) {
+        if (send_result == ASCIICHAT_OK)
+          asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
+      }
+      log_warn("%s encoding failed; automatic video is switching to %s",
+               selected_codec == VIDEO_CODEC_H265 ? "HEVC" : "H.264",
+               selected_codec == VIDEO_CODEC_H265 ? "H.264" : "raw");
+      asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
+      h265_encoder_destroy(g_video_encoder);
+      g_video_encoder = NULL;
+      selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
+      encoding_failed = false;
+    }
+    const char *codec_name = selected_codec == VIDEO_CODEC_H265   ? "H265"
+                             : selected_codec == VIDEO_CODEC_H264 ? "H264"
+                                                                  : "RAW";
+    if (encoding_failed) {
+      log_error("%s video encoding failed (%s). Use --video-codec auto for fallback or --video-codec raw.", codec_name,
+                asciichat_error_string(send_result));
+      asciichat_errno_request_exit(send_result);
+      signal_exit();
+      image_destroy(processed_image);
+      break;
     }
 
     // If send failed due to connection loss, break out of loop
@@ -337,7 +341,6 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
     if (send_result != ASCIICHAT_OK) {
-      const char *codec_name = use_hevc ? "H265" : "RAW";
       log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
                 codec_name, send_result, asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
       server_connection_lost();
@@ -348,12 +351,10 @@ static void *webcam_capture_thread_func(void *arg) {
     ASSERT_NO_ERRNO_SINCE(send_scope);
     asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
-      const char *codec_name = use_hevc ? "H.265" : "RAW";
       log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",
                (double)send_duration_ns / 1e6, processed_image->w, processed_image->h, codec_name);
     }
 
-    const char *codec_name = use_hevc ? "H265" : "RAW";
     log_debug_every(LOG_RATE_NORMAL, "CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
                     (double)send_duration_ns / 1e6);
 

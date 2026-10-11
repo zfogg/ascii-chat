@@ -1301,14 +1301,14 @@ void protocol_stop_connection() {
     capture_stop_thread();
 
     // Flush the encoder to output any buffered frames before exiting
-    if (g_h265_encoder) {
+    if (g_video_encoder) {
       // Allocate buffer large enough for worst-case H.265 encoded frame
       // Using 320x240 (typical test resolution) * 2x multiplier + header
       size_t flush_buf_size = 5 + (320 * 240 * 2);
       uint8_t *flush_buf = SAFE_MALLOC(flush_buf_size, uint8_t *);
       size_t flush_size = flush_buf_size;
       asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
-      asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &flush_size);
+      asciichat_error_t flush_result = h265_encoder_flush(g_video_encoder, flush_buf, &flush_size);
       if (flush_result != ASCIICHAT_OK) {
         // The snapshot is already delivered; failure to flush optional buffered
         // video (including an unavailable HEVC encoder) cannot undo it.

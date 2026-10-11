@@ -983,18 +983,17 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
 
     // Call builder's validate function if it exists (for cross-field validation)
     if (meta->validate_fn) {
-      char *validate_error = NULL;
-      if (!meta->validate_fn(opts, &validate_error)) {
+      asciichat_errno_scope_t validation_scope = asciichat_errno_checkpoint();
+      if (!meta->validate_fn(opts)) {
+        asciichat_error_context_t error;
+        bool has_error = asciichat_errno_peek_since(validation_scope, &error);
         CONFIG_WARN("Validation failed for %s: %s (skipping)", meta->toml_key,
-                    validate_error ? validate_error : "validation failed");
-        if (validate_error) {
-          SAFE_FREE(validate_error);
-        }
-        if (strict) {
-          if (first_error == ASCIICHAT_OK) {
-            first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s", meta->toml_key);
-          }
-          continue;
+                    has_error ? error.context_message : "validation failed");
+        if (strict && first_error == ASCIICHAT_OK) {
+          first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s: %s", meta->toml_key,
+                                  has_error ? error.context_message : "validation failed");
+        } else {
+          asciichat_errno_scope_end(validation_scope, ASCIICHAT_ERRNO_DISMISSED);
         }
         continue;
       }
