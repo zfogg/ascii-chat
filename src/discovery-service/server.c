@@ -1049,8 +1049,10 @@ static void acds_event_work(void *arg) {
     connection->initialized = true;
     client->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
     client->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
-    memcpy(client->handshake_ctx.server_public_key.key, connection->server->identity_public, 32);
-    memcpy(client->handshake_ctx.server_private_key.key.ed25519, connection->server->identity_secret, 64);
+    memcpy(client->handshake_ctx.server_public_key.key, connection->server->identity_public,
+           sizeof(connection->server->identity_public));
+    memcpy(client->handshake_ctx.server_private_key.key.ed25519, connection->server->identity_secret,
+           sizeof(connection->server->identity_secret));
   }
   connection->received_packet = false;
   connection->result = packet_decoder_feed(&connection->decoder, connection->input, connection->input_length,

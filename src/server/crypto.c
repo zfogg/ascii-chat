@@ -175,7 +175,12 @@ int server_crypto_init(void) {
   return 0;
 }
 
-// Advance the handshake once a complete packet is available.
+/**
+ * Advance the server handshake for one complete packet.
+ * Steps negotiate the protocol, select an identity, exchange keys, and verify
+ * authentication. Only a READY context is published to application senders.
+ * A single-key server also accepts older clients that omit CLIENT_HELLO.
+ */
 asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, packet_type_t type, const void *payload,
                                       size_t length, bool *ready) {
   *ready = false;
@@ -201,12 +206,11 @@ asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, pac
                          : crypto_handshake_init("server_async", ctx, true);
     if (result != ASCIICHAT_OK)
       return result;
-    client->crypto_initialized = true;
     client->encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(version.supports_encryption);
     if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
       ctx->server_private_key = g_server_private_key;
       ctx->server_public_key.type = KEY_TYPE_ED25519;
-      memcpy(ctx->server_public_key.key, g_server_private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
+      memcpy(ctx->server_public_key.key, g_server_private_key.public_key, sizeof(g_server_private_key.public_key));
     }
     ctx->require_client_auth = g_num_whitelisted_clients > 0 || GET_OPTION(require_server_verify);
     ctx->client_whitelist = g_client_whitelist;
@@ -259,22 +263,37 @@ asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, pac
     return crypto_handshake_server_start(ctx, transport);
   }
   if (*step == 2) {
-    if (type != PACKET_TYPE_CRYPTO_CLIENT_HELLO || length != ED25519_PUBLIC_KEY_SIZE)
-      return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
-    bool found = false;
-    for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
-      if (sodium_memcmp(payload, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-        ctx->server_private_key = g_server_identity_keys[i];
-        ctx->server_public_key.type = KEY_TYPE_ED25519;
-        memcpy(ctx->server_public_key.key, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE);
-        found = true;
-        break;
+    if (type != PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
+      if (g_num_server_identity_keys != 1 || type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP)
+        return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+      // Keep this packet for the key-exchange step after sending the default key.
+      ctx->server_private_key = g_server_identity_keys[0];
+      ctx->server_public_key.type = KEY_TYPE_ED25519;
+      memcpy(ctx->server_public_key.key, g_server_identity_keys[0].public_key,
+             sizeof(g_server_identity_keys[0].public_key));
+      result = crypto_handshake_server_start(ctx, transport);
+      if (result != ASCIICHAT_OK)
+        return result;
+      *step = 3;
+    } else {
+      if (length != ED25519_PUBLIC_KEY_SIZE)
+        return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+      bool found = false;
+      for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
+        if (sodium_memcmp(payload, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+          ctx->server_private_key = g_server_identity_keys[i];
+          ctx->server_public_key.type = KEY_TYPE_ED25519;
+          memcpy(ctx->server_public_key.key, g_server_identity_keys[i].public_key,
+                 sizeof(g_server_identity_keys[i].public_key));
+          found = true;
+          break;
+        }
       }
+      if (!found)
+        return SET_ERRNO(ERROR_CRYPTO, "Unknown pinned server identity");
+      *step = 3;
+      return crypto_handshake_server_start(ctx, transport);
     }
-    if (!found)
-      return SET_ERRNO(ERROR_CRYPTO, "Unknown pinned server identity");
-    *step = 3;
-    return crypto_handshake_server_start(ctx, transport);
   }
   if (*step == 3) {
     result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, length);

@@ -539,7 +539,7 @@ static void output_progress(uv_timer_t *timer) {
 static void flush_output(uv_async_t *output) {
   platform_event_stream_t *stream = output->data;
   uv_mutex_lock(&stream->mutex);
-  if (stream->close_requested) {
+  if (stream->close_requested && !stream->active && !stream->first) {
     asciichat_error_t reason = stream->requested_reason;
     uv_mutex_unlock(&stream->mutex);
     platform_event_stream_close(stream, reason);

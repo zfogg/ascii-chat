@@ -66,7 +66,7 @@ typedef struct {
   const void *data;
   size_t length;
   unsigned accepted, closed, completions, jobs;
-  bool expire, cancel, push, zerocopy, acknowledged;
+  bool expire, cancel, push, zerocopy, acknowledged, drain;
   socket_io_stats_t stats;
 } fixture_t;
 
@@ -135,6 +135,11 @@ static void accepted(platform_event_stream_t *stream, void *arg) {
     buffer_release(bytes);
     if (!fixture->expire)
       CHECK(platform_event_stream_write(stream, &suffix, 1, write_done, fixture) == ASCIICHAT_OK);
+    if (fixture->drain) {
+      platform_event_stream_request_close(stream, ASCIICHAT_OK);
+      CHECK(platform_event_stream_write(stream, &suffix, 1, NULL, NULL) != ASCIICHAT_OK);
+      CLEAR_ERRNO_ALL();
+    }
   } else if (fixture->cancel) {
     char bytes[65536] = {0};
     socket_buffer_t buffer = {bytes, sizeof(bytes)};
@@ -154,8 +159,8 @@ static void *run_loop(void *arg) {
   return NULL;
 }
 
-static void event_test(bool expire, bool cancel, bool push, bool zerocopy) {
-  fixture_t fixture = {.expire = expire, .cancel = cancel, .push = push, .zerocopy = zerocopy};
+static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool drain) {
+  fixture_t fixture = {.expire = expire, .cancel = cancel, .push = push, .zerocopy = zerocopy, .drain = drain};
   CHECK(platform_event_loop_create(&fixture.loop) == ASCIICHAT_OK);
   socket_t listener = socket_create("event-test-listener", AF_INET, SOCK_STREAM, 0);
   CHECK(listener != INVALID_SOCKET_VALUE);
@@ -182,7 +187,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy) {
     for (size_t i = 6; i < sizeof(received) - 6; ++i)
       CHECK(received[i] == 0x5a);
     CHECK(memcmp(received + sizeof(received) - 6, "suffix", 6) == 0);
-    CHECK(send_with_timeout(client, "!", 1, NS_PER_SEC_INT) == 1);
+    if (!drain)
+      CHECK(send_with_timeout(client, "!", 1, NS_PER_SEC_INT) == 1);
     char byte;
     CHECK(recv_with_timeout(client, &byte, 1, 5 * NS_PER_SEC_INT) <= 0);
     CLEAR_ERRNO_ALL();
@@ -216,14 +222,16 @@ int main(void) {
   asciichat_errno_suppress(true);
   CHECK(socket_init() == ASCIICHAT_OK);
   decoder_tests();
-  event_test(false, false, false, false);
-  event_test(true, false, false, false);
-  event_test(false, true, false, false);
-  event_test(false, false, true, false);
-  event_test(false, false, true, true);
-  event_test(false, true, false, true);
-  event_test(true, false, true, false);
-  event_test(true, false, true, true);
+  event_test(false, false, false, false, false);
+  event_test(true, false, false, false, false);
+  event_test(false, true, false, false, false);
+  event_test(false, false, true, false, false);
+  event_test(false, false, true, true, false);
+  event_test(false, true, false, true, false);
+  event_test(true, false, true, false, false);
+  event_test(true, false, true, true, false);
+  event_test(false, false, true, false, true);
+  event_test(false, false, true, true, true);
   buffer_stats_t buffers;
   buffer_domain_stats(buffer_default_domain(), &buffers);
   CHECK(buffers.outstanding == 0);

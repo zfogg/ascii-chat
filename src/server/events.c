@@ -28,21 +28,30 @@ typedef struct {
   asciichat_error_t result;
 } server_event_connection_t;
 
+static asciichat_error_t check_connection(server_event_connection_t *connection) {
+  rate_limiter_t *limiter = connection->server->rate_limiter;
+  if (limiter) {
+    bool allowed = false;
+    asciichat_error_t result = rate_limiter_check(limiter, connection->ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (!allowed)
+      return SET_ERRNO(ERROR_RATE_LIMITED, "Connection rate limit exceeded");
+    result = rate_limiter_record(limiter, connection->ip, RATE_EVENT_CONNECTION);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  return ASCIICHAT_OK;
+}
+
+static void admit_connection(void *arg) {
+  server_event_connection_t *connection = arg;
+  connection->result = check_connection(connection);
+}
+
 static asciichat_error_t consume_packet(const void *data, size_t length, void *arg) {
   server_event_connection_t *connection = arg;
   if (!connection->client) {
-    rate_limiter_t *limiter = connection->server->rate_limiter;
-    if (limiter) {
-      bool allowed = false;
-      asciichat_error_t result = rate_limiter_check(limiter, connection->ip, RATE_EVENT_CONNECTION, NULL, &allowed);
-      if (result != ASCIICHAT_OK)
-        return result;
-      if (!allowed)
-        return SET_ERRNO(ERROR_RATE_LIMITED, "Connection rate limit exceeded");
-      result = rate_limiter_record(limiter, connection->ip, RATE_EVENT_CONNECTION);
-      if (result != ASCIICHAT_OK)
-        return result;
-    }
     connection->client = add_transport_client(connection->server, connection->transport, connection->ip, false);
     if (!connection->client)
       return SET_ERRNO(ERROR_SESSION_FULL, "Cannot admit event client");
@@ -186,6 +195,8 @@ void server_event_accept(platform_event_stream_t *stream, void *arg) {
   asciichat_error_t result = platform_event_stream_start(stream, read_input, connection_closed, connection);
   if (result == ASCIICHAT_OK)
     result = platform_event_stream_deadline(stream, 30000);
+  if (result == ASCIICHAT_OK)
+    result = platform_event_stream_work(stream, admit_connection, input_done, connection);
   if (result != ASCIICHAT_OK)
     platform_event_stream_close(stream, result);
 }

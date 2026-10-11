@@ -791,7 +791,8 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (strcmp(client->client_id, client_id) == 0 && client->client_id[0] != '\0') {
-      if (client->event_driven && !atomic_load_bool(&client->event_cleanup)) {
+      if (client->event_driven && !atomic_load_bool(&client->event_cleanup) &&
+          server_ctx->tcp_server && server_ctx->tcp_server->event_loop) {
         acip_transport_close(client->transport);
         rwlock_wrunlock(&g_client_manager_rwlock);
         return ASCIICHAT_OK;
@@ -972,7 +973,7 @@ static void server_client_release_resources_locked(const char *client_id, server
   }
 
   // Cleanup crypto context for this client
-  if (removal->client->crypto_initialized) {
+  if (removal->client->crypto_initialized || removal->client->event_driven) {
     crypto_handshake_destroy(&removal->client->crypto_handshake_ctx);
     removal->client->crypto_initialized = false;
     log_debug("Crypto context cleaned up for client %s", client_id);
@@ -2151,8 +2152,13 @@ void broadcast_server_state_to_all_clients(void) {
   for (int i = 0; i < MAX_CLIENTS; ++i) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->event_driven && atomic_load_bool(&client->event_ready) && atomic_load_bool(&client->active) &&
-        client->transport)
+        client->transport) {
+      mutex_lock(&client->client_state_mutex);
+      mutex_lock(&client->send_mutex);
       acip_send_server_state(client->transport, &net_state);
+      mutex_unlock(&client->send_mutex);
+      mutex_unlock(&client->client_state_mutex);
+    }
   }
   // Event transports only enqueue above; legacy blocking writes follow after unlock.
   uint64_t lock_held_final_ns = time_get_ns();

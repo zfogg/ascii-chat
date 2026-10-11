@@ -49,6 +49,7 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *, const s
 void platform_event_stream_pause(platform_event_stream_t *);
 asciichat_error_t platform_event_stream_resume(platform_event_stream_t *);
 void platform_event_stream_close(platform_event_stream_t *, asciichat_error_t);
+/** Reject new writes, drain accepted output, then close; write deadlines still apply. */
 void platform_event_stream_request_close(platform_event_stream_t *, asciichat_error_t);
 /** Configure copy avoidance before starting producers. The loop always owns I/O. */
 void platform_event_stream_set_zerocopy(platform_event_stream_t *, bool enabled);
