@@ -326,7 +326,7 @@ static const char *manpage_begin_merge(FILE *f, manpage_merge_state_t *state, co
         break;
 
       // Check if this is the .SH header
-      if (strncmp(search_line, ".SH ", 4) == 0) {
+      if (strncmp(search_line, ".SH ", sizeof(".SH ") - 1) == 0) {
         // Write the .SH header line
         size_t header_len = (size_t)(search_line_end - search_line);
         fwrite(search_line, 1, header_len + 1, f);
@@ -336,7 +336,7 @@ static const char *manpage_begin_merge(FILE *f, manpage_merge_state_t *state, co
       }
 
       // Skip marker comment lines (.\" MANUAL-*, .\" MERGE-*, etc)
-      if (strncmp(search_line, ".\\\" ", 4) == 0) {
+      if (strncmp(search_line, ".\\\" ", sizeof(".\\\" ") - 1) == 0) {
         search_line = search_line_end + 1;
         continue; // Keep searching
       }
@@ -407,8 +407,8 @@ static void manpage_end_merge(FILE *f, const options_config_t *config, manpage_m
 static void manpage_collect_environment(manpage_merge_state_t *state, const char *p, const char *line_end,
                                         size_t line_len) {
   // Check if line starts with ".TP" or ".B " (groff markers)
-  bool is_tp_marker = (line_len >= 3 && strncmp(p, ".TP", 3) == 0 && (line_len == 3 || isspace(p[3])));
-  bool is_b_marker = (line_len >= 3 && strncmp(p, ".B ", 3) == 0);
+  bool is_tp_marker = (line_len >= 3 && strncmp(p, ".TP", sizeof(".TP") - 1) == 0 && (line_len == 3 || isspace(p[3])));
+  bool is_b_marker = (line_len >= 3 && strncmp(p, ".B ", sizeof(".B ") - 1) == 0);
 
   if (is_b_marker) {
     // Extract variable name after ".B "

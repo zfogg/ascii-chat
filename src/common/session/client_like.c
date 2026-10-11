@@ -77,8 +77,8 @@ static asciichat_error_t client_like_validate_mirror_webcam_selection(const sess
   return result;
 }
 
-// Module-level config for adapter callbacks
-static const session_client_like_config_t *g_current_config = NULL;
+// Adapter callbacks own a config snapshot for the duration of the session.
+static session_client_like_config_t g_current_config = {0};
 
 // Module-level adapter functions for render loop access
 static bool (*g_render_should_exit)(void *) = NULL;
@@ -111,8 +111,8 @@ static bool client_like_capture_should_exit_adapter(void *user_data) {
   if (APP_CALLBACK_BOOL(should_exit)) {
     return true;
   }
-  if (g_current_config && g_current_config->custom_should_exit) {
-    return g_current_config->custom_should_exit(g_current_config->exit_user_data);
+  if (g_current_config.custom_should_exit) {
+    return g_current_config.custom_should_exit(g_current_config.exit_user_data);
   }
   return false;
 }
@@ -126,8 +126,8 @@ static bool client_like_display_should_exit_adapter(void *user_data) {
   if (APP_CALLBACK_BOOL(should_exit)) {
     return true;
   }
-  if (g_current_config && g_current_config->custom_should_exit) {
-    return g_current_config->custom_should_exit(g_current_config->exit_user_data);
+  if (g_current_config.custom_should_exit) {
+    return g_current_config.custom_should_exit(g_current_config.exit_user_data);
   }
   return false;
 }
@@ -742,7 +742,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 
-  g_current_config = NULL;
+  g_current_config = (session_client_like_config_t){0};
   g_render_should_exit = NULL;
 
 #ifndef NDEBUG
@@ -824,7 +824,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   }
   log_info("session_client_like_run: config validated");
 
-  g_current_config = config;
+  g_current_config = *config;
   g_render_should_exit = client_like_display_should_exit_adapter;
   client_like_state_t state = {0};
   client_like_setup_terminal_logging();

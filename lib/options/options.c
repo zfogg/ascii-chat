@@ -2158,6 +2158,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
 
+  // Discover binary actions before mode parsing so help and early exits need no media setup.
   handle_help_option(argc, argv);
   binary_actions_t actions = {.parsed_color_setting = COLOR_SETTING_AUTO};
   result = scan_binary_actions(argc, argv, &actions);
@@ -2193,6 +2194,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     return handle_fallback_actions(&opts, &actions);
   }
 
+  // Mode parsing owns the temporary argv and schema until the shared cleanup path.
   mode_arguments_t mode_args = {.argc = argc, .argv = argv};
   options_config_t *config = NULL;
   result = build_mode_argv(argc, argv, mode_index, &mode_args);
@@ -2201,6 +2203,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
   initialize_mode_defaults(&opts, detected_mode, detected_session_string);
   build_options_schema();
+  // Apply defaults, config, environment, then CLI values in increasing precedence.
   bool fps_set_by_config = false;
   load_options_config(&opts, detected_mode, &fps_set_by_config);
   config = options_preset_unified(NULL, NULL);
@@ -2216,6 +2219,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     goto cleanup;
   }
   record_explicit_fps(&opts, mode_args.argc, mode_args.argv, fps_set_by_config);
+  // Validators consume a published snapshot; final publication follows normalization.
   result = publish_options_for_validation(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
@@ -2252,6 +2256,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_info("★ OPTIONS_CONFIG_DESTROY: Done");
 
   log_info("★ STAGE 7: Starting post-processing");
+  // Resolve identity, dimensions, and media before exposing the final options to actions.
   result = collect_server_identity_keys(&opts, detected_mode, argc, argv);
   if (result != ASCIICHAT_OK) {
     goto cleanup;

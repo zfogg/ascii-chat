@@ -25,6 +25,14 @@
 static int calls, prepares, stops, retries;
 static unsigned int slept;
 static bool exiting;
+static bool custom_exit;
+static int custom_exit_calls;
+static bool (*saved_exit_adapter)(void *);
+static bool client_like_custom_exit(void *data) {
+  CHECK(data == &custom_exit_calls);
+  custom_exit_calls++;
+  return custom_exit;
+}
 static const char *scenario;
 static uint32_t expected_fps = 60;
 static bool client_like_should_exit(void) {
@@ -55,7 +63,16 @@ static asciichat_error_t client_like_run(session_capture_ctx_t *capture, session
   CHECK(capture && display && data == &calls);
   CHECK(session_capture_get_target_fps(capture) == expected_fps);
   calls++;
-  CHECK(session_client_like_get_render_should_exit());
+  saved_exit_adapter = session_client_like_get_render_should_exit();
+  CHECK(saved_exit_adapter);
+  if (!exiting) {
+    int calls_before_adapter_check = custom_exit_calls;
+    CHECK(!saved_exit_adapter(NULL));
+    custom_exit = true;
+    CHECK(saved_exit_adapter(NULL));
+    custom_exit = false;
+    CHECK(custom_exit_calls == calls_before_adapter_check + 2);
+  }
   if (!strcmp(scenario, "discovery-destroy")) {
     session_display_destroy(display);
     session_display_set_global_context_public(NULL);
@@ -96,6 +113,8 @@ int main(int argc, char **argv) {
                         .audio_stop_thread = client_like_stop_audio};
   app_callbacks_register(&cb);
   session_client_like_config_t config = {.run_fn = client_like_run,
+                                         .custom_should_exit = client_like_custom_exit,
+                                         .exit_user_data = &custom_exit_calls,
                                          .prepare_fn = client_like_prepare,
                                          .run_user_data = &calls,
                                          .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
@@ -114,6 +133,11 @@ int main(int argc, char **argv) {
   asciichat_error_t result = session_client_like_run(&config);
   CHECK(prepares == 1 && stops == 1);
   CHECK(!session_client_like_get_render_should_exit());
+  if (saved_exit_adapter) {
+    int calls_before_cleanup_check = custom_exit_calls;
+    (void)saved_exit_adapter(NULL);
+    CHECK(custom_exit_calls == calls_before_cleanup_check);
+  }
   CHECK(!session_client_like_get_stdin_reader());
   if (!strcmp(scenario, "prepare-error"))
     CHECK(result == ERROR_INVALID_STATE && calls == 0);

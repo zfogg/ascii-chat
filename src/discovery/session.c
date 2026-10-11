@@ -1629,7 +1629,7 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
         // We become the host
         log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)",
                  nat_compute_tier(&session->negotiate.our_quality), nat_compute_tier(&session->negotiate.peer_quality));
-        memcpy(session->host_id, session->participant_id, 16);
+        memcpy(session->host_id, session->participant_id, sizeof(session->host_id));
         SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
         session->host_port = session->negotiate.host_port;
 
@@ -1712,8 +1712,8 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
   int host_port = GET_OPTION(port);
   acip_host_announcement_t announcement = {0};
-  memcpy(announcement.session_id, session->session_id, 16);
-  memcpy(announcement.host_id, session->host_id, 16);
+  memcpy(announcement.session_id, session->session_id, sizeof(announcement.session_id));
+  memcpy(announcement.host_id, session->host_id, sizeof(announcement.host_id));
   SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
   announcement.host_port = host_port;
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
@@ -2526,7 +2526,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
 
   // Send HOST_ANNOUNCEMENT to ACDS so other participants can reconnect
   acip_host_announcement_t announcement = {0};
-  memcpy(announcement.session_id, session->session_id, 16);
+  memcpy(announcement.session_id, session->session_id, sizeof(announcement.session_id));
   memcpy(announcement.host_id, session->participant_id, 16);
   SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
   announcement.host_port = host_port;
