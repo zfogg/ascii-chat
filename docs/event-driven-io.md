@@ -19,7 +19,7 @@ Adoption invalidates the caller's socket. Only the event loop closes it. Reads
 borrow a 64 KiB stream buffer; a stream worker pauses reads until its completion
 callback. At most one worker runs per stream. Handshakes, packet handlers, SQLite
 work, and client cleanup execute outside the event loop in libuv's worker pool.
-Render threads remain per client, but the default server TCP path no longer
+Render threads remain per client, but the server TCP path no longer
 creates per-client socket receive, dispatch, and send threads.
 
 Writes copy caller buffers before returning and preserve enqueue order. Accepted
@@ -60,8 +60,15 @@ WebSocket and WebRTC continue to use libwebsockets and libdatachannel's event
 loops and their existing ACIP adapters. Browser/WASM builds do not link libuv.
 DNS resolution and outbound connection establishment retain the existing
 connection code. Outbound discovery requests retain their synchronous adapter.
-The explicit `--network-zerocopy` option retains the existing threaded TCP path,
-including Linux `MSG_ZEROCOPY` completion handling; the default uses event I/O.
+Native client, server, and discovery-service TCP stream I/O always uses the event
+backend; there is no alternate threaded TCP path or backend selection option.
+Linux copy avoidance is attempted automatically inside that event loop.
+Large writes use owned mappings and nonblocking `MSG_ZEROCOPY` submissions, with
+one outstanding submission per stream. A timer drains the error queue without
+blocking other connections; completion releases the mapping. Unsupported or
+copied submissions fall back to ordinary libuv writes on the same stream.
+All writes have a 30-second progress deadline; cancellation discards mappings
+without recycling kernel-pinned pages.
 This implementation does not claim a measured throughput improvement.
 
 ## Build and verification
@@ -82,6 +89,6 @@ Use `.exe` executable names on Windows. The standalone test covers fragmented
 and coalesced packets, corrupt and oversized input, worker-driven echo, deadlines,
 queue saturation, and exactly-once cancellation. Integration tests exercise
 encrypted snapshots with stalled peers, reconnects, password, pinned identity and plaintext modes,
-WebSocket coexistence, legacy TCP peers, discovery sessions, and graceful shutdown. With
+WebSocket coexistence, automatic copy avoidance, discovery sessions, and graceful shutdown. With
 `BUILD_TESTS=ON`, the new tests register as `network-events` and
 `event-io-integration` in CTest.

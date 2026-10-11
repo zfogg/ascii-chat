@@ -230,6 +230,82 @@ void socket_send_buffer_free(socket_send_buffer_t *buffer) {
   *buffer = (socket_send_buffer_t){0};
 }
 
+asciichat_error_t socket_zerocopy_try(socket_t sock, const socket_send_buffer_t *buffer, size_t offset, size_t length,
+                                      size_t *sent, bool *supported) {
+  if (!buffer || !buffer->data || !sent || !supported || offset > buffer->capacity ||
+      length > buffer->capacity - offset)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid async zerocopy submission");
+  *sent = 0;
+  *supported = false;
+#if defined(__linux__) && defined(SO_ZEROCOPY) && defined(MSG_ZEROCOPY)
+  if (!buffer->mapped || length < SOCKET_ZEROCOPY_THRESHOLD)
+    return ASCIICHAT_OK;
+  int one = 1;
+  if (setsockopt(sock, SOL_SOCKET, SO_ZEROCOPY, &one, sizeof(one)) != 0)
+    return ASCIICHAT_OK;
+  *supported = true;
+  ++io_stats.send_calls;
+  ssize_t count = send(sock, (const char *)buffer->data + offset, length, MSG_ZEROCOPY | MSG_DONTWAIT | MSG_NOSIGNAL);
+  if (count < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+      return ASCIICHAT_OK;
+    if (errno == ENOBUFS || errno == EOPNOTSUPP || errno == EINVAL) {
+      *supported = false;
+      return ASCIICHAT_OK;
+    }
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Async zerocopy submission failed");
+  }
+  if (!count)
+    return SET_ERRNO(ERROR_NETWORK, "Async zerocopy made no progress");
+  *sent = (size_t)count;
+  io_stats.sent_bytes += *sent;
+  ++io_stats.zerocopy_calls;
+#else
+  (void)sock;
+#endif
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t socket_zerocopy_poll(socket_t sock, bool *completed, bool *copied) {
+  if (!completed || !copied)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing async zerocopy completion outputs");
+  *completed = *copied = false;
+#if defined(__linux__) && defined(SO_ZEROCOPY) && defined(MSG_ZEROCOPY)
+  union {
+    struct cmsghdr align;
+    char bytes[512];
+  } control;
+  struct msghdr message = {0};
+  message.msg_control = control.bytes;
+  message.msg_controllen = sizeof(control.bytes);
+  if (recvmsg(sock, &message, MSG_ERRQUEUE | MSG_DONTWAIT) < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+      return ASCIICHAT_OK;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Async zerocopy completion failed");
+  }
+  if (message.msg_flags & MSG_CTRUNC)
+    return SET_ERRNO(ERROR_NETWORK, "Truncated async zerocopy completion");
+  for (struct cmsghdr *c = CMSG_FIRSTHDR(&message); c; c = CMSG_NXTHDR(&message, c)) {
+    if (!((c->cmsg_level == SOL_IP && c->cmsg_type == IP_RECVERR) ||
+          (c->cmsg_level == SOL_IPV6 && c->cmsg_type == IPV6_RECVERR)) ||
+        c->cmsg_len < CMSG_LEN(sizeof(struct sock_extended_err)))
+      continue;
+    struct sock_extended_err error;
+    memcpy(&error, CMSG_DATA(c), sizeof(error));
+    if (error.ee_errno || error.ee_origin != SO_EE_ORIGIN_ZEROCOPY || error.ee_info != error.ee_data)
+      return SET_ERRNO(ERROR_NETWORK, "Unexpected async zerocopy completion");
+    *completed = true;
+    *copied = (error.ee_code & SO_EE_CODE_ZEROCOPY_COPIED) != 0;
+    ++io_stats.zerocopy_completions;
+    if (*copied)
+      ++io_stats.zerocopy_copied;
+  }
+#else
+  (void)sock;
+#endif
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t socket_send_zerocopy(socket_t sock, const socket_send_buffer_t *buffer, size_t len,
                                        uint64_t timeout_ns, bool *supported, bool *copied) {
   if (!supported || !copied || !buffer || !buffer->data || len > buffer->capacity || !timeout_ns ||

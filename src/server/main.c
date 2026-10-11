@@ -500,20 +500,10 @@ static void server_handle_sigint(int sig) {
   // static const char sigint_msg[] = "SIGINT received - shutting down server...\n";
   // platform_write_all(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
 
-  // STEP 3: Signal TCP server to stop and close listening sockets
-  // This interrupts the accept() call in the main loop
+  // The event-loop timer observes this flag and closes its listening sockets.
   tcp_server_t *tcp = session_server_like_get_tcp_server();
-  if (tcp) {
+  if (tcp)
     atomic_store_bool(&tcp->running, false);
-    if (!tcp->config.event_handler && tcp->listen_socket != INVALID_SOCKET_VALUE) {
-      socket_close(tcp->listen_socket);
-      tcp->listen_socket = INVALID_SOCKET_VALUE;
-    }
-    if (!tcp->config.event_handler && tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
-      socket_close(tcp->listen_socket6);
-      tcp->listen_socket6 = INVALID_SOCKET_VALUE;
-    }
-  }
 
   // STEP 3b: Signal WebSocket server to stop
   // Without this, lws_service() could block for up to 50ms before checking the running flag.
@@ -721,9 +711,9 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
   }
   participant_str[32] = '\0';
 
-  // Add client to server (calls add_webrtc_client internally)
+  // Add client to server (calls add_transport_client internally)
   // For WebRTC DataChannel: start threads immediately (crypto already handled by ACDS)
-  client_info_t *client = add_webrtc_client(server_ctx, transport, participant_str, true);
+  client_info_t *client = add_transport_client(server_ctx, transport, participant_str, true);
   if (!client) {
     log_error("Failed to add WebRTC client for participant %s", participant_str);
     acip_transport_destroy(transport);
@@ -1029,142 +1019,6 @@ static void *acds_receive_thread(void *arg) {
  */
 
 /**
- * @brief Client handler thread function for tcp_server integration
- *
- * Called by tcp_server_run() for each accepted connection. This function:
- * 1. Extracts client connection info from tcp_client_context_t
- * 2. Performs connection rate limiting
- * 3. Calls add_client() to initialize client structure and spawn workers
- * 4. Blocks until client disconnects
- * 5. Calls remove_client() to cleanup
- *
- * @param arg Pointer to tcp_client_context_t allocated by tcp_server_run()
- * @return NULL (thread exit value)
- */
-static void *ascii_chat_client_handler(void *arg) {
-  tcp_client_context_t *ctx = (tcp_client_context_t *)arg;
-  if (!ctx) {
-    log_error("Client handler: NULL context");
-    return NULL;
-  }
-
-  // Extract server context from user_data
-  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
-  if (!server_ctx) {
-    log_error("Client handler: NULL server context");
-    socket_close(ctx->client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  socket_t client_socket = ctx->client_socket;
-
-  // Extract client IP and port using tcp_server helpers
-  char client_ip[INET6_ADDRSTRLEN] = {0};
-  if (!tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip))) {
-    safe_snprintf(client_ip, sizeof(client_ip), "unknown");
-  }
-
-  int client_port = tcp_client_context_get_port(ctx);
-  if (client_port < 0) {
-    client_port = 0;
-  }
-
-  log_debug("Client handler started for %s:%d", client_ip, client_port);
-
-  // Check connection rate limit (prevent DoS attacks)
-  if (server_ctx->rate_limiter) {
-    bool allowed = false;
-    asciichat_error_t rate_check =
-        rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
-    if (rate_check != ASCIICHAT_OK || !allowed) {
-      asciichat_errno_scope_t rejection_scope = asciichat_errno_scope_begin();
-      asciichat_error_t public_code = rate_check == ASCIICHAT_OK ? ERROR_RATE_LIMITED : ERROR_INTERNAL;
-      packet_envelope_t initial = {0};
-      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
-      if (initial.allocated_buffer)
-        buffer_release(initial.allocated_buffer);
-      packet_send_error(client_socket, NULL, public_code, asciichat_error_string(public_code));
-      asciichat_errno_scope_end(rejection_scope, ASCIICHAT_ERRNO_HANDLED);
-      socket_close(client_socket);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-    // Record successful connection attempt
-    rate_limiter_record(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION);
-  }
-
-  // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
-  asciichat_errno_scope_t admission_scope = asciichat_errno_scope_begin();
-  bool socket_consumed = false;
-  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port, &socket_consumed);
-  if (!client) {
-    asciichat_error_context_t failure;
-    asciichat_error_t code = ERROR_INTERNAL;
-    if (asciichat_errno_peek_since(admission_scope, &failure)) {
-      code = network_error_public_code(failure.code);
-    }
-    asciichat_errno_scope_t notify_scope = asciichat_errno_scope_begin();
-    // Consume the initial version packet before replying. Closing a socket with
-    // unread input can reset the connection and discard the rejection response.
-    if (!socket_consumed) {
-      packet_envelope_t initial = {0};
-      receive_packet_secure_with_timeout(client_socket, NULL, false, &initial, NS_PER_SEC_INT);
-      if (initial.allocated_buffer)
-        buffer_release(initial.allocated_buffer);
-    }
-    asciichat_error_t sent =
-        socket_consumed ? ASCIICHAT_OK : packet_send_error(client_socket, NULL, code, asciichat_error_string(code));
-    if (sent != ASCIICHAT_OK)
-      LOG_ERRNO_IF_SET("Failed to report client rejection");
-    asciichat_errno_scope_end(notify_scope, ASCIICHAT_ERRNO_HANDLED);
-    LOG_ERRNO_IF_SET("Client admission failed");
-    asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
-    if (!socket_consumed)
-      socket_close(client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  ASSERT_NO_ERRNO_SINCE(admission_scope);
-  asciichat_errno_scope_end(admission_scope, ASCIICHAT_ERRNO_HANDLED);
-  log_debug("Client %s added successfully from %s:%d", client->client_id, client_ip, client_port);
-
-  // Block until client disconnects (active flag is set by receive thread)
-  if (client) {
-    log_debug("HANDLER: Client %s found, waiting for disconnect (active=%d)", client->client_id,
-              atomic_load_bool(&client->active));
-    int wait_count = 0;
-    while (atomic_load_bool(&client->active) && !atomic_load_bool(server_ctx->server_should_exit)) {
-      wait_count++;
-      if (wait_count % 10 == 0) {
-        // Log every 1 second (10 * 100ms)
-        log_debug("HANDLER: Client %s still active (waited %d seconds), active=%d", client->client_id, wait_count / 10,
-                  atomic_load_bool(&client->active));
-      }
-      APP_CALLBACK_VOID(platform_pump_events);
-      platform_sleep_ms(100); // Check every 100ms
-    }
-    log_info("Client %s disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)",
-             client->client_id, client_ip, client_port, wait_count / 10, atomic_load_bool(&client->active),
-             atomic_load_bool(server_ctx->server_should_exit));
-  }
-
-  // Cleanup (this will call tcp_server_stop_client_threads internally)
-  if (remove_client(server_ctx, client->client_id) != 0) {
-    log_error("CRITICAL BUG: Failed to remove client %s from server (potential zombie client leak!)",
-              client->client_id);
-  }
-
-  // Close socket and free context
-  socket_close(client_socket);
-  SAFE_FREE(ctx);
-
-  log_debug("Client handler finished for %s:%d", client_ip, client_port);
-  return NULL;
-}
-
-/**
  * @brief WebSocket client handler thread function
  *
  * Called by websocket_server for each accepted WebSocket connection.
@@ -1196,10 +1050,10 @@ static void *websocket_client_handler(void *arg) {
   }
 
   // STEP 1: Add client first (creates client structure WITHOUT starting threads yet)
-  log_debug("[WS_HANDLER] STEP 1: Calling add_webrtc_client()...");
-  client_info_t *client = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip, false);
+  log_debug("[WS_HANDLER] STEP 1: Calling add_transport_client()...");
+  client_info_t *client = add_transport_client(server_ctx, ctx->transport, ctx->client_ip, false);
   if (!client) {
-    log_error("[WS_HANDLER] FAILED: add_webrtc_client returned NULL");
+    log_error("[WS_HANDLER] FAILED: add_transport_client returned NULL");
     if (ctx->transport) {
       acip_transport_destroy(ctx->transport);
     }
@@ -1213,7 +1067,7 @@ static void *websocket_client_handler(void *arg) {
   // TLS encrypts the transport; configured credentials still require authentication.
   if (ctx->is_secure && GET_OPTION(password)[0] == '\0' && g_num_whitelisted_clients == 0) {
     client->transport_encrypted = true;
-    if (start_webrtc_client_threads(server_ctx, client->client_id) != 0) {
+    if (start_transport_client_threads(server_ctx, client->client_id) != 0) {
       remove_client(server_ctx, client->client_id);
     }
     SAFE_FREE(ctx);
@@ -1221,7 +1075,8 @@ static void *websocket_client_handler(void *arg) {
   }
 
   log_info("WebSocket client %s added successfully", client->client_id);
-  log_debug("[WS_HANDLER] add_webrtc_client returned client_id=%s, transport ownership transferred", client->client_id);
+  log_debug("[WS_HANDLER] add_transport_client returned client_id=%s, transport ownership transferred",
+            client->client_id);
 
   // STEP 2: Client structure is already initialized - set up crypto handshake
   log_debug("[WS_HANDLER] STEP 2: Client structure obtained: client=%p, transport=%p, crypto_initialized=%d",
@@ -1309,8 +1164,8 @@ static void *websocket_client_handler(void *arg) {
   // STEP 4: Now start the threads after crypto is initialized
   // This ensures receive thread doesn't try to process packets before crypto context exists
   log_debug("[WS_HANDLER] STEP 4: Starting client threads after crypto initialization...");
-  if (start_webrtc_client_threads(server_ctx, client->client_id) != 0) {
-    log_error("[WS_HANDLER] FAILED: start_webrtc_client_threads returned error");
+  if (start_transport_client_threads(server_ctx, client->client_id) != 0) {
+    log_error("[WS_HANDLER] FAILED: start_transport_client_threads returned error");
     remove_client(server_ctx, client->client_id);
     SAFE_FREE(ctx);
     return NULL;
@@ -2481,8 +2336,7 @@ int server_main(void) {
       .cleanup_user_data = NULL,
       .status_fn = server_status_fn,
       .status_user_data = NULL,
-      .tcp_handler = ascii_chat_client_handler,
-      .tcp_event_handler = GET_OPTION(network_zerocopy) ? NULL : server_event_accept,
+      .tcp_event_handler = server_event_accept,
       .tcp_user_data = &g_server_ctx,
       .websocket =
           {

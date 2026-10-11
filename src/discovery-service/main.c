@@ -331,7 +331,6 @@ int acds_main(void) {
       .status_user_data = NULL,
 
       // TCP handler
-      .tcp_handler = acds_client_handler,
       .tcp_event_handler = acds_event_accept,
       .tcp_user_data = &g_server,
 

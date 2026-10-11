@@ -15,7 +15,6 @@
 int server_crypto_init(void);
 
 // Perform crypto handshake with client
-int server_crypto_handshake(client_info_t *client);
 asciichat_error_t server_crypto_event(client_info_t *, unsigned *, packet_type_t, const void *, size_t, bool *);
 
 // Check if crypto handshake is ready for a specific client

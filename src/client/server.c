@@ -566,13 +566,9 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   // Create the persistent TCP transport before handshake.
   // It starts with NULL crypto; client_crypto_handshake() sets crypto_ctx on success.
-  if (!GET_OPTION(network_zerocopy)) {
-    socket_set_keepalive(g_sockfd, true);
-    socket_configure_buffers(g_sockfd);
-    g_client_transport = acip_async_tcp_client_create(&g_sockfd, NULL);
-  } else {
-    g_client_transport = acip_tcp_transport_create("client", g_sockfd, NULL);
-  }
+  socket_set_keepalive(g_sockfd, true);
+  socket_configure_buffers(g_sockfd);
+  g_client_transport = acip_async_tcp_client_create(&g_sockfd, NULL);
   if (!g_client_transport) {
     log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);

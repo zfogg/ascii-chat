@@ -21,7 +21,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
@@ -106,9 +105,6 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   if (!server || !config) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "server or config is NULL");
   }
-
-  // Note: client_handler is optional - some users may use tcp_server just for socket setup
-  // and implement their own accept loop (like ascii-chat server with its cleanup logic)
 
   // Initialize server state
   memset(server, 0, sizeof(*server));
@@ -198,136 +194,9 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
   }
 
-  if (server->config.event_handler)
-    return tcp_server_run_events(server);
-
-  if (!server->config.client_handler) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL");
-  }
-
-  log_debug("TCP server starting accept loop...");
-
-  while (atomic_load_bool(&server->running)) {
-    // Build fd_set for select()
-    fd_set read_fds;
-    socket_fd_zero(&read_fds);
-    socket_t max_fd = 0;
-
-    // Add IPv4 socket if available
-    if (server->listen_socket != INVALID_SOCKET_VALUE) {
-      socket_fd_set(server->listen_socket, &read_fds);
-      max_fd = server->listen_socket > max_fd ? server->listen_socket : max_fd;
-    }
-
-    // Add IPv6 socket if available
-    if (server->listen_socket6 != INVALID_SOCKET_VALUE) {
-      socket_fd_set(server->listen_socket6, &read_fds);
-      max_fd = server->listen_socket6 > max_fd ? server->listen_socket6 : max_fd;
-    }
-
-    // Use timeout from config (defaults to 1 second if not set)
-    // Convert double seconds to tv_sec and tv_usec
-    double timeout_sec_double = server->config.accept_timeout_sec > 0 ? server->config.accept_timeout_sec : 1.0;
-    time_t timeout_sec = (time_t)timeout_sec_double;
-    long timeout_usec = (long)((timeout_sec_double - timeout_sec) * (double)US_PER_SEC_INT);
-    struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
-
-    int select_result = socket_select((int)max_fd, &read_fds, NULL, NULL, &timeout);
-
-    if (select_result < 0) {
-      // Check if interrupted by signal (expected during shutdown)
-      int err = socket_get_last_error();
-      if (err == EINTR) {
-        // Signal interrupt (e.g., SIGTERM, SIGINT) - check running flag and continue
-        log_debug("select() interrupted by signal");
-        continue;
-      }
-      // Actual error - socket_get_error_string() returns last socket error
-      log_error("select() failed in accept loop: %s (errno=%d)", socket_get_error_string(), err);
-      continue;
-    }
-
-    if (select_result == 0) {
-      // Timeout - invoke status update callback if configured
-      if (server->config.status_update_fn) {
-        server->config.status_update_fn(server->config.status_update_data);
-      }
-      log_debug_every(5000, "select() timeout on TCP server (no incoming connections)");
-      continue;
-    }
-
-    // Check which socket has incoming connection
-    socket_t ready_socket = INVALID_SOCKET_VALUE;
-    if (server->listen_socket != INVALID_SOCKET_VALUE && socket_fd_isset(server->listen_socket, &read_fds)) {
-      ready_socket = server->listen_socket;
-    } else if (server->listen_socket6 != INVALID_SOCKET_VALUE && socket_fd_isset(server->listen_socket6, &read_fds)) {
-      ready_socket = server->listen_socket6;
-    }
-
-    if (ready_socket == INVALID_SOCKET_VALUE) {
-      // Spurious wakeup
-      continue;
-    }
-
-    // Accept connection
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    socket_t client_socket = accept(ready_socket, (struct sockaddr *)&client_addr, &client_addr_len);
-    if (socket_is_valid(client_socket)) {
-      NAMED_REGISTER_SOCKET(client_socket, "tcp_client", NULL);
-    }
-
-    if (client_socket == INVALID_SOCKET_VALUE) {
-      log_warn("Failed to accept connection");
-      continue;
-    }
-
-    // Format client IP for logging
-    char client_ip[INET6_ADDRSTRLEN];
-    // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult) - client_addr filled by accept()
-    int addr_family = (client_addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
-    if (format_ip_address(addr_family, (struct sockaddr *)&client_addr, client_ip, sizeof(client_ip)) != ASCIICHAT_OK) {
-      SAFE_STRNCPY(client_ip, "(unknown)", sizeof(client_ip));
-    }
-
-    log_debug("Accepted connection from %s", client_ip);
-
-    // Allocate client context
-    tcp_client_context_t *ctx = SAFE_MALLOC(sizeof(tcp_client_context_t), tcp_client_context_t *);
-    if (!ctx) {
-      log_error("Failed to allocate client context");
-      socket_close(client_socket);
-      continue;
-    }
-
-    ctx->client_socket = client_socket;
-    ctx->addr = client_addr;
-    ctx->addr_len = client_addr_len;
-    ctx->user_data = server->config.user_data;
-
-    // Spawn client handler thread
-    // Handler is responsible for:
-    // 1. Allocating client_data
-    // 2. Calling tcp_server_add_client() to register
-    // 3. Spawning additional worker threads via tcp_server_spawn_thread() if needed
-    // 4. Processing client requests
-    // 5. Calling tcp_server_remove_client() on disconnect
-    // 6. Closing socket and freeing ctx
-    asciichat_thread_t thread;
-    if (asciichat_thread_create(&thread, "tcp_client", server->config.client_handler, ctx) != 0) {
-      log_error("Failed to create client handler thread for %s", client_ip);
-      SAFE_FREE(ctx);
-      socket_close(client_socket);
-      continue;
-    }
-
-    // Thread is detached (handler is responsible for cleanup)
-    (void)thread; // Suppress unused warning
-  }
-
-  log_debug("TCP server accept loop exited");
-  return ASCIICHAT_OK;
+  if (!server->config.event_handler)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "TCP event handler is required");
+  return tcp_server_run_events(server);
 }
 
 void tcp_server_destroy(tcp_server_t *server) {
@@ -361,12 +230,6 @@ void tcp_server_destroy(tcp_server_t *server) {
     // Call cleanup callback if set
     if (server->cleanup_fn && entry->client_data) {
       server->cleanup_fn(entry->client_data);
-    }
-
-    // Destroy thread pool (stops all threads and frees resources)
-    if (entry->threads) {
-      thread_pool_destroy(entry->threads);
-      entry->threads = NULL;
     }
 
     HASH_DEL(server->clients, entry);
@@ -412,15 +275,6 @@ asciichat_error_t tcp_server_add_client(tcp_server_t *server, socket_t socket, v
   entry->socket = socket;
   entry->client_data = client_data;
 
-  // Create thread pool for this client
-  char pool_name[64];
-  SAFE_SNPRINTF(pool_name, sizeof(pool_name), "client_%d", socket);
-  entry->threads = thread_pool_create(pool_name);
-  if (!entry->threads) {
-    SAFE_FREE(entry);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create thread pool for client");
-  }
-
   // Add to hash table (thread-safe with write lock)
   rwlock_wrlock(&server->clients_rwlock);
   HASH_ADD(hh, server->clients, socket, sizeof(socket_t), entry);
@@ -450,12 +304,6 @@ asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket
   // Call cleanup callback if set
   if (server->cleanup_fn && entry->client_data) {
     server->cleanup_fn(entry->client_data);
-  }
-
-  // Destroy thread pool (stops all threads and frees resources)
-  if (entry->threads) {
-    thread_pool_destroy(entry->threads);
-    entry->threads = NULL;
   }
 
   HASH_DEL(server->clients, entry);
@@ -514,184 +362,4 @@ size_t tcp_server_get_client_count(tcp_server_t *server) {
   rwlock_rdunlock(&server->clients_rwlock);
 
   return count;
-}
-
-// ============================================================================
-// Client Context Utilities
-// ============================================================================
-
-const char *tcp_client_context_get_ip(const tcp_client_context_t *ctx, char *buf, size_t len) {
-  if (!ctx) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
-    return NULL;
-  }
-  if (!buf) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "buf is NULL");
-    return NULL;
-  }
-  if (len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "len is 0");
-    return NULL;
-  }
-
-  // Determine address family
-  int addr_family = (ctx->addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
-
-  // Format IP address using existing utility
-  if (format_ip_address(addr_family, (struct sockaddr *)&ctx->addr, buf, len) != 0) {
-    return NULL;
-  }
-
-  return buf;
-}
-
-int tcp_client_context_get_port(const tcp_client_context_t *ctx) {
-  if (!ctx) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
-    return -1;
-  }
-
-  // Extract port based on address family
-  if (ctx->addr.ss_family == AF_INET) {
-    struct sockaddr_in *addr_in = (struct sockaddr_in *)&ctx->addr;
-    return ntohs(addr_in->sin_port);
-  } else if (ctx->addr.ss_family == AF_INET6) {
-    struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&ctx->addr;
-    return ntohs(addr_in6->sin6_port);
-  }
-
-  SET_ERRNO(ERROR_INVALID_STATE, "Unknown address family: %d", ctx->addr.ss_family);
-  return -1;
-}
-
-void tcp_server_reject_client(socket_t socket, const char *reason) {
-  if (socket == INVALID_SOCKET_VALUE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "socket is INVALID_SOCKET_VALUE");
-    return;
-  }
-
-  log_warn("Rejecting client connection: %s", reason ? reason : "unknown reason");
-  socket_close(socket);
-}
-
-// ============================================================================
-// Client Thread Pool Management
-// ============================================================================
-
-asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_socket, void *(*thread_func)(void *),
-                                          void *thread_arg, int stop_id, const char *thread_name) {
-  if (!server || !thread_func) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server or thread_func is NULL");
-  }
-
-  // For WebRTC clients (no socket): create thread directly without TCP server thread pool tracking
-  // This allows render threads to work for both TCP and WebRTC clients
-  if (client_socket == INVALID_SOCKET_VALUE) {
-    // Extract thread handle from thread_arg if it's a client_info_t
-    // We need to store the thread handle somewhere, but for now just create the thread
-    // The caller must manage the thread handle directly for WebRTC clients
-    log_debug("Spawning standalone thread '%s' (no socket, WebRTC client)", thread_name ? thread_name : "unnamed");
-
-    // For WebRTC clients, we can't use thread_pool since there's no socket entry
-    // Instead, create the thread directly - the caller must handle the thread
-    // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
-    // In the future, consider a unified thread management system
-    asciichat_thread_t temp_thread;
-    asciichat_error_t result = asciichat_thread_create(&temp_thread, "tcp_worker", thread_func, thread_arg);
-    if (result != ASCIICHAT_OK) {
-      return result;
-    }
-
-    // Note: temp_thread handle is lost here, but the thread is running
-    // The caller must manage thread lifecycle for WebRTC clients differently
-    (void)temp_thread; // Suppress unused warning
-    return ASCIICHAT_OK;
-  }
-
-  // Find client entry
-  rwlock_rdlock(&server->clients_rwlock);
-  tcp_client_entry_t *entry = NULL;
-  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
-
-  if (!entry) {
-    rwlock_rdunlock(&server->clients_rwlock);
-    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
-  }
-
-  // Spawn thread in client's thread pool
-  asciichat_error_t result = thread_pool_spawn(entry->threads, thread_func, thread_arg, stop_id, thread_name);
-
-  rwlock_rdunlock(&server->clients_rwlock);
-
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  size_t thread_count = thread_pool_get_count(entry->threads);
-  log_debug("Spawned thread '%s' (stop_id=%d) for client socket=%d (total_threads=%zu)",
-            thread_name ? thread_name : "unnamed", stop_id, client_socket, thread_count);
-
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t tcp_server_stop_client_threads(tcp_server_t *server, socket_t client_socket) {
-  if (!server) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
-  }
-
-  if (client_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
-  }
-
-  // Find client entry
-  rwlock_rdlock(&server->clients_rwlock);
-  tcp_client_entry_t *entry = NULL;
-  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
-
-  if (!entry) {
-    rwlock_rdunlock(&server->clients_rwlock);
-    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
-  }
-
-  // Stop all threads in client's thread pool (in stop_id order)
-  asciichat_error_t result = ASCIICHAT_OK;
-  if (entry->threads) {
-    result = thread_pool_stop_all(entry->threads);
-  }
-
-  rwlock_rdunlock(&server->clients_rwlock);
-
-  log_debug("All threads stopped for client socket=%d", client_socket);
-  return result;
-}
-
-asciichat_error_t tcp_server_get_thread_count(tcp_server_t *server, socket_t client_socket, size_t *count) {
-  if (!server || !count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server or count is NULL");
-  }
-
-  if (client_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
-  }
-
-  *count = 0;
-
-  // Find client entry
-  rwlock_rdlock(&server->clients_rwlock);
-  tcp_client_entry_t *entry = NULL;
-  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
-
-  if (!entry) {
-    rwlock_rdunlock(&server->clients_rwlock);
-    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
-  }
-
-  // Get thread count from pool
-  if (entry->threads) {
-    *count = thread_pool_get_count(entry->threads);
-  }
-
-  rwlock_rdunlock(&server->clients_rwlock);
-
-  return ASCIICHAT_OK;
 }

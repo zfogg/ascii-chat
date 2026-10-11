@@ -518,6 +518,16 @@ void socket_send_buffer_free(socket_send_buffer_t *buffer);
 asciichat_error_t socket_send_zerocopy(socket_t sock, const socket_send_buffer_t *buffer, size_t len,
                                        uint64_t timeout_ns, bool *supported, bool *copied);
 
+/** Nonblocking copy-avoidance primitives for the event-loop socket owner.
+ * try submits at most once. sent==0 permits ordinary asynchronous fallback.
+ * A successful submission retains the immutable mapping until poll completes
+ * or the socket is closed and the mapping is discarded (never recycled).
+ * Exactly one submission may be outstanding per socket.
+ */
+asciichat_error_t socket_zerocopy_try(socket_t, const socket_send_buffer_t *, size_t offset, size_t length,
+                                      size_t *sent, bool *supported);
+asciichat_error_t socket_zerocopy_poll(socket_t, bool *completed, bool *copied);
+
 ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags);
 
 /**

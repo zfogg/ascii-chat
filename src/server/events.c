@@ -31,7 +31,19 @@ typedef struct {
 static asciichat_error_t consume_packet(const void *data, size_t length, void *arg) {
   server_event_connection_t *connection = arg;
   if (!connection->client) {
-    connection->client = add_webrtc_client(connection->server, connection->transport, connection->ip, false);
+    rate_limiter_t *limiter = connection->server->rate_limiter;
+    if (limiter) {
+      bool allowed = false;
+      asciichat_error_t result = rate_limiter_check(limiter, connection->ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+      if (result != ASCIICHAT_OK)
+        return result;
+      if (!allowed)
+        return SET_ERRNO(ERROR_RATE_LIMITED, "Connection rate limit exceeded");
+      result = rate_limiter_record(limiter, connection->ip, RATE_EVENT_CONNECTION);
+      if (result != ASCIICHAT_OK)
+        return result;
+    }
+    connection->client = add_transport_client(connection->server, connection->transport, connection->ip, false);
     if (!connection->client)
       return SET_ERRNO(ERROR_SESSION_FULL, "Cannot admit event client");
   }
@@ -78,7 +90,7 @@ static asciichat_error_t consume_packet(const void *data, size_t length, void *a
     } else {
       handle_client_capabilities_packet(client, envelope.data, envelope.len);
       connection->capabilities = true;
-      if (start_webrtc_client_threads(connection->server, client->client_id) != 0)
+      if (start_transport_client_threads(connection->server, client->client_id) != 0)
         result = SET_ERRNO(ERROR_THREAD, "Cannot start client rendering");
     }
   } else if (result == ASCIICHAT_OK) {

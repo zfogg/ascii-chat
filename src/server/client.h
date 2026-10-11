@@ -55,7 +55,7 @@ typedef struct server_context_t server_context_t;
  *
  * @note The hashtable uses client_id as key and points to elements in clients[] array.
  * @note next_client_id is atomic for thread-safe ID assignment.
- * @note All client access should go through find_client_by_id() or find_client_by_socket()
+ * @note All client access should go through find_client_by_id()
  *       to ensure proper locking.
  *
  * @ingroup server_client
@@ -77,14 +77,11 @@ extern rwlock_t g_client_manager_rwlock;
 extern bool g_client_manager_rwlock_initialized;
 
 // Client management functions
-client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port,
-                          bool *socket_consumed);
-client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
-                                 bool start_threads);
-int start_webrtc_client_threads(server_context_t *server_ctx, const char *client_id);
+client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
+                                    bool start_threads);
+int start_transport_client_threads(server_context_t *server_ctx, const char *client_id);
 int remove_client(server_context_t *server_ctx, const char *client_id);
 client_info_t *find_client_by_id(const char *client_id);
-client_info_t *find_client_by_socket(socket_t socket);
 void cleanup_client_media_buffers(client_info_t *client);
 void cleanup_client_packet_queues(client_info_t *client);
 

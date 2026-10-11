@@ -174,7 +174,6 @@ void acds_server_shutdown(acds_server_t *server);
  * @param arg Pointer to client connection context
  * @return NULL (thread exit value)
  */
-void *acds_client_handler(void *arg);
 
 /**
  * @brief WebSocket client handler (thread entry point)

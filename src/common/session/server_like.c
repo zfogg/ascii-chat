@@ -403,8 +403,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (!config->interrupt_fn) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "interrupt_fn is NULL");
   }
-  if (!config->tcp_handler && !config->tcp_event_handler) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "tcp_handler is NULL");
+  if (!config->tcp_event_handler) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "tcp_event_handler is NULL");
   }
 
   g_config = config;
@@ -452,12 +452,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       .ipv6_address = ipv6_has_value ? address6 : NULL,
       .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
       .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
-      .accept_timeout_sec = 1,
-      .client_handler = config->tcp_handler,
       .event_handler = config->tcp_event_handler,
       .user_data = config->tcp_user_data,
-      .status_update_fn = NULL,
-      .status_update_data = NULL,
   };
 
   result = tcp_server_init(&g_tcp_server, &tcp_config);

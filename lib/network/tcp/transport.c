@@ -337,7 +337,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
-  tcp_data->zerocopy_disabled = !GET_OPTION(network_zerocopy);
+  tcp_data->zerocopy_disabled = false;
 
   // Initialize send mutex to protect concurrent sends from multiple threads
   int mutex_result = mutex_init(&tcp_data->send_mutex, "tcp_send");

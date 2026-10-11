@@ -54,14 +54,15 @@ transformed, encrypted in-memory media path.
 
 ## Linux kernel zero-copy
 
-Enable with `--network-zerocopy` or `ASCII_CHAT_NETWORK_ZEROCOPY=true` in client,
-server, or discovery mode. The default is off. This is a shipped, tested feature,
-but its synchronous completion wait can add network latency: benchmark a deployment
-before enabling it. The portable copy reductions are always active.
+Copy avoidance is automatic; there is no CLI or environment switch. Native TCP
+streams submit large owned buffers through the event loop. Linux completion
+checks are nonblocking, and unsupported or copied submissions fall back within
+the same event backend. See [event-driven I/O](event-driven-io.md) for ownership,
+deadlines, and shutdown behavior. Portable copy reductions are always active.
 
-Only encrypted TCP wire buffers at least 64 KiB are eligible. Linux allocates
-private mappings for those owned buffers, and encryption writes directly into
-them. One submission is outstanding at a time, with an allocation ceiling of
+TCP wire buffers at least 64 KiB are eligible. Linux allocates private mappings
+for those owned buffers. The synchronous utility adapter encrypts directly into
+them; the native event adapter copies each queued wire packet into owned storage. One submission is outstanding at a time, with an allocation ceiling of
 32 MiB; the protocol/crypto limits impose smaller practical packet sizes. The
 sender consumes the socket's IPv4/IPv6 zero-copy error-queue completion before
 submitting again. This avoids an unbounded pinned-memory queue and cookie ordering

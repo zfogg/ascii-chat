@@ -50,6 +50,8 @@ void platform_event_stream_pause(platform_event_stream_t *);
 asciichat_error_t platform_event_stream_resume(platform_event_stream_t *);
 void platform_event_stream_close(platform_event_stream_t *, asciichat_error_t);
 void platform_event_stream_request_close(platform_event_stream_t *, asciichat_error_t);
+/** Configure copy avoidance before starting producers. The loop always owns I/O. */
+void platform_event_stream_set_zerocopy(platform_event_stream_t *, bool enabled);
 /** Relative timeout converted to an absolute deadline; zero disables it. */
 asciichat_error_t platform_event_stream_deadline(platform_event_stream_t *, uint64_t timeout_ms);
 asciichat_error_t platform_event_stream_peer(platform_event_stream_t *, struct sockaddr_storage *, socklen_t *);

@@ -342,8 +342,9 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
     return NULL;
   }
   asciichat_error_t result = platform_event_stream_adopt(tcp->loop, socket, &tcp->stream);
-  if (result == ASCIICHAT_OK)
+  if (result == ASCIICHAT_OK) {
     result = platform_event_stream_start(tcp->stream, client_read, client_closed, tcp);
+  }
   if (result == ASCIICHAT_OK)
     result = platform_event_loop_tick(tcp->loop, 50, client_tick, tcp);
   if (result == ASCIICHAT_OK)
