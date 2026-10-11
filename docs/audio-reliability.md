@@ -55,6 +55,14 @@ macOS at 48 kHz, with finite nonzero samples. Startup and shutdown account for
 part of the difference from wall time; these recordings do not prove gap-free
 speaker output. Recordings are local test artifacts and are not committed.
 
+A headless Chromium browser connected over WebSocket to the updated native
+server alongside a native TCP client. With generated input enabled, a 15-second
+measurement sent 725 browser Opus frames and played 739 received frames
+(709,440 samples), with zero reported playback underruns and no page errors.
+The browser screenshot showed a connected client with active capture/playback
+levels. Canonical client/mirror WASM artifacts were rebuilt from this source and
+their manifest was regenerated and verified before the check.
+
 ## Boundaries
 
 The packet format still has no sequence/timestamp contract for unreliable audio;
