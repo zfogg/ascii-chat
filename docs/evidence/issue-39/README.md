@@ -29,9 +29,43 @@ pitch test shifted 450 Hz to 440 Hz. Full-effects Debug benchmarks are in JSON a
 include the substantially more expensive optional pitch detector.
 
 The focused tests passed, including the real AEC3/capture chain and independent
-per-recipient mixer histories. A full client/server connection attempt failed with
-`CLIENT_CAPABILITIES payload size 131072 (expected 168)` and client exit 44, before
-sustained streaming. That application-level check did not pass.
+per-recipient mixer histories.
+
+## Native network regression
+
+The initial `CLIENT_CAPABILITIES payload size 131072 (expected 168)` failure is
+fixed. The handshake's pending packet was already payload-only; the server was
+mistakenly interpreting those bytes as another wire header. The regression uses
+two native clients, microphone capture with spectral processing, Opus transport,
+server spectral mixing, and recording at the remote client's decoder.
+
+![Native network audio analysis](network-analysis.png)
+
+- [Network microphone input](network-microphone.wav)
+- [Remote decoded audio](network-received.wav)
+- [Network measurements](network-results.json)
+- [Unencrypted regression measurements](network-plaintext-results.json)
+
+Both modes passed: 32.02 seconds received over unencrypted TCP and 32.04 seconds
+over encrypted TCP; both clients exited 0 in each run. The plot and WAV files
+show the encrypted run. Ephemeral host identity checking was disabled only for
+the encrypted test's child processes; server identity authentication was not
+tested. Native build and compiled DSP/integration checks also passed again.
+
+The clients mute local playback to prevent acoustic feedback while a separate
+player sends the attributed speech to the physical speakers. The receiving
+client uses remote-only capture. The test asserts clean exits, two valid 168-byte
+capability packets, at least 25 seconds of finite nonzero received audio, and
+silence returned to the original sender (self exclusion).
+The chart uses independent recording clocks; it is not delay-aligned and does
+not claim an SNR improvement. WAV exports are 48 kHz, 16-bit mono.
+
+The successful regression uses warning-level client logs and info-level server
+logs. An exploratory run with verbose client logging stalled during audio startup;
+that separate logging/startup issue is not fixed here. Raw video was selected to
+avoid unavailable hardware HEVC encoding; shutdown still logs an unused HEVC
+encoder flush error despite successful client exits. Tests are local Windows TCP,
+not WAN/WebRTC or other-platform validation.
 
 Speech attribution: **Open Speech Repository**, file
 [OSR_us_000_0010_8k.wav](https://www.voiptroubleshooter.com/open_speech/american/OSR_us_000_0010_8k.wav),

@@ -97,6 +97,21 @@ and renders the same-scale spectrogram comparison.
 
 See [measured results and recordings](evidence/issue-39/README.md). Windows native
 build and focused tests were run; musl/iOS and other host builds were not exercised.
-The local full client/server smoke test failed on a CLIENT_CAPABILITIES packet-size
-mismatch before sustained streaming. Direct capture/mixer integration and physical
-speaker-to-microphone DSP tests passed; a complete network call is not claimed.
+The initial CLIENT_CAPABILITIES mismatch was fixed: pending handshake packets
+already contain payload-only data and must not have another header stripped.
+The native two-client TCP test now checks capability lengths, clean client exits,
+nonzero remote audio, and exclusion of the sender's own audio. It plays human
+speech through physical speakers into the microphone with spectral capture and
+server mixing enabled. Explicit `--audio=true` avoids toggling the default on
+state off. To reproduce on a machine with the selected audio devices:
+
+```sh
+python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
+python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
+python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
+```
+
+The encrypted loopback test disables host identity verification only in its child
+processes so it does not modify the user's known_hosts. This checks encrypted
+transport, not server identity authentication. Network measurements and recordings
+are linked in the evidence README.
