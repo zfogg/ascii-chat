@@ -1266,6 +1266,8 @@ Test(config_create, creates_file_with_content) {
   cr_assert_not_null(buffer, "Should allocate enough space for the generated config");
   size_t bytes_read = fread(buffer, 1, (size_t)st.st_size, f);
   buffer[bytes_read] = '\0';
+  cr_assert_eq(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read,
+               (size_t)st.st_size, ferror(f));
   fclose(f);
 
   // Verify key sections exist
