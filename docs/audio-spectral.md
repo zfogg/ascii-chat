@@ -7,15 +7,17 @@ remain opt-in.
 
 ```sh
 ascii-chat client localhost --audio=true
-ascii-chat client localhost --audio-spectral=false
+ascii-chat client localhost --spectral-audio=false
 ```
 
 Server mixing does not apply spectral processing by default, including when a
 discovery client hosts the call. `--audio-spectral-mixer=true` explicitly enables
 processing of the entire mixed output, including any media/test sources. This is
-separate from `--audio-spectral`, which controls microphone capture only. Enabling
+separate from `--spectral-audio`, which controls microphone capture only. Enabling
 both adds both processors' latency. Existing server configurations that used
 `--audio-spectral=true` for mix processing must switch to the new mixer flag.
+The microphone flag is now `--spectral-audio` (`ASCII_CHAT_SPECTRAL_AUDIO` in
+the environment).
 
 | Option | Effect |
 | --- | --- |
@@ -37,7 +39,7 @@ The mono processor uses double-precision FFTW transforms, a periodic Hann window
 buffers. It returns exactly the input sample count with exactly one FFT-size of
 latency: 10.67/21.33/42.67 ms at 48 kHz. Feed that many trailing zeros to flush a
 finite recording. With all effects disabled, it reconstructs the delayed input.
-Turning off `--audio-spectral` bypasses the processor entirely, without added delay.
+Turning off `--spectral-audio` bypasses the processor entirely, without added delay.
 
 Plans and buffers are created before capture starts. Planning/destruction is
 serialized because FFTW's planner is shared; processing uses no allocations or

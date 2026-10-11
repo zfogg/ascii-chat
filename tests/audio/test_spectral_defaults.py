@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory() as directory:
     if case == "test":
         args += [b"--test-audio"]
     elif case == "disabled":
-        args += [b"--audio-spectral=false"]
+        args += [b"--spectral-audio=false"]
     argv = (c.c_char_p * (len(args) + 1))(*args, None)
     assert lib.options_init(len(args), argv) == 0
 
@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory() as directory:
         offset = lib.registry_find_entry_by_name(name).contents.offset
         return c.c_bool.from_address(lib.options_get() + offset).value
 
-    assert option(b"audio-spectral") == (case != "disabled")
+    assert option(b"spectral-audio") == (case != "disabled")
     assert not option(b"audio-spectral-mixer")
 
     class Flags(c.Structure):

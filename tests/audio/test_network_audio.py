@@ -75,7 +75,7 @@ def main():
             "--test-pattern",
             "0",
             "--audio=true",
-            "--audio-spectral=true",
+            "--spectral-audio=true",
             *security,
             "--speakers-volume",
             "0",
