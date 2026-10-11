@@ -216,7 +216,7 @@ static asciichat_error_t create_session_display(client_like_state_t *state) {
   if (!state->display) {
     log_debug("[SETUP_DISPLAY_EARLY] session_display_create() returned NULL");
     log_fatal("Failed to initialize display context");
-    return ERROR_DISPLAY;
+    return SET_ERRNO(ERROR_DISPLAY, "Failed to initialize display context");
   }
   log_debug("[SETUP_DISPLAY_EARLY] Display context created, will use for splash");
 
@@ -543,7 +543,8 @@ static asciichat_error_t create_network_capture(const session_client_like_config
     asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &g_stdin_reader);
     if (stdin_err != ASCIICHAT_OK) {
       log_fatal("Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
-      return ERROR_MEDIA_INIT;
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize stdin frame reader: %s",
+                       asciichat_error_string(stdin_err));
     }
 
     // For stdin render mode, create a minimal capture context for compatibility
@@ -553,7 +554,7 @@ static asciichat_error_t create_network_capture(const session_client_like_config
       log_fatal("Failed to initialize capture context for stdin rendering");
       terminal_fd_reader_destroy(g_stdin_reader);
       g_stdin_reader = NULL;
-      return ERROR_MEDIA_INIT;
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize capture context for stdin rendering");
     }
 
     log_info("stdin render mode: reading %d-line frames from stdin, auto-detecting width", frame_height);
@@ -577,7 +578,7 @@ static asciichat_error_t create_network_capture(const session_client_like_config
     log_info("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!state->capture) {
       log_fatal("Failed to initialize network capture context");
-      return ERROR_MEDIA_INIT;
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize network capture context");
     }
     if (fps > 0) {
       log_debug("Network capture FPS set to %d from options", fps);
@@ -650,7 +651,7 @@ static asciichat_error_t create_local_capture(client_like_state_t *state) {
     log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
     if (!state->capture) {
       log_fatal("Failed to initialize mirror capture source");
-      return ERROR_MEDIA_INIT;
+      return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }
   }
   return ASCIICHAT_OK;
