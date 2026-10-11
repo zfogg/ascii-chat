@@ -50,8 +50,8 @@ endif()
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}SQLite3${ColorReset} from source...")
 
-    set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3")
-    set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-build")
+    set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3-3.54.0")
+    set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-3.54.0-build")
     set(SQLITE3_SOURCE_DIR "${SQLITE3_BUILD_DIR}/src/sqlite3")
 
     # Build SQLite3 synchronously at configure time if not cached
@@ -63,13 +63,13 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${SQLITE3_SOURCE_DIR}")
 
         # Download SQLite3 amalgamation (single-file distribution)
-        set(SQLITE3_TARBALL "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000.zip")
+        set(SQLITE3_TARBALL "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3540000.zip")
         if(NOT EXISTS "${SQLITE3_TARBALL}")
-            message(STATUS "  Downloading SQLite3 3.48.0...")
+            message(STATUS "  Downloading SQLite3 3.54.0...")
             file(DOWNLOAD
-                "https://www.sqlite.org/2025/sqlite-amalgamation-3480000.zip"
+                "https://www.sqlite.org/2026/sqlite-amalgamation-3540000.zip"
                 "${SQLITE3_TARBALL}"
-                EXPECTED_HASH SHA256=d9a15a42db7c78f88fe3d3c5945acce2f4bfe9e4da9f685cd19f6ea1d40aa884
+                EXPECTED_HASH SHA256=68e913b0fe8ec6b4e5f391c594a28872884e80d6cd042a1e50c957be46b5aa4d
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -91,8 +91,8 @@ if(USE_MUSL)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract SQLite3 archive")
             endif()
-            # Move from sqlite-amalgamation-3480000/ to src/sqlite3/
-            file(RENAME "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000" "${SQLITE3_SOURCE_DIR}")
+            # Move from sqlite-amalgamation-3540000/ to src/sqlite3/
+            file(RENAME "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3540000" "${SQLITE3_SOURCE_DIR}")
         endif()
 
         # Compile SQLite3 to static library
