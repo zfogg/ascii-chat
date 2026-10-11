@@ -207,12 +207,30 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key_out) {
-  if (!key_path || !key_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p, key_out=%p", key_path, key_out);
-  }
+typedef struct {
+  char *file_content;
+  uint8_t *key_blob;
+  size_t key_blob_len;
+  size_t offset;
+  uint32_t ciphername_len;
+  size_t ciphername_pos;
+  bool is_encrypted;
+  uint32_t kdfname_len;
+  size_t kdfname_pos;
+  uint32_t kdfoptions_len;
+  uint32_t bcrypt_rounds;
+  uint32_t salt_len;
+  char *password;
+  uint8_t *decrypted_blob;
+  size_t decrypted_blob_len;
+  size_t dec_offset;
+  char ciphername[32];
+  uint8_t bcrypt_salt[16];
+  uint8_t ed25519_pubkey[32];
+} ssh_private_key_parse_t;
 
 #ifndef EMSCRIPTEN_BUILD
+static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_out) {
   // First, check if we can get the key from ssh-agent (password-free)
   // This requires reading the public key from the .pub file
   char pub_key_path[BUFFER_SIZE_LARGE];
@@ -236,7 +254,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
           memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
           memcpy(key_out->public_key, pub_key.key, 32);       // Also store in public_key field
           // Note: We don't have the private key seed, but ssh-agent will sign for us
-          return ASCIICHAT_OK;
+          return true;
         } else {
           log_debug("Key not found in ssh-agent - will decrypt from file");
         }
@@ -244,8 +262,12 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     fclose(pub_f);
   }
+  return false;
+}
+
 #endif
 
+static asciichat_error_t ssh_private_key_read_file(ssh_private_key_parse_t *state, const char *key_path) {
   // Validate the SSH key file first
   asciichat_error_t validation_result = validate_ssh_key_file(key_path);
   if (validation_result != ASCIICHAT_OK) {
@@ -259,33 +281,36 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   // Read the entire file
-  char *file_content = NULL;
+  state->file_content = NULL;
   size_t file_size = 0;
   char buffer[BUFFER_SIZE_XXLARGE];
   size_t bytes_read;
 
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), f)) > 0) {
-    file_content = SAFE_REALLOC(file_content, file_size + bytes_read + 1, char *);
-    if (!file_content) {
+    state->file_content = SAFE_REALLOC(state->file_content, file_size + bytes_read + 1, char *);
+    if (!state->file_content) {
       (void)fclose(f);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Out of memory reading private key file");
     }
-    memcpy(file_content + file_size, buffer, bytes_read);
+    memcpy(state->file_content + file_size, buffer, bytes_read);
     file_size += bytes_read;
   }
   (void)fclose(f);
 
   if (file_size == 0) {
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Private key file is empty: %s", key_path);
   }
 
-  file_content[file_size] = '\0';
+  state->file_content[file_size] = '\0';
+  return ASCIICHAT_OK;
+}
 
+static asciichat_error_t ssh_private_key_decode_pem(ssh_private_key_parse_t *state, const char *key_path) {
   // Use regex to extract base64 data from OpenSSH PEM format
   char *pem_base64_data = NULL;
-  if (!crypto_regex_extract_pem_base64(file_content, &pem_base64_data)) {
-    SAFE_FREE(file_content);
+  if (!crypto_regex_extract_pem_base64(state->file_content, &pem_base64_data)) {
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenSSH private key format: %s", key_path);
   }
 
@@ -301,511 +326,547 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   SAFE_FREE(pem_base64_data);
 
   // Decode the base64 data
-  uint8_t *key_blob;
-  size_t key_blob_len;
-  asciichat_error_t decode_result = base64_decode_ssh_key(clean_base64, strlen(clean_base64), &key_blob, &key_blob_len);
+
+  asciichat_error_t decode_result =
+      base64_decode_ssh_key(clean_base64, strlen(clean_base64), &state->key_blob, &state->key_blob_len);
   SAFE_FREE(clean_base64);
 
   if (decode_result != ASCIICHAT_OK) {
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->file_content);
     return decode_result;
   }
+  return ASCIICHAT_OK;
+}
 
+static asciichat_error_t ssh_private_key_read_header(ssh_private_key_parse_t *state, const char *key_path) {
   // Parse the OpenSSH private key structure
   // Format: [4 bytes: magic] [4 bytes: ciphername length] [ciphername] [4 bytes: kdfname length] [kdfname]
   //         [4 bytes: kdfoptions length] [kdfoptions] [4 bytes: num keys] [4 bytes: pubkey length] [pubkey]
   //         [4 bytes: privkey length] [privkey]
 
-  if (key_blob_len < 4) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->key_blob_len < 4) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key blob too small: %s", key_path);
   }
 
   // Check magic number (should be "openssh-key-v1\0")
-  if (memcmp(key_blob, "openssh-key-v1\0", 15) != 0) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (memcmp(state->key_blob, "openssh-key-v1\0", 15) != 0) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenSSH private key magic: %s", key_path);
   }
 
-  size_t offset = 15; // Skip magic
+  state->offset = 15; // Skip magic
 
   // Read ciphername
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at ciphername: %s", key_path);
   }
 
-  uint32_t ciphername_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  state->ciphername_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
-  if (offset + ciphername_len > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + state->ciphername_len > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at ciphername data: %s", key_path);
   }
 
   // Store the position of ciphername for later use
-  size_t ciphername_pos = offset;
+  state->ciphername_pos = state->offset;
 
   // Check if key is encrypted
-  bool is_encrypted = (ciphername_len > 0 && memcmp(key_blob + offset, "none", 4) != 0);
+  state->is_encrypted = (state->ciphername_len > 0 && memcmp(state->key_blob + state->offset, "none", 4) != 0);
 
-  offset += ciphername_len;
+  state->offset += state->ciphername_len;
 
   // Skip kdfname and kdfoptions (we don't support encryption)
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at kdfname: %s", key_path);
   }
 
-  uint32_t kdfname_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  state->kdfname_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
   // Store the position of kdfname for later use
-  size_t kdfname_pos = offset;
+  state->kdfname_pos = state->offset;
 
-  offset += kdfname_len;
+  state->offset += state->kdfname_len;
 
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at kdfoptions: %s", key_path);
   }
 
-  uint32_t kdfoptions_len = read_u32_be(&key_blob[offset]);
-  offset += 4 + kdfoptions_len;
+  state->kdfoptions_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4 + state->kdfoptions_len;
+  return ASCIICHAT_OK;
+}
 
-  // Handle encrypted keys
-  if (is_encrypted) {
-#ifdef EMSCRIPTEN_BUILD
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Passphrase-protected SSH keys are not supported in the browser");
-#else
-    // Parse the cipher name from the stored position
-    char ciphername[32] = {0};
-    if (ciphername_len > 0 && ciphername_len < sizeof(ciphername)) {
-      memcpy(ciphername, key_blob + ciphername_pos, ciphername_len);
-    }
+#ifndef EMSCRIPTEN_BUILD
+static asciichat_error_t ssh_private_key_read_encryption(ssh_private_key_parse_t *state, const char *key_path) {
+  // Parse the cipher name from the stored position
 
-    // Parse the KDF name from the stored position
-    char kdfname[32] = {0};
-    if (kdfname_len > 0 && kdfname_len < sizeof(kdfname)) {
-      memcpy(kdfname, key_blob + kdfname_pos, kdfname_len);
-    }
-
-    log_debug("Cipher: %s, KDF: %s", ciphername, kdfname);
-
-    // Check if we support this encryption method
-    if (strcmp(ciphername, "aes256-ctr") != 0 && strcmp(ciphername, "aes256-cbc") != 0) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY,
-                       "Unsupported cipher '%s' for encrypted SSH key: %s\n"
-                       "Supported ciphers: aes256-ctr, aes256-cbc",
-                       ciphername, key_path);
-    }
-
-    if (strcmp(kdfname, "bcrypt") != 0) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY,
-                       "Unsupported KDF '%s' for encrypted SSH key: %s\n"
-                       "Only bcrypt KDF is supported",
-                       kdfname, key_path);
-    }
-
-    // Parse KDF options (bcrypt salt and rounds)
-    if (kdfoptions_len < 8) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid KDF options length: %s", key_path);
-    }
-
-    // Parse KDF options: [salt_length:4][salt:N][rounds:4]
-    size_t kdf_opt_offset = offset - kdfoptions_len;
-
-    // Read salt length
-    if (kdf_opt_offset + 4 > key_blob_len) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at salt length: %s", key_path);
-    }
-    uint32_t salt_len = read_u32_be(&key_blob[kdf_opt_offset]);
-    kdf_opt_offset += 4;
-
-    // Read salt
-    if (salt_len != 16) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Unexpected bcrypt salt length %u (expected 16): %s", salt_len, key_path);
-    }
-    if (kdf_opt_offset + salt_len > key_blob_len) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at salt data: %s", key_path);
-    }
-    uint8_t bcrypt_salt[16];
-    memcpy(bcrypt_salt, key_blob + kdf_opt_offset, salt_len);
-    kdf_opt_offset += salt_len;
-
-    // Read rounds
-    if (kdf_opt_offset + 4 > key_blob_len) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at rounds: %s", key_path);
-    }
-    uint32_t bcrypt_rounds = read_u32_be(&key_blob[kdf_opt_offset]);
-
-    // Check for password in environment variable first
-    const char *env_password = platform_getenv("ASCII_CHAT_KEY_PASSWORD");
-    char *password = NULL;
-    if (env_password && strlen(env_password) > 0) {
-      // Use password from environment variable
-      password = platform_strdup(env_password);
-      if (!password) {
-        SAFE_FREE(key_blob);
-        SAFE_FREE(file_content);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
-      }
-    } else {
-      // Prompt for password interactively - allocate buffer for input
-      password = SAFE_MALLOC(1024, char *);
-      if (!password) {
-        SAFE_FREE(key_blob);
-        SAFE_FREE(file_content);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
-      }
-      if (prompt_password_simple("Encrypted SSH key - enter passphrase", password, 1024) != 0) {
-        SAFE_FREE(key_blob);
-        SAFE_FREE(file_content);
-        return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
-      }
-    }
-
-    // Native OpenSSH key decryption using bcrypt_pbkdf + BearSSL AES
-
-    // Skip past the unencrypted public key section to get to encrypted private keys
-    // Format: [num_keys:4][pubkey_len:4][pubkey:N]...[encrypted_len:4][encrypted:N]
-
-    // Read num_keys
-    if (offset + 4 > key_blob_len) {
-      sodium_memzero(password, strlen(password));
-      SAFE_FREE(password);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at num_keys: %s", key_path);
-    }
-    uint32_t num_keys = read_u32_be(&key_blob[offset]);
-    offset += 4;
-    log_debug("num_keys=%u", num_keys);
-
-    // Skip all public keys
-    for (uint32_t i = 0; i < num_keys; i++) {
-      if (offset + 4 > key_blob_len) {
-        sodium_memzero(password, strlen(password));
-        SAFE_FREE(password);
-        SAFE_FREE(key_blob);
-        SAFE_FREE(file_content);
-        return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at pubkey %u length: %s", i, key_path);
-      }
-      uint32_t pubkey_len = read_u32_be(&key_blob[offset]);
-      offset += 4;
-      log_debug("Skipping public key %u: %u bytes", i, pubkey_len);
-
-      if (offset + pubkey_len > key_blob_len) {
-        sodium_memzero(password, strlen(password));
-        SAFE_FREE(password);
-        SAFE_FREE(key_blob);
-        SAFE_FREE(file_content);
-        return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at pubkey %u data: %s", i, key_path);
-      }
-      offset += pubkey_len;
-    }
-
-    // Read encrypted private keys length
-    if (offset + 4 > key_blob_len) {
-      sodium_memzero(password, strlen(password));
-      SAFE_FREE(password);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at encrypted_len: %s", key_path);
-    }
-    uint32_t encrypted_len = read_u32_be(&key_blob[offset]);
-    offset += 4;
-
-    // Now offset points to the actual encrypted data
-    size_t encrypted_data_start = offset;
-    size_t encrypted_data_len = encrypted_len;
-
-    if (encrypted_data_len < 16) {
-      sodium_memzero(password, strlen(password));
-      SAFE_FREE(password);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted data too small: %s", key_path);
-    }
-
-    // Extract encrypted blob (includes everything from offset onwards)
-    const uint8_t *encrypted_blob = key_blob + encrypted_data_start;
-
-    // Call native decryption function
-    uint8_t *decrypted_blob = NULL;
-    size_t decrypted_blob_len = 0;
-
-    // Note: decrypt_openssh_private_key derives IV from bcrypt_pbkdf, not from encrypted data
-    asciichat_error_t decrypt_result =
-        decrypt_openssh_private_key(encrypted_blob, encrypted_data_len, password, bcrypt_salt, salt_len, bcrypt_rounds,
-                                    ciphername, &decrypted_blob, &decrypted_blob_len);
-
-    // Clean up password immediately after use
-    sodium_memzero(password, strlen(password));
-    SAFE_FREE(password);
-
-    if (decrypt_result != ASCIICHAT_OK) {
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return decrypt_result;
-    }
-
-    // Parse the decrypted private key structure
-    // OpenSSH format (decrypted):
-    //   [checkint1:4][checkint2:4][keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
-
-    if (decrypted_blob_len < 8) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted data too small (no checkints): %s", key_path);
-    }
-
-    // Verify checkints (first 8 bytes should be two identical 32-bit values)
-    uint32_t checkint1 = read_u32_be(&decrypted_blob[0]);
-    uint32_t checkint2 = read_u32_be(&decrypted_blob[4]);
-    if (checkint1 != checkint2) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY,
-                       "Incorrect passphrase or corrupted key (checkint mismatch): %s\n"
-                       "Expected matching checkints, got 0x%08x != 0x%08x",
-                       key_path, checkint1, checkint2);
-    }
-
-    // Parse the decrypted private key structure manually
-    // Format after checkints: [keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
-    size_t dec_offset = 8; // Skip checkints
-
-    // Read keytype length
-    if (dec_offset + 4 > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype length: %s", key_path);
-    }
-    uint32_t keytype_len = read_u32_be(&decrypted_blob[dec_offset]);
-    dec_offset += 4;
-
-    // Read keytype
-    if (dec_offset + keytype_len > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype data: %s", key_path);
-    }
-    char keytype[BUFFER_SIZE_SMALL / 4] = {0}; // SSH key type strings are short
-    if (keytype_len > 0 && keytype_len < sizeof(keytype)) {
-      memcpy(keytype, decrypted_blob + dec_offset, keytype_len);
-    }
-    dec_offset += keytype_len;
-
-    // Check if it's Ed25519
-    if (strcmp(keytype, "ssh-ed25519") != 0) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key type after decryption: '%s'", keytype);
-    }
-
-    // Read public key length
-    if (dec_offset + 4 > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey length: %s", key_path);
-    }
-    uint32_t pubkey_data_len = read_u32_be(&decrypted_blob[dec_offset]);
-    dec_offset += 4;
-
-    // Read public key (32 bytes for Ed25519)
-    if (pubkey_data_len != 32) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 public key length: %u (expected 32)", pubkey_data_len);
-    }
-    if (dec_offset + pubkey_data_len > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey data: %s", key_path);
-    }
-    uint8_t ed25519_pk[32];
-    memcpy(ed25519_pk, decrypted_blob + dec_offset, 32);
-    dec_offset += 32;
-
-    // Read private key length
-    if (dec_offset + 4 > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey length: %s", key_path);
-    }
-    uint32_t privkey_data_len = read_u32_be(&decrypted_blob[dec_offset]);
-    dec_offset += 4;
-
-    // Read private key (64 bytes for Ed25519: 32-byte seed + 32-byte public key)
-    if (privkey_data_len != 64) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 private key length: %u (expected 64)", privkey_data_len);
-    }
-    if (dec_offset + privkey_data_len > decrypted_blob_len) {
-      SAFE_FREE(decrypted_blob);
-      SAFE_FREE(key_blob);
-      SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey data: %s", key_path);
-    }
-    uint8_t ed25519_sk[64];
-    memcpy(ed25519_sk, decrypted_blob + dec_offset, 64);
-    dec_offset += 64;
-
-    // Populate key_out (ed25519_sk contains: 32-byte seed + 32-byte public key)
-    key_out->type = KEY_TYPE_ED25519;
-    memcpy(key_out->key.ed25519, ed25519_sk, 32);           // Seed (first 32 bytes)
-    memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, 32); // Public key (next 32 bytes)
-
-    // Clean up decrypted data (sensitive!)
-    sodium_memzero(decrypted_blob, decrypted_blob_len);
-    SAFE_FREE(decrypted_blob);
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
-
-    log_debug("Successfully parsed decrypted Ed25519 key");
-
-    // Attempt to add the decrypted key to ssh-agent for future password-free use
-    log_debug("Attempting to add decrypted key to ssh-agent");
-    asciichat_error_t agent_result = ssh_agent_add_key(key_out, key_path);
-    if (agent_result == ASCIICHAT_OK) {
-      log_debug("Successfully added key to ssh-agent - password will not be required on next run");
-    } else {
-      // Non-fatal: key is already decrypted and loaded, just won't be cached in agent
-      log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_string(agent_result));
-      log_warn("You can manually add it with: ssh-add %s", key_path);
-    }
-
-    return ASCIICHAT_OK;
-#endif
+  if (state->ciphername_len > 0 && state->ciphername_len < sizeof(state->ciphername)) {
+    memcpy(state->ciphername, state->key_blob + state->ciphername_pos, state->ciphername_len);
   }
 
+  // Parse the KDF name from the stored position
+  char kdfname[32] = {0};
+  if (state->kdfname_len > 0 && state->kdfname_len < sizeof(kdfname)) {
+    memcpy(kdfname, state->key_blob + state->kdfname_pos, state->kdfname_len);
+  }
+
+  log_debug("Cipher: %s, KDF: %s", state->ciphername, kdfname);
+
+  // Check if we support this encryption method
+  if (strcmp(state->ciphername, "aes256-ctr") != 0 && strcmp(state->ciphername, "aes256-cbc") != 0) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY,
+                     "Unsupported cipher '%s' for encrypted SSH key: %s\n"
+                     "Supported ciphers: aes256-ctr, aes256-cbc",
+                     state->ciphername, key_path);
+  }
+
+  if (strcmp(kdfname, "bcrypt") != 0) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY,
+                     "Unsupported KDF '%s' for encrypted SSH key: %s\n"
+                     "Only bcrypt KDF is supported",
+                     kdfname, key_path);
+  }
+
+  // Parse KDF options (bcrypt salt and rounds)
+  if (state->kdfoptions_len < 8) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid KDF options length: %s", key_path);
+  }
+
+  // Parse KDF options: [salt_length:4][salt:N][rounds:4]
+  size_t kdf_opt_offset = state->offset - state->kdfoptions_len;
+
+  // Read salt length
+  if (kdf_opt_offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at salt length: %s", key_path);
+  }
+  state->salt_len = read_u32_be(&state->key_blob[kdf_opt_offset]);
+  kdf_opt_offset += 4;
+
+  // Read salt
+  if (state->salt_len != 16) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unexpected bcrypt salt length %u (expected 16): %s", state->salt_len, key_path);
+  }
+  if (kdf_opt_offset + state->salt_len > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at salt data: %s", key_path);
+  }
+
+  memcpy(state->bcrypt_salt, state->key_blob + kdf_opt_offset, state->salt_len);
+  kdf_opt_offset += state->salt_len;
+
+  // Read rounds
+  if (kdf_opt_offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at rounds: %s", key_path);
+  }
+  state->bcrypt_rounds = read_u32_be(&state->key_blob[kdf_opt_offset]);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *state, const char *key_path) {
+  // Check for password in environment variable first
+  const char *env_password = platform_getenv("ASCII_CHAT_KEY_PASSWORD");
+  state->password = NULL;
+  if (env_password && strlen(env_password) > 0) {
+    // Use password from environment variable
+    state->password = platform_strdup(env_password);
+    if (!state->password) {
+      SAFE_FREE(state->key_blob);
+      SAFE_FREE(state->file_content);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
+    }
+  } else {
+    // Prompt for password interactively - allocate buffer for input
+    state->password = SAFE_MALLOC(1024, char *);
+    if (!state->password) {
+      SAFE_FREE(state->key_blob);
+      SAFE_FREE(state->file_content);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
+    }
+    if (prompt_password_simple("Encrypted SSH key - enter passphrase", state->password, 1024) != 0) {
+      SAFE_FREE(state->key_blob);
+      SAFE_FREE(state->file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
+    }
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t ssh_private_key_decrypt(ssh_private_key_parse_t *state, const char *key_path) {
+  // Native OpenSSH key decryption using bcrypt_pbkdf + BearSSL AES
+
+  // Skip past the unencrypted public key section to get to encrypted private keys
+  // Format: [num_keys:4][pubkey_len:4][pubkey:N]...[encrypted_len:4][encrypted:N]
+
+  // Read num_keys
+  if (state->offset + 4 > state->key_blob_len) {
+    sodium_memzero(state->password, strlen(state->password));
+    SAFE_FREE(state->password);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at num_keys: %s", key_path);
+  }
+  uint32_t num_keys = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
+  log_debug("num_keys=%u", num_keys);
+
+  // Skip all public keys
+  for (uint32_t i = 0; i < num_keys; i++) {
+    if (state->offset + 4 > state->key_blob_len) {
+      sodium_memzero(state->password, strlen(state->password));
+      SAFE_FREE(state->password);
+      SAFE_FREE(state->key_blob);
+      SAFE_FREE(state->file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at pubkey %u length: %s", i, key_path);
+    }
+    uint32_t pubkey_len = read_u32_be(&state->key_blob[state->offset]);
+    state->offset += 4;
+    log_debug("Skipping public key %u: %u bytes", i, pubkey_len);
+
+    if (state->offset + pubkey_len > state->key_blob_len) {
+      sodium_memzero(state->password, strlen(state->password));
+      SAFE_FREE(state->password);
+      SAFE_FREE(state->key_blob);
+      SAFE_FREE(state->file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at pubkey %u data: %s", i, key_path);
+    }
+    state->offset += pubkey_len;
+  }
+
+  // Read encrypted private keys length
+  if (state->offset + 4 > state->key_blob_len) {
+    sodium_memzero(state->password, strlen(state->password));
+    SAFE_FREE(state->password);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at encrypted_len: %s", key_path);
+  }
+  uint32_t encrypted_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
+
+  // Now offset points to the actual encrypted data
+  size_t encrypted_data_start = state->offset;
+  size_t encrypted_data_len = encrypted_len;
+
+  if (encrypted_data_len < 16) {
+    sodium_memzero(state->password, strlen(state->password));
+    SAFE_FREE(state->password);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted data too small: %s", key_path);
+  }
+
+  // Extract encrypted blob (includes everything from offset onwards)
+  const uint8_t *encrypted_blob = state->key_blob + encrypted_data_start;
+
+  // Call native decryption function
+  state->decrypted_blob = NULL;
+  state->decrypted_blob_len = 0;
+
+  // Note: decrypt_openssh_private_key derives IV from bcrypt_pbkdf, not from encrypted data
+  asciichat_error_t decrypt_result = decrypt_openssh_private_key(
+      encrypted_blob, encrypted_data_len, state->password, state->bcrypt_salt, state->salt_len, state->bcrypt_rounds,
+      state->ciphername, &state->decrypted_blob, &state->decrypted_blob_len);
+
+  // Clean up password immediately after use
+  sodium_memzero(state->password, strlen(state->password));
+  SAFE_FREE(state->password);
+
+  if (decrypt_result != ASCIICHAT_OK) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return decrypt_result;
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t ssh_private_key_read_decrypted_type(ssh_private_key_parse_t *state, const char *key_path) {
+  // Parse the decrypted private key structure
+  // OpenSSH format (decrypted):
+  //   [checkint1:4][checkint2:4][keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
+
+  if (state->decrypted_blob_len < 8) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted data too small (no checkints): %s", key_path);
+  }
+
+  // Verify checkints (first 8 bytes should be two identical 32-bit values)
+  uint32_t checkint1 = read_u32_be(&state->decrypted_blob[0]);
+  uint32_t checkint2 = read_u32_be(&state->decrypted_blob[4]);
+  if (checkint1 != checkint2) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY,
+                     "Incorrect passphrase or corrupted key (checkint mismatch): %s\n"
+                     "Expected matching checkints, got 0x%08x != 0x%08x",
+                     key_path, checkint1, checkint2);
+  }
+
+  // Parse the decrypted private key structure manually
+  // Format after checkints: [keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
+  state->dec_offset = 8; // Skip checkints
+
+  // Read keytype length
+  if (state->dec_offset + 4 > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype length: %s", key_path);
+  }
+  uint32_t keytype_len = read_u32_be(&state->decrypted_blob[state->dec_offset]);
+  state->dec_offset += 4;
+
+  // Read keytype
+  if (state->dec_offset + keytype_len > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype data: %s", key_path);
+  }
+  char keytype[BUFFER_SIZE_SMALL / 4] = {0}; // SSH key type strings are short
+  if (keytype_len > 0 && keytype_len < sizeof(keytype)) {
+    memcpy(keytype, state->decrypted_blob + state->dec_offset, keytype_len);
+  }
+  state->dec_offset += keytype_len;
+
+  // Check if it's Ed25519
+  if (strcmp(keytype, "ssh-ed25519") != 0) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key type after decryption: '%s'", keytype);
+  }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key_parse_t *state, const char *key_path,
+                                                                 private_key_t *key_out) {
+  // Read public key length
+  if (state->dec_offset + 4 > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey length: %s", key_path);
+  }
+  uint32_t pubkey_data_len = read_u32_be(&state->decrypted_blob[state->dec_offset]);
+  state->dec_offset += 4;
+
+  // Read public key (32 bytes for Ed25519)
+  if (pubkey_data_len != 32) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 public key length: %u (expected 32)", pubkey_data_len);
+  }
+  if (state->dec_offset + pubkey_data_len > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey data: %s", key_path);
+  }
+  uint8_t ed25519_pk[32];
+  memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, 32);
+  state->dec_offset += 32;
+
+  // Read private key length
+  if (state->dec_offset + 4 > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey length: %s", key_path);
+  }
+  uint32_t privkey_data_len = read_u32_be(&state->decrypted_blob[state->dec_offset]);
+  state->dec_offset += 4;
+
+  // Read private key (64 bytes for Ed25519: 32-byte seed + 32-byte public key)
+  if (privkey_data_len != 64) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid Ed25519 private key length: %u (expected 64)", privkey_data_len);
+  }
+  if (state->dec_offset + privkey_data_len > state->decrypted_blob_len) {
+    SAFE_FREE(state->decrypted_blob);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey data: %s", key_path);
+  }
+  uint8_t ed25519_sk[64];
+  memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, 64);
+  state->dec_offset += 64;
+
+  // Populate key_out (ed25519_sk contains: 32-byte seed + 32-byte public key)
+  key_out->type = KEY_TYPE_ED25519;
+  memcpy(key_out->key.ed25519, ed25519_sk, 32);           // Seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, 32); // Public key (next 32 bytes)
+
+  // Clean up decrypted data (sensitive!)
+  sodium_memzero(state->decrypted_blob, state->decrypted_blob_len);
+  SAFE_FREE(state->decrypted_blob);
+  SAFE_FREE(state->key_blob);
+  SAFE_FREE(state->file_content);
+
+  log_debug("Successfully parsed decrypted Ed25519 key");
+  return ASCIICHAT_OK;
+}
+
+static void ssh_private_key_cache_in_agent(const char *key_path, const private_key_t *key_out) {
+  // Attempt to add the decrypted key to ssh-agent for future password-free use
+  log_debug("Attempting to add decrypted key to ssh-agent");
+  asciichat_error_t agent_result = ssh_agent_add_key(key_out, key_path);
+  if (agent_result == ASCIICHAT_OK) {
+    log_debug("Successfully added key to ssh-agent - password will not be required on next run");
+  } else {
+    // Non-fatal: key is already decrypted and loaded, just won't be cached in agent
+    log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_string(agent_result));
+    log_warn("You can manually add it with: ssh-add %s", key_path);
+  }
+}
+
+static asciichat_error_t ssh_private_key_parse_encrypted(ssh_private_key_parse_t *state, const char *key_path,
+                                                         private_key_t *key_out) {
+  asciichat_error_t result = ssh_private_key_read_encryption(state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_read_password(state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_decrypt(state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_read_decrypted_type(state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_read_decrypted_material(state, key_path, key_out);
+  if (result != ASCIICHAT_OK)
+    return result;
+  ssh_private_key_cache_in_agent(key_path, key_out);
+  return ASCIICHAT_OK;
+}
+#endif
+
+static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *state, const char *key_path) {
   // Read number of keys
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at num keys: %s", key_path);
   }
 
-  uint32_t num_keys = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  uint32_t num_keys = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
-  log_debug("num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, offset, key_blob_len);
-  log_debug("Raw bytes at offset %zu: %02x %02x %02x %02x", offset, key_blob[offset], key_blob[offset + 1],
-            key_blob[offset + 2], key_blob[offset + 3]);
-  log_debug("After num_keys, offset=%zu", offset);
+  log_debug("num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, state->offset, state->key_blob_len);
+  log_debug("Raw bytes at offset %zu: %02x %02x %02x %02x", state->offset, state->key_blob[state->offset],
+            state->key_blob[state->offset + 1], state->key_blob[state->offset + 2], state->key_blob[state->offset + 3]);
+  log_debug("After num_keys, offset=%zu", state->offset);
 
   if (num_keys != 1) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key contains %u keys (expected 1): %s", num_keys, key_path);
   }
 
   // Read public key
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey length: %s", key_path);
   }
 
-  log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", offset, key_blob[offset],
-            key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
+  log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", state->offset,
+            state->key_blob[state->offset], state->key_blob[state->offset + 1], state->key_blob[state->offset + 2],
+            state->key_blob[state->offset + 3]);
 
-  uint32_t pubkey_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  uint32_t pubkey_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
-  log_debug("pubkey_len=%u, offset=%zu", pubkey_len, offset);
+  log_debug("pubkey_len=%u, offset=%zu", pubkey_len, state->offset);
 
-  if (offset + pubkey_len > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + pubkey_len > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey data: %s", key_path);
   }
 
   // Parse the public key to extract the Ed25519 public key for validation
   if (pubkey_len < 4) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH public key too small: %s", key_path);
   }
 
-  uint32_t key_type_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  uint32_t key_type_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
   // Check if it's an Ed25519 key
-  if (key_type_len != 11 || memcmp(key_blob + offset, "ssh-ed25519", 11) != 0) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (key_type_len != 11 || memcmp(state->key_blob + state->offset, "ssh-ed25519", 11) != 0) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key is not Ed25519: %s", key_path);
   }
 
-  offset += key_type_len; // Skip the key type string
-  log_debug("After skipping key type, offset=%zu", offset);
+  state->offset += key_type_len; // Skip the key type string
+  log_debug("After skipping key type, offset=%zu", state->offset);
 
   // Read the public key length
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key length: %s", key_path);
   }
 
-  uint32_t pubkey_data_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
-  log_debug("Public key data length: %u, offset=%zu", pubkey_data_len, offset);
+  uint32_t pubkey_data_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
+  log_debug("Public key data length: %u, offset=%zu", pubkey_data_len, state->offset);
 
   log_debug("Public key data length: %u (expected 32 for Ed25519)", pubkey_data_len);
 
   // For Ed25519, the public key should be 32 bytes, but let's be more flexible
   if (pubkey_data_len < 32) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH public key data too small (%u bytes, expected at least 32): %s",
                      pubkey_data_len, key_path);
   }
 
   // Read Ed25519 public key (first 32 bytes) for validation
-  if (offset + 32 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 32 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key: %s", key_path);
   }
 
-  uint8_t ed25519_pubkey[32];
-  memcpy(ed25519_pubkey, key_blob + offset, 32);
-  offset += pubkey_data_len; // Skip the entire public key data
+  memcpy(state->ed25519_pubkey, state->key_blob + state->offset, 32);
+  state->offset += pubkey_data_len; // Skip the entire public key data
 
   // Skip the rest of the public key data to get to the private key
   // We've already parsed: 4 (key_type_len) + 11 (ssh-ed25519) + 4 (pubkey_data_len) + 32 (key) = 51 bytes
@@ -814,23 +875,26 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   if (pubkey_len >= 51) {
     size_t remaining_pubkey = pubkey_len - 51;
     if (remaining_pubkey > 0) {
-      offset += remaining_pubkey;
+      state->offset += remaining_pubkey;
     }
   }
+  return ASCIICHAT_OK;
+}
 
+static asciichat_error_t ssh_private_key_read_private_header(ssh_private_key_parse_t *state, const char *key_path) {
   // Read private key
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey length: %s", key_path);
   }
 
-  uint32_t privkey_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  uint32_t privkey_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
-  if (offset + privkey_len > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + privkey_len > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey data: %s", key_path);
   }
 
@@ -840,90 +904,95 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   //         [4 bytes: comment length] [comment]
 
   if (privkey_len < 8) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key data too small: %s", key_path);
   }
 
   // Verify checkints (should be equal)
-  uint32_t checkint1 = read_u32_be(&key_blob[offset]);
-  uint32_t checkint2 = read_u32_be(&key_blob[offset + 4]);
-  offset += 8;
+  uint32_t checkint1 = read_u32_be(&state->key_blob[state->offset]);
+  uint32_t checkint2 = read_u32_be(&state->key_blob[state->offset + 4]);
+  state->offset += 8;
 
   if (checkint1 != checkint2) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key checkints don't match: %s", key_path);
   }
 
   // Skip key type
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at key type length: %s", key_path);
   }
 
-  uint32_t key_type_len_priv = read_u32_be(&key_blob[offset]);
+  uint32_t key_type_len_priv = read_u32_be(&state->key_blob[state->offset]);
   // Check for integer overflow before adding to offset
-  if (key_type_len_priv > key_blob_len || offset + 4 + key_type_len_priv > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (key_type_len_priv > state->key_blob_len || state->offset + 4 + key_type_len_priv > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key type length overflow: %u", key_type_len_priv);
   }
-  offset += 4 + key_type_len_priv;
+  state->offset += 4 + key_type_len_priv;
 
   // Skip public key
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey length: %s", key_path);
   }
 
-  uint32_t pubkey_len_priv = read_u32_be(&key_blob[offset]);
+  uint32_t pubkey_len_priv = read_u32_be(&state->key_blob[state->offset]);
   // Check for integer overflow before adding to offset
-  if (pubkey_len_priv > key_blob_len || offset + 4 + pubkey_len_priv > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (pubkey_len_priv > state->key_blob_len || state->offset + 4 + pubkey_len_priv > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key public key length overflow: %u", pubkey_len_priv);
   }
-  offset += 4 + pubkey_len_priv;
+  state->offset += 4 + pubkey_len_priv;
 
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *state, const char *key_path,
+                                                      private_key_t *key_out) {
   // Read private key
-  if (offset + 4 > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + 4 > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey length: %s", key_path);
   }
 
-  uint32_t privkey_data_len = read_u32_be(&key_blob[offset]);
-  offset += 4;
+  uint32_t privkey_data_len = read_u32_be(&state->key_blob[state->offset]);
+  state->offset += 4;
 
-  if (offset + privkey_data_len > key_blob_len) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (state->offset + privkey_data_len > state->key_blob_len) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey data: %s", key_path);
   }
 
   // The private key data should be at least 64 bytes (32 bytes private key + 32 bytes public key)
   // But OpenSSH format may have additional data
   if (privkey_data_len < 64) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key data length is %u (expected at least 64): %s",
                      privkey_data_len, key_path);
   }
 
   // Extract the Ed25519 private key (first 32 bytes)
   uint8_t ed25519_privkey[32];
-  memcpy(ed25519_privkey, key_blob + offset, 32);
+  memcpy(ed25519_privkey, state->key_blob + state->offset, 32);
 
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
   // We need to compare the raw public key from privkey with the raw public key extracted from pubkey
   // Use constant-time comparison for cryptographic material
-  if (sodium_memcmp(key_blob + offset + 32, ed25519_pubkey, 32) != 0) {
-    SAFE_FREE(key_blob);
-    SAFE_FREE(file_content);
+  if (sodium_memcmp(state->key_blob + state->offset + 32, state->ed25519_pubkey, 32) != 0) {
+    SAFE_FREE(state->key_blob);
+    SAFE_FREE(state->file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key public key mismatch: %s", key_path);
   }
 
@@ -933,19 +1002,58 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Store the actual private key (seed + public key = 64 bytes)
   // Ed25519 private key format: [32 bytes seed][32 bytes public key]
-  memcpy(key_out->key.ed25519, ed25519_privkey, 32);     // Store the seed (first 32 bytes)
-  memcpy(key_out->key.ed25519 + 32, ed25519_pubkey, 32); // Store the public key (next 32 bytes)
+  memcpy(key_out->key.ed25519, ed25519_privkey, 32);            // Store the seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, state->ed25519_pubkey, 32); // Store the public key (next 32 bytes)
 
   // Also store the public key in the public_key field for easy access
-  memcpy(key_out->public_key, ed25519_pubkey, 32);
+  memcpy(key_out->public_key, state->ed25519_pubkey, 32);
 
   // Set a comment
   SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
 
-  SAFE_FREE(key_blob);
-  SAFE_FREE(file_content);
-
+  SAFE_FREE(state->key_blob);
+  SAFE_FREE(state->file_content);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key_out) {
+  if (!key_path || !key_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p, key_out=%p", key_path, key_out);
+  }
+#ifndef EMSCRIPTEN_BUILD
+  if (ssh_private_key_from_agent(key_path, key_out))
+    return ASCIICHAT_OK;
+#endif
+
+  // Each stage retains the existing failure cleanup; later stages run only on success.
+  ssh_private_key_parse_t state = {0};
+  asciichat_error_t result = ssh_private_key_read_file(&state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_decode_pem(&state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_read_header(&state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+
+  if (state.is_encrypted) {
+#ifdef EMSCRIPTEN_BUILD
+    SAFE_FREE(state.key_blob);
+    SAFE_FREE(state.file_content);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Passphrase-protected SSH keys are not supported in the browser");
+#else
+    return ssh_private_key_parse_encrypted(&state, key_path, key_out);
+#endif
+  }
+
+  result = ssh_private_key_read_public(&state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = ssh_private_key_read_private_header(&state, key_path);
+  if (result != ASCIICHAT_OK)
+    return result;
+  return ssh_private_key_read_private(&state, key_path, key_out);
 }
 
 asciichat_error_t validate_ssh_key_file(const char *key_path) {
