@@ -349,7 +349,7 @@ static asciichat_error_t configure_media_capture(const session_client_like_confi
                                                  client_like_state_t *state) {
   log_debug("session_client_like_run(): Initializing capture config");
   // capture_config starts zeroed with the session state.
-  state->capture_config.resize_for_network = config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY;
+  state->capture_config.resize_for_network = session_client_like_is_networked(config->kind);
   state->capture_config.should_exit_callback = capture_should_exit_adapter;
   state->capture_config.callback_data = NULL;
 
