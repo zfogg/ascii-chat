@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <ascii-chat/media/codecs.h>
+
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/log/log.h>
@@ -307,20 +309,23 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
                                             uint32_t pixel_format);
 
 /**
- * @brief Send H.265-encoded video frame to server (thread-safe)
+ * @brief Send HEVC/H.264-encoded video frame to server (thread-safe)
  *
- * Encodes RGB frame using H.265 codec before transmission.
+ * Encodes RGB frame using HEVC/H.264 codec before transmission.
  * Much more bandwidth-efficient than raw pixel transmission.
  * Uses mutex to prevent interleaving with other packet sends.
  *
  * @param pixel_data RGB pixel data from camera
  * @param width Frame width in pixels
  * @param height Frame height in pixels
+ * @param codec HEVC or H.264 packet and encoder selection
+ * @param encoding_failed Set only for encoder failures, never transport failures
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_t width, uint32_t height);
+asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint32_t width, uint32_t height,
+                                                    video_codec_t codec, bool *encoding_failed);
 
 /**
  * @brief Thread-safe ping packet transmission

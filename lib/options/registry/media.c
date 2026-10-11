@@ -15,10 +15,21 @@
 
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/platform/memory.h>
+#include <string.h>
 
 // ============================================================================
 // Validators
 // ============================================================================
+
+static bool validate_video_codec(const void *opts_struct, char **error_msg) {
+  const options_t *opts = (const options_t *)opts_struct;
+  if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 ||
+      strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
+    return true;
+  if (error_msg)
+    *error_msg = platform_strdup("--video-codec must be auto, hevc, h264, or raw");
+  return false;
+}
 
 static bool validate_render_font_size(const void *opts_struct, char **error_msg) {
   (void)opts_struct;
@@ -152,14 +163,14 @@ const registry_entry_t g_media_entries[] = {
      '\0',
      OPTION_TYPE_STRING,
      offsetof(options_t, video_codec),
-     "hevc",
+     "auto",
      sizeof(((options_t *)0)->video_codec),
-     "Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc.",
+     "Video codec: auto (default) tries HEVC, H.264, then raw RGB. Explicit hevc, h264, or raw never falls back.",
      "MEDIA",
      "CODEC",
      false,
      "ASCII_CHAT_VIDEO_CODEC",
-     NULL,
+     validate_video_codec,
      NULL,
      false,
      false,
