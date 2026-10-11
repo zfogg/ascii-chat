@@ -17,7 +17,7 @@
 #include <ascii-chat/common.h>
 #include <string.h>
 
-/** Parse an optional intensity; callback error strings follow the parser's free() ownership contract. */
+/** Parse an optional intensity; callback error strings follow the parser's SAFE_FREE() ownership contract. */
 static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
   int level = 7;
   if (arg) {
@@ -26,7 +26,7 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
     } else if (strcmp(arg, "10") == 0) {
       level = 10;
     } else {
-      // Callback errors are released with free() by the option parser.
+      // Callback errors are released with SAFE_FREE() by the option parser.
       *error_msg = platform_strdup("--zalgo requires an integer from 1 to 10 (bare --zalgo uses 7)");
       return false;
     }

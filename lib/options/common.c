@@ -744,7 +744,7 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
   if (result != ASCIICHAT_OK) {
     if (error_message) {
       log_error("%s", error_message);
-      free(error_message);
+      SAFE_FREE(error_message);
     }
   }
   return result;

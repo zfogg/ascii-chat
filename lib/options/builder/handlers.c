@@ -236,7 +236,7 @@ static void apply_env_callback(void *field, const char *env_value, const option_
              error_msg ? error_msg : "parse failed");
   }
   if (error_msg) {
-    free(error_msg);
+    SAFE_FREE(error_msg);
   }
 }
 
@@ -371,7 +371,7 @@ static asciichat_error_t apply_cli_callback(void *field, const char *opt_value, 
     char *error_msg = NULL;
     if (!desc->parse_fn(opt_value, field, &error_msg)) {
       asciichat_error_t err = SET_ERRNO(ERROR_USAGE, "Parse error: %s", error_msg ? error_msg : "unknown");
-      free(error_msg);
+      SAFE_FREE(error_msg);
       return err;
     }
   }
