@@ -325,17 +325,6 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
              20.0f * log10f(p->config.gate_threshold + 1e-10f));
 
-    // Initialize PLAYBACK noise gate - cuts quiet received audio before speakers
-    // Very low threshold - only cut actual silence, not quiet voice audio
-    // The server sends audio with RMS=0.01-0.02, so threshold must be below that
-    noise_gate_init(&p->playback_noise_gate, sample_rate);
-    noise_gate_set_params(&p->playback_noise_gate,
-                          0.002f, // -54dB threshold - only cut near-silence
-                          1 * NS_PER_MS_INT,  // 1ms attack - fast open
-                          50 * NS_PER_MS_INT, // 50ms release - smooth close
-                          0.4f);  // Hysteresis
-    log_info("✓ Playback noise gate: threshold=0.002 (-54dB)");
-
     // Initialize highpass filter (removes low-frequency rumble)
     highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
     log_info("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);

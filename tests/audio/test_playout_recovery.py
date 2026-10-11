@@ -70,6 +70,23 @@ for ppm in (-200, 200):
     print(
         f"PASS: ten-minute {ppm:+} ppm clock skew, occupancy {min(levels)}..{max(levels)} samples"
     )
+# Bursty delivery: batches every 10/30/20/40 ms average 20 ms without losing frames.
+rb = lib.audio_ring_buffer_create()
+write(rb, 3840)
+pending = 0
+schedule = (1, 3, 2, 4, 1, 1)
+arrival = schedule[0]
+index = 0
+for tick in range(6000):
+    pending += 480
+    if tick + 1 == arrival:
+        write(rb, pending)
+        pending = 0
+        index = (index + 1) % len(schedule)
+        arrival += schedule[index]
+    assert read(rb) == 480, ("burst jitter", tick)
+lib.audio_ring_buffer_destroy(rb)
+print("PASS: one-minute bursty 10..40 ms delivery")
 # Capture queues must remain sample-exact and never perform drift correction.
 rb = lib.audio_ring_buffer_create_for_capture()
 write(rb, 480)
