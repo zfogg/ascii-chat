@@ -21,8 +21,7 @@
 // Validators
 // ============================================================================
 
-static bool validate_video_codec(const void *opts_struct, char **error_msg) {
-  (void)error_msg;
+static bool validate_video_codec(const void *opts_struct) {
   const options_t *opts = (const options_t *)opts_struct;
   if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 ||
       strcmp(opts->video_codec, "h264") == 0 || strcmp(opts->video_codec, "raw") == 0)
@@ -31,12 +30,11 @@ static bool validate_video_codec(const void *opts_struct, char **error_msg) {
   return false;
 }
 
-static bool validate_render_font_size(const void *opts_struct, char **error_msg) {
+static bool validate_render_font_size(const void *opts_struct) {
   (void)opts_struct;
   const options_t *opts = (const options_t *)opts_struct;
   if (opts->render_font_size <= 0.0) {
-    if (error_msg)
-      *error_msg = platform_strdup("--render-font-size must be > 0");
+    SET_ERRNO(ERROR_USAGE, "--render-font-size must be > 0");
     return false;
   }
   return true;
