@@ -167,13 +167,15 @@ typedef struct {
 typedef struct {
   /** Sample rate in Hz (default: 48000) */
   int sample_rate;
-  /** Frame size in nanoseconds (default: 20ms) */
-  uint64_t frame_size_ns;
-  /** Opus bitrate in bps (default: 24000) */
+  /** Frame size in milliseconds (default: 20ms) */
+  uint64_t frame_duration_ms;
+  /** Opus bitrate in bps (default: 32000) */
   int opus_bitrate;
+  /** Opus application: 2048 for speech, 2049 for media/mixed audio. */
+  int opus_application;
 
-  /** Echo cancellation filter length in nanoseconds (default: 250ms) */
-  uint64_t echo_filter_ns;
+  /** Reserved echo-filter hint in milliseconds; AEC3 currently uses its fixed configuration */
+  uint64_t echo_filter_ms;
 
   /** Noise suppression level in dB (default: -25, negative = more suppression) */
   int noise_suppress_db;
@@ -182,8 +184,8 @@ typedef struct {
   /** AGC maximum gain in dB (default: 30) */
   int agc_max_gain;
 
-  /** Jitter buffer margin in nanoseconds (default: 60ms) */
-  uint64_t jitter_margin_ns;
+  /** Initial jitter buffer margin in milliseconds (default: 60ms) */
+  uint64_t jitter_margin_ms;
 
   /** High-pass filter cutoff frequency in Hz (default: 80) */
   float highpass_hz;
@@ -220,6 +222,9 @@ typedef struct {
  */
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void);
 
+/** Select the codec profile using current capture options and actual media audio availability. */
+client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_media_audio);
+
 /**
  * @brief Client audio pipeline state
  *
@@ -252,8 +257,6 @@ typedef struct {
   compressor_t compressor;
   /** Noise gate for capture */
   noise_gate_t noise_gate;
-  /** Noise gate for playback - cuts quiet received audio */
-  noise_gate_t playback_noise_gate;
   /** High-pass filter */
   highpass_filter_t highpass;
   /** Low-pass filter */

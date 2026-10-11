@@ -1,0 +1,9 @@
+{
+  "sourceHash": "70bbc7987802b96da43abfafaab2a8f81236b815c4e3203c8080b71c6d02a89f",
+  "files": {
+    "mirror.js": "7158e977acfb03128bcd28eadfb06c643d79ceb626347cf1d7e0b771503fa153",
+    "mirror.wasm": "d8fa9242771202290dc6ef9a614341c69b766d82a3b9cb40bcbb718df5108356",
+    "client.js": "3289cf72e824ec36d803b5b6004ebac5173145568314922f98786c5bde89d100",
+    "client.wasm": "b4ed65d715962c8ea32ecba78c1b5b144f1a3a74f630675ba0fb4f99a1e3d883"
+  }
+}

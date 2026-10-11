@@ -225,6 +225,11 @@ typedef struct audio_ring_buffer {
   atomic_t underrun_count;
   /** @brief Whether jitter buffering is enabled (false for capture, true for playback) */
   bool jitter_buffer_enabled;
+  /** Consumer-owned adaptive target and stable-playback counter (48 kHz samples). */
+  uint32_t jitter_target_samples;
+  uint32_t jitter_initial_samples;
+  uint64_t jitter_stable_samples;
+  double jitter_drift_phase; ///< Consumer-owned fractional clock correction
   /** @brief Mutex for SLOW PATH only (clear/destroy operations, not regular read/write) */
   mutex_t mutex;
 } audio_ring_buffer_t;

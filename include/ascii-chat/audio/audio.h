@@ -509,6 +509,8 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
  * @ingroup audio
  */
 audio_ring_buffer_t *audio_ring_buffer_create(void);
+/** Set initial 20-160 ms target before starting producer/consumer threads. */
+void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples);
 
 /**
  * @brief Create a new audio ring buffer for capture (without jitter buffering)

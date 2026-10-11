@@ -574,7 +574,7 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         audio.playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio);
         log_info("Discovery audio input: media=%d, microphone=%d", has_media_audio,
                  audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_media_audio));
-        client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+        client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(has_media_audio);
         config.flags.jitter_buffer = false;
         receiver.audio_pipeline = client_audio_pipeline_create(&config);
         if (!receiver.audio_pipeline) {

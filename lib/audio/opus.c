@@ -16,6 +16,20 @@
  * Encoder Creation
  * ============================================================================ */
 
+asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate) {
+  if (!encoder || bitrate < 6000 || bitrate > 510000)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder or bitrate: %d", bitrate);
+  int result = opus_encoder_ctl(encoder, OPUS_SET_BITRATE(bitrate));
+  if (result == OPUS_OK)
+    result = opus_encoder_ctl(encoder, OPUS_SET_VBR(1));
+  // Ordered streams retain silence packets so playout timing remains continuous.
+  if (result == OPUS_OK)
+    result = opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
+  if (result != OPUS_OK)
+    return SET_ERRNO(ERROR_AUDIO, "Opus configuration failed: %s", opus_strerror(result));
+  return ASCIICHAT_OK;
+}
+
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate) {
   if (sample_rate <= 0 || bitrate <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid codec parameters: sample_rate=%d, bitrate=%d", sample_rate, bitrate);
@@ -37,21 +51,10 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
     return NULL;
   }
 
-  // Set bitrate
-  error = opus_encoder_ctl(codec->encoder, OPUS_SET_BITRATE(bitrate));
-  if (error != OPUS_OK) {
-    SET_ERRNO(ERROR_AUDIO, "Failed to set Opus bitrate: %s", opus_strerror(error));
+  if (audio_opus_configure_encoder(codec->encoder, bitrate) != ASCIICHAT_OK) {
     opus_encoder_destroy(codec->encoder);
     SAFE_FREE(codec);
     return NULL;
-  }
-
-  // Enable DTX (Discontinuous Transmission) for efficient silence frame encoding
-  // DTX allows the encoder to produce very small packets (3-4 bytes) for silence,
-  // reducing bandwidth usage while maintaining audio quality for voice/music
-  error = opus_encoder_ctl(codec->encoder, OPUS_SET_DTX(1));
-  if (error != OPUS_OK) {
-    log_warn("Failed to enable Opus DTX: %s (continuing without DTX)", opus_strerror(error));
   }
 
   codec->decoder = NULL;
@@ -59,7 +62,7 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
   codec->bitrate = bitrate;
   codec->tmp_buffer = NULL;
 
-  log_debug("Opus encoder created: sample_rate=%d, bitrate=%d bps, DTX enabled", sample_rate, bitrate);
+  log_debug("Opus encoder created: sample_rate=%d, bitrate=%d bps, continuous VBR", sample_rate, bitrate);
 
   // Register Opus encoder for debugging
   NAMED_REGISTER_CONTEXT(codec, "opus_encoder", "opus_codec", NULL);
