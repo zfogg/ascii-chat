@@ -656,6 +656,7 @@ options_t options_t_new(void) {
   // AUDIO CATEGORY - Audio capture, playback and processing options
   // ============================================================================
   opts.audio_fft_size = 1024;
+  opts.test_audio = false;
   opts.audio_spectral_gate = true;
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
@@ -1612,6 +1613,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // Publish options to RCU as soon as they're parsed
   // This ensures GET_OPTION() works during cleanup even if validation fails
+  if (opts.test_audio)
+    opts.audio_enabled = true;
   log_debug("Publishing parsed options to RCU before validation");
   asciichat_error_t early_publish = options_state_set(&opts);
   if (early_publish != ASCIICHAT_OK) {

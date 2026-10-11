@@ -34,7 +34,26 @@ static const bool default_audio_adaptive_eq = false;
 static const int default_audio_fft_size = 1024;
 static const bool default_audio_pitch_correct = false;
 static const bool default_audio_spectral_agc = false;
+static const bool default_test_audio = false;
 const registry_entry_t g_audio_entries[] = {
+    {"test-audio",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, test_audio),
+     &default_test_audio,
+     sizeof(bool),
+     "Send a gentle repeating test signal instead of microphone audio and monitor it on speakers; enables audio.",
+     "AUDIO",
+     NULL,
+     false,
+     "ASCII_CHAT_TEST_AUDIO",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_MIRROR,
+     {0},
+     NULL},
     {"audio-spectral-agc",
      '\0',
      OPTION_TYPE_BOOL,

@@ -1054,6 +1054,7 @@ typedef struct options_state {
   // Audio Configuration
   // ============================================================================
   bool audio_pitch_correct;
+  bool test_audio; ///< Replace microphone capture with a repeating audible test signal
   bool audio_spectral_agc;
   bool audio_spectral;
   bool audio_spectral_gate;

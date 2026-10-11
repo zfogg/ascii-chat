@@ -1,0 +1,22 @@
+{
+  "windows_client_exit": 0,
+  "mac_client_exit": 0,
+  "duration_requested_seconds": 60,
+  "spectral_server_mixing": true,
+  "transport": "encrypted TCP over SSH reverse forwarding",
+  "host_identity_authentication_tested": false,
+  "microphones_opened": false,
+  "speaker_audibility": "User confirmed both computers",
+  "output_underflows": {
+    "Windows": 0,
+    "Mac": 0
+  },
+  "capture_queue_overflows": {
+    "Windows": 0,
+    "Mac": 0
+  },
+  "earlier_attempt": {
+    "mac_client_exit": 40,
+    "note": "Connection failed after about six seconds; root cause unconfirmed. Retried with info-level server logging."
+  }
+}

@@ -115,3 +115,34 @@ The encrypted loopback test disables host identity verification only in its chil
 processes so it does not modify the user's known_hosts. This checks encrypted
 transport, not server identity authentication. Network measurements and recordings
 are linked in the evidence README.
+
+## Repeating diagnostic audio
+
+`--test-audio` enables audio, replaces microphone/file audio with a generated
+20-second loop, and monitors that loop through the selected speakers. It works
+in client, discovery, and mirror modes; no microphone permission or media file
+is needed. `--speakers-volume` controls the local monitor and received audio.
+
+```sh
+ascii-chat client HOST --test-audio --speakers-volume 0.5
+ascii-chat mirror --test-pattern 0 --test-audio --speakers-volume 0.5
+```
+
+The loop contains a soft major arpeggio (0–4 s), a three-tone chord (4–8 s),
+a 150 Hz–3 kHz logarithmic sweep (8–12 s), quiet broadband noise bursts
+(12–16 s), amplitude-modulated harmonics (16–18 s), and silence (18–20 s).
+Soft envelopes avoid abrupt edges; the source peak is below 0.18 full scale.
+The local monitor mixes with received audio without adding frames to its queue.
+
+The synthetic source bypasses microphone capture/AEC processing, like media
+input. It tests encoding, transport, server mixing, decoding, and speaker output;
+it does not verify the microphone or its noise processing. The local monitor is
+generated separately and is not proof that a peer received anything. Network
+verification must inspect the peer's received recording.
+
+```sh
+python tests/audio/test_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
+```
+
+This checks sample bounds, each section's energy, sweep frequency, silence,
+repeatability, and arbitrary buffer boundaries at both 44.1 and 48 kHz.

@@ -1,6 +1,7 @@
 # lib/audio - Audio processing
 
 set(AUDIO_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_pattern.c
     ${CMAKE_CURRENT_SOURCE_DIR}/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/recording.c

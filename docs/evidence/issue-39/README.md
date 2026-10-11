@@ -91,3 +91,53 @@ first 12 seconds, resampled from the original 8 kHz recording. The repository
 [permits copying and publishing before/after examples with attribution](https://www.voiptroubleshooter.com/open_speech/index.html).
 The controlled reference uses polyphase resampling; physical speaker playback uses
 linear interpolation. Reproduction scripts are in `tests/audio/`.
+
+### Generated test audio: Windows and Mac
+
+`--test-audio` generates a repeating 20-second signal and plays it locally while
+sending it to peers. The phrase includes notes, a chord, a sweep, noise bursts,
+modulated harmonics, and a deliberate two-second rest. No microphone is opened.
+
+![Generated and received audio](test-audio-analysis.png)
+
+[Source loop](test-audio-source.wav) · [Windows received from Mac](test-audio-windows-received.wav) · [Mac received from Windows](test-audio-mac-received.wav) · [Measurements](test-audio-results.json) · [Call validation](test-audio-call.json)
+
+Native Debug builds passed on Windows and Intel macOS with Clang/Ninja. The
+one-minute encrypted TCP call through SSH reverse forwarding completed with
+both clients exiting 0. Both peer-only received recordings contain 60.04 seconds
+of audio. Neither client logged an output underrun or capture queue overflow in
+that run. The user confirmed the pattern was audible from both computers.
+The 48 kHz mono WAVs above are PCM16 exports of the received float recordings;
+measurements are calculated from those exports. Local monitoring is excluded
+from these receive recordings. The clocks are independent; the Mac started first.
+
+One earlier attempt disconnected after about six seconds (Mac exit 40). Its
+cause remains unconfirmed; the successful retry used info-level server logging.
+This validates a completed call, not a claim that intermittent networking failures
+are fixed. Ephemeral host identity checking was disabled only in test child
+processes. Raw video was used; existing unused HEVC shutdown errors remain.
+
+The generated-source tests pass for 44.1/48 kHz, buffer boundaries, loop identity,
+peak/RMS bounds, sweep frequency, and deliberate silence. Compiled capture/mixer
+and playback-gate integration tests pass on Windows. Standalone mirror mode was
+also smoke-tested. The synthetic source bypasses microphone/AEC processing.
+
+Reproduce with a server on Windows and an SSH reverse forward to the Mac:
+
+```sh
+ascii-chat --log-level info server 127.0.0.1 --port 54389 --audio-spectral=true --status-screen=false
+ssh -R 54391:127.0.0.1:54389 loomen@zachbook-pro
+# In that SSH shell, start the Mac client:
+ascii-chat --log-level warn client 127.0.0.1:54391 --test-pattern 0 --video-codec raw --test-audio --audio-spectral=true --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
+# In a separate Windows shell, start the Windows client:
+ascii-chat --log-level warn client 127.0.0.1:54389 --test-pattern 0 --video-codec raw --test-audio --audio-spectral=true --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
+```
+
+Set `ASCIICHAT_DUMP_AUDIO=1` in each client's environment to capture received
+WAVs (`audio_playback_received.wav` in the platform temporary directory). Select
+speaker indices for the machine as needed; Windows used Realtek device 6 and the
+Mac used its default builtin speakers. To regenerate the chart:
+
+```sh
+python tests/audio/analyze_test_audio.py --source docs/evidence/issue-39/test-audio-source.wav --windows-received docs/evidence/issue-39/test-audio-windows-received.wav --mac-received docs/evidence/issue-39/test-audio-mac-received.wav --output docs/evidence/issue-39
+```
