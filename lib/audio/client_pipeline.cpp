@@ -146,6 +146,19 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
   };
 }
 
+client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_media_audio) {
+  client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+  const options_t *options = options_get();
+  if (options) {
+    bool media = options->test_audio ||
+                 (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
+                  options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
+    config.opus_application = media ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
+    config.opus_bitrate = media ? 128000 : 32000;
+  }
+  return config;
+}
+
 // ============================================================================
 // Lifecycle Functions
 // ============================================================================

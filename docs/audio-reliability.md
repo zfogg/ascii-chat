@@ -7,7 +7,9 @@ Opus is already the wire codec. This change keeps the existing mono, 48 kHz,
 
 - Microphones use the speech Opus application at 32 kbit/s. Media and generated
   test audio use the audio application at 128 kbit/s. Native encoders share
-  checked bitrate/VBR/DTX configuration; DTX is off by default.
+  checked bitrate/VBR/DTX configuration; DTX is off by default. Both explicit
+  client and discovery paths select this profile using the opened media source:
+  video-only media with automatic microphone fallback stays in speech mode.
 - Decoded playback is no longer noise-gated. Quiet media is preserved; microphone
   capture processing, including the default spectral stage, remains separate.
 - Playback starts with 60 ms buffered audio. Actual underruns raise the refill
@@ -25,6 +27,7 @@ Opus is already the wire codec. This change keeps the existing mono, 48 kHz,
 Install NumPy for the Python interpreter, build the native shared library, then run:
 
 ```sh
+python tests/audio/test_opus_profiles.py PATH_TO_SHARED_LIBRARY
 python tests/audio/test_playout_recovery.py PATH_TO_SHARED_LIBRARY
 python tests/audio/test_spectral_integration.py PATH_TO_SHARED_LIBRARY
 python tests/audio/test_aec3_echo.py PATH_TO_SHARED_LIBRARY

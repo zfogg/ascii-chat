@@ -75,6 +75,7 @@
 #include "audio.h"
 #include "capture.h"
 #include <ascii-chat/audio/analysis.h>
+#include <ascii-chat/media/source.h>
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
@@ -1014,12 +1015,8 @@ int audio_client_init() {
   lifecycle_init_commit(&g_audio_client_init_lc);
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
-  client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
-  bool has_media = GET_OPTION(media_file)[0] || GET_OPTION(media_url)[0];
-  bool media_encoding = GET_OPTION(test_audio) ||
-                        (has_media && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC);
-  pipeline_config.opus_application = media_encoding ? 2049 : 2048;
-  pipeline_config.opus_bitrate = media_encoding ? 128000 : 32000;
+  bool has_media_audio = media_source_has_audio(capture_get_media_source());
+  client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_config_for_source(has_media_audio);
 
   // Enable echo cancellation, AGC, and essential processing for clear audio
   // Noise suppression and VAD can destroy music quality, so keep them disabled

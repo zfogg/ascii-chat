@@ -222,6 +222,9 @@ typedef struct {
  */
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void);
 
+/** Select the codec profile using current capture options and actual media audio availability. */
+client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_media_audio);
+
 /**
  * @brief Client audio pipeline state
  *
