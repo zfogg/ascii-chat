@@ -154,21 +154,15 @@ for block in range(20):
         lib.client_audio_pipeline_playback(pipeline, packet, size, ptr(gated), 960)
         == 960
     )
-    if block > 10 and np.max(np.abs(plain)) < 0.0008:
-        closed_frames += 1
-        gain = np.linalg.norm(gated) / np.linalg.norm(plain)
-        assert 0 < gain < 1, (block, gain)
-        release_gains.append(gain)
-assert closed_frames >= 5, closed_frames
-assert all(
-    0.5 < after / before < 0.85
-    for before, after in zip(release_gains, release_gains[1:])
-), release_gains
+    assert np.array_equal(gated, plain), "Playback must preserve quiet decoded media"
+# Explicit missing-frame decoding uses Opus concealment on the decoder owner thread.
+assert lib.client_audio_pipeline_playback(pipeline, None, 0, ptr(gated), 960) == 960
+assert np.isfinite(gated).all()
 lib.opus_codec_destroy(encoder)
 lib.opus_codec_destroy(decoder)
 lib.client_audio_pipeline_destroy(pipeline)
 print(
-    "PASS: empty mixer, independent delayed recipient streams, production capture pipeline, playback gate release"
+    "PASS: empty mixer, independent delayed recipient streams, production capture pipeline, quiet playback fidelity and concealment"
 )
 
 

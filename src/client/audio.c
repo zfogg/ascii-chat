@@ -1015,7 +1015,11 @@ int audio_client_init() {
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
-  pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
+  bool has_media = GET_OPTION(media_file)[0] || GET_OPTION(media_url)[0];
+  bool media_encoding = GET_OPTION(test_audio) ||
+                        (has_media && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC);
+  pipeline_config.opus_application = media_encoding ? 2049 : 2048;
+  pipeline_config.opus_bitrate = media_encoding ? 128000 : 32000;
 
   // Enable echo cancellation, AGC, and essential processing for clear audio
   // Noise suppression and VAD can destroy music quality, so keep them disabled
@@ -1029,10 +1033,9 @@ int audio_client_init() {
   pipeline_config.flags.highpass = true;        // ENABLE: remove rumble and low-frequency feedback
   pipeline_config.flags.lowpass = false;        // DISABLED: preserve high-frequency content
 
-  // Set jitter buffer margin for smooth playback without excessive delay
-  // 100ms is conservative - AEC3 will adapt to actual network delay automatically
-  // We don't tune this; let the system adapt to its actual conditions
-  pipeline_config.jitter_margin_ns = 100;
+  // Applied before streams start; actual underflows increase this bounded target.
+  audio_ring_buffer_set_jitter_target(g_audio_context.playback_buffer,
+                                      (uint32_t)pipeline_config.jitter_margin_ms * 48);
 
   log_debug("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
