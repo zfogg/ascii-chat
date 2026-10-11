@@ -306,7 +306,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Capture frame from canvas into RGBA buffer
   int read_result = js_webcam_read_frame(ctx->rgba_buf, ctx->width, ctx->height);
   if (read_result <= 0) {
-    log_warn_every(100, "Failed to read webcam frame");
+    log_warn_every(US_PER_SEC_INT, "Failed to read webcam frame");
     return NULL;
   }
 

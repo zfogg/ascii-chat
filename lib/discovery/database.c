@@ -640,10 +640,10 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
             resp->initiator_id[1], resp->host_established, resp->peer_count);
 
   // IP disclosure logic
-  log_info("DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
+  log_debug("DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
            session->expose_ip_publicly, session->server_address);
   bool reveal_ip = session->has_password || session->expose_ip_publicly;
-  log_info("DATABASE_SESSION_JOIN: reveal_ip=%d", reveal_ip);
+  log_debug("DATABASE_SESSION_JOIN: reveal_ip=%d", reveal_ip);
 
   if (reveal_ip) {
     SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));

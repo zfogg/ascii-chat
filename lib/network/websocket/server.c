@@ -100,7 +100,7 @@ static void websocket_configure_socket(struct lws *wsi) {
       socklen_t optlen = sizeof(int);
       getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &actual_rcv, &optlen);
       getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &actual_snd, &optlen);
-      log_info("[WS_SOCKET] TCP_QUICKACK=1, TCP_NODELAY=1, SO_RCVBUF=%d (autotuned), SO_SNDBUF=%d", actual_rcv,
+      log_debug("[WS_SOCKET] TCP_QUICKACK=1, TCP_NODELAY=1, SO_RCVBUF=%d (autotuned), SO_SNDBUF=%d", actual_rcv,
                actual_snd);
     }
   }
@@ -112,10 +112,9 @@ static void websocket_configure_socket(struct lws *wsi) {
 static asciichat_error_t websocket_establish_connection(struct lws *wsi, websocket_connection_data_t *conn_data) {
   // New WebSocket connection established
   uint64_t established_ns = time_get_ns();
-  log_info("🔵🔵🔵 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
-  log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
+  log_debug("🔵🔵🔵 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
+  log_debug("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
            (unsigned long long)established_ns);
-  log_info("WebSocket client connected");
 
   // Get server instance from protocol user data
   const struct lws_protocols *protocol = lws_get_protocol(wsi);
@@ -183,7 +182,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
 
   // Queue handler to thread pool (no pthread_create from callback context)
   // The handler_pool was created at server startup with pre-allocated workers
-  log_info("🔵 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
+  log_debug("🔵 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
   log_debug("[LWS_CALLBACK_ESTABLISHED] Queueing handler to work pool (handler=%p, ctx=%p)...", (void *)server->handler,
             (void *)client_ctx);
 
@@ -201,7 +200,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->handler_started = true;
   asciichat_error_t queue_result =
       thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
-  log_info("🔵 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
+  log_debug("🔵 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
 
   if (queue_result != ASCIICHAT_OK) {
     log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
@@ -213,22 +212,22 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   }
 
   log_debug("[LWS_CALLBACK_ESTABLISHED] Handler work queued successfully");
-  log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler work queued! ★★★");
+  log_debug("★★★ ESTABLISHED CALLBACK SUCCESS - handler work queued! ★★★");
   return ASCIICHAT_OK;
 }
 
 static void websocket_close_connection(struct lws *wsi, websocket_connection_data_t *conn_data, void *in, size_t len) {
   // Connection closed
   uint64_t close_callback_start_ns = time_get_ns();
-  log_info("★★★ LWS_CALLBACK_CLOSED FIRED - WHY IS CONNECTION CLOSING? ★★★");
-  log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu",
-           (void *)wsi, conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
+  log_debug("★★★ LWS_CALLBACK_CLOSED FIRED - WHY IS CONNECTION CLOSING? ★★★");
+  log_info("WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu", (void *)wsi,
+           conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
 
   // Try to extract close code from 'in' parameter if available
   uint16_t close_code = 0;
   if (in && len >= 2) {
     close_code = (uint16_t)((uint8_t *)in)[0] << 8 | ((uint8_t *)in)[1];
-    log_info("[LWS_CALLBACK_CLOSED] Close frame received with code=%u (1000=normal, 1001=going away, 1006=abnormal, "
+    log_debug("[LWS_CALLBACK_CLOSED] Close frame received with code=%u (1000=normal, 1001=going away, 1006=abnormal, "
              "1009=message too big)",
              close_code);
   } else {
@@ -292,7 +291,7 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   uint64_t close_callback_end_ns = time_get_ns();
   char total_duration_str[32];
   time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str, sizeof(total_duration_str));
-  log_info("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
+  log_debug("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
 }
 
 static void websocket_send_queued_messages(struct lws *wsi, websocket_connection_data_t *conn_data) {
@@ -565,7 +564,7 @@ static void websocket_request_writable_callbacks(struct lws *wsi) {
   // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
   // - "acip" protocol (for ACIP over WebSocket connections)
   // Both protocols use the same callback and handle frame transmission.
-  log_debug_every(1 * NS_PER_SEC_INT,
+  log_debug_every(1 * US_PER_SEC_INT,
                   ">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
 
   struct lws_context *ctx = lws_get_context(wsi);
@@ -576,7 +575,7 @@ static void websocket_request_writable_callbacks(struct lws *wsi) {
 
   // Trigger WRITEABLE on both protocols
   for (int i = 0; i < 2; i++) {
-    log_dev_every(1 * NS_PER_SEC_INT,
+    log_dev_every(1 * US_PER_SEC_INT,
                   ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
                   websocket_protocols[i].name);
     lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
@@ -616,14 +615,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
     // WebSocket upgrade handshake - allow all connections
-    log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
+    log_debug("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
     return 0; // Allow the connection
   }
 
   case LWS_CALLBACK_PROTOCOL_INIT: {
     // Protocol initialization with timing instrumentation
     uint64_t callback_start_ns = websocket_callback_timing_start();
-    log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
+    log_debug("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
     uint64_t callback_end_ns = websocket_callback_timing_start();
     websocket_callback_timing_record(&g_ws_callback_timing.protocol_init, callback_start_ns, callback_end_ns);
     break;
@@ -632,7 +631,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_PROTOCOL_DESTROY: {
     // Protocol destruction with timing instrumentation
     uint64_t callback_start_ns = websocket_callback_timing_start();
-    log_info("[PROTOCOL_DESTROY] Protocol destroyed, proto=%s", proto_name);
+    log_debug("[PROTOCOL_DESTROY] Protocol destroyed, proto=%s", proto_name);
     uint64_t callback_end_ns = websocket_callback_timing_start();
     websocket_callback_timing_record(&g_ws_callback_timing.protocol_destroy, callback_start_ns, callback_end_ns);
     break;
@@ -850,7 +849,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     if (last_service_ns && service_start_ns - last_service_ns > 30 * US_PER_MS_INT) {
       // > 30ms gap between service calls
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
-      log_info_every(1 * US_PER_MS_INT, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
+      log_debug_every(US_PER_SEC_INT, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
     service_call_count++;
     log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%s", service_call_count,

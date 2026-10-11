@@ -93,7 +93,7 @@ export function useInitAsciiRenderer({
       args.push(`--fps`, String(targetFps));
 
       const argsStr = args.join(" ");
-      console.log(
+      console.debug(
         "[reinitializeWithCurrentSettings] Calling mirror_init_with_args with:",
         argsStr,
       );
@@ -116,7 +116,7 @@ export function useInitAsciiRenderer({
             `Failed to reinitialize mirror C code: ${initResult}`,
           );
         }
-        console.log(
+        console.debug(
           "[reinitializeWithCurrentSettings] Successfully reinitialized with current settings",
         );
       } finally {
@@ -172,7 +172,7 @@ export function useInitAsciiRenderer({
 
       // Use "Matrix" font_spec when matrix_rain is enabled, otherwise use default font selection
       const fontSpec = isMatrixMode ? "Matrix" : "";
-      console.log("[writeConfigStructFields]", {
+      console.debug("[writeConfigStructFields]", {
         cols,
         rows,
         isMatrixMode,
@@ -261,7 +261,7 @@ export function useInitAsciiRenderer({
           throw error;
         }
 
-        console.log("[createConfigStruct] ALLOCATING", {
+        console.debug("[createConfigStruct] ALLOCATING", {
           configPtr,
           configSize,
           containerWidth,
@@ -278,7 +278,9 @@ export function useInitAsciiRenderer({
           isMatrixMode,
         );
 
-        console.log("[createConfigStruct] CONFIG WRITTEN, returning configPtr");
+        console.debug(
+          "[createConfigStruct] CONFIG WRITTEN, returning configPtr",
+        );
 
         return { configPtr, estimatedCols, estimatedRows };
       } catch (err) {
@@ -296,14 +298,14 @@ export function useInitAsciiRenderer({
         throw new Error("moduleRef.current is null during callRendererCreate");
       }
 
-      console.log("[callRendererCreate] CALLING _term_renderer_create", {
+      console.debug("[callRendererCreate] CALLING _term_renderer_create", {
         configPtr,
         outPtr,
       });
 
       const result = moduleRef.current._term_renderer_create(configPtr, outPtr);
 
-      console.log("[callRendererCreate] _term_renderer_create returned", {
+      console.debug("[callRendererCreate] _term_renderer_create returned", {
         result,
       });
 
@@ -318,7 +320,7 @@ export function useInitAsciiRenderer({
         outPtr,
         4,
       ).getUint32(0, true);
-      console.log("[callRendererCreate] EXTRACTED rendererPtr", {
+      console.debug("[callRendererCreate] EXTRACTED rendererPtr", {
         rendererPtr,
       });
       return rendererPtr;
@@ -332,7 +334,7 @@ export function useInitAsciiRenderer({
       throw new Error("moduleRef.current is null during getRendererDimensions");
     }
 
-    console.log(
+    console.debug(
       "[getRendererDimensions] CALLING getter functions with rendererPtr",
       {
         rendererPtr: rendererPtrRef.current,
@@ -352,7 +354,7 @@ export function useInitAsciiRenderer({
       rendererPtrRef.current,
     );
 
-    console.log("[getRendererDimensions] RETRIEVED", {
+    console.debug("[getRendererDimensions] RETRIEVED", {
       cols,
       rows,
       pixelWidth,
@@ -385,7 +387,7 @@ export function useInitAsciiRenderer({
       const cappedHeight = Math.min(newHeight, window.innerHeight);
       const oldRendererPtr = rendererPtrRef.current;
       if (cappedHeight < newHeight) {
-        console.log("[handleContainerResize] Capping height to viewport:", {
+        console.debug("[handleContainerResize] Capping height to viewport:", {
           originalHeight: newHeight,
           cappedHeight,
           viewportHeight: window.innerHeight,
@@ -399,7 +401,7 @@ export function useInitAsciiRenderer({
 
         // Create new renderer with updated dimensions using the actual WASM matrix rain state
         const isMatrixMode = currentMatrixModeRef.current;
-        console.log("[handleContainerResize] STARTING RECREATION", {
+        console.debug("[handleContainerResize] STARTING RECREATION", {
           newWidth,
           newHeight,
           isMatrixMode,
@@ -409,19 +411,19 @@ export function useInitAsciiRenderer({
           cappedHeight,
           isMatrixMode,
         );
-        console.log("[handleContainerResize] createConfigStruct returned", {
+        console.debug("[handleContainerResize] createConfigStruct returned", {
           configPtr,
           estimatedCols,
           estimatedRows,
         });
         const outPtr = moduleRef.current._malloc(4);
-        console.log("[handleContainerResize] Allocated outPtr", { outPtr });
+        console.debug("[handleContainerResize] Allocated outPtr", { outPtr });
 
-        console.log(`[handleContainerResize] CALLING callRendererCreate...`);
+        console.debug(`[handleContainerResize] CALLING callRendererCreate...`);
         const rendererPtr = callRendererCreate(configPtr, outPtr);
         rendererPtrRef.current = rendererPtr;
 
-        console.log("[handleContainerResize] CALLING getRendererDimensions");
+        console.debug("[handleContainerResize] CALLING getRendererDimensions");
         let dims: ReturnType<typeof getRendererDimensions>;
         try {
           dims = getRendererDimensions();
@@ -440,7 +442,7 @@ export function useInitAsciiRenderer({
           console.error("[handleContainerResize] ERROR: pixelHeight=0!", dims);
         }
 
-        console.log("[handleContainerResize] SETTING canvas dimensions", {
+        console.debug("[handleContainerResize] SETTING canvas dimensions", {
           width: dims.pixelWidth,
           height: dims.pixelHeight,
         });
@@ -496,7 +498,7 @@ export function useInitAsciiRenderer({
                 Math.floor(recoveryHeight / recoveryPixelsPerRow),
               );
 
-              console.log(
+              console.debug(
                 "[AsciiRenderer] Recovery attempt with capped dimensions:",
                 {
                   recoveryCols,
@@ -526,7 +528,7 @@ export function useInitAsciiRenderer({
                 canvas.height = retryDims.pixelHeight;
                 moduleRef.current?._free(retryConfigPtr);
                 moduleRef.current?._free(retryOutPtr);
-                console.log(
+                console.debug(
                   "[AsciiRenderer] Recovery successful with dimensions:",
                   retryDims,
                 );
@@ -565,7 +567,7 @@ export function useInitAsciiRenderer({
           height: newHeight,
         };
 
-        console.log("[ResizeObserver] size change", {
+        console.debug("[ResizeObserver] size change", {
           newWidth,
           newHeight,
           canvasCurrentWidth: canvas.width,

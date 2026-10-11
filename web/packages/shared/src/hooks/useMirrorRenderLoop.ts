@@ -84,12 +84,12 @@ export function useMirrorRenderLoop({
         );
       if (prevCapture !== captureFrame) changes.push("captureFrame");
       if (changes.length > 0) {
-        console.log(`[${loopId}] Effect triggered by: ${changes.join(", ")}`);
+        console.debug(`[${loopId}] Effect triggered by: ${changes.join(", ")}`);
       }
     }
     prevDepsRef.current = { isWebcamRunning, terminalDimensions, captureFrame };
 
-    console.log(
+    console.debug(
       `[${loopId}] Starting render loop with dimensions ${terminalDimensions.cols}x${terminalDimensions.rows}`,
     );
 
@@ -220,7 +220,7 @@ export function useMirrorRenderLoop({
       try {
         frameCount++;
         if (frameCount % 60 === 0) {
-          console.log(`[${loopId}] Frame ${frameCount}`);
+          console.debug(`[${loopId}] Frame ${frameCount}`);
         }
 
         const elapsed = time - lastFrameTime;
@@ -261,7 +261,7 @@ export function useMirrorRenderLoop({
     currentRafHandle = rafHandle;
 
     return () => {
-      console.log(`[${loopId}] Cleanup - stopping render loop`);
+      console.debug(`[${loopId}] Cleanup - stopping render loop`);
       isActive = false;
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);

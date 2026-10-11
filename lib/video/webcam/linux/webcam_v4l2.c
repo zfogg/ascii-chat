@@ -710,7 +710,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     // Send packet to decoder
     if (avcodec_send_packet(ctx->mjpeg_codec_ctx, &pkt) < 0) {
-      log_warn_every(1000000000LL, "Failed to send MJPEG packet (size=%u) to decoder", buf.bytesused);
+      log_warn_every(US_PER_SEC_INT, "Failed to send MJPEG packet (size=%u) to decoder", buf.bytesused);
       av_packet_unref(&pkt);
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
         log_error("Failed to re-queue buffer after MJPEG decode error: %s", SAFE_STRERROR(errno));
@@ -720,7 +720,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     // Receive decoded frame (JPEG decompression happens here)
     if (avcodec_receive_frame(ctx->mjpeg_codec_ctx, ctx->mjpeg_decoded_frame) < 0) {
-      log_warn_every(1000000000LL, "Failed to decode MJPEG frame from %u bytes", buf.bytesused);
+      log_warn_every(US_PER_SEC_INT, "Failed to decode MJPEG frame from %u bytes", buf.bytesused);
       av_packet_unref(&pkt);
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
         log_error("Failed to re-queue buffer after MJPEG receive error: %s", SAFE_STRERROR(errno));

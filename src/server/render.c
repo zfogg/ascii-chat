@@ -354,7 +354,7 @@ void *client_video_render_thread(void *arg) {
 
   log_debug("Video render thread: client_id=%s, webrtc=%d", thread_client_id, is_webrtc);
 
-  log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %s", thread_client_id);
+  log_debug("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %s", thread_client_id);
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
 
   // Wait for client to send terminal capabilities before rendering
@@ -410,7 +410,7 @@ void *client_video_render_thread(void *arg) {
   uint64_t rendered_frames_in_window = 0;
   uint64_t missed_deadlines_in_window = 0;
 
-  log_info("Video render loop STARTING for client %s", thread_client_id);
+  log_debug("Video render loop STARTING for client %s", thread_client_id);
 
   bool should_continue = true;
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
@@ -484,8 +484,7 @@ void *client_video_render_thread(void *arg) {
 
     // DIAGNOSTIC: Track when video sources become available
     if (has_video_sources != last_has_sources) {
-      log_warn("DIAGNOSTIC: Client %s video sources: %s", thread_client_id,
-               has_video_sources ? "AVAILABLE" : "UNAVAILABLE");
+      log_debug("Client %s video sources: %s", thread_client_id, has_video_sources ? "AVAILABLE" : "UNAVAILABLE");
       last_has_sources = has_video_sources;
     }
 
@@ -556,8 +555,8 @@ void *client_video_render_thread(void *arg) {
         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
       if (current_frame_hash != last_frame_hash) {
-        log_dev("RENDER_FRAME CHANGE: Client %s frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
-                frame_size, sources_count, current_frame_hash, last_frame_hash);
+        log_dev_every(US_PER_SEC_INT, "RENDER_FRAME CHANGE: Client %s frame #%zu sources=%d hash=0x%08x (prev=0x%08x)",
+                      thread_client_id, frame_size, sources_count, current_frame_hash, last_frame_hash);
         last_frame_hash = current_frame_hash;
       } else {
         log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %s frame #%zu sources=%d hash=0x%08x (no change)",
@@ -614,8 +613,8 @@ void *client_video_render_thread(void *arg) {
                 log_dev("render commit rate: client=%s fps=%.1f", thread_client_id, commit_fps);
               }
 
-              log_dev("FRAME_COMMIT: Client %s took %s (hash=0x%08x)", thread_client_id, commit_duration_str,
-                      current_frame_hash);
+              log_dev_every(US_PER_SEC_INT, "FRAME_COMMIT: Client %s took %s (hash=0x%08x)", thread_client_id,
+                            commit_duration_str, current_frame_hash);
 
               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
               // The send thread reads from this buffer and applies proper 60 FPS rate limiting
@@ -625,7 +624,8 @@ void *client_video_render_thread(void *arg) {
             }
 
           } else {
-            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
+            log_warn_every(US_PER_SEC_INT, "Frame too large for buffer: %zu > %zu", frame_size,
+                           vfb_snapshot->allocated_buffer_size);
           }
 
           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
@@ -639,7 +639,7 @@ void *client_video_render_thread(void *arg) {
               log_warn("Server video render lagging client=%s fps=%.1f target=%d missed_deadlines=%llu",
                        thread_client_id, render_fps, client_fps, (unsigned long long)missed_deadlines_in_window);
             } else {
-              log_info("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id,
+              log_debug("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id,
                        render_fps, client_fps);
             }
             render_rate_window_start_ns = render_rate_now_ns;
@@ -660,7 +660,7 @@ void *client_video_render_thread(void *arg) {
     if (frame_gen_count % 120 == 0) {
       char total_str[32];
       time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
-      log_warn("  TIMING: TOTAL_ITERATION=%s", total_str);
+      log_warn_every(US_PER_SEC_INT, "  TIMING: TOTAL_ITERATION=%s", total_str);
     }
     STOP_TIMER_AND_LOG(dev, 0, "render_iteration", "render_iteration completed (total)");
   }
@@ -908,9 +908,7 @@ void *client_audio_render_thread(void *arg) {
     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%s", "Mixer for client %s: took",
                              client_id_snapshot);
 
-    // Debug logging every 100 iterations (disabled - can slow down audio rendering)
-    // log_debug_every(LOG_RATE_SLOW, "Audio render for client %u: samples_mixed=%d", client_id_snapshot,
-    // samples_mixed);
+    log_debug_every(LOG_RATE_SLOW, "Audio render for client %s: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
@@ -992,7 +990,8 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated = 0;
 
       if (opus_size <= 0) {
-        log_error("Failed to encode audio to Opus for client %s: opus_size=%d", client_id_snapshot, opus_size);
+        log_error_every(US_PER_SEC_INT, "Failed to encode audio to Opus for client %s: opus_size=%d",
+                        client_id_snapshot, opus_size);
       } else {
         // Wrap Opus data in proper batch packet format for client parsing:
         // Header: sample_rate (4B) + frame_duration (4B) + frame_count (4B)
@@ -1059,7 +1058,7 @@ void *client_audio_render_thread(void *arg) {
                                    "Audio queue for client %s: took", client_id_snapshot);
 
           if (result != ASCIICHAT_OK) {
-            log_debug("Failed to queue Opus audio for client %s", client_id_snapshot);
+            log_debug_every(US_PER_SEC_INT, "Failed to queue Opus audio for client %s", client_id_snapshot);
           } else {
             // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
             fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
@@ -1173,7 +1172,7 @@ void *client_audio_render_thread(void *arg) {
  */
 
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
-  log_info("★★★ create_client_render_threads() CALLED for client_id=%s", client ? client->client_id : "NULL");
+  log_debug("★★★ create_client_render_threads() CALLED for client_id=%s", client ? client->client_id : "NULL");
 
   if (!server_ctx || !client) {
     log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");

@@ -631,7 +631,7 @@ image_t *media_source_read_video(media_source_t *source) {
         double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / NS_PER_MS;
         double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
-        log_info_every(3 * US_PER_SEC_INT,
+        log_debug_every(3 * US_PER_SEC_INT,
                        "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
                        "(%lu null/%lu attempts)",
                        successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
@@ -695,7 +695,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   static uint64_t call_count = 0;
   call_count++;
   if (call_count <= 5 || call_count % 1000 == 0) {
-    log_info("media_source_read_audio #%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
+    log_debug("media_source_read_audio #%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
   }
 
   // Check pause state (thread-safe)
@@ -718,7 +718,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
     if (!source->audio_decoder) {
-      log_warn("media_source_read_audio: audio_decoder is NULL!");
+      log_warn_every(US_PER_SEC_INT, "media_source_read_audio: audio_decoder is NULL!");
       return 0;
     }
 
@@ -736,13 +736,14 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
     static double last_audio_pos = 0;
     if (audio_pos_after_read >= 0 && last_audio_pos >= 0 && audio_pos_after_read < last_audio_pos) {
-      log_warn("AUDIO POSITION WENT BACKWARD: %.2f Ã¢â€ â€™ %.2f (LOOPING!)", last_audio_pos, audio_pos_after_read);
+      log_debug_every(US_PER_SEC_INT, "Audio position moved backward: %.2f Ã¢â€ â€™ %.2f (LOOPING!)", last_audio_pos,
+                      audio_pos_after_read);
     }
     if (audio_pos_after_read >= 0) {
       last_audio_pos = audio_pos_after_read;
     }
 
-    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read,
+    log_debug_every(US_PER_SEC_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read,
                    audio_pos_before_read, audio_pos_after_read);
 
     // Handle EOF with loop
@@ -934,28 +935,28 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
+      log_debug("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
                timestamp_sec, video_seek_str);
     }
   }
 
   // Seek audio decoder (if separate from video)
   if (source->audio_decoder && !source->is_shared_decoder) {
-    log_info("=== Starting audio seek to %.2f sec ===", timestamp_sec);
+    log_debug("=== Starting audio seek to %.2f sec ===", timestamp_sec);
     uint64_t audio_seek_start_ns = time_get_ns();
     double audio_pos_before = ffmpeg_decoder_get_position(source->audio_decoder);
-    log_info("Audio position before seek: %.2f", audio_pos_before);
+    log_debug("Audio position before seek: %.2f", audio_pos_before);
     asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, timestamp_sec);
     double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
-    log_info("Audio position after seek: %.2f", audio_pos_after);
+    log_debug("Audio position after seek: %.2f", audio_pos_after);
     char audio_seek_str[32];
     time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
     if (audio_err != ASCIICHAT_OK) {
       log_warn("Audio seek to %.2f failed: error code %d (took %s)", timestamp_sec, audio_err, audio_seek_str);
       result = audio_err;
     } else {
-      log_info("Audio SEEK COMPLETE: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
+      log_debug("Audio SEEK COMPLETE: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
                timestamp_sec, audio_seek_str);
     }
   }

@@ -236,11 +236,11 @@ static void *audio_worker_thread(void *arg) {
                   sizeof(avg_playback_str));
       time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
-      log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
+      log_debug("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
                timeout_count, process_count);
-      log_info("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
+      log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
                max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
-      log_info("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
+      log_debug("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
                render_available, playback_available, WORKER_BATCH_SAMPLES);
     }
 
@@ -359,7 +359,7 @@ static void *audio_worker_thread(void *arg) {
             time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
-            log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
+            log_debug("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
                      latest_str, capture_read, aec3_count);
           }
         }
@@ -446,7 +446,7 @@ static void *audio_worker_thread(void *arg) {
       char avg_loop_str[32], max_loop_str[32];
       time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
       time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
-      log_info("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
+      log_debug("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
     }
   }
 
@@ -493,7 +493,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t duplex_invoke_count = 0;
   duplex_invoke_count++;
   if (duplex_invoke_count == 1) {
-    log_warn("!!! DUPLEX_CALLBACK INVOKED FOR FIRST TIME !!!");
+    log_debug("Duplex audio callback started");
   }
 
   uint64_t callback_start_ns = time_get_ns();
@@ -501,7 +501,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t total_callbacks = 0;
   total_callbacks++;
   if (total_callbacks == 1) {
-    log_warn("FIRST CALLBACK RECEIVED! total=%llu frames=%lu", (unsigned long long)total_callbacks, framesPerBuffer);
+    log_debug("First audio callback received: total=%llu frames=%lu", (unsigned long long)total_callbacks,
+              framesPerBuffer);
   }
 
   audio_context_t *ctx = (audio_context_t *)userData;
@@ -510,7 +511,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     return paAbort;
   }
 
-  log_info_every(100 * NS_PER_MS_INT, "CB_START: ctx=%p output=%p inputBuffer=%p", (void *)ctx, (void *)outputBuffer,
+  log_debug_every(US_PER_SEC_INT, "CB_START: ctx=%p output=%p inputBuffer=%p", (void *)ctx, (void *)outputBuffer,
                  inputBuffer);
 
   const float *input = (const float *)inputBuffer;
@@ -554,12 +555,12 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       static uint64_t playback_count = 0;
       playback_count++;
       if (playback_count <= 5 || playback_count % 500 == 0) {
-        log_info("Callback #%lu: playback_buffer path, read %zu samples", playback_count, samples_read);
+        log_debug("Callback #%lu: playback_buffer path, read %zu samples", playback_count, samples_read);
       }
     } else {
       static uint64_t null_count = 0;
       if (++null_count == 1) {
-        log_warn("Callback: playback_buffer is NULL!");
+        log_warn_every(US_PER_SEC_INT, "Callback: playback_buffer is NULL!");
       }
     }
 
@@ -633,14 +634,14 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     char avg_str[32], max_str[32];
     time_pretty((uint64_t)(total_callback_ns / callback_count), -1, avg_str, sizeof(avg_str));
     time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
-    log_info("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
-    log_info("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
+    log_debug("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
+    log_debug("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
              total_samples_read_local, underrun_count_local,
              100.0 * (double)(callback_count - underrun_count_local) / (double)callback_count);
 
     // DEBUG: Log first few output samples to verify they're not zero
     if (output && num_samples >= 4) {
-      log_info("Output sample check: first4=[%.4f, %.4f, %.4f, %.4f] (verifying audio is not silent)", output[0],
+      log_debug("Output sample check: first4=[%.4f, %.4f, %.4f, %.4f] (verifying audio is not silent)", output[0],
                output[1], output[2], output[3]);
     }
   }
@@ -706,7 +707,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t output_cb_invoke_count = 0;
   output_cb_invoke_count++;
   if (output_cb_invoke_count == 1) {
-    log_warn("!!! OUTPUT_CALLBACK INVOKED FOR FIRST TIME !!!");
+    log_debug("Output audio callback started");
   }
 
   audio_context_t *ctx = (audio_context_t *)userData;
@@ -765,11 +766,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_AUDIO_BUFFERED_SAMPLES,
                       audio_ring_buffer_available_read(ctx->playback_buffer));
       if (output_cb_count <= 3) {
-        log_warn("OUTPUT_CB: playback_buffer path, read %zu samples", samples_read);
+        log_debug("Output callback: playback buffer, read %zu samples", samples_read);
       }
     } else {
       if (output_cb_count <= 3) {
-        log_warn("Output callback has no playback buffer");
+        log_warn_every(US_PER_SEC_INT, "Output callback has no playback buffer");
       }
     }
 
@@ -934,7 +935,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   static uint64_t input_invoke_count = 0;
   input_invoke_count++;
   if (input_invoke_count == 1) {
-    log_warn("!!! INPUT_CALLBACK INVOKED FOR FIRST TIME !!!");
+    log_debug("Input audio callback started");
   }
 
   audio_context_t *ctx = (audio_context_t *)userData;
@@ -953,7 +954,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   } else {
     long elapsed_ms = (long)time_ns_to_ms(time_elapsed_ns(last_log_time_ns, now_ns));
     if (elapsed_ms >= 1000) {
-      log_info("Input callback: %lu calls/sec, %lu frames/call, %zu samples/call", callback_count, framesPerBuffer,
+      log_debug("Input callback: %lu calls/sec, %lu frames/call, %zu samples/call", callback_count, framesPerBuffer,
                num_samples);
       callback_count = 0;
       last_log_time_ns = now_ns;
@@ -1314,7 +1315,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   // Periodic buffer health logging (every 5 seconds when healthy)
   unsigned int underruns = atomic_load_u64(&rb->underrun_count);
-  log_dev_every(5 * NS_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
+  log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
   bool underrun = rb->jitter_buffer_enabled && available < samples;

@@ -550,7 +550,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   }
 
   const char *client_id = client->client_id;
-  log_info("★ START_CLIENT_THREADS: client_id=%s is_tcp=%d (about to create %s threads)", client_id, is_tcp,
+  log_debug("★ START_CLIENT_THREADS: client_id=%s is_tcp=%d (about to create %s threads)", client_id, is_tcp,
            is_tcp ? "TCP" : "WebRTC/WebSocket");
   char thread_name[64];
   asciichat_error_t result;
@@ -625,13 +625,13 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 2: Create render threads BEFORE send thread
   // This ensures the render threads generate the first frame before the send thread tries to read it
-  log_info("★★★ CLIENT SETUP: About to create render threads for client %s", client->client_id);
+  log_debug("★★★ CLIENT SETUP: About to create render threads for client %s", client->client_id);
   if (create_client_render_threads(server_ctx, client) != 0) {
     log_error("Failed to create render threads for client %s", client->client_id);
     remove_client(server_ctx, client->client_id);
     return -1;
   }
-  log_info("★★★ CLIENT SETUP: Successfully created render threads for client %s", client->client_id);
+  log_debug("★★★ CLIENT SETUP: Successfully created render threads for client %s", client->client_id);
 
   // Step 3: Create send thread AFTER render threads are running
   if (is_tcp) {
@@ -669,29 +669,30 @@ static asciichat_error_t server_client_allocate_tcp_buffers(server_client_buffer
                                                             const char *new_client_id) {
   // DO EXPENSIVE ALLOCATIONS OUTSIDE THE LOCK
   // This prevents blocking frame processing during client initialization
-  log_info("[TCP_DBG] VIDEO_CREATE_START: About to create video frame buffer for client_id=%s", new_client_id);
+  log_debug("[TCP_DBG] VIDEO_CREATE_START: About to create video frame buffer for client_id=%s", new_client_id);
   buffers->incoming_video_buffer = video_frame_buffer_create(new_client_id);
-  log_info("[TCP_DBG] VIDEO_CREATE_DONE: Video buffer creation returned %p", (void *)buffers->incoming_video_buffer);
+  log_debug("[TCP_DBG] VIDEO_CREATE_DONE: Video buffer creation returned %p", (void *)buffers->incoming_video_buffer);
   if (!buffers->incoming_video_buffer) {
     log_error("Failed to create video buffer for client %s", new_client_id);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %s", new_client_id);
   }
 
-  log_info("[TCP_DBG] VIDEO_DONE: About to create audio buffer");
+  log_debug("[TCP_DBG] VIDEO_DONE: About to create audio buffer");
   buffers->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
-  log_info("[TCP_DBG] AUDIO_DONE: Audio buffer created");
+  log_debug("[TCP_DBG] AUDIO_DONE: Audio buffer created");
   if (!buffers->incoming_audio_buffer) {
     log_error("Failed to create audio buffer for client %s", new_client_id);
     video_frame_buffer_destroy(buffers->incoming_video_buffer);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %s", new_client_id);
   }
 
-  log_info("[TCP_DBG] AUDIO_QUEUE_START: Creating audio queue");
+  log_debug("[TCP_DBG] AUDIO_QUEUE_START: Creating audio queue");
   // Keep the per-client queue allocation independent. Registering a 1000-node
   // pool for every client can block a second client while the first client's
   // debug registrations are being retired during disconnect.
-  buffers->audio_queue = packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
-  log_info("[TCP_DBG] AUDIO_QUEUE_DONE");
+  buffers->audio_queue =
+      packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
+  log_debug("[TCP_DBG] AUDIO_QUEUE_DONE");
   if (!buffers->audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
     audio_ring_buffer_destroy(buffers->incoming_audio_buffer);
@@ -699,9 +700,9 @@ static asciichat_error_t server_client_allocate_tcp_buffers(server_client_buffer
     return SET_ERRNO(ERROR_MEMORY, "Failed to create audio queue for client %s", new_client_id);
   }
 
-  log_info("[TCP_DBG] OUTGOING_VID_START: Creating outgoing video buffer");
+  log_debug("[TCP_DBG] OUTGOING_VID_START: Creating outgoing video buffer");
   buffers->outgoing_video_buffer = video_frame_buffer_create(new_client_id);
-  log_info("[TCP_DBG] OUTGOING_VID_DONE");
+  log_debug("[TCP_DBG] OUTGOING_VID_DONE");
   if (!buffers->outgoing_video_buffer) {
     LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
     packet_queue_destroy(buffers->audio_queue);
@@ -738,7 +739,7 @@ static asciichat_error_t server_client_find_tcp_slot(int *slot_out) {
   }
 
   // Quick pre-check before expensive allocations
-  log_info("[TCP_DBG] SLOT_CHECK: existing_count=%d, max_clients=%d, slot=%d", existing_count, GET_OPTION(max_clients),
+  log_debug("[TCP_DBG] SLOT_CHECK: existing_count=%d, max_clients=%d, slot=%d", existing_count, GET_OPTION(max_clients),
            slot);
   if (existing_count >= GET_OPTION(max_clients) || slot == -1) {
     return SET_ERRNO(ERROR_SESSION_FULL, "Maximum client limit reached");
@@ -750,22 +751,22 @@ static asciichat_error_t server_client_find_tcp_slot(int *slot_out) {
 
 static asciichat_error_t server_client_generate_tcp_id(char new_client_id[MAX_CLIENT_ID_LEN]) {
   // NOW acquire the lock early for generating unique client name
-  log_info("[TCP_DBG] LOCK_ACQUIRE_START");
+  log_debug("[TCP_DBG] LOCK_ACQUIRE_START");
   rwlock_wrlock(&g_client_manager_rwlock);
-  log_info("[TCP_DBG] LOCK_ACQUIRED");
+  log_debug("[TCP_DBG] LOCK_ACQUIRED");
 
   // Generate unique client ID (noun only, without counter or port)
-  log_info("[TCP_DBG] GENERATE_ID_START");
+  log_debug("[TCP_DBG] GENERATE_ID_START");
   if (generate_client_id(new_client_id, MAX_CLIENT_ID_LEN) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_error("Failed to generate unique client ID");
     return SET_ERRNO(ERROR_INTERNAL, "Failed to generate unique client ID");
   }
-  log_info("[TCP_DBG] GENERATE_ID_DONE: id=%s", new_client_id);
+  log_debug("[TCP_DBG] GENERATE_ID_DONE: id=%s", new_client_id);
 
-  log_info("[TCP_DBG] LOCK_RELEASE_START");
+  log_debug("[TCP_DBG] LOCK_RELEASE_START");
   rwlock_wrunlock(&g_client_manager_rwlock);
-  log_info("[TCP_DBG] LOCK_RELEASED");
+  log_debug("[TCP_DBG] LOCK_RELEASED");
 
   return ASCIICHAT_OK;
 }
@@ -810,13 +811,13 @@ static void server_client_initialize_tcp_slot(client_info_t *client, server_cont
 
   // Generate unique noun-based client name with transport type and port
   // Note: We're holding the write lock here, so it's safe to iterate existing clients
-  log_info("[TCP_DBG] BEFORE_GENERATE_CLIENT_NAME");
+  log_debug("[TCP_DBG] BEFORE_GENERATE_CLIENT_NAME");
   if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id, port,
                            true /* is_tcp */) != 0) {
     // Fallback to numeric name if generation fails
     safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u (tcp:%d)", new_client_id, port);
   }
-  log_info("[TCP_DBG] AFTER_GENERATE_CLIENT_NAME: display_name=%s", client->display_name);
+  log_debug("[TCP_DBG] AFTER_GENERATE_CLIENT_NAME: display_name=%s", client->display_name);
 
   // Register client with named debug system using the generated name
   (void)NAMED_REGISTER_CLIENT(client, client->display_name, NULL);
@@ -846,17 +847,17 @@ static asciichat_error_t server_client_initialize_tcp_sync(server_context_t *ser
   // NAMED_REGISTER which tries to acquire WRITE lock on named_registry.entries_lock
   // The debug_sync thread holds READ lock while printing, causing reader-writer deadlock
   // These are debug-only features not critical for functionality
-  // log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
+  // log_debug("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
   // register_client_info_atomics(client);
-  // log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
+  // log_debug("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
 
   // Audio buffer atomics registration disabled - same deadlock reason
-  // log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
+  // log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
   // if (client->incoming_audio_buffer) {
   //   audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
-  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
+  //   log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
   // } else {
-  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
+  //   log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
   // }
 
   return ASCIICHAT_OK;
@@ -865,22 +866,22 @@ static asciichat_error_t server_client_initialize_tcp_sync(server_context_t *ser
 static void server_client_attach_tcp_audio(client_info_t *client, const char *new_client_id) {
   // Register with audio mixer OUTSIDE lock
   // Do this before crypto handshake to avoid deadlock with mixer thread
-  log_info("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p",
+  log_debug("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p",
            (void *)g_audio_mixer, (void *)client->incoming_audio_buffer);
   if (g_audio_mixer && client->incoming_audio_buffer) {
-    log_info("[TCP_DBG] MIXER_ADD_SOURCE_CALLING: client_id=%s", new_client_id);
+    log_debug("[TCP_DBG] MIXER_ADD_SOURCE_CALLING: client_id=%s", new_client_id);
     if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
       log_warn("Failed to add client %s to audio mixer", new_client_id);
     } else {
-      log_info("[TCP_DBG] MIXER_ADD_SOURCE_SUCCESS: client_id=%s", new_client_id);
+      log_debug("[TCP_DBG] MIXER_ADD_SOURCE_SUCCESS: client_id=%s", new_client_id);
 #ifdef DEBUG_AUDIO
       log_debug("Added client %s to audio mixer", new_client_id);
 #endif
     }
   } else {
-    log_info("[TCP_DBG] MIXER_ADD_SOURCE_SKIPPED: conditions not met");
+    log_debug("[TCP_DBG] MIXER_ADD_SOURCE_SKIPPED: conditions not met");
   }
-  log_info("[TCP_DBG] MIXER_ADD_SOURCE_DONE");
+  log_debug("[TCP_DBG] MIXER_ADD_SOURCE_DONE");
 }
 
 static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t *server_ctx, client_info_t *client,
@@ -962,7 +963,7 @@ static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t
   // Process the capabilities packet directly
   log_debug("Processing initial capabilities packet from client %s (from %s)", client->client_id,
             used_pending_packet ? "pending packet" : "network");
-  log_info("INITIAL_CAPABILITIES: client_id=%s source=%s type=%u payload_len=%zu allocated_size=%zu data=%p",
+  log_debug("INITIAL_CAPABILITIES: client_id=%s source=%s type=%u payload_len=%zu allocated_size=%zu data=%p",
            client->client_id, used_pending_packet ? "pending" : "network", envelope.type, envelope.len,
            envelope.allocated_size, envelope.data);
   handle_client_capabilities_packet(client, envelope.data, envelope.len);
@@ -981,9 +982,9 @@ static asciichat_error_t server_client_handshake_tcp(server_context_t *server_ct
   // Perform crypto handshake before starting threads.
   // This ensures the handshake uses the socket directly without interference from receive thread.
   // The handshake uses client->transport and sets its crypto_ctx on success.
-  log_info("[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()");
+  log_debug("[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()");
   if (server_crypto_init() == 0) {
-    log_info("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
+    log_debug("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
     // Allow two identity-verification prompts plus transport overhead.
@@ -995,10 +996,10 @@ static asciichat_error_t server_client_handshake_tcp(server_context_t *server_ct
       // Continue anyway - timeout is a safety feature, not critical
     }
 
-    log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
+    log_debug("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
     asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
     int crypto_result = server_crypto_handshake(client);
-    log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
+    log_debug("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
     if (crypto_result != 0) {
       LOG_ERRNO_IF_SET("Client crypto handshake failed");
       asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
@@ -1014,7 +1015,7 @@ static asciichat_error_t server_client_handshake_tcp(server_context_t *server_ct
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
-    log_info("[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START");
+    log_debug("[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START");
     asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
     if (clear_timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to clear handshake timeout for client %s: %s", new_client_id,
@@ -1050,10 +1051,10 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // NOW acquire the lock for the critical section: slot assignment + registration
-  log_info("[TCP_DBG] LOCK_START: About to acquire client manager write lock");
+  log_debug("[TCP_DBG] LOCK_START: About to acquire client manager write lock");
   rwlock_wrlock(&g_client_manager_rwlock);
-  log_info("[TCP_DBG] LOCK_ACQUIRED: Client manager lock acquired");
-  log_info("[TCP_DBG] SLOT_RECHECK: About to check if slot is still available");
+  log_debug("[TCP_DBG] LOCK_ACQUIRED: Client manager lock acquired");
+  log_debug("[TCP_DBG] SLOT_RECHECK: About to check if slot is still available");
 
   // Re-check slot availability under lock (another thread might have taken it)
   if (g_client_manager.clients[slot].client_id[0] != '\0') {
@@ -1142,14 +1143,14 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
-  log_info("[TCP_DBG] BROADCAST_SERVER_STATE_START: About to broadcast to all clients");
+  log_debug("[TCP_DBG] BROADCAST_SERVER_STATE_START: About to broadcast to all clients");
   broadcast_server_state_to_all_clients();
-  log_info("[TCP_DBG] BROADCAST_SERVER_STATE_DONE");
+  log_debug("[TCP_DBG] BROADCAST_SERVER_STATE_DONE");
 
   // Register client atomics for debug sync inspection
   register_client_info_atomics(client);
 
-  log_info("[TCP_DBG] ADD_CLIENT_RETURNING: client_id=%s, client=%p", client->client_id, (void *)client);
+  log_debug("[TCP_DBG] ADD_CLIENT_RETURNING: client_id=%s, client=%p", client->client_id, (void *)client);
   return client;
 
 error_cleanup:
@@ -2679,13 +2680,13 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      log_info_every(5000 * US_PER_MS_INT,
+      log_debug_every(5000 * US_PER_MS_INT,
                      "🎯 FRAME_VALIDATION: client_id=%s frame=%p, frame->data=%p, frame->size=%zu", client->client_id,
                      (const void *)frame, (void *)frame_data_snapshot, frame_size);
 
-      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
+      log_debug_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
                      (void *)frame_data_snapshot);
-      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame_size);
+      log_debug_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame_size);
 
       const char *frame_data = frame_data_snapshot;
       uint64_t step1_ns = time_get_ns();
@@ -2699,7 +2700,7 @@ void *client_send_thread_func(void *arg) {
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
-      log_info_every(5000 * US_PER_MS_INT,
+      log_debug_every(5000 * US_PER_MS_INT,
                      "🔐 CRYPTO_CHECK: client_id=%s crypto_ready=%d crypto_initialized=%d no_encrypt=%d",
                      client->client_id, crypto_ready, client->crypto_initialized, GET_OPTION(no_encrypt));
 
@@ -2709,7 +2710,7 @@ void *client_send_thread_func(void *arg) {
         frame_data_snapshot = NULL;
         continue; // Skip this frame, will try again on next loop iteration
       }
-      log_info_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
+      log_debug_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
 
       // ACIP transport handles header building, CRC32, and encryption. Keep
       // send_mutex for the complete write so packets from the receive thread
@@ -2720,7 +2721,7 @@ void *client_send_thread_func(void *arg) {
 
       // Log first 32 bytes of frame data to verify we can access it
       if (frame_data && frame_size > 0) {
-        log_info_every(5000 * US_PER_MS_INT,
+        log_debug_every(5000 * US_PER_MS_INT,
                        "FRAME_DATA_HEX: client=%s first_bytes=[%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
                        "%02x %02x %02x %02x %02x]",
                        client->client_id, ((uint8_t *)frame_data)[0], ((uint8_t *)frame_data)[1],
@@ -3302,9 +3303,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   size_t center_pixel_offset = ((size_t)(header->height / 2) * header->width + header->width / 2) * 3;
   const uint8_t *first_pixel = pixel_data;
-  const uint8_t *center_pixel = center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset
-                                                                    : first_pixel;
-  log_info_every(NS_PER_SEC_INT,
+  const uint8_t *center_pixel =
+      center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset : first_pixel;
+  log_debug_every(US_PER_SEC_INT,
                  "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x",
                  client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
                  first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
@@ -3444,7 +3445,6 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   } else {
     log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
-
 }
 
 /** Initialize a persistent decoder, replacing it on a codec switch. */
