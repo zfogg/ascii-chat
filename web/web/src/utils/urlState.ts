@@ -45,6 +45,16 @@ function readFields(
             );
     } else {
       result[name] = readScalar(params.get(key), initial);
+      if (name === "zalgo") {
+        const level = result[name];
+        if (
+          typeof level !== "number" ||
+          !Number.isInteger(level) ||
+          level < 0 ||
+          level > 10
+        )
+          result[name] = initial;
+      }
     }
   }
   // Selection maps use dynamic service names, with string IDs as their values.
@@ -144,6 +154,7 @@ export function migrateLegacyUrlState(): void {
       "palette",
       "paletteChars",
       "matrixRain",
+      "zalgo",
       "animationEnabled",
       "animation",
       "flipX",

@@ -37,6 +37,7 @@ export interface BinarySettingsConfig {
   palette: Palette;
   paletteChars?: string;
   matrixRain?: boolean;
+  zalgo?: number;
   animationEnabled?: boolean;
   animation?: Animation;
   flipX?: boolean;
@@ -293,6 +294,30 @@ export function BinarySettings({
               </button>
             </div>
           </Tooltip>
+
+          <div className="flex-1 min-w-[200px]">
+            <label
+              htmlFor={`${dimensionsId}-zalgo`}
+              className="block text-xs font-medium text-terminal-8 mb-1"
+            >
+              Zalgo
+            </label>
+            <select
+              id={`${dimensionsId}-zalgo`}
+              value={config.zalgo ?? 0}
+              onChange={(e) => updateConfig({ zalgo: Number(e.target.value) })}
+              disabled={disabled}
+              className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
+            >
+              <option value={0}>Off</option>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((level) => (
+                <option key={level} value={level}>
+                  Level {level}
+                  {level === 7 ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {config.animationEnabled && (
             <div className="flex-1 min-w-[200px]">

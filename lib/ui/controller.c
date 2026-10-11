@@ -675,7 +675,7 @@ void ui_controller_redraw(void) {
 
 asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
                                         size_t len) {
-  if (!data || !len || len > 16 * 1024 * 1024)
+  if (!data || !len || len > UI_CONTROLLER_MAX_FRAME_BYTES)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
   text_snapshot_t *text = SAFE_MALLOC(sizeof(*text) + len, text_snapshot_t *);
   if (!text)

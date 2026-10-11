@@ -18,6 +18,8 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/uthash.h>
+#include <ascii-chat/font.h>
+#include <ascii-chat/video/ascii/zalgo.h>
 #include <vterm.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -64,6 +66,9 @@ struct terminal_renderer_s {
   int cols, rows;
   FT_Library ft_lib;
   FT_Face ft_face;
+  FT_Face zalgo_face;
+  int zalgo_level;
+  glyph_cache_entry_t *zalgo_cache;
   int cell_w, cell_h, baseline;
   uint8_t *framebuffer;
   int width_px, height_px, pitch;
@@ -468,6 +473,78 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t term_renderer_set_zalgo(terminal_renderer_t *r, int level) {
+  if (!r || level < 0 || level > 10)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo raster level must be 0-10");
+  if (level && !r->zalgo_face) {
+    if (FT_New_Memory_Face(r->ft_lib, g_font_default, (FT_Long)g_font_default_size, 0, &r->zalgo_face))
+      return SET_ERRNO(ERROR_INIT, "Cannot load Zalgo combining font");
+    if (FT_Set_Pixel_Sizes(r->zalgo_face, 0, (FT_UInt)(r->cell_w * 2))) {
+      FT_Done_Face(r->zalgo_face);
+      r->zalgo_face = NULL;
+      return SET_ERRNO(ERROR_INIT, "Cannot size Zalgo combining font");
+    }
+  }
+  r->zalgo_level = level;
+  return ASCIICHAT_OK;
+}
+
+/** Paint marks after all cell backgrounds, so neighboring rows cannot erase them. */
+static void render_zalgo(terminal_renderer_t *r, int offset_x, int offset_y) {
+  if (!r->zalgo_level)
+    return;
+  // Reuse the glyph cache machinery with a separate cache for the combining font.
+  glyph_cache_entry_t *base_cache = r->glyph_cache;
+  r->glyph_cache = r->zalgo_cache;
+  for (int row = 0; row < r->rows; row++) {
+    for (int col = 0; col < r->cols; col++) {
+      VTermScreenCell cell;
+      vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
+      if (cell.chars[0] <= ' ' || cell.chars[0] >= 0x7f)
+        continue;
+      uint16_t marks[10];
+      unsigned count = zalgo_cell_marks((uint32_t)row, (uint32_t)col, r->zalgo_level, marks);
+      VTermColor color = cell.fg;
+      vterm_screen_convert_color_to_rgb(r->vts, &color);
+      int above = 0, below = 0;
+      for (unsigned i = 0; i < count; i++) {
+        uint32_t cp = marks[i];
+        FT_Bitmap *bitmap = glyph_cache_get(r, r->zalgo_face, cp);
+        glyph_cache_entry_t *entry = NULL;
+        HASH_FIND_INT(r->glyph_cache, &cp, entry);
+        if (!bitmap || !entry)
+          continue;
+        int x = offset_x + col * r->cell_w + (r->cell_w - (int)bitmap->width) / 2;
+        int y = offset_y + row * r->cell_h + r->baseline - entry->bitmap_top;
+        if (i && cp < 0x0320) {
+          y -= above;
+          above += (int)bitmap->rows + 1;
+        } else if (i) {
+          y += below;
+          below += (int)bitmap->rows + 1;
+        }
+        for (unsigned by = 0; by < bitmap->rows; by++) {
+          int dy = y + (int)by;
+          if (dy < 0 || dy >= r->height_px)
+            continue;
+          for (unsigned bx = 0; bx < bitmap->width; bx++) {
+            int dx = x + (int)bx;
+            if (dx < 0 || dx >= r->width_px)
+              continue;
+            unsigned alpha = bitmap->buffer[by * bitmap->pitch + bx];
+            uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 4;
+            dst[0] = (uint8_t)((color.rgb.red * alpha + dst[0] * (255 - alpha)) / 255);
+            dst[1] = (uint8_t)((color.rgb.green * alpha + dst[1] * (255 - alpha)) / 255);
+            dst[2] = (uint8_t)((color.rgb.blue * alpha + dst[2] * (255 - alpha)) / 255);
+          }
+        }
+      }
+    }
+  }
+  r->zalgo_cache = r->glyph_cache;
+  r->glyph_cache = base_cache;
+}
+
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
   if (!r || (!ansi_frame && len > 0)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "term_renderer_feed: renderer or frame is invalid");
@@ -650,6 +727,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       }
     }
   }
+  render_zalgo(r, offset_x, offset_y);
   log_debug_every(5 * US_PER_SEC_INT,
                   "term_renderer_feed: Rendered %d glyphs from %d occupied cells (%d missing) out of %d cells",
                   glyph_rendered_count, occupied_cell_count, glyph_missing_count, r->rows * r->cols);
@@ -686,6 +764,9 @@ void term_renderer_destroy(terminal_renderer_t *r) {
   if (!r)
     return;
   vterm_free(r->vt);
+  if (r->zalgo_face)
+    FT_Done_Face(r->zalgo_face);
+  glyph_cache_destroy(&r->zalgo_cache);
   FT_Done_Face(r->ft_face);
   FT_Done_FreeType(r->ft_lib);
   SAFE_FREE(r->framebuffer);

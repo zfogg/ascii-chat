@@ -18,6 +18,7 @@ interface UseAsciiRendererHandleParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   resizeTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null>;
   showFps: boolean;
+  zalgo?: number;
   onFpsChange: ((fps: number) => void) | undefined;
   onDimensionsChange:
     | ((dims: { cols: number; rows: number }) => void)
@@ -38,6 +39,7 @@ export function useAsciiRendererHandle({
   canvasRef,
   resizeTimeoutRef,
   showFps,
+  zalgo = 0,
   onFpsChange,
   onDimensionsChange,
   onRecreateRenderer,
@@ -104,6 +106,16 @@ export function useAsciiRendererHandle({
         try {
           // Encode string to UTF-8 bytes
           const data = textEncoderRef.current.encode(ansiString);
+
+          // Apply locally to mirror and received frames without changing the wire protocol.
+          const effectResult = moduleRef.current._term_renderer_set_zalgo(
+            rendererPtrRef.current,
+            Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
+          );
+
+          if (effectResult !== 0) {
+            throw new Error("[AsciiRenderer] Cannot initialize Zalgo renderer");
+          }
 
           // Allocate memory in WASM and copy data
           const ptr = moduleRef.current._malloc(data.length);
@@ -267,6 +279,7 @@ export function useAsciiRendererHandle({
     }),
     [
       showFps,
+      zalgo,
       onRecreateRenderer,
       moduleRef,
       setupDoneRef,

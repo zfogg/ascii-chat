@@ -42,6 +42,9 @@ typedef struct {
 
 // Implemented in lib/platform/{linux,macos,windows}/terminal.{c,m}
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, terminal_renderer_t **out);
+/** Enable raster Zalgo (1-10), or disable with zero. */
+asciichat_error_t term_renderer_set_zalgo(terminal_renderer_t *r, int level);
+
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len);
 const uint8_t *term_renderer_pixels(terminal_renderer_t *r);
 int term_renderer_width_px(terminal_renderer_t *r);

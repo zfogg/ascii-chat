@@ -32,6 +32,12 @@ const AUDIO_OPTIONS: DemoOption[] = [
   },
 ];
 
+const ZALGO_OPTIONS: DemoOption[] = Array.from({ length: 10 }, (_, i) => ({
+  id: `zalgo-${i + 1}`,
+  label: `Zalgo ${i + 1}${i === 6 ? " (default)" : ""}`,
+  settings: { zalgo: i + 1 },
+}));
+
 export default function AnimationsEffectsSection() {
   return (
     <section className="docs-section-spacing">
@@ -73,6 +79,29 @@ export default function AnimationsEffectsSection() {
       </div>
       <div className="mt-8">
         <MirrorDemoWidget demoOptions={MATRIX_OPTIONS} />
+      </div>
+      <div id="zalgo" className="docs-subsection-spacing mt-10 scroll-mt-24">
+        <Heading level={3} className="heading-3 text-emerald-300 mb-3">
+          Zalgo Combining Marks
+        </Heading>
+        <p className="docs-paragraph">
+          Give your ASCII video a corrupted look with Unicode combining marks.
+          Pick an intensity from 1 to 10: lower levels add scattered scratches,
+          while higher levels stack marks above and below the characters. Bare{" "}
+          <code>--zalgo</code> uses level 7. Try every level below with the demo
+          video or your webcam.
+        </p>
+        <CodeBlock language="bash">
+          {
+            "# Default intensity: 7\nascii-chat mirror --zalgo\n\n# Light scratches or maximum chaos\nascii-chat mirror --test-pattern --zalgo 1\nascii-chat mirror --zalgo 10\n\n# Via environment\nexport ASCII_CHAT_ZALGO=7"
+          }
+        </CodeBlock>
+        <div className="mt-6">
+          <MirrorDemoWidget
+            demoOptions={ZALGO_OPTIONS}
+            defaultOptionIndex={6}
+          />
+        </div>
       </div>
       <div className="docs-subsection-spacing mt-10">
         <Heading level={3} className="heading-3 text-emerald-300 mb-3">

@@ -1089,6 +1089,7 @@ typedef struct options_state {
   unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
   bool snapshot_mode;                   ///< Snapshot mode (one frame and exit)
   double snapshot_delay;                ///< Snapshot delay in seconds
+  int zalgo;                           ///< Combining-mark intensity (0 = disabled, 1-10 = enabled)
   bool matrix_rain;                     ///< Matrix digital rain effect (false = disabled)
   bool fps_counter;                     ///< Show FPS counter overlay in top-right corner
   bool strip_ansi;                      ///< Strip ANSI escape sequences
