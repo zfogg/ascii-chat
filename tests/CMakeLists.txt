@@ -910,6 +910,25 @@ endif()
 
 # Uses the production library; does not require Criterion (including on Windows).
 if(TARGET ascii-chat-static)
+    add_executable(test-crypto-logging EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/logging/crypto_logging.c)
+    target_link_libraries(test-crypto-logging PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    apply_sanitizers_to_target(test-crypto-logging)
+    target_include_directories(test-crypto-logging PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-crypto-logging PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        if(TARGET tests)
+            add_dependencies(tests test-crypto-logging)
+        endif()
+        add_test(NAME crypto-logging COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/tests/standalone/logging/run.py $<TARGET_FILE:test-crypto-logging>)
+        set_tests_properties(crypto-logging PROPERTIES TIMEOUT 60)
+        if(WIN32)
+            set_property(TEST crypto-logging PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        endif()
+    endif()
+
     add_executable(test-errno-stacks EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/errno/errno_test.c)
     target_link_libraries(test-errno-stacks PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     apply_sanitizers_to_target(test-errno-stacks)

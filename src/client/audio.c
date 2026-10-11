@@ -352,38 +352,38 @@ static void *audio_sender_thread_func(void *arg) {
  * to prevent deadlock if connection fails before capture thread starts.
  */
 void audio_sender_init(void) {
-  log_info("[AUDIO_SENDER_INIT] Starting audio sender initialization");
+  log_debug("[AUDIO_SENDER_INIT] Starting audio sender initialization");
 
   if (!lifecycle_init(&g_audio_send_queue_lc, "audio_queue")) {
-    log_info("[AUDIO_SENDER_INIT] Already initialized, returning early");
+    log_debug("[AUDIO_SENDER_INIT] Already initialized, returning early");
     return; // Already initialized
   }
 
-  log_info("[AUDIO_SENDER_INIT] Initializing mutex");
+  log_debug("[AUDIO_SENDER_INIT] Initializing mutex");
   // Initialize queue structures with error checking
   if (mutex_init(&g_audio_send_queue_mutex, "audio_send_queue_mutex") != 0) {
     log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue mutex");
     return;
   }
 
-  log_info("[AUDIO_SENDER_INIT] Initializing condition variable");
+  log_debug("[AUDIO_SENDER_INIT] Initializing condition variable");
   if (cond_init(&g_audio_send_queue_cond, "audio_send_queue_cond") != 0) {
     log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue condition variable");
     mutex_destroy(&g_audio_send_queue_mutex);
     return;
   }
 
-  log_info("[AUDIO_SENDER_INIT] Setting queue state");
+  log_debug("[AUDIO_SENDER_INIT] Setting queue state");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
   atomic_store_bool(&g_audio_sender_should_exit, false);
   atomic_store_bool(&g_audio_sender_exited, false);
 
-  log_info("[AUDIO_SENDER_INIT] Spawning audio sender thread");
+  log_debug("[AUDIO_SENDER_INIT] Spawning audio sender thread");
   // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
-    log_info("[AUDIO_SENDER_INIT] ✓ Audio sender thread created successfully");
+    log_debug("[AUDIO_SENDER_INIT] ✓ Audio sender thread created successfully");
   } else {
     log_error("[AUDIO_SENDER_INIT] Failed to spawn audio sender thread in worker pool");
     LOG_ERRNO_IF_SET("Audio sender thread creation failed");
@@ -527,7 +527,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   }
 
 #ifdef DEBUG_AUDIO
-  log_debug("Processed %d received audio samples", num_samples);
+  log_debug_every(US_PER_SEC_INT, "Processed %d received audio samples", num_samples);
 #endif
 }
 
@@ -876,7 +876,7 @@ static void *audio_capture_thread_func(void *arg) {
 
         log_debug("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
                   max_loop_str, avg_read_str, max_read_str);
-        log_info("  encode avg=%s max=%s, queue avg=%s max=%s", avg_encode_str, max_encode_str, avg_queue_str,
+        log_debug("  encode avg=%s max=%s, queue avg=%s max=%s", avg_encode_str, max_encode_str, avg_queue_str,
                  max_queue_str);
       }
 

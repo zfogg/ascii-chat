@@ -478,7 +478,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       static int decode_count = 0;
       if (++decode_count <= 3) {
-        log_info("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
+        log_debug("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
                  decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format,
                  decoder->is_stdin);
       }
@@ -537,7 +537,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         uint8_t *y_data = decoder->frame->data[0];
         uint8_t *u_data = decoder->frame->data[1];
         uint8_t *v_data = decoder->frame->data[2];
-        log_info("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count,
+        log_debug("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count,
                  y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
                  decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
       }
@@ -549,9 +549,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         break;
       }
       if (decode_count <= 3) {
-        log_info("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
+        log_debug("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
         rgb_pixel_t *test_px = (rgb_pixel_t *)decode_buffer->pixels;
-        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u)", decode_count, test_px[0].r, test_px[0].g, test_px[0].b);
+        log_debug("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u)", decode_count, test_px[0].r, test_px[0].g, test_px[0].b);
       }
 
       frame_decoded = true;
@@ -1493,7 +1493,8 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       continue;
     }
 
-    log_info_every(50 * US_PER_MS_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count++,
+    packet_count++;
+    log_debug_every(US_PER_SEC_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count,
                    decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
 
     // Send packet to decoder
@@ -1503,7 +1504,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     if (ret < 0) {
       char error_message[AV_ERROR_MAX_STRING_SIZE];
       av_strerror(ret, error_message, sizeof(error_message));
-      log_warn("Error sending audio packet to decoder: %s", error_message);
+      log_warn_every(US_PER_SEC_INT, "Error sending audio packet to decoder: %s", error_message);
       continue;
     }
 
@@ -1514,7 +1515,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       if (ret == AVERROR(EAGAIN)) {
         break; // No more frames from this packet, get next packet
       } else if (ret < 0) {
-        log_warn("Error receiving audio frame from decoder");
+        log_warn_every(US_PER_SEC_INT, "Error receiving audio frame from decoder");
         goto audio_read_done;
       }
 

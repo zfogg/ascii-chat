@@ -882,7 +882,8 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
   acds_server_t *server = (acds_server_t *)app_ctx;
   (void)transport; // Transport not needed for relay
 
-  log_info("★ ACDS_ON_NETWORK_QUALITY: received from %s, payload_len=%zu", client_ip, payload_len);
+  log_debug_every(US_PER_SEC_INT, "★ ACDS_ON_NETWORK_QUALITY: received from %s, payload_len=%zu", client_ip,
+                  payload_len);
 
   // Cast payload to acip_nat_quality_t for relay
   const acip_nat_quality_t *quality = (const acip_nat_quality_t *)payload;
@@ -897,7 +898,7 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
     acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
     log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
   } else {
-    log_info("★ ACDS_ON_NETWORK_QUALITY: relay completed successfully for %s", client_ip);
+    log_debug_every(US_PER_SEC_INT, "★ ACDS_ON_NETWORK_QUALITY: relay completed successfully for %s", client_ip);
   }
 }
 
@@ -1074,8 +1075,8 @@ void *acds_client_handler(void *arg) {
 
     if (result >= 0) {
       last_packet_time_ns = time_get_ns();
-      log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip,
-               payload_size);
+      log_debug_every(US_PER_SEC_INT, "★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu",
+                      packet_type, client_ip, payload_size);
 
       // Track network stats (TCP packets)
       // Packet size includes header (6 bytes: magic 4 + type 1 + length 2 + CRC 4)

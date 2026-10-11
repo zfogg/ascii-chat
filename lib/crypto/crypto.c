@@ -82,15 +82,15 @@ static void secure_memzero(void *ptr, size_t len) {
 // =============================================================================
 
 crypto_result_t crypto_init(crypto_context_t *ctx) {
-  log_info("DEBUG: crypto_init START");
+  log_debug("DEBUG: crypto_init START");
   if (!ctx) {
-    log_info("DEBUG: crypto_init ctx is NULL");
+    log_debug("DEBUG: crypto_init ctx is NULL");
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   // Initialize libsodium
-  log_info("DEBUG: crypto_init calling init_libsodium");
+  log_debug("DEBUG: crypto_init calling init_libsodium");
   crypto_result_t result = init_libsodium();
   if (result != CRYPTO_OK) {
     return result;
@@ -218,7 +218,7 @@ crypto_result_t crypto_generate_keypair(crypto_context_t *ctx) {
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  log_info("DEBUG: About to call crypto_box_keypair");
+  log_debug("DEBUG: About to call crypto_box_keypair");
   // Generate X25519 key pair for key exchange
   if (crypto_box_keypair(ctx->public_key, ctx->private_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to generate X25519 key pair");
@@ -479,13 +479,8 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   generate_nonce(ctx, nonce);
   SAFE_MEMCPY(ciphertext_out, ctx->nonce_size, nonce, ctx->nonce_size);
 
-  // Log nonce for debugging
-  char nonce_hex[49];
-  for (int i = 0; i < 24; i++) {
-    snprintf(&nonce_hex[i * 2], 3, "%02x", nonce[i]);
-  }
-  nonce_hex[48] = '\0';
-  log_debug("ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu", ctx->nonce_counter - 1, nonce_hex, plaintext_len);
+  log_debug_every(US_PER_SEC_INT, "Encrypting packet: counter=%llu plaintext_len=%zu",
+                  (unsigned long long)(ctx->nonce_counter - 1), plaintext_len);
 
   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
   if (crypto_secretbox_easy(ciphertext_out + ctx->nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
@@ -547,18 +542,9 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
   if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx->nonce_size, nonce,
                                  decryption_key) != 0) {
-    // Log decryption failure details for debugging
-    char key_hex[65], nonce_hex[49];
-    for (int i = 0; i < 32; i++) {
-      snprintf(&key_hex[i * 2], 3, "%02x", decryption_key[i]);
-    }
-    for (int i = 0; i < 24; i++) {
-      snprintf(&nonce_hex[i * 2], 3, "%02x", nonce[i]);
-    }
-    key_hex[64] = '\0';
-    nonce_hex[48] = '\0';
-    log_error("DECRYPT_FAILED: cipherlen=%zu key=%s nonce=%s key_exchange_complete=%d has_password=%d",
-              ciphertext_len - ctx->nonce_size, key_hex, nonce_hex, ctx->key_exchange_complete, ctx->has_password);
+    log_error_every(US_PER_SEC_INT,
+                    "Decryption failed: cipherlen=%zu key_exchange_complete=%d has_password=%d (invalid MAC)",
+                    ciphertext_len - ctx->nonce_size, ctx->key_exchange_complete, ctx->has_password);
     SET_ERRNO(ERROR_CRYPTO, "Decryption failed - invalid MAC or corrupted data");
     return CRYPTO_ERROR_INVALID_MAC;
   }

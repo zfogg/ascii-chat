@@ -440,19 +440,16 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   }
 
   // Create the file if it doesn't exist, then append to it
-  // Note: Temporarily removed log_debug to avoid potential crashes during debugging
-  // log_debug("KNOWN_HOSTS: Attempting to create/open file: %s", path);
+  log_debug("KNOWN_HOSTS: Opening file for append: %s", path);
   // Use "a" mode for append-only (simpler and works better with chmod)
   FILE *f = platform_fopen("file_stream", path, "a");
   defer(SAFE_FCLOSE(f));
   if (!f) {
-    // log_debug("KNOWN_HOSTS: platform_fopen failed: %s (errno=%d)", SAFE_STRERROR(errno), errno);
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create/open known hosts file: %s", path);
   }
   // Set secure permissions (0600) - only owner can read/write
   // Note: chmod may fail if file was just created by fopen, but that's okay
   (void)platform_chmod(path, FILE_PERM_PRIVATE);
-  // log_debug("KNOWN_HOSTS: Successfully opened file: %s", path);
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[BUFFER_SIZE_MEDIUM];

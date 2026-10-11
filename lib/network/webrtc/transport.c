@@ -417,8 +417,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
     ASSERT_NO_ERRNO_SINCE(size_scope);
   }
   asciichat_errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
-  log_info_every(60 * NS_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes",
-                 max_message_size);
+  log_debug_every(60 * US_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes", max_message_size);
 
   // A video packet is a replaceable snapshot. Admit it only when the
   // DataChannel can hold the complete packet without queuing obsolete

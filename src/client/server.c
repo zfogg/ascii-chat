@@ -654,7 +654,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return -1;
   }
 
-  // Connection already marked as active after socket creation
+  log_info("TCP connection established successfully");
 
   return 0;
 }
@@ -1278,32 +1278,32 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   }
 
   // NOW acquire the send mutex just for the actual network transmission
-  log_info("[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
   mutex_lock(&g_send_mutex);
-  log_info("[H265_SEND_FRAME_4] ✅ Acquired g_send_mutex, checking transport");
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_4] ✅ Acquired g_send_mutex, checking transport");
 
   // Get transport reference - may be NULL if connection was lost
   acip_transport_t *transport = server_connection_get_transport();
   if (!transport || !server_connection_is_active()) {
     mutex_unlock(&g_send_mutex);
-    log_info("[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
+    log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
     buffer_release(output_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
   // Send compressed frame with socket lock held (short critical section)
-  log_info("[H265_SEND_FRAME_6] Sending packet via transport (%zu bytes)", total_size);
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_6] Sending packet via transport (%zu bytes)", total_size);
   asciichat_error_t result = packet_send_via_transport(
       transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265, output_buffer,
       total_size, 0);
-  log_info("[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes
   mutex_unlock(&g_send_mutex);
-  log_info("[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
 
   buffer_release(output_buffer);
-  log_info("[H265_SEND_FRAME_9] ✅ Freed output buffer");
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_9] ✅ Freed output buffer");
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

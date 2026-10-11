@@ -260,7 +260,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t pre_render_ns = 0, post_render_ns = 0;
 
     if (ascii_frame) {
-      log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
+      log_debug_every(US_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
 
       // Always attempt to render frames; the display context will handle filtering based on:
       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
@@ -306,7 +306,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Timer is started by display.c when g_snapshot_first_frame_rendered is set
         if (snapshot_mode && g_snapshot_first_frame_rendered) {
           frames_rendered_since_first++;
-          log_info_every(1 * NS_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu",
+          log_debug_every(US_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu",
                          frames_rendered_since_first);
         }
 

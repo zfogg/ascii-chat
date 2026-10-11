@@ -43,7 +43,8 @@
  *
  * **INFO (2)** - The reporter:
  * - General informational messages about normal operations
- * - "Client connected", "Frame processed", that sort of thing
+ * - "Client connected", "Client disconnected", and user-visible mode changes
+ * - Per-frame, per-packet, queue, and timing diagnostics belong at DEBUG or DEV
  * - What you'd want to see during normal operation
  *
  * **WARN (3)** - The concerned citizen:
@@ -94,7 +95,7 @@
  *
  * // Log at most once per 5 seconds
  * while (video_running) {
- *     log_info_every(5000000, "Video frames processed: %d", frame_count);
+ *     log_debug_every(5 * US_PER_SEC_INT, "Video frames processed: %d", frame_count);
  *     process_frame();
  * }
  * @endcode
@@ -104,6 +105,16 @@
  * - log_info_every(usec, ...)
  * - log_warn_every(usec, ...)
  * - log_error_every(usec, ...)
+ *
+ * Intervals are microseconds: use US_PER_SEC_INT or US_PER_MS_INT, not NS_PER_*.
+ * Timers are shared by all threads at each call site, so include the client ID
+ * in sampled diagnostics; they are not a complete trace of every client.
+ * Keep connection, disconnection, and authentication outcomes unsampled.
+ * Repeated recoverable drops and codec failures should retain WARN/ERROR severity
+ * with a bounded cadence. Do not log passwords, private keys, shared keys, or
+ * authentication payloads, including on failure paths or at DEBUG level.
+ * Error helpers should preserve SET_ERRNO context for the caller; do not add a
+ * duplicate log at every layer of propagation.
  *
  * @section logging_configuration Configuration
  *

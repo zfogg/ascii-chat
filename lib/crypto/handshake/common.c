@@ -34,12 +34,12 @@ asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_conte
 
   // Initialize core crypto context
 #ifndef NDEBUG
-  log_info("★★★ BEFORE crypto_init()");
+  log_debug("★★★ BEFORE crypto_init()");
   debug_sync_print_state();
 #endif
   crypto_result_t result = crypto_init(&ctx->crypto_ctx);
 #ifndef NDEBUG
-  log_info("★★★ AFTER crypto_init(), result=%d", result);
+  log_debug("★★★ AFTER crypto_init(), result=%d", result);
   debug_sync_print_state();
 #endif
   if (result != CRYPTO_OK) {

@@ -1233,7 +1233,7 @@ static void *websocket_client_handler(void *arg) {
   char crypto_name[64];
   SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%s", client->client_id);
 
-  log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
+  log_debug("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   const options_t *opts = options_get();
@@ -1242,7 +1242,7 @@ static void *websocket_client_handler(void *arg) {
       password[0] != '\0'
           ? crypto_handshake_init_with_password(crypto_name, &client->crypto_handshake_ctx, true, password)
           : crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
-  log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
+  log_debug("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
@@ -1764,7 +1764,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
 
   // Set IP disclosure policy (determined above)
   params->acds_expose_ip = policy->expose_ip;
-  log_info("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
+  log_debug("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
            params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
 
   // Set session type (Direct TCP or WebRTC)
@@ -1811,7 +1811,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
   }
 
   // DEBUG: Log what we're sending to ACDS
-  log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
+  log_debug("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
            params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 

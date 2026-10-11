@@ -319,7 +319,7 @@ static void *nat_detection_thread_fn(void *arg) {
     memcpy(&session->cached_nat_quality, &quality, sizeof(nat_quality_t));
     session->nat_quality_cached = true;
     mutex_unlock(&session->nat_quality_mutex);
-    log_info("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
+    log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
              nat_type_to_string(quality.nat_type));
   } else {
     log_warn("NAT detection failed in background thread, using defaults");
@@ -402,14 +402,14 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
   acip_nat_quality_t wire_quality;
   nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
 
-  log_info("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY,
+  log_debug("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY,
            sizeof(wire_quality));
   // Send via ACDS
   asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
                                                             &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
-    log_info("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
+    log_debug("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
              nat_compute_tier(&our_quality), our_quality.upload_kbps);
   } else {
     log_error("★ SEND_NETWORK_QUALITY_FAILED: Failed with error %d", send_result);
@@ -433,7 +433,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
   }
 
-  log_info("★ RECEIVE_NETWORK_QUALITY: waiting for packet from ACDS...");
+  log_debug("★ RECEIVE_NETWORK_QUALITY: waiting for packet from ACDS...");
   // Receive packet
   packet_type_t ptype;
   void *data = NULL;
@@ -448,7 +448,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
     return result;
   }
 
-  log_info("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
+  log_debug("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
   // Check if it's a NETWORK_QUALITY packet
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
     log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype,
