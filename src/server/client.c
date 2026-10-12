@@ -59,7 +59,7 @@
  *
  * INTEGRATION WITH OTHER MODULES:
  * ===============================
- * - main.c: Calls add_client() and remove_client() from main loop
+ * - main.c: Calls add_transport_client() and remove_client() from main loop
  * - protocol.c: Functions called by client receive threads for packet processing
  * - render.c: Render thread functions created per client
  * - stream.c: Stream generation functions called by render threads
@@ -67,7 +67,7 @@
  *
  * THREAD LIFECYCLE MANAGEMENT:
  * ============================
- * Thread creation order (in add_client()):
+ * Thread creation order (in add_transport_client()):
  * 1. Initialize client data structures and mutexes
  * 2. Create send thread (for outgoing packet delivery)
  * 3. Create receive thread (for incoming packet processing)
@@ -103,6 +103,7 @@
  */
 
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/network/tcp/async.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -238,83 +239,6 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
 // Forward declarations for static helper functions
 static inline void cleanup_client_all_buffers(client_info_t *client);
 
-/**
- * @brief Register all internal fields in a client_info_t structure with hierarchical names
- *
- * This function is called after a new client is initialized to register all of its
- * sync primitives and child structures with the named registry, enabling debug tracking
- * via --sync-state output.
- *
- * Establishes hierarchical parent-child relationships:
- * - Mutexes and condition variables have client as parent
- * - Child structures (buffers, queues) have client as parent
- * - Atomics are also registered with client as parent
- *
- * @param client Pointer to the client_info_t structure
- */
-// NOLINTNEXTLINE(misc-unused-function) - Used for debug sync inspection, may be disabled in some builds
-static void register_client_info_atomics(client_info_t *client) {
-  if (!client || !client->client_id[0]) {
-    return;
-  }
-
-  // Synchronization primitives (mutexes, condition variables)
-  NAMED_REGISTER_MUTEX(&client->client_state_mutex, "client_state_mutex", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_MUTEX(&client->send_mutex, "send_mutex", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_COND(&client->dispatch_queue_cond, "dispatch_queue_cond", (uintptr_t)(const void *)(client));
-
-  // Child structures (buffers, queues) - register with client as parent for hierarchical naming
-  if (client->incoming_video_buffer) {
-    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->incoming_video_buffer, "incoming_video_buffer",
-                                      (uintptr_t)(const void *)(client));
-  }
-  if (client->outgoing_video_buffer) {
-    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->outgoing_video_buffer, "outgoing_video_buffer",
-                                      (uintptr_t)(const void *)(client));
-  }
-  if (client->incoming_audio_buffer) {
-    NAMED_REGISTER_AUDIO_RINGBUF(client->incoming_audio_buffer, "incoming_audio_buffer",
-                                 (uintptr_t)(const void *)(client));
-  }
-  if (client->audio_queue) {
-    NAMED_REGISTER_PACKET_QUEUE(client->audio_queue, "audio_queue", (uintptr_t)(const void *)(client));
-  }
-  if (client->received_packet_queue) {
-    NAMED_REGISTER_PACKET_QUEUE(client->received_packet_queue, "received_packet_queue",
-                                (uintptr_t)(const void *)(client));
-  }
-  // Crypto context is always present (embedded in client_info_t)
-  NAMED_REGISTER_CRYPTO_CONTEXT(&client->crypto_handshake_ctx, "crypto_handshake_ctx",
-                                (uintptr_t)(const void *)(client));
-
-  // Video streaming state
-  NAMED_REGISTER_ATOMIC(&client->is_sending_video, "is_sending_video", (uintptr_t)(const void *)(client));
-
-  // Audio streaming state
-  NAMED_REGISTER_ATOMIC(&client->is_sending_audio, "is_sending_audio", (uintptr_t)(const void *)(client));
-
-  // Connection state
-  NAMED_REGISTER_ATOMIC(&client->active, "active", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->shutting_down, "shutting_down", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->protocol_disconnect_requested, "protocol_disconnect_requested",
-                        (uintptr_t)(const void *)(client));
-
-  // Thread management flags
-  NAMED_REGISTER_ATOMIC(&client->dispatch_thread_running, "dispatch_thread_running", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->send_thread_running, "send_thread_running", (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->video_render_thread_running, "video_render_thread_running",
-                        (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->audio_render_thread_running, "audio_render_thread_running",
-                        (uintptr_t)(const void *)(client));
-
-  // Frame source tracking
-  NAMED_REGISTER_ATOMIC(&client->last_rendered_grid_sources, "last_rendered_grid_sources_count",
-                        (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->last_sent_grid_sources, "last_sent_grid_sources_count",
-                        (uintptr_t)(const void *)(client));
-  NAMED_REGISTER_ATOMIC(&client->frames_sent_count, "total_frames_sent_count", (uintptr_t)(const void *)(client));
-}
-
 static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
   asciichat_error_t reported_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
@@ -360,7 +284,7 @@ client_manager_t g_client_manager;
  *
  * USAGE PATTERN:
  * - Read operations: rwlock_rdlock() for client lookups, stats gathering
- * - Write operations: rwlock_wrlock() for add_client(), remove_client()
+ * - Write operations: rwlock_wrlock() for add_transport_client(), remove_client()
  * - Always acquire THIS lock before per-client mutexes (lock ordering)
  */
 rwlock_t g_client_manager_rwlock = {0};
@@ -373,8 +297,7 @@ bool g_client_manager_rwlock_initialized = false;
 void *client_send_thread_func(void *arg);         ///< Client packet send thread
 void *client_dispatch_thread(void *arg);          ///< Async dispatch thread for WebRTC clients
 void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
-static int start_client_threads(server_context_t *server_ctx, client_info_t *client,
-                                bool is_tcp); ///< Common thread initialization
+static int start_client_threads(server_context_t *server_ctx, client_info_t *client); ///< Common thread initialization
 
 static void initialize_default_render_capabilities(client_info_t *client) {
   if (!client) {
@@ -451,107 +374,14 @@ client_info_t *find_client_by_id(const char *client_id) {
   return result;
 }
 
-/**
- * @brief Find client by socket descriptor using linear search
- *
- * This function provides socket-based client lookup, primarily used during
- * connection establishment before client IDs are assigned. Less efficient
- * than find_client_by_id() but necessary for socket-based operations.
- *
- * PERFORMANCE CHARACTERISTICS:
- * - Time Complexity: O(n) where n = number of active clients
- * - Space Complexity: O(1)
- * - Thread Safety: Internally acquires read lock on g_client_manager_rwlock
- *
- * USAGE PATTERNS:
- * - Connection establishment during add_client() processing
- * - Socket error handling and cleanup operations
- * - Debugging and diagnostic functions
- *
- * @param socket Platform-abstracted socket descriptor to search for
- * @return Pointer to client_info_t if found, NULL if not found
- *
- * @note Only searches active clients (avoids returning stale entries)
- * @note Caller should use snapshot pattern when accessing returned client data
- */
-client_info_t *find_client_by_socket(socket_t socket) {
-  rwlock_rdlock(&g_client_manager_rwlock);
-
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].socket == socket && atomic_load_bool(&g_client_manager.clients[i].active)) {
-      client_info_t *client = &g_client_manager.clients[i];
-      rwlock_rdunlock(&g_client_manager_rwlock);
-      return client;
-    }
-  }
-
-  rwlock_rdunlock(&g_client_manager_rwlock);
-  return NULL;
-}
-
-/* ============================================================================
- * Client Management Functions
- * ============================================================================
- */
-
-/**
- * Configure socket options for optimal network performance
- *
- * @param socket Socket to configure
- * @param client_id Client ID for logging purposes
- */
-static void configure_client_socket(socket_t socket, const char *client_id) {
-  // Enable TCP keepalive to detect dead connections
-  asciichat_error_t keepalive_result = set_socket_keepalive(socket);
-  if (keepalive_result != ASCIICHAT_OK) {
-    log_warn("Failed to set socket keepalive for client %s: %s", client_id, asciichat_error_string(keepalive_result));
-  }
-
-  // Set socket buffer sizes for large data transmission
-  const int SOCKET_SEND_BUFFER_SIZE = 1024 * 1024; // 1MB send buffer
-  const int SOCKET_RECV_BUFFER_SIZE = 1024 * 1024; // 1MB receive buffer
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &SOCKET_SEND_BUFFER_SIZE, sizeof(SOCKET_SEND_BUFFER_SIZE)) < 0) {
-    log_warn("Failed to set send buffer size for client %s: %s", client_id, network_error_string());
-  }
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &SOCKET_RECV_BUFFER_SIZE, sizeof(SOCKET_RECV_BUFFER_SIZE)) < 0) {
-    log_warn("Failed to set receive buffer size for client %s: %s", client_id, network_error_string());
-  }
-
-  // Enable TCP_NODELAY to reduce latency for large packets (disables Nagle algorithm)
-  const int TCP_NODELAY_VALUE = 1;
-  if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &TCP_NODELAY_VALUE, sizeof(TCP_NODELAY_VALUE)) < 0) {
-    log_warn("Failed to set TCP_NODELAY for client %s: %s", client_id, network_error_string());
-  }
-}
-
-/**
- * @brief Unified thread initialization for both TCP and WebRTC clients
- *
- * Creates all necessary threads in the correct order:
- * 1. Receive thread (handles incoming packets)
- * 2. Render threads (generates ASCII frames) - MUST come before send thread!
- * 3. Send thread (transmits frames to client)
- *
- * This function eliminates the code duplication between add_client() and add_webrtc_client()
- * and ensures consistent initialization order to prevent the race condition where the send
- * thread starts reading empty frames before the render thread generates the first real frame.
- *
- * @param server_ctx Server context
- * @param client Client to initialize threads for
- * @param is_tcp true for TCP clients (uses tcp_server thread pool), false for WebRTC (uses generic threads)
- * @return 0 on success, -1 on failure (client will be removed on failure)
- */
-static int start_client_threads(server_context_t *server_ctx, client_info_t *client, bool is_tcp) {
+/** Start render workers and, for WebSocket/WebRTC, application queue consumers. */
+static int start_client_threads(server_context_t *server_ctx, client_info_t *client) {
   if (!server_ctx || !client) {
     SET_ERRNO(ERROR_INVALID_PARAM, "server_ctx or client is NULL");
     return -1;
   }
 
   const char *client_id = client->client_id;
-  log_debug("★ START_CLIENT_THREADS: client_id=%s is_tcp=%d (about to create %s threads)", client_id, is_tcp,
-           is_tcp ? "TCP" : "WebRTC/WebSocket");
   char thread_name[64];
   asciichat_error_t result;
 
@@ -585,32 +415,26 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
     log_debug("Sent initial server state to client %s: %u connected clients", client_id, state.connected_client_count);
   }
 
-  // Step 1: Create receive thread
-  if (is_tcp) {
-    safe_snprintf(thread_name, sizeof(thread_name), "receive_%s", client->client_id);
-    result =
-        tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
-  } else {
-    safe_snprintf(thread_name, sizeof(thread_name), "receive_%s", client->client_id);
-    log_debug("THREAD_CREATE: WebRTC client %s", client->client_id);
-    log_debug("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
-              (void *)&client->receive_thread);
-    log_debug("  Pre-create: receive_thread value=%p", (void *)(uintptr_t)client->receive_thread);
-    result = asciichat_thread_create(&client->receive_thread, thread_name, client_receive_thread, client);
-    log_debug("  Post-create: result=%d, receive_thread value=%p", result, (void *)(uintptr_t)client->receive_thread);
+  if (client->event_driven) {
+    atomic_store_bool(&client->event_ready, true);
+    return create_client_render_threads(server_ctx, client);
   }
 
+  // WebSocket and WebRTC transports supply their own event-driven networking.
+  // These threads consume application packets from their transport queues.
+  safe_snprintf(thread_name, sizeof(thread_name), "receive_%s", client->client_id);
+  result = asciichat_thread_create(&client->receive_thread, thread_name, client_receive_thread, client);
+
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to create receive thread for %s client %s: %s", is_tcp ? "TCP" : "WebRTC", client_id,
-              asciichat_error_string(result));
+    log_error("Failed to create receive thread for client %s: %s", client_id, asciichat_error_string(result));
     remove_client(server_ctx, client_id);
     return -1;
   }
-  log_debug("Created receive thread for %s client %s", is_tcp ? "TCP" : "WebRTC", client_id);
+  log_debug("Created receive thread for client %s", client_id);
 
   // Step 1b: Create async dispatch thread (processes queued packets)
   // This decouples receive from dispatch to prevent backpressure on the socket
-  if (!is_tcp) { // Only for WebRTC/WebSocket clients that need async dispatch
+  { // WebRTC/WebSocket clients need application packet dispatch
     safe_snprintf(thread_name, sizeof(thread_name), "dispatch_%s", client->client_id);
     atomic_store_bool(&client->dispatch_thread_running, true);
     result = asciichat_thread_create(&client->dispatch_thread, thread_name, client_dispatch_thread, client);
@@ -633,23 +457,15 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   }
   log_debug("★★★ CLIENT SETUP: Successfully created render threads for client %s", client->client_id);
 
-  // Step 3: Create send thread AFTER render threads are running
-  if (is_tcp) {
-    safe_snprintf(thread_name, sizeof(thread_name), "send_%s", client->client_id);
-    result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3,
-                                     thread_name);
-  } else {
-    safe_snprintf(thread_name, sizeof(thread_name), "send_%s", client->client_id);
-    result = asciichat_thread_create(&client->send_thread, thread_name, client_send_thread_func, client);
-  }
+  safe_snprintf(thread_name, sizeof(thread_name), "send_%s", client->client_id);
+  result = asciichat_thread_create(&client->send_thread, thread_name, client_send_thread_func, client);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to create send thread for %s client %s: %s", is_tcp ? "TCP" : "WebRTC", client_id,
-              asciichat_error_string(result));
+    log_error("Failed to create send thread for client %s: %s", client_id, asciichat_error_string(result));
     remove_client(server_ctx, client_id);
     return -1;
   }
-  log_debug("Created send thread for %s client %s", is_tcp ? "TCP" : "WebRTC", client_id);
+  log_debug("Created send thread for client %s", client_id);
 
   // Step 4: Broadcast server state to ALL clients AFTER the new client is fully set up
   broadcast_server_state_to_all_clients();
@@ -657,514 +473,9 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   return 0;
 }
 
-typedef struct {
-  video_frame_buffer_t *incoming_video_buffer;
-  audio_ring_buffer_t *incoming_audio_buffer;
-  packet_queue_t *audio_queue;
-  video_frame_buffer_t *outgoing_video_buffer;
-  void *send_buffer;
-} server_client_buffers_t;
-
-static asciichat_error_t server_client_allocate_tcp_buffers(server_client_buffers_t *buffers,
-                                                            const char *new_client_id) {
-  // DO EXPENSIVE ALLOCATIONS OUTSIDE THE LOCK
-  // This prevents blocking frame processing during client initialization
-  log_debug("[TCP_DBG] VIDEO_CREATE_START: About to create video frame buffer for client_id=%s", new_client_id);
-  buffers->incoming_video_buffer = video_frame_buffer_create(new_client_id);
-  log_debug("[TCP_DBG] VIDEO_CREATE_DONE: Video buffer creation returned %p", (void *)buffers->incoming_video_buffer);
-  if (!buffers->incoming_video_buffer) {
-    log_error("Failed to create video buffer for client %s", new_client_id);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %s", new_client_id);
-  }
-
-  log_debug("[TCP_DBG] VIDEO_DONE: About to create audio buffer");
-  buffers->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
-  log_debug("[TCP_DBG] AUDIO_DONE: Audio buffer created");
-  if (!buffers->incoming_audio_buffer) {
-    log_error("Failed to create audio buffer for client %s", new_client_id);
-    video_frame_buffer_destroy(buffers->incoming_video_buffer);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %s", new_client_id);
-  }
-
-  log_debug("[TCP_DBG] AUDIO_QUEUE_START: Creating audio queue");
-  // Keep the per-client queue allocation independent. Registering a 1000-node
-  // pool for every client can block a second client while the first client's
-  // debug registrations are being retired during disconnect.
-  buffers->audio_queue =
-      packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
-  log_debug("[TCP_DBG] AUDIO_QUEUE_DONE");
-  if (!buffers->audio_queue) {
-    LOG_ERRNO_IF_SET("Failed to create audio queue for client");
-    audio_ring_buffer_destroy(buffers->incoming_audio_buffer);
-    video_frame_buffer_destroy(buffers->incoming_video_buffer);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio queue for client %s", new_client_id);
-  }
-
-  log_debug("[TCP_DBG] OUTGOING_VID_START: Creating outgoing video buffer");
-  buffers->outgoing_video_buffer = video_frame_buffer_create(new_client_id);
-  log_debug("[TCP_DBG] OUTGOING_VID_DONE");
-  if (!buffers->outgoing_video_buffer) {
-    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
-    packet_queue_destroy(buffers->audio_queue);
-    audio_ring_buffer_destroy(buffers->incoming_audio_buffer);
-    video_frame_buffer_destroy(buffers->incoming_video_buffer);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create outgoing video buffer for client %s", new_client_id);
-  }
-
-  buffers->send_buffer = buffer_alloc(NULL, MAX_FRAME_BUFFER_SIZE);
-  if (!buffers->send_buffer) {
-    log_error("Failed to allocate send buffer for client %s", new_client_id);
-    video_frame_buffer_destroy(buffers->outgoing_video_buffer);
-    packet_queue_destroy(buffers->audio_queue);
-    audio_ring_buffer_destroy(buffers->incoming_audio_buffer);
-    video_frame_buffer_destroy(buffers->incoming_video_buffer);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer for client %s", new_client_id);
-  }
-
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t server_client_find_tcp_slot(int *slot_out) {
-  // Find empty slot WITHOUT holding the global lock
-  // We'll re-verify under lock after allocations complete
-  int slot = -1;
-  int existing_count = 0;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (slot == -1 && g_client_manager.clients[i].client_id[0] == '\0') {
-      slot = i; // Take first available slot
-    }
-    if (g_client_manager.clients[i].client_id[0] != '\0' && atomic_load_bool(&g_client_manager.clients[i].active)) {
-      existing_count++;
-    }
-  }
-
-  // Quick pre-check before expensive allocations
-  log_debug("[TCP_DBG] SLOT_CHECK: existing_count=%d, max_clients=%d, slot=%d", existing_count, GET_OPTION(max_clients),
-           slot);
-  if (existing_count >= GET_OPTION(max_clients) || slot == -1) {
-    return SET_ERRNO(ERROR_SESSION_FULL, "Maximum client limit reached");
-  }
-
-  *slot_out = slot;
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t server_client_generate_tcp_id(char new_client_id[MAX_CLIENT_ID_LEN]) {
-  // NOW acquire the lock early for generating unique client name
-  log_debug("[TCP_DBG] LOCK_ACQUIRE_START");
-  rwlock_wrlock(&g_client_manager_rwlock);
-  log_debug("[TCP_DBG] LOCK_ACQUIRED");
-
-  // Generate unique client ID (noun only, without counter or port)
-  log_debug("[TCP_DBG] GENERATE_ID_START");
-  if (generate_client_id(new_client_id, MAX_CLIENT_ID_LEN) != 0) {
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    log_error("Failed to generate unique client ID");
-    return SET_ERRNO(ERROR_INTERNAL, "Failed to generate unique client ID");
-  }
-  log_debug("[TCP_DBG] GENERATE_ID_DONE: id=%s", new_client_id);
-
-  log_debug("[TCP_DBG] LOCK_RELEASE_START");
-  rwlock_wrunlock(&g_client_manager_rwlock);
-  log_debug("[TCP_DBG] LOCK_RELEASED");
-
-  return ASCIICHAT_OK;
-}
-
-static void server_client_initialize_tcp_slot(client_info_t *client, server_context_t *server_ctx,
-                                              const server_client_buffers_t *buffers, socket_t socket,
-                                              const char *new_client_id, const char *client_ip, int port, int slot) {
-  // Caller holds the client-manager write lock. The slot takes ownership of buffers.
-  memset(client, 0, sizeof(client_info_t));
-
-  // Initialize codec capabilities to zero (no codecs supported until CLIENT_CAPABILITIES received)
-  client->codec_capabilities_video = 0;
-  client->codec_capabilities_audio = 0;
-
-  client->socket = socket;
-  client->is_tcp_client = true;
-  SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
-  SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
-  client->port = port;
-  atomic_store_bool(&client->active, true);
-  client->server_ctx = server_ctx; // Store server context for cleanup
-  atomic_store_bool(&client->shutting_down, false);
-  atomic_store_u64(&client->last_rendered_grid_sources, 0);
-  atomic_store_u64(&client->last_sent_grid_sources, 0);
-  client->connected_at = time(NULL);
-
-  memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
-  client->crypto_initialized = false;
-  client->transport_encrypted = false;
-
-  client->pending_packet_type = 0;
-  client->pending_packet_payload = NULL;
-  client->pending_packet_length = 0;
-
-  // Assign pre-allocated buffers
-  client->incoming_video_buffer = buffers->incoming_video_buffer;
-  client->incoming_audio_buffer = buffers->incoming_audio_buffer;
-  client->audio_queue = buffers->audio_queue;
-  client->outgoing_video_buffer = buffers->outgoing_video_buffer;
-  client->send_buffer = buffers->send_buffer;
-  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE;
-
-  // Generate unique noun-based client name with transport type and port
-  // Note: We're holding the write lock here, so it's safe to iterate existing clients
-  log_debug("[TCP_DBG] BEFORE_GENERATE_CLIENT_NAME");
-  if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id, port,
-                           true /* is_tcp */) != 0) {
-    // Fallback to numeric name if generation fails
-    safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u (tcp:%d)", new_client_id, port);
-  }
-  log_debug("[TCP_DBG] AFTER_GENERATE_CLIENT_NAME: display_name=%s", client->display_name);
-
-  // Register client with named debug system using the generated name
-  (void)NAMED_REGISTER_CLIENT(client, client->display_name, NULL);
-
-  log_info("Added new client %s from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
-  log_debug("Client slot assigned: client_id=%s assigned to slot %d, socket=%d", new_client_id, slot, socket);
-}
-
-static asciichat_error_t server_client_initialize_tcp_sync(server_context_t *server_ctx, client_info_t *client,
-                                                           const char *new_client_id) {
-  // Initialize mutexes OUTSIDE lock BEFORE registering them
-  // register_client_info_atomics needs these mutexes to be initialized first
-  if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
-    log_error("Failed to initialize client state mutex for client %s", new_client_id);
-    remove_client(server_ctx, new_client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize synchronization for client %s", new_client_id);
-  }
-
-  if (mutex_init(&client->send_mutex, "client_send") != 0) {
-    log_error("Failed to initialize send mutex for client %s", new_client_id);
-    remove_client(server_ctx, new_client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize synchronization for client %s", new_client_id);
-  }
-
-  // Register all atomic fields for debug tracking - DISABLED to prevent deadlock
-  // register_client_info_atomics() and audio_ring_buffer_register_atomics() call
-  // NAMED_REGISTER which tries to acquire WRITE lock on named_registry.entries_lock
-  // The debug_sync thread holds READ lock while printing, causing reader-writer deadlock
-  // These are debug-only features not critical for functionality
-  // log_debug("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
-  // register_client_info_atomics(client);
-  // log_debug("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
-
-  // Audio buffer atomics registration disabled - same deadlock reason
-  // log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
-  // if (client->incoming_audio_buffer) {
-  //   audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
-  //   log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
-  // } else {
-  //   log_debug("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
-  // }
-
-  return ASCIICHAT_OK;
-}
-
-static void server_client_attach_tcp_audio(client_info_t *client, const char *new_client_id) {
-  // Register with audio mixer OUTSIDE lock
-  // Do this before crypto handshake to avoid deadlock with mixer thread
-  log_debug("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p",
-           (void *)g_audio_mixer, (void *)client->incoming_audio_buffer);
-  if (g_audio_mixer && client->incoming_audio_buffer) {
-    log_debug("[TCP_DBG] MIXER_ADD_SOURCE_CALLING: client_id=%s", new_client_id);
-    if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
-      log_warn("Failed to add client %s to audio mixer", new_client_id);
-    } else {
-      log_debug("[TCP_DBG] MIXER_ADD_SOURCE_SUCCESS: client_id=%s", new_client_id);
-#ifdef DEBUG_AUDIO
-      log_debug("Added client %s to audio mixer", new_client_id);
-#endif
-    }
-  } else {
-    log_debug("[TCP_DBG] MIXER_ADD_SOURCE_SKIPPED: conditions not met");
-  }
-  log_debug("[TCP_DBG] MIXER_ADD_SOURCE_DONE");
-}
-
-static asciichat_error_t server_client_receive_tcp_capabilities(server_context_t *server_ctx, client_info_t *client,
-                                                                socket_t socket, const char *new_client_id) {
-  // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
-  // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
-  // where the packet arrives but no thread is listening for it.
-  //
-  // SPECIAL CASE: If client used --no-encrypt, we already received this packet during the handshake
-  // attempt and stored it in pending_packet_*. Use that instead of receiving a new one.
-  packet_envelope_t envelope;
-  bool used_pending_packet = false;
-
-  if (client->pending_packet_payload) {
-    // Client used --no-encrypt mode - use the packet we already received
-    log_info("Client %s using --no-encrypt mode - processing pending packet type %u", client->client_id,
-             client->pending_packet_type);
-    envelope.type = client->pending_packet_type;
-    envelope.data = client->pending_packet_payload;
-    envelope.len = client->pending_packet_length;
-    envelope.allocated_buffer = client->pending_packet_payload; // Will be freed below
-    envelope.allocated_size = client->pending_packet_length;
-    used_pending_packet = true;
-
-    // Clear pending packet fields
-    client->pending_packet_type = 0;
-    client->pending_packet_payload = NULL;
-    client->pending_packet_length = 0;
-  } else {
-    // Normal encrypted mode - receive capabilities packet
-    log_debug("Waiting for initial capabilities packet from client %s", client->client_id);
-
-    // Protect crypto context access with client state mutex
-    mutex_lock(&client->client_state_mutex);
-    const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
-
-    // Use per-client crypto state to determine enforcement
-    // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
-    bool enforce_encryption = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
-                              crypto_handshake_is_ready(&client->crypto_handshake_ctx);
-
-    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
-    mutex_unlock(&client->client_state_mutex);
-
-    if (result != PACKET_RECV_SUCCESS) {
-      log_error("Failed to receive initial capabilities packet from client %s: result=%d", client->client_id, result);
-      if (envelope.allocated_buffer) {
-        buffer_release(envelope.allocated_buffer);
-      }
-      if (remove_client(server_ctx, client->client_id) != 0) {
-        log_error("Failed to remove client after crypto handshake failure");
-      }
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Failed to receive capabilities for client %s", new_client_id);
-    }
-  }
-
-  if (envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
-    log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %s", envelope.type,
-              client->client_id);
-    if (envelope.allocated_buffer) {
-      buffer_release(envelope.allocated_buffer);
-    }
-    if (remove_client(server_ctx, client->client_id) != 0) {
-      log_error("Failed to remove client after crypto handshake failure");
-    }
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Failed to receive capabilities for client %s", new_client_id);
-  }
-
-  // Secure receive retains the wire header for plaintext packets. Pending
-  // handshake packets come from receive_packet(), which already strips it.
-  // Pointer equality alone cannot distinguish these two allocation layouts.
-  if (!used_pending_packet && envelope.data == envelope.allocated_buffer) {
-    const packet_header_t *header = (const packet_header_t *)envelope.allocated_buffer;
-    envelope.type = (packet_type_t)NET_TO_HOST_U16(header->type);
-    envelope.data = (uint8_t *)envelope.allocated_buffer + sizeof(*header);
-    envelope.len = NET_TO_HOST_U32(header->length);
-  }
-
-  // Process the capabilities packet directly
-  log_debug("Processing initial capabilities packet from client %s (from %s)", client->client_id,
-            used_pending_packet ? "pending packet" : "network");
-  log_debug("INITIAL_CAPABILITIES: client_id=%s source=%s type=%u payload_len=%zu allocated_size=%zu data=%p",
-           client->client_id, used_pending_packet ? "pending" : "network", envelope.type, envelope.len,
-           envelope.allocated_size, envelope.data);
-  handle_client_capabilities_packet(client, envelope.data, envelope.len);
-
-  // Free the packet data
-  if (envelope.allocated_buffer) {
-    buffer_release(envelope.allocated_buffer);
-  }
-  log_debug("Successfully received and processed initial capabilities for client %s", client->client_id);
-
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t server_client_handshake_tcp(server_context_t *server_ctx, client_info_t *client,
-                                                     socket_t socket, const char *new_client_id) {
-  // Perform crypto handshake before starting threads.
-  // This ensures the handshake uses the socket directly without interference from receive thread.
-  // The handshake uses client->transport and sets its crypto_ctx on success.
-  log_debug("[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()");
-  if (server_crypto_init() == 0) {
-    log_debug("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
-    // Set timeout for crypto handshake to prevent indefinite blocking
-    // This prevents clients from connecting but never completing the handshake
-    // Allow two identity-verification prompts plus transport overhead.
-    const uint64_t HANDSHAKE_TIMEOUT_NS = 270ULL * NS_PER_SEC_INT;
-    asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
-    if (timeout_result != ASCIICHAT_OK) {
-      log_warn("Failed to set handshake timeout for client %s: %s", new_client_id,
-               asciichat_error_string(timeout_result));
-      // Continue anyway - timeout is a safety feature, not critical
-    }
-
-    log_debug("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
-    asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
-    int crypto_result = server_crypto_handshake(client);
-    log_debug("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
-    if (crypto_result != 0) {
-      LOG_ERRNO_IF_SET("Client crypto handshake failed");
-      asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
-      log_debug("Closing client %s after failed crypto handshake", new_client_id);
-      if (remove_client(server_ctx, new_client_id) != 0) {
-        log_error("Failed to remove client after crypto handshake failure");
-      }
-      return SET_ERRNO(ERROR_CRYPTO, "Handshake failed for client %s", new_client_id);
-    }
-
-    ASSERT_NO_ERRNO_SINCE(handshake_scope);
-    asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
-
-    // Clear socket timeout after handshake completes successfully
-    // This allows normal operation without timeouts on data transfer
-    log_debug("[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START");
-    asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
-    if (clear_timeout_result != ASCIICHAT_OK) {
-      log_warn("Failed to clear handshake timeout for client %s: %s", new_client_id,
-               asciichat_error_string(clear_timeout_result));
-      // Continue anyway - we can still communicate even with timeout set
-    }
-
-    log_debug("Crypto handshake completed successfully for client %s", new_client_id);
-
-    return server_client_receive_tcp_capabilities(server_ctx, client, socket, new_client_id);
-  }
-
-  return ASCIICHAT_OK;
-}
-
-client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port,
-                          bool *socket_consumed) {
-  *socket_consumed = false;
-  log_info("[TCP_ADD_CLIENT] ENTER: client_ip=%s, port=%d", client_ip, port);
-  int slot = -1;
-  if (server_client_find_tcp_slot(&slot) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  char new_client_id[MAX_CLIENT_ID_LEN];
-  if (server_client_generate_tcp_id(new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  server_client_buffers_t buffers = {0};
-  if (server_client_allocate_tcp_buffers(&buffers, new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  // NOW acquire the lock for the critical section: slot assignment + registration
-  log_debug("[TCP_DBG] LOCK_START: About to acquire client manager write lock");
-  rwlock_wrlock(&g_client_manager_rwlock);
-  log_debug("[TCP_DBG] LOCK_ACQUIRED: Client manager lock acquired");
-  log_debug("[TCP_DBG] SLOT_RECHECK: About to check if slot is still available");
-
-  // Re-check slot availability under lock (another thread might have taken it)
-  if (g_client_manager.clients[slot].client_id[0] != '\0') {
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    buffer_release(buffers.send_buffer);
-    video_frame_buffer_destroy(buffers.outgoing_video_buffer);
-    packet_queue_destroy(buffers.audio_queue);
-    audio_ring_buffer_destroy(buffers.incoming_audio_buffer);
-    video_frame_buffer_destroy(buffers.incoming_video_buffer);
-
-    SET_ERRNO(ERROR_SESSION_FULL, "Client slot was claimed by another connection");
-    return NULL;
-  }
-
-  // Now we have exclusive access to the slot - do the actual registration
-  client_info_t *client = &g_client_manager.clients[slot];
-  server_client_initialize_tcp_slot(client, server_ctx, &buffers, socket, new_client_id, client_ip, port, slot);
-
-  // Register socket with tcp_server
-  asciichat_error_t reg_result = tcp_server_add_client(server_ctx->tcp_server, socket, client);
-  if (reg_result != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_INTERNAL, "Failed to register client socket with tcp_server");
-    log_error("Failed to register client %s socket with tcp_server", new_client_id);
-    // Don't unlock here - error_cleanup will do it
-    goto error_cleanup;
-  }
-
-  *socket_consumed = true;
-  g_client_manager.client_count++;
-  log_debug("Client count updated: now %d clients (added client_id=%s to slot %d)", g_client_manager.client_count,
-            new_client_id, slot);
-
-  HASH_ADD_STR(g_client_manager.clients_by_id, client_id, client);
-  log_debug("Added client %s to uthash table", new_client_id);
-
-  rwlock_wrunlock(&g_client_manager_rwlock);
-
-  // Configure socket OUTSIDE lock
-  configure_client_socket(socket, new_client_id);
-
-  if (server_client_initialize_tcp_sync(server_ctx, client, new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  server_client_attach_tcp_audio(client, new_client_id);
-
-  // Create the client's persistent transport early (before handshake).
-  // It starts with NULL crypto; server_crypto_handshake() sets crypto_ctx after success.
-  client->transport = acip_tcp_transport_create(new_client_id, socket, NULL);
-  if (!client->transport) {
-    log_error("Failed to create ACIP transport for client %s", new_client_id);
-    if (remove_client(server_ctx, new_client_id) != 0) {
-      log_error("Failed to remove client after transport creation failure");
-    }
-    return NULL;
-  }
-  log_debug("Created ACIP transport for client %s (crypto pending handshake)", new_client_id);
-
-  if (server_client_handshake_tcp(server_ctx, client, socket, new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  // Start all client threads in the correct order (unified path for TCP and WebRTC)
-  // This creates: receive thread -> render threads -> send thread
-  // The render threads MUST be created before send thread to avoid the race condition
-  // where send thread reads empty frames before render thread generates the first real frame
-  char client_id_snapshot[MAX_CLIENT_ID_LEN];
-  SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
-  if (start_client_threads(server_ctx, client, true) != 0) {
-    log_error("Failed to start threads for TCP client %s", client_id_snapshot);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, client_id_snapshot);
-    return NULL;
-  }
-  log_debug("Successfully created render threads for client %s", client_id_snapshot);
-
-  // Register client with session_host (for discovery mode support)
-  if (server_ctx->session_host) {
-    client->session_client_id = session_host_add_client(server_ctx->session_host, socket, client_ip, port);
-    if (client->session_client_id == 0) {
-      log_warn("Failed to register client %s with session_host", client_id_snapshot);
-    } else {
-      log_debug("Client %s registered with session_host as %u", client_id_snapshot, client->session_client_id);
-    }
-  }
-
-  // Broadcast server state to ALL clients AFTER the new client is fully set up
-  // This notifies all clients (including the new one) about the updated grid
-  log_debug("[TCP_DBG] BROADCAST_SERVER_STATE_START: About to broadcast to all clients");
-  broadcast_server_state_to_all_clients();
-  log_debug("[TCP_DBG] BROADCAST_SERVER_STATE_DONE");
-
-  // Register client atomics for debug sync inspection
-  register_client_info_atomics(client);
-
-  log_debug("[TCP_DBG] ADD_CLIENT_RETURNING: client_id=%s, client=%p", client->client_id, (void *)client);
-  return client;
-
-error_cleanup:
-  // Clean up all partially allocated resources
-  // NOTE: This label is reached when allocation or initialization fails BEFORE
-  // the client is added to the hash table. Don't call remove_client() here.
-  cleanup_client_all_buffers(client);
-  rwlock_wrunlock(&g_client_manager_rwlock);
-  return NULL;
-}
-
-static void server_client_initialize_webrtc_slot(server_context_t *server_ctx, client_info_t *client,
-                                                 acip_transport_t *transport, const char *new_client_id,
-                                                 const char *client_ip, int slot) {
+static void server_client_initialize_transport_slot(server_context_t *server_ctx, client_info_t *client,
+                                                    acip_transport_t *transport, const char *new_client_id,
+                                                    const char *client_ip, int slot) {
   // Caller holds the client-manager write lock.
   // Free any existing buffers from previous client in this slot
   if (client->incoming_video_buffer) {
@@ -1186,32 +497,32 @@ static void server_client_initialize_webrtc_slot(server_context_t *server_ctx, c
 
   memset(client, 0, sizeof(client_info_t));
 
-  // Set up WebRTC-specific fields
-  client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
-  client->is_tcp_client = false;         // WebRTC client - threads managed directly
+  // Set up transport-specific fields
+  client->socket = INVALID_SOCKET_VALUE; // transport has no traditional socket
   client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
   client->transport = transport; // Use provided transport
+  client->event_driven = acip_async_tcp_transport_is(transport);
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
-  client->port = 0; // WebRTC doesn't use port numbers
+  client->port = 0; // transport doesn't use port numbers
   atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
-  log_info("Added new WebRTC client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
+  log_info("Added new transport client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
   atomic_store_bool(&client->shutting_down, false);
   atomic_store_u64(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store_u64(&client->last_sent_grid_sources, 0);     // Send thread updates this
-  log_debug("WebRTC client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
+  log_debug("transport client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
   client->connected_at = time(NULL);
 
   // Initialize crypto context for this client
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
-  log_debug("[ADD_WEBRTC_CLIENT] Setting crypto_initialized=false (will be set to true after handshake completes)");
+  log_debug("[ADD_TRANSPORT_CLIENT] Setting crypto_initialized=false (will be set to true after handshake completes)");
   // Do NOT set crypto_initialized = true here! The handshake must complete first.
   // For WebSocket clients: websocket_client_handler will perform the handshake
-  // For WebRTC clients: ACDS signaling may have already done crypto (future enhancement)
+  // For transport clients: ACDS signaling may have already done crypto (future enhancement)
   client->crypto_initialized = false;
 
-  // Initialize pending packet storage (unused for WebRTC, but keep for consistency)
+  // Initialize pending packet storage (unused for transport, but keep for consistency)
   client->pending_packet_type = 0;
   client->pending_packet_payload = NULL;
   client->pending_packet_length = 0;
@@ -1220,26 +531,26 @@ static void server_client_initialize_webrtc_slot(server_context_t *server_ctx, c
   SAFE_STRNCPY(client->display_name, new_client_id, sizeof(client->display_name) - 1);
 }
 
-static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *client, const char *new_client_id) {
+static asciichat_error_t server_client_allocate_transport_buffers(client_info_t *client, const char *new_client_id) {
   // Create individual video buffer for this client using modern double-buffering
   client->incoming_video_buffer = video_frame_buffer_create(new_client_id);
   if (!client->incoming_video_buffer) {
-    log_error("Failed to create video buffer for WebRTC client %s", new_client_id);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for WebRTC client %s", new_client_id);
+    log_error("Failed to create video buffer for transport client %s", new_client_id);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for transport client %s", new_client_id);
   }
 
   // Create individual audio buffer for this client
   client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
   if (!client->incoming_audio_buffer) {
-    log_error("Failed to create audio buffer for WebRTC client %s", new_client_id);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for WebRTC client %s", new_client_id);
+    log_error("Failed to create audio buffer for transport client %s", new_client_id);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for transport client %s", new_client_id);
   }
 
   // Create packet queues for outgoing data
   client->audio_queue = packet_queue_create_config(&(packet_queue_config_t){500, 8 * 1024 * 1024, PACKET_QUEUE_DROP_OLDEST});
   if (!client->audio_queue) {
-    LOG_ERRNO_IF_SET("Failed to create audio queue for WebRTC client");
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio queue for WebRTC client %s", new_client_id);
+    LOG_ERRNO_IF_SET("Failed to create audio queue for transport client");
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create audio queue for transport client %s", new_client_id);
   }
 
   // Create packet queue for async dispatch: received packets waiting to be processed
@@ -1247,81 +558,54 @@ static asciichat_error_t server_client_allocate_webrtc_buffers(client_info_t *cl
   client->received_packet_queue = packet_queue_create(100);
   if (!client->received_packet_queue) {
     LOG_ERRNO_IF_SET("Failed to create received packet queue for client");
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create received packet queue for WebRTC client %s", new_client_id);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create received packet queue for transport client %s", new_client_id);
   }
 
   // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
   client->outgoing_video_buffer = video_frame_buffer_create(new_client_id);
   if (!client->outgoing_video_buffer) {
-    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for WebRTC client");
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create outgoing video buffer for WebRTC client %s", new_client_id);
+    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for transport client");
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create outgoing video buffer for transport client %s", new_client_id);
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
   client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
   client->send_buffer = buffer_alloc(NULL, client->send_buffer_size);
   if (!client->send_buffer) {
-    log_error("Failed to allocate send buffer for WebRTC client %s", new_client_id);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer for WebRTC client %s", new_client_id);
+    log_error("Failed to allocate send buffer for transport client %s", new_client_id);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer for transport client %s", new_client_id);
   }
 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t server_client_initialize_webrtc_sync(server_context_t *server_ctx, client_info_t *client,
-                                                              const char *new_client_id) {
-  // Register this client's audio buffer with the mixer
-  if (g_audio_mixer && client->incoming_audio_buffer) {
-    if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
-      log_warn("Failed to add WebRTC client %s to audio mixer", new_client_id);
-    } else {
-#ifdef DEBUG_AUDIO
-      log_debug("Added WebRTC client %s to audio mixer", new_client_id);
-#endif
-    }
+static asciichat_error_t server_client_initialize_transport_sync(client_info_t *client, const char *new_client_id) {
+  // Finish synchronization before publishing this client in the registry.
+  if (mutex_init(&client->client_state_mutex, "client_state") != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client state mutex");
+  if (mutex_init(&client->send_mutex, "client_send") != ASCIICHAT_OK) {
+    mutex_destroy(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client send mutex");
   }
-
-  // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
-    log_error("Failed to initialize client state mutex for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, new_client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
+  if (cond_init(&client->dispatch_queue_cond, "dispatch_queue_cond") != ASCIICHAT_OK) {
+    mutex_destroy(&client->send_mutex);
+    mutex_destroy(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize client dispatch condition");
   }
-
   initialize_default_render_capabilities(client);
-
-  // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex, "client_send") != 0) {
-    log_error("Failed to initialize send mutex for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, client->client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
-  }
-
-  // Initialize condition variable for dispatch thread wake-up
-  if (cond_init(&client->dispatch_queue_cond, "dispatch_queue_cond") != 0) {
-    log_error("Failed to initialize dispatch queue condition variable for WebRTC client %s", new_client_id);
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, client->client_id);
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize WebRTC client synchronization");
-  }
-
-  // For WebRTC clients, the capabilities packet will be received by the receive thread
-  // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
-  // WebRTC uses the transport abstraction which handles packet reception automatically.
-  log_debug("WebRTC client %s initialized - receive thread will process capabilities", new_client_id);
-
+  if (g_audio_mixer && client->incoming_audio_buffer &&
+      mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0)
+    log_warn("Failed to add client %s to audio mixer", new_client_id);
   return ASCIICHAT_OK;
 }
 
 static void server_client_send_webrtc_state(client_info_t *client, const char *new_client_id) {
   // Send initial server state to the new client
   if (send_server_state_to_client(client) != 0) {
-    log_warn("Failed to send initial server state to WebRTC client %s", new_client_id);
+    log_warn("Failed to send initial server state to transport client %s", new_client_id);
   } else {
 #ifdef DEBUG_NETWORK
-    log_info("Sent initial server state to WebRTC client %s", new_client_id);
+    log_info("Sent initial server state to transport client %s", new_client_id);
 #endif
   }
 
@@ -1343,41 +627,41 @@ static void server_client_send_webrtc_state(client_info_t *client, const char *n
 
   asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
   if (packet_send_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to WebRTC client %s: %s", new_client_id,
+    log_warn("Failed to send initial server state to transport client %s: %s", new_client_id,
              asciichat_error_string(packet_send_result));
   } else {
-    log_debug("Sent initial server state to WebRTC client %s: %u connected clients", new_client_id,
+    log_debug("Sent initial server state to transport client %s: %u connected clients", new_client_id,
               state.connected_client_count);
   }
 }
 
 /**
- * @brief Register a WebRTC client with the server
+ * @brief Register a transport client with the server
  *
- * Registers a client that connected via WebRTC data channel instead of TCP socket.
- * This function reuses most of add_client() logic but skips:
+ * Registers a client that connected via transport data channel instead of TCP socket.
+ * This function reuses most of add_transport_client() logic but skips:
  * - Crypto handshake (already done via ACDS signaling)
  * - Socket-specific configuration
  * - TCP thread pool registration
  *
- * DIFFERENCES FROM add_client():
+ * DIFFERENCES FROM add_transport_client():
  * - Takes an already-created acip_transport_t* instead of socket
- * - No crypto handshake (WebRTC signaling handled authentication)
- * - No socket configuration (WebRTC handles buffering)
+ * - No crypto handshake (transport signaling handled authentication)
+ * - No socket configuration (transport handles buffering)
  * - Uses generic thread spawning instead of tcp_server thread pool
  *
  * @param server_ctx Server context
- * @param transport WebRTC transport (already created and connected)
+ * @param transport transport transport (already created and connected)
  * @param client_ip Client IP address for logging (may be empty for P2P)
  * @return Pointer to client_info_t on success, NULL on failure
  *
  * @note The transport must be fully initialized and ready to send/receive
  * @note Client capabilities are still expected as first packet
  */
-client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
-                                 bool start_threads) {
+client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
+                                    bool start_threads) {
   if (!server_ctx || !transport || !client_ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_webrtc_client");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_transport_client");
     return NULL;
   }
 
@@ -1415,49 +699,47 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   // Update client_count to match actual count before adding new client
   g_client_manager.client_count = existing_count;
 
-  // Generate unique client ID for WebRTC client (noun only, without counter or port)
+  // Generate unique client ID for transport client (noun only, without counter or port)
   char new_client_id[MAX_CLIENT_ID_LEN];
   if (generate_client_id(new_client_id, sizeof(new_client_id)) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    log_error("Failed to generate unique client ID for WebRTC client");
+    log_error("Failed to generate unique client ID for transport client");
     return NULL;
   }
 
   // Initialize client
   client_info_t *client = &g_client_manager.clients[slot];
 
-  server_client_initialize_webrtc_slot(server_ctx, client, transport, new_client_id, client_ip, slot);
+  server_client_initialize_transport_slot(server_ctx, client, transport, new_client_id, client_ip, slot);
 
-  if (server_client_allocate_webrtc_buffers(client, new_client_id) != ASCIICHAT_OK) {
-    goto error_cleanup_webrtc;
+  if (server_client_allocate_transport_buffers(client, new_client_id) != ASCIICHAT_OK ||
+      server_client_initialize_transport_sync(client, new_client_id) != ASCIICHAT_OK) {
+    goto error_cleanup_transport;
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
-  log_debug("Client count updated: now %d clients (added WebRTC client_id=%s to slot %d)",
+  log_debug("Client count updated: now %d clients (added transport client_id=%s to slot %d)",
             g_client_manager.client_count, new_client_id, slot);
 
   // Add client to uthash table for O(1) lookup
   HASH_ADD_STR(g_client_manager.clients_by_id, client_id, client);
-  log_debug("Added WebRTC client %s to uthash table", new_client_id);
+  log_debug("Added transport client %s to uthash table", new_client_id);
 
   // Release the write lock IMMEDIATELY after adding to hash table
-  // All subsequent operations (mutex init, mixer registration) don't need global client manager lock
+  // The client is fully initialized before other threads can look it up.
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  if (server_client_initialize_webrtc_sync(server_ctx, client, new_client_id) != ASCIICHAT_OK) {
-    return NULL;
-  }
-
-  server_client_send_webrtc_state(client, new_client_id);
+  if (!client->event_driven)
+    server_client_send_webrtc_state(client, new_client_id);
 
   // Register client with session_host (for discovery mode support)
-  // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
+  // transport clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
     client->session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
     if (client->session_client_id == 0) {
-      log_warn("Failed to register WebRTC client %s with session_host", new_client_id);
+      log_warn("Failed to register transport client %s with session_host", new_client_id);
     } else {
-      log_debug("WebRTC client %s registered with session_host as %u", new_client_id, client->session_client_id);
+      log_debug("transport client %s registered with session_host as %u", new_client_id, client->session_client_id);
     }
   }
 
@@ -1467,26 +749,27 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
 
   // The browser can send CLIENT_CAPABILITIES and STREAM_START immediately when
   // its DataChannel opens. Start media threads only after this client is fully
-  // registered and all initial control traffic is complete; the WebRTC
+  // registered and all initial control traffic is complete; the transport
   // transport queues those incoming packets until the receive thread begins.
   // WebSocket callers still defer this until their crypto setup is complete.
   if (start_threads) {
-    log_debug("[ADD_WEBRTC_CLIENT] Starting client threads after initialization for %s", new_client_id);
-    if (start_client_threads(server_ctx, client, false) != 0) {
-      log_error("Failed to start threads for WebRTC client %s", new_client_id);
+    log_debug("[ADD_TRANSPORT_CLIENT] Starting client threads after initialization for %s", new_client_id);
+    if (start_client_threads(server_ctx, client) != 0) {
+      log_error("Failed to start threads for transport client %s", new_client_id);
       return NULL;
     }
   } else {
-    log_debug("[ADD_WEBRTC_CLIENT] Deferring client thread startup for %s until crypto setup", new_client_id);
+    log_debug("[ADD_TRANSPORT_CLIENT] Deferring client thread startup for %s until crypto setup", new_client_id);
   }
 
   return client;
 
-error_cleanup_webrtc:
-  // Clean up all partially allocated resources for WebRTC client
+error_cleanup_transport:
+  // Clean up all partially allocated resources for transport client
   // NOTE: This label is reached when allocation or initialization fails BEFORE
   // the client is added to the hash table. Don't call remove_client() here.
   cleanup_client_all_buffers(client);
+  memset(client, 0, sizeof(*client));
   rwlock_wrunlock(&g_client_manager_rwlock);
   return NULL;
 }
@@ -1508,6 +791,12 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (strcmp(client->client_id, client_id) == 0 && client->client_id[0] != '\0') {
+      if (client->event_driven && !atomic_load_bool(&client->event_cleanup) &&
+          server_ctx->tcp_server && server_ctx->tcp_server->event_loop) {
+        acip_transport_close(client->transport);
+        rwlock_wrunlock(&g_client_manager_rwlock);
+        return ASCIICHAT_OK;
+      }
       // Check if already being removed by another thread
       // This prevents double-free and use-after-free crashes during concurrent cleanup
       if (atomic_load_bool(&client->shutting_down)) {
@@ -1527,9 +816,6 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
       // Store display name before clearing
       SAFE_STRNCPY(removal->display_name, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
-      // Save socket for tcp_server_stop_client_threads(). Keep the descriptor
-      // open until thread cleanup completes so the OS cannot reuse its fd for
-      // a new client while this client's cleanup is still in progress.
       mutex_lock(&client->client_state_mutex);
       removal->socket = client->socket; // Save socket for thread cleanup
       mutex_unlock(&client->client_state_mutex);
@@ -1585,27 +871,9 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
 
 static void server_client_stop_threads(server_context_t *server_ctx, const char *client_id,
                                        server_client_removal_t *removal) {
-  // Phase 2: Stop all client threads
-  // For TCP clients: use tcp_server thread pool management
-  // For WebRTC clients: manually join threads (no socket-based thread pool)
-  // Use is_tcp_client flag, not socket value - socket may already be INVALID_SOCKET_VALUE
-  // even for TCP clients if it was closed earlier during cleanup.
-  log_debug("Stopping all threads for client %s (socket %d, is_tcp=%d)", client_id, removal->socket,
-            removal->client ? removal->client->is_tcp_client : -1);
-
-  if (removal->client && removal->client->is_tcp_client) {
-    // TCP client: use tcp_server thread pool
-    // This joins threads in stop_id order: receive(1), render(2), send(3)
-    // Use saved client_socket for lookup (tcp_server needs original socket as key)
-    if (removal->socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, removal->socket);
-      if (stop_result != ASCIICHAT_OK) {
-        log_warn("Failed to stop threads for TCP client %s: error %d", client_id, stop_result);
-        // Continue with cleanup even if thread stopping failed
-      }
-    } else {
-      log_debug("TCP client %s socket already closed, threads should have already exited", client_id);
-    }
+  (void)server_ctx;
+  if (removal->client && removal->client->event_driven) {
+    stop_client_render_threads(removal->client);
   } else if (removal->client) {
     // WebRTC client: manually join threads
     log_debug("Stopping WebRTC client %s threads (receive and send)", client_id);
@@ -1658,11 +926,11 @@ static void server_client_close_transport(const char *client_id, server_client_r
   // For WebSocket clients: LWS_CALLBACK_CLOSED already closed and destroyed the transport
   // Trying to destroy it again causes heap-use-after-free since LWS callbacks might still fire
   // For TCP clients: transport is ours to clean up
-  if (removal->client && removal->client->transport && removal->client->is_tcp_client) {
+  if (removal->client && removal->client->transport && removal->client->event_driven) {
     acip_transport_destroy(removal->client->transport);
     removal->client->transport = NULL;
     log_debug("Destroyed ACIP transport for TCP client %s", client_id);
-  } else if (removal->client && removal->client->transport && !removal->client->is_tcp_client) {
+  } else if (removal->client && removal->client->transport) {
     // WebSocket client - just NULL it out, LWS_CALLBACK_CLOSED already destroyed it
     removal->client->transport = NULL;
     log_debug("Skipped transport destruction for WebSocket client %s (LWS already destroyed)", client_id);
@@ -1705,7 +973,7 @@ static void server_client_release_resources_locked(const char *client_id, server
   }
 
   // Cleanup crypto context for this client
-  if (removal->client->crypto_initialized) {
+  if (removal->client->crypto_initialized || removal->client->event_driven) {
     crypto_handshake_destroy(&removal->client->crypto_handshake_ctx);
     removal->client->crypto_initialized = false;
     log_debug("Crypto context cleaned up for client %s", client_id);
@@ -1838,6 +1106,10 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 
 // Forward declaration for ACIP server callbacks (defined later in file)
 static const acip_server_callbacks_t g_acip_server_callbacks;
+
+asciichat_error_t server_event_dispatch(client_info_t *client, packet_type_t type, const void *data, size_t length) {
+  return acip_handle_server_packet(client->transport, type, data, length, client, &g_acip_server_callbacks);
+}
 
 /**
  * @brief Async dispatch thread - processes queued received packets
@@ -2042,9 +1314,6 @@ void *client_receive_thread(void *arg) {
   // Save this thread's ID so remove_client() can detect self-joins
   client->receive_thread_id = asciichat_thread_self();
 
-  log_debug("RECV_THREAD_DEBUG: Thread started, client=%p, client_id=%s, is_tcp=%d", (void *)client, client->client_id,
-            client->is_tcp_client);
-
   if (atomic_load_bool(&client->protocol_disconnect_requested)) {
     log_debug("Receive thread for client %s exiting before start (protocol disconnect requested)", client->client_id);
     return NULL;
@@ -2057,15 +1326,8 @@ void *client_receive_thread(void *arg) {
     return NULL;
   }
 
-  // Additional validation: check socket is valid
-  // For TCP clients, validate socket. WebRTC clients use DataChannel (no socket)
-  if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
-    log_error("Invalid client socket in receive thread");
-    return NULL;
-  }
-
   // NOTE: Atomic registration disabled
-  // register_client_info_atomics() and audio_ring_buffer_register_atomics() attempt
+  // Named registration of client atomics attempts
   // to acquire WRITE lock on named_registry.entries_lock, which conflicts with debug_sync
   // thread holding READ lock during printing, causing deadlock.
   // These are debug-only features, not critical for functionality.
@@ -2077,21 +1339,8 @@ void *client_receive_thread(void *arg) {
 
   log_debug("Started receive thread for client %s (%s)", client->client_id, client->display_name);
 
-  // Main receive loop - processes packets from transport
-  // For TCP clients: receives from socket
-  // For WebRTC clients: receives from transport ringbuffer (via ACDS signaling)
-
-  log_info("RECV_THREAD_LOOP_START: client_id=%s, is_tcp=%d, transport=%p, active=%d", client->client_id,
-           client->is_tcp_client, (void *)client->transport, atomic_load_bool(&client->active));
-
+  // Consume complete packets supplied by the WebSocket/WebRTC event loop.
   while (!atomic_load_bool(&g_should_exit) && atomic_load_bool(&client->active)) {
-    // For TCP clients, check socket validity
-    // For WebRTC clients, continue even if no socket (transport handles everything)
-    if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
-      log_debug("TCP client %s has invalid socket, exiting receive thread", client->client_id);
-      break;
-    }
-
     // Check client_id is still valid before accessing transport.
     // This prevents accessing freed memory if remove_client() has zeroed the client struct.
     if (client->client_id[0] == 0) {
@@ -2103,41 +1352,7 @@ void *client_receive_thread(void *arg) {
     // For WebRTC clients with async dispatch, we queue packets instead of processing immediately
     // This prevents backpressure on the network socket
 
-    if (client->is_tcp_client) {
-      // TCP clients: use original synchronous dispatch
-      asciichat_errno_scope_t dispatch_scope = asciichat_errno_scope_begin();
-      asciichat_error_t acip_result =
-          acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
-
-      // Check if shutdown was requested during the network call
-      if (atomic_load_bool(&g_should_exit)) {
-        log_debug("RECV_EXIT: Server shutdown requested, breaking loop");
-        break;
-      }
-
-      // Handle receive errors
-      if (acip_result != ASCIICHAT_OK) {
-        asciichat_error_context_t err_ctx;
-        if (asciichat_errno_peek_since(dispatch_scope, &err_ctx)) {
-          log_error("🔴 ACIP error for client %s: code=%u msg=%s", client->client_id, err_ctx.code,
-                    err_ctx.context_message);
-          if (err_ctx.code == ERROR_NETWORK) {
-            log_debug("Client %s disconnected (network error): %s", client->client_id, err_ctx.context_message);
-            break;
-          } else if (HAS_ERRNO_CODE_SINCE(dispatch_scope, ERROR_CRYPTO)) {
-            log_error_client(
-                client, "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
-            // Reject this connection; other clients can continue normally.
-            break;
-          }
-        }
-        log_warn("ACIP error for TCP client %s: %s (disconnecting)", client->client_id,
-                 asciichat_error_string(acip_result));
-        break;
-      }
-      ASSERT_NO_ERRNO_SINCE(dispatch_scope);
-      asciichat_errno_scope_end(dispatch_scope, ASCIICHAT_ERRNO_HANDLED);
-    } else {
+    {
       // WebRTC/WebSocket clients: async dispatch - receive packet and queue for async processing
       void *packet_data = NULL;
       void *allocated_buffer = NULL;
@@ -2243,7 +1458,6 @@ void *client_receive_thread(void *arg) {
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
   char client_id_snapshot[MAX_CLIENT_ID_LEN] = {0};
   SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
-  bool is_tcp_client = client->is_tcp_client;
   server_context_t *server_ctx = (server_context_t *)client->server_ctx;
   log_debug("Setting active=false in receive_thread_fn (client_id=%s, exiting receive loop)", client_id_snapshot);
   atomic_store_bool(&client->active, false);
@@ -2255,7 +1469,7 @@ void *client_receive_thread(void *arg) {
   // Safe to call from receive thread now: remove_client() detects self-join via thread IDs
   // and skips the receive thread join when called from the receive thread itself
   log_debug("Receive thread for client %s calling remove_client() for cleanup", client_id_snapshot);
-  if (server_ctx && !is_tcp_client) {
+  if (server_ctx) {
     if (remove_client(server_ctx, client_id_snapshot) != 0) {
       log_warn("Failed to remove client %s from receive thread cleanup", client_id_snapshot);
     }
@@ -2741,8 +1955,8 @@ void *client_send_thread_func(void *arg) {
         break; // Client is shutting down, exit thread
       }
       acip_transport_t *frame_transport = client->transport;
-      log_dev_every(4500 * US_PER_MS_INT, "SEND_ASCII_FRAME: client_id=%s tcp=%d size=%zu width=%u height=%u",
-                    client->client_id, client->is_tcp_client, frame_size, width, height);
+      log_dev_every(4500 * US_PER_MS_INT, "SEND_ASCII_FRAME: client_id=%s size=%zu width=%u height=%u",
+                    client->client_id, frame_size, width, height);
       uint64_t send_start_ns = time_get_ns();
       log_dev_every(4500 * US_PER_MS_INT, "[SEND_LOOP_%d] FRAME_SEND_START: client_id=%s size=%zu",
                     loop_iteration_count, client->client_id, frame_size);
@@ -2841,8 +2055,7 @@ void *client_send_thread_func(void *arg) {
   // The receive loop can remain alive while the media send path has already
   // discovered a dead WebRTC DataChannel. Retire the whole client here so its
   // render workers cannot keep producing media for a peer that is gone.
-  if (transport_failed && !client->is_tcp_client && !atomic_load_bool(&g_should_exit) &&
-      !atomic_load_bool(&client->shutting_down)) {
+  if (transport_failed && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     char client_id_snapshot[MAX_CLIENT_ID_LEN] = {0};
     SAFE_STRNCPY(client_id_snapshot, client->client_id, sizeof(client_id_snapshot) - 1);
     server_context_t *server_ctx = (server_context_t *)client->server_ctx;
@@ -2936,7 +2149,18 @@ void broadcast_server_state_to_all_clients(void) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Release lock BEFORE sending (snapshot pattern)
-  // Sending while holding lock blocks all client operations
+  for (int i = 0; i < MAX_CLIENTS; ++i) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->event_driven && atomic_load_bool(&client->event_ready) && atomic_load_bool(&client->active) &&
+        client->transport) {
+      mutex_lock(&client->client_state_mutex);
+      mutex_lock(&client->send_mutex);
+      acip_send_server_state(client->transport, &net_state);
+      mutex_unlock(&client->send_mutex);
+      mutex_unlock(&client->client_state_mutex);
+    }
+  }
+  // Event transports only enqueue above; legacy blocking writes follow after unlock.
   uint64_t lock_held_final_ns = time_get_ns();
   uint64_t lock_held_ns = time_elapsed_ns(lock_start_ns, lock_held_final_ns);
   rwlock_rdunlock(&g_client_manager_rwlock);
@@ -3007,7 +2231,7 @@ void broadcast_server_state_to_all_clients(void) {
  * @param client_id Client ID to start threads for
  * @return 0 on success, -1 on failure
  */
-int start_webrtc_client_threads(server_context_t *server_ctx, const char *client_id) {
+int start_transport_client_threads(server_context_t *server_ctx, const char *client_id) {
   if (!server_ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Server context is NULL");
     return -1;
@@ -3019,8 +2243,8 @@ int start_webrtc_client_threads(server_context_t *server_ctx, const char *client
     return -1;
   }
 
-  log_debug("Starting threads for WebRTC client %s...", client_id);
-  return start_client_threads(server_ctx, client, false);
+  log_debug("Starting application workers for client %s...", client_id);
+  return start_client_threads(server_ctx, client);
 }
 
 void stop_client_threads(client_info_t *client) {

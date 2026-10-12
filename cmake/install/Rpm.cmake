@@ -70,7 +70,7 @@ libasciichat.")
 # Bundled deps (BearSSL, yyjson, WebRTC AEC3) are not listed.
 # libdatachannel is not packaged in Fedora and is statically linked.
 set(CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_REQUIRES
-    "ascii-chat = ${PROJECT_VERSION}, libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, ffmpeg-free-libs")
+    "ascii-chat = ${PROJECT_VERSION}, libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, libuv, ffmpeg-free-libs")
 
 # =============================================================================
 # Documentation Package (libasciichat-doc) - HTML docs

@@ -961,7 +961,7 @@ static asciichat_error_t scan_binary_actions(int argc, char **argv, binary_actio
             } else {
               if (error_msg) {
                 log_error("Error parsing --color: %s", error_msg);
-                free(error_msg);
+                SAFE_FREE(error_msg);
               }
             }
           }
@@ -980,7 +980,7 @@ static asciichat_error_t scan_binary_actions(int argc, char **argv, binary_actio
         } else {
           if (error_msg) {
             log_error("Error parsing --color: %s", error_msg);
-            free(error_msg);
+            SAFE_FREE(error_msg);
           }
         }
       }
@@ -1190,7 +1190,7 @@ static asciichat_error_t parse_binary_options(options_t *opts, int argc, char **
         } else {
           if (error_msg) {
             log_error("%s", error_msg);
-            free(error_msg);
+            SAFE_FREE(error_msg);
           } else {
             log_error("invalid log level value: %s", argv[i + 1]);
           }

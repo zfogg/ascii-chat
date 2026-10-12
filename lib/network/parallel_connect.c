@@ -225,8 +225,10 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   volatile socket_t winner_socket = INVALID_SOCKET_VALUE;
   volatile bool winner_found = false;
 
-  connection_attempt_t ipv4_attempt = {0};
-  connection_attempt_t ipv6_attempt = {0};
+  // An unavailable address family never starts a worker. Its cleanup must not
+  // close descriptor zero, which can subsequently be reused by the event loop.
+  connection_attempt_t ipv4_attempt = {.socket = INVALID_SOCKET_VALUE};
+  connection_attempt_t ipv6_attempt = {.socket = INVALID_SOCKET_VALUE};
   asciichat_thread_t ipv4_thread;
   asciichat_thread_t ipv6_thread;
 

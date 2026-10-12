@@ -33,6 +33,7 @@
 # Windows: vcpkg Package Manager Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)

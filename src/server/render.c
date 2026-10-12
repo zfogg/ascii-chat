@@ -156,6 +156,7 @@
 #include <math.h>
 
 #include "render.h"
+#include "events.h"
 #include "client.h"
 #include "main.h"
 #include "stream.h"
@@ -339,6 +340,7 @@
  */
 
 void *client_video_render_thread(void *arg) {
+  acip_frame_workspace_t event_workspace = {0};
   client_info_t *client = (client_info_t *)arg;
   if (!client) {
     log_error("NULL client pointer in video render thread");
@@ -551,6 +553,9 @@ void *client_video_render_thread(void *arg) {
     // DEBUG: Log frame generation details
     uint32_t current_frame_hash = 0;
     if (ascii_frame && frame_size > 0) {
+      if (client->event_driven)
+        server_event_video(client, &event_workspace, ascii_frame, frame_size, width_snapshot, height_snapshot,
+                           sources_count);
       for (size_t i = 0; i < frame_size && i < 1000; i++) {
         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
@@ -668,6 +673,7 @@ void *client_video_render_thread(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Video render thread stopped for client %s", thread_client_id);
 #endif
+  acip_frame_workspace_destroy(&event_workspace);
 
   // Clean up thread-local error context before exit
 
@@ -1051,8 +1057,10 @@ void *client_audio_render_thread(void *arg) {
           // Queue the properly formatted packet
           START_TIMER("audio_queue_%s", client_id_snapshot);
 
-          asciichat_error_t result = packet_queue_push_copy(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH,
-                                                            packet_buffer, total_packet_size, 0);
+          asciichat_error_t result = client->event_driven
+                                         ? server_event_audio(client, packet_buffer, total_packet_size)
+                                         : packet_queue_push_copy(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH,
+                                                                  packet_buffer, total_packet_size, 0);
 
           STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
                                    "Audio queue for client %s: took", client_id_snapshot);
@@ -1197,14 +1205,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
   asciichat_error_t video_result;
 
-  if (client->is_tcp_client) {
-    video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_video_render_thread, client,
-                                           2, thread_name);
-  } else {
-    log_debug("THREAD_CREATE: WebRTC/WebSocket render video thread for client %s", client->client_id);
-    video_result =
-        asciichat_thread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
-  }
+  video_result = asciichat_thread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
 
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
@@ -1217,20 +1218,13 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%s", client->client_id);
   asciichat_error_t audio_result;
 
-  if (client->is_tcp_client) {
-    audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_audio_render_thread, client,
-                                           2, thread_name);
-  } else {
-    log_debug("THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s", client->client_id);
-    audio_result =
-        asciichat_thread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
-  }
+  audio_result = asciichat_thread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store_bool(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
     atomic_store_bool(&client->audio_render_thread_running, false);
-    // tcp_server_stop_client_threads() will be called by remove_client()
+    // stop_client_render_threads() will be called by remove_client()
     // to clean up the video thread we just created
     // Mutexes will be destroyed by remove_client() which called us
     return -1;

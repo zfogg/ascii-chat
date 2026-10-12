@@ -388,7 +388,7 @@ options_builder_t *options_builder_create(size_t struct_size) {
 
   builder->descriptors = SAFE_MALLOC(INITIAL_DESCRIPTOR_CAPACITY * sizeof(option_descriptor_t), option_descriptor_t *);
   if (!builder->descriptors) {
-    free(builder);
+    SAFE_FREE(builder);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate descriptors array");
     return NULL;
   }
@@ -1374,7 +1374,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
       // Parse error
       if (error_msg) {
         log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg);
-        free(error_msg);
+        SAFE_FREE(error_msg);
       } else {
         log_error("Error parsing positional argument '%s': %s", pos_arg->name, arg);
       }
@@ -1433,7 +1433,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       char *error_msg = NULL;
       desc->parse_fn(NULL, field, &error_msg);
       if (error_msg) {
-        free(error_msg);
+        SAFE_FREE(error_msg);
       }
     }
   }
@@ -1777,7 +1777,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 
       if (consumed < 0) {
         log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg ? error_msg : arg);
-        free(error_msg);
+        SAFE_FREE(error_msg);
         SAFE_FREE(positional_args);
         return ERROR_USAGE;
       }

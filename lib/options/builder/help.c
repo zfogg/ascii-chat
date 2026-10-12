@@ -1460,7 +1460,7 @@ void options_struct_destroy(const options_config_t *config, void *options_struct
 
   // Free all owned strings
   for (size_t i = 0; i < config->num_owned_strings; i++) {
-    free(config->owned_strings[i]);
+    SAFE_FREE(config->owned_strings[i]);
   }
 
   // Reset owned strings tracking

@@ -1,4 +1,7 @@
 #pragma once
+#include <ascii-chat/platform/event.h>
+
+void acds_event_accept(platform_event_stream_t *, void *);
 
 /**
  * @file acds/server.h
@@ -171,7 +174,6 @@ void acds_server_shutdown(acds_server_t *server);
  * @param arg Pointer to client connection context
  * @return NULL (thread exit value)
  */
-void *acds_client_handler(void *arg);
 
 /**
  * @brief WebSocket client handler (thread entry point)

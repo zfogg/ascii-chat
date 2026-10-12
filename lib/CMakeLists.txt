@@ -349,6 +349,9 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-platform PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 target_link_libraries(ascii-chat-platform PRIVATE
     ascii-chat-util
     ascii-chat-data-structures
@@ -1519,6 +1522,12 @@ add_library(ascii-chat-static-lib-deps INTERFACE)
 # BearSSL and WebRTC AEC3 are embedded in the static library
 # BearSSL is required
 target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${BEARSSL_LIBRARIES})
+if(NOT EMSCRIPTEN)
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    endif()
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 if(WEBRTC_AEC3_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${WEBRTC_AEC3_LIBRARIES})
 endif()
@@ -1615,6 +1624,8 @@ else()
     else()
         # Non-musl builds: link the C++ standard library
         target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE c++)
+        # The combined archive includes the platform keepawake implementation.
+        target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${LIBSYSTEMD_LIBRARIES})
     endif()
 endif()
 
@@ -1756,5 +1767,7 @@ target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
 
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_LIBRARIES})
-target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
+if(TARGET ascii-chat-shared)
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
+endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})

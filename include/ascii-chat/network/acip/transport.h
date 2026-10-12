@@ -362,9 +362,9 @@ static inline bool acip_transport_has_pending_data(acip_transport_t *transport) 
  */
 acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
 
-/** Override the benchmark-gated kernel copy-avoidance policy for this TCP transport.
+/** Override the automatic kernel copy-avoidance policy for this TCP transport.
  * Large Linux encrypted sends may pin pages; other platforms fall back to vectors.
- * Initial policy comes from --network-zerocopy (off by default).
+ * Copy avoidance is attempted automatically and disabled after copied completions.
  */
 asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, bool enabled);
 

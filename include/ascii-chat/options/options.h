@@ -796,7 +796,6 @@ static const bool default_fft_value = false;
 static const bool default_fps_counter_value = OPT_FPS_COUNTER_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
-static const bool default_network_zerocopy_value = false;
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
 static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
 static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
@@ -1008,7 +1007,6 @@ typedef struct options_state {
   // Network Performance Options
   // ============================================================================
   int compression_level; ///< zstd compression level (1-9)
-  bool network_zerocopy; ///< Opt-in Linux kernel copy avoidance for large encrypted TCP packets
   bool no_compress;      ///< Disable compression entirely
   bool encode_audio;     ///< Enable Opus audio encoding
 

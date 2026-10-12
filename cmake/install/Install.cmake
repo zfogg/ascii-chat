@@ -978,8 +978,8 @@ ascii-chat [mode] --help  # Show all options (or for [mode])")
         # Bundled deps (BearSSL, yyjson, WebRTC AEC3) are statically linked and not listed.
         # libdatachannel is statically linked (not packaged in distros).
         if(UNIX AND NOT APPLE)
-            set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsodium23, libzstd1, libportaudio2, libopus0, libpcre2-8-0, libsqlite3-0, libfreetype6 | libfreetype-dev, libfontconfig1, libssl3 | libssl3t64, libminiupnpc17, libwebsockets19 | libwebsockets19t64")
-            set(CPACK_RPM_PACKAGE_REQUIRES "libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets")
+            set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsodium23, libzstd1, libportaudio2, libopus0, libpcre2-8-0, libsqlite3-0, libfreetype6 | libfreetype-dev, libfontconfig1, libssl3 | libssl3t64, libminiupnpc17, libwebsockets19 | libwebsockets19t64, libuv1 | libuv1t64")
+            set(CPACK_RPM_PACKAGE_REQUIRES "libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, libuv")
             if(USE_MIMALLOC)
                 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libmimalloc2.0 | libmimalloc-dev")
                 set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, mimalloc")

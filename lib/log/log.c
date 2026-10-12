@@ -41,6 +41,9 @@
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/platform/backtrace.h>
 
+// Readers pin the session buffer until unregister has drained their appends.
+static atomic_t g_session_log_readers = {0};
+
 /* Platform-specific log hook (weak, can be overridden by platform implementations) */
 __attribute__((weak)) void platform_log_hook(log_level_t level, const char *message) {
   (void)level;
@@ -963,6 +966,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   // Feed log to registered session log buffer (use colored version if available, otherwise plain)
+  atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
   session_log_buffer_t *buf = (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
   if (buf) {
     if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
@@ -971,6 +975,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
       session_log_buffer_append(buf, plain_log_line);
     }
   }
+
+  atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
 
   // Check if terminal output is enabled (atomic load)
   bool is_enabled = atomic_load_u64(&g_log.terminal_output_enabled);
@@ -1045,9 +1051,11 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   const char *text = g_notice_text;
   ui_notice_severity_t severity = g_notice_severity;
   g_notice_text = NULL;
+  atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
   session_log_buffer_t *buffer = log_get_session_log_buffer();
   if (buffer)
     session_log_buffer_append(buffer, text);
+  atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
   // Match the same uncolored template as ordinary terminal logs, including metadata.
   // Keep the complete body for notices that span multiple file-log records.
   size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + 512;
@@ -1987,6 +1995,10 @@ void log_set_session_log_buffer(session_log_buffer_t *buf) {
  */
 void log_clear_session_log_buffer(void) {
   atomic_ptr_store(&g_log.session_log_buffer, NULL);
+  // An atomic pointer swap alone does not protect a writer that loaded the old
+  // buffer. Wait for those writers before the UI releases its storage.
+  while (atomic_load_u64_impl(&g_session_log_readers))
+    platform_sleep_us(100);
 }
 
 /**

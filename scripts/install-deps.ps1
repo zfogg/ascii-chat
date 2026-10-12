@@ -171,6 +171,7 @@ $RequiredPackages = @(
     "libdatachannel",  # WebRTC DataChannels for P2P connections
     "miniupnpc",       # UPnP client library for automatic router port forwarding
     "abseil",          # C++ utility library (used by WebRTC AEC3)
+    "libuv",          # Native event-driven TCP I/O
     "libwebsockets",   # WebSocket transport library for browser clients
     "ffmpeg",          # Media file/URL streaming library
     "yyjson",          # JSON library (write-only for this build)

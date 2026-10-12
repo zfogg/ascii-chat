@@ -1,7 +1,7 @@
 # Network copy reduction
 
 Issue [#36](https://github.com/zfogg/ascii-chat/issues/36) is implemented through a
-portable scatter/gather path and an opt-in Linux kernel-copy-avoidance path. The
+portable scatter/gather path and an automatic Linux kernel-copy-avoidance path. The
 ACIP wire format, encryption coverage, nonce generation, compression format, and
 CRC32-C polynomial are unchanged.
 
@@ -54,14 +54,15 @@ transformed, encrypted in-memory media path.
 
 ## Linux kernel zero-copy
 
-Enable with `--network-zerocopy` or `ASCII_CHAT_NETWORK_ZEROCOPY=true` in client,
-server, or discovery mode. The default is off. This is a shipped, tested feature,
-but its synchronous completion wait can add network latency: benchmark a deployment
-before enabling it. The portable copy reductions are always active.
+Copy avoidance is automatic; there is no CLI or environment switch. Native TCP
+streams submit large owned buffers through the event loop. Linux completion
+checks are nonblocking, and unsupported or copied submissions fall back within
+the same event backend. See [event-driven I/O](event-driven-io.md) for ownership,
+deadlines, and shutdown behavior. Portable copy reductions are always active.
 
-Only encrypted TCP wire buffers at least 64 KiB are eligible. Linux allocates
-private mappings for those owned buffers, and encryption writes directly into
-them. One submission is outstanding at a time, with an allocation ceiling of
+TCP wire buffers at least 64 KiB are eligible. Linux allocates private mappings
+for those owned buffers. The synchronous utility adapter encrypts directly into
+them; the native event adapter copies each queued wire packet into owned storage. One submission is outstanding at a time, with an allocation ceiling of
 32 MiB; the protocol/crypto limits impose smaller practical packet sizes. The
 sender consumes the socket's IPv4/IPv6 zero-copy error-queue completion before
 submitting again. This avoids an unbounded pinned-memory queue and cookie ordering
@@ -99,8 +100,9 @@ The suite verifies CRC continuity, empty slices, length rejection, short writes,
 blocked-peer deadlines, malformed headers/CRCs, partial-header disconnects,
 concurrent senders, full-duplex encrypted traffic, maximum sizes, ownership
 transfer, media payload compatibility, message-transport fallback, and Linux
-zero-copy cancellation. Round trips explicitly enable kernel zero-copy to exercise
-it even though the application default is off.
+zero-copy cancellation. Round trips exercise kernel zero-copy explicitly; the application automatically
+attempts copy avoidance for eligible writes and falls back within the same event
+backend when unsupported or when the kernel reports copied completions.
 
 For cross-host checks, run `test-network-vectors --serve PORT` and
 `test-network-vectors --peer PORT IPV4`. This test-only listener accepts one
@@ -142,5 +144,6 @@ Representative medians from three runs per mode:
 The measurements support lower overall CPU cost in this workload, but throughput
 and tail latency vary; earlier Windows samples also showed lower large-packet throughput.
 They do not substantiate the issue's projected universal percentage improvements.
-Kernel zero-copy remains explicitly benchmark-gated for that reason and because
-these routes required copied completions.
+Kernel zero-copy is attempted automatically for eligible writes. These routes
+required copied completions, which disable further copy-avoidance attempts on
+that connection while ordinary writes continue through the same event backend.

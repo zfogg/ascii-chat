@@ -134,6 +134,7 @@
 #include "main.h"
 #include "client.h"
 #include "crypto.h"
+#include <ascii-chat/network/acip/send.h>
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
@@ -175,548 +176,143 @@ int server_crypto_init(void) {
 }
 
 /**
- * Perform crypto handshake with client
- *
- * @param client Client info structure
- * @return 0 on success, -1 on failure
+ * Advance the server handshake for one complete packet.
+ * Steps negotiate the protocol, select an identity, exchange keys, and verify
+ * authentication. Only a READY context is published to application senders.
+ * A single-key server also accepts older clients that omit CLIENT_HELLO.
  */
-int server_crypto_handshake(client_info_t *client) {
-  if (!client) {
-    FATAL(ERROR_CRYPTO_HANDSHAKE, "Client is NULL for crypto handshake");
-    return -1;
-  }
-
-  // Only skip handshake if BOTH encryption and authentication are disabled
-  bool no_encrypt = GET_OPTION(no_encrypt);
-  bool no_auth = GET_OPTION(no_auth);
-
-  if (no_encrypt && no_auth) {
-    log_debug("Crypto handshake skipped (ACIP_CRYPTO_NONE: both encryption and authentication disabled)");
-    return 0;
-  }
-
-  // Initialize crypto context for this specific client
-  const options_t *opts = options_get();
-  const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
-
-  // Create debug name with client_id
-  char crypto_name[64];
-  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%s", client->client_id);
-
-  int init_result;
-  if (strlen(password) > 0) {
-    // Password provided - use password-based encryption (even if SSH key is also provided)
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Using password-based encryption");
-    init_result = crypto_handshake_init_with_password(crypto_name, &client->crypto_handshake_ctx, true,
-                                                      password); // true = server
-  } else {
-    // Server has SSH key - use standard initialization
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Using passwordless-based encryption");
-    init_result = crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true); // true = server
-  }
-
-  if (init_result != ASCIICHAT_OK) {
-    FATAL(init_result, "Failed to initialize crypto handshake for client %u", client->client_id);
-    return -1;
-  }
-  // Do NOT set crypto_initialized here - it must be set after handshake completes
-  client->crypto_initialized = false;
-
-  // Set up server keys in the handshake context
-  if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
-    // Copy server private key to handshake context for signing
-    memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_private_key, sizeof(private_key_t));
-
-    // Extract Ed25519 public key from private key for identity
-    client->crypto_handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->crypto_handshake_ctx.server_public_key.key, g_server_private_key.public_key,
-           ED25519_PUBLIC_KEY_SIZE);
-
-    // SSH key is already configured in the handshake context above
-    // No additional setup needed - SSH keys are used only for authentication
-
-    log_debug("Server identity keys configured for client %s", client->client_id);
-  }
-
-  // Set up client whitelist if specified
-  if (g_num_whitelisted_clients > 0) {
-    client->crypto_handshake_ctx.require_client_auth = true;
-    client->crypto_handshake_ctx.client_whitelist = g_client_whitelist;
-    client->crypto_handshake_ctx.num_whitelisted_clients = g_num_whitelisted_clients;
-    log_info("Client whitelist enabled: %zu authorized keys", g_num_whitelisted_clients);
-  }
-
-  // If --require-server-verify is set, require clients to provide identity keys
-  // This ensures only clients with Ed25519 identity keys can connect
-  if (GET_OPTION(require_server_verify)) {
-    client->crypto_handshake_ctx.require_client_auth = true;
-    log_info("--require-server-verify enabled: clients must provide identity keys");
-  }
-
-  log_debug("Starting crypto handshake with client %u...", client->client_id);
-
-  START_TIMER("server_crypto_handshake_client_%s", client->client_id);
-
-  // Step 0a: Receive client's protocol version
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Receiving client protocol version");
-  packet_type_t packet_type;
-  void *payload = NULL;
-  size_t payload_len = 0;
-
-  log_debug("SERVER_CRYPTO_HANDSHAKE: About to receive packet from client %s", client->client_id);
-
-  // Protect socket access during crypto handshake
-  mutex_lock(&client->client_state_mutex);
-  socket_t socket = client->socket;
-  mutex_unlock(&client->client_state_mutex);
-
-  if (socket == INVALID_SOCKET_VALUE) {
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Socket is invalid for client %u", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
-  }
-
-  int result = receive_packet(socket, &packet_type, &payload, &payload_len);
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Received packet from client %u: result=%d, type=%u", client->client_id, result,
-            packet_type);
-
-  // Handle client disconnection gracefully
-  if (result != ASCIICHAT_OK) {
-    log_info("Client %s disconnected during crypto handshake (connection error)", client->client_id);
-    if (payload) {
-      buffer_release(payload);
+asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, packet_type_t type, const void *payload,
+                                      size_t length, bool *ready) {
+  *ready = false;
+  crypto_handshake_context_t *ctx = &client->crypto_handshake_ctx;
+  acip_transport_t *transport = client->transport;
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (*step == 0) {
+    if (type != PACKET_TYPE_PROTOCOL_VERSION) {
+      if (type != PACKET_TYPE_CLIENT_CAPABILITIES || !GET_OPTION(no_encrypt) || !GET_OPTION(no_auth))
+        return SET_ERRNO(ERROR_CRYPTO, "Expected protocol version before application traffic");
+      *ready = true;
+      return ASCIICHAT_OK;
     }
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error but don't crash the server
-  }
-
-  // If client sent something other than PROTOCOL_VERSION, it means client is using --no-encrypt
-  // In this case, we need to store the packet for the caller to process and skip the handshake
-  if (packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    log_info("Client %u sent packet type %u instead of PROTOCOL_VERSION - using unencrypted mode", client->client_id,
-             packet_type);
-
-    // Store this packet in the client structure so the caller can process it
-    // This is a bit of a hack, but necessary to preserve the packet we already received
-    client->pending_packet_type = packet_type;
-    client->pending_packet_payload = payload;
-    client->pending_packet_length = payload_len;
-
-    // Mark crypto as not initialized (no encryption)
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return 0; // Success - just no encryption
-  }
-
-  if (payload_len != sizeof(protocol_version_packet_t)) {
-    log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
-              sizeof(protocol_version_packet_t));
-    buffer_release(payload);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
-  }
-
-  protocol_version_packet_t client_version;
-  memcpy(&client_version, payload, sizeof(protocol_version_packet_t));
-  atomic_store_bool(&client->supports_recoverable_errors,
-                    (NET_TO_HOST_U16(client_version.feature_flags) & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
-  log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %s", client->client_id);
-  buffer_release(payload);
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %s", client->client_id);
-
-  // Convert from network byte order
-  uint16_t client_proto_version = NET_TO_HOST_U16(client_version.protocol_version);
-  uint16_t client_proto_revision = NET_TO_HOST_U16(client_version.protocol_revision);
-
-  uint8_t client_mode = client_version.supports_encryption;
-  log_info("Client %s protocol version: %u.%u (crypto mode: 0x%02x)", client->client_id, client_proto_version,
-           client_proto_revision, client_mode);
-
-  log_debug("SERVER_CRYPTO_HANDSHAKE: About to check encryption support for client %u", client->client_id);
-
-  // Reject ACIP_CRYPTO_NONE (plaintext only) - at minimum, ACIP handshake must run
-  if (client_mode == ACIP_CRYPTO_NONE) {
-    log_error("Client %s does not support any crypto protocol", client->client_id);
-    log_info("Client %s disconnected - crypto protocol required", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error but don't crash the server
-  }
-
-  // Store encryption mode for setting encrypt_data flag later
-  client->encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(client_mode);
-
-  // Step 0b: Send our protocol version to client
-  log_debug("SERVER_CRYPTO_HANDSHAKE: About to prepare server protocol version for client %u", client->client_id);
-  protocol_version_packet_t server_version = {0};
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Initialized server_version struct for client %u", client->client_id);
-  server_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
-  server_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  server_version.supports_encryption = client_mode;      // Echo client's mode
-  server_version.compression_algorithms = 0;             // No compression for now
-  server_version.compression_threshold = 0;
-  server_version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
-
-  log_debug("SERVER_CRYPTO_HANDSHAKE: About to call send_protocol_version_packet for client %u", client->client_id);
-  result = send_protocol_version_packet(socket, &server_version);
-  log_debug("SERVER_CRYPTO_HANDSHAKE: send_protocol_version_packet returned %d for client %u", result,
-            client->client_id);
-  if (result != 0) {
-    log_error("Failed to send protocol version to client %u", client->client_id);
-    log_info("Client %s disconnected - failed to send protocol version", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error but don't crash the server
-  }
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Protocol version sent successfully to client %u", client->client_id);
-
-  // Step 0c: Receive client's crypto capabilities
-  payload = NULL;
-  payload_len = 0;
-
-  result = receive_packet(socket, &packet_type, &payload, &payload_len);
-  if (result != ASCIICHAT_OK) {
-    log_info("Client %s disconnected during crypto capabilities exchange", client->client_id);
-    if (payload) {
-      buffer_release(payload);
+    if (length != sizeof(protocol_version_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
+    protocol_version_packet_t version;
+    memcpy(&version, payload, sizeof(version));
+    if (version.supports_encryption == ACIP_CRYPTO_NONE)
+      return SET_ERRNO(ERROR_CRYPTO, "Client does not support crypto negotiation");
+    const options_t *opts = options_get();
+    const char *password = opts ? opts->password : "";
+    result = password[0] ? crypto_handshake_init_with_password("server_async", ctx, true, password)
+                         : crypto_handshake_init("server_async", ctx, true);
+    if (result != ASCIICHAT_OK)
+      return result;
+    client->encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(version.supports_encryption);
+    if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+      ctx->server_private_key = g_server_private_key;
+      ctx->server_public_key.type = KEY_TYPE_ED25519;
+      memcpy(ctx->server_public_key.key, g_server_private_key.public_key, sizeof(g_server_private_key.public_key));
     }
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error but don't crash the server
+    ctx->require_client_auth = g_num_whitelisted_clients > 0 || GET_OPTION(require_server_verify);
+    ctx->client_whitelist = g_client_whitelist;
+    ctx->num_whitelisted_clients = g_num_whitelisted_clients;
+    version.protocol_version = HOST_TO_NET_U16(1);
+    version.protocol_revision = 0;
+    version.compression_algorithms = 0;
+    version.compression_threshold = 0;
+    version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
+    result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+    *step = 1;
+    return result;
   }
-
-  if (packet_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
-    log_error("Server received packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)", packet_type, packet_type,
-              PACKET_TYPE_CRYPTO_CAPABILITIES, PACKET_TYPE_CRYPTO_CAPABILITIES);
-    log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
-              (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
-    if (payload) {
-      buffer_release(payload);
+  if (*step == 1) {
+    if (type != PACKET_TYPE_CRYPTO_CAPABILITIES || length != sizeof(crypto_capabilities_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected crypto capabilities");
+    crypto_capabilities_packet_t capabilities;
+    memcpy(&capabilities, payload, sizeof(capabilities));
+    crypto_parameters_packet_t parameters = {0};
+    parameters.selected_kex = KEX_ALGO_X25519;
+    parameters.selected_cipher = client->encrypt_data ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    parameters.selected_auth = g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519
+                                   ? AUTH_ALGO_ED25519
+                                   : AUTH_ALGO_NONE;
+    parameters.verification_enabled = g_num_whitelisted_clients > 0;
+    parameters.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE;
+    parameters.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE;
+    parameters.nonce_size = CRYPTO_NONCE_SIZE;
+    parameters.mac_size = CRYPTO_MAC_SIZE;
+    parameters.hmac_size = CRYPTO_HMAC_SIZE;
+    if (parameters.selected_auth == AUTH_ALGO_ED25519) {
+      parameters.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+      parameters.signature_size = ED25519_SIGNATURE_SIZE;
     }
-    log_info("Client %s disconnected due to protocol mismatch in crypto capabilities", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error but don't crash the server
-  }
-
-  if (payload_len != sizeof(crypto_capabilities_packet_t)) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-              "Invalid crypto capabilities packet size: %zu (expected %zu) - we should disconnect this client",
-              payload_len, sizeof(crypto_capabilities_packet_t));
-    if (payload) {
-      buffer_release(payload);
-      payload = NULL;
+    result = crypto_handshake_set_parameters(ctx, &parameters);
+    if (result != ASCIICHAT_OK)
+      return result;
+    parameters.kex_public_key_size = HOST_TO_NET_U16(parameters.kex_public_key_size);
+    parameters.auth_public_key_size = HOST_TO_NET_U16(parameters.auth_public_key_size);
+    parameters.signature_size = HOST_TO_NET_U16(parameters.signature_size);
+    parameters.shared_secret_size = HOST_TO_NET_U16(parameters.shared_secret_size);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, &parameters, sizeof(parameters), 0);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (g_num_server_identity_keys > 0 && capabilities.requires_verification) {
+      *step = 2;
+      return ASCIICHAT_OK;
     }
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
+    *step = 3;
+    return crypto_handshake_server_start(ctx, transport);
   }
-
-  if (!payload) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Crypto capabilities payload is NULL after validation");
-    log_error("Client %u crypto capabilities payload is NULL after validation - disconnecting", client->client_id);
-    LOG_ERRNO_IF_SET("Crypto handshake: missing capabilities payload");
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
-  }
-
-  // Copy and validate payload immediately after NULL check to ensure analyzer understands safety
-  crypto_capabilities_packet_t client_caps;
-  memcpy(&client_caps, payload, sizeof(crypto_capabilities_packet_t));
-
-  // Free the buffer after use
-  buffer_release(payload);
-  payload = NULL; // Clear reference to prevent use-after-free
-
-  // Convert from network byte order
-  uint16_t supported_kex = NET_TO_HOST_U16(client_caps.supported_kex_algorithms);
-  uint16_t supported_auth = NET_TO_HOST_U16(client_caps.supported_auth_algorithms);
-  uint16_t supported_cipher = NET_TO_HOST_U16(client_caps.supported_cipher_algorithms);
-
-  log_debug("Client %s crypto capabilities: KEX=0x%04x, Auth=0x%04x, Cipher=0x%04x", client->client_id, supported_kex,
-            supported_auth, supported_cipher);
-
-  // Step 0d: Select crypto algorithms and send parameters to client
-  crypto_parameters_packet_t server_params = {0};
-
-  // Select algorithms (for now, we only support X25519 + Ed25519 + XSalsa20-Poly1305)
-  server_params.selected_kex = KEX_ALGO_X25519;
-  server_params.selected_cipher =
-      ACIP_CRYPTO_HAS_ENCRYPT(client_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
-
-  // Select authentication algorithm based on server configuration
-  // Note: Password authentication is not a separate algorithm - it's a mode of operation
-  // that affects key derivation. The authentication algorithm refers to signature verification.
-  //
-  // We require Ed25519 authentication if:
-  //   - Server has an identity key (g_server_encryption_enabled AND g_server_private_key is Ed25519)
-  //   - This is needed to send authenticated KEY_EXCHANGE_INIT with identity + signature
-  //   - Client whitelist verification happens during authentication phase, not key exchange
-  if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
-    // SSH key authentication (Ed25519 signatures) - server has identity key
-    server_params.selected_auth = AUTH_ALGO_ED25519;
-  } else {
-    // No signature-based authentication during key exchange
-    // Client authentication will be required during auth phase if whitelist is enabled
-    server_params.selected_auth = AUTH_ALGO_NONE;
-  }
-
-  // Set verification flag based on client whitelist
-  server_params.verification_enabled = (g_num_whitelisted_clients > 0) ? 1 : 0;
-
-  // Set crypto parameters for current algorithms
-  server_params.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE; // X25519 public key size
-
-  // Only set auth/signature sizes if we're using authentication
-  if (server_params.selected_auth == AUTH_ALGO_ED25519) {
-    server_params.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key size
-    server_params.signature_size = ED25519_SIGNATURE_SIZE;        // Ed25519 signature size
-  } else {
-    server_params.auth_public_key_size = 0; // No authentication
-    server_params.signature_size = 0;       // No signature
-  }
-
-  server_params.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE; // X25519 shared secret size
-  server_params.nonce_size = CRYPTO_NONCE_SIZE;              // XSalsa20 nonce size
-  server_params.mac_size = CRYPTO_MAC_SIZE;                  // Poly1305 MAC size
-  server_params.hmac_size = CRYPTO_HMAC_SIZE;                // HMAC-SHA256 size
-
-  // Send negotiated crypto parameters to client
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Sending crypto parameters to client %s", client->client_id);
-  result = send_crypto_parameters_packet(socket, &server_params);
-  if (result != 0) {
-    log_error("Failed to send crypto parameters to client %u", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
-  }
-  log_debug("Server selected crypto for client %s: KEX=%u, Auth=%u, Cipher=%u", client->client_id,
-            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher);
-
-  // Set the crypto parameters in the handshake context so that
-  // crypto_handshake_server_start knows parameters were already sent
-  result = crypto_handshake_set_parameters(&client->crypto_handshake_ctx, &server_params);
-  if (result != ASCIICHAT_OK) {
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    FATAL(result, "Failed to set crypto parameters for client %u", client->client_id);
-    return -1;
-  }
-
-  // Step 0.5: Receive CRYPTO_CLIENT_HELLO when the client pins a server key.
-  // The capability flag lets the server distinguish clients that will send
-  // the hello from clients that are waiting for KEY_EXCHANGE_INIT.
-  bool client_requires_server_verification = client_caps.requires_verification != 0;
-  if (g_num_server_identity_keys > 0 && client_requires_server_verification) {
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Waiting for optional CRYPTO_CLIENT_HELLO from client %u", client->client_id);
-
-    // Try to receive CLIENT_HELLO packet
-    packet_type_t hello_packet_type;
-    uint8_t *hello_payload = NULL;
-    size_t hello_payload_len = 0;
-
-    result = receive_packet(socket, &hello_packet_type, (void **)&hello_payload, &hello_payload_len);
-    if (result != ASCIICHAT_OK) {
-      log_info("Client %s disconnected during handshake initialization", client->client_id);
-      if (hello_payload) {
-        buffer_release(hello_payload);
-      }
-      client->crypto_initialized = false;
-      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-      return -1;
-    }
-
-    if (hello_packet_type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
-      // Client sent expected server key - select matching key
-      if (hello_payload_len != ED25519_PUBLIC_KEY_SIZE) {
-        log_error("Invalid CRYPTO_CLIENT_HELLO size: %zu (expected %d)", hello_payload_len, ED25519_PUBLIC_KEY_SIZE);
-        buffer_release(hello_payload);
-        client->crypto_initialized = false;
-        STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-        return -1;
-      }
-
-      const uint8_t *expected_server_key = hello_payload;
-
-      // Log the expected key for debugging
-      char hex_expected[65];
-      pubkey_to_hex(expected_server_key, hex_expected);
-      log_debug("Client %s expects server key: %s", client->client_id, hex_expected);
-
-      // Search g_server_identity_keys[] for matching public key
-      bool key_found = false;
-      for (size_t i = 0; i < g_num_server_identity_keys; i++) {
-        if (sodium_memcmp(expected_server_key, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-          // Found matching key - use this one for handshake
-          memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_identity_keys[i], sizeof(private_key_t));
-
-          char hex_selected[65];
-          pubkey_to_hex(g_server_identity_keys[i].public_key, hex_selected);
-          log_debug("Client %s selected server identity key #%zu: %s", client->client_id, i + 1, hex_selected);
-
-          key_found = true;
+  if (*step == 2) {
+    if (type != PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
+      if (g_num_server_identity_keys != 1 || type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP)
+        return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+      // Keep this packet for the key-exchange step after sending the default key.
+      ctx->server_private_key = g_server_identity_keys[0];
+      ctx->server_public_key.type = KEY_TYPE_ED25519;
+      memcpy(ctx->server_public_key.key, g_server_identity_keys[0].public_key,
+             sizeof(g_server_identity_keys[0].public_key));
+      result = crypto_handshake_server_start(ctx, transport);
+      if (result != ASCIICHAT_OK)
+        return result;
+      *step = 3;
+    } else {
+      if (length != ED25519_PUBLIC_KEY_SIZE)
+        return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+      bool found = false;
+      for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
+        if (sodium_memcmp(payload, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+          ctx->server_private_key = g_server_identity_keys[i];
+          ctx->server_public_key.type = KEY_TYPE_ED25519;
+          memcpy(ctx->server_public_key.key, g_server_identity_keys[i].public_key,
+                 sizeof(g_server_identity_keys[i].public_key));
+          found = true;
           break;
         }
       }
-
-      if (!key_found) {
-        // Client requested a key we don't have - reject connection
-        log_error("Client %s requested unknown server key %s - rejecting connection", client->client_id, hex_expected);
-        buffer_release(hello_payload);
-        client->crypto_initialized = false;
-        STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-        return -1;
-      }
-
-      buffer_release(hello_payload);
-    } else {
-      // Client didn't send CLIENT_HELLO
-      // This is ONLY acceptable for single-key servers (backward compatibility)
-      if (g_num_server_identity_keys > 1) {
-        log_error("Client %u must send CRYPTO_CLIENT_HELLO when server has multiple keys (got packet type %u)",
-                  client->client_id, hello_packet_type);
-        buffer_release(hello_payload);
-        client->crypto_initialized = false;
-        STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-        return -1;
-      }
-
-      // Single-key server: Old client didn't send CLIENT_HELLO
-      // Store this packet for later processing (it's probably the first handshake packet)
-      log_debug("Client %u is using old protocol (no CLIENT_HELLO) - using default key", client->client_id);
-
-      // Store pending packet so we can process it after KEY_EXCHANGE_INIT
-      client->pending_packet_type = hello_packet_type;
-      client->pending_packet_payload = hello_payload;
-      client->pending_packet_length = hello_payload_len;
+      if (!found)
+        return SET_ERRNO(ERROR_CRYPTO, "Unknown pinned server identity");
+      *step = 3;
+      return crypto_handshake_server_start(ctx, transport);
     }
   }
-
-  // Use the client's persistent transport for handshake (created in add_client before this call).
-  // The transport starts with NULL crypto_ctx; after handshake we set it.
-  acip_transport_t *transport = client->transport;
-  if (!transport) {
-    log_error("No transport available for client %u handshake", client->client_id);
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
+  if (*step == 3) {
+    result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, length);
+    *step = 4;
+  } else if (*step == 4) {
+    result = crypto_handshake_server_complete(ctx, transport, type, payload, length);
+  } else {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Unexpected server handshake step");
   }
-
-  // Step 1: Send our public key to client
-  log_debug("About to call crypto_handshake_server_start");
-  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, transport);
-  if (result != ASCIICHAT_OK) {
-    log_error("Crypto handshake start failed for client %u: %s", client->client_id, asciichat_error_string(result));
-    LOG_ERRNO_IF_SET("Crypto handshake: failed to send KEY_EXCHANGE_INIT");
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1;
-  }
-
-  // Step 2: Receive client's public key and send auth challenge
-  {
-    packet_type_t step2_type;
-    uint8_t *step2_payload = NULL;
-    size_t step2_len = 0;
-    int recv_result = receive_packet(socket, &step2_type, (void **)&step2_payload, &step2_len);
-    if (recv_result != ASCIICHAT_OK) {
-      log_error("Failed to receive KEY_EXCHANGE_RESPONSE from client %u", client->client_id);
-      client->crypto_initialized = false;
-      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-      return -1;
-    }
-    result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, transport, step2_type, step2_payload,
-                                                    step2_len);
-    buffer_release(step2_payload);
-  }
-  if (result != ASCIICHAT_OK) {
-    log_error("Crypto authentication challenge failed for client %u: %s", client->client_id,
-              asciichat_error_string(result));
-    client->crypto_initialized = false;
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    return -1; // Return error to disconnect client gracefully
-  }
-
-  // Check if handshake completed during auth challenge (no authentication needed)
-  if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    const char *cid = client->client_id;
+  if (result == ASCIICHAT_OK && ctx->state == CRYPTO_HANDSHAKE_READY) {
     client->crypto_initialized = true;
-    // Propagate encryption flag to crypto context
-    client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
-    // Set crypto context on the persistent transport now that handshake is complete
-    transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
-                       "Crypto handshake completed successfully for client %s (no authentication)", cid);
-    return 0;
+    ctx->crypto_ctx.encrypt_data = client->encrypt_data;
+    transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(ctx);
+    *ready = true;
+    *step = 5;
   }
-
-  // Step 3: Receive auth response and complete handshake
-  {
-    packet_type_t step3_type = 0;
-    uint8_t *step3_payload = NULL;
-    size_t step3_len = 0;
-    int recv_result = receive_packet(socket, &step3_type, (void **)&step3_payload, &step3_len);
-    if (recv_result != ASCIICHAT_OK) {
-      log_info("Client %s disconnected during authentication", client->client_id);
-      client->crypto_initialized = false;
-      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-      return -1;
-    }
-    result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, transport, step3_type, step3_payload,
-                                              step3_len);
-    buffer_release(step3_payload);
-  }
-  if (result != ASCIICHAT_OK) {
-    if (result == ERROR_NETWORK || result == ERROR_NETWORK_PROTOCOL || result == ERROR_CRYPTO_AUTH ||
-        result == ERROR_CRYPTO_VERIFICATION || result == ERROR_CRYPTO) {
-      if (result == ERROR_NETWORK) {
-        log_info("Client %s disconnected during authentication", client->client_id);
-      } else {
-        log_error("Crypto authentication failed for client %s: %s", client->client_id, asciichat_error_string(result));
-      }
-      LOG_ERRNO_IF_SET("Crypto handshake completion failed");
-      client->crypto_initialized = false;
-      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-      return -1;
-    }
-    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
-    FATAL(result, "Crypto authentication response failed for client %s", client->client_id);
-    client->crypto_initialized = false;
-    return -1;
-  }
-
-  const char *cid = client->client_id;
-  client->crypto_initialized = true;
-  // Propagate encryption flag to crypto context
-  client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
-  // Set crypto context on the persistent transport now that handshake is complete
-  transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
-  STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
-                     "Crypto handshake completed successfully for client %s", cid);
-
-  if (client->crypto_handshake_ctx.client_sent_identity) {
-    char label[160];
-    safe_snprintf(label, sizeof(label), "%s CLIENT PUBLIC IDENTITY / %s",
-                  client->crypto_handshake_ctx.client_ed25519_key_verified ? "AUTHENTICATED" : "UNVERIFIED",
-                  client->client_id);
-    key_identity_announce(label, &client->crypto_handshake_ctx.client_ed25519_key);
-  }
-
-  // Send success notification to client (encrypted channel now established)
-  log_info_client(client, "Encryption established - secure channel ready");
-  return 0;
+  return result;
 }
 
-/**
- * Check if crypto handshake is ready for a specific client
- *
- * @param client_id Client ID to check
- * @return true if encryption is ready, false otherwise
- */
 bool crypto_server_is_ready(const char *client_id) {
   if (GET_OPTION(no_encrypt)) {
     return false;
