@@ -27,6 +27,8 @@ todo/
 
 # Documentation
 docs/**
+!docs/Doxyfile.in
+!docs/DoxygenLayout.xml.in
 !docs/third-party/
 !docs/third-party/FFTW-COPYING.txt
 notes/
