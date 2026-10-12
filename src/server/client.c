@@ -944,16 +944,16 @@ static void server_client_close_transport(const char *client_id, server_client_r
 }
 
 static void server_client_release_resources_locked(const char *client_id, server_client_removal_t *removal) {
-  // Use the dedicated cleanup function to ensure all resources are freed
-  cleanup_client_all_buffers(removal->client);
-
-  // Remove from audio mixer
+  // Other clients' render threads can still read this client's audio buffer.
+  // Removing the source waits for the mixer lock before releasing that buffer.
   if (g_audio_mixer) {
     mixer_remove_source(g_audio_mixer, client_id);
 #ifdef DEBUG_AUDIO
     log_debug("Removed client %s from audio mixer", client_id);
 #endif
   }
+
+  cleanup_client_all_buffers(removal->client);
 
   // Remove from uthash table
   // Verify client is actually in the hash table before deleting.

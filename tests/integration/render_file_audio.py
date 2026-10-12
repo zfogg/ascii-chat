@@ -93,11 +93,13 @@ def main():
                 time.sleep(0.1)
             clients = []
             for frequency in (440, 880):
+                # Disconnect one source while the other client's mixer is still running.
+                recording_seconds = 8 if frequency == 440 else 12
                 media_args = ("--url", f"http://127.0.0.1:{media_server.server_port}/{frequency}.mp4") if frequency == 440 else ("--file", str(root / f"{frequency}.mp4"))
                 clients.append(launch(str(frequency), "client", "127.0.0.1", "--port", str(port),
                                       "--video-codec", "raw",
                                       *media_args, "--render-file", str(root / f"call-{frequency}.mp4"),
-                                      "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", "12"))
+                                      "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", str(recording_seconds)))
                 deadline = time.monotonic() + 10
                 while not (root / f"{frequency}.log").exists() or "Connected" not in (root / f"{frequency}.log").read_text(errors="replace"):
                     assert clients[-1].poll() is None, "Client failed to connect"
@@ -109,6 +111,7 @@ def main():
                 except subprocess.TimeoutExpired as error:
                     raise AssertionError("Snapshot call must stop and join its audio sender before exiting") from error
                 assert client.returncode == 0, f"Client exited with status {client.returncode}"
+            assert server.poll() is None, "Server exited while removing an audio source"
             for frequency in (440, 880):
                 verify(root / f"call-{frequency}.mp4", (440, 880))
             print("Mirror and both client recordings contain the expected tones with synchronized audio/video.")
