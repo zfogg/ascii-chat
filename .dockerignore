@@ -26,7 +26,9 @@ todo/
 .gitmodules
 
 # Documentation
-docs/
+docs/**
+!docs/third-party/
+!docs/third-party/FFTW-COPYING.txt
 notes/
 todo/
 *.md

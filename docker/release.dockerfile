@@ -9,9 +9,10 @@
 FROM zfogg/ascii-chat-deps:latest AS builder
 
 # Accept VERSION build arg in builder stage
-ENV VERSION=0.0.0
-
-ENV SOURCE_COMMIT="docker-build"
+ARG VERSION=0.0.0
+ARG SOURCE_COMMIT=docker-build
+ENV VERSION=${VERSION}
+ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 
 # Preserve submodules from deps image
 RUN mv /build/deps /tmp/deps-preserve
@@ -32,7 +33,7 @@ RUN cd /build && \
     PROJECT_VERSION_OVERRIDE=${VERSION} \
     SOURCE_COMMIT="${SOURCE_COMMIT}" \
     cmake --build build_release && \
-    cmake --install build_release --prefix /tmp/install && \
+    cmake --install build_release --prefix /tmp/install --component Runtime && \
     strip /tmp/install/bin/ascii-chat
 
 # ============================================================================
@@ -48,6 +49,7 @@ RUN apk add --no-cache \
 
 # Copy only the static binary - no dependencies needed
 COPY --from=builder /tmp/install/bin/ascii-chat /usr/local/bin/ascii-chat
+COPY --from=builder /tmp/install/share/doc/ascii-chat /usr/local/share/doc/ascii-chat
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
