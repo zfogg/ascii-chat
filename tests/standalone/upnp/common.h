@@ -7,6 +7,17 @@
 #include <string.h>
 #include <stdarg.h>
 typedef enum { ASCIICHAT_OK, ERROR_NETWORK, ERROR_MEMORY, ERROR_INVALID_PARAM } asciichat_error_t;
+typedef struct {
+  uint64_t generation;
+} asciichat_errno_scope_t;
+typedef enum { ASCIICHAT_ERRNO_HANDLED } asciichat_errno_outcome_t;
+static inline asciichat_errno_scope_t asciichat_errno_scope_begin(void) {
+  return (asciichat_errno_scope_t){0};
+}
+static inline void asciichat_errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome) {
+  (void)scope;
+  (void)outcome;
+}
 #define NS_PER_SEC_INT 1000000000ULL
 #define NS_PER_MS_INT 1000000ULL
 static inline asciichat_error_t test_errno(asciichat_error_t code, const char *format, ...) {

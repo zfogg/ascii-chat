@@ -28,7 +28,9 @@ if(NOT EMSCRIPTEN)
     else()
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(ASCIICHAT_LIBUV REQUIRED IMPORTED_TARGET libuv)
-        if(ASCIICHAT_SHARED_DEPS)
+        # glibc development builds also produce a shared library; distro libuv
+        # archives are not necessarily PIC. Linux static releases use musl above.
+        if(NOT APPLE OR ASCIICHAT_SHARED_DEPS)
             set(ASCIICHAT_LIBUV_TARGET PkgConfig::ASCIICHAT_LIBUV)
         else()
             find_library(ASCIICHAT_LIBUV_STATIC_ARCHIVE NAMES libuv.a

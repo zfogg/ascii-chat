@@ -172,6 +172,7 @@ int main(void) {
   nat_upnp_close(NULL);
   nat_upnp_close(&ctx);
 #ifndef HAVE_MINIUPNPC
+  assert(wildcard_deletes == 0);
   assert(nat_upnp_open(27224, "test", &ctx) == ERROR_NETWORK && !ctx);
 #else
   assert(nat_upnp_open(27224, "test listener", &ctx) == ASCIICHAT_OK);
