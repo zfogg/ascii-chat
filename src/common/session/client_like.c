@@ -520,7 +520,7 @@ static asciichat_error_t client_like_create_network_capture(const session_client
     uint64_t net_cap_start = time_get_ns();
     state->capture = session_network_capture_create(state->capture_config.target_fps);
     double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
-    log_info("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
+    log_debug("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize network capture context");
     }
@@ -590,7 +590,7 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
     uint64_t mirror_cap_start = time_get_ns();
     state->capture = session_mirror_capture_create(&state->capture_config);
     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
-    log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
+    log_debug("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }

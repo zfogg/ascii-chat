@@ -101,7 +101,7 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
   // Clients need explicit triggering via lws_callback_on_writable().
   if (ws_data->owns_context && ws_data->wsi) {
     if (loop_count <= 10) {
-      log_info("[LOOP %d] CLIENT condition TRUE - checking queue", loop_count);
+      log_debug_every(US_PER_SEC_INT, "[LOOP %d] CLIENT condition TRUE - checking queue", loop_count);
     }
 
     // Wait for connection to be established before sending
@@ -113,7 +113,7 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
 
     if (!connected) {
       if (loop_count <= 10) {
-        log_info("[LOOP %d] CLIENT not connected yet, skipping queue drain", loop_count);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] CLIENT not connected yet, skipping queue drain", loop_count);
       }
 
       // Check if connection attempt failed (CONNECTION_ERROR was called)
@@ -123,11 +123,11 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
       mutex_unlock(&ws_data->state_mutex);
 
       if (loop_count <= 50) {
-        log_debug("[LOOP %d] Connection failed check: %d", loop_count, failed);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] Connection failed check: %d", loop_count, failed);
       }
 
       if (failed) {
-        log_info("[LOOP %d] Connection attempt failed, exiting service thread", loop_count);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] Connection attempt failed, exiting service thread", loop_count);
         return false;
       }
 
@@ -147,7 +147,7 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
       bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
 
       if (loop_count <= 10) {
-        log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
       }
 
       if (has_data) {
@@ -157,13 +157,13 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
       mutex_unlock(&ws_data->send_mutex);
 
       if (loop_count <= 10 && has_data) {
-        log_info(">>> SERVICE_THREAD: CLIENT queue has data (callback will process it)");
+        log_debug_every(US_PER_SEC_INT, ">>> SERVICE_THREAD: CLIENT queue has data (callback will process it)");
       }
     } // End of if (connected) block
   } else {
     if (loop_count <= 10) {
-      log_info("[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count, ws_data->owns_context,
-               (void *)ws_data->wsi);
+      log_debug_every(US_PER_SEC_INT, "[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count,
+                      ws_data->owns_context, (void *)ws_data->wsi);
     }
   }
 
@@ -179,8 +179,8 @@ static bool websocket_schedule_client_write(websocket_transport_data_t *ws_data,
 static void *websocket_service_thread(void *arg) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)arg;
 
-  log_info(">>> SERVICE_THREAD_START: owns_context=%d, wsi=%p, context=%p, send_queue=%p", ws_data->owns_context,
-           (void *)ws_data->wsi, (void *)ws_data->context, (void *)ws_data->send_queue);
+  log_debug_every(US_PER_SEC_INT, ">>> SERVICE_THREAD_START: owns_context=%d, wsi=%p, context=%p, send_queue=%p",
+                  ws_data->owns_context, (void *)ws_data->wsi, (void *)ws_data->context, (void *)ws_data->send_queue);
 
   int loop_count = 0;
   uint64_t last_service_call = 0; // Force lws_service() on first iteration
@@ -192,15 +192,16 @@ static void *websocket_service_thread(void *arg) {
     // This prevents accessing invalid pointers or contexts
     if (atomic_load_bool(&ws_data->is_destroying) || !ws_data->context) {
       if (loop_count <= 10) {
-        log_info("[LOOP %d] Destroying flag set or context NULL, exiting service thread", loop_count);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] Destroying flag set or context NULL, exiting service thread",
+                        loop_count);
       }
       break;
     }
 
     // ALWAYS log first 10 loops to debug why queue checks aren't working
     if (loop_count <= 10) {
-      log_info("[LOOP %d] owns_context=%d, wsi=%p, service_running=%d", loop_count, ws_data->owns_context,
-               (void *)ws_data->wsi, ws_data->service_running);
+      log_debug_every(US_PER_SEC_INT, "[LOOP %d] owns_context=%d, wsi=%p, service_running=%d", loop_count,
+                      ws_data->owns_context, (void *)ws_data->wsi, ws_data->service_running);
     }
 
     if (!websocket_schedule_client_write(ws_data, loop_count)) {
@@ -220,7 +221,8 @@ static void *websocket_service_thread(void *arg) {
     uint64_t service_interval = ws_data->is_connected ? 1000000ULL : 100000ULL; // 1ms : 100us
 
     if (loop_count <= 10) {
-      log_debug("[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d", loop_count,
+      log_debug_every(US_PER_SEC_INT,
+                      "[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d", loop_count,
                 time_since_last_service / 1000, service_interval / 1000,
                 (int)(time_since_last_service >= service_interval));
     }
@@ -233,8 +235,8 @@ static void *websocket_service_thread(void *arg) {
       if (!ws_data->context || is_destroying) {
         // Context is invalid or being destroyed, don't call lws_service
         if (loop_count <= 50) {
-          log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d", loop_count, (void *)ws_data->context,
-                   (int)is_destroying);
+          log_debug_every(US_PER_SEC_INT, "[LOOP %d] Skipping lws_service: context=%p, destroying=%d", loop_count,
+                          (void *)ws_data->context, (int)is_destroying);
         }
       } else {
         // Call lws_service with short timeout (1ms)
@@ -247,14 +249,15 @@ static void *websocket_service_thread(void *arg) {
         // - timeout=1: select() blocks up to 1ms for socket events, letting TLS negotiate faster
         //   while still being responsive to multiple service calls per frame
         if (loop_count <= 10) {
-          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)", loop_count,
+          log_debug_every(US_PER_SEC_INT,
+                          "[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)", loop_count,
                    ws_data->is_connected, (void *)ws_data->wsi);
         }
 
         result = lws_service(ws_data->context, 1);
 
         if (loop_count <= 10) {
-          log_info("[LOOP %d] <<< lws_service() RETURNED (result=%d)", loop_count, result);
+          log_debug_every(US_PER_SEC_INT, "[LOOP %d] <<< lws_service() RETURNED (result=%d)", loop_count, result);
         }
       }
       uint64_t service_end_ns = time_get_ns();
@@ -262,7 +265,8 @@ static void *websocket_service_thread(void *arg) {
       if (loop_count <= 50) {
         char service_duration_str[32];
         time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
-        log_info("[LOOP %d] lws_service() returned %d, duration %s", loop_count, result, service_duration_str);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] lws_service() returned %d, duration %s", loop_count, result,
+                        service_duration_str);
       }
 
       if (result < 0) {
@@ -276,8 +280,8 @@ static void *websocket_service_thread(void *arg) {
       // During transfer: 100us sleep (normal cadence)
       uint64_t sleep_us = ws_data->is_connected ? 100 : 0;
       if (loop_count <= 50) {
-        log_debug("[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us", loop_count,
-                  time_since_last_service / 1000, service_interval / 1000, sleep_us);
+        log_debug_every(US_PER_SEC_INT, "[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us",
+                        loop_count, time_since_last_service / 1000, service_interval / 1000, sleep_us);
       }
       if (sleep_us > 0) {
         platform_sleep_us(sleep_us);
@@ -287,9 +291,11 @@ static void *websocket_service_thread(void *arg) {
 
     // Check if connection is still alive
     if (loop_count <= 50 && ws_data->is_connected) {
-      log_info("[LOOP %d] After lws_service: is_connected=true, wsi=%p", loop_count, (void *)ws_data->wsi);
+      log_debug_every(US_PER_SEC_INT, "[LOOP %d] After lws_service: is_connected=true, wsi=%p", loop_count,
+                      (void *)ws_data->wsi);
     } else if (loop_count <= 50) {
-      log_warn("[LOOP %d] After lws_service: is_connected=false, wsi=%p", loop_count, (void *)ws_data->wsi);
+      log_debug_every(US_PER_SEC_INT, "[LOOP %d] After lws_service: is_connected=false, wsi=%p", loop_count,
+                      (void *)ws_data->wsi);
     }
   }
 
@@ -332,7 +338,7 @@ static int websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_
   }
   uint64_t now_ns = time_get_ns();
   if (!in || len == 0) {
-    log_debug("CLIENT_RECEIVE: in=%p, len=%zu - skipping", in, len);
+    log_debug_every(US_PER_SEC_INT, "CLIENT_RECEIVE: in=%p, len=%zu - skipping", in, len);
     return 0;
   }
 
@@ -340,8 +346,9 @@ static int websocket_on_receive(struct lws *wsi, websocket_transport_data_t *ws_
   bool is_first = lws_is_first_fragment(wsi);
   bool is_final = lws_is_final_fragment(wsi);
 
-  log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu", len, is_first,
-           is_final, (void *)wsi, (unsigned long long)now_ns);
+  log_debug_every(US_PER_SEC_INT,
+                  "🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu", len,
+                  is_first, is_final, (void *)wsi, (unsigned long long)now_ns);
 
   // Queue this fragment immediately with first/final flags.
   // Per LWS design, each fragment is processed individually by the callback.
@@ -481,8 +488,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       reason == LWS_CALLBACK_CLIENT_WRITEABLE || reason == LWS_CALLBACK_CLIENT_RECEIVE ||
       reason == LWS_CALLBACK_CLIENT_CONNECTION_ERROR || reason == LWS_CALLBACK_CLOSED) {
     callback_count++;
-    log_info(">>> CALLBACK #%lu: reason=%d (0x%x), wsi=%p, len=%zu, timestamp=%llu", callback_count, reason, reason,
-             (void *)wsi, len, (unsigned long long)now_ns);
+    log_debug_every(US_PER_SEC_INT, ">>> CALLBACK #%lu: reason=%d (0x%x), wsi=%p, len=%zu, timestamp=%llu",
+                    callback_count, reason, reason, (void *)wsi, len, (unsigned long long)now_ns);
   }
 
   // Validate ws_data exists before accessing it (prevents heap-buffer-overflow in TLS callbacks)
@@ -497,13 +504,15 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     break;
 
   case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
-    log_info(">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting",
+    log_debug_every(US_PER_SEC_INT,
+                    ">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting",
              (void *)wsi);
     break;
   }
 
   case LWS_CALLBACK_PROTOCOL_INIT: {
-    log_info(">>> CALLBACK: LWS_CALLBACK_PROTOCOL_INIT (wsi=%p, ws_data=%p)", (void *)wsi, (void *)ws_data);
+    log_debug_every(US_PER_SEC_INT, ">>> CALLBACK: LWS_CALLBACK_PROTOCOL_INIT (wsi=%p, ws_data=%p)", (void *)wsi,
+                    (void *)ws_data);
     if (atomic_load_bool(&ws_data->is_destroying)) {
       return 0;
     }
@@ -641,7 +650,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
     }
     mutex_unlock(&ws_data->send_mutex);
 
-    log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
+    log_debug_every(US_PER_SEC_INT, ">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
     // Wake the LWS service thread so it processes the queued data.
     // lws_callback_on_writable() is NOT safe from non-service threads. Instead, use
@@ -651,7 +660,7 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
     START_TIMER("ws_callback");
     lws_cancel_service(ws_data->context);
     STOP_TIMER_AND_LOG(dev, 0, "ws_callback", "[WEBSOCKET] lws_cancel_service");
-    log_debug(">>> CANCELLED SERVICE to wake event loop for wsi=%p", (void *)ws_data->wsi);
+    log_debug_every(US_PER_SEC_INT, ">>> CANCELLED SERVICE to wake event loop for wsi=%p", (void *)ws_data->wsi);
 
     return ASCIICHAT_OK;
   }
@@ -687,8 +696,8 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
   }
   mutex_unlock(&ws_data->send_mutex);
 
-  log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)", send_len,
-            (void *)ws_data->wsi, (void *)ws_data->wsi);
+  log_debug_every(US_PER_SEC_INT, ">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)",
+                  send_len, (void *)ws_data->wsi, (void *)ws_data->wsi);
 
   // Wake the client's service thread from its blocking lws_service() call.
   // Without this, the service thread may block in poll() for up to its timeout
@@ -777,21 +786,22 @@ static asciichat_error_t websocket_wait_for_connection(websocket_transport_data_
 
     if (!connected && !connection_failed) {
       // Connection not yet established and hasn't failed - wait for it with timeout
-      log_info("WEBSOCKET_RECV: Connection not yet established, waiting (timeout=5s)");
+      log_debug_every(US_PER_SEC_INT, "WEBSOCKET_RECV: Connection not yet established, waiting (timeout=5s)");
       // Wait up to 5 seconds for the state_cond to signal that is_connected changed
       int wait_result = cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, 5 * 1000000000ULL);
 
       uint64_t elapsed_ns = time_get_ns() - start_time;
       uint64_t elapsed_ms = elapsed_ns / 1000000ULL;
 
-      log_info("WEBSOCKET_RECV: Wait returned (result=%d, elapsed=%llums)", wait_result,
+      log_debug_every(US_PER_SEC_INT, "WEBSOCKET_RECV: Wait returned (result=%d, elapsed=%llums)", wait_result,
                (unsigned long long)elapsed_ms);
 
       // Re-check after wait
       connected = ws_data->is_connected;
       connection_failed = ws_data->connection_failed;
 
-      log_info("WEBSOCKET_RECV: After wait: connected=%d, connection_failed=%d", connected, connection_failed);
+      log_debug_every(US_PER_SEC_INT, "WEBSOCKET_RECV: After wait: connected=%d, connection_failed=%d", connected,
+                      connection_failed);
     }
 
     mutex_unlock(&ws_data->state_mutex);
@@ -820,7 +830,7 @@ static asciichat_error_t websocket_finish_packet_locked(websocket_transport_data
   size_t leftover_size = assembled_size - expected_size;
   if (leftover_size > 0) {
     // Save leftover data for next recv() call
-    log_info("[WS_REASSEMBLE] Saving %zu bytes leftover for next recv() call", leftover_size);
+    log_debug_every(US_PER_SEC_INT, "[WS_REASSEMBLE] Saving %zu bytes leftover for next recv() call", leftover_size);
 
     // Create buffer for leftover (or reuse if we can)
     uint8_t *leftover_buffer = buffer_alloc(NULL, leftover_size);
@@ -972,7 +982,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   // Start with leftover data from previous recv() call if available
   if (ws_data->partial_size > 0) {
-    log_info("[WS_REASSEMBLE] Starting with leftover data from previous packet: %zu bytes", ws_data->partial_size);
+    log_debug_every(US_PER_SEC_INT, "[WS_REASSEMBLE] Starting with leftover data from previous packet: %zu bytes",
+                    ws_data->partial_size);
     assembled_buffer = ws_data->partial_buffer;
     assembled_size = ws_data->partial_size;
     assembled_capacity = ws_data->partial_capacity;
@@ -999,7 +1010,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
       if (!still_connected && assembled_size > 0) {
         // Connection closed but we have partial data - return it
-        log_info("[WS_REASSEMBLE] Connection closed mid-reassembly, returning %zu bytes received so far",
+        log_debug_every(US_PER_SEC_INT,
+                        "[WS_REASSEMBLE] Connection closed mid-reassembly, returning %zu bytes received so far",
                  assembled_size);
         *buffer = assembled_buffer;
         *out_len = assembled_size;
@@ -1034,11 +1046,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     fragment_count++;
     if (frag.len > 100 || fragment_count == 1) {
-      log_dev("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
-              frag.len, frag.first, frag.final, assembled_size);
+      log_dev_every(US_PER_SEC_INT, "[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu",
+                    fragment_count, frag.len, frag.first, frag.final, assembled_size);
     } else {
-      log_debug("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d", fragment_count, frag.len, frag.first,
-                frag.final);
+      log_debug_every(US_PER_SEC_INT, "[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d", fragment_count,
+                      frag.len, frag.first, frag.final);
     }
 
     // Sanity check: first fragment must have first=1, continuations must have first=0
@@ -1150,8 +1162,8 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
 
   if (!ws_data->is_connected) {
     mutex_unlock(&ws_data->state_mutex);
-    log_info("websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
-             (unsigned long long)now_ns);
+    log_debug_every(US_PER_SEC_INT, "websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu",
+                    (void *)ws_data->wsi, (unsigned long long)now_ns);
     return ASCIICHAT_OK; // Already closed
   }
 
@@ -1852,7 +1864,8 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
-  log_info("[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p",
+  log_debug_every(US_PER_SEC_INT,
+                  "[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p",
            (void *)wsi, (void *)ws_data);
   log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
@@ -1862,7 +1875,8 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
-  log_info("Created WebSocket server transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+  log_debug_every(US_PER_SEC_INT, "Created WebSocket server transport (crypto: %s)",
+                  crypto_ctx ? "enabled" : "disabled");
 
   // Register transport
   NAMED_REGISTER_TRANSPORT(transport, name, NULL);

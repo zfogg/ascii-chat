@@ -475,9 +475,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   // Ed25519 private material is 32 bytes; left-pad shorter MPIs as specified by OpenPGP.
   memcpy(seckey->seckey + sizeof(seckey->seckey) - secret_bytes, packet_body + offset, secret_bytes);
 
-  log_debug("Extracted Ed25519 secret key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->seckey[0],
-            seckey->seckey[1], seckey->seckey[2], seckey->seckey[3], seckey->seckey[4], seckey->seckey[5],
-            seckey->seckey[6], seckey->seckey[7]);
+  log_debug("Extracted Ed25519 secret key");
 
   return ASCIICHAT_OK;
 }

@@ -304,7 +304,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   header[bytes_read] = '\0';
   fclose(f);
 
-  log_debug("parse_private_key: Read %zu bytes from %s, header: %.50s", bytes_read, key_path, header);
+  log_debug("parse_private_key: Read %zu bytes from %s", bytes_read, key_path);
 
   // Check for PGP armored secret key format
   if (strstr(header, "-----BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "-----BEGIN PGP SECRET KEY") != NULL) {

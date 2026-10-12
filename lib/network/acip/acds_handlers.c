@@ -131,7 +131,8 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
   }
 
   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_info("★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type,
+    log_debug_every(US_PER_SEC_INT,
+                    "★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type,
              client_ip, payload_len);
   }
 
@@ -142,7 +143,7 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
   }
 
   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_info("★ ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d", idx);
+    log_debug_every(US_PER_SEC_INT, "★ ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d", idx);
   }
 
   uint64_t stats_start = time_get_ns();

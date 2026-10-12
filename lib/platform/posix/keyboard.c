@@ -46,7 +46,7 @@ static bool g_tty_fd_owned = false;
  * ============================================================================ */
 
 asciichat_error_t keyboard_init(void) {
-  log_info("keyboard_init: STARTING");
+  log_debug("keyboard_init: STARTING");
   // If already initialized, return success
   if (lifecycle_is_initialized(&g_keyboard_lc)) {
     log_debug("keyboard_init: Already initialized");
@@ -56,7 +56,7 @@ asciichat_error_t keyboard_init(void) {
   // Stderr can host interactive overlays while stdout carries redirected output.
   // Avoid configuring input when neither output is a terminal.
   if (terminal_is_piped_output() && !platform_isatty(STDERR_FILENO)) {
-    log_info("keyboard_init: Skipping (output is piped, non-interactive mode)");
+    log_debug("keyboard_init: Skipping (output is piped, non-interactive mode)");
     // LOG_IO may redirect stdout temporarily. Retry initialization on the
     // next poll instead of permanently committing an unconfigured keyboard.
     return ASCIICHAT_OK;
@@ -79,7 +79,7 @@ asciichat_error_t keyboard_init(void) {
   // This is important for tmux sessions where stdin receives input from tmux send-keys.
   // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
   if (platform_isatty(STDIN_FILENO)) {
-    log_info("keyboard_init: stdin is a TTY - using stdin for keyboard input");
+    log_debug("keyboard_init: stdin is a TTY - using stdin for keyboard input");
     if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
       log_error("keyboard_init: FAILED - tcgetattr(stdin) failed");
       lifecycle_init_abort(&g_keyboard_lc);
@@ -87,15 +87,15 @@ asciichat_error_t keyboard_init(void) {
     }
     config_fd = STDIN_FILENO;
     use_stdin = true;
-    log_info("keyboard_init: Successfully using stdin for keyboard input");
+    log_debug("keyboard_init: Successfully using stdin for keyboard input");
   } else {
     // stdin is not a TTY - try /dev/tty as fallback
-    log_info("keyboard_init: stdin is not a TTY - attempting to open /dev/tty as fallback");
+    log_debug("keyboard_init: stdin is not a TTY - attempting to open /dev/tty as fallback");
     g_tty_fd = open("/dev/tty", O_RDWR);
     if (g_tty_fd >= 0) {
       // Try to get terminal settings from /dev/tty
       if (tcgetattr(g_tty_fd, &g_original_termios) >= 0) {
-        log_info("keyboard_init: Successfully using /dev/tty for keyboard input");
+        log_debug("keyboard_init: Successfully using /dev/tty for keyboard input");
         config_fd = g_tty_fd;
         g_tty_fd_owned = true;
         use_stdin = false;
@@ -149,7 +149,7 @@ asciichat_error_t keyboard_init(void) {
   // read() to return EAGAIN spuriously.
 
   // Mark as initialized (still under lock-free CAS)
-  log_info("keyboard_init: SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
+  log_debug("keyboard_init: SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
   return ASCIICHAT_OK;
 }
 
@@ -213,7 +213,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     }
     return KEY_NONE;
   }
-
 
   // Handle special characters first
   if (ch == ' ') {

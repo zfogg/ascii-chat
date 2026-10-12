@@ -316,7 +316,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Initialize render-file unless media setup needs to determine its timing first.
   const char *render_file_opt = GET_OPTION(render_file);
-  log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
+  log_debug("DISPLAY_CREATE: render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
            render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
   if (!config->defer_render_file) {
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
@@ -770,7 +770,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     render_file_set_live_timing(ctx->render_file);
     asciichat_error_t err = render_file_write_frame(ctx->render_file, render_frame, time_get_ns());
     if (err != ASCIICHAT_OK)
-      log_warn_every(5 * NS_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
+      log_warn_every(5 * US_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
   }
   SAFE_FREE(visualization_frame);
   session_display_write_ascii(ctx, frame_data);
@@ -837,7 +837,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       uint64_t t_rain_end = time_get_ns();
       char rain_str[32];
       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
-      log_info("DIGITAL_RAIN (write_ascii): Effect applied (%s)", rain_str);
+      log_debug("DIGITAL_RAIN (write_ascii): Effect applied (%s)", rain_str);
     }
   }
 
@@ -849,7 +849,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       display_frame = zalgo_frame;
       frame_len = strlen(zalgo_frame);
     } else {
-      log_warn_every(5 * NS_PER_SEC_INT, "Cannot apply Zalgo: %s", asciichat_error_string(err));
+      log_warn_every(5 * US_PER_SEC_INT, "Cannot apply Zalgo: %s", asciichat_error_string(err));
     }
   }
 
@@ -924,7 +924,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started");
+        log_debug("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started");
       }
 
       SAFE_FREE(frame_buffer);
@@ -972,7 +972,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
+        log_debug("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
       }
 
       SAFE_FREE(write_buf);
@@ -1007,7 +1007,7 @@ void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
 asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
+    log_debug("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
              (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
   }
 
@@ -1021,7 +1021,7 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
 
   // Only encode if render_file is active
   if (!ctx->render_file) {
-    log_warn_every(10 * NS_PER_SEC_INT, "session_display_encode_frame: render_file is NULL, skipping encode");
+    log_warn_every(10 * US_PER_SEC_INT, "session_display_encode_frame: render_file is NULL, skipping encode");
     return ASCIICHAT_OK;
   }
 
@@ -1048,7 +1048,7 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);
   SAFE_FREE(visualization_frame);
   if (fe != ASCIICHAT_OK) {
-    log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
+    log_warn_every(5 * US_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
 
   SAFE_FREE(ascii);
@@ -1236,7 +1236,7 @@ void keyboard_help_toggle_global(void) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
-  log_info("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
+  log_debug("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
 
   if (!ctx) {
@@ -1249,6 +1249,6 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
     return;
   }
 
-  log_info("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
+  log_debug("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
   render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
 }

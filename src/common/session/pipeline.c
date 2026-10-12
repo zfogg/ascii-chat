@@ -224,7 +224,7 @@ struct session_pipeline_s {
 
 static void *pipeline_capture_thread(void *arg) {
   session_pipeline_t *pipeline = (session_pipeline_t *)arg;
-  log_info("[PIPELINE_CAPTURE] Starting capture thread");
+  log_debug("[PIPELINE_CAPTURE] Starting capture thread");
 
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   uint64_t snapshot_frames_captured = 0;
@@ -243,7 +243,7 @@ static void *pipeline_capture_thread(void *arg) {
       double target_frames = snapshot_delay * session_capture_get_target_fps(pipeline->capture);
       snapshot_target_frames = (uint64_t)(target_frames + 0.999999);
     }
-    log_info(
+    log_debug(
         "[PIPELINE_CAPTURE] Snapshot mode: initialized g_snapshot_actual_duration_ms=%llu ms (snapshot_delay=%.2f)",
         (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
   }
@@ -256,7 +256,7 @@ static void *pipeline_capture_thread(void *arg) {
       if (asciichat_errno_peek_since(frame_scope, &pipeline->capture_failure))
         break;
       if (session_capture_at_end(pipeline->capture)) {
-        log_info("[PIPELINE_CAPTURE] End of media reached");
+        log_debug("[PIPELINE_CAPTURE] End of media reached");
         break;
       }
       platform_sleep_ns(1 * NS_PER_MS_INT);
@@ -283,11 +283,11 @@ static void *pipeline_capture_thread(void *arg) {
     display_copy->pixels = buffer_share(frame->pixels);
 
     uint64_t push_time_ns = time_get_ns();
-    log_info("[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns", display_copy->w,
+    log_debug_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns", display_copy->w,
              display_copy->h, (unsigned long long)push_time_ns);
     if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
       // Non-blocking: drop if queue full
-      log_warn("[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
+      log_warn_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
       free_frame(display_copy);
@@ -305,15 +305,15 @@ static void *pipeline_capture_thread(void *arg) {
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
         // Non-blocking: drop if queue full after 500ms
-        log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
+        log_warn_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
         free_frame(frame);
       } else {
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
         pipeline->frames_accepted++;
-        log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
+        log_debug_every(60 * US_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }
     } else {
-      log_warn_every(1000 * NS_PER_MS_INT, "[PIPELINE_CAPTURE] has_render_file=false, NOT encoding frames");
+      log_debug_every(5 * US_PER_SEC_INT, "Video recording is disabled");
       free_frame(frame);
     }
 
@@ -325,7 +325,7 @@ static void *pipeline_capture_thread(void *arg) {
       // Set first capture timestamp on first frame (only once)
       if (g_snapshot_first_capture_ns == 0) {
         g_snapshot_first_capture_ns = now_ns;
-        log_info("[SNAPSHOT_CAPTURE] First frame captured at %llu ns", (unsigned long long)now_ns);
+        log_debug("[SNAPSHOT_CAPTURE] First frame captured at %llu ns", (unsigned long long)now_ns);
       }
 
       // Calculate elapsed time from first capture
@@ -335,7 +335,7 @@ static void *pipeline_capture_thread(void *arg) {
           snapshot_uses_frame_target ? snapshot_frames_captured >= snapshot_target_frames : elapsed >= snapshot_delay;
 
       if (snapshot_complete) {
-        log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
+        log_debug("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for "
                  "encode queue to drain",
                  elapsed, snapshot_delay);
 
@@ -347,7 +347,7 @@ static void *pipeline_capture_thread(void *arg) {
         g_snapshot_actual_duration_ms = actual_ms;
         uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
-        log_info("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
+        log_debug("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
                  (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
 
         break;
@@ -356,7 +356,7 @@ static void *pipeline_capture_thread(void *arg) {
   }
 
   atomic_store_bool(&pipeline->capture_finished, true);
-  log_info("[PIPELINE_CAPTURE] Capture thread exiting");
+  log_debug("[PIPELINE_CAPTURE] Capture thread exiting");
   return NULL;
 }
 
@@ -366,7 +366,7 @@ static void *pipeline_capture_thread(void *arg) {
 
 static void *pipeline_encode_thread(void *arg) {
   session_pipeline_t *pipeline = (session_pipeline_t *)arg;
-  log_info("[PIPELINE_ENCODE] Starting encode thread");
+  log_debug("[PIPELINE_ENCODE] Starting encode thread");
 
   uint64_t frames_processed = 0;
   while (true) {
@@ -377,7 +377,7 @@ static void *pipeline_encode_thread(void *arg) {
       // An empty queue is final only after the producer has exited.
       if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->encode_queue) == 0)
         break; // No producer remains and the queue has drained.
-      log_debug_every(1 * NS_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)",
+      log_debug_every(1 * US_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)",
                       (unsigned long long)frames_processed);
       continue; // timeout, keep waiting
     }
@@ -390,7 +390,7 @@ static void *pipeline_encode_thread(void *arg) {
     }
 
     if (frames_processed == 0 || frames_processed % 30 == 0) {
-      log_info("[PIPELINE_ENCODE] Processing frame %llu: %dx%d", (unsigned long long)frames_processed, frame->w,
+      log_debug_every(US_PER_SEC_INT, "[PIPELINE_ENCODE] Processing frame %llu: %dx%d", (unsigned long long)frames_processed, frame->w,
                frame->h);
     }
 
@@ -408,7 +408,7 @@ static void *pipeline_encode_thread(void *arg) {
     free_frame(frame);
   }
 
-  log_info("[PIPELINE_ENCODE] Encode thread exiting (total frames encoded=%llu)", (unsigned long long)frames_processed);
+  log_debug("[PIPELINE_ENCODE] Encode thread exiting (total frames encoded=%llu)", (unsigned long long)frames_processed);
   return NULL;
 }
 
@@ -440,7 +440,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   // Note: has_file can be true even if render_file creation failed (ctx->render_file exists)
   // OR if render_fps is explicitly set for playback speed control
   p->has_render_file = render_fps > 0 || has_file;
-  log_info("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0,
+  log_debug("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0,
            p->has_render_file ? 1 : 0);
 
   atomic_store_bool(&p->stop, false);
@@ -480,7 +480,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_pipeline_run_main: NULL argument");
   }
 
-  log_info("[PIPELINE_MAIN] Starting main thread loop");
+  log_debug("[PIPELINE_MAIN] Starting main thread loop");
 
   // Snapshot duration is owned by the capture thread. It records the first
   // captured frame and marks capture_finished at its duration limit.
@@ -489,7 +489,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   // ASCII conversion and render-file encoding substantially slower than capture.
   while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop)) {
     bool exit_check = should_exit(user_data);
-    log_debug_every(NS_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
+    log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
                     atomic_load_bool(&pipeline->stop));
 
     uint64_t pop_time_ns = time_get_ns();
@@ -520,14 +520,14 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     }
 
     // Log frame pop with timestamp
-    log_info("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d at %llu ns", (void *)frame, (void *)frame->pixels,
+    log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d at %llu ns", (void *)frame, (void *)frame->pixels,
              frame->w, frame->h, (unsigned long long)pop_time_ns);
 
     // Check if help screen is active - if so, don't render ASCII frames
     bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
 
     if (!help_is_active) {
-      log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
+      log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
       // Convert to ASCII
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
       char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
@@ -538,6 +538,8 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
         // Write ASCII to terminal
         session_display_write_ascii(pipeline->display, ascii);
         SAFE_FREE(ascii);
+      } else {
+        log_error_every(US_PER_SEC_INT, "Failed to convert captured frame to ASCII; skipping display frame");
       }
     } else {
       free_frame(frame);
@@ -545,7 +547,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     }
   }
 
-  log_info("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
+  log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
 
   return ASCIICHAT_OK;
@@ -555,7 +557,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   if (!pipeline)
     return ASCIICHAT_OK;
 
-  log_info("[PIPELINE] Destroying pipeline, waiting for threads...");
+  log_debug("[PIPELINE] Destroying pipeline, waiting for threads...");
 
   // Signal threads to stop (may already be stopped)
   atomic_store_bool(&pipeline->stop, true);
@@ -604,6 +606,6 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     LOG_ERRNO_IF_SET("Media capture failed");
   SAFE_FREE(pipeline);
 
-  log_info("[PIPELINE] Pipeline destroyed");
+  log_debug("[PIPELINE] Pipeline destroyed");
   return err;
 }

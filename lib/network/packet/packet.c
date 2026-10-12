@@ -316,7 +316,8 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return result;
 
 #ifdef DEBUG_NETWORK
-  log_debug("Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno, SAFE_STRERROR(errno));
+  log_debug_every(US_PER_SEC_INT, "Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno,
+                  SAFE_STRERROR(errno));
 #endif
 
   return 0;
@@ -448,7 +449,8 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
         final_data = temp_compressed;
         final_len = compressed_size;
         compressed_data = temp_compressed;
-        log_debug("Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size, ratio * 100.0);
+        log_debug_every(US_PER_SEC_INT, "Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size,
+                        ratio * 100.0);
       } else {
         buffer_release(temp_compressed);
       }
@@ -600,16 +602,8 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
   uint32_t pkt_len = NET_TO_HOST_U32(header.length);
   uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
 
-  // DEBUG: Log raw header bytes for debugging packet misalignment
-  char header_hex[95];
-  for (size_t i = 0; i < sizeof(header); i++) {
-    snprintf(&header_hex[i * 2], 3, "%02x", ((uint8_t *)&header)[i]);
-  }
-  header_hex[94] = '\0';
-
-  // DEBUG: Log all received packet types in detail
-  log_info("[RECV_PKT_HEADER] 🔍 Received packet: type=%u (0x%04x), len=%u, client_id=%u, raw=%s", pkt_type, pkt_type,
-           pkt_len, header.client_id, header_hex);
+  log_debug_every(US_PER_SEC_INT, "Received packet: type=%u len=%u client_id=%u", pkt_type, pkt_len,
+                  NET_TO_HOST_U32(header.client_id));
 
   // Validate magic number
   if (magic != PACKET_MAGIC) {
@@ -676,8 +670,8 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     pkt_type = NET_TO_HOST_U16(decrypted_header->type);
 
     // DEBUG: Log decrypted packet type
-    log_info("[RECV_PKT_DECRYPTED] 🔐 After decryption: actual_type=%u (0x%04x), len=%u", pkt_type, pkt_type,
-             NET_TO_HOST_U32(decrypted_header->length));
+    log_debug_every(US_PER_SEC_INT, "[RECV_PKT_DECRYPTED] 🔐 After decryption: actual_type=%u (0x%04x), len=%u",
+                    pkt_type, pkt_type, NET_TO_HOST_U32(decrypted_header->length));
     pkt_len = NET_TO_HOST_U32(decrypted_header->length);
     expected_crc = NET_TO_HOST_U32(decrypted_header->crc32);
 
@@ -887,8 +881,8 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   envelope->allocated_buffer = plaintext;
   envelope->allocated_size = plaintext_size;
 
-  log_info("[PACKET_DECRYPT] 🔐 Decrypted PACKET_TYPE_ENCRYPTED: inner_type=%u (0x%04x), len=%u", inner_type,
-           inner_type, inner_len);
+  log_debug_every(US_PER_SEC_INT, "[PACKET_DECRYPT] 🔐 Decrypted PACKET_TYPE_ENCRYPTED: inner_type=%u (0x%04x), len=%u",
+                  inner_type, inner_type, inner_len);
 
   return ASCIICHAT_OK;
 }

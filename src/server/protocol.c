@@ -201,7 +201,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
   // error for us, it's desired behavior for us, so we simply warn and do not
   // have a need for asciichat_errno here.
-  log_warn("Disconnecting client %u due to protocol violation: %s", client_id, reason_str);
+  log_warn("Disconnecting client %s due to protocol violation: %s", client_id, reason_str);
 
   if (socket_snapshot != INVALID_SOCKET_VALUE) {
     // Protect socket writes with send_mutex to prevent race with send_thread.
@@ -212,25 +212,25 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Protocol violation: %s", reason_str);
     if (log_result != ASCIICHAT_OK) {
-      log_warn("Failed to send remote log to client %u: %s", client_id, asciichat_error_string(log_result));
+      log_warn("Failed to send remote log to client %s: %s", client_id, asciichat_error_string(log_result));
     }
 
     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
     if (send_result != ASCIICHAT_OK) {
-      log_warn("Failed to send error packet to client %u: %s", client_id, asciichat_error_string(send_result));
+      log_warn("Failed to send error packet to client %s: %s", client_id, asciichat_error_string(send_result));
     }
 
     mutex_unlock(&client->send_mutex);
   } else if (transport_snapshot) {
     // For WebSocket clients, try to send error via transport
-    log_debug("Sending error to WebSocket client %u via transport", client_id);
+    log_debug("Sending error to WebSocket client %s via transport", client_id);
     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
   }
 
   APP_CALLBACK_VOID(platform_pump_events);
   platform_sleep_ms(500);
 
-  log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id, reason_str);
+  log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%s, reason=%s)", client_id, reason_str);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->shutting_down, true);
   atomic_store_bool(&client->send_thread_running, false);
@@ -318,7 +318,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
   client->can_send_audio = (capabilities & CLIENT_CAP_AUDIO) != 0;
   client->wants_stretch = (capabilities & CLIENT_CAP_STRETCH) != 0;
 
-  log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", client->client_id, client->display_name,
+  log_info("Client %s joined: %s (video=%d, audio=%d, stretch=%d)", client->client_id, client->display_name,
            client->can_send_video, client->can_send_audio, client->wants_stretch);
 
   // Notify client of successful join (encrypted channel)
@@ -377,19 +377,19 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
 
   // Validate major version match (minor version can differ for backward compat)
   if (client_major != PROTOCOL_VERSION_MAJOR) {
-    log_warn("Client %u protocol version mismatch: client=%u.%u, server=%u.%u", client->client_id, client_major,
+    log_warn("Client %s protocol version mismatch: client=%u.%u, server=%u.%u", client->client_id, client_major,
              client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
     // Note: We don't disconnect on version mismatch for backward compatibility
     // Clients may be older or newer than server
   } else if (client_minor != PROTOCOL_VERSION_MINOR) {
-    log_info("Client %u has different protocol revision: client=%u.%u, server=%u.%u", client->client_id, client_major,
+    log_info("Client %s has different protocol revision: client=%u.%u, server=%u.%u", client->client_id, client_major,
              client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
   }
 
   // Validate reserved bytes are zero
   for (size_t i = 0; i < sizeof(version->reserved); i++) {
     if (version->reserved[i] != 0) {
-      log_warn("Client %u sent non-zero reserved bytes in PROTOCOL_VERSION packet", client->client_id);
+      log_warn("Client %s sent non-zero reserved bytes in PROTOCOL_VERSION packet", client->client_id);
       // Don't disconnect - reserved bytes may be used in future versions
       break;
     }
@@ -397,15 +397,15 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
 
   // Log supported features
   if (ACIP_CRYPTO_HAS_ENCRYPT(version->supports_encryption)) {
-    log_debug("Client %u supports encryption", client->client_id);
+    log_debug("Client %s supports encryption", client->client_id);
   }
   if (version->compression_algorithms != 0) {
-    log_debug("Client %u supports compression: 0x%02x", client->client_id, version->compression_algorithms);
+    log_debug("Client %s supports compression: 0x%02x", client->client_id, version->compression_algorithms);
   }
   if (version->feature_flags != 0) {
     uint16_t feature_flags = NET_TO_HOST_U16(version->feature_flags);
     atomic_store_bool(&client->supports_recoverable_errors, (feature_flags & PROTOCOL_FEATURE_RECOVERABLE_ERRORS) != 0);
-    log_debug("Client %u supports features: 0x%04x", client->client_id, feature_flags);
+    log_debug("Client %s supports features: 0x%04x", client->client_id, feature_flags);
   }
 }
 
@@ -445,11 +445,11 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
 
   if (len == 0) {
     // Empty reason - client disconnecting without explanation
-    log_info("Client %u sent leave notification (no reason)", client_id);
+    log_info("Client %s sent leave notification (no reason)", client_id);
   } else if (len <= 256) {
     // Reason provided - extract and log it
     if (!data) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Client %u sent leave notification with non-zero length but NULL data", client_id);
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %s sent leave notification with non-zero length but NULL data", client_id);
       return;
     }
 
@@ -468,18 +468,18 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
     }
 
     if (all_printable) {
-      log_info("Client %u sent leave notification: %s", client_id, reason);
+      log_info("Client %s sent leave notification: %s", client_id, reason);
     } else {
-      log_info("Client %u sent leave notification (reason contains non-printable characters)", client_id);
+      log_info("Client %s sent leave notification (reason contains non-printable characters)", client_id);
     }
   } else {
     // Oversized reason - shouldn't happen with validation.h checks
-    log_warn("Client %u sent oversized leave reason (%zu bytes, max 256)", client_id, len);
+    log_warn("Client %s sent oversized leave reason (%zu bytes, max 256)", client_id, len);
   }
 
   // Deactivate client to stop processing packets
   // Sets client->active = false immediately - triggers client cleanup procedures
-  log_debug("Setting active=false in handle_client_leave_packet (client_id=%u)", client_id);
+  log_debug("Setting active=false in handle_client_leave_packet (client_id=%s)", client_id);
   atomic_store_bool(&client->active, false);
 
   // Note: We don't disconnect the client here - that happens when socket closes
@@ -558,18 +558,18 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
     if (!client->opus_decoder) {
       client->opus_decoder = opus_codec_create_decoder(48000);
       if (client->opus_decoder) {
-        log_info("Client %u: Opus decoder created (48kHz)", client->client_id);
+        log_info("Client %s: Opus decoder created (48kHz)", client->client_id);
       } else {
-        log_error("Client %u: Failed to create Opus decoder", client->client_id);
+        log_error("Client %s: Failed to create Opus decoder", client->client_id);
       }
     }
   }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
-    log_info("Client %u announced video stream (waiting for first frame)", client->client_id);
+    log_info("Client %s announced video stream (waiting for first frame)", client->client_id);
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
-    log_info("Client %u started audio stream", client->client_id);
+    log_info("Client %s started audio stream", client->client_id);
   }
 
   // Notify client of stream start acknowledgment
@@ -639,10 +639,10 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
-    log_info("Client %u stopped video stream", client->client_id);
+    log_info("Client %s stopped video stream", client->client_id);
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
-    log_info("Client %u stopped audio stream", client->client_id);
+    log_info("Client %s stopped audio stream", client->client_id);
   }
 
   // Notify client of stream stop acknowledgment
@@ -673,7 +673,7 @@ void handle_ping_packet(client_info_t *client, const void *data, size_t len) {
   asciichat_error_t pong_result = acip_send_pong(pong_transport);
   mutex_unlock(&client->send_mutex);
   if (pong_result != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
+    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %s: %s", client->client_id,
               asciichat_error_string(pong_result));
   }
 }
@@ -753,7 +753,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
   // Use atomic compare-and-swap to avoid race condition - ensures thread-safe auto-enabling of video stream
 
-  log_info("RECV_IMAGE_FRAME: client_id=%u, len=%zu", client->client_id, len);
+  log_debug_every(US_PER_SEC_INT, "RECV_IMAGE_FRAME: client_id=%s, len=%zu", client->client_id, len);
 
   // Validate codec capability for RGBA frames
   if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, VIDEO_CODEC_RGBA)) {
@@ -773,7 +773,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     // Try to atomically enable video sending
     // Use atomic_compare_exchange_strong to avoid spurious failures
     if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
-      log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
+      log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       // Notify client that their first video frame was received
       if (client->socket != INVALID_SOCKET_VALUE) {
         log_info_client(client, "First video frame received - streaming active");
@@ -787,7 +787,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     if (client->frames_received_logged % 25000 == 0) {
       char pretty[64];
       format_bytes_pretty(len, pretty, sizeof(pretty));
-      log_debug("Client %u has sent %u IMAGE_FRAME packets (%s)", client->client_id, client->frames_received_logged,
+      log_debug("Client %s has sent %u IMAGE_FRAME packets (%s)", client->client_id, client->frames_received_logged,
                 pretty);
     }
     mutex_unlock(&client->client_state_mutex);
@@ -800,7 +800,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = NET_TO_HOST_U32(img_width_net);
   uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
-  log_debug("IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height, len);
+  log_debug_every(US_PER_SEC_INT, "IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height, len);
 
   // Validate dimensions using image utility functions
   if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
@@ -890,13 +890,13 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         bool is_new_frame = (incoming_rgb_hash != client->last_received_frame_hash);
 
         if (is_new_frame) {
-          log_info("RECV_FRAME #%u NEW: Client %u size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)",
+          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u NEW: Client %s size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)",
                    client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash,
                    client->last_received_frame_hash);
           client->last_received_frame_hash = incoming_rgb_hash;
         } else {
-          log_info("RECV_FRAME #%u DUP: Client %u size=%zu dims=%ux%u hash=0x%08x", client->frames_received, client_id,
-                   rgb_data_size, img_width, img_height, incoming_rgb_hash);
+          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u DUP: Client %s size=%zu dims=%ux%u hash=0x%08x",
+                          client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash);
         }
 
         video_frame_commit(client->incoming_video_buffer);
@@ -908,15 +908,15 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         return;
       }
     } else {
-      log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)", client->client_id, (void *)frame,
+      log_warn("Failed to get write buffer for client %s (frame=%p, frame->data=%p)", client->client_id, (void *)frame,
                frame ? frame->data : NULL);
     }
   } else {
     // During shutdown, this is expected - don't spam error logs
     if (!atomic_load_bool(&g_should_exit)) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no incoming video buffer!", client->client_id);
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %s has no incoming video buffer!", client->client_id);
     } else {
-      log_debug("Client %u: ignoring video packet during shutdown", client->client_id);
+      log_debug("Client %s: ignoring video packet during shutdown", client->client_id);
     }
   }
 
@@ -978,8 +978,8 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   bool is_keyframe = (flags & 0x01) != 0;
   bool size_changed = (flags & 0x02) != 0;
 
-  log_debug("H265_FRAME: flags=0x%02x, keyframe=%s, size_change=%s, len=%zu", flags, is_keyframe ? "yes" : "no",
-            size_changed ? "yes" : "no", len);
+  log_debug_every(US_PER_SEC_INT, "H265_FRAME: flags=0x%02x, keyframe=%s, size_change=%s, len=%zu", flags,
+                  is_keyframe ? "yes" : "no", size_changed ? "yes" : "no", len);
 
   if (!client->incoming_video_buffer) {
     log_error("Client %s has no incoming video buffer for H.265 frames", client->client_id);
@@ -1054,8 +1054,9 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     frame->receive_timestamp_ns = time_get_realtime_ns();
     frame->sequence_number = client->frames_received++;
 
-    log_info_every(100, "RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s", frame->sequence_number,
-                   client->client_id, rgba_size, frame_width, frame_height, is_keyframe ? "yes" : "no");
+    log_debug_every(US_PER_SEC_INT, "RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s",
+                    frame->sequence_number, client->client_id, rgba_size, frame_width, frame_height,
+                    is_keyframe ? "yes" : "no");
 
     video_frame_commit(client->incoming_video_buffer);
   } else {
@@ -1150,10 +1151,10 @@ void handle_remote_log_packet_from_client(client_info_t *client, const void *dat
   const char *client_id = client->client_id;
 
   if (truncated) {
-    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %u \"%s\"] %s [message truncated]", client_id,
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %s \"%s\"] %s [message truncated]", client_id,
             display_name, message);
   } else {
-    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %u \"%s\"] %s", client_id, display_name,
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %s \"%s\"] %s", client_id, display_name,
             message);
   }
 }
@@ -1206,7 +1207,7 @@ void handle_remote_log_packet_from_client(client_info_t *client, const void *dat
  */
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
   // Log every audio batch packet reception
-  log_debug_every(LOG_RATE_DEFAULT, "Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)",
+  log_debug_every(LOG_RATE_DEFAULT, "Received audio batch packet from client %s (len=%zu, is_sending_audio=%d)",
                   client->client_id, len, atomic_load_bool(&client->is_sending_audio));
 
   VALIDATE_NOTNULL_DATA(client, data, "AUDIO_BATCH");
@@ -1280,9 +1281,10 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     int32_t scaled0 = (int32_t)NET_TO_HOST_U32(raw0);
     int32_t scaled1 = (int32_t)NET_TO_HOST_U32(raw1);
     int32_t scaled2 = (int32_t)NET_TO_HOST_U32(raw2);
-    log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", raw0, raw1, raw2);
-    log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
-    log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
+    log_debug_every(US_PER_SEC_INT, "RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", raw0, raw1, raw2);
+    log_debug_every(US_PER_SEC_INT, "RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
+    log_debug_every(US_PER_SEC_INT, "RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1],
+                    samples[2]);
   }
 #endif
 
@@ -1332,7 +1334,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  * @ingroup server_protocol
  */
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug_every(LOG_RATE_SLOW, "Received Opus audio batch from client %u (len=%zu)", client->client_id, len);
+  log_debug_every(LOG_RATE_SLOW, "Received Opus audio batch from client %s (len=%zu)", client->client_id, len);
 
   VALIDATE_NOTNULL_DATA(client, data, "AUDIO_OPUS_BATCH");
   VALIDATE_AUDIO_STREAM_ENABLED(client, "AUDIO_OPUS_BATCH");
@@ -1378,7 +1380,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     decoded_samples = static_decode_buffer;
   } else {
     // Unusual large batch - fall back to malloc
-    log_warn("Client %u: Large audio batch requires malloc (%zu samples)", client->client_id, total_samples);
+    log_warn("Client %s: Large audio batch requires malloc (%zu samples)", client->client_id, total_samples);
     decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
     if (!decoded_samples) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus decoded samples");
@@ -1397,7 +1399,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 
     // DEBUG: Log the actual bytes of each Opus frame
     if (frame_size > 0) {
-      log_debug_every(LOG_RATE_DEFAULT, "Client %u: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]",
+      log_debug_every(LOG_RATE_DEFAULT, "Client %s: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]",
                       client->client_id, i, frame_size, opus_data[opus_offset] & 0xFF,
                       frame_size > 1 ? (opus_data[opus_offset + 1] & 0xFF) : 0,
                       frame_size > 2 ? (opus_data[opus_offset + 2] & 0xFF) : 0,
@@ -1405,7 +1407,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     }
 
     if (opus_offset + frame_size > opus_size) {
-      log_error("Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)", client->client_id, i + 1,
+      log_error("Client %s: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)", client->client_id, i + 1,
                 opus_offset, frame_size, opus_size);
       if (used_malloc) {
         SAFE_FREE(decoded_samples);
@@ -1416,7 +1418,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     // SECURITY: Bounds check before writing decoded samples to prevent buffer overflow
     // An attacker could send malicious Opus frames that decode to more samples than expected
     if ((size_t)total_decoded + (size_t)samples_per_frame > total_samples) {
-      log_error("Client %u: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)",
+      log_error("Client %s: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)",
                 client->client_id, total_decoded, samples_per_frame, total_samples);
       if (used_malloc) {
         SAFE_FREE(decoded_samples);
@@ -1428,7 +1430,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
                                           &decoded_samples[total_decoded], samples_per_frame);
 
     if (decoded_count < 0) {
-      log_error("Client %u: Opus decoding failed for frame %d/%d (size=%zu)", client->client_id, i + 1, frame_count,
+      log_error("Client %s: Opus decoding failed for frame %d/%d (size=%zu)", client->client_id, i + 1, frame_count,
                 frame_size);
       if (used_malloc) {
         SAFE_FREE(decoded_samples);
@@ -1440,7 +1442,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     opus_offset += frame_size;
   }
 
-  log_debug_every(LOG_RATE_DEFAULT, "Client %u: Decoded %d Opus frames -> %d samples", client->client_id, frame_count,
+  log_debug_every(LOG_RATE_DEFAULT, "Client %s: Decoded %d Opus frames -> %d samples", client->client_id, frame_count,
                   total_decoded);
 
   // DEBUG: Log sample values to detect all-zero issue
@@ -1456,9 +1458,11 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     }
     rms = sqrtf(rms / (total_decoded > 100 ? 100 : total_decoded));
     // Log first 4 bytes of Opus data to compare with client encode
-    log_info("SERVER OPUS DECODE #%d from client %u: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]",
-             server_decode_count, client->client_id, rms, opus_size > 0 ? opus_data[0] : 0,
-             opus_size > 1 ? opus_data[1] : 0, opus_size > 2 ? opus_data[2] : 0, opus_size > 3 ? opus_data[3] : 0);
+    log_debug_every(
+        US_PER_SEC_INT,
+        "SERVER OPUS DECODE #%d from client %s: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]",
+        server_decode_count, client->client_id, rms, opus_size > 0 ? opus_data[0] : 0, opus_size > 1 ? opus_data[1] : 0,
+        opus_size > 2 ? opus_data[2] : 0, opus_size > 3 ? opus_data[3] : 0);
   }
 
   // Write decoded samples to client's incoming audio buffer
@@ -1467,7 +1471,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   if (client->incoming_audio_buffer && total_decoded > 0) {
     asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
     if (result != ASCIICHAT_OK) {
-      log_error("Client %u: Failed to write decoded audio to buffer: %d", client->client_id, result);
+      log_error("Client %s: Failed to write decoded audio to buffer: %d", client->client_id, result);
     }
   }
 
@@ -1495,7 +1499,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
  * @ingroup server_protocol
  */
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", client->client_id, len);
+  log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %s (len=%zu)", client->client_id, len);
 
   if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS")) {
     return;
@@ -1553,11 +1557,11 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
       opus_codec_decode((opus_codec_t *)client->opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
 
   if (decoded_count < 0) {
-    log_error("Client %u: Opus decoding failed (size=%zu)", client->client_id, opus_size);
+    log_error("Client %s: Opus decoding failed (size=%zu)", client->client_id, opus_size);
     return;
   }
 
-  log_debug_every(LOG_RATE_VERY_FAST, "Client %u: Decoded Opus frame -> %d samples", client->client_id, decoded_count);
+  log_debug_every(LOG_RATE_VERY_FAST, "Client %s: Decoded Opus frame -> %d samples", client->client_id, decoded_count);
 
   // Write decoded samples to client's incoming audio buffer
   if (client->incoming_audio_buffer && decoded_count > 0) {
@@ -1640,7 +1644,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   const char *client_id = client->client_id;
-  log_warn("[CAPS_HANDLER] 🟢 CAPS_RECEIVED: client_id=%u, data_ptr=%p, len=%zu bytes", client_id, data, len);
+  log_debug("[CAPS_HANDLER] 🟢 CAPS_RECEIVED: client_id=%s, data_ptr=%p, len=%zu bytes", client_id, data, len);
 
   log_debug("[CAPS_HANDLER] Step 1: Validating packet size (expected=%zu, actual=%zu)",
             sizeof(terminal_capabilities_packet_t), len);
@@ -1652,7 +1656,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   // Extract and validate dimensions
   uint16_t width = NET_TO_HOST_U16(caps->width);
   uint16_t height = NET_TO_HOST_U16(caps->height);
-  log_warn("[CAPS_HANDLER] 📐 DIMENSIONS: width=%u, height=%u", width, height);
+  log_debug("[CAPS_HANDLER] 📐 DIMENSIONS: width=%u, height=%u", width, height);
 
   log_debug("[CAPS_HANDLER] Step 2: Validating width (value=%u, must be nonzero)", width);
   VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
@@ -1698,7 +1702,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   client->width = width;
   client->height = height;
 
-  log_debug("Client %u dimensions: %ux%u, desired_fps=%u", client->client_id, client->width, client->height,
+  log_debug("Client %s dimensions: %ux%u, desired_fps=%u", client->client_id, client->width, client->height,
             caps->desired_fps);
 
   client->terminal_caps.capabilities = NET_TO_HOST_U32(caps->capabilities);
@@ -1732,22 +1736,22 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                                 client->client_luminance_palette) == 0) {
     client->client_palette_type = (palette_type_t)client->terminal_caps.palette_type;
     client->client_palette_initialized = true;
-    log_info("Client %d palette initialized: type=%u, %zu chars, utf8=%u", client->client_id,
+    log_info("Client %s palette initialized: type=%u, %zu chars, utf8=%u", client->client_id,
              client->terminal_caps.palette_type, client->client_palette_len, client->terminal_caps.utf8_support);
   } else {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to initialize palette for client %d", client->client_id);
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to initialize palette for client %s", client->client_id);
     client->client_palette_initialized = false;
   }
 
   // Extract and store codec capabilities
   client->codec_capabilities_video = NET_TO_HOST_U32(caps->codec_capabilities_video);
   client->codec_capabilities_audio = NET_TO_HOST_U32(caps->codec_capabilities_audio);
-  log_info("Client %u codec capabilities: video=0x%x audio=0x%x", client->client_id, client->codec_capabilities_video,
+  log_info("Client %s codec capabilities: video=0x%x audio=0x%x", client->client_id, client->codec_capabilities_video,
            client->codec_capabilities_audio);
 
   client->has_terminal_caps = true;
 
-  log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
+  log_info("Client %s capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
            "render_mode=%s, reliable=%s, fps=%u, wants_padding=%d",
            client->client_id, client->width, client->height,
            terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
@@ -1770,7 +1774,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
 
   mutex_unlock(&client->client_state_mutex);
 
-  log_warn("[CAPS_HANDLER] ✅ CAPS_COMPLETE: client_id=%u - all validations passed, capabilities stored",
+  log_debug("[CAPS_HANDLER] ✅ CAPS_COMPLETE: client_id=%s - all validations passed, capabilities stored",
            client->client_id);
 }
 
@@ -1827,7 +1831,7 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   client->height = height;
   mutex_unlock(&client->client_state_mutex);
 
-  log_info("Client %u updated terminal size: %ux%u", client->client_id, width, height);
+  log_info("Client %s updated terminal size: %ux%u", client->client_id, width, height);
 }
 
 /* ============================================================================
@@ -1914,12 +1918,12 @@ int send_server_state_to_client(client_info_t *client) {
   mutex_unlock(&client->send_mutex);
 
   if (result != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %u: %s", client->client_id,
+    SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %s: %s", client->client_id,
               asciichat_error_string(result));
     return -1;
   }
 
-  log_debug("Sent server state to client %u: %u connected, %u active", client->client_id, state.connected_client_count,
+  log_debug("Sent server state to client %s: %u connected, %u active", client->client_id, state.connected_client_count,
             state.active_client_count);
   return 0;
 }

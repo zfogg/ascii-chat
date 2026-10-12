@@ -1850,9 +1850,9 @@ static asciichat_error_t validate_option_strings(const options_t *opts) {
 static asciichat_error_t validate_parsed_options(options_t *opts, options_config_t *config, int remaining_argc,
                                                  char **remaining_argv) {
   // Validate options
-  log_info("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
+  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
   asciichat_error_t result = validate_options_and_report(config, opts);
-  log_info("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d", result);
+  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d", result);
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -1871,20 +1871,20 @@ static asciichat_error_t validate_parsed_options(options_t *opts, options_config
 static asciichat_error_t finalize_mode_defaults(options_t *opts, asciichat_mode_t detected_mode) {
   // Mode-specific post-processing
   // Apply mode-specific defaults (port, websocket-port)
-  log_info("★ APPLY_MODE_SPECIFIC: About to call");
+  log_debug("★ APPLY_MODE_SPECIFIC: About to call");
   apply_mode_specific_defaults(opts);
-  log_info("★ APPLY_MODE_SPECIFIC: Done");
+  log_debug("★ APPLY_MODE_SPECIFIC: Done");
   log_dev("Applied mode-specific defaults: port=%d, websocket_port=%d", opts->port, opts->websocket_port);
 
   if (detected_mode == MODE_DISCOVERY_SERVICE) {
     // Set default paths if not specified
-    log_info("★ DISCOVERY_SERVICE: Handling discovery service defaults");
+    log_debug("★ DISCOVERY_SERVICE: Handling discovery service defaults");
     if (opts->discovery_database_path[0] == '\0') {
       // Database: Try system-wide location first, fall back to user directories
       // Preference: /usr/local/var/ascii-chat/ > ~/.local/share/ascii-chat/ > ~/.config/ascii-chat/
-      log_info("★ DISCOVERY_SERVICE: About to call get_discovery_database_dir()");
+      log_debug("★ DISCOVERY_SERVICE: About to call get_discovery_database_dir()");
       char *db_dir = get_discovery_database_dir();
-      log_info("★ DISCOVERY_SERVICE: get_discovery_database_dir() returned %p", (void *)db_dir);
+      log_debug("★ DISCOVERY_SERVICE: get_discovery_database_dir() returned %p", (void *)db_dir);
       if (!db_dir) {
 
         return SET_ERRNO(ERROR_CONFIG, "Failed to get database directory (tried system and user locations)");
@@ -1902,9 +1902,9 @@ static asciichat_error_t collect_server_identity_keys(options_t *opts, asciichat
   // This enables servers to load both SSH and GPG keys and select the right one
   // during handshake based on what the client expects
   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
-    log_info("★ STAGE 7.1: About to collect identity keys");
+    log_debug("★ STAGE 7.1: About to collect identity keys");
     int num_keys = options_collect_identity_keys(opts, argc, argv);
-    log_info("★ STAGE 7.1: options_collect_identity_keys returned %d", num_keys);
+    log_debug("★ STAGE 7.1: options_collect_identity_keys returned %d", num_keys);
     if (num_keys < 0) {
 
       return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to collect identity keys");
@@ -1915,7 +1915,7 @@ static asciichat_error_t collect_server_identity_keys(options_t *opts, asciichat
 }
 
 static void finalize_dimensions(options_t *opts) {
-  log_info("★ STAGE 7.2: About to update dimensions");
+  log_debug("★ STAGE 7.2: About to update dimensions");
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
@@ -2257,12 +2257,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  log_info("★ OPTIONS_CONFIG_DESTROY: About to call");
+  log_debug("★ OPTIONS_CONFIG_DESTROY: About to call");
   options_config_destroy(config);
   config = NULL;
-  log_info("★ OPTIONS_CONFIG_DESTROY: Done");
+  log_debug("★ OPTIONS_CONFIG_DESTROY: Done");
 
-  log_info("★ STAGE 7: Starting post-processing");
+  log_debug("★ STAGE 7: Starting post-processing");
   // Resolve identity, dimensions, and media before exposing the final options to actions.
   result = collect_server_identity_keys(&opts, detected_mode, argc, argv);
   if (result != ASCIICHAT_OK) {

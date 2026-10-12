@@ -449,13 +449,13 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 2: Create render threads BEFORE send thread
   // This ensures the render threads generate the first frame before the send thread tries to read it
-  log_info("★★★ CLIENT SETUP: About to create render threads for client %s", client->client_id);
+  log_debug("★★★ CLIENT SETUP: About to create render threads for client %s", client->client_id);
   if (create_client_render_threads(server_ctx, client) != 0) {
     log_error("Failed to create render threads for client %s", client->client_id);
     remove_client(server_ctx, client->client_id);
     return -1;
   }
-  log_info("★★★ CLIENT SETUP: Successfully created render threads for client %s", client->client_id);
+  log_debug("★★★ CLIENT SETUP: Successfully created render threads for client %s", client->client_id);
 
   safe_snprintf(thread_name, sizeof(thread_name), "send_%s", client->client_id);
   result = asciichat_thread_create(&client->send_thread, thread_name, client_send_thread_func, client);
@@ -1894,13 +1894,13 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      log_info_every(5000 * US_PER_MS_INT,
+      log_debug_every(5000 * US_PER_MS_INT,
                      "🎯 FRAME_VALIDATION: client_id=%s frame=%p, frame->data=%p, frame->size=%zu", client->client_id,
                      (const void *)frame, (void *)frame_data_snapshot, frame_size);
 
-      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
+      log_debug_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
                      (void *)frame_data_snapshot);
-      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame_size);
+      log_debug_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame_size);
 
       const char *frame_data = frame_data_snapshot;
       uint64_t step1_ns = time_get_ns();
@@ -1914,7 +1914,7 @@ void *client_send_thread_func(void *arg) {
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
-      log_info_every(5000 * US_PER_MS_INT,
+      log_debug_every(5000 * US_PER_MS_INT,
                      "🔐 CRYPTO_CHECK: client_id=%s crypto_ready=%d crypto_initialized=%d no_encrypt=%d",
                      client->client_id, crypto_ready, client->crypto_initialized, GET_OPTION(no_encrypt));
 
@@ -1924,7 +1924,7 @@ void *client_send_thread_func(void *arg) {
         frame_data_snapshot = NULL;
         continue; // Skip this frame, will try again on next loop iteration
       }
-      log_info_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
+      log_debug_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
 
       // ACIP transport handles header building, CRC32, and encryption. Keep
       // send_mutex for the complete write so packets from the receive thread
@@ -1935,7 +1935,7 @@ void *client_send_thread_func(void *arg) {
 
       // Log first 32 bytes of frame data to verify we can access it
       if (frame_data && frame_size > 0) {
-        log_info_every(5000 * US_PER_MS_INT,
+        log_debug_every(5000 * US_PER_MS_INT,
                        "FRAME_DATA_HEX: client=%s first_bytes=[%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
                        "%02x %02x %02x %02x %02x]",
                        client->client_id, ((uint8_t *)frame_data)[0], ((uint8_t *)frame_data)[1],
@@ -2527,9 +2527,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   size_t center_pixel_offset = ((size_t)(header->height / 2) * header->width + header->width / 2) * 3;
   const uint8_t *first_pixel = pixel_data;
-  const uint8_t *center_pixel = center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset
-                                                                    : first_pixel;
-  log_info_every(NS_PER_SEC_INT,
+  const uint8_t *center_pixel =
+      center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset : first_pixel;
+  log_debug_every(US_PER_SEC_INT,
                  "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x",
                  client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
                  first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
@@ -2669,7 +2669,6 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   } else {
     log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
-
 }
 
 /** Initialize a persistent decoder, replacing it on a codec switch. */

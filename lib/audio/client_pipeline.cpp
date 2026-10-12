@@ -274,7 +274,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       capture_buf->SplitIntoFrequencyBands();
       capture_buf->MergeFrequencyBands();
 
-      log_info("  - AudioBuffer filterbank state initialized");
+      log_debug("  - AudioBuffer filterbank state initialized");
 
       // Warm up AEC3 with 10 silent frames to initialize internal state
       for (int warmup = 0; warmup < 10; warmup++) {
@@ -291,8 +291,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->aec3->ProcessCapture(capture_buf, false);
         capture_buf->MergeFrequencyBands();
       }
-      log_info("  - AEC3 warmed up with 10 silent frames");
-      log_info("  - Persistent AudioBuffer instances created");
+      log_debug("  - AEC3 warmed up with 10 silent frames");
+      log_debug("  - Persistent AudioBuffer instances created");
     }
   }
 
@@ -328,23 +328,23 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     compressor_init(&p->compressor, sample_rate);
     compressor_set_params(&p->compressor, p->config.comp_threshold_db, p->config.comp_ratio, p->config.comp_attack_ns,
                           p->config.comp_release_ns, p->config.comp_makeup_db);
-    log_info("✓ Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB", p->config.comp_threshold_db,
+    log_debug("✓ Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB", p->config.comp_threshold_db,
              p->config.comp_ratio, p->config.comp_makeup_db);
 
     // Initialize noise gate with config values
     noise_gate_init(&p->noise_gate, sample_rate);
     noise_gate_set_params(&p->noise_gate, p->config.gate_threshold, p->config.gate_attack_ns, p->config.gate_release_ns,
                           p->config.gate_hysteresis);
-    log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
+    log_debug("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
              20.0f * log10f(p->config.gate_threshold + 1e-10f));
 
     // Initialize highpass filter (removes low-frequency rumble)
     highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
-    log_info("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);
+    log_debug("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);
 
     // Initialize lowpass filter (removes high-frequency hiss)
     lowpass_filter_init(&p->lowpass, p->config.lowpass_hz, sample_rate);
-    log_info("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
+    log_debug("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
   }
 
   if (options_get() && options_get()->audio_spectral && !options_get()->test_audio) {
@@ -368,7 +368,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // 200ms at 48kHz = 9600 samples - gradual ramp from silence to full volume
   // Longer fade-in (200ms vs 50ms) gives much smoother transition without audible pop
   p->capture_fadein_remaining = (p->config.sample_rate * 200) / 1000; // 200ms worth of samples
-  log_info("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
+  log_debug("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
   log_info("Audio pipeline created: %dHz, %llums frames, %dkbps Opus", p->config.sample_rate,
            (unsigned long long)p->config.frame_duration_ms,
@@ -470,7 +470,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   int opus_len = opus_encode_float(pipeline->encoder, input, num_samples, opus_out, max_opus_len);
 
   if (opus_len < 0) {
-    log_error("Opus encoding failed: %d", opus_len);
+    log_error_every(US_PER_SEC_INT, "Opus encoding failed: %d", opus_len);
     return -1;
   }
 
@@ -492,7 +492,7 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
   int decoded_samples = opus_decode_float(pipeline->decoder, opus_in, opus_len, output, num_samples, 0);
 
   if (decoded_samples < 0) {
-    log_error("Opus decoding failed: %d", decoded_samples);
+    log_error_every(US_PER_SEC_INT, "Opus decoding failed: %d", decoded_samples);
     return -1;
   }
 
@@ -630,7 +630,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
             static int duplex_log_count = 0;
             if (++duplex_log_count % 100 == 1) {
               webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-              log_info("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
+              log_debug("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
                        metrics.echo_return_loss_enhancement, metrics.delay_ms);
               audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
                                               metrics.delay_ms);
