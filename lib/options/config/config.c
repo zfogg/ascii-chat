@@ -1102,7 +1102,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // whitelist validator, which quite correctly rejects paths whose parent
   // directory has not been created yet but should not turn that normal case
   // into a configuration error.
-  if (!strict && access(config_path_expanded, F_OK) != 0 && errno == ENOENT) {
+  if (!strict && platform_access(config_path_expanded, PLATFORM_ACCESS_EXISTS) != 0 && errno == ENOENT) {
+    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
   asciichat_error_t validate_result =

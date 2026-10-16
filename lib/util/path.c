@@ -1155,8 +1155,13 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(config_dir, bases, &base_count);
   }
 
+  char home_base[PLATFORM_MAX_PATH_LENGTH];
   const char *home_env = platform_get_home_dir();
   if (home_env) {
+    // Windows environment lookups reuse a thread-local buffer. Keep this base
+    // stable when PROGRAMDATA is read below.
+    SAFE_STRNCPY(home_base, home_env, sizeof(home_base));
+    home_env = home_base;
     append_base_if_valid(home_env, bases, &base_count);
   }
 

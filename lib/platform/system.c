@@ -34,6 +34,26 @@ int platform_dup(int fd) {
 #endif
 }
 
+int platform_fileno(FILE *stream) {
+#ifdef _WIN32
+  return _fileno(stream);
+#else
+  return fileno(stream);
+#endif
+}
+
+asciichat_error_t platform_dup2(int source_fd, int target_fd) {
+#ifdef _WIN32
+  int result = _dup2(source_fd, target_fd);
+#else
+  int result = dup2(source_fd, target_fd);
+#endif
+  if (result < 0) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to redirect descriptor %d to %d", target_fd, source_fd);
+  }
+  return ASCIICHAT_OK;
+}
+
 // Forward declaration for filesystem functions
 extern bool check_binary_in_path_uncached(const char *bin_name);
 
