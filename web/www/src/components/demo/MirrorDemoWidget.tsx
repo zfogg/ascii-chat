@@ -553,12 +553,6 @@ export default function MirrorDemoWidget({
   }, [termDims, wasmReady]);
 
   useEffect(() => {
-    addDebugLog(
-      `Dimensions set: ${termDims.cols}x${termDims.rows}, wasmReady=${wasmReady}`,
-    );
-  }, [termDims, wasmReady, addDebugLog]);
-
-  useEffect(() => {
     if (source !== null && sourceRef.current !== source) {
       stop();
       setError("The previous demo source stopped. Start a source to continue.");

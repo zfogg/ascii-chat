@@ -73,11 +73,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    const previousWasmReadyRef = useRef<boolean | undefined>(undefined);
-    if (previousWasmReadyRef.current !== wasmModuleReady) {
-      previousWasmReadyRef.current = wasmModuleReady;
-    }
-
     // Initialize renderer and get refs
     const {
       moduleRef,

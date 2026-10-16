@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
 import {
@@ -1013,7 +1014,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   }, [clientRef, connectionState, frameQueueRef, isWebcamRunning, videoRef]);
 
   const captureActionsRef = useRef({ startWebcam, stopWebcam });
-  captureActionsRef.current = { startWebcam, stopWebcam };
+  useLayoutEffect(() => {
+    captureActionsRef.current = { startWebcam, stopWebcam };
+  }, [startWebcam, stopWebcam]);
   const previousEncodingRef = useRef(encodingPreference);
   useEffect(() => {
     if (previousEncodingRef.current === encodingPreference) return;

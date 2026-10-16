@@ -232,6 +232,11 @@ export default defineConfig({
   fmt: {
     printWidth: 80,
     sortPackageJson: false,
-    ignorePatterns: ["**/public/wasm/**", "**/src/wasm/dist/**"],
+    ignorePatterns: [
+      "**/public/wasm/**",
+      "**/src/wasm/dist/**",
+      "**/playwright-report/**",
+      "**/test-results/**",
+    ],
   },
 });

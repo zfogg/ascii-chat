@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { useVideoEncodings } from "./useVideoEncodings";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -393,7 +394,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     ],
   );
   const connectToServerRef = useRef(connectToServer);
-  connectToServerRef.current = connectToServer;
+  useLayoutEffect(() => {
+    connectToServerRef.current = connectToServer;
+  }, [connectToServer]);
 
   // Discovery sessions should recover automatically when a peer connection
   // fails. Keep user-initiated disconnects manual; only retry sessions that

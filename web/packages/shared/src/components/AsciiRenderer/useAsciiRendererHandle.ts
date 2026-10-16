@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { SessionUi } from "../../wasm/sessionUi";
 import type { SessionUiEvent } from "../../wasm/sessionUi";
 import type { KeyboardEvent } from "react";
@@ -103,7 +104,9 @@ export function useAsciiRendererHandle({
   const uiRef = useRef<SessionUi | null>(null);
   const uiRendererRef = useRef(0);
   const uiProps = useRef({ uiLoading, uiMessage, onUiAction });
-  uiProps.current = { uiLoading, uiMessage, onUiAction };
+  useLayoutEffect(() => {
+    uiProps.current = { uiLoading, uiMessage, onUiAction };
+  }, [uiLoading, uiMessage, onUiAction]);
   const ensureUi = useCallback(() => {
     const module = moduleRef.current;
     if (!module || !setupDoneRef.current) return null;

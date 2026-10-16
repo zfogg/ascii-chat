@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { MediaSourceType } from "../hooks/useClientLike";
 import { useUrlState } from "../hooks/useUrlState";
@@ -34,7 +35,9 @@ export function MirrorPage() {
   const [playing, setPlaying] = useUrlState("playing", false);
   const resumePending = useRef(playing);
   const playingRef = useRef(playing);
-  playingRef.current = playing;
+  useLayoutEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
@@ -48,6 +51,7 @@ export function MirrorPage() {
     const promise = initMirrorWasm(MirrorModuleFactory);
     promise
       .then(() => {
+        setWasmModule(getMirrorModule());
         const t1 = performance.now();
         console.log(
           `[Mirror] initWasm complete at ${t1.toFixed(1)}ms (took ${(t1 - t0).toFixed(1)}ms)`,
@@ -105,32 +109,6 @@ export function MirrorPage() {
     debugCountRef,
     firstFrameTimeRef,
   } = optionsManager;
-
-  // Update wasmModule state immediately when WASM initialization completes
-  useEffect(() => {
-    const effectTime = performance.now();
-    console.log(
-      `[Mirror] wasmModule sync effect at ${effectTime.toFixed(0)}ms: wasmInitialized=${wasmInitialized}, wasmModule=${!!wasmModule}`,
-    );
-    if (wasmInitialized && !wasmModule) {
-      const getModuleTime = performance.now();
-      const module = getMirrorModule();
-      const gotModuleTime = performance.now();
-      console.log(
-        `[Mirror] getMirrorModule at ${getModuleTime.toFixed(0)}ms returned ${!!module} (took ${(gotModuleTime - getModuleTime).toFixed(1)}ms)`,
-      );
-      if (module) {
-        const setModuleTime = performance.now();
-        console.log(
-          `[Mirror] About to setWasmModule at ${setModuleTime.toFixed(0)}ms`,
-        );
-        setWasmModule(module);
-        console.log(
-          `[Mirror] setWasmModule enqueued at ${performance.now().toFixed(0)}ms`,
-        );
-      }
-    }
-  }, [wasmInitialized, wasmModule]);
 
   // Handle settings change
   const handleSettingsChange = (newSettings: BinarySettingsConfig) => {

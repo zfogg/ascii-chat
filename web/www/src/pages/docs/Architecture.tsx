@@ -1319,11 +1319,6 @@ function FlowDiagram({
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
 
-  // Reset view when flow changes
-  useEffect(() => {
-    setTransform({ x: 20, y: 20, scale: 0.92 });
-  }, [flow.id]);
-
   const nodeMap = Object.fromEntries(flow.nodes.map((n) => [n.id, n]));
 
   const connected = selectedId
@@ -1679,6 +1674,7 @@ export default function Architecture() {
           {/* SVG diagram */}
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
             <FlowDiagram
+              key={flow.id}
               flow={flow}
               selectedId={selectedId}
               onSelectNode={setSelectedId}
