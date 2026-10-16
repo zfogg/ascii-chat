@@ -29,6 +29,13 @@ export class AudioPipeline {
   private source: MediaStreamAudioSourceNode | null = null;
   private processor: ScriptProcessorNode | null = null;
   private gain: GainNode | null = null;
+  private outputGain: GainNode | null = null;
+  private volume = 1;
+
+  setVolume(value: number): void {
+    this.volume = Math.min(1, Math.max(0, value));
+    if (this.outputGain) this.outputGain.gain.value = this.volume;
+  }
   private codec: OpusEncoder | null = null;
   private playback: AudioWorkletNode | null = null;
   private playbackInit: Promise<void> | null = null;
@@ -64,6 +71,11 @@ export class AudioPipeline {
   constructor(private options: AudioPipelineOptions = {}) {}
   async enablePlayback(): Promise<void> {
     if (!this.context) this.context = new AudioContext({ sampleRate: 48000 });
+    if (!this.outputGain) {
+      this.outputGain = this.context.createGain();
+      this.outputGain.gain.value = this.volume;
+      this.outputGain.connect(this.context.destination);
+    }
     await this.context.resume();
     const speakerId = getMediaDevicePreferences().speakerId;
     if (speakerId && speakerId !== "default") {
@@ -90,7 +102,7 @@ export class AudioPipeline {
             this.underruns = data.underruns;
             this.reportLevels();
           };
-          this.playback.connect(context.destination);
+          this.playback.connect(this.outputGain!);
         });
     }
     await this.playbackInit;
@@ -354,7 +366,7 @@ export class AudioPipeline {
     }
     const source = context.createBufferSource();
     source.buffer = buffer;
-    source.connect(context.destination);
+    source.connect(this.outputGain!);
     this.sources.add(source);
     source.onended = () => {
       this.sources.delete(source);
@@ -397,6 +409,8 @@ export class AudioPipeline {
     this.playback?.disconnect();
     this.playback?.port.close();
     this.playback = null;
+    this.outputGain?.disconnect();
+    this.outputGain = null;
     this.playbackInit = null;
     this.codec?.cleanup();
     this.codec = null;

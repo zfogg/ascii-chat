@@ -1,3 +1,4 @@
+import type { SessionUiModule } from "./sessionUi";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 // Decoupled from Emscripten factory location — callers provide the factory.
@@ -62,7 +63,7 @@ interface MirrorModuleExports {
   _free(ptr: number): void;
 }
 
-export interface MirrorModule extends WasmModule {
+export interface MirrorModule extends WasmModule, SessionUiModule {
   _wasm_test_pattern_create(width: number, height: number): number;
   _wasm_test_pattern_render(
     pointer: number,

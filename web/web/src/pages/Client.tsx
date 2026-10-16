@@ -1,3 +1,4 @@
+import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1431,6 +1432,14 @@ export function ClientPage({
           rendererRequested ? (
             <AsciiRenderer
               ref={rendererRef}
+              uiMessage={status}
+              onUiAction={(event) => {
+                if (event.action === 1 || event.action === 7)
+                  setSettings(sessionUiSettings(event, settings));
+                sessionUiMedia(event, videoRef.current);
+                audioRef.current?.setVolume(event.module._wasm_ui_volume());
+                if (event.action === 3) disconnectMedia();
+              }}
               zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}

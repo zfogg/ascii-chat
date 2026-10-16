@@ -26,6 +26,10 @@ set(CORE_SRCS
     ${LIB_DIR}/log/io.c
     ${LIB_DIR}/log/asan.c
     # ui/
+    ${LIB_DIR}/ui/session.c
+    ${LIB_DIR}/ui/session_input.c
+    ${LIB_DIR}/ui/session_help.c
+    ${LIB_DIR}/ui/session_splash.c
     ${LIB_DIR}/ui/controller.c
     ${LIB_DIR}/ui/render_progress.c
     ${LIB_DIR}/ui/input.c

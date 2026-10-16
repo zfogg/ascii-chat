@@ -1,3 +1,4 @@
+import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { MediaSourceType } from "../hooks/useClientLike";
 import { useUrlState } from "../hooks/useUrlState";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -295,6 +296,14 @@ export function MirrorPage() {
           return (
             <AsciiRenderer
               ref={rendererRef}
+              uiLoading={!isWebcamRunning}
+              uiMessage={error || "Choose a camera or media file to begin"}
+              onUiAction={(event) => {
+                if (event.action === 1 || event.action === 7)
+                  handleSettingsChange(sessionUiSettings(event, settings));
+                sessionUiMedia(event, videoRef.current);
+                if (event.action === 3) stopWebcam();
+              }}
               zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}

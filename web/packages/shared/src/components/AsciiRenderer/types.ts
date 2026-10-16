@@ -11,6 +11,9 @@ export interface AsciiRendererHandle {
 }
 
 export interface AsciiRendererProps {
+  uiLoading?: boolean;
+  uiMessage?: string;
+  onUiAction?: (event: import("../../wasm/sessionUi").SessionUiEvent) => void;
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
   onFpsChange?: (fps: number) => void;
   error?: string;

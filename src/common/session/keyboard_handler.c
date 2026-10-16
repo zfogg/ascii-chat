@@ -7,6 +7,7 @@
  */
 
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/session.h>
 #include "session/keyboard_handler.h"
 #include "session/capture.h"
 #include "session/display.h"
@@ -30,89 +31,28 @@
 /** Muted volume state (used to restore volume when unmuting) - default 100% */
 static double g_mute_saved_volume = 1.0;
 
-/** Color filter names - must match color_filter_t enum exactly */
-static const char *COLOR_FILTER_NAMES[COLOR_FILTER_COUNT] = {
-    "None",    // COLOR_FILTER_NONE = 0
-    "Black",   // COLOR_FILTER_BLACK = 1
-    "White",   // COLOR_FILTER_WHITE = 2
-    "Green",   // COLOR_FILTER_GREEN = 3
-    "Magenta", // COLOR_FILTER_MAGENTA = 4
-    "Fuchsia", // COLOR_FILTER_FUCHSIA = 5
-    "Orange",  // COLOR_FILTER_ORANGE = 6
-    "Teal",    // COLOR_FILTER_TEAL = 7
-    "Cyan",    // COLOR_FILTER_CYAN = 8
-    "Pink",    // COLOR_FILTER_PINK = 9
-    "Red",     // COLOR_FILTER_RED = 10
-    "Yellow",  // COLOR_FILTER_YELLOW = 11
-    "Rainbow", // COLOR_FILTER_RAINBOW = 12
-};
-
-/**
- * @brief Clamp volume to valid range [0.0, 1.0]
- *
- * Restricts volume to the valid audio range where:
- * - 0.0 = silent (mute)
- * - 0.7 = default/normal level (70%)
- * - 1.0 = maximum volume (100%)
- *
- * @param volume Unclamped volume value
- * @return Volume clamped to [0.0, 1.0] range
- */
-static double clamp_volume(double volume) {
-  if (volume < 0.0) {
-    return 0.0;
-  }
-  if (volume > 1.0) {
-    return 1.0;
-  }
-  return volume;
-}
-
-/**
- * @brief Get next color mode in cycle
- */
-static int next_color_mode(int current) {
-  // Cycle: TERM_COLOR_NONE → TERM_COLOR_16 → TERM_COLOR_256 → TERM_COLOR_TRUECOLOR → TERM_COLOR_NONE
-  switch (current) {
-  case 0:     // TERM_COLOR_NONE
-    return 1; // TERM_COLOR_16
-  case 1:     // TERM_COLOR_16
-    return 2; // TERM_COLOR_256
-  case 2:     // TERM_COLOR_256
-    return 3; // TERM_COLOR_TRUECOLOR
-  default:
-    return 0; // Back to TERM_COLOR_NONE
-  }
-}
-
-/**
- * @brief Get next render mode in cycle
- */
-static int next_render_mode(int current) {
-  // 3 render modes: FOREGROUND (0), BACKGROUND (1), HALF_BLOCK (2)
-  return (current + 1) % 3;
-}
-
-/**
- * @brief Get next color filter in cycle
- */
-static int next_color_filter(int current) {
-  return (current + 1) % COLOR_FILTER_COUNT;
-}
-
 /* ============================================================================
  * Keyboard Handler
  * ============================================================================ */
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  ui_session_action_t action = ui_session_key(key, &g_mute_saved_volume);
+  if (action == UI_ACTION_SETTINGS || action == UI_ACTION_VOLUME) {
+    if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
+      ui_controller_show_volume();
+    if (display && keyboard_help_is_active(display))
+      keyboard_help_render(display);
+    return;
+  }
+
   // Debug: log all key codes to help identify unknown keys
   if (key != KEY_NONE) {
     log_info("KEYBOARD INPUT: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
   }
 
-  switch ((int)key) {
+  switch (action) {
   // ===== HELP SCREEN TOGGLE =====
-  case KEY_QUESTION: {
+  case UI_ACTION_HELP: {
     log_info("✓✓✓ USER PRESSED ? KEY - HELP SCREEN TOGGLE ✓✓✓");
     if (display) {
       log_info("Toggling help screen (display=%p)", (void *)display);
@@ -127,7 +67,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== HELP SCREEN CLOSE / QUIT =====
-  case KEY_ESCAPE: {
+  case UI_ACTION_CLOSE: {
     if (display && keyboard_help_is_active(display)) {
       // Close help screen if it's active
       keyboard_help_toggle(display);
@@ -141,7 +81,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== SEEK CONTROLS (file sources only) =====
-  case KEY_LEFT: { // Seek backward 30 seconds
+  case UI_ACTION_SEEK_BACK: { // Seek backward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -165,7 +105,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  case KEY_RIGHT: { // Seek forward 30 seconds
+  case UI_ACTION_SEEK_FORWARD: { // Seek forward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -191,31 +131,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  // ===== VOLUME CONTROLS =====
-  case KEY_DOWN: { // Decrease volume 10%
-    double current_volume = GET_OPTION(speakers_volume);
-    double new_volume = clamp_volume(current_volume - 0.1);
-    options_set_double("speakers_volume", new_volume);
-    ui_controller_show_volume();
-    double verify_volume = GET_OPTION(speakers_volume);
-    log_info("Volume DOWN: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
-             verify_volume * 100.0);
-    break;
-  }
-
-  case KEY_UP: { // Increase volume 10%
-    double current_volume = GET_OPTION(speakers_volume);
-    double new_volume = clamp_volume(current_volume + 0.1);
-    options_set_double("speakers_volume", new_volume);
-    ui_controller_show_volume();
-    double verify_volume = GET_OPTION(speakers_volume);
-    log_info("Volume UP: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
-             verify_volume * 100.0);
-    break;
-  }
-
   // ===== PLAY/PAUSE CONTROL =====
-  case KEY_SPACE: { // Toggle play/pause
+  case UI_ACTION_PAUSE: { // Toggle play/pause
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -234,141 +151,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  // ===== COLOR MODE CONTROL =====
-  case KEY_C:
-  case 'C': {
-    int current_mode = (int)GET_OPTION(color_mode);
-    int next_mode = next_color_mode(current_mode);
-    options_set_int("color_mode", next_mode);
-
-    const char *mode_names[] = {"Mono", "16-color", "256-color", "Truecolor"};
-    if (next_mode >= 0 && next_mode <= 3) {
-      log_info("Color mode: %s", mode_names[next_mode]);
-    }
-    break;
-  }
-
-  // ===== MUTE CONTROL =====
-  case KEY_M:
-  case 'M': {
-    double current_volume = GET_OPTION(speakers_volume);
-    log_debug("Mute toggle: current_volume=%.2f, g_mute_saved_volume=%.2f, threshold=0.01", current_volume,
-              g_mute_saved_volume);
-
-    if (current_volume > 0.01) { // If not already muted
-      // Save current volume and mute
-      g_mute_saved_volume = current_volume;
-      options_set_double("speakers_volume", 0.0);
-      double verify = GET_OPTION(speakers_volume);
-      log_info("Muted: saved %.0f%%, set to 0%% (verified: %.2f)", g_mute_saved_volume * 100.0, verify);
-    } else {
-      // Restore previous volume
-      double restore_volume = g_mute_saved_volume > 0.0 ? g_mute_saved_volume : 0.5;
-      options_set_double("speakers_volume", restore_volume);
-      double verify = GET_OPTION(speakers_volume);
-      log_info("Unmuted: restored %.0f%% (verified: %.2f)", restore_volume * 100.0, verify);
-    }
-    ui_controller_show_volume();
-    break;
-  }
-
-  // ===== RENDER MODE CONTROL =====
-  case KEY_R:
-  case 'R': {
-    int current_mode = (int)GET_OPTION(render_mode);
-    int next_mode = next_render_mode(current_mode);
-    options_set_int("render_mode", next_mode);
-
-    const char *mode_names[] = {"Foreground", "Background", "Half-block"};
-    if (next_mode >= 0 && next_mode <= 2) {
-      log_info("Render mode: %s", mode_names[next_mode]);
-    }
-    break;
-  }
-
-  // ===== COLOR FILTER CONTROL =====
-  case KEY_F:
-  case 'F': {
-    int current_filter = (int)GET_OPTION(color_filter);
-    int next_filter = next_color_filter(current_filter);
-    options_set_int("color_filter", next_filter);
-
-    if (next_filter >= 0 && next_filter < (int)COLOR_FILTER_COUNT) {
-      log_info("Color filter: %s", COLOR_FILTER_NAMES[next_filter]);
-    }
-    break;
-  }
-
-  // ===== HORIZONTAL FLIP CONTROL =====
-  case 'X':
-  case 'x': {
-    log_info("✓ X KEY PRESSED - handling horizontal flip");
-    bool current_flip_x = (bool)GET_OPTION(flip_x);
-    options_set_bool("flip_x", !current_flip_x);
-    log_info("Horizontal flip: %s (was: %s)", !current_flip_x ? "enabled" : "disabled",
-             current_flip_x ? "enabled" : "disabled");
-    break;
-  }
-
-  // ===== VERTICAL FLIP CONTROL =====
-  case 'Y':
-  case 'y': {
-    bool current_flip_y = (bool)GET_OPTION(flip_y);
-    options_set_bool("flip_y", !current_flip_y);
-    log_info("Vertical flip: %s", !current_flip_y ? "enabled" : "disabled");
-    break;
-  }
-
-  // ===== MATRIX RAIN EFFECT CONTROL =====
-  case KEY_1: {
-    bool current_matrix = (bool)GET_OPTION(matrix_rain);
-    if (options_set_bool("waveform", false) != ASCIICHAT_OK ||
-        options_set_bool("fft", false) != ASCIICHAT_OK ||
-        options_set_bool("matrix_rain", !current_matrix) != ASCIICHAT_OK)
-      break;
-    log_info("Matrix rain effect: %s", !current_matrix ? "enabled" : "disabled");
-    break;
-  }
-
-  case KEY_2: {
-    if (!GET_OPTION(audio_enabled)) {
-      log_info("Audio waveform requires audio to be enabled");
-      break;
-    }
-    bool enabled = !GET_OPTION(waveform);
-    if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
-        options_set_bool("fft", false) != ASCIICHAT_OK ||
-        options_set_bool("waveform", enabled) != ASCIICHAT_OK)
-      break;
-    log_info("Audio waveform: %s", enabled ? "enabled" : "disabled");
-    break;
-  }
-
-  case KEY_3: {
-    if (!GET_OPTION(audio_enabled)) {
-      log_info("Audio frequency display requires audio to be enabled");
-      break;
-    }
-    bool enabled = !GET_OPTION(fft);
-    if (options_set_bool("matrix_rain", false) != ASCIICHAT_OK ||
-        options_set_bool("waveform", false) != ASCIICHAT_OK ||
-        options_set_bool("fft", enabled) != ASCIICHAT_OK)
-      break;
-    log_info("Audio frequency display: %s", enabled ? "enabled" : "disabled");
-    break;
-  }
-
-  // ===== FPS COUNTER TOGGLE =====
-  case KEY_MINUS: {
-    bool current = (bool)GET_OPTION(fps_counter);
-    options_set_bool("fps_counter", !current);
-    log_info("FPS counter: %s", !current ? "enabled" : "disabled");
-    break;
-  }
-
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
-  case KEY_BACKTICK: {
+  case UI_ACTION_DEBUG: {
     debug_sync_trigger_print();
     debug_errno_trigger_print();
     debug_stats_trigger_print();

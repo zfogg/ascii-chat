@@ -289,11 +289,15 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/anim/test_pattern.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/test_pattern.c
 
-    # UI components (splash screen, status screen, keyboard help)
-    ${LIB_ROOT}/ui/splash.c
-    ${LIB_ROOT}/ui/status.c
-    ${LIB_ROOT}/ui/keyboard_help.c
-    ${LIB_ROOT}/ui/terminal_screen.c
+    # Shared session UI; scheduling and media side effects belong to the browser host.
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/ui.c
+    ${LIB_ROOT}/ui/session.c
+    ${LIB_ROOT}/ui/session_input.c
+    ${LIB_ROOT}/ui/session_help.c
+    ${LIB_ROOT}/ui/session_splash.c
+    ${LIB_ROOT}/ui/invitation.c
+    ${LIB_ROOT}/ui/too_small.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/session_log_buffer.c
     ${LIB_ROOT}/ui/frame_buffer.c
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c
