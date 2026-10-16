@@ -26,12 +26,12 @@ log_io_t log_io_start(void) {
   if (capture.saved_stdout_fd < 0 || capture.saved_stderr_fd < 0)
     goto fail;
 
-  int output_fd = fileno(capture.output);
-  if (dup2(output_fd, STDOUT_FILENO) < 0)
+  int output_fd = platform_fileno(capture.output);
+  if (platform_dup2(output_fd, STDOUT_FILENO) != ASCIICHAT_OK)
     goto fail;
-  if (dup2(output_fd, STDERR_FILENO) < 0) {
+  if (platform_dup2(output_fd, STDERR_FILENO) != ASCIICHAT_OK) {
     // Restore stdout if only the first redirection succeeded.
-    dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+    platform_dup2(capture.saved_stdout_fd, STDOUT_FILENO);
     goto fail;
   }
   return capture;
@@ -55,8 +55,8 @@ void log_io_stop(log_io_t capture, const char *prefix) {
   fflush(stderr);
 
   // Restore stdout and stderr
-  dup2(capture.saved_stdout_fd, STDOUT_FILENO);
-  dup2(capture.saved_stderr_fd, STDERR_FILENO);
+  platform_dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+  platform_dup2(capture.saved_stderr_fd, STDERR_FILENO);
   platform_close(capture.saved_stdout_fd);
   platform_close(capture.saved_stderr_fd);
 

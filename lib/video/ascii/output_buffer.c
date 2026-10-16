@@ -47,7 +47,7 @@ void ob_putc(outbuf_t *ob, char c) {
   ob->buf[ob->len++] = c;
 }
 
-void ob_write(outbuf_t *ob, const char *s, size_t n) {
+void ob_write(outbuf_t *ob, const void *s, size_t n) {
   if (!ob || n == 0)
     return;
   ob_reserve(ob, n);
