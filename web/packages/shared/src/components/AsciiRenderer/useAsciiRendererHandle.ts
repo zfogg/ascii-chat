@@ -370,18 +370,7 @@ export function useAsciiRendererHandle({
         onRecreateRenderer?.();
       },
     }),
-    [
-      ensureUi,
-      paintFrame,
-      showFps,
-      zalgo,
-      onRecreateRenderer,
-      moduleRef,
-      setupDoneRef,
-      rendererPtrRef,
-      resizeTimeoutRef,
-      canvasRef,
-    ],
+    [ensureUi, paintFrame, onRecreateRenderer],
   );
 
   return {

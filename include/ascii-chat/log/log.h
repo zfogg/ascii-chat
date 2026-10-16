@@ -34,6 +34,7 @@
 // In debug mode, atomic_t has debug fields that need initialization
 #define LOG_ATOMIC_UINT64_INIT(val)                                                                                    \
   {.impl = (uint64_t)0,                                                                                                \
+   .change_count = (uint64_t)0,                                                                                        \
    .last_store_time_ns = (uint64_t)0,                                                                                  \
    .last_load_time_ns = (uint64_t)0,                                                                                   \
    .store_count = (uint64_t)0,                                                                                         \
