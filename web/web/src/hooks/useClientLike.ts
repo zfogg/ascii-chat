@@ -204,7 +204,8 @@ export function useClientLike(
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
-      videoRef.current.src = "";
+      videoRef.current.removeAttribute("src");
+      videoRef.current.load();
     }
 
     if (objectUrlRef.current) {

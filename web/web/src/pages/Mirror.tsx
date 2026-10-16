@@ -27,6 +27,7 @@ import {
   useMirrorWebcam,
   setMirrorWasmDimensions,
 } from "../hooks";
+import { useMirrorFile } from "../hooks/useMirrorFile";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
 
 export function MirrorPage() {
@@ -82,7 +83,6 @@ export function MirrorPage() {
     canvasRef,
     rendererRef,
     streamRef,
-    objectUrlRef,
     lastFrameTimeRef,
     frameIntervalRef,
     isWebcamRunning,
@@ -99,7 +99,6 @@ export function MirrorPage() {
     setShowSettings,
     settings,
     setSettings,
-    captureFrame,
     handleDimensionsChange,
     stopWebcam,
     debugCountRef,
@@ -133,17 +132,48 @@ export function MirrorPage() {
   }, [wasmInitialized, wasmModule]);
 
   // Handle settings change
-  const handleSettingsChange = (newSettings: BinarySettingsConfig) => {
-    setSettings(newSettings);
-    // Apply WASM settings immediately so renderer recreates if needed
-    applyWasmSettings(newSettings);
-  };
+  const handleSettingsChange = useCallback(
+    (newSettings: BinarySettingsConfig) => {
+      setSettings(newSettings);
+      // Apply WASM settings immediately so renderer recreates if needed
+      applyWasmSettings(newSettings);
+    },
+    [setSettings, applyWasmSettings],
+  );
+
+  // Webcam start logic and auto-start effects
+  const { startWebcam, cancelStart } = useMirrorWebcam({
+    settings,
+    videoRef,
+    canvasRef,
+    streamRef,
+    lastFrameTimeRef,
+    setIsWebcamRunning,
+    setMediaSource,
+    setError,
+    wasmInitialized,
+    mediaSource,
+    isWebcamRunning,
+    terminalDimensions,
+  });
+
+  const fileMedia = useMirrorFile({
+    videoRef,
+    canvasRef,
+    stopWebcam,
+    cancelStart,
+    setIsWebcamRunning,
+    setMediaSource,
+    setError,
+  });
+
+  const { start: startFile, stop: stopFile } = fileMedia;
 
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
     isWebcamRunning,
     terminalDimensions,
-    captureFrame,
+    captureFrame: fileMedia.captureFrame,
     canvasRef,
     rendererRef,
     debugCountRef,
@@ -152,22 +182,6 @@ export function MirrorPage() {
     streamRef,
     animation: settings.animation ?? "matrix",
     animationEnabled: settings.animationEnabled ?? false,
-  });
-
-  // Webcam start logic and auto-start effects
-  const { startWebcam, startVideoFile } = useMirrorWebcam({
-    settings,
-    videoRef,
-    canvasRef,
-    streamRef,
-    objectUrlRef,
-    lastFrameTimeRef,
-    setIsWebcamRunning,
-    setMediaSource,
-    setError,
-    wasmInitialized,
-    isWebcamRunning,
-    terminalDimensions,
   });
 
   useEffect(() => {
@@ -198,17 +212,18 @@ export function MirrorPage() {
   const stopPlayback = useCallback(() => {
     resumePending.current = false;
     setPlaying(false);
-    stopWebcam();
-  }, [setPlaying, stopWebcam]);
+    stopFile();
+  }, [setPlaying, stopFile]);
 
   const handleVideoFileSelect = useCallback(
     (file: File) => {
       // A browser File cannot be reopened from a URL after refresh.
       resumePending.current = false;
       setPlaying(false);
-      void startVideoFile(file);
+      handleSettingsChange({ ...settings, flipX: false });
+      void startFile(file);
     },
-    [startVideoFile, setPlaying],
+    [startFile, setPlaying, settings, handleSettingsChange],
   );
 
   // Sync terminal dimensions to WASM module when they change
@@ -277,10 +292,70 @@ export function MirrorPage() {
               showBandwidth: false,
               isWebcamRunning,
               mediaSource,
-              onStartWebcam: startWebcam,
+              onStartWebcam: () => {
+                stopFile();
+                void startWebcam();
+              },
               onStopWebcam: stopPlayback,
               onUploadClick: () => setShowUploadModal(true),
-              videoRef,
+              videoRef: undefined,
+              status: fileMedia.loading
+                ? `${fileMedia.status} ${fileMedia.fileName}`
+                : fileMedia.fileName,
+              statusControls: (
+                <>
+                  {fileMedia.loading && (
+                    <button onClick={stopPlayback}>Cancel</button>
+                  )}
+                  {fileMedia.kind && fileMedia.kind !== "image" && (
+                    <>
+                      <button
+                        className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded"
+                        onClick={fileMedia.togglePause}
+                      >
+                        {fileMedia.paused ? "Play" : "Pause"}
+                      </button>
+                      <button
+                        className="px-3 py-2 bg-terminal-8 rounded"
+                        onClick={fileMedia.restart}
+                      >
+                        Restart
+                      </button>
+                    </>
+                  )}
+                  {fileMedia.kind === "video" && (
+                    <>
+                      <button
+                        className="px-3 py-2 bg-terminal-8 rounded"
+                        onClick={() => {
+                          if (videoRef.current)
+                            videoRef.current.muted = !videoRef.current.muted;
+                        }}
+                      >
+                        {fileMedia.muted ? "Unmute" : "Mute"}
+                      </button>
+                      <label className="flex items-center gap-2 text-xs">
+                        Volume
+                        <input
+                          aria-label="Volume"
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={fileMedia.volume}
+                          onChange={(event) => {
+                            if (videoRef.current)
+                              videoRef.current.volume = Number(
+                                event.target.value,
+                              );
+                          }}
+                          className="w-20"
+                        />
+                      </label>
+                    </>
+                  )}
+                </>
+              ),
               onSettingsClick: () => setShowSettings(!showSettings),
               showConnectionButton: false,
               showSettingsButton: true,
@@ -293,12 +368,19 @@ export function MirrorPage() {
             <AsciiRenderer
               ref={rendererRef}
               uiLoading={!isWebcamRunning}
-              uiMessage={error || "Choose a camera or media file to begin"}
+              uiMessage={
+                error ||
+                (fileMedia.loading
+                  ? `${fileMedia.status} ${fileMedia.fileName}`
+                  : "Choose a camera or media file to begin")
+              }
               onUiAction={(event) => {
                 if (event.action === 1 || event.action === 7)
                   handleSettingsChange(sessionUiSettings(event, settings));
                 sessionUiMedia(event, videoRef.current);
-                if (event.action === 3) stopWebcam();
+                if (event.action === 6 && fileMedia.kind === "gif")
+                  fileMedia.togglePause();
+                if (event.action === 3) stopPlayback();
               }}
               zalgo={settings.zalgo ?? 0}
               columns={settings.width}
@@ -320,6 +402,7 @@ export function MirrorPage() {
             isOpen={showUploadModal}
             onClose={() => setShowUploadModal(false)}
             onFileSelect={handleVideoFileSelect}
+            allowImages
           />
         }
       />
