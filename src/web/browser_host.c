@@ -80,27 +80,3 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_receive(uint32_t id, uint32_
 EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_render(void) {
   return session_host_render_video(host);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_session_create_request(const char *password,
-                                                                      acip_session_create_t *request) {
-  if (!password || !request || strlen(password) > 127)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session password");
-  memset(request, 0, sizeof(*request));
-  uint8_t secret[crypto_sign_SECRETKEYBYTES];
-  if (crypto_sign_keypair(request->identity_pubkey, secret) != 0)
-    return SET_ERRNO(ERROR_CRYPTO, "Could not generate session identity");
-  request->timestamp = (uint64_t)emscripten_date_now();
-  request->capabilities = 3;
-  request->max_participants = BROWSER_HOST_CLIENTS;
-  request->session_type = SESSION_TYPE_WEBRTC;
-  asciichat_error_t result = acds_sign_session_create(secret, request->timestamp, request->capabilities,
-                                                      request->max_participants, request->signature);
-  sodium_memzero(secret, sizeof(secret));
-  if (result != ASCIICHAT_OK)
-    return result;
-  request->has_password = password[0] != 0;
-  if (request->has_password &&
-      crypto_pwhash_str((char *)request->password_hash, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE,
-                        crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
-    return SET_ERRNO(ERROR_CRYPTO, "Could not hash session password");
-  return ASCIICHAT_OK;
-}

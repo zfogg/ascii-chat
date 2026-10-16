@@ -39,6 +39,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -385,6 +386,7 @@ void client_cleanup(void) {
   memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
 
   g_handshake_complete = false;
+  g_wasm_transport.crypto_ctx = NULL;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
@@ -398,39 +400,6 @@ void client_cleanup(void) {
 // ============================================================================
 // Cryptography API
 // ============================================================================
-
-/** Build a signed ACDS join request without exporting the ephemeral signing key. */
-EMSCRIPTEN_KEEPALIVE
-asciichat_error_t client_acds_join_request(const char *session, const char *password, uint8_t *output) {
-  if (!session || !password || !output || strlen(session) == 0 || strlen(session) > 47 || strlen(password) > 127) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery session or password");
-  }
-  uint8_t public_key[crypto_sign_PUBLICKEYBYTES];
-  uint8_t secret_key[crypto_sign_SECRETKEYBYTES];
-  if (crypto_sign_keypair(public_key, secret_key) != 0) {
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to create discovery identity");
-  }
-  memset(output, 0, 282);
-  size_t session_len = strlen(session);
-  output[0] = (uint8_t)session_len;
-  memcpy(output + 1, session, session_len);
-  memcpy(output + 49, public_key, sizeof(public_key));
-  uint64_t timestamp = (uint64_t)emscripten_date_now();
-  // Packed ACDS structs use host (little-endian) fields; signatures use network order.
-  memcpy(output + 145, &timestamp, sizeof(timestamp));
-  uint8_t message[9 + 48];
-  message[0] = (uint8_t)6004;
-  for (size_t i = 0; i < 8; ++i)
-    message[1 + i] = (uint8_t)(timestamp >> (56 - i * 8));
-  memcpy(message + 9, session, session_len);
-  int result = crypto_sign_detached(output + 81, NULL, message, 9 + session_len, secret_key);
-  sodium_memzero(secret_key, sizeof(secret_key));
-  if (result != 0)
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign discovery join");
-  output[153] = password[0] != '\0';
-  memcpy(output + 154, password, strlen(password));
-  return ASCIICHAT_OK;
-}
 
 /**
  * Generate client keypair for handshake
@@ -1054,4 +1023,18 @@ void client_opus_decoder_cleanup(void) {
     opus_decoder_destroy(g_opus_decoder);
     g_opus_decoder = NULL;
   }
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(bool encrypted) {
+  return acds_handshake_begin(&g_wasm_transport, encrypted);
+}
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
+  asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
+  if (result != ASCIICHAT_OK) { g_connection_state = CONNECTION_STATE_ERROR; return result; }
+  if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+    g_handshake_complete = true;
+    g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
+    g_connection_state = CONNECTION_STATE_CONNECTED;
+  } else { g_connection_state = CONNECTION_STATE_HANDSHAKE; }
+  return ASCIICHAT_OK;
 }

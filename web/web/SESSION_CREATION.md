@@ -14,7 +14,7 @@ host's local display. Explicit codec selection retains actionable unsupported-co
 errors. Host election and migration are not implemented yet: closing the creator
 ends the hosted media connection.
 
-Creation uses the shared C discovery signing code and an Argon2 password hash.
+Discovery uses the shared event-driven C protocol in `acds_protocol.h`: handshake, signed create/lookup/join, password hashing, response validation, and leave. Native receive loops and browser socket events drive the same implementation. JavaScript adapts WASM memory, browser sockets, and WebRTC APIs.
 Leave the password blank for an unprotected session. After creation succeeds, the
 invitation card shows the confirmed name, Copy name, and Copy join link. The link
 includes the password in its `#sessionPassword=...` fragment when provided. It also

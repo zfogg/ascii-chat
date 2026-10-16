@@ -8,6 +8,7 @@ export interface PacketTransport {
 }
 
 export interface ClientSession {
+  readonly canReconnect?: boolean;
   videoCodecCapabilities?: number;
   getBufferedAmount?(): number;
   readonly transportType?: "websocket" | "webrtc";

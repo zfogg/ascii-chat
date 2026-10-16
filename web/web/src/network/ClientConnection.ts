@@ -6,6 +6,7 @@
 import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
+  getClientModule,
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
@@ -236,12 +237,13 @@ export class ClientConnection {
     if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
 
     if (this.options.discoveryHandshake) {
-      const version = new Uint8Array(16);
-      new DataView(version.buffer).setUint16(0, 1, false);
-      version[4] = this.usesApplicationEncryption ? 1 : 0;
-      this.socket.send(
-        serializePacket(PacketType.PROTOCOL_VERSION, version, 0),
-      );
+      const module = getClientModule()!;
+      if (
+        module._client_acds_handshake_begin(
+          this.usesApplicationEncryption ? 1 : 0,
+        )
+      )
+        throw new Error("Could not begin discovery handshake");
     }
 
     if (!this.usesApplicationEncryption) {
@@ -305,6 +307,33 @@ export class ClientConnection {
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
+
+      if (
+        this.options.discoveryHandshake &&
+        this.usesApplicationEncryption &&
+        this.getState() !== ConnectionState.CONNECTED
+      ) {
+        const module = getClientModule()!;
+        const ptr = module._malloc(payload.length || 1);
+        try {
+          if (!ptr) throw new Error("Could not allocate handshake packet");
+          module.HEAPU8.set(payload, ptr);
+          if (
+            module._client_acds_handshake_receive(
+              parsed.type,
+              ptr,
+              payload.length,
+            )
+          )
+            throw new Error("Discovery handshake rejected");
+          const next = getConnectionState();
+          if (next === ConnectionState.CONNECTED) this.wasEverConnected = true;
+          this.onStateChangeCallback?.(next);
+        } finally {
+          module._free(ptr);
+        }
+        return;
+      }
 
       // Handle handshake packets using WASM callbacks
       if (parsed.type === PacketType.CRYPTO_PARAMETERS) {

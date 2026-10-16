@@ -1,3 +1,4 @@
+import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 import { ClientConnection } from "./ClientConnection";
 import { WebRTCBridge } from "./WebRTCBridge";
@@ -8,10 +9,7 @@ import {
 } from "./WebRTCSession";
 import {
   AcdsType,
-  joinRequest,
-  parseJoined,
   parseSignal,
-  readString,
   signalPacket,
   type JoinedSession,
 } from "./acdsProtocol";
@@ -24,7 +22,6 @@ import {
 } from "../wasm/client";
 
 type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
-  _browser_session_create_request(password: number, output: number): number;
   _browser_host_create(): number;
   _browser_host_destroy(): void;
   _browser_host_add_client(): number;
@@ -50,6 +47,7 @@ type Peer = {
 export class BrowserHostSession implements ClientSession {
   readonly transportType = "webrtc" as const;
   private decoders = new Map<number, BrowserVideoDecoder>();
+  private discovery: DiscoveryProtocol | null = null;
   private signaling: ClientConnection;
   private module: HostModule | null = null;
   private joined: JoinedSession | null = null;
@@ -103,27 +101,10 @@ export class BrowserHostSession implements ClientSession {
         requested = true;
         try {
           this.module = getClientModule() as HostModule;
-          const password = new TextEncoder().encode(this.options.password);
-          if (password.length > 127)
-            throw new Error("Password must be at most 127 UTF-8 bytes.");
-          const ptr = this.module._malloc(password.length + 1);
-          const output = this.module._malloc(306);
-          try {
-            this.module.stringToUTF8(
-              this.options.password,
-              ptr,
-              password.length + 1,
-            );
-            if (this.module._browser_session_create_request(ptr, output))
-              throw new Error("Could not prepare session creation.");
-            this.signaling.sendPacket(
-              6000,
-              this.module.HEAPU8.slice(output, output + 306),
-            );
-          } finally {
-            this.module._free(ptr);
-            this.module._free(output);
-          }
+          this.discovery = new DiscoveryProtocol((type, payload) =>
+            this.signaling.sendPacket(type, payload),
+          );
+          this.discovery.enter(true, "", this.options.password);
         } catch (error) {
           this.fail(error);
         }
@@ -149,15 +130,10 @@ export class BrowserHostSession implements ClientSession {
     return ready;
   }
   private async signal(type: number, payload: Uint8Array): Promise<void> {
-    if (type === 6001) {
-      if (payload.length < 91) throw new Error("Truncated created session.");
-      this.name = readString(payload, 1, 48);
-      this.signaling.sendPacket(
-        AcdsType.JOIN,
-        joinRequest(this.name, this.options.password),
-      );
-    } else if (type === AcdsType.JOINED) {
-      this.joined = parseJoined(payload);
+    const snapshot = this.discovery?.receive(type, payload);
+    if (snapshot?.state === 6 && !this.joined) {
+      this.name = snapshot.name;
+      this.joined = snapshot.joined;
       if (
         !this.joined.participantId.every((v, i) => v === this.joined!.hostId[i])
       )
@@ -200,7 +176,7 @@ export class BrowserHostSession implements ClientSession {
         } catch (error) {
           this.fail(error);
         }
-      }, 33);
+      }, 16);
       this.resolve?.();
       this.resolve = null;
       this.reject = null;
@@ -259,7 +235,7 @@ export class BrowserHostSession implements ClientSession {
                 this.fail(error);
               }
             },
-            (error) => this.fail(error),
+            () => this.removePeer(key),
             pc.sctp?.maxMessageSize,
           );
           remote.id = this.module!._browser_host_add_client();
@@ -272,11 +248,7 @@ export class BrowserHostSession implements ClientSession {
           );
         };
         channel.onclose = () => {
-          if (this.closed) return;
-          if (remote.id) this.module?._browser_host_remove_client(remote.id);
-          this.decoders.get(remote.id)?.destroy();
-          this.decoders.delete(remote.id);
-          this.peers.delete(key);
+          if (!this.closed) this.removePeer(key);
         };
       }
       if (type === AcdsType.SDP) {
@@ -306,8 +278,7 @@ export class BrowserHostSession implements ClientSession {
         if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(ice);
         else peer.ice.push(ice);
       }
-    } else if (type === AcdsType.ERROR || type === AcdsType.END)
-      throw new Error(readString(payload, 2, 256) || "Session ended.");
+    }
   }
   private receive(id: number, type: number, payload: Uint8Array) {
     if (this.closed) return;
@@ -335,6 +306,21 @@ export class BrowserHostSession implements ClientSession {
     } finally {
       module._free(ptr);
     }
+  }
+  private removePeer(key: string) {
+    const peer = this.peers.get(key);
+    if (!peer) return;
+    this.peers.delete(key);
+    if (peer.id) this.module?._browser_host_remove_client(peer.id);
+    this.decoders.get(peer.id)?.destroy();
+    this.decoders.delete(peer.id);
+    peer.pc.close();
+    peer.bridge?.close();
+    this.options.onProgress?.(
+      this.peers.size
+        ? "Hosting — participant connected"
+        : "Hosting — waiting for a participant",
+    );
   }
   sendPacket(type: number, payload: Uint8Array) {
     this.receive(this.localId, type, payload);
@@ -371,10 +357,14 @@ export class BrowserHostSession implements ClientSession {
   }
   private fail(error: unknown) {
     if (this.closed) return;
+    console.error("[BrowserHostSession]", error);
     this.reject?.(error instanceof Error ? error : new Error(String(error)));
     this.reject = null;
     this.disconnect();
     this.setState(ConnectionState.ERROR);
+    this.options.onProgress?.(
+      error instanceof Error ? error.message : String(error),
+    );
   }
   disconnect() {
     if (this.closed) return;
@@ -383,16 +373,12 @@ export class BrowserHostSession implements ClientSession {
     if (this.timer) clearInterval(this.timer);
     this.reject?.(new Error("Session creation cancelled."));
     this.reject = null;
-    if (this.joined) {
-      const leave = new Uint8Array(32);
-      leave.set(this.joined.sessionId);
-      leave.set(this.joined.participantId, 16);
-      try {
-        this.signaling.sendPacket(AcdsType.LEAVE, leave);
-      } catch {
-        /* Already disconnected. */
-      }
+    try {
+      this.discovery?.close();
+    } catch {
+      /* Signaling may already be closed. */
     }
+    this.discovery = null;
     for (const peer of this.peers.values()) {
       peer.pc.close();
       peer.bridge?.close();

@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shared C discovery protocol tests</title>
+  </head>
+  <body>
+    <h1>Shared C discovery protocol tests</h1>
+    <pre id="results">Running…</pre>
+    <script type="module">
+      import createModule from "/src/wasm/dist/client.js";
+      const results = document.getElementById("results");
+      const lines = [];
+      function assert(value, message) {
+        if (!value) throw new Error(message);
+      }
+      try {
+        const m = await createModule({
+          locateFile: (name) => "/src/wasm/dist/" + name,
+          print: () => {},
+          printErr: () => {},
+          getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+        });
+        const str = (value) => {
+          const n = new TextEncoder().encode(value).length + 1,
+            p = m._malloc(n);
+          m.stringToUTF8(value, p, n);
+          return p;
+        };
+        const args = str("[]");
+        assert(m._client_init_with_args(args) === 0, "init");
+        m._free(args);
+        let packets = [];
+        m.discoverySend = (handle, type, payload) =>
+          packets.push({ type, payload });
+        const snap = (p) => {
+          m._browser_discovery_snapshot(p);
+          return m.discoveryResult;
+        };
+        const enter = (p, create, name, password) => {
+          const a = str(name),
+            b = str(password);
+          try {
+            return m._browser_discovery_enter(p, create, a, b);
+          } finally {
+            m._free(a);
+            m._free(b);
+          }
+        };
+        const receive = (p, type, bytes) => {
+          const b = m._malloc(bytes.length || 1);
+          m.HEAPU8.set(bytes, b);
+          try {
+            return m._browser_discovery_receive(p, type, b, bytes.length);
+          } finally {
+            m._free(b);
+          }
+        };
+        const test = (name, fn) => {
+          packets = [];
+          const p = m._browser_discovery_new();
+          try {
+            fn(p);
+            lines.push("PASS " + name);
+          } finally {
+            m._browser_discovery_destroy(p);
+          }
+          results.textContent = lines.join("\n");
+        };
+        test("invalid name is rejected before transport sends", (p) => {
+          assert(enter(p, false, "bad name", "") !== 0, "reject");
+          assert(!packets.length, "no send");
+          assert(snap(p).terminal, "terminal");
+        });
+        test("lookup missing session stops retrying", (p) => {
+          assert(!enter(p, false, "blue-mountain-tiger", ""), "enter");
+          assert(packets[0].type === 6002, "lookup");
+          assert(packets[0].payload.length === 49, "wire size");
+          assert(receive(p, 6003, new Uint8Array(72)) !== 0, "reject");
+          assert(
+            snap(p).error === "Session not found" && snap(p).terminal,
+            "terminal reason",
+          );
+        });
+        test("password requirement stops before join", (p) => {
+          enter(p, false, "blue-mountain-tiger", "");
+          const info = new Uint8Array(72);
+          info[0] = 1;
+          info[52] = 1;
+          info[53] = 1;
+          assert(receive(p, 6003, info) !== 0, "reject");
+          assert(packets.length === 1, "no join");
+          assert(snap(p).error.includes("password"), "reason");
+        });
+        test("truncated response is rejected", (p) => {
+          enter(p, false, "blue-mountain-tiger", "");
+          assert(receive(p, 6003, new Uint8Array(71)) !== 0, "reject");
+          assert(snap(p).terminal, "terminal");
+        });
+        test("out-of-order joined response is rejected", (p) => {
+          enter(p, false, "blue-mountain-tiger", "");
+          assert(receive(p, 6005, new Uint8Array(519)) !== 0, "reject");
+        });
+        test("password creation joins using the same identity, then leaves once", (p) => {
+          assert(!enter(p, true, "", "test-pass"), "create");
+          const create = packets[0];
+          assert(
+            create.type === 6000 && create.payload.length === 306,
+            "create wire",
+          );
+          assert(create.payload[107] === 1, "protected");
+          assert(
+            new TextDecoder()
+              .decode(create.payload.slice(108, 236))
+              .startsWith("$argon2id$"),
+            "Argon2",
+          );
+          const created = new Uint8Array(91),
+            name = new TextEncoder().encode("blue-mountain-tiger");
+          created[0] = name.length;
+          created.set(name, 1);
+          assert(!receive(p, 6001, created), "created");
+          const join = packets[1];
+          assert(
+            join.type === 6004 && join.payload.length === 282,
+            "join wire",
+          );
+          assert(
+            create.payload
+              .slice(0, 32)
+              .every((v, i) => join.payload[49 + i] === v),
+            "identity preserved",
+          );
+          assert(
+            new TextDecoder().decode(join.payload.slice(154, 163)) ===
+              "test-pass",
+            "password",
+          );
+          const joined = new Uint8Array(519);
+          joined[0] = 1;
+          joined[130] = 2;
+          joined[146] = 3;
+          joined[162] = 2;
+          joined[196] = 1;
+          assert(!receive(p, 6005, joined), "joined");
+          assert(snap(p).state === 6 && snap(p).joined.hostId[0] === 2, "host");
+          assert(!m._browser_discovery_leave(p), "leave");
+          assert(
+            packets[2].type === 6006 && packets[2].payload.length === 32,
+            "leave wire",
+          );
+          m._browser_discovery_leave(p);
+          assert(packets.length === 3, "idempotent leave");
+        });
+        test("wrong password preserves reason and stops retries", (p) => {
+          enter(p, false, "blue-mountain-tiger", "wrong");
+          const info = new Uint8Array(72);
+          info[0] = 1;
+          info[52] = 1;
+          receive(p, 6003, info);
+          const rejected = new Uint8Array(519);
+          rejected[1] = 3;
+          rejected.set(new TextEncoder().encode("Invalid password"), 2);
+          assert(receive(p, 6005, rejected) !== 0, "reject");
+          assert(
+            snap(p).terminal && snap(p).error === "Invalid password",
+            "reason",
+          );
+        });
+        test("session end is terminal", (p) => {
+          enter(p, false, "blue-mountain-tiger", "");
+          assert(receive(p, 6007, new Uint8Array(80)) !== 0, "end");
+          assert(snap(p).state === 7 && snap(p).terminal, "ended");
+        });
+        results.textContent = lines.join("\n") + "\n\n8 tests passed";
+        document.title = "PASS: shared C discovery protocol";
+      } catch (error) {
+        results.textContent = lines.join("\n") + "\nFAIL " + error.stack;
+        document.title = "FAIL: shared C discovery protocol";
+      }
+    </script>
+  </body>
+</html>

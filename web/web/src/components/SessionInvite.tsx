@@ -34,14 +34,16 @@ export function SessionInvite({
   return (
     <section
       aria-label="Invite a participant"
-      className="border-l-2 border-blue-400 pl-4 py-2 my-3 min-w-0"
+      className="border-l-2 border-blue-400 pl-4 py-1 my-2 min-w-0"
     >
-      <h2 className="text-lg font-semibold">Invite a friend</h2>
-      <p className="text-sm text-terminal-7 mt-1 mb-3">
-        Share this session name or join link. Keep this tab open for the call.
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="font-mono text-xl sm:text-2xl select-all break-all">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <h2 className="font-semibold">Invite a friend</h2>
+        <p className="text-sm text-terminal-7">
+          Keep this tab open for the call.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-2">
+        <span className="font-mono text-xl select-all break-all">
           {sessionName}
         </span>
         <button
@@ -59,22 +61,24 @@ export function SessionInvite({
           Copy join link
         </button>
       </div>
-      <label className="flex flex-col gap-1 mt-3 text-sm max-w-2xl">
-        Join link
+      <label className="flex items-center gap-2 mt-2 text-sm max-w-2xl">
+        <span className="shrink-0">Join link</span>
         <input
           readOnly
           value={invite.href}
           onFocus={(event) => event.currentTarget.select()}
-          className="font-mono bg-terminal-bg border border-terminal-8 rounded px-3 py-2 min-w-0 w-full"
+          className="font-mono bg-terminal-bg border border-terminal-8 rounded px-2 py-1 min-w-0 w-full"
         />
       </label>
-      {sessionPassword && (
-        <p className="text-sm text-terminal-7 mt-2">
-          The join link includes the session password.
-        </p>
-      )}
-      <p role="status" aria-live="polite" className="text-sm mt-2 min-h-5">
-        {feedback}
+      <p
+        role="status"
+        aria-live="polite"
+        className="text-sm text-terminal-7 mt-1 min-h-5"
+      >
+        {feedback ||
+          (sessionPassword
+            ? "The join link includes the session password."
+            : "Share the session name or join link.")}
       </p>
     </section>
   );

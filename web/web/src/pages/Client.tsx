@@ -575,6 +575,7 @@ export function ClientPage({
   const disconnectMedia = useCallback(() => {
     setCreatingSession(false);
     setConnectionRequested(false);
+    setCreatedSession("");
     setConnecting(false);
     pendingConnectRef.current = false;
     discoveryJoinGenerationRef.current++;

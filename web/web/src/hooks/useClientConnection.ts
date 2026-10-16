@@ -113,6 +113,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         validateEncoding();
         setStatus("Connecting...");
         if (showErrors) {
+          hasBeenConnectedRef.current = false;
           setError("");
         }
 
@@ -243,7 +244,10 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
           if (state === ConnectionState.ERROR) {
             console.error("[Client] Connection error state reached");
-            if (discovery && !hasBeenConnectedRef.current) {
+            if (
+              discovery &&
+              (!hasBeenConnectedRef.current || conn.canReconnect === false)
+            ) {
               // Initial join failures are usually actionable (unknown/full
               // session, missing password, or unsupported session config).
               // Repeating them cannot recover and creates a visible retry loop.
@@ -347,7 +351,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         console.log("[Client] conn.connect() completed successfully");
 
         if (clientRef.current !== conn) return;
-        if (clientRef.current !== conn) return;
         // Only mark WASM as initialized AFTER connection and WASM init complete
         setWasmInitialized(true);
         onWasmInitialized();
@@ -357,7 +360,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         console.log(`[Client] Public key set: ${pubKey.substring(0, 20)}...`);
         setPublicKey(pubKey);
       } catch (err) {
-        const errMsg = `${String(err)}`;
+        const errMsg = err instanceof Error ? err.message : String(err);
         console.error("[Client] Connection failed:", errMsg);
         console.error("[Client] Error object:", err);
         console.error(
@@ -395,7 +398,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     ],
   );
   const connectToServerRef = useRef(connectToServer);
-  connectToServerRef.current = connectToServer;
+  useEffect(() => {
+    connectToServerRef.current = connectToServer;
+  }, [connectToServer]);
 
   // Discovery sessions should recover automatically when a peer connection
   // fails. Keep user-initiated disconnects manual; only retry sessions that
@@ -411,7 +416,12 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
     let cancelled = false;
     const attemptReconnect = () => {
-      if (cancelled || !hasBeenConnectedRef.current) return;
+      if (
+        cancelled ||
+        !hasBeenConnectedRef.current ||
+        !autoReconnectEnabledRef.current
+      )
+        return;
       reconnectAttemptRef.current++;
       const delayMs = Math.min(5000, 500 * reconnectAttemptRef.current);
       setStatus(
@@ -461,6 +471,10 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
   const handleDisconnect = useCallback(() => {
     console.log("[Client] handleDisconnect() called");
+    autoReconnectEnabledRef.current = false;
+    hasBeenConnectedRef.current = false;
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    reconnectTimeoutRef.current = null;
 
     if (clientRef.current) {
       console.log("[Client] Disconnecting from server");
