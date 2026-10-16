@@ -3,6 +3,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/terminal.h>
 #include <stddef.h>
+#include <ascii-chat/video/anim/controller.h>
 
 /** Maximum complete frame size accepted by the presenter, including cursor controls. */
 #define UI_CONTROLLER_MAX_FRAME_BYTES (16 * 1024 * 1024)
@@ -67,3 +68,6 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
                                         size_t len);
 
 asciichat_error_t ui_controller_printf(int fd, const char *format, ...);
+
+/** Animation sample owned by the common runtime during a presentation callback. */
+const animation_sample_t *ui_controller_animation_sample(void);

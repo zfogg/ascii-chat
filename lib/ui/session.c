@@ -15,6 +15,10 @@ struct ui_session {
   animation_t animation;
   ui_splash_view_t splash;
   bool loading, help, dirty;
+  int active;
+  bool covered;
+  terminal_size_t presented_size, minimum;
+  uint64_t last_render_ns;
   double saved_volume;
   uint64_t presentation_times[120];
   unsigned presentation_index;
@@ -32,6 +36,7 @@ ui_session_t *ui_session_create(void) {
     return NULL;
   }
   s->size = (terminal_size_t){.cols = 80, .rows = 24};
+  s->active = -1;
   s->saved_volume = 1;
   s->dirty = true;
   s->splash.use_colors = true;
@@ -106,56 +111,130 @@ ui_session_action_t ui_session_input(ui_session_t *s, keyboard_key_t key) {
   return action;
 }
 
+int ui_session_select_screen(uint32_t visible_screens) {
+  for (int screen = UI_SCREEN_COUNT - 1; screen >= 0; --screen)
+    if (visible_screens & (1u << screen))
+      return screen;
+  return -1;
+}
+
+bool ui_session_is_covered(const ui_session_t *s) {
+  return s && s->covered;
+}
+
+size_t ui_session_frame_length(const ui_session_t *s) {
+  size_t length = s ? frame_buffer_get_length(s->frame) : 0;
+  return length ? length - 1 : 0;
+}
+
+const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, uint64_t now_ns) {
+  if (!s || !view)
+    return NULL;
+  bool changed = s->active != view->screen;
+  s->active = view->screen;
+  bool covered = view->screen >= 0 && ui_too_small(s->size, view->minimum);
+  bool transition = changed || s->dirty || covered != s->covered || s->size.cols != s->presented_size.cols ||
+                    s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
+                    view->minimum.rows != s->minimum.rows;
+  s->covered = covered;
+  bool visible = view->screen == UI_SCREEN_SPLASH && !covered;
+  if (visible != s->animation.visible) {
+    // Account for the elapsed interval under the old visibility before changing
+    // it, so resuming after an idle modal does not advance a paused animation.
+    if (animation_update(&s->animation, now_ns, &s->splash.animation) != ASCIICHAT_OK)
+      return NULL;
+    animation_set_visible(&s->animation, visible);
+  }
+  if (animation_update(&s->animation, now_ns, &s->splash.animation) != ASCIICHAT_OK)
+    return NULL;
+  if (view->screen < 0 || !view->draw)
+    return NULL;
+  bool animated = view->screen == UI_SCREEN_SPLASH && s->splash.animation.changed;
+  bool refresh = view->refresh_ns && now_ns - s->last_render_ns >= view->refresh_ns;
+  if (covered ? !transition : !(transition || view->dirty || animated || refresh))
+    return NULL;
+  s->dirty = false;
+  s->presented_size = s->size;
+  s->minimum = view->minimum;
+  s->last_render_ns = now_ns;
+  frame_buffer_reset(s->frame);
+  if (transition || view->clear) {
+    frame_buffer_append(s->frame, "\033[0m", 4);
+    frame_buffer_clear_screen(s->frame);
+  }
+  if (covered)
+    ui_too_small_render(s->frame, s->size, view->minimum);
+  else
+    view->draw(s->frame, s->size, &s->splash.animation, view->context);
+  frame_buffer_append(s->frame, "\0", 1);
+  return frame_buffer_get_content(s->frame);
+}
+
+static void draw_help(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                      void *context) {
+  (void)size;
+  (void)animation;
+  const char *text = context;
+  frame_buffer_append(output, text, strlen(text));
+}
+
+static void draw_splash(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                        void *context) {
+  ui_session_t *s = context;
+  s->splash.animation = *animation;
+  ui_session_splash_render(output, size, &s->splash);
+  size_t capacity = (size_t)(size.rows - 9);
+  if (capacity > 128)
+    capacity = 128;
+  size_t count = session_log_buffer_get_recent(s->logs, s->recent, capacity);
+  for (size_t i = 0; i < count; ++i)
+    frame_buffer_printf(output, "\033[%zu;1H%.*s\033[K", i + 9, size.cols - 1, s->recent[i].message);
+}
+
+static void draw_media(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                       void *context) {
+  (void)animation;
+  ui_session_t *s = context;
+  frame_buffer_append(output, frame_buffer_get_content(s->media), frame_buffer_get_length(s->media));
+  if (frame_buffer_get_length(s->media) && GET_OPTION(fps_counter)) {
+    unsigned frames = 0;
+    for (unsigned i = 0; i < 120; ++i)
+      frames += s->presentation_times[i] && s->last_render_ns - s->presentation_times[i] < 1000000000ULL;
+    frame_buffer_printf(output, "\033[1;%dH\033[0mFPS: %3u", size.cols > 9 ? size.cols - 8 : 1, frames);
+  }
+}
+
 const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
   if (!s)
     return NULL;
-  // Help covers splash; both cover media. Keep receiving media while covered.
-  animation_set_visible(&s->animation, s->loading && !s->help);
-  if (animation_update(&s->animation, now_ns, &s->splash.animation) != ASCIICHAT_OK)
+  if (!s->dirty &&
+      ((s->help && s->active == UI_SCREEN_HELP) || (!s->help && !s->loading && s->active == UI_SCREEN_MEDIA)))
     return NULL;
-  bool animated = s->splash.animation.changed;
-  if (!s->dirty && !(s->loading && !s->help && animated))
-    return NULL;
-  s->dirty = false;
-  frame_buffer_reset(s->frame);
-  frame_buffer_clear_screen(s->frame);
-  if (s->help) {
-    terminal_size_t minimum;
-    char *text = ui_session_help_render(s->size, true, true, &minimum);
-    if (text) {
-      if (ui_too_small(s->size, minimum))
-        ui_too_small_render(s->frame, s->size, minimum);
-      else
-        frame_buffer_append(s->frame, text, strlen(text));
-      SAFE_FREE(text);
-    }
-  } else if (s->loading) {
-    terminal_size_t minimum = {.cols = 52, .rows = 10};
-    if (ui_too_small(s->size, minimum)) {
-      ui_too_small_render(s->frame, s->size, minimum);
-    } else {
-      ui_session_splash_render(s->frame, s->size, &s->splash);
-      size_t capacity = (size_t)(s->size.rows - 9);
-      if (capacity > 128)
-        capacity = 128;
-      size_t count = session_log_buffer_get_recent(s->logs, s->recent, capacity);
-      for (size_t i = 0; i < count; ++i)
-        frame_buffer_printf(s->frame, "\033[%zu;1H%.*s\033[K", i + 9, s->size.cols - 1, s->recent[i].message);
-    }
+  uint32_t visible = 1u << UI_SCREEN_MEDIA;
+  if (s->loading)
+    visible |= 1u << UI_SCREEN_SPLASH;
+  if (s->help)
+    visible |= 1u << UI_SCREEN_HELP;
+  ui_session_view_t view = {
+      .screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = true, .context = s};
+  char *help = NULL;
+  if (view.screen == UI_SCREEN_HELP) {
+    help = ui_session_help_render(s->size, true, true, &view.minimum);
+    if (!help)
+      return NULL;
+    view.draw = draw_help;
+    view.context = help;
+  } else if (view.screen == UI_SCREEN_SPLASH) {
+    view.minimum = (terminal_size_t){.cols = 52, .rows = 10};
+    view.draw = draw_splash;
   } else {
-    frame_buffer_append(s->frame, frame_buffer_get_content(s->media), frame_buffer_get_length(s->media));
-    if (frame_buffer_get_length(s->media)) {
+    view.draw = draw_media;
+    if (s->dirty && frame_buffer_get_length(s->media))
       s->presentation_times[s->presentation_index++ % 120] = now_ns;
-      if (GET_OPTION(fps_counter)) {
-        unsigned frames = 0;
-        for (unsigned i = 0; i < 120; ++i)
-          frames += s->presentation_times[i] && now_ns - s->presentation_times[i] < 1000000000ULL;
-        frame_buffer_printf(s->frame, "\033[1;%dH\033[0mFPS: %3u", s->size.cols > 9 ? s->size.cols - 8 : 1, frames);
-      }
-    }
   }
-  frame_buffer_append(s->frame, "\0", 1);
-  return frame_buffer_get_content(s->frame);
+  const char *frame = ui_session_render(s, &view, now_ns);
+  SAFE_FREE(help);
+  return frame;
 }
 
 void ui_session_clear(ui_session_t *s) {

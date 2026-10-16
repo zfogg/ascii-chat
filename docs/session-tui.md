@@ -12,9 +12,24 @@ executes those actions against native capture/audio resources; the browser adapt
 executes them against HTML media and Web Audio. Keyboard settings are read back
 into the React controls and URL state.
 
-Native presentation remains owned by `ui/controller.c`: its thread, snapshot
-lifetime rules, modal screens, and terminal I/O remain native concerns. It calls
-the shared views through the existing splash and help adapters.
+Both hosts present through `ui_session_render()`. It owns screen transitions,
+resize recovery, minimum-size coverage, redraw decisions, refresh deadlines,
+and the splash animation clock. Both hosts select screens using the common
+priority order through `ui_session_select_screen()`.
+
+`ui/controller.c` is the native adapter: it retains immutable snapshots and
+terminal descriptors, synchronizes producers with the presentation thread,
+and supplies a borrowed view to the shared runtime. Existing screen callbacks
+write into the runtime's frame buffer; the adapter then writes the completed
+frame to the terminal. This includes native status, help, media, progress,
+notices, and prompts. Native terminal FPS/write instrumentation and the
+independent deadlock-debug mailbox stay in the adapter. Batch output keeps
+its synchronous semantics.
+
+The native splash monitor handles startup completion, connection metadata,
+and keyboard/log-search input. It no longer advances a separate animation or
+publishes every animation frame: the shared runtime supplies the current
+animation sample when rendering its header.
 
 The browser owns a `ui_session_t` per canvas. `ui_session_tick()` advances the
 same C animation engine and returns a complete ANSI frame without sleeping or
@@ -23,6 +38,11 @@ media frames, and focused canvas key events. Help covers splash, and splash
 covers media. Incoming media is retained while covered, so closing help restores
 the latest frame. Frames go through the existing libvterm/FreeType canvas renderer.
 Resize and renderer recreation invalidate presentation without resetting options.
+
+The browser's `ui_session_tick()` assembles its retained media/splash/help view
+and calls that same compositor. Rendering a native view is serialized by its
+host; its snapshot and callback context must remain alive through the call.
+Neither host holds producer locks while running screen callbacks.
 
 The C options registry and logger are scoped to a WASM module, not to each canvas.
 One active session canvas owns log capture in a module. Its destructor detaches

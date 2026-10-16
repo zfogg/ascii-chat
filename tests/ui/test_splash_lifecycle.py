@@ -86,6 +86,17 @@ def run_case(library, case):
     if sys.platform == "linux":
         import fcntl
         fcntl.fcntl(write_fd, fcntl.F_SETPIPE_SZ, 4096)
+    # The splash monitor now publishes metadata once; animation writes belong
+    # to the interactive presenter. Fill the pipe explicitly so this exercises
+    # a blocked initial write instead of depending on repeated animation output.
+    os.set_blocking(write_fd, False)
+    try:
+        while True:
+            os.write(write_fd, b"x" * 4096)
+    except BlockingIOError:
+        pass
+    finally:
+        os.set_blocking(write_fd, True)
     saved_stderr = os.dup(2)
     stop = threading.Event()
     callback = c.CFUNCTYPE(c.c_bool)(stop.is_set)

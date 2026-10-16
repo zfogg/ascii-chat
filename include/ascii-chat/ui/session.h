@@ -40,6 +40,30 @@ typedef enum {
 ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume);
 
 typedef struct ui_session ui_session_t;
+/** A borrowed view, valid for the duration of ui_session_render(). Hosts retain
+ * snapshots and serialize access to a session; callbacks must not recurse into
+ * its renderer. The runtime owns selection policy, transitions and animation.
+ */
+typedef void (*ui_session_draw_fn)(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                                   void *context);
+typedef struct {
+  int screen;
+  terminal_size_t minimum;
+  bool dirty;
+  bool clear;
+  uint64_t refresh_ns;
+  ui_session_draw_fn draw;
+  void *context;
+} ui_session_view_t;
+
+/** Highest visible screen from the common priority order, or -1. */
+int ui_session_select_screen(uint32_t visible_screens);
+/** Present a host view through the same compositor used by ui_session_tick().
+ * A screen of -1 hides presentation. NULL means no redraw is required.
+ */
+const char *ui_session_render(ui_session_t *session, const ui_session_view_t *view, uint64_t now_ns);
+bool ui_session_is_covered(const ui_session_t *session);
+size_t ui_session_frame_length(const ui_session_t *session);
 ui_session_t *ui_session_create(void);
 void ui_session_destroy(ui_session_t *session);
 void ui_session_resize(ui_session_t *session, int cols, int rows);
