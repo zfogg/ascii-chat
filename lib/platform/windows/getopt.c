@@ -19,14 +19,6 @@ int optind = 1;
 int opterr = 1;
 int optopt = 0;
 
-// Internal state
-static char *nextchar = NULL;
-
-// Reset getopt state
-static void reset_getopt(void) {
-  nextchar = NULL;
-}
-
 // Basic getopt implementation
 int getopt(int argc, char *const argv[], const char *optstring) {
   static int sp = 1;
@@ -92,7 +84,6 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
   if (optind == 0) {
     optind = 1;
     sp = 1;
-    reset_getopt();
   }
 
   optarg = NULL;

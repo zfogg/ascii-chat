@@ -275,6 +275,23 @@
  * ./build.ps1 -Config Release  # Release build
  * @endcode
  *
+ * Windows Debug builds need the ASan DLL, import library, and runtime thunk
+ * from the selected Clang installation. With multiple LLVM installations,
+ * select the compiler explicitly rather than copying runtimes between them.
+ * For example, to use Scoop LLVM in a separate build directory:
+ *
+ * @code{.powershell}
+ * $llvmBin = "$env:USERPROFILE/scoop/apps/llvm/current/bin"
+ * cmake --preset default -B build_asan "-DCMAKE_C_COMPILER=$llvmBin/clang.exe" "-DCMAKE_CXX_COMPILER=$llvmBin/clang++.exe"
+ * cmake --build build_asan
+ * $env:ASAN_SYMBOLIZER_PATH = "$llvmBin/llvm-symbolizer.exe"
+ * ./build_asan/bin/ascii-chat.exe --version
+ * @endcode
+ *
+ * Check configuration output for the ASan import library and copied runtime
+ * DLL. CMake caches compiler selection, so use a separate build directory when
+ * switching toolchains. A Debug label alone does not prove ASan is enabled.
+ *
  * @section build_modularity CMakeLists.txt Modularity
  *
  * @subsection build_modularity_structure Modular Architecture

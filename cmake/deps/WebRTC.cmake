@@ -224,7 +224,8 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
         # Pass CMAKE_PREFIX_PATH so WebRTC can find system Abseil (Homebrew, vcpkg, etc.)
         if(CMAKE_PREFIX_PATH)
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+            string(REPLACE ";" "\\;" _webrtc_prefix_path "${CMAKE_PREFIX_PATH}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${_webrtc_prefix_path}")
         endif()
 
         # The top-level vcpkg toolchain resolves Abseil to an installed config
@@ -376,7 +377,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             # Pass sanitizer flags through when the main build actually enables
             # them. A plain Debug build is not necessarily sanitizer-enabled.
             if(ASCIICHAT_SANITIZER_COMPILE_FLAGS)
-                set(_webrtc_sanitizer_flags "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}")
+                list(JOIN ASCIICHAT_SANITIZER_COMPILE_FLAGS " " _webrtc_sanitizer_flags)
                 set(_webrtc_crt_flags "-D_MT -D_DLL -D_ITERATOR_DEBUG_LEVEL=0")
                 string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
                 string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
@@ -477,7 +478,7 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_win_cxx_flags}")
             # ASan requires the DLL CRT. Otherwise match the main GNU-style
             # Clang build, which uses the static CRT by default on Windows.
-            if(CMAKE_C_FLAGS MATCHES "-fsanitize" OR CMAKE_CXX_FLAGS MATCHES "-fsanitize")
+            if(ASCIICHAT_SANITIZER_COMPILE_FLAGS OR CMAKE_C_FLAGS MATCHES "-fsanitize" OR CMAKE_CXX_FLAGS MATCHES "-fsanitize")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
                 message(STATUS "WebRTC Windows build: using DLL CRT (sanitizer requirement)")
             else()
