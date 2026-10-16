@@ -116,28 +116,33 @@ export function useMirrorFile({
           video.volume = 1;
           video.playsInline = true;
           video.src = url;
-          // Start within the file-selection gesture, before awaiting metadata.
+          const { transcodeMedia } = await import("../utils/transcodeMedia");
+          if (signal.aborted) return;
+          const allowNative = /\.(mp4|m4v|webm)$/i.test(file.name);
+          // Probe audio even when the browser accepts the video track. A
+          // successful play() does not guarantee that audio was decoded.
+          const prepared = await transcodeMedia(
+            file,
+            signal,
+            setStatus,
+            allowNative,
+          );
+          if (signal.aborted) return;
+          if (prepared !== file) {
+            URL.revokeObjectURL(url);
+            url = URL.createObjectURL(prepared);
+            video.src = url;
+          }
           try {
-            // AVI/MKV and older containers can appear playable while silently
-            // dropping their audio codec. Normalize these containers explicitly.
-            if (
-              /\.(avi|mkv|mov|wmv|flv|mpe?g|ts|m2ts|vob|ogv)$/i.test(file.name)
-            )
-              throw new DOMException(
-                "Conversion required",
-                "NotSupportedError",
-              );
             await playMedia(video, signal);
           } catch (error) {
             if (signal.aborted) return;
             if (
+              prepared !== file ||
               !(error instanceof DOMException) ||
               error.name !== "NotSupportedError"
             )
               throw error;
-            video.pause();
-            const { transcodeMedia } = await import("../utils/transcodeMedia");
-            if (signal.aborted) return;
             const converted = await transcodeMedia(file, signal, setStatus);
             if (signal.aborted) return;
             URL.revokeObjectURL(url);

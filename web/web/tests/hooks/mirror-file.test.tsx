@@ -27,6 +27,7 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
   backend.play.mockResolvedValue(undefined);
+  backend.transcode.mockReset().mockImplementation(async (file: File) => file);
 });
 afterEach(() => {
   cleanup();
@@ -73,7 +74,12 @@ test("video selection replaces camera, keeps audio enabled, and releases resourc
   expect(video.loop).toBe(true);
   expect(canvas.width).toBe(320);
   expect(result.current.kind).toBe("video");
-  expect(backend.transcode).not.toHaveBeenCalled();
+  expect(backend.transcode).toHaveBeenCalledWith(
+    expect.any(File),
+    expect.any(AbortSignal),
+    expect.any(Function),
+    true,
+  );
   act(() => result.current.stop());
   expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
   expect(video.getAttribute("src")).toBeNull();
@@ -91,6 +97,7 @@ test("AVI uses conversion with audio even if the browser might accept its video 
     file,
     expect.any(AbortSignal),
     expect.any(Function),
+    false,
   );
   expect(backend.play).toHaveBeenCalledOnce();
   expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
@@ -101,17 +108,19 @@ test("unsupported native codecs fall back to conversion", async () => {
   backend.play.mockRejectedValueOnce(
     new DOMException("Unsupported", "NotSupportedError"),
   );
-  backend.transcode.mockResolvedValue(new Blob(["converted"]));
+  backend.transcode
+    .mockImplementationOnce(async (file: File) => file)
+    .mockResolvedValueOnce(new Blob(["converted"]));
   const { result } = setup();
   await act(() => result.current.start(new File(["video"], "legacy.mp4")));
-  expect(backend.transcode).toHaveBeenCalledOnce();
+  expect(backend.transcode).toHaveBeenCalledTimes(2);
   expect(backend.play).toHaveBeenCalledTimes(2);
   expect(result.current.kind).toBe("video");
 });
 
 test("cancelled conversion cannot replace a newer selected video", async () => {
   let finish!: (blob: Blob) => void;
-  backend.transcode.mockImplementation(
+  backend.transcode.mockImplementationOnce(
     () =>
       new Promise<Blob>((resolve) => {
         finish = resolve;
@@ -172,7 +181,7 @@ test("PNG uses image decoding and does not call video playback", async () => {
 test("unmount cancels in-flight work and revokes the file URL", async () => {
   backend.play.mockImplementationOnce(() => new Promise(() => {}));
   const { result, unmount } = setup();
-  act(() => {
+  await act(async () => {
     void result.current.start(new File(["video"], "pending.mp4"));
   });
   const signal = backend.play.mock.calls[0]![1] as AbortSignal;

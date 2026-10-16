@@ -149,6 +149,9 @@ export function useMirrorRenderLoop({
                 { source: "microphone", mode: animation },
               )
             : "";
+        // Files and still images have no microphone stream. Keep rendering
+        // their pixels when no audio analyser is available.
+        if (!testMode && !analyser) frame = captureFrame();
       } else if (testMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;

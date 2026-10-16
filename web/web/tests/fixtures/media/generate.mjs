@@ -40,6 +40,7 @@ for (const [name, options] of [
     "tone.mpg",
     ["-c:v", "mpeg2video", "-q:v", "5", "-c:a", "mp2", "-f", "mpeg"],
   ],
+  ["ac3.mp4", ["-c:v", "copy", "-c:a", "ac3"]],
   ["tone.wmv", ["-c:v", "wmv2", "-c:a", "wmav2"]],
   [
     "hevc.mkv",

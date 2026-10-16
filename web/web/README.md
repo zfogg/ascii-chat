@@ -28,7 +28,9 @@ Video also has mute and volume controls. Stop, replacement, and navigation
 release the media and cancel pending conversion. Files are not restored after
 refresh; select the file again.
 
-MP4 (H.264/AAC) and WebM (VP8/VP9/Opus) normally play directly. AVI, MKV, MOV,
+MP4 and WebM audio tracks are inspected locally before playback. Known supported
+audio codecs play directly; unknown or unsupported audio is converted to AAC.
+This inspection also loads the converter and has the same 256 MB input limit. AVI, MKV, MOV,
 MPEG, WMV, FLV, and other unsupported browser codecs use a lazy-loaded,
 same-origin FFmpeg WASM worker to convert the first video and optional first
 audio track to H.264/AAC MP4. This includes MPEG-4 Part 2/MP3 and MJPEG/PCM

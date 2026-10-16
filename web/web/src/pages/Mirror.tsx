@@ -67,8 +67,11 @@ export function MirrorPage() {
     return promise;
   }, []);
 
+  const fileSourceRef = useRef(false);
   const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
-    applyMirrorWasmSettings(settings);
+    applyMirrorWasmSettings(
+      fileSourceRef.current ? { ...settings, flipX: false } : settings,
+    );
   }, []);
 
   const setWasmDimensions = useCallback((cols: number, rows: number) => {
@@ -108,6 +111,11 @@ export function MirrorPage() {
     debugCountRef,
     firstFrameTimeRef,
   } = optionsManager;
+
+  useEffect(() => {
+    fileSourceRef.current = mediaSource === MediaSourceType.FILE;
+    if (wasmInitialized) applyWasmSettings(settings);
+  }, [mediaSource, wasmInitialized, settings, applyWasmSettings]);
 
   // Handle settings change
   const handleSettingsChange = useCallback(
@@ -198,10 +206,9 @@ export function MirrorPage() {
       // A browser File cannot be reopened from a URL after refresh.
       resumePending.current = false;
       setPlaying(false);
-      handleSettingsChange({ ...settings, flipX: false });
       void startFile(file);
     },
-    [startFile, setPlaying, settings, handleSettingsChange],
+    [startFile, setPlaying],
   );
 
   // Sync terminal dimensions to WASM module when they change
