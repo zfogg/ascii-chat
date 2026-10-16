@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import type { BinarySettingsConfig } from "../components";
 import { type MediaSource, MediaSourceType } from "./useClientLike";
@@ -58,7 +57,7 @@ export function useMirrorWebcam({
   const testPattern = useTestPattern();
   const devAutoStartRef = useRef(false);
   const startGenerationRef = useRef(0);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+  const permissionGranted = true;
 
   const startWebcam = useCallback(async () => {
     const generation = ++startGenerationRef.current;
@@ -331,9 +330,6 @@ export function useMirrorWebcam({
 
   // Set permissionGranted immediately so auto-start can proceed
   // The startWebcam function will request permission when needed
-  useEffect(() => {
-    setPermissionGranted(true);
-  }, []);
 
   // Fast Refresh can preserve the running state after it has discarded the
   // stream ref. Do not leave the renderer in a false-running state with no

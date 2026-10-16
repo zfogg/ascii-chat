@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { BrowserHostSession } from "../network/BrowserHostSession";
 import { useVideoEncodings } from "./useVideoEncodings";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -398,7 +399,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     ],
   );
   const connectToServerRef = useRef(connectToServer);
-  useEffect(() => {
+  useLayoutEffect(() => {
     connectToServerRef.current = connectToServer;
   }, [connectToServer]);
 

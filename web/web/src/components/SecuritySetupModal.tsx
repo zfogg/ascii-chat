@@ -84,9 +84,11 @@ export function SecuritySetupModal({
   const [addingPrivateKey, setAddingPrivateKey] = useState(false);
   const [addingVerificationKey, setAddingVerificationKey] = useState(false);
 
-  useEffect(() => {
+  const [previousInputs, setPreviousInputs] = useState({ open, settings });
+  if (previousInputs.open !== open || previousInputs.settings !== settings) {
+    setPreviousInputs({ open, settings });
     if (open) setDraft(readCryptoUrl(settings));
-  }, [open, settings]);
+  }
 
   useEffect(() => {
     if (open) {

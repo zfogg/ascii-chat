@@ -1,5 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
+import type { MirrorModule } from "../../packages/shared/src/wasm/mirror";
+declare global {
+  interface Window {
+    __demoProbe: {
+      keys: number;
+      splashes: number;
+      paints: number;
+      frames: string[];
+    };
+  }
+}
 
 test("demo playback ignores terminal shortcuts and never requests the splash", async ({
   page,
@@ -46,29 +57,31 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
       new URL("../../packages/shared/src/wasm/mirror.ts", import.meta.url),
     ).replaceAll("\\", "/");
   await page.evaluate(async (url) => {
-    const m = (await import(url)).getMirrorModule();
+    const m: MirrorModule = (await import(url)).getMirrorModule();
     const probe = { keys: 0, splashes: 0, paints: 0, frames: [] as string[] };
-    (window as any).__demoProbe = probe;
-    const key = m._wasm_ui_key,
-      loading = m._wasm_ui_loading,
+    window.__demoProbe = probe;
+    const key = m._wasm_ui_key.bind(m),
+      loading = m._wasm_ui_loading.bind(m),
       feed = m._term_renderer_feed;
-    m._wasm_ui_key = (...args: any[]) => {
+    m._wasm_ui_key = (...args: Parameters<MirrorModule["_wasm_ui_key"]>) => {
       probe.keys++;
       return key(...args);
     };
-    m._wasm_ui_loading = (...args: any[]) => {
+    m._wasm_ui_loading = (
+      ...args: Parameters<MirrorModule["_wasm_ui_loading"]>
+    ) => {
       probe.splashes += Number(Boolean(args[1]));
       return loading(...args);
     };
     m._term_renderer_feed = (r: number, p: number, n: number) => {
       probe.paints++;
-      probe.frames.push(m.UTF8ToString(p, n));
+      probe.frames.push(new TextDecoder().decode(m.HEAPU8.slice(p, p + n)));
       if (probe.frames.length > 20) probe.frames.shift();
       return feed(r, p, n);
     };
   }, moduleUrl);
   await expect
-    .poll(() => page.evaluate(() => (window as any).__demoProbe.paints))
+    .poll(() => page.evaluate(() => window.__demoProbe.paints))
     .toBeGreaterThan(3);
   const before = await canvas.screenshot();
   await expect
@@ -91,14 +104,14 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
     " ",
   ])
     await page.keyboard.press(key);
-  const probe = await page.evaluate(() => (window as any).__demoProbe);
+  const probe = await page.evaluate(() => window.__demoProbe);
   expect(probe.keys).toBe(0);
   expect(probe.splashes).toBe(0);
   expect(probe.frames.join("")).not.toMatch(
     /Keyboard Shortcuts|search logs|Video chat in your terminal/,
   );
   await expect
-    .poll(() => page.evaluate(() => (window as any).__demoProbe.paints))
+    .poll(() => page.evaluate(() => window.__demoProbe.paints))
     .toBeGreaterThan(probe.paints);
   await page.screenshot({ path: "artifacts/demo-passive.png" });
 });

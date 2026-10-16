@@ -305,7 +305,7 @@ section {
 }
 
 .man-func-sig {
-  @media (width >=1024px) and (width <=1500px) {
+  @media (width >= 1024px) and (width <= 1500px) {
     max-width: 200px;
   }
 }

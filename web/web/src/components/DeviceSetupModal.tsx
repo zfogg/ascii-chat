@@ -4,7 +4,7 @@ import {
 } from "../hooks/useVideoEncodings";
 import type { VideoEncoding } from "../network/videoEncoding";
 import { useUrlState } from "../hooks/useUrlState";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   getMediaDevicePreferences,
   getStoredMediaDevicePreferences,
@@ -93,6 +93,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const [testingSpeakers, setTestingSpeakers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasCamera, setHasCamera] = useState(false);
 
   const stopPreview = useCallback((invalidate = true) => {
     if (invalidate) previewGenerationRef.current++;
@@ -104,6 +105,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
     audioContextRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setHasCamera(false);
     if (videoRef.current) videoRef.current.srcObject = null;
     setLevel(0);
     setTestingMicrophone(false);
@@ -140,6 +142,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
           return;
         }
         streamRef.current = stream;
+        setHasCamera(stream.getVideoTracks().length > 0);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play().catch(() => undefined);
@@ -238,20 +241,23 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
     [stopPreview, setPreferences],
   );
 
-  useEffect(() => {
-    isOpenRef.current = open;
-    if (open) {
+  const attachPreview = useCallback(
+    (element: HTMLVideoElement | null) => {
+      videoRef.current = element;
+      if (!element) return;
+      isOpenRef.current = true;
       setEncodingDraft(null);
-      setPreferences(getMediaDevicePreferences());
-      void startPreview(getMediaDevicePreferences());
-    } else {
-      stopPreview();
-    }
-    return () => {
-      isOpenRef.current = false;
-      stopPreview();
-    };
-  }, [open, startPreview, stopPreview, setPreferences]);
+      const preferences = getMediaDevicePreferences();
+      setPreferences(preferences);
+      void startPreview(preferences);
+      return () => {
+        isOpenRef.current = false;
+        stopPreview();
+        videoRef.current = null;
+      };
+    },
+    [startPreview, stopPreview, setPreferences],
+  );
 
   if (!open) return null;
 
@@ -367,14 +373,14 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 className="h-full w-full object-cover"
                 muted
                 playsInline
-                ref={videoRef}
+                ref={attachPreview}
               />
               {loading && (
                 <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
                   Starting camera preview…
                 </div>
               )}
-              {!loading && !streamRef.current?.getVideoTracks().length && (
+              {!loading && !hasCamera && (
                 <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
                   Camera preview unavailable
                 </div>

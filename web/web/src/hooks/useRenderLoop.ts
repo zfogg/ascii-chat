@@ -30,7 +30,7 @@ export function useRenderLoop(
   );
 
   const animationFrameRef = useCallback(
-    (time: number) => {
+    function animate(time: number) {
       try {
         const elapsed = time - lastFrameTimeRef.current;
         const interval = frameIntervalRef.current;
@@ -70,7 +70,7 @@ export function useRenderLoop(
         }
 
         // Schedule next frame
-        frameRef.current = requestAnimationFrame(animationFrameRef);
+        frameRef.current = requestAnimationFrame(animate);
       } catch (error) {
         frameRef.current = null;
         if (onError) {
