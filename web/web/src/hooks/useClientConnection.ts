@@ -1,3 +1,4 @@
+import { BrowserHostSession } from "../network/BrowserHostSession";
 import { useVideoEncodings } from "./useVideoEncodings";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -129,7 +130,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         );
 
         const conn: ClientSession = discovery
-          ? new WebRTCSession(
+          ? new (discovery.createSession ? BrowserHostSession : WebRTCSession)(
               { ...discovery, onProgress: setStatus },
               width,
               height,
@@ -144,7 +145,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               height,
             });
 
-        if (discovery) autoReconnectEnabledRef.current = true;
+        if (discovery)
+          autoReconnectEnabledRef.current = !discovery.createSession;
 
         conn.onStateChange((state) => {
           onConnectionStateChange?.(state);

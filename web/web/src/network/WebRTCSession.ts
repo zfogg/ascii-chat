@@ -21,6 +21,8 @@ import {
 import type { ClientCryptoOptions } from "../wasm/client";
 
 export interface DiscoveryOptions {
+  createSession?: boolean;
+  onCreated?: (name: string) => void;
   sessionName: string;
   password: string;
   signalingUrl: string;

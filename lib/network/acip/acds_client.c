@@ -31,6 +31,8 @@
 #include <time.h>
 #include <errno.h>
 
+// Browser transports schedule discovery messages in JavaScript; signing stays shared.
+#ifndef __EMSCRIPTEN__
 static asciichat_error_t acds_client_handshake(acds_client_t *client) {
   crypto_handshake_context_t *ctx = &client->handshake_ctx;
   asciichat_error_t result = crypto_handshake_init("acds_client", ctx, false);
@@ -523,6 +525,7 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
 }
 
 // ============================================================================
+#endif
 // Cryptographic Signature Helpers
 // ============================================================================
 

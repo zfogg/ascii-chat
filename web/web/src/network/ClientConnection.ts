@@ -462,6 +462,10 @@ export class ClientConnection {
       this.onPacketCallback?.(parsed, payload);
     } catch (error) {
       console.error("[ClientConnection] Failed to handle packet:", error);
+      if (!this.wasEverConnected && !this.isUserDisconnecting) {
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+      }
     }
   }
 

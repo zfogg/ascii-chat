@@ -1,0 +1,505 @@
+<!doctype html>
+
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  /><title>Discovery · Session creation design</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Georgia, serif;
+      color: #f3f4f6;
+      background: #030712;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    button,
+    input {
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid #61d6d6;
+      outline-offset: 3px;
+    }
+    button {
+      border: 1px solid #667080;
+      background: #222b38;
+      color: inherit;
+      border-radius: 5px;
+      padding: 10px 16px;
+    }
+    button:hover {
+      background: #334155;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0c0c0c;
+      padding: 18px 24px;
+      border-bottom: 1px solid #49515d;
+    }
+    header strong {
+      font-size: 24px;
+      color: #65b6e8;
+    }
+    nav {
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+    }
+    nav span:last-child {
+      color: #65b6e8;
+      text-decoration: underline;
+    }
+    .preview {
+      background: #172331;
+      color: #b4c8db;
+      padding: 9px 24px;
+      font: 12px system-ui;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .preview b {
+      color: #e2edf5;
+    }
+    details {
+      border-bottom: 1px solid #49515d;
+    }
+    summary {
+      padding: 14px 24px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .panel {
+      padding: 4px 24px 20px;
+    }
+    .intent {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 0 0 20px;
+    }
+    .switch {
+      display: inline-flex;
+      border: 1px solid #596579;
+      border-radius: 6px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .switch button {
+      border: 0;
+      background: transparent;
+      padding: 8px 17px;
+      color: #aab5c5;
+    }
+    .switch button[aria-pressed="true"] {
+      background: #29445a;
+      color: #e3f6ff;
+    }
+    .hint {
+      font-size: 14px;
+      color: #aab5c5;
+      margin: 0;
+    }
+    .fields {
+      display: flex;
+      align-items: end;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 15px;
+    }
+    input {
+      background: #030712;
+      border: 1px solid #687486;
+      border-radius: 4px;
+      padding: 10px 12px;
+      color: #f3f4f6;
+      width: 240px;
+      font: 14px monospace;
+    }
+    #service {
+      width: 290px;
+    }
+    .name-row {
+      display: flex;
+      gap: 6px;
+    }
+    .name-row input {
+      width: 255px;
+    }
+    .refresh {
+      padding: 7px 11px;
+      font-size: 20px;
+    }
+    .primary {
+      background: #15803d;
+      border-color: #15803d;
+    }
+    .primary:hover {
+      background: #166534;
+    }
+    .help {
+      display: inline-flex;
+      position: relative;
+      gap: 7px;
+      align-items: center;
+    }
+    .info {
+      font: 12px system-ui;
+      border: 1px solid #96a3b7;
+      border-radius: 100%;
+      width: 15px;
+      height: 15px;
+      text-align: center;
+      color: #b8c4d5;
+    }
+    .tip {
+      display: none;
+      position: absolute;
+      top: 24px;
+      left: 0;
+      width: 230px;
+      padding: 10px;
+      background: #243244;
+      z-index: 5;
+      border-radius: 5px;
+      font: 13px system-ui;
+      line-height: 1.5;
+    }
+    .help:hover .tip,
+    .help:focus .tip {
+      display: block;
+    }
+    .advanced {
+      margin-top: 18px;
+      font-size: 14px;
+      border: 0;
+    }
+    .advanced summary {
+      padding: 0;
+    }
+    .advanced p {
+      color: #aab5c5;
+      margin-bottom: 0;
+    }
+    .bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      border-bottom: 1px solid #49515d;
+      font-size: 14px;
+    }
+    .status {
+      color: #94a3b8;
+      margin-left: 12px;
+    }
+    .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7b8798;
+      margin-right: 8px;
+    }
+    .canvas {
+      flex: 1;
+      min-height: 200px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+    .empty {
+      max-width: 460px;
+      color: #8794a7;
+      padding: 24px;
+    }
+    .empty svg {
+      color: #54657d;
+      margin-bottom: 14px;
+    }
+    .empty h2 {
+      font-size: 20px;
+      font-weight: normal;
+      color: #c3cedd;
+      margin: 0 0 12px;
+    }
+    .empty p {
+      font: 14px/1.6 system-ui;
+      margin: 0;
+    }
+    .share {
+      border-left: 3px solid #4eaf81;
+      padding: 3px 0 3px 18px;
+    }
+    .share h2 {
+      font-size: 19px;
+      margin: 0 0 8px;
+      font-weight: normal;
+    }
+    .share p {
+      color: #aab5c5;
+      font-size: 14px;
+      margin: 8px 0 14px;
+    }
+    .sharecode {
+      font: 22px monospace;
+      letter-spacing: 0.02em;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .end {
+      background: transparent;
+      color: #fda4af;
+      border-color: #84404b;
+    }
+    .small {
+      font-size: 12px;
+      color: #93a4bb;
+    }
+    footer {
+      padding: 10px 24px;
+      font: 12px system-ui;
+      color: #7b8798;
+      border-top: 1px solid #303b4d;
+    }
+    .view {
+      animation: appear 0.25s ease;
+    }
+    @keyframes appear {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    [hidden] {
+      display: none !important;
+    }
+    @media (max-width: 700px) {
+      header {
+        padding: 15px;
+      }
+      nav {
+        gap: 10px;
+      }
+      .intent {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .panel {
+        padding: 6px 16px 18px;
+      }
+      .fields > label,
+      .name-row,
+      input,
+      #service {
+        width: 100%;
+      }
+      .fields > label {
+        flex: 1 1 100%;
+      }
+      .name-row input {
+        flex: 1;
+        min-width: 0;
+      }
+      .bar {
+        padding: 14px 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .preview {
+        padding: 10px 16px;
+      }
+      .preview span {
+        display: none;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .view {
+        animation: none;
+      }
+    }
+
+    #create {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    #create:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+  </style>
+
+  <header>
+    <div><strong>ascii-chat</strong> <small>(Web Client)</small></div>
+    <nav>
+      <span>Home</span><span>Mirror</span><span>Client</span
+      ><span>Discovery</span>
+    </nav>
+  </header>
+
+  <div class="preview">
+    <b>Interactive design preview · Session creation is simulated</b
+    ><span
+      >Try Create session, then copy an invitation or end the session.</span
+    >
+  </div>
+
+  <details open>
+    <summary>Network settings</summary>
+    <div class="panel">
+      <div id="setup" class="view">
+        <form id="form">
+          <div class="fields">
+            <label
+              >Discovery service URL<input
+                id="service"
+                value="wss://discovery-service.ascii-chat.com" /></label
+            ><label
+              >Session name
+              <div class="name-row">
+                <input
+                  id="name"
+                  placeholder="Generating a session name…"
+                  maxlength="47"
+                /><button
+                  id="refresh"
+                  type="button"
+                  class="refresh"
+                  aria-label="Generate another session name"
+                  title="Generate another session name"
+                >
+                  ↻
+                </button>
+              </div></label
+            ><label
+              ><span class="help" tabindex="0"
+                >Session password <span class="info">i</span
+                ><span class="tip" role="tooltip"
+                  >Leave blank for no password. Share the password separately
+                  with people you invite.</span
+                ></span
+              ><input id="password" type="password" autocomplete="off" /></label
+            ><button class="primary" id="join" type="submit">
+              Join session</button
+            ><button id="create" type="submit">Create session</button>
+          </div>
+          <p class="hint" style="margin-top: 12px">
+            Join with a name from a friend, or create a session and invite them.
+          </p>
+        </form>
+
+        <details class="advanced">
+          <summary>Connection settings</summary>
+          <p>
+            Connection route: Automatic · STUN and TURN configuration stays
+            here.
+          </p>
+        </details>
+      </div>
+
+      <div id="created" class="share view" hidden>
+        <h2>Waiting for your friend</h2>
+        <p>
+          You're in the call. Send your friend the session name or join link
+          below.
+        </p>
+        <div class="actions">
+          <strong id="code" class="sharecode"></strong
+          ><button id="copyname">Copy name</button
+          ><button id="copylink" class="primary">Copy join link</button
+          ><button id="end" class="end">End session</button>
+        </div>
+        <label class="small" style="margin-top: 16px"
+          >Join link<input
+            id="invite"
+            readonly
+            style="width: min(100%, 680px)"
+            aria-label="Join link"
+        /></label>
+        <p id="privacy"></p>
+        <div id="feedback" class="small" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </details>
+
+  <div class="bar">
+    <div>
+      <span class="dot" id="dot"></span><b>Discovery mode</b
+      ><span class="status" id="status">Disconnected</span>
+    </div>
+    <div class="small">Camera off &nbsp; · &nbsp; Microphone off</div>
+  </div>
+
+  <main class="canvas">
+    <div class="empty">
+      <svg
+        width="48"
+        height="40"
+        viewBox="0 0 48 40"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <rect x="2" y="3" width="30" height="24" rx="3" />
+        <path d="m32 10 12-5v20l-12-5M11 35h12m-6-8v8" />
+      </svg>
+      <h2 id="emptytitle">Make room for a conversation</h2>
+      <p id="emptycopy">
+        Join a friend’s session or create one and invite them.
+      </p>
+    </div>
+  </main>
+  <footer>ascii-chat · Video chat in your browser</footer>
+
+  <script type="module">
+
+    const el=id=>document.getElementById(id);let suggestion='';
+
+    async function generate(){el('refresh').disabled=true;try{const response=await fetch('http://localhost:3001/api/session-strings?count=1');if(!response.ok)throw Error();const data=await response.json();suggestion=data.strings[0];el('name').placeholder=suggestion;}catch{el('name').placeholder='Enter session name';}finally{el('refresh').disabled=false}}
+
+    el('refresh').onclick=generate;
+
+    el('name').oninput=()=>el('name').setCustomValidity('');
+
+    el('form').onsubmit=e=>{e.preventDefault();const creating=e.submitter===el('create');const name=el('name').value.trim()||(creating?suggestion:'');if(!name){el('name').setCustomValidity(creating?'Enter a name for your new session.':'Enter the session name your friend shared.');el('name').reportValidity();return}el('name').setCustomValidity('');if(!creating){el('status').textContent='Preview only � joining '+name;return}el('setup').hidden=true;el('created').hidden=false;el('code').textContent=name;el('invite').value='https://web.ascii-chat.com/discovery?session='+encodeURIComponent(name);el('status').textContent='In call · Waiting for a participant';el('dot').style.background='#4eaf81';el('privacy').textContent=el('password').value?'Password protected. Share the password separately; it is not included in the join link.':'No password. Anyone with this session name can join.';el('emptytitle').textContent='You're in the call';el('emptycopy').textContent='Waiting for your friend to join. Keep this tab open.'};
+
+    el('end').onclick=()=>{el('created').hidden=true;el('setup').hidden=false;el('feedback').textContent='';el('dot').style.background='';el('status').textContent='Disconnected';el('emptytitle').textContent='Make room for a conversation';el('emptycopy').textContent='Join a friend�s session or create one and invite them.'};
+
+    async function copy(text,message){try{await navigator.clipboard.writeText(text);el('feedback').textContent=message}catch{el('feedback').textContent='Copy this session name: '+el('code').textContent}}
+
+    el('copyname').onclick=()=>copy(el('code').textContent,'Session name copied.');el('copylink').onclick=()=>copy(el('invite').value,'Join link copied.');generate();
+  </script>
+</html>

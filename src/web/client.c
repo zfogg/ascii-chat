@@ -336,7 +336,9 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
  */
 EMSCRIPTEN_KEEPALIVE
 int client_init_with_args(const char *args_json) {
-
+  // The module, renderers, and allocator outlive individual connections.
+  if (g_initialized)
+    return 0;
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[64] = {NULL};
@@ -348,10 +350,6 @@ int client_init_with_args(const char *args_json) {
   // Initialize options (sets up RCU, defaults, etc.)
   asciichat_error_t err = options_init(argc, argv);
   free(args_copy);
-
-  if (g_initialized) {
-    return -1;
-  }
 
   // Initialize platform layer
   err = platform_init();
@@ -388,15 +386,13 @@ void client_cleanup(void) {
 
   g_handshake_complete = false;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-  g_initialized = false;
   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
   sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
   g_has_client_identity_key = false;
   g_has_expected_server_identity_key = false;
-  options_state_destroy();
-  buffer_system_cleanup();
-  platform_destroy();
+  // Keep module-wide options and buffer domains alive while browser renderers
+  // still reference them. Connection cleanup only resets authentication state.
 }
 
 // ============================================================================

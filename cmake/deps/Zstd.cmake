@@ -34,12 +34,17 @@ FetchContent_Declare(zstd-src
 # =============================================================================
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (WASM)...")
+    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "" FORCE)
 
     FetchContent_Declare(zstd-wasm
         URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
         URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-wasm-src"
+        SOURCE_SUBDIR build/cmake
         UPDATE_DISCONNECTED ON
         CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
                    -DZSTD_BUILD_TESTS=OFF
@@ -47,7 +52,7 @@ if(DEFINED EMSCRIPTEN)
     )
 
     FetchContent_MakeAvailable(zstd-wasm)
-    set(ZSTD_LIBRARIES zstd)
+    set(ZSTD_LIBRARIES libzstd_static)
     set(ZSTD_INCLUDE_DIRS "${zstd-wasm_SOURCE_DIR}/lib")
     set(ZSTD_FOUND TRUE)
 

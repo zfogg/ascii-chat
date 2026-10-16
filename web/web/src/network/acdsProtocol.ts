@@ -79,8 +79,7 @@ export function parseJoined(bytes: Uint8Array): JoinedSession {
   if (!bytes[0])
     throw new Error(readString(bytes, 2, 128) || "Session join failed");
   const hostId = bytes[178] ? bytes.slice(179, 195) : bytes.slice(162, 178);
-  if (!hostId.some(Boolean))
-    throw new Error("This session has no native host yet");
+  if (!hostId.some(Boolean)) throw new Error("This session has no host yet");
   if (bytes[196] !== 1)
     throw new Error(
       "This session does not offer WebRTC. Start the native server with --webrtc.",
