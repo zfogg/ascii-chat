@@ -947,6 +947,8 @@ void log_set_session_log_buffer(session_log_buffer_t *buf);
  * @ingroup logging
  */
 void log_clear_session_log_buffer(void);
+/** Borrowed history retained from log_init through log_system_destroy, independent of screens. */
+session_log_buffer_t *log_get_history_buffer(void);
 
 /**
  * @brief Get the currently registered session log buffer

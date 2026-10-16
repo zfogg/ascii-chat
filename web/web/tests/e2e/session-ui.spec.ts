@@ -56,6 +56,22 @@ test("C splash animates and keyboard settings update both C and the web controls
   page.on("pageerror", (error) => errors.push(error.message));
   await observe(page);
   const canvas = page.locator("canvas.ascii-canvas");
+  await canvas.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Video chat in your terminal");
+  expect(await lastFrame(page)).not.toContain("Volume DOWN");
+  expect(await lastFrame(page)).not.toContain("/: search logs");
+  await page.screenshot({ path: "artifacts/session-splash-startup-web.png" });
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
+  await page.keyboard.press("]");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Video chat in your terminal");
+  expect(await lastFrame(page)).not.toContain("Volume DOWN");
+  await page.keyboard.press("ArrowUp");
   const before = await canvas.screenshot();
   await expect
     .poll(async () => (await canvas.screenshot()).equals(before))
@@ -182,4 +198,119 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
     return outcomes;
   }, moduleUrl);
   expect(result).toEqual(Array(10).fill(true));
+});
+
+test("C application logs survive closed overlays and share exclusive presentation", async ({
+  page,
+}) => {
+  await observe(page);
+  const canvas = page.locator("canvas.ascii-canvas");
+  await canvas.focus();
+  // This runs the real C keyboard action and log_info path while logs are hidden.
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
+  expect(await lastFrame(page)).not.toContain("Video chat in your terminal");
+  await page.keyboard.press("/");
+  await page.keyboard.type("Volume DOWN");
+  await expect.poll(() => lastFrame(page)).toContain("/Volume DOWN");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => lastFrame(page)).toContain("Volume");
+  expect(await lastFrame(page)).not.toContain("OPTIONS_CONFIG_DESTROY");
+  await page.screenshot({ path: "artifacts/session-logs-search-web.png" });
+  await page.keyboard.press("Escape");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await page.screenshot({ path: "artifacts/session-logs-web.png" });
+  await page.keyboard.press("?");
+  await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");
+  expect(await lastFrame(page)).not.toContain("/: search logs");
+  await page.screenshot({ path: "artifacts/session-logs-help-web.png" });
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Video chat in your terminal");
+  await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await canvas.focus();
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
+  await page.waitForTimeout(400);
+  expect(
+    (await page.evaluate(() => window.__sessionUiFrames!.slice(-5))).every(
+      (frame) => frame.includes("/: search logs"),
+    ),
+  ).toBe(true);
+  await page.setViewportSize({ width: 360, height: 320 });
+  await expect.poll(() => lastFrame(page)).toContain("Terminal too small");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await canvas.focus();
+  await page.keyboard.press("]");
+  await expect
+    .poll(async () => {
+      const frame = await lastFrame(page);
+      return (
+        frame.length > 100 &&
+        !frame.includes("/: search logs") &&
+        !frame.includes("Keyboard Shortcuts") &&
+        !frame.includes("Video chat in your terminal")
+      );
+    })
+    .toBe(true);
+});
+
+test("connected web client shows its C network logs", async ({ page }) => {
+  test.skip(
+    !process.env["SESSION_UI_SERVER_URL"],
+    "Requires a local ascii-chat WebSocket server",
+  );
+  await page.goto(
+    `/client?connect=true&serverUrl=${encodeURIComponent(process.env["SESSION_UI_SERVER_URL"]!)}`,
+  );
+  await expect(
+    page.getByRole("button", { name: "Disconnect", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
+  const canvas = page.locator("canvas.ascii-canvas");
+  await expect(canvas).toBeVisible();
+  await page.evaluate(async (url) => {
+    const { getMirrorModule } = await import(url);
+    const m = getMirrorModule();
+    const feed = m._term_renderer_feed;
+    window.__sessionUiFrames = [];
+    m._term_renderer_feed = (
+      renderer: number,
+      pointer: number,
+      length: number,
+    ) => {
+      window.__sessionUiFrames!.push(m.UTF8ToString(pointer, length));
+      if (window.__sessionUiFrames!.length > 30)
+        window.__sessionUiFrames!.shift();
+      return feed(renderer, pointer, length);
+    };
+  }, moduleUrl);
+  await canvas.focus();
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
+  await expect.poll(() => lastFrame(page)).toContain("Handshake complete");
+  await page.screenshot({ path: "artifacts/session-logs-web-client.png" });
+  await page.keyboard.press("?");
+  await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");
+  await page.keyboard.press("]");
+  await expect.poll(() => lastFrame(page)).toContain("/: search logs");
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(async () => !(await lastFrame(page)).includes("/: search logs"))
+    .toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Disconnect", exact: true }),
+  ).toBeVisible();
 });

@@ -292,6 +292,8 @@ set(LIB_SRC_COMMON
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${CMAKE_CURRENT_SOURCE_DIR}/common/ui.c
     ${LIB_ROOT}/ui/session.c
+    ${LIB_ROOT}/ui/session_status.c
+    ${LIB_ROOT}/platform/keyboard_edit.c
     ${LIB_ROOT}/ui/session_input.c
     ${LIB_ROOT}/ui/session_help.c
     ${LIB_ROOT}/ui/session_splash.c

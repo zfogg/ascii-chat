@@ -249,9 +249,9 @@ keyboard_key_t ui_sync_handle_key(keyboard_key_t key) {
   }
   if (!ui_sync_is_visible())
     return key;
-  if (key == KEY_ESCAPE || key == KEY_QUESTION) {
+  if (key == KEY_ESCAPE || key == KEY_QUESTION || key == ']') {
     atomic_store(&g_sync_visible, false);
-    return key == KEY_QUESTION && ui_controller_current_screen() != UI_SCREEN_HELP ? key : KEY_NONE;
+    return key == ']' || (key == KEY_QUESTION && ui_controller_current_screen() != UI_SCREEN_HELP) ? key : KEY_NONE;
   }
   if (key == KEY_RIGHT)
     atomic_fetch_add(&g_sync_page, 1);

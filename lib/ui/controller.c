@@ -392,7 +392,8 @@ static void *presentation_main(void *unused) {
           .screen = active,
           .minimum = screen->minimum,
           .dirty = screen->dirty || volume_changed,
-          .refresh_ns = active == UI_SCREEN_RENDER_PROGRESS
+          .refresh_ns = active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
+                        : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
           .draw = draw_native_view,
@@ -767,4 +768,28 @@ void ui_controller_restore_terminal(void) {
   ui_controller_shutdown();
   if (platform_isatty(STDOUT_FILENO))
     ui_controller_write(STDOUT_FILENO, "\033[0m\033[?25h", 10);
+}
+
+static void render_logs(terminal_size_t size, const void *snapshot) {
+  (void)snapshot;
+  ui_session_logs_render(g_capture, size, g_session);
+}
+
+void ui_controller_hide_logs(void) {
+  ui_controller_remove(UI_SCREEN_LOGS);
+}
+
+void ui_controller_toggle_logs(void) {
+  if (ui_controller_current_screen() == UI_SCREEN_LOGS) {
+    ui_controller_hide_logs();
+    return;
+  }
+  if (!platform_isatty(STDOUT_FILENO) || GET_OPTION(snapshot_mode))
+    return;
+  const bool snapshot = true;
+  asciichat_error_t result =
+      ui_controller_submit(UI_SCREEN_LOGS, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 6}, render_logs,
+                           &snapshot, sizeof(snapshot));
+  if (result != ASCIICHAT_OK)
+    log_warn("Cannot show application logs: %d", result);
 }

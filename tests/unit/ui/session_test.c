@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/ui/session.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <string.h>
 
 typedef struct {
@@ -81,4 +82,21 @@ Test(session_ui, progress_refresh_is_throttled_but_dirty_snapshots_are_immediate
   cr_assert_not_null(ui_session_render(session, &view, 125000002));
   cr_assert_eq(fixture.calls, 3);
   ui_session_destroy(session);
+}
+
+Test(session_ui, log_history_returns_latest_entries_after_wrap) {
+  session_log_buffer_t *logs = session_log_buffer_create();
+  cr_assert_not_null(logs);
+  for (unsigned i = 0; i < SESSION_LOG_BUFFER_SIZE + 10; ++i)
+    session_log_buffer_append(logs, "older");
+  session_log_buffer_append(logs, "last but one");
+  session_log_buffer_append(logs, "latest");
+  session_log_entry_t entries[2];
+  cr_assert_eq(session_log_buffer_get_recent(logs, entries, 2), 2);
+  cr_assert_str_eq(entries[0].message, "last but one");
+  cr_assert_str_eq(entries[1].message, "latest");
+  cr_assert_eq(entries[0].sequence + 1, entries[1].sequence);
+  session_log_buffer_clear(logs);
+  cr_assert_eq(session_log_buffer_get_recent(logs, entries, 2), 0);
+  session_log_buffer_destroy(logs);
 }

@@ -1,4 +1,7 @@
 #include <ascii-chat/ui/session.h>
+#include <ascii-chat/ui/status.h>
+#include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
@@ -11,10 +14,10 @@ struct ui_session {
   frame_buffer_t *frame;
   frame_buffer_t *media;
   session_log_buffer_t *logs;
-  session_log_entry_t recent[128];
   animation_t animation;
   ui_splash_view_t splash;
-  bool loading, help, dirty;
+  bool loading, help, show_logs, dirty, owns_logs;
+  time_t started;
   int active;
   bool covered;
   terminal_size_t presented_size, minimum;
@@ -30,11 +33,16 @@ ui_session_t *ui_session_create(void) {
     return NULL;
   s->frame = frame_buffer_create(24, 80);
   s->media = frame_buffer_create(24, 80);
-  s->logs = session_log_buffer_create();
+  s->logs = log_get_history_buffer();
+  s->owns_logs = !s->logs;
+  if (s->owns_logs)
+    s->logs = session_log_buffer_create();
   if (!s->frame || !s->media || !s->logs) {
     ui_session_destroy(s);
     return NULL;
   }
+  s->started = time(NULL);
+  log_search_init();
   s->size = (terminal_size_t){.cols = 80, .rows = 24};
   s->active = -1;
   s->saved_volume = 1;
@@ -54,7 +62,8 @@ void ui_session_destroy(ui_session_t *s) {
   animation_destroy(&s->animation);
   frame_buffer_destroy(s->frame);
   frame_buffer_destroy(s->media);
-  session_log_buffer_destroy(s->logs);
+  if (s->owns_logs)
+    session_log_buffer_destroy(s->logs);
   SAFE_FREE(s);
 }
 
@@ -100,9 +109,20 @@ asciichat_error_t ui_session_media(ui_session_t *s, const char *data, size_t len
 ui_session_action_t ui_session_input(ui_session_t *s, keyboard_key_t key) {
   if (!s)
     return UI_ACTION_NONE;
+  if (s->show_logs && ui_session_logs_key(key)) {
+    s->dirty = true;
+    return UI_ACTION_LOGS;
+  }
   ui_session_action_t action = ui_session_key(key, &s->saved_volume);
   if (action == UI_ACTION_HELP) {
     s->help = !s->help;
+    s->show_logs = false;
+  } else if (action == UI_ACTION_LOGS) {
+    s->show_logs = !s->show_logs;
+    s->help = false;
+  } else if (action == UI_ACTION_CLOSE && s->show_logs) {
+    s->show_logs = false;
+    action = UI_ACTION_LOGS;
   } else if (action == UI_ACTION_CLOSE && s->help) {
     s->help = false;
     action = UI_ACTION_HELP;
@@ -183,12 +203,33 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
   ui_session_t *s = context;
   s->splash.animation = *animation;
   ui_session_splash_render(output, size, &s->splash);
-  size_t capacity = (size_t)(size.rows - 9);
-  if (capacity > 128)
-    capacity = 128;
-  size_t count = session_log_buffer_get_recent(s->logs, s->recent, capacity);
-  for (size_t i = 0; i < count; ++i)
-    frame_buffer_printf(output, "\033[%zu;1H%.*s\033[K", i + 9, size.cols - 1, s->recent[i].message);
+}
+
+void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
+  const char *mode = GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
+  ui_status_t status = {
+      .mode_name = mode, .start_time = s->started, .detail = "] / Esc: close | /: search logs | ?: keyboard settings"};
+  terminal_screen_config_t config = {
+      .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
+  terminal_screen_compose(output, size, &config, s->logs);
+}
+
+bool ui_session_logs_key(keyboard_key_t key) {
+  if (key == KEY_ESCAPE && log_search_is_active()) {
+    log_search_exit_mode(false);
+    return true;
+  }
+  if (log_search_should_handle(key)) {
+    log_search_handle_key(key);
+    return true;
+  }
+  return false;
+}
+
+static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                      void *context) {
+  (void)animation;
+  ui_session_logs_render(output, size, context);
 }
 
 static void draw_media(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -207,12 +248,14 @@ static void draw_media(frame_buffer_t *output, terminal_size_t size, const anima
 const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
   if (!s)
     return NULL;
-  if (!s->dirty &&
+  if (!s->dirty && !s->show_logs &&
       ((s->help && s->active == UI_SCREEN_HELP) || (!s->help && !s->loading && s->active == UI_SCREEN_MEDIA)))
     return NULL;
   uint32_t visible = 1u << UI_SCREEN_MEDIA;
   if (s->loading)
     visible |= 1u << UI_SCREEN_SPLASH;
+  if (s->show_logs)
+    visible |= 1u << UI_SCREEN_LOGS;
   if (s->help)
     visible |= 1u << UI_SCREEN_HELP;
   ui_session_view_t view = {
@@ -224,6 +267,10 @@ const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
       return NULL;
     view.draw = draw_help;
     view.context = help;
+  } else if (view.screen == UI_SCREEN_LOGS) {
+    view.minimum = (terminal_size_t){.cols = 40, .rows = 6};
+    view.refresh_ns = 100000000;
+    view.draw = draw_logs;
   } else if (view.screen == UI_SCREEN_SPLASH) {
     view.minimum = (terminal_size_t){.cols = 52, .rows = 10};
     view.draw = draw_splash;
@@ -241,6 +288,7 @@ void ui_session_clear(ui_session_t *s) {
   if (s) {
     frame_buffer_reset(s->media);
     s->help = false;
+    s->show_logs = false;
     s->dirty = true;
   }
 }

@@ -315,6 +315,14 @@ static void acds_cleanup_fn(void *user_data) {
  * Entry Point
  * ============================================================================ */
 
+static void acds_status_fn(void *user_data, ui_status_t *status) {
+  (void)user_data;
+  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  if (tcp)
+    ui_status_gather(tcp, NULL, tcp->config.ipv4_address, tcp->config.ipv6_address, GET_OPTION(port),
+                     g_server.stats.start_time, "Discovery Service", false, status);
+}
+
 int acds_main(void) {
   session_server_like_config_t config = {
       // Required callbacks
@@ -326,8 +334,7 @@ int acds_main(void) {
       .cleanup_fn = acds_cleanup_fn,
       .cleanup_user_data = NULL,
 
-      // No status screen for ACDS (for now)
-      .status_fn = NULL,
+      .status_fn = acds_status_fn,
       .status_user_data = NULL,
 
       // TCP handler

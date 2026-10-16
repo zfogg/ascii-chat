@@ -33,7 +33,8 @@ typedef enum {
   UI_ACTION_SEEK_FORWARD,
   UI_ACTION_PAUSE,
   UI_ACTION_VOLUME,
-  UI_ACTION_DEBUG
+  UI_ACTION_DEBUG,
+  UI_ACTION_LOGS
 } ui_session_action_t;
 
 /** Mutates shared options for settings keys; returns an action for the host. */
@@ -75,5 +76,9 @@ ui_session_action_t ui_session_input(ui_session_t *session, keyboard_key_t key);
 const char *ui_session_tick(ui_session_t *session, uint64_t now_ns);
 void ui_session_clear(ui_session_t *session);
 void ui_session_redraw(ui_session_t *session);
+/** Shared live log view, used by the native adapter and browser compositor. */
+void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *session);
+/** Existing server log-search controls; true when consumed. */
+bool ui_session_logs_key(keyboard_key_t key);
 /** Attach this instance to the module's existing C logger. Detaches on destruction. */
 void ui_session_capture_logs(ui_session_t *session);

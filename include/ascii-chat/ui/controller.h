@@ -14,6 +14,7 @@ typedef enum {
   UI_SCREEN_MEDIA,
   UI_SCREEN_SPLASH,
   UI_SCREEN_RENDER_PROGRESS,
+  UI_SCREEN_LOGS,
   UI_SCREEN_HELP,
   UI_SCREEN_STATS,
   UI_SCREEN_SYNC,
@@ -41,6 +42,8 @@ void ui_controller_restore_terminal(void);
 void ui_controller_redraw(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);
+void ui_controller_toggle_logs(void);
+void ui_controller_hide_logs(void);
 /** Atomic query, safe for interrupt handling. */
 bool ui_controller_is_blocked(void);
 /** Lock-free query for console logging, including logs from rendering callbacks. */

@@ -128,11 +128,8 @@ static struct {
   asciichat_thread_t monitor_thread; // monitor thread handle
   uint64_t start_time_ns;            // when splash was started (for minimum display time)
   atomic_t intro_done_time_ns;       // when splash_intro_done() was called
-} g_splash_state = {.is_running = {0},
-                    .should_stop = {0},
-                    .thread_created = {0},
-                    .start_time_ns = 0,
-                    .intro_done_time_ns = {0}};
+} g_splash_state = {
+    .is_running = {0}, .should_stop = {0}, .thread_created = {0}, .start_time_ns = 0, .intro_done_time_ns = {0}};
 
 // ============================================================================
 // Header Rendering (callback for terminal_screen)
@@ -258,6 +255,16 @@ static void render_splash_header(frame_buffer_t *buffer, terminal_size_t size, v
   ui_session_splash_render(buffer, size, &view);
 }
 
+static void splash_help(terminal_size_t size, const void *snapshot) {
+  (void)snapshot;
+  terminal_size_t minimum;
+  char *text = ui_session_help_render(size, false, false, &minimum);
+  if (text) {
+    ui_controller_write(STDOUT_FILENO, text, strlen(text));
+    SAFE_FREE(text);
+  }
+}
+
 static void *splash_monitor_thread(void *arg) {
   (void)arg;
   bool keyboard_enabled = terminal_is_interactive();
@@ -270,15 +277,34 @@ static void *splash_monitor_thread(void *arg) {
       break;
     if (keyboard_enabled) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
-      if (discovery_splash_snapshot().enabled)
+      if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION &&
+          ui_controller_current_screen() != UI_SCREEN_LOGS)
         key = KEY_NONE;
-      if (key == KEY_ESCAPE) {
+      if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key)) {
+        // Search consumed the key.
+      } else if (key == ']') {
+        ui_controller_remove(UI_SCREEN_HELP);
+        ui_controller_toggle_logs();
+      } else if (key == KEY_QUESTION || (key == KEY_ESCAPE && ui_controller_current_screen() == UI_SCREEN_HELP)) {
+        if (ui_controller_current_screen() == UI_SCREEN_HELP) {
+          ui_controller_remove(UI_SCREEN_HELP);
+        } else {
+          ui_controller_hide_logs();
+          terminal_size_t minimum;
+          char *text = ui_session_help_render(ui_controller_size(), false, false, &minimum);
+          if (text) {
+            const bool snapshot = true;
+            ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, minimum, splash_help, &snapshot, sizeof(snapshot));
+            SAFE_FREE(text);
+          }
+        }
+      } else if (key == KEY_ESCAPE && ui_controller_current_screen() == UI_SCREEN_LOGS) {
+        ui_controller_hide_logs();
+      } else if (key == KEY_ESCAPE) {
         if (log_search_is_active())
           log_search_exit_mode(false);
         else
           break;
-      } else if (key != KEY_NONE && log_search_should_handle(key)) {
-        log_search_handle_key(key);
       }
     }
     splash_header_ctx_t view = {.discovery = discovery_splash_snapshot(), .use_colors = use_colors};
@@ -292,7 +318,7 @@ static void *splash_monitor_thread(void *arg) {
     build_connection_target(view.connection_target, sizeof(view.connection_target));
     bool should_render = terminal_is_interactive() || GET_OPTION(splash_screen_explicitly_set);
     // Only publish model changes. The presentation runtime owns the animation
-    // clock and refreshes logs while this monitor handles startup and input.
+    // clock while this monitor handles startup and input.
     if (should_render && (!published || memcmp(&view, &previous, sizeof(view)))) {
       terminal_screen_config_t config = {
           .screen = UI_SCREEN_SPLASH,
@@ -302,7 +328,7 @@ static void *splash_monitor_thread(void *arg) {
           .fixed_header_lines = view.discovery.enabled ? 0 : (view.update_notification[0] ? 9 : 8),
           .render_header = render_splash_header,
           .user_data = &view,
-          .show_logs = !view.discovery.enabled,
+          .show_logs = false,
           .hide_cursor = view.discovery.enabled,
       };
       terminal_screen_render(&config);
@@ -312,6 +338,7 @@ static void *splash_monitor_thread(void *arg) {
     platform_sleep_ms(16);
   }
   ui_controller_remove(UI_SCREEN_SPLASH);
+  ui_controller_remove(UI_SCREEN_HELP);
   atomic_store_bool(&g_splash_state.is_running, false);
   return NULL;
 }

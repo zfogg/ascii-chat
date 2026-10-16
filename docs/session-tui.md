@@ -2,7 +2,7 @@
 
 The native terminal and browser use the C views and key handling in
 `include/ascii-chat/ui/session.h`. The browser does not implement its own splash,
-help layout, or settings-key switch in React.
+help layout, status/log feed, or settings-key switch in React.
 
 `session_splash.c` renders the existing rainbow logo and connection header into
 a frame buffer. `session_help.c` renders the keyboard/settings screen without a
@@ -45,8 +45,9 @@ host; its snapshot and callback context must remain alive through the call.
 Neither host holds producer locks while running screen callbacks.
 
 The C options registry and logger are scoped to a WASM module, not to each canvas.
-One active session canvas owns log capture in a module. Its destructor detaches
-the logger before freeing the buffer. Native-only debug/statistics and blocking
+The logger owns the bounded history from initialization through shutdown. Status,
+and client overlays borrow it, so closing a screen does not stop capture or
+erase earlier messages. Native-only debug/statistics and blocking
 prompt workflows are not exposed as browser controls.
 
 The WASM build includes the real session log buffer rather than its former
@@ -59,3 +60,35 @@ canvas: animated splash pixels, keyboard/settings synchronization, overlay
 ownership over video, resize recovery, latest-frame restoration, bounds checking,
 and repeated teardown. Run it with the web app's Playwright configuration and
 fresh WASM artifacts.
+
+## Server status UI in client modes
+
+`]` toggles the existing server status UI over client, discovery-client, and mirror
+media. Client, discovery, and mirror startup show the animated rainbow splash
+without logs; only server CLI modes show logs by default. Logs remain captured
+while hidden and appear only after `]`. `?` switches to keyboard help; `]` switches back. Escape cancels a search
+first, then closes the overlay. Covered media continues and its newest frame is
+restored on close. The keyboard help lists the shortcut.
+
+`session_status.c` contains the server's four-line bordered header and the shared
+`terminal_screen_compose()` implementation, extracted from `ui/status.c` and
+`ui/terminal_screen.c`. Both server modes, native client overlays, and WASM call
+these same functions. Client headers show mode/uptime and controls in place of
+server listener metadata. Colors, ANSI-aware wrapping, latest-log selection, and
+`/pattern/flags` filtering/highlighting all use the existing C implementations.
+The native adapter supplies terminal I/O; the web adapter feeds the resulting
+ANSI frame to its existing canvas renderer.
+
+All emitted C application log routes retain history, including console-disabled,
+file-only, JSON, and mmap output. Configured severity still determines which
+messages are emitted. The history holds the latest 8,192 lines; the view displays
+the newest lines that fit. Emergency signal-handler output remains direct because
+it cannot safely acquire a history mutex. Search uses PCRE2's portable matching
+entry point, including when JIT is unavailable in WASM. Decoded search-edit keys
+use the same C line editor on Windows, POSIX, and in the browser.
+
+`tests/integration/terminal_logs.py` exercises mirror and TCP client modes through
+real terminals and captures their cell grids. `tests/ui/test_log_history.py`
+checks retained C log routes with console output disabled. The browser suite also
+checks real C logs, search, overlay exclusivity, resize, and connected-client logs;
+set `SESSION_UI_SERVER_URL` to a local server's WebSocket URL for its network case.

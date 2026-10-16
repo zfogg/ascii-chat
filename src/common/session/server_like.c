@@ -120,7 +120,6 @@ static void *status_screen_thread_func(void *arg) {
   log_debug("Status screen thread started (target %u FPS)", fps);
 
   int output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  bool keyboard_enabled = platform_isatty(STDIN_FILENO) && platform_isatty(output_fd);
 
   // Stderr is the status output when stdout is redirected; retain it in that
   // case. The presentation controller suppresses competing terminal log writes.
@@ -129,50 +128,10 @@ static void *status_screen_thread_func(void *arg) {
     stderr_redirect = platform_stderr_redirect_to_null();
   }
 
-  bool skip_next_slash = false;
-  bool grep_was_just_cancelled = false;
-
   while (!atomic_load_bool(&g_status_should_exit)) {
     uint64_t frame_start = platform_get_monotonic_time_us();
-
-    // Check if SIGINT handler cancelled grep mode
-    if (log_search_check_signal_cancel()) {
+    if (log_search_check_signal_cancel())
       log_search_exit_mode(false);
-      grep_was_just_cancelled = true;
-    }
-
-    // Process keyboard input
-    if (keyboard_enabled) {
-      grep_was_just_cancelled = false;
-
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATUS);
-      while (key != KEY_NONE && !grep_was_just_cancelled) {
-        if (skip_next_slash && key == '/') {
-          skip_next_slash = false;
-          key = ui_input_read_key(UI_SCREEN_STATUS);
-          continue;
-        }
-        skip_next_slash = false;
-
-        if (log_search_should_handle(key)) {
-          bool was_not_in_grep = !log_search_is_entering();
-          bool was_in_grep = log_search_is_entering();
-
-          log_search_handle_key(key);
-
-          if (was_not_in_grep && log_search_is_entering() && key == '/') {
-            skip_next_slash = true;
-          }
-
-          if (was_in_grep && !log_search_is_entering()) {
-            grep_was_just_cancelled = true;
-            break;
-          }
-        }
-
-        key = ui_input_read_key(UI_SCREEN_STATUS);
-      }
-    }
 
     // Call mode's status callback to populate status data
     // Use direct static pointers instead of g_config to avoid stale reference during shutdown

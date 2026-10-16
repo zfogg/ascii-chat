@@ -76,6 +76,8 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
   switch ((int)key) {
   case KEY_QUESTION:
     return UI_ACTION_HELP;
+  case ']':
+    return UI_ACTION_LOGS;
   case KEY_ESCAPE:
     return UI_ACTION_CLOSE;
   case KEY_LEFT:

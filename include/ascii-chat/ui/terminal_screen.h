@@ -71,6 +71,9 @@ typedef struct {
  * owns size checks, terminal writes, and resize refreshes.
  */
 void terminal_screen_render(const terminal_screen_config_t *config);
+/** Compose the existing status/splash UI without terminal I/O. */
+void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,
+                             session_log_buffer_t *logs);
 
 /**
  * @brief Clean up terminal screen resources
