@@ -18,6 +18,37 @@ compiled to WASM using Emscripten, enabling real-time video chat with ASCII rend
 
 ## Development
 
+### Local media in Mirror
+
+Use **Upload Video** on `/mirror` to select or drop a video, animated GIF, or
+still image. Files remain in the browser. The browser decodes video and plays
+its synchronized audio; captured pixels go through the same C/WASM ASCII
+renderer as the webcam. Videos and GIFs loop, with Pause/Play and Restart.
+Video also has mute and volume controls. Stop, replacement, and navigation
+release the media and cancel pending conversion. Files are not restored after
+refresh; select the file again.
+
+MP4 (H.264/AAC) and WebM (VP8/VP9/Opus) normally play directly. AVI, MKV, MOV,
+MPEG, WMV, FLV, and other unsupported browser codecs use a lazy-loaded,
+same-origin FFmpeg WASM worker to convert the first video and optional first
+audio track to H.264/AAC MP4. This includes MPEG-4 Part 2/MP3 and MJPEG/PCM
+AVI files. Conversion finishes before playback, can be cancelled, and is
+limited to 256 MB input because it uses browser memory. Large files are better
+converted to MP4/WebM locally. The converter fits video within 1280x720;
+ordinary capture limits the longest side to 1280 pixels. Corrupt files or
+codecs missing from the decoder produce an error, not a silent fallback.
+
+PNG, JPEG, WebP, AVIF, and BMP use browser image decoding. GIF uses explicit
+frame timing and disposal/compositing (drawing an animated HTML image to a
+canvas would freeze at its first frame). Transparent images composite onto
+black. GIF logical dimensions are limited to 16 megapixels.
+
+Synthetic fixtures in `tests/fixtures/media` contain moving patterns and a
+440 Hz audio tone. Regenerate them with `node tests/fixtures/media/generate.mjs`
+using native FFmpeg. The converter is `@ffmpeg/ffmpeg` (MIT) with the pinned
+`@ffmpeg/core` build (GPL-2.0-or-later); upstream source and build instructions:
+https://github.com/ffmpegwasm/ffmpeg.wasm/tree/n0.12.10.
+
 ### Setup
 
 ```bash

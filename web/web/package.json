@@ -25,8 +25,11 @@
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
     "@headlessui/react": "^2.2.9",
     "fzstd": "^0.1.1",
+    "gifuct-js": "^2.1.2",
     "hls.js": "^1.6.15",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

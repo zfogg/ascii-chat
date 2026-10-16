@@ -13,12 +13,10 @@ import {
   isWasmReady,
   setColorFilter,
   setColorMode,
-  setFft,
   setFlipX,
   setMatrixRain,
   setPalette,
   setPaletteChars,
-  setWaveform,
 } from "@ascii-chat/shared/wasm";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
@@ -33,13 +31,13 @@ interface UseMirrorWebcamParams {
   videoRef: RefObject<HTMLVideoElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   streamRef: MutableRefObject<MediaStream | null>;
-  objectUrlRef: MutableRefObject<string | null>;
   lastFrameTimeRef: MutableRefObject<number>;
   setIsWebcamRunning: (running: boolean) => void;
   setMediaSource: (source: MediaSource) => void;
   setError: (error: string) => void;
   wasmInitialized: boolean;
   isWebcamRunning: boolean;
+  mediaSource?: MediaSource;
   terminalDimensions?: { cols: number; rows: number };
 }
 
@@ -48,13 +46,13 @@ export function useMirrorWebcam({
   videoRef,
   canvasRef,
   streamRef,
-  objectUrlRef,
   lastFrameTimeRef,
   setIsWebcamRunning,
   setMediaSource,
   setError,
   wasmInitialized,
   isWebcamRunning,
+  mediaSource,
   terminalDimensions,
 }: UseMirrorWebcamParams) {
   const testPattern = useTestPattern();
@@ -64,6 +62,7 @@ export function useMirrorWebcam({
 
   const startWebcam = useCallback(async () => {
     const generation = ++startGenerationRef.current;
+    setError("");
     const clickTime = performance.now();
     console.log(
       `[Mirror] startWebcam CALLED at ${clickTime.toFixed(0)}ms, ${new Date().toISOString()}`,
@@ -221,6 +220,7 @@ export function useMirrorWebcam({
                 once: true,
               });
             });
+      video.muted = true;
       video.srcObject = stream;
       await video.play();
       await metadataReady;
@@ -236,7 +236,8 @@ export function useMirrorWebcam({
       setMediaSource(MediaSourceType.WEBCAM);
       console.timeEnd("[Mirror] Total startWebcam time");
     } catch (err) {
-      setError(`Failed to start webcam: ${String(err)}`);
+      if (generation === startGenerationRef.current)
+        setError(`Failed to start webcam: ${String(err)}`);
     }
   }, [
     testPattern.enabled,
@@ -344,7 +345,12 @@ export function useMirrorWebcam({
       streamRef.current !== null ||
       video?.srcObject !== null ||
       (video?.src !== undefined && video.src !== "");
-    if (isWebcamRunning && !testMode && !hasMediaSource) {
+    if (
+      isWebcamRunning &&
+      mediaSource !== MediaSourceType.FILE &&
+      !testMode &&
+      !hasMediaSource
+    ) {
       setIsWebcamRunning(false);
       setMediaSource(null);
       setError(
@@ -353,6 +359,7 @@ export function useMirrorWebcam({
     }
   }, [
     testPattern.enabled,
+    mediaSource,
     isWebcamRunning,
     videoRef,
     streamRef,
@@ -421,115 +428,11 @@ export function useMirrorWebcam({
     terminalDimensions,
   ]);
 
-  const startVideoFile = useCallback(
-    async (file: File) => {
-      console.log("[Mirror] Starting video file:", file.name);
+  const cancelStart = useCallback(() => {
+    startGenerationRef.current++;
+  }, []);
 
-      if (!videoRef.current || !canvasRef.current) {
-        setError("Video or canvas element not ready");
-        return;
-      }
+  useEffect(() => cancelStart, [cancelStart]);
 
-      try {
-        if (isWasmReady() && isOptionsInitialized()) {
-          try {
-            setColorMode(mapColorModeToWasm(settings.colorMode));
-          } catch (err) {
-            console.warn("[Mirror] Failed to set color mode:", err);
-          }
-          try {
-            setColorFilter(mapColorFilterToWasm(settings.colorFilter));
-          } catch (err) {
-            console.warn("[Mirror] Failed to set color filter:", err);
-          }
-          try {
-            setPalette(settings.palette);
-          } catch (err) {
-            console.warn("[Mirror] Failed to set palette:", err);
-          }
-          if (settings.palette === "custom" && settings.paletteChars) {
-            try {
-              setPaletteChars(settings.paletteChars);
-            } catch (err) {
-              console.warn("[Mirror] Failed to set palette chars:", err);
-            }
-          }
-          try {
-            const animation = settings.animation ?? "matrix";
-            const enabled =
-              settings.animationEnabled ?? settings.matrixRain ?? false;
-            setMatrixRain(enabled && animation === "matrix");
-            setWaveform(enabled && animation === "waveform");
-            setFft(enabled && animation === "fft");
-          } catch (err) {
-            console.warn("[Mirror] Failed to set matrix rain:", err);
-          }
-          try {
-            // Video files should not be flipped (unlike webcam which mirrors)
-            setFlipX(false);
-          } catch (err) {
-            console.warn("[Mirror] Failed to set flip X:", err);
-          }
-        }
-
-        // Revoke any previous object URL
-        if (objectUrlRef.current) {
-          URL.revokeObjectURL(objectUrlRef.current);
-        }
-
-        const url = URL.createObjectURL(file);
-        objectUrlRef.current = url;
-
-        const video = videoRef.current;
-        video.src = url;
-        video.loop = true;
-        video.muted = false;
-        video.playsInline = true;
-
-        await new Promise<void>((resolve, reject) => {
-          const onLoaded = () => {
-            const canvas = canvasRef.current!;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            console.log(
-              `[Mirror] Video file loaded: ${video.videoWidth}x${video.videoHeight}`,
-            );
-            resolve();
-          };
-          const onError = () => {
-            reject(
-              new Error(
-                `Failed to load video: ${
-                  video.error?.message || "Unknown error"
-                }`,
-              ),
-            );
-          };
-          video.addEventListener("loadedmetadata", onLoaded, { once: true });
-          video.addEventListener("error", onError, { once: true });
-        });
-
-        await video.play();
-
-        lastFrameTimeRef.current = performance.now();
-        setIsWebcamRunning(true);
-        setMediaSource(MediaSourceType.FILE);
-        console.log("[Mirror] Video file playing");
-      } catch (err) {
-        setError(`Failed to play video file: ${String(err)}`);
-      }
-    },
-    [
-      settings,
-      videoRef,
-      canvasRef,
-      objectUrlRef,
-      lastFrameTimeRef,
-      setIsWebcamRunning,
-      setMediaSource,
-      setError,
-    ],
-  );
-
-  return { startWebcam, startVideoFile };
+  return { startWebcam, cancelStart };
 }

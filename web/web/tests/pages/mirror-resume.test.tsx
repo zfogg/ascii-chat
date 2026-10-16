@@ -19,6 +19,7 @@ const backend = vi.hoisted(() => ({
 }));
 vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
+  useCanvasCapture: () => ({ captureFrame: vi.fn() }),
 }));
 vi.mock("@ascii-chat/shared/wasm", () => ({
   getMirrorModule: () => null,
@@ -90,7 +91,7 @@ vi.mock("../../src/hooks", () => ({
       setMediaSource(MediaSourceType.WEBCAM);
       setIsWebcamRunning(true);
     },
-    startVideoFile: vi.fn(),
+    cancelStart: vi.fn(),
   }),
 }));
 beforeEach(() => {
