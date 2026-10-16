@@ -446,12 +446,19 @@ target_link_libraries(mirror-web PRIVATE
 apply_sanitizers_to_target(mirror-web)
 
 # Source files for WASM client entry point
-# IMPORTANT: Do NOT include src/client/main.c or session/*.c files
-# Those implement terminal-based rendering and blocking main loops that hang in WASM.
-# JavaScript handles the render loop by calling client_convert_frame() directly.
+# The browser schedules the shared session host's packet and video steps.
+# Native client entry points and their blocking main loops remain excluded.
 set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/browser_host.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/browser_discovery.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
+    ${LIB_ROOT}/network/acip/server.c
+    ${LIB_ROOT}/network/acip/acds_client.c
+    ${LIB_ROOT}/audio/opus.c
+    ${LIB_ROOT}/ringbuffer.c
+    ${LIB_ROOT}/util/aspect_ratio.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
@@ -495,6 +502,7 @@ target_link_libraries(client-web PRIVATE
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${OPUS_LIBRARIES}
+    ${ZSTD_LIBRARIES}
     ${VTERM_LDFLAGS}
 )
 
@@ -562,7 +570,9 @@ set(EXPORTED_FUNCTIONS_MIRROR
 set(EXPORTED_FUNCTIONS_CLIENT
     _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
-    _client_acds_join_request
+    _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
+    _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
+    _client_acds_handshake_begin _client_acds_handshake_receive
     _client_configure_crypto_options
     _client_parse_ssh_private_key
     _client_parse_ssh_public_key

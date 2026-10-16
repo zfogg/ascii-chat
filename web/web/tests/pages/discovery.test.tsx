@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { HeadingProvider } from "@ascii-chat/shared/components";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
+import { StrictMode, useEffect } from "react";
 import {
   afterEach,
   beforeEach,
@@ -22,6 +22,11 @@ import { ClientPage } from "../../src/pages/Client";
 import { ConnectionState } from "../../src/wasm/client";
 import { LOCKED_SETTINGS_HELP } from "../../src/components/lockedSettings";
 import type { DiscoveryOptions } from "../../src/network/WebRTCSession";
+import { fetchSessionStrings } from "@ascii-chat/shared/utils";
+vi.mock("@ascii-chat/shared/utils", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchSessionStrings: vi.fn().mockResolvedValue(["quiet-river-otter"]),
+}));
 
 // Keep the page and its controls real; replace network, media, and WASM boundaries.
 const backend = vi.hoisted(() => ({
@@ -141,6 +146,24 @@ afterEach(() => {
 });
 
 describe("Discovery page", () => {
+  it("creates in this browser and displays the discovery-confirmed name", async () => {
+    await openPage();
+    fireEvent.change(
+      screen.getByLabelText("Session password", { exact: true }),
+      { target: { value: "test-password" } },
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create session" }),
+    );
+    expect(backend.options?.discovery?.createSession).toBe(true);
+    expect(screen.queryByLabelText("Session host URL")).not.toBeInTheDocument();
+    act(() => backend.options?.discovery?.onCreated?.("calm-lake-fox"));
+    expect(screen.getByRole("button", { name: "Copy name" })).toBeVisible();
+    expect(
+      (screen.getByLabelText("Join link") as HTMLInputElement).value,
+    ).toContain("#sessionPassword=test-password");
+  });
+
   it("keeps the browser client disconnected until Connect is clicked", async () => {
     window.history.replaceState(
       {},
@@ -230,8 +253,43 @@ describe("Discovery page", () => {
     expect(
       screen.getByLabelText("Discovery service URL", { exact: true }),
     ).toHaveValue("ws://localhost:28227");
-    expect(form.querySelector("details")).not.toHaveAttribute("open");
+    expect(
+      screen.getByRole("button", { name: "Connection settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
     expectFieldsDisabled(false);
+  });
+
+  it("loads one stable suggestion during Strict Mode effect replay", async () => {
+    let resolveStrings!: (strings: string[]) => void;
+    vi.mocked(fetchSessionStrings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStrings = resolve;
+        }),
+    );
+    render(
+      <StrictMode>
+        <ClientPage discoveryMode />
+      </StrictMode>,
+      { wrapper: HeadingProvider },
+    );
+    const input = screen.getByLabelText("Session name", { exact: true });
+    expect(input).toHaveAttribute("placeholder", "");
+    expect(fetchSessionStrings).toHaveBeenCalledTimes(1);
+    await act(async () => resolveStrings(["quiet-river-otter"]));
+    expect(input).toHaveAttribute("placeholder", "quiet-river-otter");
+  });
+
+  it("uses an API session string as a placeholder without changing the entered session", async () => {
+    await openPage();
+    const input = screen.getByLabelText("Session name", { exact: true });
+    await waitFor(() =>
+      expect(input).toHaveAttribute("placeholder", "quiet-river-otter"),
+    );
+    expect(fetchSessionStrings).toHaveBeenCalledWith(1);
+    expect(input).toHaveValue("");
+    fireEvent.change(input, { target: { value: "my-existing-session" } });
+    expect(input).toHaveValue("my-existing-session");
   });
 
   it("passes edited discovery settings to the connection hook", async () => {

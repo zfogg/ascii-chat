@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { BandwidthMeter } from "./BandwidthMeter";
+import { PanelChevron } from "./AnimatedPanel";
 import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 
 export interface PageControlBarProps {
@@ -178,8 +179,9 @@ export function PageControlBar({
             <button
               onClick={onSettingsClick}
               aria-expanded={settingsOpen}
-              className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
             >
+              <PanelChevron open={settingsOpen ?? false} />
               Settings
             </button>
           )}
