@@ -1,5 +1,6 @@
 import { useUrlState } from "../hooks/useUrlState";
-import { type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { AnimatedPanel, PanelChevron } from "./AnimatedPanel";
 import { PageControlBar, type PageControlBarProps } from "./PageControlBar";
 import { DeviceSetupModal } from "./DeviceSetupModal";
 
@@ -23,6 +24,8 @@ export function ModeHeader({
   controlBar,
 }: ModeHeaderProps) {
   const [deviceSetupOpen, setDeviceSetupOpen] = useUrlState("devices", false);
+  const [networkOpen, setNetworkOpen] = useUrlState("network", true);
+  const networkId = useId();
 
   return (
     <>
@@ -30,11 +33,23 @@ export function ModeHeader({
         open={deviceSetupOpen}
         onClose={() => setDeviceSetupOpen(false)}
       />
-      {showSettings && settingsPanel}
+      <AnimatedPanel open={showSettings}>{settingsPanel}</AnimatedPanel>
       {connectionPanel && (
-        <div className="px-4 py-4 border-b border-terminal-8">
-          {connectionPanel}
-        </div>
+        <section className="shrink-0 border-b border-terminal-8">
+          <button
+            type="button"
+            aria-expanded={networkOpen}
+            aria-controls={networkId}
+            onClick={() => setNetworkOpen((open) => !open)}
+            className="flex w-full items-center gap-2 px-4 py-3 text-sm cursor-pointer hover:bg-terminal-8/20"
+          >
+            <PanelChevron open={networkOpen} />
+            Network settings
+          </button>
+          <AnimatedPanel open={networkOpen} id={networkId}>
+            <div className="px-4 pt-1 pb-4">{connectionPanel}</div>
+          </AnimatedPanel>
+        </section>
       )}
       <div
         className={

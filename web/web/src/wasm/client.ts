@@ -126,10 +126,11 @@ interface ClientModuleExports {
 
 interface ClientModule {
   HEAP16: Int16Array;
-  _client_acds_join_request(
-    session: number,
-    password: number,
-    output: number,
+  _client_acds_handshake_begin(encrypted: number): number;
+  _client_acds_handshake_receive(
+    type: number,
+    payload: number,
+    length: number,
   ): number;
   _client_opus_encoder_init(
     sampleRate: number,
