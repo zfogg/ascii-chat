@@ -1,3 +1,19 @@
+# Websites
+
+- **`www/` — ascii-chat.com:** Project homepage with installation instructions,
+  a live ASCII mirror demo, usage guides, and searchable CLI, configuration, and
+  C API manual pages (`/man1`, `/man5`, `/man3`).
+- **`web/` — web.ascii-chat.com:** Browser client using the C engine compiled to
+  WebAssembly. `/mirror` renders webcam, file, or URL media locally; `/client`
+  connects to servers over WebSocket; `/discovery` creates or joins named sessions
+  through ACDS and WebRTC.
+- **`discovery/` — discovery.ascii-chat.com:** Discovery-service information site
+  with signaling/STUN/TURN status checks, SSH/GPG public keys and fingerprints,
+  connection examples, security guidance, and self-hosting instructions.
+
+All three are React/TypeScript apps and share components and utilities through
+`packages/shared/` (`@ascii-chat/shared`).
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web
@@ -73,4 +89,5 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
 - [ ] Run `vp check` and `vp test` to validate changes.
+
 <!--VITE PLUS END-->
