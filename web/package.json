@@ -9,9 +9,9 @@
       "web"
     ],
     "catalog": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-      "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-      "vite-plus": "latest"
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0",
+      "vitest": "5.0.5",
+      "vite-plus": "1.3.0"
     }
   },
   "type": "module",
