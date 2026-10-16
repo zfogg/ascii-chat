@@ -307,7 +307,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (snapshot_mode && g_snapshot_first_frame_rendered) {
           frames_rendered_since_first++;
           log_debug_every(US_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu",
-                         frames_rendered_since_first);
+                          frames_rendered_since_first);
         }
 
         STOP_TIMER("render_frame");
@@ -329,13 +329,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
         if (key != KEY_NONE) {
           log_debug("KEYBOARD: Key pressed: code=%d char='%c'", key, (key >= 32 && key < 127) ? key : '?');
-          // Check if interactive grep should handle this key
-          if (log_search_should_handle(key)) {
-            log_debug("KEYBOARD: Grep handler taking key %d", key);
-            log_search_handle_key(key);
-            continue; // Force immediate re-render
-          }
-
           // Normal keyboard handler
           log_debug("KEYBOARD: Normal handler taking key %d", key);
           keyboard_handler(capture, key, user_data);

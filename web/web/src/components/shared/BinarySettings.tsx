@@ -41,6 +41,8 @@ export interface BinarySettingsConfig {
   animationEnabled?: boolean;
   animation?: Animation;
   flipX?: boolean;
+  flipY?: boolean;
+  renderMode?: number;
 }
 
 interface BinarySettingsProps {

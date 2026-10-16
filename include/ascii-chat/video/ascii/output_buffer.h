@@ -141,7 +141,7 @@ void ob_putc(outbuf_t *ob, char c);
  *
  * @ingroup video
  */
-void ob_write(outbuf_t *ob, const char *s, size_t n);
+void ob_write(outbuf_t *ob, const void *s, size_t n);
 
 /**
  * @brief Append null terminator to buffer

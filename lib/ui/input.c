@@ -66,7 +66,8 @@ void ui_input_poll_sync(void) {
   int screen = ui_controller_current_screen();
   if (screen >= 0 && screen <= UI_SCREEN_SYNC && !ui_controller_is_blocked()) {
     keyboard_key_t key = keyboard_read_nonblocking();
-    key = ui_sync_handle_key(key);
+    if (!log_search_is_entering())
+      key = ui_sync_handle_key(key);
     if (key && g_sync_key_count < 256)
       g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
   }
@@ -86,8 +87,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     mutex_unlock(&g_input_mutex);
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
   }
-  bool active =
-      state.screen < 0 || state.screen == (int)screen || (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP);
+  bool active = state.screen < 0 || state.screen == (int)screen ||
+                (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP) ||
+                ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH) && state.screen == UI_SCREEN_LOGS) ||
+                (screen == UI_SCREEN_SPLASH && state.screen == UI_SCREEN_HELP);
   keyboard_key_t key = KEY_NONE;
   if (active) {
     if (state.covered || g_input_was_covered) {
@@ -104,12 +107,14 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       if (key == KEY_NONE)
         key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION
                                                                                   : keyboard_read_nonblocking();
-      key = ui_sync_handle_key(key);
+      if (!log_search_is_entering())
+        key = ui_sync_handle_key(key);
     }
     g_input_was_covered = state.covered;
   }
   if ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_SPLASH) &&
       state.screen != UI_SCREEN_HELP && key == '=' && !log_search_is_entering()) {
+    ui_controller_hide_logs();
     stats_runtime_toggle();
     key = KEY_NONE;
   }

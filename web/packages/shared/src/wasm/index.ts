@@ -59,3 +59,5 @@ export {
   setTargetFps,
   getTargetFps,
 } from "./common/options";
+
+export type { SessionUiEvent } from "./sessionUi";

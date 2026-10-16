@@ -3,6 +3,7 @@
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/session.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
@@ -38,6 +39,9 @@ typedef struct screen {
 } screen_t;
 
 static screen_t g_screens[UI_SCREEN_COUNT];
+static ui_session_t *g_session;
+static _Thread_local frame_buffer_t *g_capture;
+static _Thread_local const animation_sample_t *g_animation;
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
 static cond_t g_render_done;
@@ -126,20 +130,22 @@ int ui_controller_current_screen(void) {
   return atomic_load(&g_published_screen);
 }
 
-static void publish_screen_locked(void) {
-  int active = -1;
+static int selected_screen_locked(void) {
+  uint32_t visible = 0;
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     if (g_screens[i].render)
-      active = i;
-  atomic_store(&g_published_screen, active);
+      visible |= 1u << i;
+  return ui_session_select_screen(visible);
+}
+
+static void publish_screen_locked(void) {
+  atomic_store(&g_published_screen, selected_screen_locked());
   cond_signal(&g_render_requested);
 }
-static bool g_small;
 static bool g_redraw;
 static bool g_finished;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
-static terminal_size_t g_last_minimum;
 static _Thread_local fps_counter_t *g_fps;
 static _Thread_local bool g_stats_media, g_stats_failed;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes;
@@ -160,6 +166,10 @@ static void stats_media_end(void) {
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (!data || !len)
     return ASCIICHAT_OK;
+  if (g_capture) {
+    frame_buffer_append(g_capture, data, len);
+    return ASCIICHAT_OK;
+  }
   // Logging may call this while holding subsystem locks; never wait for a
   // renderer callback here. Live screens already capture logs in their model.
   if (!g_owner && atomic_load_bool(&g_live) && platform_isatty(fd))
@@ -250,10 +260,34 @@ terminal_size_t ui_controller_size(void) {
   return size;
 }
 
+const animation_sample_t *ui_controller_animation_sample(void) {
+  return g_animation;
+}
+
+typedef struct {
+  screen_t *screen;
+  int active;
+  bool volume;
+  bool drew;
+} native_view_t;
+
+static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                             void *context) {
+  native_view_t *view = context;
+  g_capture = output;
+  g_animation = animation;
+  g_render_volume = view->volume;
+  fps_counter_frame_begin(g_fps, view->active == UI_SCREEN_MEDIA || view->active == UI_SCREEN_HELP);
+  view->screen->render(size, view->screen->snapshot);
+  g_render_volume = false;
+  g_animation = NULL;
+  g_capture = NULL;
+  view->drew = true;
+}
+
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
-  uint64_t progress_render_ns = 0;
   g_fps = fps_counter_create();
   bool was_sync = false;
   uint64_t last_volume_until = 0;
@@ -264,6 +298,10 @@ static void *presentation_main(void *unused) {
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
         ui_controller_current_screen() <= UI_SCREEN_SYNC && !shutdown_is_requested()) {
+      if (!was_sync) {
+        const ui_session_view_t hidden = {.screen = -1};
+        ui_session_render(g_session, &hidden, time_get_ns());
+      }
       int fd = ui_sync_output_fd();
       terminal_size_t size = {0};
       g_render_fd = fd;
@@ -279,13 +317,11 @@ static void *presentation_main(void *unused) {
     }
     if (was_sync) {
       g_active = -1;
+      ui_session_redraw(g_session);
       was_sync = false;
     }
     mutex_lock(&g_mutex);
-    int active = -1;
-    for (int i = 0; i < UI_SCREEN_COUNT; ++i)
-      if (g_screens[i].render)
-        active = i;
+    int active = selected_screen_locked();
     bool changed = active != g_active;
     g_active = active;
     bool redraw = g_redraw;
@@ -300,8 +336,11 @@ static void *presentation_main(void *unused) {
       ++g_render_started;
     }
     mutex_unlock(&g_mutex);
-    if (active < 0)
+    if (active < 0) {
+      const ui_session_view_t hidden = {.screen = -1};
+      ui_session_render(g_session, &hidden, time_get_ns());
       atomic_store_bool(&g_blocked, false);
+    }
     if (frame.render) {
       g_render_snapshot = frame.owned;
       screen_t *screen = &frame;
@@ -311,7 +350,8 @@ static void *presentation_main(void *unused) {
           size.rows <= 0) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
-        g_small = true;
+        const ui_session_view_t hidden = {.screen = -1};
+        ui_session_render(g_session, &hidden, time_get_ns());
         goto frame_complete;
       }
       bool resized = size.cols != previous_size.cols || size.rows != previous_size.rows;
@@ -321,67 +361,57 @@ static void *presentation_main(void *unused) {
       g_render_size = size;
       if (active == UI_SCREEN_PROMPT)
         screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
-      bool small = ui_too_small(size, screen->minimum);
-      atomic_store_bool(&g_blocked, small);
-      bool requirement_changed =
-          screen->minimum.cols != g_last_minimum.cols || screen->minimum.rows != g_last_minimum.rows;
-      g_last_minimum = screen->minimum;
-      bool transition = changed || resized || requirement_changed || small != g_small || redraw;
+      uint64_t now = time_get_ns();
       uint64_t volume_until = atomic_load_u64(&g_volume_until);
-      bool volume_visible = active == UI_SCREEN_MEDIA && !GET_OPTION(snapshot_mode) && !GET_OPTION(strip_ansi) &&
-                            time_get_ns() < volume_until;
-      // Repaint the retained clean frame on both edges, even when playback is paused.
-      // Clearing also restores overlay cells outside explicitly sized media frames.
+      bool volume_visible =
+          active == UI_SCREEN_MEDIA && !GET_OPTION(snapshot_mode) && !GET_OPTION(strip_ansi) && now < volume_until;
       bool volume_changed =
           volume_visible != volume_was_visible || (volume_visible && volume_until != last_volume_until);
-      transition |= volume_was_visible && !volume_visible;
+      if (volume_was_visible && !volume_visible)
+        redraw = true;
       volume_was_visible = volume_visible;
       last_volume_until = volume_until;
       bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
-      transition |= fps_counter_set_visible(g_fps, show_fps);
-      if (changed || small || g_small)
+      redraw |= fps_counter_set_visible(g_fps, show_fps);
+      bool was_covered = ui_session_is_covered(g_session);
+      if (changed || was_covered)
         fps_counter_reset(g_fps);
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
-      if (small) {
-        if (transition || !g_small) {
-          frame_buffer_t *buffer = frame_buffer_create(3, 96);
-          if (buffer) {
-            ui_too_small_render(buffer, size, screen->minimum);
-            ui_controller_write(screen->fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
-            frame_buffer_destroy(buffer);
-          }
-        }
-      } else {
-        if (transition) {
-          const char reset[] = "\033[0m\033[2J\033[H";
-          ui_controller_write(screen->fd, reset, sizeof(reset) - 1);
-        }
-        if ((resized || changed) && active == UI_SCREEN_MEDIA) {
-          if (GET_OPTION(auto_width))
-            options_set_int("width", size.cols);
-          if (GET_OPTION(auto_height))
-            options_set_int("height", size.rows);
-        }
-        uint64_t now = time_get_ns();
-        bool animate = active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS;
-        if (active == UI_SCREEN_RENDER_PROGRESS)
-          animate = now - progress_render_ns >= 125 * NS_PER_MS_INT;
-        bool rendered = screen->dirty || transition || animate || volume_changed;
-        if (rendered) {
-          fps_counter_frame_begin(g_fps, active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP);
-          stats_media_begin(active == UI_SCREEN_MEDIA);
-          g_render_volume = volume_visible;
-          screen->render(size, screen->snapshot);
-          g_render_volume = false;
-          stats_media_end();
-          if (active == UI_SCREEN_RENDER_PROGRESS)
-            progress_render_ns = now;
-          fps_counter_frame_end(g_fps, time_get_ns());
-        }
-        fps_counter_render(g_fps, screen->fd, size.cols, rendered);
+      if ((resized || changed) && active == UI_SCREEN_MEDIA) {
+        if (GET_OPTION(auto_width))
+          options_set_int("width", size.cols);
+        if (GET_OPTION(auto_height))
+          options_set_int("height", size.rows);
       }
-      g_small = small;
+      ui_session_resize(g_session, size.cols, size.rows);
+      if (redraw)
+        ui_session_redraw(g_session);
+      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible};
+      ui_session_view_t view = {
+          .screen = active,
+          .minimum = screen->minimum,
+          .dirty = screen->dirty || volume_changed,
+          .refresh_ns = active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
+                        : active == UI_SCREEN_RENDER_PROGRESS
+                            ? 125 * NS_PER_MS_INT
+                            : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
+          .draw = draw_native_view,
+          .context = &context};
+      const char *output = ui_session_render(g_session, &view, now);
+      bool covered = ui_session_is_covered(g_session);
+      atomic_store_bool(&g_blocked, covered);
+      if (covered && !was_covered)
+        fps_counter_reset(g_fps);
+      if (output) {
+        stats_media_begin(active == UI_SCREEN_MEDIA && context.drew);
+        ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        stats_media_end();
+        if (context.drew)
+          fps_counter_frame_end(g_fps, time_get_ns());
+      }
+      if (!covered)
+        fps_counter_render(g_fps, screen->fd, size.cols, context.drew);
     }
   frame_complete:
     g_render_fd = -1;
@@ -403,8 +433,7 @@ static void *presentation_main(void *unused) {
     // part of the interval rather than an additional delay after each frame.
     mutex_lock(&g_mutex);
     int pending_screen = atomic_load(&g_published_screen);
-    bool pending = g_redraw || pending_screen != g_active ||
-                   (pending_screen >= 0 && g_screens[pending_screen].dirty);
+    bool pending = g_redraw || pending_screen != g_active || (pending_screen >= 0 && g_screens[pending_screen].dirty);
     uint64_t now = time_get_ns();
     if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
@@ -421,7 +450,6 @@ static asciichat_error_t controller_start(void) {
     atomic_store_bool(&g_presentation_stop_requested, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
-    g_small = false;
     g_redraw = false;
     g_finished = false;
     g_rendering_screen = -1;
@@ -441,11 +469,21 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI presentation condition");
     }
+    g_session = ui_session_create();
+    if (!g_session) {
+      cond_destroy(&g_render_requested);
+      cond_destroy(&g_render_done);
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot create session UI runtime");
+    }
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
     if (asciichat_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+      ui_session_destroy(g_session);
+      g_session = NULL;
       NAMED_UNREGISTER(&g_live);
       NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
@@ -541,16 +579,16 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
       mutex_unlock(&g_mutex);
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate queued UI notice");
     }
-    *queued = (screen_t){.owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum,
-                         .fd = output_fd, .dirty = true};
+    *queued = (screen_t){
+        .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
     tail->next = queued;
     mutex_unlock(&g_mutex);
     return ASCIICHAT_OK;
   }
   screen_snapshot_t *retired = slot->owned;
   atomic_store_bool(&g_live, true);
-  *slot = (screen_t){.owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum,
-                     .fd = output_fd, .dirty = true};
+  *slot = (screen_t){
+      .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
   publish_screen_locked();
   mutex_unlock(&g_mutex);
   release_snapshot(retired);
@@ -594,9 +632,7 @@ ui_presentation_state_t ui_controller_state(void) {
   if (!lifecycle_is_initialized(&g_lifecycle))
     return state;
   mutex_lock(&g_mutex);
-  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
-    if (g_screens[i].render)
-      state.screen = i;
+  state.screen = selected_screen_locked();
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
     terminal_size_t size = {0};
@@ -698,6 +734,8 @@ void ui_controller_shutdown(void) {
   cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
   asciichat_thread_join(&g_thread, NULL);
+  ui_session_destroy(g_session);
+  g_session = NULL;
   atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
@@ -730,4 +768,28 @@ void ui_controller_restore_terminal(void) {
   ui_controller_shutdown();
   if (platform_isatty(STDOUT_FILENO))
     ui_controller_write(STDOUT_FILENO, "\033[0m\033[?25h", 10);
+}
+
+static void render_logs(terminal_size_t size, const void *snapshot) {
+  (void)snapshot;
+  ui_session_logs_render(g_capture, size, g_session);
+}
+
+void ui_controller_hide_logs(void) {
+  ui_controller_remove(UI_SCREEN_LOGS);
+}
+
+void ui_controller_toggle_logs(void) {
+  if (ui_controller_current_screen() == UI_SCREEN_LOGS) {
+    ui_controller_hide_logs();
+    return;
+  }
+  if (!platform_isatty(STDOUT_FILENO) || GET_OPTION(snapshot_mode))
+    return;
+  const bool snapshot = true;
+  asciichat_error_t result =
+      ui_controller_submit(UI_SCREEN_LOGS, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 6}, render_logs,
+                           &snapshot, sizeof(snapshot));
+  if (result != ASCIICHAT_OK)
+    log_warn("Cannot show application logs: %d", result);
 }

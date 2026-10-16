@@ -34,6 +34,7 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
@@ -551,7 +552,16 @@ static void maybe_rotate_log(void) {
   mutex_unlock(&g_log.rotation_mutex);
 }
 
+static session_log_buffer_t *g_history;
+
+session_log_buffer_t *log_get_history_buffer(void) {
+  return g_history;
+}
+
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
+
+  if (!g_history)
+    g_history = session_log_buffer_create();
 
   // Initialize rotation mutex (only operation that uses a mutex)
   g_log.rotation_mutex_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
@@ -707,6 +717,9 @@ void log_system_init(void) {
 void log_system_destroy(void) {
   // Unregister session log buffer if registered
   log_clear_session_log_buffer();
+  log_search_destroy();
+  session_log_buffer_destroy(g_history);
+  g_history = NULL;
 }
 
 void log_set_level(log_level_t level) {
@@ -904,7 +917,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  * Uses atomic loads for state checks, skips output if terminal is locked by another thread
  */
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
-                                     const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds) {
+                                     const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds,
+                                     bool capture_history) {
   // Prevent logging during shutdown - if logging lifecycle is being destroyed,
   // bail out to avoid use-after-free of the log template
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
@@ -965,10 +979,13 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     }
   }
 
+  if (capture_history)
+    session_log_buffer_append(g_history, colored_len > 0 ? colored_log_line : clean_msg);
+
   // Feed log to registered session log buffer (use colored version if available, otherwise plain)
   atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
   session_log_buffer_t *buf = (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
-  if (buf) {
+  if (buf && buf != g_history) {
     if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
       session_log_buffer_append(buf, colored_log_line);
     } else if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
@@ -1053,7 +1070,8 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   g_notice_text = NULL;
   atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
   session_log_buffer_t *buffer = log_get_session_log_buffer();
-  if (buffer)
+  session_log_buffer_append(g_history, text);
+  if (buffer && buffer != g_history)
     session_log_buffer_append(buffer, text);
   atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
   // Match the same uncolored template as ordinary terminal logs, including metadata.
@@ -1191,6 +1209,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Validate UTF-8 in formatted message
     validate_log_message_utf8(msg_buffer, "mmap log message");
 
+    if (!g_notice_text)
+      session_log_buffer_append(g_history, msg_buffer);
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
 
     if (g_notice_text) {
@@ -1309,6 +1329,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // If JSON format is enabled, output ONLY JSON (skip text output)
   if (json_format_enabled) {
+    session_log_buffer_append(g_history, log_buffer);
     // Output JSON to the JSON file descriptor
     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
     // Also output JSON to console using unified routing logic, respecting quiet flag
@@ -1333,7 +1354,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Write to terminal (atomic state checks)
     va_list args_terminal;
     va_start(args_terminal, fmt);
-    write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
+    write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns, true);
     va_end(args_terminal);
   }
 }
@@ -1355,7 +1376,7 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
 
   va_list args;
   va_start(args, fmt);
-  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns);
+  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns, true);
   va_end(args);
 }
 
@@ -1379,6 +1400,8 @@ void log_plain_msg(const char *fmt, ...) {
 
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "plain text log");
+
+  session_log_buffer_append(g_history, log_buffer);
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -1458,6 +1481,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
 
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "stderr log");
+  session_log_buffer_append(g_history, log_buffer);
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -1551,6 +1575,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
 
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "stdout log");
+  session_log_buffer_append(g_history, log_buffer);
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -1631,6 +1656,7 @@ void log_file_msg(const char *fmt, ...) {
 
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "file-only log");
+  session_log_buffer_append(g_history, log_buffer);
 
   // Write to mmap if active, else to file
   if (log_mmap_is_active()) {

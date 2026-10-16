@@ -13,6 +13,8 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   animationEnabled: false,
   animation: "matrix",
   flipX: true,
+  flipY: false,
+  renderMode: 0,
 };
 
 export function getDefaultSettings(): BinarySettingsConfig {

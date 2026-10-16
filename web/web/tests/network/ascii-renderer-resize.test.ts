@@ -3,6 +3,28 @@ import { cleanup, renderHook } from "@testing-library/react";
 import { useAsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle";
 import type { AsciiRendererHandle } from "../../../packages/shared/src/components/AsciiRenderer/types";
 
+// C presentation behavior is exercised against real WASM in session-ui.spec.ts.
+// This test isolates canvas sizing and resize debounce.
+vi.mock("../../../packages/shared/src/wasm/sessionUi", () => ({
+  SessionUi: class {
+    frame: string | null = null;
+    constructor(readonly module: unknown) {}
+    resize() {}
+    loading() {}
+    log() {}
+    redraw() {}
+    destroy() {}
+    media(text: string) {
+      this.frame = text;
+    }
+    tick() {
+      const frame = this.frame;
+      this.frame = null;
+      return frame;
+    }
+  },
+}));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

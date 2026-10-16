@@ -39,7 +39,13 @@ function sourceHash() {
       }
     }
   };
-  for (const directory of ["src/web", "lib", "include", "cmake"])
+  for (const directory of [
+    "src/web",
+    "src/common/session",
+    "lib",
+    "include",
+    "cmake",
+  ])
     walk(resolve(repo, directory));
   digest.update(
     readFileSync(resolve(repo, "CMakeLists.txt"), "utf8").replaceAll(

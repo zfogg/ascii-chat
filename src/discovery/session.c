@@ -515,8 +515,6 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   log_info("Creating new discovery session...");
 
   // Multi-key protocol: send all identity keys with count upfront
-  const options_t *opts = options_get();
-
   // Send all identity keys
   for (size_t key_idx = 0; key_idx < session->num_identity_keys; key_idx++) {
     acip_session_create_t create_msg;

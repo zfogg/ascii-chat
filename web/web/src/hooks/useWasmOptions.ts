@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import {
+  getMirrorModule,
   getColorFilter,
   getColorMode,
   getDimensions,
@@ -100,6 +101,9 @@ export function applyMirrorWasmSettings(
     // Audio visualizations own their colors; color filters are video-only.
     colorFilter: audioVisualizationEnabled ? "none" : settings.colorFilter,
   });
+  const module = getMirrorModule();
+  module?._set_flip_y?.(Number(settings.flipY ?? false));
+  module?._set_render_mode?.(settings.renderMode ?? 0);
   return true;
 }
 

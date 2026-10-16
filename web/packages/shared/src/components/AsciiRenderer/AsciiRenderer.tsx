@@ -52,6 +52,9 @@ import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   function AsciiRenderer(
     {
+      uiLoading,
+      uiMessage,
+      onUiAction,
       onDimensionsChange,
       onFpsChange,
       error,
@@ -91,19 +94,24 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     });
 
     // Set up imperative handle and get updateDimensions + fpsDisplayRef
-    const { updateDimensions, fpsDisplayRef } = useAsciiRendererHandle({
-      ref,
-      moduleRef,
-      setupDoneRef,
-      rendererPtrRef,
-      canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
-      resizeTimeoutRef,
-      showFps,
-      zalgo,
-      onFpsChange,
-      onDimensionsChange,
-      onRecreateRenderer: triggerRendererRecreate,
-    });
+    const { updateDimensions, fpsDisplayRef, onKeyDown } =
+      useAsciiRendererHandle({
+        ref,
+        uiLoading:
+          uiLoading ?? (connectionState === 1 || connectionState === 2),
+        uiMessage,
+        onUiAction,
+        moduleRef,
+        setupDoneRef,
+        rendererPtrRef,
+        canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
+        resizeTimeoutRef,
+        showFps,
+        zalgo,
+        onFpsChange,
+        onDimensionsChange,
+        onRecreateRenderer: triggerRendererRecreate,
+      });
 
     // Provide updateDimensions to the initialization hook
     setUpdateDimensions(updateDimensions);
@@ -121,17 +129,12 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
         </style>
         <canvas
           ref={canvasRef}
+          tabIndex={0}
+          aria-label="ASCII terminal. Press question mark for keyboard settings."
+          onKeyDown={onKeyDown}
+          onPointerDown={(event) => event.currentTarget.focus()}
           className="ascii-canvas max-w-full max-h-full shrink-0 object-contain"
         />
-        {/* Connection status overlay - shows when connecting or in handshake */}
-        {(connectionState === 1 || connectionState === 2) && (
-          <div className="absolute inset-0 flex items-end justify-center pb-8 pointer-events-none">
-            <div className="text-2xl font-semibold text-yellow-400 drop-shadow-lg">
-              {connectionState === 1 ? "Connecting..." : "Handshaking..."}
-            </div>
-          </div>
-        )}
-
         {/* Disconnected overlay - only show if error or explicitly disconnected */}
         {connectionState === 4 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">

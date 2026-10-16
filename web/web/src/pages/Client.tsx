@@ -1,3 +1,4 @@
+import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -340,7 +341,6 @@ export function ClientPage({
   const latestFrameRef = useRef<AsciiFrame | null>(null);
 
   const renderLoopStartTimeRef = useRef<number>(0);
-  const renderedFrameCountRef = useRef(0);
 
   const frameHashesRef = useRef<Record<string, number>>({});
   const renderTimingRef = useRef({
@@ -491,37 +491,6 @@ export function ClientPage({
     setError,
     terminalDimensions,
   ]);
-
-  // Count frames the renderer successfully consumes, not RAF callbacks or
-  // packets that are still waiting in the receive queue. Static images can
-  // still be rendered at full frame rate when adjacent pixels are identical.
-  useEffect(() => {
-    if (connectionState !== ConnectionState.CONNECTED) {
-      setFps(0);
-      return;
-    }
-
-    setFps(0);
-    const frameCount = () => renderedFrameCountRef.current;
-    let previousFrameCount = frameCount();
-    let previousTime = performance.now();
-    const intervalId = window.setInterval(() => {
-      const now = performance.now();
-      const currentFrameCount = frameCount();
-      const elapsedSeconds = (now - previousTime) / 1000;
-      setFps(
-        elapsedSeconds > 0
-          ? Math.round(
-              (currentFrameCount - previousFrameCount) / elapsedSeconds,
-            )
-          : 0,
-      );
-      previousFrameCount = currentFrameCount;
-      previousTime = now;
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [connectionState]);
 
   // Client and Discovery render through the same mirror WASM module as
   // /mirror. Apply the settings as soon as that renderer is ready instead of
@@ -821,7 +790,7 @@ export function ClientPage({
           if (!drewFrame) {
             return;
           }
-          renderedFrameCountRef.current++;
+
           const timing = renderTimingRef.current;
           const renderedAt = performance.now();
           if (!timing.windowStart) timing.windowStart = renderedAt;
@@ -1431,14 +1400,22 @@ export function ClientPage({
           rendererRequested ? (
             <AsciiRenderer
               ref={rendererRef}
+              uiMessage={status}
+              onUiAction={(event) => {
+                if (event.action === 1 || event.action === 7)
+                  setSettings(sessionUiSettings(event, settings));
+                sessionUiMedia(event, videoRef.current);
+                audioRef.current?.setVolume(event.module._wasm_ui_volume());
+                if (event.action === 3) disconnectMedia();
+              }}
               zalgo={settings.zalgo ?? 0}
               columns={settings.width}
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
               initializeOptions={false}
-              {...(discoveryMode ? {} : { onFpsChange: setFps })}
+              onFpsChange={setFps}
               error={discoveryMode ? rendererError : error || rendererError}
-              showFps={isWebcamRunning}
+              showFps
               connectionState={connectionState}
               wasmModuleReady={rendererReady}
             />

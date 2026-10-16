@@ -18,6 +18,7 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/session.h>
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/ui/terminal_screen.h>
@@ -60,11 +61,7 @@ static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
 static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_notification_mutex);
 
-typedef struct {
-  bool enabled;
-  bool joining;
-  char session_string[SESSION_STRING_BUFFER_SIZE];
-} discovery_splash_t;
+typedef ui_discovery_view_t discovery_splash_t;
 
 static discovery_splash_t g_discovery_splash;
 static mutex_t g_discovery_splash_mutex;
@@ -125,19 +122,14 @@ void splash_log_clear(void) {
  * @brief Animation state for intro splash
  */
 static struct {
-  atomic_t is_running;            // true while animation should continue
-  atomic_t should_stop;           // set to true when splash should stop
-  atomic_t thread_created;        // true if animation thread was successfully created
-  int frame;                      // current animation frame
-  asciichat_thread_t anim_thread; // animation thread handle
-  uint64_t start_time_ns;         // when splash was started (for minimum display time)
-  atomic_t intro_done_time_ns;    // when splash_intro_done() was called
-} g_splash_state = {.is_running = {0},
-                    .should_stop = {0},
-                    .thread_created = {0},
-                    .frame = 0,
-                    .start_time_ns = 0,
-                    .intro_done_time_ns = {0}};
+  atomic_t is_running;               // true while animation should continue
+  atomic_t should_stop;              // set to true when splash should stop
+  atomic_t thread_created;           // true if monitor thread was successfully created
+  asciichat_thread_t monitor_thread; // monitor thread handle
+  uint64_t start_time_ns;            // when splash was started (for minimum display time)
+  atomic_t intro_done_time_ns;       // when splash_intro_done() was called
+} g_splash_state = {
+    .is_running = {0}, .should_stop = {0}, .thread_created = {0}, .start_time_ns = 0, .intro_done_time_ns = {0}};
 
 // ============================================================================
 // Header Rendering (callback for terminal_screen)
@@ -146,12 +138,7 @@ static struct {
 /**
  * @brief Context data for splash header rendering
  */
-typedef struct {
-  discovery_splash_t discovery;
-  animation_sample_t animation;   // Immutable sample copied to the presentation thread
-  bool use_colors;                // Whether to use rainbow colors
-  char update_notification[1024]; // Update notification message (empty if no update)
-} splash_header_ctx_t;
+typedef ui_splash_view_t splash_header_ctx_t;
 
 /**
  * @brief Build connection target string for splash display
@@ -229,107 +216,6 @@ static void build_connection_target(char *buffer, size_t buffer_size) {
  * @param term_size Current terminal dimensions
  * @param user_data Pointer to splash_header_ctx_t
  */
-static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
-  const splash_header_ctx_t *ctx = (const splash_header_ctx_t *)user_data;
-  if (!ctx) {
-    return;
-  }
-
-  if (ctx->discovery.enabled) {
-    invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining, (int)(ctx->animation.seconds * 60),
-                      ctx->use_colors);
-    return;
-  }
-
-  const char *tagline = "Video chat in your terminal";
-  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
-  invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
-
-  // Line 6: Tagline (centered, truncated if too long)
-  char plain_tagline[512];
-  int tagline_len = (int)strlen(tagline);
-  int tagline_pad = (term_size.cols - tagline_len) / 2;
-  if (tagline_pad < 0) {
-    tagline_pad = 0;
-  }
-
-  int tpos = 0;
-  for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
-    plain_tagline[tpos++] = ' ';
-  }
-  snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
-
-  // Check visible width and truncate if needed
-  int tagline_visible_width = display_width(plain_tagline);
-  if (tagline_visible_width < 0) {
-    tagline_visible_width = (int)strlen(plain_tagline);
-  }
-  if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
-    plain_tagline[term_size.cols - 1] = '\0';
-  }
-
-  frame_buffer_printf(buf, "%s\n", plain_tagline);
-
-  // Line 7: Update notification (if available)
-  if (ctx->update_notification[0] != '\0') {
-    char plain_update[1024];
-    int update_len = (int)strlen(ctx->update_notification);
-    int update_pad = (term_size.cols - update_len) / 2;
-    if (update_pad < 0) {
-      update_pad = 0;
-    }
-
-    int upos = 0;
-    for (int j = 0; j < update_pad && upos < (int)sizeof(plain_update) - 1; j++) {
-      plain_update[upos++] = ' ';
-    }
-    snprintf(plain_update + upos, sizeof(plain_update) - upos, "%s", ctx->update_notification);
-
-    // Check visible width and truncate if needed
-    int update_visible_width = display_width(plain_update);
-    if (update_visible_width < 0) {
-      update_visible_width = (int)strlen(plain_update);
-    }
-    if (term_size.cols > 0 && update_visible_width >= term_size.cols) {
-      plain_update[term_size.cols - 1] = '\0';
-    }
-
-    // Print in yellow/warning color
-    frame_buffer_printf(buf, "%s\n", colored_string(LOG_COLOR_WARN, plain_update));
-  }
-
-  // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
-  char connection_target[512];
-  build_connection_target(connection_target, sizeof(connection_target));
-
-  char plain_connection[512];
-  int connection_len = (int)strlen(connection_target);
-  int connection_pad = (term_size.cols - connection_len) / 2;
-  if (connection_pad < 0) {
-    connection_pad = 0;
-  }
-
-  int cpos = 0;
-  for (int j = 0; j < connection_pad && cpos < (int)sizeof(plain_connection) - 1; j++) {
-    plain_connection[cpos++] = ' ';
-  }
-  snprintf(plain_connection + cpos, sizeof(plain_connection) - cpos, "%s", connection_target);
-
-  // Check visible width and truncate if needed
-  int connection_visible_width = display_width(plain_connection);
-  if (connection_visible_width < 0) {
-    connection_visible_width = (int)strlen(plain_connection);
-  }
-  if (term_size.cols > 0 && connection_visible_width >= term_size.cols) {
-    plain_connection[term_size.cols - 1] = '\0';
-  }
-
-  frame_buffer_printf(buf, "%s\n", plain_connection);
-
-  // Line 9 (or 8 if no update): Bottom border
-  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
-}
-
 // ============================================================================
 // Public API
 // ============================================================================
@@ -359,226 +245,100 @@ bool splash_should_display(bool is_intro) {
 }
 
 /**
- * @brief Animation thread that displays splash with rainbow wave effect and logs
- * Uses terminal_screen abstraction for consistent rendering
+ * @brief Bind native splash metadata to the common presentation clock
  */
-static void *splash_animation_thread(void *arg) {
+static void render_splash_header(frame_buffer_t *buffer, terminal_size_t size, void *data) {
+  splash_header_ctx_t view = *(splash_header_ctx_t *)data;
+  const animation_sample_t *animation = ui_controller_animation_sample();
+  if (animation)
+    view.animation = *animation;
+  ui_session_splash_render(buffer, size, &view);
+}
+
+static void splash_help(terminal_size_t size, const void *snapshot) {
+  (void)snapshot;
+  terminal_size_t minimum;
+  char *text = ui_session_help_render(size, false, false, &minimum);
+  if (text) {
+    ui_controller_write(STDOUT_FILENO, text, strlen(text));
+    SAFE_FREE(text);
+  }
+}
+
+static void *splash_monitor_thread(void *arg) {
   (void)arg;
-
-  // Check if colors should be used (TTY check)
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
-
-  // Keyboard is pre-initialized from asciichat_shared_init()
-  // Only enable if terminal is interactive (keyboard won't work in non-TTY)
   bool keyboard_enabled = terminal_is_interactive();
-
-  // Animate with rainbow wave effect - TIME-BASED, not frame-based
-  // This ensures animation speed is consistent regardless of FPS
-  int fps = GET_OPTION(fps);
-  if (fps <= 0)
-    fps = 60;                        // Default to 60 FPS if not specified
-  const int anim_speed = 1000 / fps; // milliseconds per frame
-  uint64_t loop_start_ns = time_get_ns();
-  animation_t animation;
-  animation_init(
-      &animation, "splash_rainbow",
-      (animation_config_t){
-          .type = ANIMATION_SPLASH_RAINBOW, .fps = (uint32_t)fps, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
-  int iteration_count = 0; // Just for logging actual FPS
-
-  log_dev("[SPLASH_ANIM_INIT] fps=%d anim_speed=%dms", fps, anim_speed);
-
-  // Don't log until after first frame to avoid startup flicker
-  bool first_frame = true;
-
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  splash_header_ctx_t previous = {0};
+  bool published = false;
   while (!atomic_load_bool(&g_splash_state.should_stop) && !shutdown_is_requested()) {
-    // Calculate animation frame based on ELAPSED TIME, not iteration count
-    // This ensures the animation plays at the same speed regardless of FPS variation
-    uint64_t now_ns = time_get_ns();
-    uint64_t elapsed_ns = now_ns - loop_start_ns;
-    uint64_t elapsed_ms = elapsed_ns / 1000000;
-
-    // Check if we should stop the splash (from splash_intro_done signal)
-    uint64_t intro_done_ns = atomic_load_u64(&g_splash_state.intro_done_time_ns);
-    if (intro_done_ns > 0) {
-      // splash_intro_done() was called - keep splash running for a minimum display time
-      // The first ASCII frame will be rendered after the splash exits
-      const uint64_t min_display_ns = 2000000000ULL;  // 2 seconds in nanoseconds
-      const uint64_t max_display_ns = 30000000000ULL; // 30 seconds maximum (safety limit)
-      uint64_t elapsed_since_start_ns = now_ns - g_splash_state.start_time_ns;
-
-      // Stop when: minimum time reached OR maximum time reached
-      // We don't wait for has_first_frame because the first frame is rendered
-      // by the main thread after splash_wait_for_animation() returns
-      bool min_display_reached = elapsed_since_start_ns >= min_display_ns;
-      bool max_time_reached = elapsed_since_start_ns >= max_display_ns;
-
-      if (min_display_reached || max_time_reached) {
-        atomic_store_bool(&g_splash_state.should_stop, true);
-      }
-    }
-
-    // Convert elapsed time to animation frame (at target FPS)
-    // For 60 FPS target: frame = elapsed_ms / 16.67
-    ui_presentation_state_t presentation = ui_controller_state();
-    animation_set_visible(&animation, presentation.screen < 0 ||
-                                          (presentation.screen == UI_SCREEN_SPLASH && !presentation.covered));
-    animation_sample_t sample;
-    animation_update(&animation, now_ns, &sample);
-    int frame = (int)sample.frame;
-
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
-              (unsigned long long)elapsed_ms, frame, atomic_load_bool(&g_splash_state.should_stop));
-    }
-
-    // Poll keyboard for interactive grep and Escape to cancel
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
-    }
+    uint64_t now = time_get_ns();
+    if (atomic_load_u64(&g_splash_state.intro_done_time_ns) && now - g_splash_state.start_time_ns >= 2 * NS_PER_SEC_INT)
+      break;
     if (keyboard_enabled) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
-      // The invitation accepts the shared stats toggle; other splash controls
-      // must not dismiss the session string while waiting for a peer.
-      if (discovery_splash_snapshot().enabled)
+      if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION &&
+          ui_controller_current_screen() != UI_SCREEN_LOGS)
         key = KEY_NONE;
-      if (key == KEY_ESCAPE) {
-        // Escape key: cancel grep if active, otherwise cancel splash
-        if (log_search_is_active()) {
-          log_search_exit_mode(false); // Cancel grep without applying
+      if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key)) {
+        // Search consumed the key.
+      } else if (key == ']') {
+        ui_controller_remove(UI_SCREEN_HELP);
+        ui_controller_toggle_logs();
+      } else if (key == KEY_QUESTION || (key == KEY_ESCAPE && ui_controller_current_screen() == UI_SCREEN_HELP)) {
+        if (ui_controller_current_screen() == UI_SCREEN_HELP) {
+          ui_controller_remove(UI_SCREEN_HELP);
         } else {
-          atomic_store_bool(&g_splash_state.should_stop, true); // Exit splash screen
+          ui_controller_hide_logs();
+          terminal_size_t minimum;
+          char *text = ui_session_help_render(ui_controller_size(), false, false, &minimum);
+          if (text) {
+            const bool snapshot = true;
+            ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, minimum, splash_help, &snapshot, sizeof(snapshot));
+            SAFE_FREE(text);
+          }
         }
-      } else if (key != KEY_NONE && log_search_should_handle(key)) {
-        log_search_handle_key(key);
-        // Continue to render immediately with grep active
+      } else if (key == KEY_ESCAPE && ui_controller_current_screen() == UI_SCREEN_LOGS) {
+        ui_controller_hide_logs();
+      } else if (key == KEY_ESCAPE) {
+        if (log_search_is_active())
+          log_search_exit_mode(false);
+        else
+          break;
       }
     }
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: keyboard check done", iteration_count);
-    }
-
-    // Set up splash header context for this frame (using TIME-BASED frame value)
-    splash_header_ctx_t header_ctx = {
-        .discovery = discovery_splash_snapshot(),
-        .animation = sample,
-        .use_colors = use_colors,
-    };
-
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
-    }
-
-    // Initialize update notification lifecycle and mutex once (safe to call multiple times)
+    splash_header_ctx_t view = {.discovery = discovery_splash_snapshot(), .use_colors = use_colors};
     if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-      if (!first_frame) {
-        log_dev("[SPLASH_ANIM] Initializing lifecycle for update_notification");
-      }
-      // Initialize the mutex (already configured in the lifecycle structure)
       mutex_init(&g_update_notification_mutex, "update_notification");
       lifecycle_init_commit(&g_update_notification_lifecycle);
     }
-
-    // Copy update notification from global state (thread-safe)
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
-    }
     mutex_lock(&g_update_notification_mutex);
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
-    }
-    SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
+    SAFE_STRNCPY(view.update_notification, g_update_notification, sizeof(view.update_notification));
     mutex_unlock(&g_update_notification_mutex);
-    if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
+    build_connection_target(view.connection_target, sizeof(view.connection_target));
+    bool should_render = terminal_is_interactive() || GET_OPTION(splash_screen_explicitly_set);
+    // Only publish model changes. The presentation runtime owns the animation
+    // clock while this monitor handles startup and input.
+    if (should_render && (!published || memcmp(&view, &previous, sizeof(view)))) {
+      terminal_screen_config_t config = {
+          .screen = UI_SCREEN_SPLASH,
+          .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
+          .user_data_size = sizeof(view),
+          .minimum_cols = view.discovery.enabled ? 2 : 52,
+          .fixed_header_lines = view.discovery.enabled ? 0 : (view.update_notification[0] ? 9 : 8),
+          .render_header = render_splash_header,
+          .user_data = &view,
+          .show_logs = false,
+          .hide_cursor = view.discovery.enabled,
+      };
+      terminal_screen_render(&config);
+      previous = view;
+      published = true;
     }
-
-    // Calculate header lines: 8 base lines + 1 if update notification present
-    int header_lines = 8;
-    if (header_ctx.update_notification[0] != '\0') {
-      header_lines = 9;
-    }
-
-    // Configure terminal screen with splash header callback
-    terminal_screen_config_t screen_config = {
-        .screen = UI_SCREEN_SPLASH,
-        .output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO,
-        .user_data_size = sizeof(header_ctx),
-        .minimum_cols = header_ctx.discovery.enabled ? 2 : 52,
-        .fixed_header_lines = header_ctx.discovery.enabled ? 0 : header_lines,
-        .render_header = render_splash_header,
-        .user_data = &header_ctx,
-        .show_logs = !header_ctx.discovery.enabled,
-        .hide_cursor = header_ctx.discovery.enabled,
-    };
-
-    // Render the screen (header + logs) only in interactive mode
-    // OR if splash screen was explicitly requested
-    // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-    const options_t *opts_render = options_get();
-    bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
-
-    // Log startup phase timing
-    if (elapsed_ms < 500) {
-      log_dev("[STARTUP_PHASE] elapsed_ms=%llu frame=%d (time-based) header_lines=%d should_render=%d",
-              (unsigned long long)elapsed_ms, frame, header_lines, should_render);
-    }
-
-    if (should_render) {
-      terminal_screen_render(&screen_config);
-      if (!first_frame) {
-        log_dev("[SPLASH_ANIM] Iter %d: terminal_screen_render() completed", iteration_count);
-      }
-      first_frame = false; // Mark first frame as complete
-    } else {
-      if (!first_frame) {
-        log_dev("[SPLASH_ANIM] Iter %d: Skipping render (should_render=false)", iteration_count);
-      }
-    }
-
-    iteration_count++;
-
-    // Log progress every 1 second of actual time (not frame count)
-    if (elapsed_ms > 0 && (int)(elapsed_ms % 1000) < anim_speed) {
-      uint64_t now_ns = time_get_ns();
-      uint64_t total_elapsed_ns = now_ns - loop_start_ns;
-      double elapsed_sec = total_elapsed_ns / 1e9;
-      double actual_fps = iteration_count / elapsed_sec;
-      log_info("[SPLASH_ANIM] %llu ms elapsed, iteration %d, actual FPS: %.1f", (unsigned long long)elapsed_ms,
-               iteration_count, actual_fps);
-    }
-
-    // Sleep to control frame rate (unless grep needs immediate rerender)
-    if (!log_search_needs_rerender()) {
-      uint64_t sleep_start_ns = time_get_ns();
-      platform_sleep_ms(anim_speed);
-      uint64_t sleep_end_ns = time_get_ns();
-      uint64_t actual_sleep_ms = (sleep_end_ns - sleep_start_ns) / 1000000;
-      if (iteration_count % 60 == 0) {
-        log_debug("[SPLASH_SLEEP] Iter %d: requested=%dms actual=%llums", iteration_count, anim_speed,
-                  (unsigned long long)actual_sleep_ms);
-      }
-    } else {
-      if (iteration_count % 60 == 0) {
-        log_debug("[SPLASH_GREP_RERENDER] Iter %d: skipping sleep for grep rerender", iteration_count);
-      }
-    }
+    platform_sleep_ms(16);
   }
-
-  // Log final iteration count
-  uint64_t final_ns = time_get_ns();
-  uint64_t total_elapsed_ns = final_ns - loop_start_ns;
-  double total_elapsed_sec = total_elapsed_ns / 1e9;
-  double final_fps = total_elapsed_sec > 0 ? iteration_count / total_elapsed_sec : 0;
-  log_info(
-      "[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d iterations in %.3f seconds (%.1f actual FPS). should_stop=%d, "
-      "shutdown=%d",
-      iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop),
-      shutdown_is_requested());
-
-  animation_destroy(&animation);
   ui_controller_remove(UI_SCREEN_SPLASH);
-  log_dev("[SPLASH_ANIM] Animation thread exiting");
+  ui_controller_remove(UI_SCREEN_HELP);
   atomic_store_bool(&g_splash_state.is_running, false);
   return NULL;
 }
@@ -615,18 +375,17 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   atomic_store_bool(&g_splash_state.is_running, true);
   atomic_store_bool(&g_splash_state.should_stop, false);
   atomic_store_u64(&g_splash_state.intro_done_time_ns, 0);
-  g_splash_state.frame = 0;
   g_splash_state.start_time_ns = time_get_ns();
 
-  // Start animation thread (only create once)
+  // Start monitor thread (only create once)
   bool expected_false = false;
   if (!atomic_cas_bool(&g_splash_state.thread_created, &expected_false, true)) {
     return 0;
   }
 
-  int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
+  int err = asciichat_thread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
-    log_warn("Failed to create splash animation thread: error=%d", err);
+    log_warn("Failed to create splash monitor thread: error=%d", err);
     atomic_store_bool(&g_splash_state.thread_created, false);
     atomic_store_bool(&g_splash_state.is_running, false);
     return 0;
@@ -636,26 +395,11 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 }
 
 int splash_intro_done(void) {
-  // Record when intro_done was called - animation thread will use this to decide when to stop
-  // Animation thread needs time to check the flag and perform cleanup, so this must happen
-  // BEFORE we try to access the terminal for frame rendering
   atomic_store_u64(&g_splash_state.intro_done_time_ns, time_get_ns());
   if (discovery_splash_snapshot().enabled || (GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0))
     atomic_store_bool(&g_splash_state.should_stop, true);
-
-  // NOTE: Do NOT modify thread_created flag here!
-  // splash_wait_for_animation() needs to see thread_created==true to know whether to join the thread.
-  // If we set thread_created=false here, splash_wait_for_animation() won't join, and the render loop
-  // will start while the animation thread is still running, causing frame output to conflict with splash.
-  //
-  // Instead, just signal the animation thread to stop via intro_done_time_ns, and let
-  // splash_wait_for_animation() handle the actual thread join.
-
-  // NOTE: DO NOT set is_running = false here! The animation thread sets it to false
-  // when it actually exits (line 633). If we set it to false here, the render loop
-  // guard will think splash is done while the animation thread is still running for
-  // up to 2 more seconds, allowing ASCII frames to render simultaneously with splash.
-  // The is_running flag MUST only be cleared by the animation thread when it finishes.
+  // The monitor retires the splash snapshot before clearing is_running. Keep
+  // thread_created set until splash_wait_for_animation() joins that monitor.
 
   return 0;
 }
@@ -680,7 +424,7 @@ void splash_wait_for_animation(void) {
     return;
 
   // Keep terminal ownership until the writer finishes, but allow shutdown to
-  // proceed if an undrained output pipe blocks the animation thread. Polling
+  // proceed if an undrained output pipe blocks the monitor thread. Polling
   // also handles shutdown requested after the normal handoff has begun, and
   // avoids platforms whose timed thread join falls back to a blocking join.
   uint64_t shutdown_started_ns = 0;
@@ -696,8 +440,8 @@ void splash_wait_for_animation(void) {
     platform_sleep_ms(10);
   }
 
-  // The animation clears is_running after its final output operation.
-  asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+  // The monitor clears is_running after retiring its presentation snapshot.
+  asciichat_error_t err = asciichat_thread_join(&g_splash_state.monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Splash animation join failed: %s", asciichat_error_string(err));
     return;

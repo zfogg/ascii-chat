@@ -148,7 +148,8 @@ void frame_buffer_clear_screen(frame_buffer_t *buf) {
   }
 
   // Combine clear screen and home in one operation
-  frame_buffer_append(buf, "\033[2J\033[H", 8);
+  static const char clear[] = "\033[2J\033[H";
+  frame_buffer_append(buf, clear, sizeof(clear) - 1);
 }
 
 // Global configuration for terminal screen output FD (used by splash/status screens)
