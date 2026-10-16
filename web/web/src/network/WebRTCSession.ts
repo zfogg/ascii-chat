@@ -1,14 +1,12 @@
+import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { ClientConnection } from "./ClientConnection";
 import { WebRTCBridge } from "./WebRTCBridge";
 import type { ClientSession } from "./Transport";
 import {
   AcdsType,
-  lookupRequest,
-  joinRequest,
-  parseJoined,
+  SessionRejectedError,
   parseSignal,
   signalPacket,
-  readString,
   type JoinedSession,
 } from "./acdsProtocol";
 import {
@@ -21,6 +19,8 @@ import {
 import type { ClientCryptoOptions } from "../wasm/client";
 
 export interface DiscoveryOptions {
+  createSession?: boolean;
+  onCreated?: (name: string) => void;
   sessionName: string;
   password: string;
   signalingUrl: string;
@@ -69,7 +69,9 @@ export function discoveryRTCConfiguration(
 
 /** Signaling stays on ACDS; all media travels on the peer's DTLS DataChannel. */
 export class WebRTCSession implements ClientSession {
+  canReconnect = true;
   readonly transportType = "webrtc" as const;
+  private discovery: DiscoveryProtocol | null = null;
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
@@ -136,7 +138,6 @@ export class WebRTCSession implements ClientSession {
       throw new Error(
         "Provide both TURN username and password, or leave both blank.",
       );
-    lookupRequest(this.options.sessionName);
     this.setState(ConnectionState.CONNECTING);
     this.options.onProgress?.("Connecting to discovery service");
     const connected = new Promise<void>((resolve, reject) => {
@@ -160,9 +161,14 @@ export class WebRTCSession implements ClientSession {
         this.lookedUp = true;
         this.options.onProgress?.("Looking up session");
         try {
-          this.signaling.sendPacket(
-            AcdsType.LOOKUP,
-            lookupRequest(this.options.sessionName),
+          this.discovery?.close();
+          this.discovery = new DiscoveryProtocol((type, payload) =>
+            this.signaling.sendPacket(type, payload),
+          );
+          this.discovery.enter(
+            false,
+            this.options.sessionName,
+            this.options.password,
           );
         } catch (error) {
           this.fail(error);
@@ -210,26 +216,9 @@ export class WebRTCSession implements ClientSession {
     type: number,
     payload: Uint8Array,
   ): Promise<void> {
-    if (type === AcdsType.INFO) {
-      if (payload.length < 72) throw new Error("Truncated session information");
-      if (!payload[0]) throw new Error("Session not found");
-      if (payload[52] !== 1)
-        throw new Error(
-          "This session does not offer WebRTC. Start the native server with --webrtc.",
-        );
-      if (payload[70] || payload[71])
-        throw new Error(
-          "This session requires identity verification that this browser client does not yet support.",
-        );
-      if (payload[53] && !this.options.password)
-        throw new Error("This session requires a password");
-      this.options.onProgress?.("Joining session");
-      this.signaling.sendPacket(
-        AcdsType.JOIN,
-        joinRequest(this.options.sessionName, this.options.password),
-      );
-    } else if (type === AcdsType.JOINED) {
-      this.joined = parseJoined(payload);
+    const snapshot = this.discovery?.receive(type, payload);
+    if (snapshot?.state === 6 && !this.joined) {
+      this.joined = snapshot.joined;
       this.options.onProgress?.("Negotiating WebRTC connection");
       this.peer = new RTCPeerConnection(
         discoveryRTCConfiguration(this.options, this.joined),
@@ -393,13 +382,6 @@ export class WebRTCSession implements ClientSession {
           await this.peer.addIceCandidate(candidate);
         else this.pendingIce.push(candidate);
       }
-    } else if (type === AcdsType.END || type === AcdsType.ERROR) {
-      throw new Error(
-        type === AcdsType.END
-          ? "Session ended"
-          : readString(payload, 2, 256) ||
-              "Discovery service rejected the request",
-      );
     }
   }
 
@@ -416,6 +398,7 @@ export class WebRTCSession implements ClientSession {
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = null;
     const failure = error instanceof Error ? error : new Error(String(error));
+    if (failure instanceof SessionRejectedError) this.canReconnect = false;
     this.rejectConnect?.(failure);
     this.rejectConnect = null;
     this.disconnect();
@@ -460,19 +443,12 @@ export class WebRTCSession implements ClientSession {
     this.clearTimer();
     this.rejectConnect?.(new Error("Connection cancelled"));
     this.rejectConnect = null;
-    if (
-      this.joined &&
-      this.signaling.getState() === ConnectionState.CONNECTED
-    ) {
-      try {
-        const leave = new Uint8Array(32);
-        leave.set(this.joined.sessionId);
-        leave.set(this.joined.participantId, 16);
-        this.signaling.sendPacket(AcdsType.LEAVE, leave);
-      } catch {
-        /* The discovery socket may already be closed. */
-      }
+    try {
+      this.discovery?.close();
+    } catch {
+      /* Signaling may already be closed. */
     }
+    this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
     if (this.peer) {

@@ -264,7 +264,9 @@ void session_host_destroy(session_host_t *host) {
 
   // Clean up audio resources
   if (host->audio_ctx) {
+#ifndef __EMSCRIPTEN__
     session_audio_destroy(host->audio_ctx);
+#endif
     host->audio_ctx = NULL;
   }
   if (host->opus_decoder) {
@@ -460,6 +462,207 @@ static void *accept_loop_thread(void *arg) {
  * This thread runs in a loop listening for packets from all connected clients.
  * When a packet arrives, it processes it based on the packet type.
  */
+asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t ptype,
+                                              const void *data, size_t len) {
+  if (!host || !host->initialized || (!data && len))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host packet");
+  acip_transport_t *client_transport = session_host_get_client_transport(host, client_id);
+  socket_t client_socket = INVALID_SOCKET_VALUE;
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].client_id == client_id) {
+      client_socket = host->clients[i].socket;
+      break;
+    }
+  }
+  mutex_unlock(&host->clients_mutex);
+  switch (ptype) {
+  case PACKET_TYPE_IMAGE_FRAME:
+    // Client sent a video frame - parse and store in incoming buffer
+    if (data && len >= sizeof(image_frame_packet_t)) {
+      const image_frame_packet_t *frame_hdr = (const image_frame_packet_t *)data;
+      const uint8_t *pixel_data = (const uint8_t *)data + sizeof(image_frame_packet_t);
+      size_t pixel_data_size = len - sizeof(image_frame_packet_t);
+      uint32_t width = NET_TO_HOST_U32(frame_hdr->width);
+      uint32_t height = NET_TO_HOST_U32(frame_hdr->height);
+      uint32_t pixel_format = NET_TO_HOST_U32(frame_hdr->pixel_format);
+      size_t bytes_per_pixel = (pixel_format == PIXEL_FORMAT_RGBA || pixel_format == PIXEL_FORMAT_BGRA) ? 4 : 3;
+      size_t expected_size = 0;
+      size_t pixel_count = 0;
+
+      if (pixel_format < PIXEL_FORMAT_RGB || pixel_format > PIXEL_FORMAT_BGRA || width == 0 || height == 0 ||
+          width > INT_MAX || height > INT_MAX ||
+          checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK ||
+          checked_size_mul(pixel_count, bytes_per_pixel, &expected_size) != ASCIICHAT_OK ||
+          expected_size != pixel_data_size) {
+        log_warn("Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)", client_id, width,
+                 height, pixel_format, pixel_data_size);
+      } else {
+        // Frame dimensions and pixel format are network-order fields. Resize
+        // this participant's image when its capture dimensions change.
+        mutex_lock(&host->clients_mutex);
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].active && host->clients[j].client_id == client_id && host->clients[j].incoming_video) {
+            image_t *img = host->clients[j].incoming_video;
+            if (img->w != (int)width || img->h != (int)height) {
+              image_t *resized = image_new(width, height);
+              if (!resized) {
+                log_warn("Could not allocate %ux%u video frame for client %u", width, height, client_id);
+                break;
+              }
+              image_destroy(img);
+              host->clients[j].incoming_video = img = resized;
+            }
+
+            uint8_t *dst = (uint8_t *)img->pixels;
+            if (pixel_format == PIXEL_FORMAT_RGB) {
+              memcpy(dst, pixel_data, pixel_count * 3);
+            } else if (pixel_format == PIXEL_FORMAT_BGR) {
+              for (size_t p = 0; p < pixel_count; p++) {
+                dst[p * 3] = pixel_data[p * 3 + 2];
+                dst[p * 3 + 1] = pixel_data[p * 3 + 1];
+                dst[p * 3 + 2] = pixel_data[p * 3];
+              }
+            } else {
+              const bool bgra = pixel_format == PIXEL_FORMAT_BGRA;
+              for (size_t p = 0; p < pixel_count; p++) {
+                const uint8_t *src = pixel_data + p * 4;
+                dst[p * 3] = src[bgra ? 2 : 0];
+                dst[p * 3 + 1] = src[1];
+                dst[p * 3 + 2] = src[bgra ? 0 : 2];
+              }
+            }
+            log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u, format %u)", client_id, width,
+                            height, pixel_format);
+            break;
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+      }
+    }
+    break;
+
+  case PACKET_TYPE_AUDIO_OPUS_BATCH:
+    // Client sent Opus-encoded audio batch
+    if (data && len > 16) { // Must have at least header
+      const uint8_t *batch_data = (const uint8_t *)data;
+      // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+      (void)batch_data[0]; // Avoid unused variable warning if we don't use sample_rate/frame_duration
+      uint32_t batch_frame_count_net = 0;
+      memcpy(&batch_frame_count_net, batch_data + 8, sizeof(batch_frame_count_net));
+      uint32_t batch_frame_count = NET_TO_HOST_U32(batch_frame_count_net);
+
+      size_t frame_sizes_len = (size_t)batch_frame_count * sizeof(uint16_t);
+      if (batch_frame_count > 0 && batch_frame_count <= 1000 && 16 + frame_sizes_len <= len) {
+        const uint8_t *frame_sizes = batch_data + 16;
+        const uint8_t *opus_frames = batch_data + 16 + (batch_frame_count * sizeof(uint16_t));
+        const uint8_t *batch_end = batch_data + len;
+
+        // Find client and decode audio
+        mutex_lock(&host->clients_mutex);
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio && host->opus_decoder) {
+            // Decode each Opus frame and write to ringbuffer
+            const uint8_t *current_frame = opus_frames;
+            for (uint32_t k = 0; k < batch_frame_count; k++) {
+              uint16_t frame_size_net = 0;
+              memcpy(&frame_size_net, frame_sizes + k * sizeof(frame_size_net), sizeof(frame_size_net));
+              uint16_t frame_size = NET_TO_HOST_U16(frame_size_net);
+              if ((size_t)(batch_end - current_frame) < frame_size) {
+                break;
+              }
+              if (frame_size > 0) {
+                // Allocate buffer for decoded samples
+                float decoded_samples[960]; // Max 20ms @ 48kHz
+                int decoded_count =
+                    opus_codec_decode(host->opus_decoder, current_frame, (int)frame_size, decoded_samples, 960);
+                if (decoded_count > 0) {
+                  // Write samples to ringbuffer one at a time
+                  for (int s = 0; s < decoded_count; s++) {
+                    ringbuffer_write(host->clients[j].incoming_audio, &decoded_samples[s]);
+                  }
+                }
+              }
+              current_frame += frame_size;
+            }
+            log_debug_every(NS_PER_MS_INT, "Audio batch received from client %u (%u frames)", client_id,
+                            batch_frame_count);
+            break;
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+      }
+    }
+    break;
+
+  case PACKET_TYPE_STREAM_START:
+    log_info("Client %u started streaming", client_id);
+    mutex_lock(&host->clients_mutex);
+    for (int j = 0; j < host->max_clients; j++) {
+      if (host->clients[j].client_id == client_id) {
+        host->clients[j].video_active = true;
+        break;
+      }
+    }
+    mutex_unlock(&host->clients_mutex);
+    break;
+
+  case PACKET_TYPE_CLIENT_CAPABILITIES:
+    if (data && len >= sizeof(terminal_capabilities_packet_t)) {
+      terminal_capabilities_packet_t caps;
+      memcpy(&caps, data, sizeof(caps));
+      uint16_t width = NET_TO_HOST_U16(caps.width);
+      uint16_t height = NET_TO_HOST_U16(caps.height);
+      if (width > 0 && height > 0) {
+        mutex_lock(&host->clients_mutex);
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].active && host->clients[j].client_id == client_id) {
+            host->clients[j].render_width = width;
+            host->clients[j].render_height = height;
+            log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
+            break;
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+      }
+    }
+    break;
+
+  case PACKET_TYPE_STREAM_STOP:
+    log_info("Client %u stopped streaming", client_id);
+    mutex_lock(&host->clients_mutex);
+    for (int j = 0; j < host->max_clients; j++) {
+      if (host->clients[j].client_id == client_id) {
+        host->clients[j].video_active = false;
+        break;
+      }
+    }
+    mutex_unlock(&host->clients_mutex);
+    break;
+
+  case PACKET_TYPE_PING:
+    // Respond with PONG
+    log_debug_every(NS_PER_MS_INT, "PING from client %u", client_id);
+    if (client_transport) {
+      packet_send_via_transport(client_transport, PACKET_TYPE_PONG, NULL, 0, 0);
+    } else {
+      packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
+    }
+    break;
+
+  case PACKET_TYPE_CLIENT_LEAVE:
+    log_info("Client %u requested disconnect", client_id);
+    // Mark for removal (will be handled separately to avoid deadlock)
+    break;
+
+  default:
+    log_warn("Unknown packet type %u from client %u", ptype, client_id);
+    break;
+  }
+
+  return ASCIICHAT_OK;
+}
+
 static void *receive_loop_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
   if (!host)
@@ -560,190 +763,7 @@ static void *receive_loop_thread(void *arg) {
       uint32_t client_id = host->clients[i].client_id;
       mutex_unlock(&host->clients_mutex);
 
-      switch (ptype) {
-      case PACKET_TYPE_IMAGE_FRAME:
-        // Client sent a video frame - parse and store in incoming buffer
-        if (data && len >= sizeof(image_frame_packet_t)) {
-          const image_frame_packet_t *frame_hdr = (const image_frame_packet_t *)data;
-          const uint8_t *pixel_data = (const uint8_t *)data + sizeof(image_frame_packet_t);
-          size_t pixel_data_size = len - sizeof(image_frame_packet_t);
-          uint32_t width = NET_TO_HOST_U32(frame_hdr->width);
-          uint32_t height = NET_TO_HOST_U32(frame_hdr->height);
-          uint32_t pixel_format = NET_TO_HOST_U32(frame_hdr->pixel_format);
-          size_t bytes_per_pixel = (pixel_format == PIXEL_FORMAT_RGBA || pixel_format == PIXEL_FORMAT_BGRA) ? 4 : 3;
-          size_t expected_size = 0;
-          size_t pixel_count = 0;
-
-          if (pixel_format < PIXEL_FORMAT_RGB || pixel_format > PIXEL_FORMAT_BGRA || width == 0 || height == 0 ||
-              width > INT_MAX || height > INT_MAX ||
-              checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK ||
-              checked_size_mul(pixel_count, bytes_per_pixel, &expected_size) != ASCIICHAT_OK ||
-              expected_size != pixel_data_size) {
-            log_warn("Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)", client_id,
-                     width, height, pixel_format, pixel_data_size);
-          } else {
-            // Frame dimensions and pixel format are network-order fields. Resize
-            // this participant's image when its capture dimensions change.
-            mutex_lock(&host->clients_mutex);
-            for (int j = 0; j < host->max_clients; j++) {
-              if (host->clients[j].active && host->clients[j].client_id == client_id &&
-                  host->clients[j].incoming_video) {
-                image_t *img = host->clients[j].incoming_video;
-                if (img->w != (int)width || img->h != (int)height) {
-                  image_t *resized = image_new(width, height);
-                  if (!resized) {
-                    log_warn("Could not allocate %ux%u video frame for client %u", width, height, client_id);
-                    break;
-                  }
-                  image_destroy(img);
-                  host->clients[j].incoming_video = img = resized;
-                }
-
-                uint8_t *dst = (uint8_t *)img->pixels;
-                if (pixel_format == PIXEL_FORMAT_RGB) {
-                  memcpy(dst, pixel_data, pixel_count * 3);
-                } else if (pixel_format == PIXEL_FORMAT_BGR) {
-                  for (size_t p = 0; p < pixel_count; p++) {
-                    dst[p * 3] = pixel_data[p * 3 + 2];
-                    dst[p * 3 + 1] = pixel_data[p * 3 + 1];
-                    dst[p * 3 + 2] = pixel_data[p * 3];
-                  }
-                } else {
-                  const bool bgra = pixel_format == PIXEL_FORMAT_BGRA;
-                  for (size_t p = 0; p < pixel_count; p++) {
-                    const uint8_t *src = pixel_data + p * 4;
-                    dst[p * 3] = src[bgra ? 2 : 0];
-                    dst[p * 3 + 1] = src[1];
-                    dst[p * 3 + 2] = src[bgra ? 0 : 2];
-                  }
-                }
-                log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u, format %u)", client_id,
-                                width, height, pixel_format);
-                break;
-              }
-            }
-            mutex_unlock(&host->clients_mutex);
-          }
-        }
-        break;
-
-      case PACKET_TYPE_AUDIO_OPUS_BATCH:
-        // Client sent Opus-encoded audio batch
-        if (data && len > 16) { // Must have at least header
-          const uint8_t *batch_data = (const uint8_t *)data;
-          // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
-          (void)batch_data[0]; // Avoid unused variable warning if we don't use sample_rate/frame_duration
-          uint32_t batch_frame_count_net = 0;
-          memcpy(&batch_frame_count_net, batch_data + 8, sizeof(batch_frame_count_net));
-          uint32_t batch_frame_count = NET_TO_HOST_U32(batch_frame_count_net);
-
-          size_t frame_sizes_len = (size_t)batch_frame_count * sizeof(uint16_t);
-          if (batch_frame_count > 0 && batch_frame_count <= 1000 && 16 + frame_sizes_len <= len) {
-            const uint8_t *frame_sizes = batch_data + 16;
-            const uint8_t *opus_frames = batch_data + 16 + (batch_frame_count * sizeof(uint16_t));
-            const uint8_t *batch_end = batch_data + len;
-
-            // Find client and decode audio
-            mutex_lock(&host->clients_mutex);
-            for (int j = 0; j < host->max_clients; j++) {
-              if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio && host->opus_decoder) {
-                // Decode each Opus frame and write to ringbuffer
-                const uint8_t *current_frame = opus_frames;
-                for (uint32_t k = 0; k < batch_frame_count; k++) {
-                  uint16_t frame_size_net = 0;
-                  memcpy(&frame_size_net, frame_sizes + k * sizeof(frame_size_net), sizeof(frame_size_net));
-                  uint16_t frame_size = NET_TO_HOST_U16(frame_size_net);
-                  if ((size_t)(batch_end - current_frame) < frame_size) {
-                    break;
-                  }
-                  if (frame_size > 0) {
-                    // Allocate buffer for decoded samples
-                    float decoded_samples[960]; // Max 20ms @ 48kHz
-                    int decoded_count =
-                        opus_codec_decode(host->opus_decoder, current_frame, (int)frame_size, decoded_samples, 960);
-                    if (decoded_count > 0) {
-                      // Write samples to ringbuffer one at a time
-                      for (int s = 0; s < decoded_count; s++) {
-                        ringbuffer_write(host->clients[j].incoming_audio, &decoded_samples[s]);
-                      }
-                    }
-                  }
-                  current_frame += frame_size;
-                }
-                log_debug_every(NS_PER_MS_INT, "Audio batch received from client %u (%u frames)", client_id,
-                                batch_frame_count);
-                break;
-              }
-            }
-            mutex_unlock(&host->clients_mutex);
-          }
-        }
-        break;
-
-      case PACKET_TYPE_STREAM_START:
-        log_info("Client %u started streaming", client_id);
-        mutex_lock(&host->clients_mutex);
-        for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].client_id == client_id) {
-            host->clients[j].video_active = true;
-            break;
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
-        break;
-
-      case PACKET_TYPE_CLIENT_CAPABILITIES:
-        if (data && len >= sizeof(terminal_capabilities_packet_t)) {
-          terminal_capabilities_packet_t caps;
-          memcpy(&caps, data, sizeof(caps));
-          uint16_t width = NET_TO_HOST_U16(caps.width);
-          uint16_t height = NET_TO_HOST_U16(caps.height);
-          if (width > 0 && height > 0) {
-            mutex_lock(&host->clients_mutex);
-            for (int j = 0; j < host->max_clients; j++) {
-              if (host->clients[j].active && host->clients[j].client_id == client_id) {
-                host->clients[j].render_width = width;
-                host->clients[j].render_height = height;
-                log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
-                break;
-              }
-            }
-            mutex_unlock(&host->clients_mutex);
-          }
-        }
-        break;
-
-      case PACKET_TYPE_STREAM_STOP:
-        log_info("Client %u stopped streaming", client_id);
-        mutex_lock(&host->clients_mutex);
-        for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].client_id == client_id) {
-            host->clients[j].video_active = false;
-            break;
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
-        break;
-
-      case PACKET_TYPE_PING:
-        // Respond with PONG
-        log_debug_every(NS_PER_MS_INT, "PING from client %u", client_id);
-        if (client_transport) {
-          packet_send_via_transport(client_transport, PACKET_TYPE_PONG, NULL, 0, 0);
-        } else {
-          packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
-        }
-        break;
-
-      case PACKET_TYPE_CLIENT_LEAVE:
-        log_info("Client %u requested disconnect", client_id);
-        // Mark for removal (will be handled separately to avoid deadlock)
-        break;
-
-      default:
-        log_warn("Unknown packet type %u from client %u", ptype, client_id);
-        break;
-      }
+      session_host_receive_packet(host, client_id, ptype, data, len);
 
       // Free packet data
       if (transport_buffer) {
@@ -771,6 +791,184 @@ static void *receive_loop_thread(void *arg) {
  * - Mixes audio from all participants (100 FPS)
  * - Broadcasts mixed audio to all participants
  */
+static void host_render_video(session_host_t *host, bool waiting_for_peer, bool *logging_disabled_ptr,
+                              uint64_t *snapshot_first_frame_ns_ptr) {
+  bool logging_disabled = *logging_disabled_ptr;
+  uint64_t snapshot_first_frame_ns = *snapshot_first_frame_ns_ptr;
+  // Collect video frames from all participants and create grid layout
+  mutex_lock(&host->clients_mutex);
+
+  // Count active participants with video
+  int active_video_count = 0;
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
+      active_video_count++;
+    }
+  }
+
+  // Generate and broadcast grid if we have active participants,
+  // or display locally if display context is set
+  if (active_video_count > 0 || host->display_context) {
+    // Allocate arrays for ASCII frames and sources
+    char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
+    ascii_frame_source_t *sources =
+        SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
+
+    if (ascii_frames && sources) {
+      // Convert each incoming video frame to ASCII
+      int frame_idx = 0;
+      for (int i = 0; i < host->max_clients; i++) {
+        if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
+          image_t *img = host->clients[i].incoming_video;
+
+          // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
+          uint64_t convert_start = time_get_ns();
+          ascii_frames[frame_idx] =
+              ascii_convert(img, 80, 24, true, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+          stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - convert_start);
+          stats_counter_add(stats_runtime_scope(),
+                            ascii_frames[frame_idx] ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
+          if (ascii_frames[frame_idx]) {
+            sources[frame_idx].frame_data = ascii_frames[frame_idx];
+            sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
+          } else {
+            sources[frame_idx].frame_data = "";
+            sources[frame_idx].frame_size = 1;
+          }
+          frame_idx++;
+        }
+      }
+
+      // Use the first connected WebRTC client's negotiated dimensions for
+      // the shared grid so its ACIP frame dimensions match the browser renderer.
+      int output_width = 80;
+      int output_height = 24;
+      for (int i = 0; i < host->max_clients; i++) {
+        if (host->clients[i].active && host->clients[i].transport && host->clients[i].render_width > 0 &&
+            host->clients[i].render_height > 0) {
+          output_width = host->clients[i].render_width;
+          output_height = host->clients[i].render_height;
+          break;
+        }
+      }
+      size_t grid_size = 0;
+      char *grid_frame = ascii_create_grid(sources, active_video_count, output_width, output_height, &grid_size);
+
+      if (grid_frame) {
+        // Broadcast grid to all connected participants
+        if (active_video_count > 0) {
+          for (int i = 0; i < host->max_clients; i++) {
+            if (host->clients[i].active &&
+                (host->clients[i].transport || host->clients[i].socket != INVALID_SOCKET_VALUE)) {
+              if (host->clients[i].transport) {
+                // Web clients parse the ACIP ASCII-frame payload, which includes
+                // dimensions, size, and checksum ahead of the grid bytes.
+                uint16_t client_width = host->clients[i].render_width;
+                uint16_t client_height = host->clients[i].render_height;
+                if (client_width == 0 || client_height == 0) {
+                  client_width = (uint16_t)output_width;
+                  client_height = (uint16_t)output_height;
+                }
+
+                if (active_video_count != 1 && client_width == output_width && client_height == output_height) {
+                  acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid_frame, grid_size,
+                                        output_width, output_height, "session-host");
+                } else {
+                  // The terminal renderer's line feeds rely on the grid
+                  // width. Rebuild the source cells at this client's grid
+                  // dimensions instead of relabeling an 80x24 frame.
+                  char **client_frames = SAFE_CALLOC((size_t)active_video_count, sizeof(*client_frames), char **);
+                  ascii_frame_source_t *client_sources =
+                      SAFE_CALLOC((size_t)active_video_count, sizeof(*client_sources), ascii_frame_source_t *);
+                  if (client_frames && client_sources) {
+                    int client_frame_idx = 0;
+                    for (int j = 0; j < host->max_clients; j++) {
+                      if (host->clients[j].active && host->clients[j].video_active && host->clients[j].incoming_video) {
+                        client_frames[client_frame_idx] =
+                            ascii_convert(host->clients[j].incoming_video, client_width, client_height, true, false,
+                                          false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+                        client_sources[client_frame_idx].frame_data =
+                            client_frames[client_frame_idx] ? client_frames[client_frame_idx] : "";
+                        client_sources[client_frame_idx].frame_size =
+                            client_frames[client_frame_idx] ? strlen(client_frames[client_frame_idx]) + 1 : 1;
+                        client_frame_idx++;
+                      }
+                    }
+                    if (active_video_count == 1 && client_frames[0]) {
+                      acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_frames[0],
+                                            strlen(client_frames[0]), client_width, client_height, "session-host");
+                    } else {
+                      size_t client_grid_size = 0;
+                      char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
+                                                            client_height, &client_grid_size);
+                      if (client_grid) {
+                        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_grid,
+                                              client_grid_size, client_width, client_height, "session-host");
+                        SAFE_FREE(client_grid);
+                      }
+                    }
+                    for (int j = 0; j < active_video_count; j++) {
+                      SAFE_FREE(client_frames[j]);
+                    }
+                  }
+                  SAFE_FREE(client_frames);
+                  SAFE_FREE(client_sources);
+                }
+              } else {
+                session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+              }
+            }
+          }
+        }
+
+#ifndef __EMSCRIPTEN__
+        // Display locally if display context is set
+        if (host->display_context && !waiting_for_peer) {
+          // Disable terminal logging on first rendered frame so logs don't
+          // interleave with ASCII art output
+          if (!logging_disabled) {
+            log_set_terminal_output(false);
+            logging_disabled = true;
+          }
+          session_display_render_frame(host->display_context, grid_frame);
+          if (GET_OPTION(snapshot_mode) && snapshot_first_frame_ns == 0 &&
+              session_display_has_first_frame(host->display_context)) {
+            snapshot_first_frame_ns = time_get_ns();
+          }
+        }
+
+#endif
+        SAFE_FREE(grid_frame);
+      }
+
+      // Free ASCII frames
+      for (int i = 0; i < active_video_count; i++) {
+        if (ascii_frames[i]) {
+          SAFE_FREE(ascii_frames[i]);
+        }
+      }
+    }
+
+    SAFE_FREE(ascii_frames);
+    SAFE_FREE(sources);
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  log_debug_every(NS_PER_MS_INT, "Video render cycle (%d active)", active_video_count);
+
+  *logging_disabled_ptr = logging_disabled;
+  *snapshot_first_frame_ns_ptr = snapshot_first_frame_ns;
+}
+
+asciichat_error_t session_host_render_video(session_host_t *host) {
+  if (!host || !host->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session host");
+  bool logging_disabled = false;
+  uint64_t snapshot_first_frame_ns = 0;
+  host_render_video(host, false, &logging_disabled, &snapshot_first_frame_ns);
+  return ASCIICHAT_OK;
+}
+
 static void *host_render_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
   if (!host) {
@@ -811,166 +1009,7 @@ static void *host_render_thread(void *arg) {
 
     // VIDEO RENDERING (60 FPS = 16.7ms)
     if (time_elapsed_ns(last_video_render_ns, now_ns) >= NS_PER_MS_INT * 16) {
-      // Collect video frames from all participants and create grid layout
-      mutex_lock(&host->clients_mutex);
-
-      // Count active participants with video
-      int active_video_count = 0;
-      for (int i = 0; i < host->max_clients; i++) {
-        if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
-          active_video_count++;
-        }
-      }
-
-      // Generate and broadcast grid if we have active participants,
-      // or display locally if display context is set
-      if (active_video_count > 0 || host->display_context) {
-        // Allocate arrays for ASCII frames and sources
-        char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
-        ascii_frame_source_t *sources =
-            SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
-
-        if (ascii_frames && sources) {
-          // Convert each incoming video frame to ASCII
-          int frame_idx = 0;
-          for (int i = 0; i < host->max_clients; i++) {
-            if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
-              image_t *img = host->clients[i].incoming_video;
-
-              // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
-              uint64_t convert_start = time_get_ns();
-              ascii_frames[frame_idx] =
-                  ascii_convert(img, 80, 24, true, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
-              stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - convert_start);
-              stats_counter_add(stats_runtime_scope(),
-                                ascii_frames[frame_idx] ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED,
-                                1);
-              if (ascii_frames[frame_idx]) {
-                sources[frame_idx].frame_data = ascii_frames[frame_idx];
-                sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
-              } else {
-                sources[frame_idx].frame_data = "";
-                sources[frame_idx].frame_size = 1;
-              }
-              frame_idx++;
-            }
-          }
-
-          // Use the first connected WebRTC client's negotiated dimensions for
-          // the shared grid so its ACIP frame dimensions match the browser renderer.
-          int output_width = 80;
-          int output_height = 24;
-          for (int i = 0; i < host->max_clients; i++) {
-            if (host->clients[i].active && host->clients[i].transport && host->clients[i].render_width > 0 &&
-                host->clients[i].render_height > 0) {
-              output_width = host->clients[i].render_width;
-              output_height = host->clients[i].render_height;
-              break;
-            }
-          }
-          size_t grid_size = 0;
-          char *grid_frame = ascii_create_grid(sources, active_video_count, output_width, output_height, &grid_size);
-
-          if (grid_frame) {
-            // Broadcast grid to all connected participants
-            if (active_video_count > 0) {
-              for (int i = 0; i < host->max_clients; i++) {
-                if (host->clients[i].active &&
-                    (host->clients[i].transport || host->clients[i].socket != INVALID_SOCKET_VALUE)) {
-                  if (host->clients[i].transport) {
-                    // Web clients parse the ACIP ASCII-frame payload, which includes
-                    // dimensions, size, and checksum ahead of the grid bytes.
-                    uint16_t client_width = host->clients[i].render_width;
-                    uint16_t client_height = host->clients[i].render_height;
-                    if (client_width == 0 || client_height == 0) {
-                      client_width = (uint16_t)output_width;
-                      client_height = (uint16_t)output_height;
-                    }
-
-                    if (active_video_count != 1 && client_width == output_width && client_height == output_height) {
-                      acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid_frame, grid_size,
-                                            output_width, output_height, "session-host");
-                    } else {
-                      // The terminal renderer's line feeds rely on the grid
-                      // width. Rebuild the source cells at this client's grid
-                      // dimensions instead of relabeling an 80x24 frame.
-                      char **client_frames = SAFE_CALLOC((size_t)active_video_count, sizeof(*client_frames), char **);
-                      ascii_frame_source_t *client_sources =
-                          SAFE_CALLOC((size_t)active_video_count, sizeof(*client_sources), ascii_frame_source_t *);
-                      if (client_frames && client_sources) {
-                        int client_frame_idx = 0;
-                        for (int j = 0; j < host->max_clients; j++) {
-                          if (host->clients[j].active && host->clients[j].video_active &&
-                              host->clients[j].incoming_video) {
-                            client_frames[client_frame_idx] =
-                                ascii_convert(host->clients[j].incoming_video, client_width, client_height, true, false,
-                                              false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
-                            client_sources[client_frame_idx].frame_data =
-                                client_frames[client_frame_idx] ? client_frames[client_frame_idx] : "";
-                            client_sources[client_frame_idx].frame_size =
-                                client_frames[client_frame_idx] ? strlen(client_frames[client_frame_idx]) + 1 : 1;
-                            client_frame_idx++;
-                          }
-                        }
-                        if (active_video_count == 1 && client_frames[0]) {
-                          acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_frames[0],
-                                                strlen(client_frames[0]), client_width, client_height, "session-host");
-                        } else {
-                          size_t client_grid_size = 0;
-                          char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
-                                                                client_height, &client_grid_size);
-                          if (client_grid) {
-                            acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_grid,
-                                                  client_grid_size, client_width, client_height, "session-host");
-                            SAFE_FREE(client_grid);
-                          }
-                        }
-                        for (int j = 0; j < active_video_count; j++) {
-                          SAFE_FREE(client_frames[j]);
-                        }
-                      }
-                      SAFE_FREE(client_frames);
-                      SAFE_FREE(client_sources);
-                    }
-                  } else {
-                    session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
-                  }
-                }
-              }
-            }
-
-            // Display locally if display context is set
-            if (host->display_context && !waiting_for_peer) {
-              // Disable terminal logging on first rendered frame so logs don't
-              // interleave with ASCII art output
-              if (!logging_disabled) {
-                log_set_terminal_output(false);
-                logging_disabled = true;
-              }
-              session_display_render_frame(host->display_context, grid_frame);
-              if (GET_OPTION(snapshot_mode) && snapshot_first_frame_ns == 0 &&
-                  session_display_has_first_frame(host->display_context)) {
-                snapshot_first_frame_ns = time_get_ns();
-              }
-            }
-
-            SAFE_FREE(grid_frame);
-          }
-
-          // Free ASCII frames
-          for (int i = 0; i < active_video_count; i++) {
-            if (ascii_frames[i]) {
-              SAFE_FREE(ascii_frames[i]);
-            }
-          }
-        }
-
-        SAFE_FREE(ascii_frames);
-        SAFE_FREE(sources);
-      }
-
-      mutex_unlock(&host->clients_mutex);
-      log_debug_every(NS_PER_MS_INT, "Video render cycle (%d active)", active_video_count);
+      host_render_video(host, waiting_for_peer, &logging_disabled, &snapshot_first_frame_ns);
       last_video_render_ns = now_ns;
     }
 
@@ -1647,7 +1686,9 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
   if (!host->opus_decoder) {
     host->opus_decoder = opus_codec_create_decoder(48000);
     if (!host->opus_decoder) {
+#ifndef __EMSCRIPTEN__
       session_audio_destroy(host->audio_ctx);
+#endif
       host->audio_ctx = NULL;
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
     }
@@ -1659,7 +1700,9 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
     if (!host->opus_encoder) {
       opus_codec_destroy(host->opus_decoder);
       host->opus_decoder = NULL;
+#ifndef __EMSCRIPTEN__
       session_audio_destroy(host->audio_ctx);
+#endif
       host->audio_ctx = NULL;
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
     }
@@ -1694,7 +1737,9 @@ void session_host_stop_render(session_host_t *host) {
 
   // Clean up audio resources
   if (host->audio_ctx) {
+#ifndef __EMSCRIPTEN__
     session_audio_destroy(host->audio_ctx);
+#endif
     host->audio_ctx = NULL;
   }
   if (host->opus_decoder) {

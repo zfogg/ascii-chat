@@ -54,6 +54,7 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 
 /* ============================================================================
@@ -525,3 +526,9 @@ bool session_host_client_has_transport(session_host_t *host, uint32_t client_id)
 /** @} */
 
 /** @} */
+
+/** Process a packet delivered by an event-driven transport. */
+asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t type,
+                                              const void *data, size_t len);
+/** Run one shared host video cycle without starting a thread. */
+asciichat_error_t session_host_render_video(session_host_t *host);

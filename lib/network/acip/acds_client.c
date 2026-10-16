@@ -31,498 +31,6 @@
 #include <time.h>
 #include <errno.h>
 
-static asciichat_error_t acds_client_handshake(acds_client_t *client) {
-  crypto_handshake_context_t *ctx = &client->handshake_ctx;
-  asciichat_error_t result = crypto_handshake_init("acds_client", ctx, false);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  protocol_version_packet_t version = {0};
-  version.protocol_version = HOST_TO_NET_U16(1);
-  version.protocol_revision = HOST_TO_NET_U16(0);
-  version.supports_encryption = 1;
-
-  result = packet_send_via_transport(client->transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send ACDS protocol version");
-  }
-
-  packet_type_t type;
-  void *payload = NULL;
-  void *alloc_buffer = NULL;
-  size_t payload_len = 0;
-
-  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
-  if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_PARAMETERS ||
-      payload_len != sizeof(crypto_parameters_packet_t)) {
-    buffer_release(alloc_buffer);
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS crypto parameters response");
-  }
-  crypto_parameters_packet_t parameters;
-  memcpy(&parameters, payload, sizeof(parameters));
-  buffer_release(alloc_buffer);
-
-  result = crypto_handshake_set_parameters(ctx, &parameters);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  payload = NULL;
-  alloc_buffer = NULL;
-  payload_len = 0;
-  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
-  if (result != ASCIICHAT_OK) {
-    buffer_release(alloc_buffer);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive ACDS key exchange");
-  }
-  result = crypto_handshake_client_key_exchange(ctx, client->transport, type, payload, payload_len);
-  buffer_release(alloc_buffer);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  payload = NULL;
-  alloc_buffer = NULL;
-  payload_len = 0;
-  result = packet_receive_via_transport(client->transport, &type, &payload, &payload_len, &alloc_buffer);
-  if (result != ASCIICHAT_OK || type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
-    buffer_release(alloc_buffer);
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACDS handshake completion response");
-  }
-  buffer_release(alloc_buffer);
-  return ASCIICHAT_OK;
-}
-
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/select.h>
-#include <fcntl.h>
-#endif
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-void acds_client_config_init_defaults(acds_client_config_t *config) {
-  if (!config) {
-    return;
-  }
-
-  memset(config, 0, sizeof(*config));
-  SAFE_STRNCPY(config->server_address, "127.0.0.1", sizeof(config->server_address));
-  config->server_port = ACIP_DISCOVERY_DEFAULT_PORT;
-  config->timeout_ms = 5 * MS_PER_SEC_INT;
-}
-
-// ============================================================================
-// Connection Management
-// ============================================================================
-
-asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_config_t *config) {
-  if (!client || !config) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "client or config is NULL");
-  }
-
-  memset(client, 0, sizeof(*client));
-  memcpy(&client->config, config, sizeof(acds_client_config_t));
-  client->socket = INVALID_SOCKET_VALUE;
-  client->connected = false;
-
-  // Resolve server address (supports both hostnames and IP addresses, IPv4 and IPv6)
-  struct addrinfo hints;
-  struct addrinfo *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM; // TCP
-
-  char port_str[16];
-  safe_snprintf(port_str, sizeof(port_str), "%d", config->server_port);
-
-  log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
-  int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
-  if (gai_result != 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
-                     gai_strerror(gai_result));
-  }
-  log_debug("ACDS: Address resolved successfully");
-  freeaddrinfo(result);
-
-  // Use parallel_connect to attempt IPv4 and IPv6 connections concurrently
-  parallel_connect_config_t pconn_config = {
-      .hostname = config->server_address,
-      .port = config->server_port,
-      .timeout_ms = config->timeout_ms,
-      .should_exit_callback = config->should_exit_callback,
-      .callback_data = config->callback_data,
-  };
-
-  asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
-  if (pconn_result == ASCIICHAT_OK) {
-    client->connected = true;
-
-    client->transport = acip_tcp_transport_create("acds_client_transport", client->socket, NULL);
-    if (!client->transport) {
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
-      client->connected = false;
-      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
-    }
-
-    asciichat_error_t handshake_result = acds_client_handshake(client);
-    if (handshake_result != ASCIICHAT_OK) {
-      acip_transport_destroy(client->transport);
-      client->transport = NULL;
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
-      client->connected = false;
-      return handshake_result;
-    }
-
-    /* Register ACDS client with named registry */
-    char acds_name[64];
-    snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
-    NAMED_REGISTER(client, acds_name, "acds_client_t", "0x%tx", NULL);
-
-    log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
-    return ASCIICHAT_OK;
-  }
-
-  return pconn_result;
-}
-
-void acds_client_disconnect(acds_client_t *client) {
-  if (!client) {
-    return;
-  }
-
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    if (client->transport) {
-      acip_transport_destroy(client->transport);
-      client->transport = NULL;
-    }
-    crypto_handshake_destroy(&client->handshake_ctx);
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-  }
-
-  client->connected = false;
-  log_debug("Disconnected from ACDS server");
-}
-
-// ============================================================================
-// Session Management
-// ============================================================================
-
-asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params,
-                                      acds_session_create_result_t *result) {
-  if (!client || !params || !result) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-  }
-
-  if (!client->connected) {
-    return SET_ERRNO(ERROR_NETWORK, "Not connected to ACDS server");
-  }
-
-  // Build SESSION_CREATE payload
-  acip_session_create_t req;
-  memset(&req, 0, sizeof(req));
-
-  memcpy(req.identity_pubkey, params->identity_pubkey, 32);
-
-  // Sign the request: type || timestamp || capabilities
-  uint64_t timestamp = (uint64_t)time(NULL) * 1000; // Unix ms
-  req.timestamp = timestamp;
-  req.capabilities = params->capabilities;
-  req.max_participants = params->max_participants;
-
-  // Generate Ed25519 signature for identity verification
-  asciichat_error_t sign_result = acds_sign_session_create(params->identity_seckey, timestamp, params->capabilities,
-                                                           params->max_participants, req.signature);
-  if (sign_result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign SESSION_CREATE request");
-  }
-
-  req.has_password = params->has_password ? 1 : 0;
-  if (params->has_password) {
-    // Hash password with Argon2id using libsodium
-    // crypto_pwhash_str produces a null-terminated ASCII string
-    if (crypto_pwhash_str((char *)req.password_hash, params->password, strlen(params->password),
-                          crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0) {
-      return SET_ERRNO(ERROR_CRYPTO, "Failed to hash password (out of memory)");
-    }
-  } else {
-    memset(req.password_hash, 0, sizeof(req.password_hash));
-  }
-
-  req.reserved_string_len = 0; // Auto-generate
-  if (params->reserved_string && params->reserved_string[0] != '\0') {
-    req.reserved_string_len = strlen(params->reserved_string);
-    // Variable part would follow here (not implemented yet)
-  }
-
-  // Server connection information
-  SAFE_STRNCPY(req.server_address, params->server_address, sizeof(req.server_address));
-  req.server_port = params->server_port;
-
-  // IP disclosure policy
-  // Auto-detection: If password is set, IP will be revealed after verification
-  // If no password, require explicit opt-in via acds_expose_ip
-  req.expose_ip_publicly = params->acds_expose_ip ? 1 : 0;
-
-  // Session type (Direct TCP or WebRTC)
-  req.session_type = params->session_type;
-
-  // Multi-key protocol: set to single-key mode (total_keys=0 for backward compatibility, or =1 for new protocol)
-  // For now, using legacy single-key mode (total_keys=0, key_index=0)
-  req.total_keys = 0; // Legacy mode: server knows this is single-key
-  req.key_index = 0;  // Not used in legacy mode
-
-  // Send SESSION_CREATE packet
-  asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
-  if (send_result != ASCIICHAT_OK) {
-    return send_result;
-  }
-
-  log_debug("Sent SESSION_CREATE request");
-  log_debug("★ ACDS_CLIENT: About to receive SESSION_CREATED on socket %d", client->socket);
-
-  // Receive SESSION_CREATED response
-  packet_type_t resp_type;
-  void *resp_payload = NULL;
-  size_t resp_size = 0;
-
-  int recv_result = receive_packet(client->socket, &resp_type, &resp_payload, &resp_size);
-  log_debug("★ ACDS_CLIENT: receive_packet returned %d", recv_result);
-  if (recv_result < 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive SESSION_CREATED response");
-  }
-
-  // Check response type
-  if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
-    if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
-      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_release(resp_payload);
-      return rejection;
-    }
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
-  }
-
-  // Parse SESSION_CREATED response
-  if (resp_size < sizeof(acip_session_created_t)) {
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "SESSION_CREATED response too small: %zu bytes", resp_size);
-  }
-
-  acip_session_created_t *resp = (acip_session_created_t *)resp_payload;
-
-  // Copy session string (null-terminate)
-  size_t string_len = resp->session_string_len < sizeof(result->session_string) - 1
-                          ? resp->session_string_len
-                          : sizeof(result->session_string) - 1;
-  memcpy(result->session_string, resp->session_string, string_len);
-  result->session_string[string_len] = '\0';
-
-  memcpy(result->session_id, resp->session_id, 16);
-  result->expires_at = resp->expires_at;
-
-  log_info("Session created: %s (expires at %llu)", result->session_string, (unsigned long long)result->expires_at);
-
-  buffer_release(resp_payload);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string,
-                                      acds_session_lookup_result_t *result) {
-  if (!client || !session_string || !result) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-  }
-
-  if (!client->connected) {
-    return SET_ERRNO(ERROR_NETWORK, "Not connected to ACDS server");
-  }
-
-  // Build SESSION_LOOKUP payload
-  acip_session_lookup_t req;
-  memset(&req, 0, sizeof(req));
-
-  req.session_string_len = strlen(session_string);
-  if (req.session_string_len >= sizeof(req.session_string)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long");
-  }
-
-  memcpy(req.session_string, session_string, req.session_string_len);
-
-  // Send SESSION_LOOKUP packet
-  asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_LOOKUP, &req, sizeof(req));
-  if (send_result != ASCIICHAT_OK) {
-    return send_result;
-  }
-
-  log_debug("Sent SESSION_LOOKUP request for '%s'", session_string);
-
-  // Receive SESSION_INFO response
-  packet_type_t resp_type;
-  void *resp_payload = NULL;
-  size_t resp_size = 0;
-
-  int recv_result = receive_packet(client->socket, &resp_type, &resp_payload, &resp_size);
-  if (recv_result < 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive SESSION_INFO response");
-  }
-
-  if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
-    if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
-      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_release(resp_payload);
-      return rejection;
-    }
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
-  }
-
-  if (resp_size < sizeof(acip_session_info_t)) {
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "SESSION_INFO response too small");
-  }
-
-  acip_session_info_t *resp = (acip_session_info_t *)resp_payload;
-
-  // Copy result
-  result->found = resp->found != 0;
-  if (result->found) {
-    memcpy(result->session_id, resp->session_id, 16);
-    memcpy(result->host_pubkey, resp->host_pubkey, 32);
-    result->capabilities = resp->capabilities;
-    result->max_participants = resp->max_participants;
-    result->current_participants = resp->current_participants;
-    result->has_password = resp->has_password != 0;
-    result->created_at = resp->created_at;
-    result->expires_at = resp->expires_at;
-    result->require_server_verify = resp->require_server_verify != 0;
-    result->require_client_verify = resp->require_client_verify != 0;
-
-    log_info("Session found: %s (%d/%d participants, password=%s, policies: server_verify=%d client_verify=%d)",
-             session_string, result->current_participants, result->max_participants,
-             result->has_password ? "required" : "not required", result->require_server_verify,
-             result->require_client_verify);
-  } else {
-    log_info("Session not found: %s", session_string);
-  }
-
-  buffer_release(resp_payload);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params,
-                                    acds_session_join_result_t *result) {
-  if (!client || !params || !result) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-  }
-
-  if (!client->connected) {
-    return SET_ERRNO(ERROR_NETWORK, "Not connected to ACDS server");
-  }
-
-  // Build SESSION_JOIN payload
-  acip_session_join_t req;
-  memset(&req, 0, sizeof(req));
-
-  req.session_string_len = strlen(params->session_string);
-  if (req.session_string_len >= sizeof(req.session_string)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long");
-  }
-
-  memcpy(req.session_string, params->session_string, req.session_string_len);
-  memcpy(req.identity_pubkey, params->identity_pubkey, 32);
-
-  // Sign the request: type || timestamp || session_string
-  uint64_t timestamp = (uint64_t)time(NULL) * 1000;
-  req.timestamp = timestamp;
-
-  // Generate Ed25519 signature for identity verification
-  asciichat_error_t sign_result =
-      acds_sign_session_join(params->identity_seckey, timestamp, params->session_string, req.signature);
-  if (sign_result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign SESSION_JOIN request");
-  }
-
-  req.has_password = params->has_password ? 1 : 0;
-  if (params->has_password) {
-    SAFE_STRNCPY(req.password, params->password, sizeof(req.password));
-  }
-
-  // Send SESSION_JOIN packet
-  asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_JOIN, &req, sizeof(req));
-  if (send_result != ASCIICHAT_OK) {
-    return send_result;
-  }
-
-  log_debug("Sent SESSION_JOIN request for '%s'", params->session_string);
-
-  // Receive SESSION_JOINED response
-  packet_type_t resp_type;
-  void *resp_payload = NULL;
-  size_t resp_size = 0;
-
-  int recv_result = receive_packet(client->socket, &resp_type, &resp_payload, &resp_size);
-  if (recv_result < 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive SESSION_JOINED response");
-  }
-
-  if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
-    if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
-      asciichat_error_t rejection = network_error_decode(resp_type, resp_payload, resp_size);
-      buffer_release(resp_payload);
-      return rejection;
-    }
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
-  }
-
-  if (resp_size < sizeof(acip_session_joined_t)) {
-    buffer_release(resp_payload);
-    return SET_ERRNO(ERROR_NETWORK, "SESSION_JOINED response too small");
-  }
-
-  acip_session_joined_t *resp = (acip_session_joined_t *)resp_payload;
-
-  // Copy result
-  result->success = resp->success != 0;
-  if (result->success) {
-    memcpy(result->participant_id, resp->participant_id, 16);
-    memcpy(result->session_id, resp->session_id, 16);
-    // Server connection information (ONLY revealed after successful authentication)
-    result->session_type = resp->session_type;
-    SAFE_STRNCPY(result->server_address, resp->server_address, sizeof(result->server_address));
-    result->server_port = resp->server_port;
-    log_info("Joined session successfully (participant ID: %02x%02x..., server=%s:%d, type=%s)",
-             result->participant_id[0], result->participant_id[1], result->server_address, result->server_port,
-             result->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
-  } else {
-    result->error_code = resp->error_code;
-    size_t msg_len = strnlen(resp->error_message, sizeof(resp->error_message));
-    if (msg_len >= sizeof(result->error_message)) {
-      msg_len = sizeof(result->error_message) - 1;
-    }
-    memcpy(result->error_message, resp->error_message, msg_len);
-    result->error_message[msg_len] = '\0';
-    asciichat_error_t rejection = network_error_from_acip(result->error_code);
-    buffer_release(resp_payload);
-    return SET_ERRNO(rejection, "Session join rejected: %s", asciichat_error_string(rejection));
-  }
-
-  buffer_release(resp_payload);
-  return ASCIICHAT_OK;
-}
-
-// ============================================================================
 // Cryptographic Signature Helpers
 // ============================================================================
 
@@ -673,4 +181,240 @@ bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
   int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
   log_debug("Timestamp validation passed (age: %lld ms, window: %u seconds)", (long long)age, window_seconds);
   return true;
+}
+#include <ascii-chat/network/acip/acds_protocol.h>
+
+static asciichat_error_t protocol_fail(acds_protocol_t *p, asciichat_error_t error, const char *message,
+                                       bool terminal) {
+  p->state = ACDS_FAILED;
+  p->terminal = terminal;
+  SAFE_STRNCPY(p->error, message, sizeof(p->error));
+  sodium_memzero(p->join.identity_seckey, sizeof(p->join.identity_seckey));
+  sodium_memzero(p->join.password, sizeof(p->join.password));
+  return SET_ERRNO(error, "%s", message);
+}
+
+void acds_protocol_init(acds_protocol_t *p, acds_protocol_send_fn send, void *user_data) {
+  memset(p, 0, sizeof(*p));
+  p->send = send;
+  p->user_data = user_data;
+}
+void acds_protocol_destroy(acds_protocol_t *p) {
+  if (p)
+    sodium_memzero(p, sizeof(*p));
+}
+static asciichat_error_t protocol_send(acds_protocol_t *p, packet_type_t type, const void *data, size_t length) {
+  if (!p || !p->send)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Discovery transport missing");
+  asciichat_error_t result = p->send(p->user_data, type, data, length);
+  if (result != ASCIICHAT_OK)
+    return protocol_fail(p, result, "Discovery send failed", false);
+  return ASCIICHAT_OK;
+}
+static bool valid_name(const char *name) {
+  if (!name || !name[0] || strlen(name) > 47)
+    return false;
+  for (const char *c = name; *c; c++)
+    if (!(*c >= 'a' && *c <= 'z') && !(*c >= '0' && *c <= '9') && *c != '-')
+      return false;
+  return true;
+}
+
+asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_create_params_t *params,
+                                       uint8_t total_keys, uint8_t key_index) {
+  if (!p || !params)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery create parameters");
+  if (params->reserved_string && params->reserved_string[0])
+    return protocol_fail(p, ERROR_NOT_SUPPORTED, "Reserved session names are not supported", true);
+  acip_session_create_t req = {0};
+  memcpy(req.identity_pubkey, params->identity_pubkey, sizeof(req.identity_pubkey));
+  req.timestamp = time_ns_to_ms(time_get_realtime_ns());
+  req.capabilities = params->capabilities;
+  req.max_participants = params->max_participants;
+  req.session_type = params->session_type;
+  req.total_keys = total_keys;
+  req.key_index = key_index;
+  req.has_password = params->has_password;
+  req.expose_ip_publicly = params->acds_expose_ip;
+  SAFE_STRNCPY(req.server_address, params->server_address, sizeof(req.server_address));
+  req.server_port = params->server_port;
+  asciichat_error_t result = acds_sign_session_create(params->identity_seckey, req.timestamp, req.capabilities,
+                                                      req.max_participants, req.signature);
+  if (result != ASCIICHAT_OK)
+    return protocol_fail(p, result, "Could not sign session creation", true);
+  if (params->has_password &&
+      crypto_pwhash_str((char *)req.password_hash, params->password,
+                        strnlen(params->password, sizeof(params->password)), crypto_pwhash_OPSLIMIT_INTERACTIVE,
+                        crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+    return protocol_fail(p, ERROR_CRYPTO, "Could not hash session password", true);
+  p->state = ACDS_CREATING;
+  result = protocol_send(p, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
+  sodium_memzero(&req, sizeof(req));
+  return result;
+}
+asciichat_error_t acds_protocol_lookup(acds_protocol_t *p, const char *name) {
+  if (!p)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery protocol");
+  if (!valid_name(name))
+    return protocol_fail(p, ERROR_INVALID_PARAM, "Invalid session name", true);
+  acip_session_lookup_t req = {0};
+  req.session_string_len = (uint8_t)strlen(name);
+  memcpy(req.session_string, name, req.session_string_len);
+  SAFE_STRNCPY(p->name, name, sizeof(p->name));
+  p->state = ACDS_LOOKING_UP;
+  return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LOOKUP, &req, sizeof(req));
+}
+asciichat_error_t acds_protocol_join(acds_protocol_t *p, const acds_session_join_params_t *params) {
+  if (!p || !params)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery join parameters");
+  if (!valid_name(params->session_string))
+    return protocol_fail(p, ERROR_INVALID_PARAM, "Invalid session name", true);
+  acip_session_join_t req = {0};
+  req.session_string_len = (uint8_t)strlen(params->session_string);
+  memcpy(req.session_string, params->session_string, req.session_string_len);
+  memcpy(req.identity_pubkey, params->identity_pubkey, sizeof(req.identity_pubkey));
+  req.timestamp = time_ns_to_ms(time_get_realtime_ns());
+  req.has_password = params->has_password;
+  if (params->has_password)
+    SAFE_STRNCPY(req.password, params->password, sizeof(req.password));
+  asciichat_error_t result =
+      acds_sign_session_join(params->identity_seckey, req.timestamp, params->session_string, req.signature);
+  if (result != ASCIICHAT_OK)
+    return protocol_fail(p, result, "Could not sign session join", true);
+  p->state = ACDS_JOINING;
+  result = protocol_send(p, PACKET_TYPE_ACIP_SESSION_JOIN, &req, sizeof(req));
+  sodium_memzero(&req, sizeof(req));
+  return result;
+}
+asciichat_error_t acds_protocol_enter(acds_protocol_t *p, bool create, const char *name, const char *password) {
+  if (!p || !password)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery parameters");
+  if (strlen(password) > 127)
+    return protocol_fail(p, ERROR_INVALID_PARAM, "Password is too long", true);
+  if (crypto_sign_keypair(p->join.identity_pubkey, p->join.identity_seckey) != 0)
+    return protocol_fail(p, ERROR_CRYPTO, "Could not generate discovery identity", true);
+  p->auto_join = true;
+  p->require_webrtc = true;
+  p->join.has_password = password[0] != 0;
+  SAFE_STRNCPY(p->join.password, password, sizeof(p->join.password));
+  p->join.session_string = p->name;
+  if (!create)
+    return acds_protocol_lookup(p, name);
+  acds_session_create_params_t params = {.capabilities = 3,
+                                         .max_participants = 8,
+                                         .session_type = SESSION_TYPE_WEBRTC,
+                                         .has_password = p->join.has_password};
+  memcpy(params.identity_pubkey, p->join.identity_pubkey, sizeof(params.identity_pubkey));
+  memcpy(params.identity_seckey, p->join.identity_seckey, sizeof(params.identity_seckey));
+  memcpy(params.password, p->join.password, sizeof(params.password));
+  asciichat_error_t result = acds_protocol_create(p, &params, 0, 0);
+  sodium_memzero(&params, sizeof(params));
+  return result;
+}
+asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, const void *payload, size_t length) {
+  if (!p || (!payload && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery packet");
+  if (p->state == ACDS_FAILED || p->state == ACDS_ENDED)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Discovery session has ended");
+  if (type == PACKET_TYPE_ACIP_ERROR || type == PACKET_TYPE_ERROR_MESSAGE) {
+    asciichat_error_t result = network_error_decode(type, payload, length);
+    return protocol_fail(p, result, asciichat_error_string(result), true);
+  }
+  if (type == PACKET_TYPE_ACIP_SESSION_END) {
+    p->state = ACDS_ENDED;
+    p->terminal = true;
+    SAFE_STRNCPY(p->error, "Session ended", sizeof(p->error));
+    return SET_ERRNO(ERROR_NETWORK, "Session ended");
+  }
+  if (type == PACKET_TYPE_ACIP_SESSION_CREATED && p->state == ACDS_CREATING) {
+    if (length < sizeof(p->created))
+      return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Truncated created session", true);
+    memcpy(&p->created, payload, sizeof(p->created));
+    if (!p->created.session_string_len || p->created.session_string_len > 47)
+      return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid created session name", true);
+    memcpy(p->name, p->created.session_string, p->created.session_string_len);
+    p->name[p->created.session_string_len] = 0;
+    p->state = ACDS_CREATED;
+    if (p->auto_join)
+      return acds_protocol_join(p, &p->join);
+    return ASCIICHAT_OK;
+  }
+  if (type == PACKET_TYPE_ACIP_SESSION_INFO && p->state == ACDS_LOOKING_UP) {
+    if (length < sizeof(p->info))
+      return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Truncated session information", true);
+    memcpy(&p->info, payload, sizeof(p->info));
+    p->state = ACDS_FOUND;
+    if (!p->auto_join)
+      return ASCIICHAT_OK;
+    if (!p->info.found)
+      return protocol_fail(p, ERROR_NETWORK, "Session not found", true);
+    if (p->require_webrtc && p->info.session_type != SESSION_TYPE_WEBRTC)
+      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebRTC", true);
+    if (p->info.require_server_verify || p->info.require_client_verify)
+      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session requires an authorized identity", true);
+    if (p->info.has_password && !p->join.has_password)
+      return protocol_fail(p, ERROR_CRYPTO_AUTH, "This session requires a password", true);
+    return acds_protocol_join(p, &p->join);
+  }
+  if (type == PACKET_TYPE_ACIP_SESSION_JOINED && p->state == ACDS_JOINING) {
+    if (length < sizeof(p->joined))
+      return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Truncated discovery join response", true);
+    memcpy(&p->joined, payload, sizeof(p->joined));
+    p->joined.error_message[sizeof(p->joined.error_message) - 1] = 0;
+    p->joined.server_address[sizeof(p->joined.server_address) - 1] = 0;
+    p->joined.turn_username[sizeof(p->joined.turn_username) - 1] = 0;
+    p->joined.turn_password[sizeof(p->joined.turn_password) - 1] = 0;
+    if (!p->joined.success)
+      return protocol_fail(p, network_error_from_acip(p->joined.error_code),
+                           p->joined.error_message[0] ? p->joined.error_message : "Session join rejected", true);
+    if (p->require_webrtc && p->joined.session_type != SESSION_TYPE_WEBRTC)
+      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebRTC", true);
+    p->state = ACDS_JOINED;
+    sodium_memzero(p->join.identity_seckey, sizeof(p->join.identity_seckey));
+    sodium_memzero(p->join.password, sizeof(p->join.password));
+    return ASCIICHAT_OK;
+  }
+  // Signaling and participant notifications are delivered by the caller's transport adapter.
+  if (p->state == ACDS_JOINED && type != PACKET_TYPE_ACIP_SESSION_CREATED && type != PACKET_TYPE_ACIP_SESSION_INFO &&
+      type != PACKET_TYPE_ACIP_SESSION_JOINED)
+    return ASCIICHAT_OK;
+  return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Unexpected discovery response", true);
+}
+asciichat_error_t acds_protocol_leave(acds_protocol_t *p) {
+  if (!p)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery protocol");
+  if (p->state != ACDS_JOINED)
+    return ASCIICHAT_OK;
+  acip_session_leave_t req = {0};
+  memcpy(req.session_id, p->joined.session_id, sizeof(req.session_id));
+  memcpy(req.participant_id, p->joined.participant_id, sizeof(req.participant_id));
+  p->state = ACDS_ENDED;
+  return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LEAVE, &req, sizeof(req));
+}
+asciichat_error_t acds_handshake_begin(acip_transport_t *transport, bool encrypted) {
+  protocol_version_packet_t version = {0};
+  version.protocol_version = HOST_TO_NET_U16(1);
+  version.supports_encryption = encrypted;
+  return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+}
+asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                         packet_type_t type, const void *payload, size_t length) {
+  if (!ctx || !transport || (!payload && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handshake packet");
+  switch (type) {
+  case PACKET_TYPE_CRYPTO_PARAMETERS:
+    if (ctx->state != CRYPTO_HANDSHAKE_INIT || length != sizeof(crypto_parameters_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery crypto parameters");
+    return crypto_handshake_set_parameters(ctx, payload);
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
+    return crypto_handshake_client_key_exchange(ctx, transport, type, payload, length);
+  case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
+    return crypto_handshake_client_auth_response(ctx, transport, type, payload, length);
+  case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
+  case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
+  case PACKET_TYPE_CRYPTO_AUTH_FAILED:
+    return crypto_handshake_client_complete(ctx, transport, type, payload, length);
+  default:
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected discovery handshake packet: %u", type);
+  }
 }
