@@ -92,3 +92,8 @@ real terminals and captures their cell grids. `tests/ui/test_log_history.py`
 checks retained C log routes with console output disabled. The browser suite also
 checks real C logs, search, overlay exclusivity, resize, and connected-client logs;
 set `SESSION_UI_SERVER_URL` to a local server's WebSocket URL for its network case.
+
+The browser FPS counter counts successful canvas paints over the last second for
+all views: splash, help, logs, and media. Only actual canvas paints contribute; a view settles to zero when it needs
+no repaint. The displayed target is the configured
+video FPS, not a forced redraw rate for static overlays.

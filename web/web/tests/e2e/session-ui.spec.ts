@@ -72,6 +72,12 @@ test("C splash animates and keyboard settings update both C and the web controls
     .toContain("Video chat in your terminal");
   expect(await lastFrame(page)).not.toContain("Volume DOWN");
   await page.keyboard.press("ArrowUp");
+  const canvasFps = async () => {
+    const text = await page.getByText(/^FPS:/).innerText();
+    return Number(text.match(/FPS: (\d+)/)?.[1] ?? 0);
+  };
+  await expect.poll(canvasFps).toBeGreaterThan(0);
+  await page.screenshot({ path: "artifacts/session-splash-fps-web.png" });
   const before = await canvas.screenshot();
   await expect
     .poll(async () => (await canvas.screenshot()).equals(before))
@@ -81,6 +87,8 @@ test("C splash animates and keyboard settings update both C and the web controls
   await expect
     .poll(() => lastFrame(page))
     .toContain("ascii-chat Keyboard Shortcuts");
+  // Static help does not keep counting covered splash frames.
+  await expect.poll(canvasFps).toBe(0);
   await page.keyboard.press("c");
   await expect(page).toHaveURL(/colorMode=none/);
   await expect.poll(() => lastFrame(page)).toContain("Mono");
@@ -301,6 +309,11 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => lastFrame(page)).toContain("Volume DOWN");
   await expect.poll(() => lastFrame(page)).toContain("Handshake complete");
+  const canvasFps = async () =>
+    Number(
+      (await page.getByText(/^FPS:/).innerText()).match(/FPS: (\d+)/)?.[1] ?? 0,
+    );
+  await expect.poll(canvasFps).toBeGreaterThan(0);
   await page.screenshot({ path: "artifacts/session-logs-web-client.png" });
   await page.keyboard.press("?");
   await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");

@@ -106,10 +106,6 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
-  useEffect(() => {
-    if (!isWebcamRunning) setFps(0);
-  }, [isWebcamRunning, setFps]);
-
   // Update wasmModule state immediately when WASM initialization completes
   useEffect(() => {
     const effectTime = performance.now();
@@ -310,7 +306,7 @@ export function MirrorPage() {
               onDimensionsChange={handleDimensionsChange}
               onFpsChange={setFps}
               error={error}
-              showFps={isWebcamRunning}
+              showFps
               wasmModuleReady={!!wasmModule}
               // initMirrorWasm already initialized the C options; initializing
               // them again here can abort the WASM allocator during page load.
