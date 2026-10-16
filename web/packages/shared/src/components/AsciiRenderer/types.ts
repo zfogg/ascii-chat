@@ -11,6 +11,10 @@ export interface AsciiRendererHandle {
 }
 
 export interface AsciiRendererProps {
+  /** Disable interactive terminal shortcuts for embedded demos. */
+  keyboardEnabled?: boolean;
+  /** Allow the loading splash; embedded demos can keep their own placeholder. */
+  splashEnabled?: boolean;
   uiLoading?: boolean;
   uiMessage?: string;
   onUiAction?: (event: import("../../wasm/sessionUi").SessionUiEvent) => void;

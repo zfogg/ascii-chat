@@ -723,6 +723,8 @@ export default function MirrorDemoWidget({
         <div className="demo-widget-inner">
           <AsciiRenderer
             ref={rendererRef}
+            keyboardEnabled={false}
+            splashEnabled={false}
             onDimensionsChange={handleDimensionsChange}
             showFps={false}
             wasmModuleReady={wasmReady}

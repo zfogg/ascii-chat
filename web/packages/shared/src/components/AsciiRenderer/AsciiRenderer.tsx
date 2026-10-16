@@ -52,6 +52,8 @@ import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   function AsciiRenderer(
     {
+      keyboardEnabled = true,
+      splashEnabled = true,
       uiLoading,
       uiMessage,
       onUiAction,
@@ -98,7 +100,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       useAsciiRendererHandle({
         ref,
         uiLoading:
-          uiLoading ?? (connectionState === 1 || connectionState === 2),
+          splashEnabled &&
+          (uiLoading ?? (connectionState === 1 || connectionState === 2)),
         uiMessage,
         onUiAction,
         moduleRef,
@@ -129,10 +132,16 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
         </style>
         <canvas
           ref={canvasRef}
-          tabIndex={0}
-          aria-label="ASCII terminal. Press question mark for keyboard settings."
-          onKeyDown={onKeyDown}
-          onPointerDown={(event) => event.currentTarget.focus()}
+          tabIndex={keyboardEnabled ? 0 : -1}
+          aria-label={
+            keyboardEnabled
+              ? "ASCII terminal. Press question mark for keyboard settings."
+              : "ASCII demo"
+          }
+          onKeyDown={keyboardEnabled ? onKeyDown : undefined}
+          onPointerDown={
+            keyboardEnabled ? (event) => event.currentTarget.focus() : undefined
+          }
           className="ascii-canvas max-w-full max-h-full shrink-0 object-contain"
         />
         {/* Disconnected overlay - only show if error or explicitly disconnected */}
