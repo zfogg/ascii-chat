@@ -179,7 +179,11 @@ export class ClientConnection {
 
     console.log("[ClientConnection] Waiting for WebSocket to connect...");
     await this.socket.connect();
-    if (!this.usesApplicationEncryption) return;
+    if (
+      this.transportState === ConnectionState.ERROR ||
+      !this.usesApplicationEncryption
+    )
+      return;
     console.log("[ClientConnection] WebSocket connected!");
 
     // Wait for server to initiate handshake
@@ -237,13 +241,23 @@ export class ClientConnection {
     if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
 
     if (this.options.discoveryHandshake) {
-      const module = getClientModule()!;
-      if (
-        module._client_acds_handshake_begin(
-          this.usesApplicationEncryption ? 1 : 0,
-        )
-      )
-        throw new Error("Could not begin discovery handshake");
+      try {
+        const module = getClientModule();
+        if (
+          !module ||
+          module._client_acds_handshake_begin(
+            this.usesApplicationEncryption ? 1 : 0,
+          )
+        ) {
+          throw new Error("Could not begin discovery handshake");
+        }
+      } catch (error) {
+        console.error("[ClientConnection] Discovery handshake failed:", error);
+        this.socket.close();
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+        return;
+      }
     }
 
     if (!this.usesApplicationEncryption) {
@@ -667,6 +681,8 @@ export class ClientConnection {
    * Get current connection state
    */
   getState(): ConnectionState {
+    if (this.transportState === ConnectionState.ERROR)
+      return ConnectionState.ERROR;
     return this.usesApplicationEncryption
       ? getConnectionState()
       : this.transportState;
