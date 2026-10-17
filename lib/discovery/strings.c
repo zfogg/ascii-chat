@@ -187,10 +187,14 @@ static void session_regex_init_once(void) {
     return;
   }
 
-  // Compile to JIT for 5-10x performance boost
-  int jit_ret = pcre2_jit_compile(g_session_format_regex, PCRE2_JIT_COMPLETE);
-  if (jit_ret < 0) {
-    log_warn("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
+  // JIT is an optional optimization, including for browser builds.
+  uint32_t jit_available = 0;
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") &&
+      pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
+    int jit_ret = pcre2_jit_compile(g_session_format_regex, PCRE2_JIT_COMPLETE);
+    if (jit_ret < 0) {
+      log_debug("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
+    }
   }
 
   log_dev("Session string format validator initialized");
@@ -280,7 +284,7 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
+  int match_result = pcre2_match(regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
 
   pcre2_match_data_free(match_data);
 
