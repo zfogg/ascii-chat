@@ -100,7 +100,6 @@ typedef struct {
   webrtc_transport_ready_callback_t on_transport_ready;     ///< Called when DataChannel ready
   webrtc_gathering_timeout_callback_t on_gathering_timeout; ///< Called when ICE gathering times out
   void *user_data;                                          ///< Passed to callbacks
-  crypto_context_t *crypto_ctx;                             ///< Crypto context for transports
 } webrtc_peer_manager_config_t;
 
 /**

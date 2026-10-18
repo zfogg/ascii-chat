@@ -21,6 +21,7 @@ asciichat_error_t acip_security_init_options(acip_security_t *security, bool ser
   };
   asciichat_error_t result = crypto_policy_resolve(&policy, &security->mode);
   security->forbid_encryption = policy.no_encrypt;
+  security->require_encryption = policy.encrypt;
   if (result != ASCIICHAT_OK)
     return result;
   crypto_handshake_context_t *ctx = &security->handshake;
@@ -28,6 +29,7 @@ asciichat_error_t acip_security_init_options(acip_security_t *security, bool ser
                                : crypto_handshake_init("webrtc_peer", ctx, server);
   if (result != ASCIICHAT_OK)
     return result;
+  ctx->require_client_auth = server && options->require_server_verify;
   ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(security->mode);
   if (policy.has_identity) {
     private_key_t *private_key = server ? &ctx->server_private_key : &ctx->client_private_key;

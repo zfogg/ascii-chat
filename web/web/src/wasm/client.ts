@@ -46,9 +46,16 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
-  _peer_crypto_create(server: number, encryption: number, password: number, identity: number, expected: number): number;
+  _peer_crypto_create(
+    server: number,
+    encryption: number,
+    password: number,
+    identity: number,
+    expected: number,
+  ): number;
   _peer_crypto_destroy(peer: number): void;
   _peer_crypto_ready(peer: number): number;
+  _peer_crypto_error(): number;
   _peer_crypto_send(peer: number, data: number, length: number): number;
   _peer_crypto_receive(peer: number, data: number, length: number): number;
   _peer_crypto_output_data(peer: number): number;
@@ -134,7 +141,7 @@ interface ClientModuleExports {
   _free(ptr: number): void;
 }
 
-interface ClientModule {
+interface ClientModule extends ClientModuleExports {
   _client_resolve_crypto_policy(secure: number, encryption: number): number;
   _client_handshake_begin(): number;
   _client_handshake_receive(
@@ -142,9 +149,6 @@ interface ClientModule {
     payload: number,
     length: number,
   ): number;
-}
-
-interface ClientModule extends ClientModuleExports {
   HEAP16: Int16Array;
   _client_acds_handshake_begin(encrypted: number): number;
   _client_acds_handshake_receive(
@@ -1436,14 +1440,33 @@ export function resolveCryptoPolicy(
 
 /** Separate ACIP context for one media peer; signaling retains its own context. */
 export class PeerCryptoSession {
-  private constructor(private handle: number, private send: (packet: Uint8Array) => void) {}
+  private constructor(
+    private handle: number,
+    private send: (packet: Uint8Array) => void,
+  ) {}
 
-  static async create(options: ClientCryptoOptions, encryption: boolean | undefined,
-                      server: boolean, send: (packet: Uint8Array) => void): Promise<PeerCryptoSession> {
+  static async create(
+    options: ClientCryptoOptions,
+    encryption: boolean | undefined,
+    server: boolean,
+    send: (packet: Uint8Array) => void,
+  ): Promise<PeerCryptoSession> {
     let handle = 0;
-    await configureClientCrypto(server ? { ...options, expectedServerPublicKeyText: options.allowedClientPublicKeyText } : options, (password, identity, expected) => {
-      handle = wasmModule!._peer_crypto_create(server ? 1 : 0,
-        encryption === undefined ? -1 : encryption ? 1 : 0, password, identity, expected);
+    const credentials = { ...options };
+    if (server) {
+      delete credentials.expectedServerPublicKeyText;
+      if (options.allowedClientPublicKeyText)
+        credentials.expectedServerPublicKeyText =
+          options.allowedClientPublicKeyText;
+    }
+    await configureClientCrypto(credentials, (password, identity, expected) => {
+      handle = wasmModule!._peer_crypto_create(
+        server ? 1 : 0,
+        encryption === undefined ? -1 : encryption ? 1 : 0,
+        password,
+        identity,
+        expected,
+      );
       return handle ? 0 : -1;
     });
     return new PeerCryptoSession(handle, send);
@@ -1473,7 +1496,10 @@ export class PeerCryptoSession {
       const result = receive
         ? wasmModule!._peer_crypto_receive(this.handle, pointer, packet.length)
         : wasmModule!._peer_crypto_send(this.handle, pointer, packet.length);
-      if (result !== 0) throw new Error(`Peer ACIP security failed (${result})`);
+      if (result !== 0)
+        throw new Error(
+          wasmModule!.UTF8ToString(wasmModule!._peer_crypto_error()),
+        );
     } finally {
       wasmModule!._free(pointer);
     }
@@ -1484,7 +1510,9 @@ export class PeerCryptoSession {
     this.input(packet, true);
     const pointer = wasmModule!._peer_crypto_received_data(this.handle);
     const length = wasmModule!._peer_crypto_received_size(this.handle);
-    return pointer && length ? wasmModule!.HEAPU8.slice(pointer, pointer + length) : null;
+    return pointer && length
+      ? wasmModule!.HEAPU8.slice(pointer, pointer + length)
+      : null;
   }
 
   sendPacket(packet: Uint8Array): void {

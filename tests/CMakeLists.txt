@@ -1098,18 +1098,19 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     target_include_directories(test-acip-prepare PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        add_test(NAME webrtc-security COMMAND test-webrtc-security)
         add_test(NAME acip-prepare COMMAND test-acip-prepare)
         add_test(NAME acip-prepare-websocket COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/integration/acip_prepare_websocket.py $<TARGET_FILE:test-acip-prepare>)
-        set_tests_properties(acip-prepare acip-prepare-websocket PROPERTIES TIMEOUT 60)
+        set_tests_properties(webrtc-security acip-prepare acip-prepare-websocket PROPERTIES TIMEOUT 60)
         if(WIN32)
-            set_property(TEST acip-prepare acip-prepare-websocket PROPERTY ENVIRONMENT_MODIFICATION
+            set_property(TEST webrtc-security acip-prepare acip-prepare-websocket PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
         if(TARGET tests)
-            add_dependencies(tests test-acip-prepare)
+            add_dependencies(tests test-acip-prepare test-webrtc-security)
         endif()
     endif()
     add_executable(test-network-events EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c)

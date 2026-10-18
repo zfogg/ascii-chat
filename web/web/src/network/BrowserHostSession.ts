@@ -153,8 +153,15 @@ export class BrowserHostSession implements ClientSession {
           } else {
             for (const peer of this.peers.values()) {
               if (peer.id !== id || !peer.crypto?.ready) continue;
-              const type = new DataView(bytes.buffer, bytes.byteOffset).getUint16(8, false);
-              if (type === PacketType.ASCII_FRAME && (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024) continue;
+              const type = new DataView(
+                bytes.buffer,
+                bytes.byteOffset,
+              ).getUint16(8, false);
+              if (
+                type === PacketType.ASCII_FRAME &&
+                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
+              )
+                continue;
               try {
                 peer.crypto.sendPacket(bytes);
               } catch (error) {
@@ -227,8 +234,13 @@ export class BrowserHostSession implements ClientSession {
           ordered: true,
         });
         remote.crypto = await PeerCryptoSession.create(
-          { ...this.options.cryptoOptions, password: this.options.cryptoOptions?.password || this.options.password },
-          this.options.applicationEncryption, true,
+          {
+            ...this.options.cryptoOptions,
+            password:
+              this.options.cryptoOptions?.password || this.options.password,
+          },
+          this.options.applicationEncryption,
+          true,
           (packet) => {
             if (!remote.bridge) throw new Error("WebRTC bridge is not ready");
             remote.bridge.send(packet);
@@ -247,8 +259,11 @@ export class BrowserHostSession implements ClientSession {
                 const decoded = remote.crypto!.receive(bytes);
                 if (remote.crypto!.ready && !remote.id) {
                   remote.id = this.module!._browser_host_add_client();
-                  if (!remote.id) throw new Error("Cannot admit authenticated peer");
-                  this.options.onProgress?.("Hosting — peer security negotiated");
+                  if (!remote.id)
+                    throw new Error("Cannot admit authenticated peer");
+                  this.options.onProgress?.(
+                    "Hosting — peer security negotiated",
+                  );
                 }
                 if (!decoded) return;
                 const packet = parsePacket(decoded);

@@ -42,8 +42,11 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
     if (NET_TO_HOST_U16(version.protocol_version) != 1 || mode > ACIP_CRYPTO_FULL)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported peer security protocol");
     if (ctx->is_server) {
-      // Both peers' requirements must hold; a remote request cannot disable local security.
-      mode |= security->mode;
+      // Match secure WebSocket policy: defaults do not override a client's explicit no-encrypt.
+      if ((ctx->has_password || ctx->require_client_auth) && !ACIP_CRYPTO_HAS_AUTH(mode))
+        return SET_ERRNO(ERROR_CRYPTO_AUTH, "Peer omitted required authentication");
+      if (security->require_encryption && !ACIP_CRYPTO_HAS_ENCRYPT(mode))
+        return SET_ERRNO(ERROR_CRYPTO, "Peer omitted required encryption");
       if (security->forbid_encryption && ACIP_CRYPTO_HAS_ENCRYPT(mode))
         return SET_ERRNO(ERROR_CRYPTO, "Peer requires encryption but local policy disables it");
       version.supports_encryption = mode;

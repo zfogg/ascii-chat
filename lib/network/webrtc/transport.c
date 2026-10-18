@@ -81,9 +81,9 @@ typedef struct {
   acip_security_t *security;           ///< Owned per-peer security state
   void (*on_ready)(acip_transport_t *, void *);
   void *ready_user_data;
-  acip_transport_t *transport;         ///< Borrowed enclosing transport
-  ringbuffer_t *recv_queue;            ///< Receive message queue
-  uint8_t *partial;                    ///< Incomplete ACIP packet bytes
+  acip_transport_t *transport; ///< Borrowed enclosing transport
+  ringbuffer_t *recv_queue;    ///< Receive message queue
+  uint8_t *partial;            ///< Incomplete ACIP packet bytes
   size_t partial_len;
   size_t partial_capacity;
   uint64_t partial_since_ns;
@@ -157,9 +157,8 @@ static void discard_stale_media(webrtc_transport_data_t *wrtc) {
   size_t control_count = count - video_count - audio_count;
   size_t retained_video_count = video_count > 0 ? 1 : 0;
   size_t non_audio_count = control_count + retained_video_count;
-  size_t keep_audio_count = non_audio_count < WEBRTC_RECV_QUEUE_HIGH_WATER
-                                ? WEBRTC_RECV_QUEUE_HIGH_WATER - non_audio_count
-                                : 0;
+  size_t keep_audio_count =
+      non_audio_count < WEBRTC_RECV_QUEUE_HIGH_WATER ? WEBRTC_RECV_QUEUE_HIGH_WATER - non_audio_count : 0;
   size_t video_to_discard = video_count - retained_video_count;
   size_t audio_to_discard = audio_count > keep_audio_count ? audio_count - keep_audio_count : 0;
   size_t dropped_video = 0;
@@ -230,6 +229,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
   memcpy(wrtc->partial + wrtc->partial_len, data, len);
   wrtc->partial_len += len;
   size_t offset = 0;
+  bool notify_ready = false;
   while (wrtc->partial_len - offset >= sizeof(packet_header_t)) {
     packet_header_t header;
     memcpy(&header, wrtc->partial + offset, sizeof(header));
@@ -267,7 +267,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
         return;
       }
       if (wrtc->security->ready && wrtc->on_ready) {
-        wrtc->on_ready(wrtc->transport, wrtc->ready_user_data);
+        notify_ready = true;
       }
       offset += packet_len;
       continue;
@@ -338,6 +338,9 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     memmove(wrtc->partial, wrtc->partial + offset, wrtc->partial_len);
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
+  // Application callbacks may immediately receive from the transport.
+  if (notify_ready)
+    wrtc->on_ready(wrtc->transport, wrtc->ready_user_data);
 }
 
 /**
@@ -494,8 +497,7 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
 
   size_t max_message_size = 16384;
   asciichat_errno_scope_t size_scope = asciichat_errno_scope_begin();
-  asciichat_error_t max_size_result =
-      webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
+  asciichat_error_t max_size_result = webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
   if (max_size_result != ASCIICHAT_OK || max_message_size == 0) {
     max_message_size = 16384;
   } else {

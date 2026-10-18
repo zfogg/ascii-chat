@@ -20,6 +20,11 @@ typedef struct {
   size_t received_length;
 } browser_peer_crypto_t;
 
+EMSCRIPTEN_KEEPALIVE const char *peer_crypto_error(void) {
+  static asciichat_error_context_t error;
+  return HAS_ERRNO(&error) ? error.context_message : "Peer security operation failed";
+}
+
 static asciichat_error_t peer_send(acip_transport_t *transport, const void *data, size_t length) {
   browser_peer_crypto_t *peer = transport->impl_data;
   socket_buffer_t input = {.data = data, .len = length};
@@ -101,6 +106,7 @@ EMSCRIPTEN_KEEPALIVE browser_peer_crypto_t *peer_crypto_create(bool server, int 
                             .has_verification_key = expected_key != NULL};
   asciichat_error_t result = crypto_policy_resolve(&policy, &peer->security.mode);
   peer->security.forbid_encryption = policy.no_encrypt;
+  peer->security.require_encryption = policy.encrypt;
   crypto_handshake_context_t *ctx = &peer->security.handshake;
   if (result == ASCIICHAT_OK)
     result = policy.has_password ? crypto_handshake_init_with_password("browser_peer", ctx, server, password)

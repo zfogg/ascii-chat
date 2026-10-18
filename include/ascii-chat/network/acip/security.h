@@ -11,6 +11,7 @@ typedef struct acip_security {
   crypto_handshake_context_t handshake;
   uint8_t mode;
   bool forbid_encryption;
+  bool require_encryption;
   bool version_received;
   bool parameters_received;
   bool ready;

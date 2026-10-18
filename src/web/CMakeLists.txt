@@ -573,6 +573,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _peer_crypto_error
     _peer_crypto_create
     _peer_crypto_destroy
     _peer_crypto_ready

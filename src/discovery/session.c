@@ -994,8 +994,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       .turn_credential = session->turn_password,
       .on_transport_ready = discovery_on_transport_ready,
       .on_gathering_timeout = discovery_on_gathering_timeout,
-      .user_data = session,
-      .crypto_ctx = NULL // Crypto happens at ACIP layer
+      .user_data = session
   };
 
   // Create signaling callbacks

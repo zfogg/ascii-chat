@@ -276,8 +276,13 @@ export class WebRTCSession implements ClientSession {
         id: 0,
       });
       this.peerCrypto = await PeerCryptoSession.create(
-        { ...this.options.cryptoOptions, password: this.options.cryptoOptions?.password || this.options.password },
-        this.options.applicationEncryption, false,
+        {
+          ...this.options.cryptoOptions,
+          password:
+            this.options.cryptoOptions?.password || this.options.password,
+        },
+        this.options.applicationEncryption,
+        false,
         (packet) => {
           if (!this.bridge) throw new Error("WebRTC bridge is not ready");
           this.bridge.send(packet);
@@ -434,7 +439,11 @@ export class WebRTCSession implements ClientSession {
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
     // Drop replaceable media before encryption advances the peer's nonce.
-    if (type === PacketType.IMAGE_FRAME && this.bridge.getBufferedAmount() > 256 * 1024) return;
+    if (
+      type === PacketType.IMAGE_FRAME &&
+      this.bridge.getBufferedAmount() > 256 * 1024
+    )
+      return;
     try {
       this.peerCrypto!.sendPacket(serializePacket(type, payload, 0));
     } catch (error) {

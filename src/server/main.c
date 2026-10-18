@@ -1724,8 +1724,7 @@ static void server_init_webrtc(void) {
         .turn_username = turn_auth_username,
         .turn_credential = turn_auth_credential,
         .on_transport_ready = on_webrtc_transport_ready,
-        .user_data = &g_server_ctx,
-        .crypto_ctx = NULL // WebRTC handles crypto internally
+        .user_data = &g_server_ctx
     };
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
