@@ -69,6 +69,8 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, params=%p", ctx, params);
   }
 
+  ctx->crypto_ctx.encrypt_data = params->selected_cipher != CIPHER_ALGO_NONE;
+
   // Client receives network byte order and must convert
   // Server uses host byte order and must NOT convert
   if (ctx->is_server) {
@@ -79,6 +81,7 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
     ctx->crypto_ctx.shared_key_size = params->shared_secret_size;
     ctx->crypto_ctx.signature_size = params->signature_size;
   } else {
+    ctx->require_client_auth = params->verification_enabled != 0;
     // Client: convert from network byte order
     // Update crypto context with negotiated parameters directly
     ctx->crypto_ctx.public_key_size = NET_TO_HOST_U16(params->kex_public_key_size);
@@ -347,7 +350,7 @@ asciichat_error_t crypto_encrypt_packet_or_passthrough(const crypto_handshake_co
                                                        const uint8_t *plaintext, size_t plaintext_len,
                                                        uint8_t *ciphertext, size_t ciphertext_size,
                                                        size_t *ciphertext_len) {
-  if (!crypto_ready) {
+  if (!crypto_ready || !ctx->crypto_ctx.encrypt_data) {
     // No encryption - just copy data
     if (plaintext_len > ciphertext_size) {
       SET_ERRNO(ERROR_BUFFER, "Plaintext too large for ciphertext buffer: %zu > %zu", plaintext_len, ciphertext_size);
@@ -366,7 +369,7 @@ asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_co
                                                        const uint8_t *ciphertext, size_t ciphertext_len,
                                                        uint8_t *plaintext, size_t plaintext_size,
                                                        size_t *plaintext_len) {
-  if (!crypto_ready) {
+  if (!crypto_ready || !ctx->crypto_ctx.encrypt_data) {
     // No encryption - just copy data
     if (ciphertext_len > plaintext_size) {
       SET_ERRNO(ERROR_BUFFER, "Ciphertext too large for plaintext buffer: %zu > %zu", ciphertext_len, plaintext_size);

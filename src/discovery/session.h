@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/handshake/common.h>
 /**
  * @file discovery/session.h
  * @brief Discovery session flow management
@@ -160,6 +161,7 @@ typedef struct {
 
   // ACDS connection
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  crypto_handshake_context_t acds_handshake; ///< Owns signaling keys until disconnect
   uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;

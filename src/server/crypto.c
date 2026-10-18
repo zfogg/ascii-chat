@@ -188,18 +188,28 @@ asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, pac
   acip_transport_t *transport = client->transport;
   asciichat_error_t result = ASCIICHAT_OK;
   if (*step == 0) {
-    if (type != PACKET_TYPE_PROTOCOL_VERSION) {
-      if (type != PACKET_TYPE_CLIENT_CAPABILITIES || !GET_OPTION(no_encrypt) || !GET_OPTION(no_auth))
-        return SET_ERRNO(ERROR_CRYPTO, "Expected protocol version before application traffic");
-      *ready = true;
-      return ASCIICHAT_OK;
-    }
-    if (length != sizeof(protocol_version_packet_t))
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
+    if (type != PACKET_TYPE_PROTOCOL_VERSION || length != sizeof(protocol_version_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected protocol version before application traffic");
     protocol_version_packet_t version;
     memcpy(&version, payload, sizeof(version));
-    if (version.supports_encryption == ACIP_CRYPTO_NONE)
-      return SET_ERRNO(ERROR_CRYPTO, "Client does not support crypto negotiation");
+    uint8_t mode = version.supports_encryption;
+    if (mode > ACIP_CRYPTO_FULL || NET_TO_HOST_U16(version.protocol_version) != 1)
+      return SET_ERRNO(ERROR_CRYPTO, "Unsupported crypto mode or protocol version");
+    bool requires_auth = GET_OPTION(password)[0] || g_num_whitelisted_clients || GET_OPTION(require_server_verify);
+    if (requires_auth && !ACIP_CRYPTO_HAS_AUTH(mode))
+      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server requires authentication");
+    if ((GET_OPTION(encrypt_enabled) && !ACIP_CRYPTO_HAS_ENCRYPT(mode)) ||
+        (GET_OPTION(no_encrypt) && ACIP_CRYPTO_HAS_ENCRYPT(mode)))
+      return SET_ERRNO(ERROR_CRYPTO, "Requested encryption conflicts with server policy");
+    if (!client->transport_encrypted && !GET_OPTION(no_encrypt) && !ACIP_CRYPTO_HAS_ENCRYPT(mode))
+      return SET_ERRNO(ERROR_CRYPTO, "Plain transports require encryption unless --no-encrypt is explicit");
+    if (mode == ACIP_CRYPTO_NONE) {
+      result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
+      client->security_ready = result == ASCIICHAT_OK;
+      *ready = client->security_ready;
+      *step = 5;
+      return result;
+    }
     const options_t *opts = options_get();
     const char *password = opts ? opts->password : "";
     result = password[0] ? crypto_handshake_init_with_password("server_async", ctx, true, password)
@@ -305,6 +315,7 @@ asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, pac
   }
   if (result == ASCIICHAT_OK && ctx->state == CRYPTO_HANDSHAKE_READY) {
     client->crypto_initialized = true;
+    client->security_ready = true;
     ctx->crypto_ctx.encrypt_data = client->encrypt_data;
     transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(ctx);
     *ready = true;
@@ -314,10 +325,6 @@ asciichat_error_t server_crypto_event(client_info_t *client, unsigned *step, pac
 }
 
 bool crypto_server_is_ready(const char *client_id) {
-  if (GET_OPTION(no_encrypt)) {
-    return false;
-  }
-
   client_info_t *client = find_client_by_id(client_id);
   if (!client) {
     return false;

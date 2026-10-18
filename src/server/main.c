@@ -82,6 +82,7 @@
 #include "../main.h" // For should_exit() and signal_exit() API
 #include "common/session/server_like.h"
 #include "events.h"
+#include "crypto.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -896,7 +897,7 @@ static void *acds_ping_thread(void *arg) {
     // Send PING every 10 seconds to keep connection alive
     socket_t acds_socket = g_acds_transport->methods->get_socket(g_acds_transport);
     if (acds_socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t ping_result = packet_send(acds_socket, PACKET_TYPE_PING, NULL, 0);
+      asciichat_error_t ping_result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_PING, NULL, 0, 0);
       if (ping_result == ASCIICHAT_OK) {
         log_debug("ACDS keepalive: Sent periodic PING");
       } else {
@@ -1064,125 +1065,35 @@ static void *websocket_client_handler(void *arg) {
   // Transport ownership transferred to client structure - don't destroy it here
   ctx->transport = NULL;
 
-  // TLS encrypts the transport; configured credentials still require authentication.
-  if (ctx->is_secure && GET_OPTION(password)[0] == '\0' && g_num_whitelisted_clients == 0) {
-    client->transport_encrypted = true;
-    if (start_transport_client_threads(server_ctx, client->client_id) != 0) {
+  client->transport_encrypted = ctx->is_secure;
+  const uint64_t previous_receive_timeout_ns = client->transport->receive_timeout_ns;
+  client->transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
+  unsigned step = 0;
+  bool ready = false;
+  while (!ready) {
+    packet_type_t type;
+    void *payload = NULL, *allocated = NULL;
+    size_t length = 0;
+    asciichat_error_t result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocated);
+    if (result == ASCIICHAT_OK)
+      result = server_crypto_event(client, &step, type, payload, length, &ready);
+    if (allocated)
+      buffer_release(allocated);
+    if (result != ASCIICHAT_OK) {
+      acip_send_error(client->transport, result, "Security negotiation rejected");
+      // Keep the transport alive until the service thread sends the rejection.
+      asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
+      (void)acip_websocket_transport_flush(client->transport, NS_PER_SEC_INT);
+      asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_DISMISSED);
+      acip_transport_close(client->transport);
       remove_client(server_ctx, client->client_id);
+      SAFE_FREE(ctx);
+      return NULL;
     }
-    SAFE_FREE(ctx);
-    return NULL;
   }
-
-  log_info("WebSocket client %s added successfully", client->client_id);
-  log_debug("[WS_HANDLER] add_transport_client returned client_id=%s, transport ownership transferred",
-            client->client_id);
-
-  // STEP 2: Client structure is already initialized - set up crypto handshake
-  log_debug("[WS_HANDLER] STEP 2: Client structure obtained: client=%p, transport=%p, crypto_initialized=%d",
-            (void *)client, (void *)client->transport, client->crypto_initialized);
-
-  // Initialize crypto handshake context directly in client structure
-  // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
-  // responds, the receive thread has a properly initialized context
-  // Create debug name with client_id
-  char crypto_name[64];
-  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%s", client->client_id);
-
-  log_debug("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
-  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
-  log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
-  const options_t *opts = options_get();
-  const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
-  asciichat_error_t handshake_init_result =
-      password[0] != '\0'
-          ? crypto_handshake_init_with_password(crypto_name, &client->crypto_handshake_ctx, true, password)
-          : crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
-  log_debug("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
-  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
-  if (handshake_init_result != ASCIICHAT_OK) {
-    log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
-              asciichat_error_string(handshake_init_result));
+  client->transport->receive_timeout_ns = previous_receive_timeout_ns;
+  if (start_transport_client_threads(server_ctx, client->client_id) != 0)
     remove_client(server_ctx, client->client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-  log_debug("[WS_HANDLER] crypto_handshake_init OK, handshake_ctx.state=%d", client->crypto_handshake_ctx.state);
-
-  // Mark crypto as NOT initialized yet (will be set to true when handshake completes)
-  log_debug("[WS_HANDLER] Setting crypto_initialized from %d to false...", client->crypto_initialized);
-  client->crypto_initialized = false;
-
-  log_debug("Initialized crypto handshake context for WebSocket client %s", client->client_id);
-  log_debug("[WS_HANDLER] crypto_initialized now = %d", client->crypto_initialized);
-
-  // WebSocket clients use the same authentication policy and server identity
-  // as TCP clients. Initializing only the ephemeral handshake context silently
-  // downgraded browser connections to unauthenticated encryption.
-  if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
-    memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_private_key, sizeof(private_key_t));
-    client->crypto_handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->crypto_handshake_ctx.server_public_key.key, g_server_private_key.public_key,
-           ED25519_PUBLIC_KEY_SIZE);
-    log_debug("Server identity configured for WebSocket client %s", client->client_id);
-  }
-  if (g_num_whitelisted_clients > 0) {
-    client->crypto_handshake_ctx.require_client_auth = true;
-    client->crypto_handshake_ctx.client_whitelist = g_client_whitelist;
-    client->crypto_handshake_ctx.num_whitelisted_clients = g_num_whitelisted_clients;
-    log_info("WebSocket client whitelist enabled: %zu authorized keys", g_num_whitelisted_clients);
-  }
-  if (GET_OPTION(require_server_verify)) {
-    client->crypto_handshake_ctx.require_client_auth = true;
-    log_info("--require-server-verify enabled for WebSocket client %s", client->client_id);
-  }
-
-  // STEP 3: Send CRYPTO_PARAMETERS then KEY_EXCHANGE_INIT to start the handshake
-  // The receive thread is already running, but it will use the properly initialized context
-  log_info("[WS_HANDLER] STEP 3: Sending CRYPTO_PARAMETERS + KEY_EXCHANGE_INIT...");
-  asciichat_error_t handshake_start_result =
-      crypto_handshake_server_send_parameters(&client->crypto_handshake_ctx, client->transport);
-  if (handshake_start_result != ASCIICHAT_OK) {
-    log_error("[WS_HANDLER] FAILED: crypto_handshake_server_send_parameters returned %d: %s", handshake_start_result,
-              asciichat_error_string(handshake_start_result));
-    remove_client(server_ctx, client->client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-  handshake_start_result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
-  if (handshake_start_result != ASCIICHAT_OK) {
-    log_error("[WS_HANDLER] FAILED: crypto_handshake_server_start returned %d: %s", handshake_start_result,
-              asciichat_error_string(handshake_start_result));
-    remove_client(server_ctx, client->client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  log_info("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %s", client->client_id);
-  log_info("[WS_HANDLER] ===== SUCCESS: Handshake started for client %s =====", client->client_id);
-
-  // STEP 4: Now start the threads after crypto is initialized
-  // This ensures receive thread doesn't try to process packets before crypto context exists
-  log_debug("[WS_HANDLER] STEP 4: Starting client threads after crypto initialization...");
-  if (start_transport_client_threads(server_ctx, client->client_id) != 0) {
-    log_error("[WS_HANDLER] FAILED: start_transport_client_threads returned error");
-    remove_client(server_ctx, client->client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-  log_info("[WS_HANDLER] Client threads started successfully for client %s", client->client_id);
-
-  // Handler thread exit - cleanup happens in the receive thread
-  // The receive thread is responsible for calling remove_client() when it detects connection closure.
-  // We exit immediately instead of blocking - this prevents the LWS service thread from being blocked
-  // in thread_join() during LWS_CALLBACK_CLOSED, which would freeze the event loop.
-  // The removal logic is now handled by the receive thread, which:
-  // 1. Detects transport closure (recv fails or returns error)
-  // 2. Sets active=false and signals other threads to stop
-  // 3. Calls remove_client() with proper self-join detection to avoid deadlock
-  log_debug("[WS_HANDLER] STEP 5: Handler thread exiting (client_id=%s, cleanup will happen in receive thread)",
-            client->client_id);
-
   SAFE_FREE(ctx);
   return NULL;
 }
@@ -1254,13 +1165,6 @@ static void *websocket_client_handler(void *arg) {
  * @ingroup server_main
  */
 static int init_server_crypto(void) {
-  // Check if encryption is disabled
-  if (GET_OPTION(no_encrypt)) {
-    NOTICE(DANGER, "ENCRYPTION DISABLED", "Encryption: DISABLED (--no-encrypt)");
-    g_server_encryption_enabled = false;
-    return 0;
-  }
-
   // Load server identity keys (supports multiple --key flags for multi-key mode)
   size_t num_keys = GET_OPTION(num_identity_keys);
 
@@ -1599,6 +1503,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
   // Use server's Ed25519 identity public key if available
   if (g_server_encryption_enabled && policy->has_identity) {
     memcpy(params->identity_pubkey, g_server_private_key.public_key, 32);
+    memcpy(params->identity_seckey, g_server_private_key.key.ed25519, sizeof(params->identity_seckey));
     log_debug("Using server identity key for ACDS session");
   } else {
     // No identity key available - use zero key
@@ -1681,6 +1586,7 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
 
   // Use same identity key as session creation
   memcpy(join_params.identity_pubkey, params->identity_pubkey, 32);
+  memcpy(join_params.identity_seckey, params->identity_seckey, sizeof(join_params.identity_seckey));
 
   // Include password if session is password-protected
   if (policy->has_password) {
@@ -1710,7 +1616,8 @@ static void server_start_discovery_keepalive(void) {
   log_debug("Server staying connected to ACDS for signaling relay");
 
   // Create ACDS transport wrapper for sending signaling packets
-  g_acds_transport = acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, NULL);
+  g_acds_transport =
+      acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, g_acds_client->transport->crypto_ctx);
   if (!g_acds_transport) {
     log_error("Failed to create ACDS transport wrapper");
   } else {
@@ -1826,8 +1733,7 @@ static void server_init_webrtc(void) {
         .turn_username = turn_auth_username,
         .turn_credential = turn_auth_credential,
         .on_transport_ready = on_webrtc_transport_ready,
-        .user_data = &g_server_ctx,
-        .crypto_ctx = NULL // WebRTC handles crypto internally
+        .user_data = &g_server_ctx
     };
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
@@ -1885,6 +1791,7 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
   SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
   acds_config.server_port = acds_port;
   acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
+  acds_config.identity_key = GET_OPTION(encrypt_key);
 
   // Allocate ACDS client on heap for server lifecycle
   g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);

@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 /**
  * @file client_wasm.c
  * @brief WASM entry point for ascii-chat client mode
@@ -123,6 +124,8 @@ static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, 
 static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
 static bool g_initialized = false;
 static bool g_handshake_complete = false;
+static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT;
+static bool g_version_received = false;
 static char g_crypto_password[256] = {0};
 static uint8_t g_client_identity_key[crypto_sign_SECRETKEYBYTES] = {0};
 static uint8_t g_expected_server_identity_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -1025,8 +1028,9 @@ void client_opus_decoder_cleanup(void) {
   }
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(bool encrypted) {
-  return acds_handshake_begin(&g_wasm_transport, encrypted);
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  return acds_handshake_begin(&g_wasm_transport, mode);
 }
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
   asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
@@ -1037,4 +1041,68 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t ty
     g_connection_state = CONNECTION_STATE_CONNECTED;
   } else { g_connection_state = CONNECTION_STATE_HANDSHAKE; }
   return ASCIICHAT_OK;
+}
+
+/** Resolve browser inputs through the same policy as native and mobile clients. */
+EMSCRIPTEN_KEEPALIVE int client_resolve_crypto_policy(bool secure, int encryption) {
+  crypto_policy_t policy = {
+      .transport_secure = secure,
+      .encrypt = encryption == 1,
+      .no_encrypt = encryption == 0,
+      .has_password = g_crypto_password[0] != '\0',
+      .has_identity = g_has_client_identity_key,
+      .has_verification_key = g_has_expected_server_identity_key,
+  };
+  uint8_t mode;
+  if (crypto_policy_resolve(&policy, &mode) != ASCIICHAT_OK)
+    return -1;
+  g_crypto_mode = mode;
+  return mode;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_begin(void) {
+  g_connection_state = CONNECTION_STATE_CONNECTING;
+  g_version_received = false;
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+  return acds_handshake_begin(&g_wasm_transport, g_crypto_mode);
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length) {
+  if (!g_version_received && type != PACKET_TYPE_PROTOCOL_VERSION)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected server protocol version first");
+  if (type == PACKET_TYPE_PROTOCOL_VERSION) {
+    if (g_version_received)
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Duplicate server protocol version");
+    if (!payload || length != sizeof(protocol_version_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
+    const protocol_version_packet_t *version = payload;
+    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != g_crypto_mode)
+      return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
+    g_version_received = true;
+    if (g_crypto_mode == ACIP_CRYPTO_NONE) {
+      g_connection_state = CONNECTION_STATE_CONNECTED;
+      return ASCIICHAT_OK;
+    }
+    crypto_capabilities_packet_t caps = {0};
+    caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
+    caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+    caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
+    caps.preferred_kex = KEX_ALGO_X25519;
+    caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+    caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    caps.requires_verification = g_has_expected_server_identity_key;
+    asciichat_error_t result =
+        packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    if (result != ASCIICHAT_OK || !g_has_expected_server_identity_key)
+      return result;
+    return packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, g_expected_server_identity_key,
+                                     sizeof(g_expected_server_identity_key), 0);
+  }
+  if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
+    if (!payload || length != sizeof(crypto_parameters_packet_t) ||
+        (((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
+            ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode))
+      return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
+  }
+  return client_acds_handshake_receive(type, payload, length);
 }

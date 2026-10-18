@@ -154,7 +154,7 @@ Test(options, default_values) {
   cr_assert_eq(opts->stretch, 0);
   cr_assert_eq(opts->quiet, 0);
   cr_assert_eq(opts->snapshot_mode, 0);
-  cr_assert_eq(opts->encrypt_enabled, 1);
+  cr_assert_eq(opts->encrypt_enabled, 0);
   cr_assert_eq(opts->palette_type, PALETTE_STANDARD);
   cr_assert_eq(opts->palette_custom_set, false);
 
@@ -645,7 +645,7 @@ GENERATE_OPTIONS_TEST(
     valid_encryption_key, ARGV_LIST("client", "--key", "mysecretkey"), true,
     {
       cr_assert_str_eq(opts->encrypt_key, "mysecretkey");
-      cr_assert_eq(opts->encrypt_enabled, 1);
+      cr_assert_eq(opts->encrypt_enabled, 0);
     },
     { cr_assert_eq(exit_code, 0, "Valid encryption key should not cause exit"); })
 
@@ -1020,7 +1020,7 @@ GENERATE_OPTIONS_TEST(
     encryption_key_value, ARGV_LIST("client", "--key", "mysecretpassword123"), true,
     {
       cr_assert_str_eq(opts->encrypt_key, "mysecretpassword123");
-      cr_assert_eq(opts->encrypt_enabled, 1);
+      cr_assert_eq(opts->encrypt_enabled, 0);
     },
     { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })
 
@@ -1244,7 +1244,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_encryption_auto_enable, ARGV_LIST("client", "--key", "mypassword"), true,
     {
-      cr_assert_eq(opts->encrypt_enabled, 1); // Should be auto-enabled
+      cr_assert_eq(opts->encrypt_enabled, 0); // Keys do not force payload encryption
       cr_assert_str_eq(opts->encrypt_key, "mypassword");
     },
     { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })

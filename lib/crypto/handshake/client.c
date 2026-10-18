@@ -252,7 +252,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 #endif
 
-    if (!skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
+    if (!ctx->addressless_transport && !skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
       uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE];
       bool has_stored_key = false;
       asciichat_error_t known_host_result =
@@ -310,6 +310,12 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     key_identity_announce(
         ctx->verify_server_key ? "VERIFIED SERVER PUBLIC IDENTITY" : "UNVERIFIED SERVER PUBLIC IDENTITY", &identity);
   } else if (payload_len == ctx->crypto_ctx.public_key_size) {
+    if (ctx->verify_server_key) {
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
+      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server omitted the required identity key");
+    }
     // Simple format: just ephemeral key (no identity key)
     log_debug("Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no "
               "identity key",
@@ -325,84 +331,86 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
     log_debug("Received ephemeral key (simple format)");
 
-    // SECURITY: For servers without identity keys, we implement a different security model:
-    // 1. Verify IP address matches known_hosts entry
-    // 2. Always require user confirmation (no silent connections)
-    // 3. Store server fingerprint for future verification
+    if (!ctx->addressless_transport) {
+      // SECURITY: For servers without identity keys, we implement a different security model:
+      // 1. Verify IP address matches known_hosts entry
+      // 2. Always require user confirmation (no silent connections)
+      // 3. Store server fingerprint for future verification
 
-    if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
-      SAFE_FREE(server_ephemeral_key);
-      SAFE_FREE(server_identity_key);
-      SAFE_FREE(server_signature);
-      return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
-    }
+      if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
+        return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
+      }
 
-    // Check if this server was previously connected to (IP verification)
-    bool skip_known_hosts = false;
-    asciichat_error_t known_host_result = ASCIICHAT_OK;
-    const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
-    if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
-      log_warn("Skipping known_hosts checking. This is a security vulnerability.");
-      skip_known_hosts = true;
-    }
+      // Check if this server was previously connected to (IP verification)
+      bool skip_known_hosts = false;
+      asciichat_error_t known_host_result = ASCIICHAT_OK;
+      const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+      if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
+        log_warn("Skipping known_hosts checking. This is a security vulnerability.");
+        skip_known_hosts = true;
+      }
 #ifndef NDEBUG
-    // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
-    else if (platform_getenv("CLAUDECODE")) {
-      log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build).");
-      skip_known_hosts = true;
-    }
+      // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+      else if (platform_getenv("CLAUDECODE")) {
+        log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build).");
+        skip_known_hosts = true;
+      }
 #endif
-    else {
-      known_host_result = check_known_host_no_identity(ctx->server_ip, ctx->server_port);
-    }
+      else {
+        known_host_result = check_known_host_no_identity(ctx->server_ip, ctx->server_port);
+      }
 
-    if (skip_known_hosts || known_host_result == 1) {
-      // Server IP is known and verified - allow connection without warnings
-      log_info("SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified", ctx->server_ip,
-               ctx->server_port);
-    } else if (known_host_result == ASCIICHAT_OK) {
-      // Server IP is unknown - require user confirmation
-      NOTICE(DANGER, "UNVERIFIED SERVER IDENTITY",
-             "SECURITY: Unknown server IP %s:%u with no identity key\n"
-             "This connection is vulnerable to man-in-the-middle attacks\n"
-             "Anyone can intercept your connection and read your data",
-             ctx->server_ip, ctx->server_port);
+      if (skip_known_hosts || known_host_result == 1) {
+        // Server IP is known and verified - allow connection without warnings
+        log_info("SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified", ctx->server_ip,
+                 ctx->server_port);
+      } else if (known_host_result == ASCIICHAT_OK) {
+        // Server IP is unknown - require user confirmation
+        NOTICE(DANGER, "UNVERIFIED SERVER IDENTITY",
+               "SECURITY: Unknown server IP %s:%u with no identity key\n"
+               "This connection is vulnerable to man-in-the-middle attacks\n"
+               "Anyone can intercept your connection and read your data",
+               ctx->server_ip, ctx->server_port);
 
-      if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
+        if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
+          SAFE_FREE(server_ephemeral_key);
+          SAFE_FREE(server_identity_key);
+          SAFE_FREE(server_signature);
+          return SET_ERRNO(ERROR_CRYPTO, "User declined to connect to unknown server without identity key");
+        }
+
+        // User accepted - add to known_hosts as no-identity entry
+        // For servers without identity keys, pass zero key to indicate no-identity
+        uint8_t zero_key[ZERO_KEY_SIZE] = {0};
+        if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != ASCIICHAT_OK) {
+          SAFE_FREE(server_ephemeral_key);
+          SAFE_FREE(server_identity_key);
+          SAFE_FREE(server_signature);
+          return SET_ERRNO(ERROR_CONFIG,
+                           "CRITICAL SECURITY ERROR: Failed to create known_hosts "
+                           "file! This is a security vulnerability - the "
+                           "program cannot track known hosts. Please check file "
+                           "permissions and ensure the program can write to: %s",
+                           get_known_hosts_path());
+        }
+        log_debug("Server host added to known_hosts successfully");
+      } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
+        // Server previously had identity key but now has none - potential security issue
+        NOTICE(DANGER, "SERVER IDENTITY REMOVED",
+               "SECURITY: Server previously had identity key but now has none - potential security issue");
         SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
-        return SET_ERRNO(ERROR_CRYPTO, "User declined to connect to unknown server without identity key");
-      }
-
-      // User accepted - add to known_hosts as no-identity entry
-      // For servers without identity keys, pass zero key to indicate no-identity
-      uint8_t zero_key[ZERO_KEY_SIZE] = {0};
-      if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != ASCIICHAT_OK) {
-        SAFE_FREE(server_ephemeral_key);
+        return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "Server key configuration changed - potential security issue");
+      } else {
+        // Other error checking known_hosts (e.g., ERROR_INVALID_PARAM)      SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
-        return SET_ERRNO(ERROR_CONFIG,
-                         "CRITICAL SECURITY ERROR: Failed to create known_hosts "
-                         "file! This is a security vulnerability - the "
-                         "program cannot track known hosts. Please check file "
-                         "permissions and ensure the program can write to: %s",
-                         get_known_hosts_path());
+        return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
       }
-      log_debug("Server host added to known_hosts successfully");
-    } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
-      // Server previously had identity key but now has none - potential security issue
-      NOTICE(DANGER, "SERVER IDENTITY REMOVED",
-             "SECURITY: Server previously had identity key but now has none - potential security issue");
-      SAFE_FREE(server_ephemeral_key);
-      SAFE_FREE(server_identity_key);
-      SAFE_FREE(server_signature);
-      return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "Server key configuration changed - potential security issue");
-    } else {
-      // Other error checking known_hosts (e.g., ERROR_INVALID_PARAM)      SAFE_FREE(server_ephemeral_key);
-      SAFE_FREE(server_identity_key);
-      SAFE_FREE(server_signature);
-      return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
     }
   } else {
     SAFE_FREE(server_ephemeral_key);
@@ -437,7 +445,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   bool server_has_identity = (ctx->crypto_ctx.auth_public_key_size > 0 && ctx->crypto_ctx.signature_size > 0);
   bool server_requires_auth = server_has_identity || ctx->require_client_auth;
 
-  if (server_requires_auth) {
+  if (server_requires_auth || client_has_identity_key) {
     // Send authenticated packet:
     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
     // Use Ed25519 sizes since client has Ed25519 key

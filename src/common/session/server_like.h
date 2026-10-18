@@ -374,7 +374,7 @@ ASCIICHAT_API asciichat_error_t session_server_like_mdns_advertise(const char *n
  * @return ASCIICHAT_OK on success, error code on handshake failure
  */
 ASCIICHAT_API asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
-                                                              acip_transport_t *transport);
+                                                              acip_transport_t *transport, bool transport_secure);
 
 /**
  * Check if a shutdown request was received during initialization.

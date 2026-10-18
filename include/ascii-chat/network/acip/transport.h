@@ -393,6 +393,10 @@ asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, b
  * @note Port defaults to 80 for ws:// and 443 for wss:// if not specified
  * @note Connection is established synchronously during creation
  */
+/** Wait for queued messages to reach their writable completion callback.
+ * Call from a worker, never from the libwebsockets service thread. */
+asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, uint64_t timeout_ns);
+
 acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
                                                          crypto_context_t *crypto_ctx);
 
