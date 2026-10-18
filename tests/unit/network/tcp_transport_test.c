@@ -76,6 +76,8 @@ Test(tcp_transport, discovery_rejections_preserve_codes) {
     int sockets[2];
     cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
     acds_client_t client = {.socket = sockets[0], .connected = true};
+    client.transport = acip_tcp_transport_create("discovery-rejection-test", client.socket, NULL);
+    cr_assert_not_null(client.transport);
     cr_assert_eq(acip_server_send_error(sockets[1], ACIP_ERROR_RATE_LIMITED, "private server context"), ASCIICHAT_OK);
     asciichat_error_t result;
     if (operation == 0) {
@@ -94,6 +96,7 @@ Test(tcp_transport, discovery_rejections_preserve_codes) {
     }
     cr_assert_eq(result, ERROR_RATE_LIMITED);
     cr_assert(HAS_ERRNO_CODE(ERROR_RATE_LIMITED));
+    acip_transport_destroy(client.transport);
     socket_close(sockets[0]);
     socket_close(sockets[1]);
     CLEAR_ERRNO_ALL();
@@ -106,11 +109,14 @@ Test(tcp_transport, discovery_joined_rejection_is_failure) {
   acip_session_joined_t wire = {.success = 0, .error_code = ACIP_ERROR_INVALID_PASSWORD};
   cr_assert_eq(packet_send(sockets[1], PACKET_TYPE_ACIP_SESSION_JOINED, &wire, sizeof(wire)), ASCIICHAT_OK);
   acds_client_t client = {.socket = sockets[0], .connected = true};
+  client.transport = acip_tcp_transport_create("discovery-joined-rejection-test", client.socket, NULL);
+  cr_assert_not_null(client.transport);
   acds_session_join_params_t params = {.session_string = "blue-mountain-tiger"};
   crypto_sign_keypair(params.identity_pubkey, params.identity_seckey);
   acds_session_join_result_t response;
   cr_assert_eq(acds_session_join(&client, &params, &response), ERROR_INVALID_PASSWORD);
   cr_assert_not(response.success);
+  acip_transport_destroy(client.transport);
   socket_close(sockets[0]);
   socket_close(sockets[1]);
   CLEAR_ERRNO_ALL();
