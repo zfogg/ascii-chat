@@ -331,7 +331,20 @@ int main(void) {
     session->participant_ctx = tcp_participant;
     owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
     owned->methods = &methods;
+    // A failed restart still leaves the successfully attached transport owned.
+    fail_stage = cycle == 1 ? 1 : 0;
     CHECK(select_participant_transport(session, owned) == ASCIICHAT_OK);
+    fail_stage = 0;
+    CHECK(session_participant_is_video_active(tcp_participant) == (cycle == 0));
+    CHECK(session_participant_is_audio_active(tcp_participant));
+    int audio_before_switch = atomic_load_int(&audio_packets);
+    int video_before_switch = atomic_load_int(&video_packets);
+    for (int i = 0; i < 200 && (atomic_load_int(&audio_packets) <= audio_before_switch ||
+                                (cycle == 0 && atomic_load_int(&video_packets) <= video_before_switch));
+         ++i)
+      platform_sleep_ms(1);
+    CHECK(atomic_load_int(&audio_packets) > audio_before_switch);
+    CHECK(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
     CHECK(session->host_control_transport == tcp);
     CHECK(session->host_control_ownership == SESSION_TRANSPORT_OWNED);
     CHECK(session_participant_get_transport(tcp_participant) == owned);

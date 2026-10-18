@@ -34,7 +34,8 @@ typedef enum {
   UI_ACTION_PAUSE,
   UI_ACTION_VOLUME,
   UI_ACTION_DEBUG,
-  UI_ACTION_LOGS
+  UI_ACTION_LOGS,
+  UI_ACTION_TOGGLE_MEDIA
 } ui_session_action_t;
 
 /** Mutates shared options for settings keys; returns an action for the host. */

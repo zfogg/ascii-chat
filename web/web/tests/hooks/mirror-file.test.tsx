@@ -71,7 +71,7 @@ test("video selection replaces camera, keeps audio enabled, and releases resourc
   expect(options.stopWebcam).toHaveBeenCalled();
   expect(video.srcObject).toBeNull();
   expect(video.muted).toBe(false);
-  expect(video.loop).toBe(true);
+  expect(video.loop).toBe(false);
   expect(canvas.width).toBe(320);
   expect(result.current.kind).toBe("video");
   expect(backend.transcode).toHaveBeenCalledWith(
@@ -173,8 +173,8 @@ test("PNG uses image decoding and does not call video playback", async () => {
     result.current.start(new File(["png"], "still.png", { type: "image/png" })),
   );
   expect(result.current.kind).toBe("image");
-  expect(canvas.width).toBe(1280);
-  expect(canvas.height).toBe(720);
+  expect(canvas.width).toBe(640);
+  expect(canvas.height).toBe(360);
   expect(backend.play).not.toHaveBeenCalled();
 });
 
@@ -188,4 +188,30 @@ test("unmount cancels in-flight work and revokes the file URL", async () => {
   unmount();
   expect(signal.aborted).toBe(true);
   expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
+});
+
+test("suspending direct video retains position and the previous play intent", async () => {
+  const { result, video } = setup();
+  let paused = false;
+  Object.defineProperty(video, "paused", { get: () => paused });
+  vi.spyOn(video, "pause").mockImplementation(() => {
+    paused = true;
+  });
+  const play = vi.spyOn(video, "play").mockImplementation(async () => {
+    paused = false;
+  });
+  await act(() => result.current.start(new File(["video"], "tone.mp4")));
+  paused = false;
+  video.currentTime = 1.25;
+  act(() => result.current.setSuspended(true));
+  expect(paused).toBe(true);
+  expect(video.currentTime).toBe(1.25);
+  await act(() => result.current.setSuspended(false));
+  expect(play).toHaveBeenCalledOnce();
+  expect(paused).toBe(false);
+  act(() => result.current.togglePause());
+  act(() => result.current.setSuspended(true));
+  await act(() => result.current.setSuspended(false));
+  expect(paused).toBe(true);
+  expect(play).toHaveBeenCalledOnce();
 });

@@ -201,6 +201,8 @@ static void release_host_control_transport(discovery_session_t *session) {
 // Discovery retains the host control connection when media switches to WebRTC.
 static asciichat_error_t select_participant_transport(discovery_session_t *session, acip_transport_t *transport) {
   session_participant_t *participant = session->participant_ctx;
+  bool restart_video = session_participant_is_video_active(participant);
+  bool restart_audio = session_participant_is_audio_active(participant);
   session_participant_stop_audio(participant);
   session_participant_stop_video(participant);
   acip_transport_t *previous = session_participant_get_transport(participant);
@@ -210,7 +212,15 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
     if (result != ASCIICHAT_OK)
       return result;
   }
-  return session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
+  asciichat_error_t result = session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
+  if (result != ASCIICHAT_OK)
+    return result;
+  // Ownership has transferred; a capture failure must not make the caller free the transport.
+  if (restart_video && session_participant_start_video(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart video after switching participant transport");
+  if (restart_audio && session_participant_start_audio(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart audio after switching participant transport");
+  return ASCIICHAT_OK;
 }
 
 void discovery_session_destroy(discovery_session_t *session) {

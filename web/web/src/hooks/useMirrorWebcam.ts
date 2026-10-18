@@ -74,7 +74,7 @@ export function useMirrorWebcam({
     if (!videoRef.current || !canvasRef.current) {
       console.error("[Mirror] Video or canvas element not ready");
       setError("Video or canvas element not ready");
-      return;
+      return false;
     }
 
     try {
@@ -153,7 +153,7 @@ export function useMirrorWebcam({
         setIsWebcamRunning(true);
         setMediaSource(MediaSourceType.WEBCAM);
         console.timeEnd("[Mirror] Total startWebcam time");
-        return;
+        return true;
       }
 
       console.log(
@@ -198,7 +198,7 @@ export function useMirrorWebcam({
       }
       if (generation !== startGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
       console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
       console.log(`[Mirror] getUserMedia returned at ${performance.now()}`);
@@ -226,7 +226,7 @@ export function useMirrorWebcam({
       if (generation !== startGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         if (video.srcObject === stream) video.srcObject = null;
-        return;
+        return false;
       }
       console.timeEnd("[Mirror] loadedmetadata");
 
@@ -234,9 +234,11 @@ export function useMirrorWebcam({
       setIsWebcamRunning(true);
       setMediaSource(MediaSourceType.WEBCAM);
       console.timeEnd("[Mirror] Total startWebcam time");
+      return true;
     } catch (err) {
       if (generation === startGenerationRef.current)
         setError(`Failed to start webcam: ${String(err)}`);
+      return false;
     }
   }, [
     testPattern.enabled,

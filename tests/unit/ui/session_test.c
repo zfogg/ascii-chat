@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat/ui/session.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <string.h>
@@ -99,4 +100,14 @@ Test(session_ui, log_history_returns_latest_entries_after_wrap) {
   session_log_buffer_clear(logs);
   cr_assert_eq(session_log_buffer_get_recent(logs, entries, 2), 0);
   session_log_buffer_destroy(logs);
+}
+
+Test(session_ui, media_toggle_action_and_shared_help) {
+  double volume = 1.0;
+  cr_assert_eq(ui_session_key((keyboard_key_t)'[', &volume), UI_ACTION_TOGGLE_MEDIA);
+  terminal_size_t minimum;
+  char *help = ui_session_help_render((terminal_size_t){120, 40}, true, false, &minimum);
+  cr_assert_not_null(help);
+  cr_assert_not_null(strstr(help, "Toggle Media Playback"));
+  SAFE_FREE(help);
 }

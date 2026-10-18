@@ -7,6 +7,7 @@ import {
   vi,
 } from "vite-plus/test";
 import { AudioPipeline } from "../../src/audio/AudioPipeline";
+import { AVState } from "../../src/wasm/AVState";
 import { PacketType } from "../../src/wasm/client";
 
 vi.mock("../../src/wasm/client", () => ({
@@ -87,6 +88,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("rejects state startup errors without throwing synchronously and permits retry", async () => {
+    const pipeline = new AudioPipeline({ onAudioData: vi.fn() });
+    const begin = vi
+      .spyOn(AVState.prototype, "begin")
+      .mockImplementationOnce(() => {
+        throw new Error("Initialize the client before capture");
+      });
+    try {
+      const pending = pipeline.startCapture();
+      expect(pending).toBeInstanceOf(Promise);
+      await expect(pending).rejects.toThrow(
+        "Initialize the client before capture",
+      );
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(pipeline.captureActive).toBe(false);
+      await pipeline.startCapture();
+      expect(pipeline.captureActive).toBe(true);
+    } finally {
+      begin.mockRestore();
+      pipeline.close();
+    }
+  });
+
   it("captures echo-cancelled microphone audio into native Opus packets", async () => {
     const send = vi.fn();
     const pipeline = new AudioPipeline({ onAudioData: send });

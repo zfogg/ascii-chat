@@ -129,7 +129,12 @@ export class AudioPipeline {
     if (this.starting && this.avState.current(this.avState.generation))
       return this.starting;
     const previous = this.starting;
-    const generation = this.avState.begin();
+    let generation: number;
+    try {
+      generation = this.avState.begin();
+    } catch (error) {
+      return Promise.reject(error);
+    }
     if (!generation) return Promise.resolve();
     const pending = (
       previous ? previous.catch(() => undefined) : Promise.resolve()

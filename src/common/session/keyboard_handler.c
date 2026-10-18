@@ -40,6 +40,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     return;
   ui_session_action_t action = ui_session_key(key, &g_mute_saved_volume);
   if (action == UI_ACTION_SETTINGS || action == UI_ACTION_VOLUME) {
+    session_capture_redraw_media(capture);
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
       ui_controller_show_volume();
     if (display && keyboard_help_is_active(display))
@@ -99,7 +100,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   case UI_ACTION_SEEK_BACK: { // Seek backward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
-      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
+      if (session_capture_media_active(capture) && source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
         double current_pos = media_source_get_position(source);
         if (current_pos >= 0.0) {
           double new_pos = current_pos - 30.0;
@@ -123,7 +124,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   case UI_ACTION_SEEK_FORWARD: { // Seek forward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
-      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
+      if (session_capture_media_active(capture) && source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
         double current_pos = media_source_get_position(source);
         double duration = media_source_get_duration(source);
         if (current_pos >= 0.0) {
@@ -147,10 +148,15 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== PLAY/PAUSE CONTROL =====
+  case UI_ACTION_TOGGLE_MEDIA:
+    session_capture_toggle_media(capture);
+    if (capture && session_capture_get_audio_context(capture))
+      audio_flush_playback_buffers((audio_context_t *)session_capture_get_audio_context(capture));
+    break;
   case UI_ACTION_PAUSE: { // Toggle play/pause
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
-      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
+      if (session_capture_media_active(capture) && source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
         media_source_toggle_pause(source);
         if (media_source_is_paused(source)) {
           log_info("Paused");

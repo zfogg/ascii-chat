@@ -365,3 +365,10 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
 /** @} */
 
 /** @} */
+
+/** Request a source change on the capture thread. */
+void session_capture_toggle_media(session_capture_ctx_t *ctx);
+
+bool session_capture_media_active(session_capture_ctx_t *ctx);
+
+void session_capture_redraw_media(session_capture_ctx_t *ctx);
