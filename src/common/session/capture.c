@@ -1,4 +1,5 @@
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/atomic.h>
 /**
  * @file session/capture.c
  * @brief 📹 Unified media capture implementation
@@ -48,6 +49,16 @@
 struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
+  media_source_t *webcam_source;
+  image_t *last_media_frame;
+  image_t *empty_frame;
+  bool webcam_attempted;
+  atomic_t toggle_media;
+  atomic_t redraw_media;
+  bool retained_frame_shown;
+  atomic_t non_media_active;
+  bool media_was_paused;
+  bool saved_matrix, saved_waveform, saved_fft;
 
   /** @brief FPS tracker for monitoring capture rate */
   fps_t fps_tracker;
@@ -256,6 +267,15 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
+  if (config->type == MEDIA_SOURCE_FILE) {
+    ctx->saved_matrix = GET_OPTION(matrix_rain);
+    ctx->saved_waveform = GET_OPTION(waveform);
+    ctx->saved_fft = GET_OPTION(fft);
+    options_set_bool("matrix_rain", false);
+    options_set_bool("waveform", false);
+    options_set_bool("fft", false);
+  }
+
   // Set up exit callback on media source for graceful shutdown during I/O
   // This allows Ctrl+C to abort blocking FFmpeg calls like YouTube HTTP requests
   if (config->should_exit_callback && ctx->source) {
@@ -331,6 +351,12 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
     return;
   }
 
+  if (ctx->webcam_source)
+    media_source_destroy(ctx->webcam_source);
+  if (ctx->last_media_frame)
+    image_destroy(ctx->last_media_frame);
+  if (ctx->empty_frame)
+    image_destroy(ctx->empty_frame);
   // Destroy media source
   if (ctx->source) {
     media_source_destroy(ctx->source);
@@ -359,7 +385,70 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   static uint64_t last_frame_time_ns = 0;
   uint64_t frame_request_time_ns = time_get_ns();
 
-  image_t *frame = media_source_read_video(ctx->source);
+  bool is_file = media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE;
+  if (is_file && (atomic_exchange_u64(&ctx->toggle_media, 0) & 1)) {
+    bool leaving = !atomic_load_bool(&ctx->non_media_active);
+    if (leaving) {
+      ctx->media_was_paused = media_source_is_paused(ctx->source);
+      media_source_pause(ctx->source);
+      options_set_bool("matrix_rain", ctx->saved_matrix);
+      options_set_bool("waveform", ctx->saved_waveform);
+      options_set_bool("fft", ctx->saved_fft);
+    } else {
+      ctx->saved_matrix = GET_OPTION(matrix_rain);
+      ctx->saved_waveform = GET_OPTION(waveform);
+      ctx->saved_fft = GET_OPTION(fft);
+      options_set_bool("matrix_rain", false);
+      options_set_bool("waveform", false);
+      options_set_bool("fft", false);
+      if (!ctx->media_was_paused)
+        media_source_resume(ctx->source);
+    }
+    atomic_store_bool(&ctx->non_media_active, leaving);
+    atomic_store_bool(&ctx->redraw_media, true);
+    ctx->next_frame_deadline_ns = 0;
+    log_info("Media playback %s at %.3fs (%s)", leaving ? "hidden" : "selected", media_source_get_position(ctx->source),
+             ctx->media_was_paused ? "paused" : "playing");
+  }
+  bool alternate = atomic_load_bool(&ctx->non_media_active);
+  if (alternate && !ctx->webcam_attempted) {
+    ctx->webcam_attempted = true;
+    ctx->webcam_source = media_source_create(MEDIA_SOURCE_WEBCAM, NULL);
+    if (ctx->webcam_source && media_source_start_video(ctx->webcam_source) != ASCIICHAT_OK) {
+      media_source_destroy(ctx->webcam_source);
+      ctx->webcam_source = NULL;
+    }
+    if (!ctx->webcam_source) {
+      LOG_ERRNO_IF_SET("Webcam unavailable; animations remain available");
+      CLEAR_ERRNO();
+      ctx->empty_frame = image_new(320, 180);
+      if (ctx->empty_frame)
+        memset(ctx->empty_frame->pixels, 0, 320 * 180 * sizeof(rgb_pixel_t));
+    }
+  }
+  image_t *frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame)
+                             : media_source_read_video(ctx->source);
+  if (is_file && !alternate && !GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0]) {
+    if (frame) {
+      ctx->retained_frame_shown = false;
+      if (!ctx->last_media_frame || ctx->last_media_frame->w != frame->w || ctx->last_media_frame->h != frame->h) {
+        if (ctx->last_media_frame)
+          image_destroy(ctx->last_media_frame);
+        ctx->last_media_frame = image_new(frame->w, frame->h);
+      }
+      if (ctx->last_media_frame)
+        memcpy(ctx->last_media_frame->pixels, frame->pixels, (size_t)frame->w * frame->h * sizeof(rgb_pixel_t));
+    } else if (media_source_at_end(ctx->source) || media_source_is_paused(ctx->source)) {
+      if (media_source_at_end(ctx->source))
+        media_source_pause(ctx->source);
+      bool redraw = atomic_exchange_bool(&ctx->redraw_media, false);
+      if (!ctx->retained_frame_shown || redraw) {
+        ctx->retained_frame_shown = true;
+        return ctx->last_media_frame;
+      }
+      return NULL;
+    }
+  }
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_CAPTURE, time_get_ns() - frame_request_time_ns);
   if (frame) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_CAPTURED, 1);
@@ -479,6 +568,9 @@ bool session_capture_at_end(session_capture_ctx_t *ctx) {
     return true;
   }
 
+  if (media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && !GET_OPTION(snapshot_mode) &&
+      !GET_OPTION(render_file)[0])
+    return false;
   return media_source_at_end(ctx->source);
 }
 
@@ -526,7 +618,7 @@ size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, siz
   }
 
   // If using file audio, read from media source
-  if (ctx->using_file_audio && ctx->source) {
+  if (ctx->using_file_audio && ctx->source && !atomic_load_bool(&ctx->non_media_active)) {
     return media_source_read_audio(ctx->source, buffer, num_samples);
   }
 
@@ -568,4 +660,18 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
   if (ctx) {
     ctx->audio_ctx = audio_ctx;
   }
+}
+
+void session_capture_toggle_media(session_capture_ctx_t *ctx) {
+  if (ctx && ctx->source && media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE)
+    atomic_fetch_add_u64(&ctx->toggle_media, 1);
+}
+
+bool session_capture_media_active(session_capture_ctx_t *ctx) {
+  return ctx && !atomic_load_bool(&ctx->non_media_active);
+}
+
+void session_capture_redraw_media(session_capture_ctx_t *ctx) {
+  if (ctx)
+    atomic_store_bool(&ctx->redraw_media, true);
 }

@@ -120,6 +120,17 @@ test("starts from buffered fragments before worker completion, preserves pause i
   expect(video.paused).toBe(true);
   controls.togglePause();
   expect(video.paused).toBe(false);
+  controls.setSuspended(true);
+  expect(video.paused).toBe(true);
+  FakeWorker.current.emit({ type: "data", data: new Uint8Array([6]) });
+  await flush();
+  expect(video.paused).toBe(true);
+  controls.setSuspended(false);
+  expect(video.paused).toBe(false);
+  controls.togglePause();
+  controls.setSuspended(true);
+  controls.setSuspended(false);
+  expect(video.paused).toBe(true);
   controller.abort();
   expect(FakeWorker.current.terminate).toHaveBeenCalledOnce();
   expect(URL.revokeObjectURL).toHaveBeenCalled();
@@ -143,18 +154,25 @@ test("late conversion failures are surfaced after playback has started", async (
   expect(FakeWorker.current.terminate).toHaveBeenCalledOnce();
 });
 
-test("short clips wait for EOS, then replay the complete file without reconverting", async () => {
+test("short clips wait for EOS and hold the last frame until explicitly restarted", async () => {
   const { ready, video, controller } = setup();
   FakeWorker.current.emit({ type: "data", data: new Uint8Array([1]) });
   await flush();
   expect(video.play).not.toHaveBeenCalled();
   FakeWorker.current.emit({ type: "done" });
   await flush();
-  await ready;
+  const controls = await ready;
+  if (!controls || controls instanceof File)
+    throw new Error("Expected controls");
   expect(FakeSource.current.readyState).toBe("ended");
   video.dispatchEvent(new Event("ended"));
-  expect(video.loop).toBe(true);
+  expect(video.loop).toBe(false);
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  video.dispatchEvent(new Event("timeupdate"));
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  controls.restart();
   expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
+  expect(video.loop).toBe(false);
   controller.abort();
 });
 test("browsers without MSE use the existing complete-file converter", async () => {

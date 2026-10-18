@@ -11,9 +11,10 @@ import { playMedia } from "./playMedia";
 export interface StreamPlayback {
   togglePause: () => void;
   restart: () => void;
+  setSuspended: (suspended: boolean) => void;
 }
 
-/** Stream one continuous mux into MSE, retaining the completed file for loops. */
+/** Stream one continuous mux into MSE, retaining the completed file for explicit restarts. */
 export function streamMedia(
   file: File,
   video: HTMLVideoElement,
@@ -53,6 +54,7 @@ export function streamMedia(
     let started = false;
     let buffering = true;
     let wantsPlay = true;
+    let suspended = false;
     let streaming = true;
     const queue: Uint8Array<ArrayBuffer>[] = [];
     const parts: Uint8Array<ArrayBuffer>[] = [];
@@ -88,7 +90,16 @@ export function streamMedia(
       });
     };
     const controls: StreamPlayback = {
+      setSuspended(value) {
+        suspended = value;
+        if (value) video.pause();
+        else check();
+      },
       togglePause() {
+        if (video.ended) {
+          controls.restart();
+          return;
+        }
         wantsPlay = !wantsPlay;
         onPaused(!wantsPlay);
         if (!wantsPlay) video.pause();
@@ -112,14 +123,14 @@ export function streamMedia(
         URL.revokeObjectURL(url);
         url = URL.createObjectURL(new Blob(parts, { type: "video/mp4" }));
         video.src = url;
-        video.loop = true;
+        video.loop = false;
         queue.length = 0;
         parts.length = 0;
       }
-      if (wantsPlay) play();
+      if (wantsPlay && !suspended) play();
     };
     const check = () => {
-      if (stopped || starting) return;
+      if (stopped || starting || suspended || video.ended) return;
       if (!streaming) {
         if (wantsPlay && video.paused) play();
         return;
@@ -160,10 +171,6 @@ export function streamMedia(
           })
           .catch(fail);
       } else if (started && wantsPlay) {
-        if (finished && ahead <= 0) {
-          replay();
-          return;
-        }
         if (!finished && ahead < 0.75) {
           buffering = true;
           video.pause();
@@ -214,7 +221,8 @@ export function streamMedia(
     video.addEventListener(
       "ended",
       () => {
-        if (finished) replay();
+        wantsPlay = false;
+        onPaused(true);
       },
       { signal: listeners.signal },
     );
