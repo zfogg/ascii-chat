@@ -4,6 +4,10 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const origin =
   process.env["PARTICIPANT_TEST_ORIGIN"] || "http://localhost:33198";
 let server: ServerFixture;
+test.beforeAll(async () => {
+  server = new ServerFixture(getRandomPort());
+  await server.start();
+});
 test.afterAll(async () => {
   await server?.stop();
 });
@@ -12,8 +16,6 @@ test("shared C lifecycle and browser media survive stop and restart", async ({
   page,
 }) => {
   test.setTimeout(90000);
-  server = new ServerFixture(getRandomPort());
-  await server.start();
   await page.goto(
     `${origin}/client?test&testServerUrl=${encodeURIComponent(server.getUrl())}`,
   );
@@ -148,3 +150,93 @@ test("real WASM rejects late microphone startup after cancellation", async ({
   });
   expect(result).toEqual({ active: false, tracks: ["ended"] });
 });
+
+test("fixed encoder failure permits webcam restart", async ({ page }) => {
+  // Inject only the codec device boundary; camera, hook and C/WASM lifecycle are real.
+  await page.addInitScript(() => {
+    let calls = 0;
+    class FailingEncoder {
+      static async isConfigSupported(config: VideoEncoderConfig) {
+        return { supported: true, config };
+      }
+      state = "unconfigured";
+      encodeQueueSize = 0;
+      configure() {
+        this.state = "configured";
+      }
+      close() {
+        this.state = "closed";
+      }
+      encode() {
+        document.documentElement.dataset["encodedFrames"] = String(++calls);
+        if (calls === 1) throw new Error("Injected runtime encoder failure");
+      }
+    }
+    Object.defineProperty(window, "VideoEncoder", { value: FailingEncoder });
+  });
+  await page.goto(
+    `${origin}/client?test&encoding=H.264&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+  );
+  await expect(page.locator(".status")).toContainText("Connected", {
+    timeout: 30000,
+  });
+  await expect(
+    page.getByRole("button", { name: "Start Webcam", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-encoded-frames",
+    "1",
+  );
+  await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Number(document.documentElement.dataset["encodedFrames"]),
+      ),
+    )
+    .toBeGreaterThan(5);
+});
+
+for (const direct of [true, false]) {
+  test(`preview playback rejection with direct capture ${direct}`, async ({
+    page,
+  }) => {
+    await page.addInitScript((direct) => {
+      if (!direct)
+        Object.defineProperty(window, "MediaStreamTrackProcessor", {
+          value: undefined,
+        });
+      HTMLMediaElement.prototype.play = () =>
+        Promise.reject(new Error("Injected preview failure"));
+    }, direct);
+    await page.goto(
+      `${origin}/client?test&encoding=raw&testServerUrl=${encodeURIComponent(server.getUrl())}`,
+    );
+    await expect(page.locator(".status")).toContainText("Connected", {
+      timeout: 30000,
+    });
+    if (direct) {
+      await expect
+        .poll(
+          () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
+          { timeout: 20000 },
+        )
+        .toBeGreaterThan(5);
+      await expect(
+        page.getByRole("button", { name: "Stop", exact: true }),
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole("alert").filter({
+          hasText: /Failed to start webcam.*Injected preview failure/,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Start Webcam", exact: true }),
+      ).toBeVisible();
+    }
+  });
+}

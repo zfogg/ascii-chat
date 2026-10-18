@@ -2,6 +2,7 @@
 #include "session/participant.h"
 #include "session/capture.h"
 #include "session/audio.h"
+#include "../../../src/discovery/session.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/options/rcu.h>
@@ -19,6 +20,8 @@
     }                                                                                                                  \
   } while (0)
 static int fail_stage, capture_count, audio_count, codec_count, workers;
+static bool fail_join;
+static int transports_destroyed;
 static atomic_t packets, video_packets, audio_packets;
 static image_t *frame;
 
@@ -103,6 +106,8 @@ static int test_thread_create(asciichat_thread_t *thread, const char *name, void
   return result;
 }
 static int test_thread_join(asciichat_thread_t *thread, void **result) {
+  if (fail_join)
+    return -1;
   int error = asciichat_thread_join(thread, result);
   if (!error)
     workers--;
@@ -124,6 +129,7 @@ static int test_thread_join(asciichat_thread_t *thread, void **result) {
 #define asciichat_thread_create test_thread_create
 #define asciichat_thread_join test_thread_join
 #include "session/participant.c"
+#include "../../../src/discovery/session.c"
 
 static bool connected(acip_transport_t *transport) {
   (void)transport;
@@ -144,6 +150,11 @@ static asciichat_error_t test_transport_send(acip_transport_t *transport, const 
 }
 static void clean(void) {
   CHECK(!workers && !capture_count && !audio_count && !codec_count);
+}
+static void destroy_transport_impl(acip_transport_t *transport) {
+  (void)transport;
+  clean();
+  transports_destroyed++;
 }
 int main(void) {
   log_set_terminal_output(true);
@@ -207,6 +218,45 @@ int main(void) {
     clean();
   }
   CHECK(atomic_load_int(&video_packets) > 0 && atomic_load_int(&audio_packets) > 0);
+  // Discovery retains a borrowed transport until all workers join, then frees
+  // it exactly once on teardown. A failed join permits retry without dangling pointers.
+  discovery_session_t *session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
+  CHECK(mutex_init(&session->nat_quality_mutex, "test_nat_quality") == ASCIICHAT_OK);
+  session->participant_ctx = session_participant_create(&config);
+  acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
+  methods.destroy_impl = destroy_transport_impl;
+  owned->methods = &methods;
+  CHECK(session_participant_set_transport(session->participant_ctx, owned) == ASCIICHAT_OK);
+  CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
+  CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
+  fail_join = true;
+  discovery_session_destroy(session);
+  CHECK(transports_destroyed == 0 && workers == 2);
+  CHECK(session_participant_get_transport(session->participant_ctx) == owned);
+  fail_join = false;
+  discovery_session_destroy(session);
+  session = NULL;
+  owned = NULL;
+  CHECK(transports_destroyed == 1);
+  clean();
+  session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
+  CHECK(mutex_init(&session->nat_quality_mutex, "test_nat_quality") == ASCIICHAT_OK);
+  session->participant_ctx = session_participant_create(&config);
+  owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
+  owned->methods = &methods;
+  CHECK(session_participant_set_transport(session->participant_ctx, owned) == ASCIICHAT_OK);
+  CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
+  CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
+  // The same release operation is used before WebRTC recovery and host migration.
+  CHECK(release_participant_transport(session) == ASCIICHAT_OK);
+  CHECK(!session_participant_get_transport(session->participant_ctx));
+  CHECK(release_participant_transport(session) == ASCIICHAT_OK);
+  CHECK(transports_destroyed == 2);
+  discovery_session_destroy(session);
+  session = NULL;
+  owned = NULL;
+  CHECK(transports_destroyed == 2);
+  clean();
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
   session_media_t media = {0};
   uint32_t old = session_media_begin(&media);

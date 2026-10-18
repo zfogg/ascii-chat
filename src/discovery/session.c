@@ -181,11 +181,31 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   return session;
 }
 
+// Discovery owns the transport borrowed by its participant. Join media before
+// detaching it, and retain ownership if a worker could not be joined.
+static asciichat_error_t release_participant_transport(discovery_session_t *session) {
+  session_participant_t *participant = session->participant_ctx;
+  if (!participant)
+    return ASCIICHAT_OK;
+  session_participant_stop_audio(participant);
+  session_participant_stop_video(participant);
+  acip_transport_t *transport = session_participant_get_transport(participant);
+  asciichat_error_t result = session_participant_set_transport(participant, NULL);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (transport)
+    acip_transport_destroy(transport);
+  return ASCIICHAT_OK;
+}
+
 void discovery_session_destroy(discovery_session_t *session) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
   }
+
+  if (release_participant_transport(session) != ASCIICHAT_OK)
+    return;
 
   // Close ACDS connection
   if (session->acds_transport) {
@@ -1836,11 +1856,9 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
       }
 
       log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
-      if (session->participant_ctx) {
-        acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-        session_participant_set_transport(session->participant_ctx, NULL);
-        acip_transport_destroy(transport);
-      }
+      asciichat_error_t release_result = release_participant_transport(session);
+      if (release_result != ASCIICHAT_OK)
+        return release_result;
 
       // The transport has now closed its borrowed peer objects. The manager
       // can release the failed peer before creating the next offer.
@@ -2359,6 +2377,9 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
 
   // Destroy old participant context if present
   if (session->participant_ctx) {
+    asciichat_error_t release_result = release_participant_transport(session);
+    if (release_result != ASCIICHAT_OK)
+      return release_result;
     session_participant_destroy(session->participant_ctx);
     session->participant_ctx = NULL;
   }

@@ -165,6 +165,32 @@ describe("AudioPipeline", () => {
     expect(stopTrack).toHaveBeenCalledTimes(2);
   });
 
+  it.each([false, true])(
+    "queues a cancelled startup restart (cancel again: %s)",
+    async (cancelAgain) => {
+      let grant!: (stream: unknown) => void;
+      getUserMedia.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            grant = resolve;
+          }),
+      );
+      const pipeline = new AudioPipeline();
+      const first = pipeline.startCapture();
+      await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+      pipeline.stopCapture();
+      const restart = pipeline.startCapture();
+      expect(pipeline.startCapture()).toBe(restart);
+      if (cancelAgain) pipeline.stopCapture();
+      grant({ getTracks: () => [{ stop: stopTrack }] });
+      await Promise.all([first, restart]);
+      expect(pipeline.captureActive).toBe(!cancelAgain);
+      expect(getUserMedia).toHaveBeenCalledTimes(cancelAgain ? 1 : 2);
+      expect(stopTrack).toHaveBeenCalledOnce();
+      pipeline.close();
+    },
+  );
+
   it("cleans partial capture after node creation fails and permits retry", async () => {
     const pipeline = new AudioPipeline();
     await pipeline.enablePlayback();

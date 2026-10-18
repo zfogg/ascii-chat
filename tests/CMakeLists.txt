@@ -1131,7 +1131,7 @@ endif()
 # Fault injection around real participant workers; runs without Criterion on Windows too.
 if(BUILD_TESTS)
     add_executable(test-participant-media standalone/session/participant_media_test.c)
-    target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-participant-media PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
     if(WIN32)

@@ -126,19 +126,30 @@ export class AudioPipeline {
   startCapture(): Promise<void> {
     if (this.closed)
       return Promise.reject(new Error("Audio pipeline is closed"));
-    if (this.starting) return this.starting;
+    if (this.starting && this.lifecycle.current(this.lifecycle.generation))
+      return this.starting;
+    const previous = this.starting;
     const generation = this.lifecycle.begin();
     if (!generation) return Promise.resolve();
-    this.starting = this.startCaptureHost(generation)
+    const pending = (
+      previous ? previous.catch(() => undefined) : Promise.resolve()
+    )
+      .then(() => {
+        if (this.lifecycle.current(generation))
+          return this.startCaptureHost(generation);
+        return undefined;
+      })
       .catch((error: unknown) => {
         if (this.lifecycle.current(generation)) this.stopCapture();
         throw error;
       })
       .finally(() => {
+        if (this.starting !== pending) return;
         this.starting = null;
         if (this.closed) this.lifecycle.dispose();
       });
-    return this.starting;
+    this.starting = pending;
+    return pending;
   }
 
   private async startCaptureHost(generation: number): Promise<void> {

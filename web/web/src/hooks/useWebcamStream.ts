@@ -104,6 +104,59 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
 
+  const stopWebcam = useCallback(() => {
+    const wasRunning = lifecycle.current(lifecycle.generation);
+    lifecycle.stop(() => {
+      cancelMetadataRef.current?.();
+      captureReadyRef.current = false;
+      // A stopped browser capture must also stop being a server-side video
+      // source. Otherwise the server keeps compositing its last (often black)
+      // frame over the remaining participants until the connection closes.
+      if (
+        wasRunning &&
+        connectionState === ConnectionState.CONNECTED &&
+        clientRef.current
+      ) {
+        try {
+          clientRef.current.sendUnencryptedAcipPacket(
+            PacketType.STREAM_STOP,
+            buildStreamStartPacket(false),
+          );
+        } catch (error) {
+          console.debug(
+            "[Client] STREAM_STOP skipped while closing capture:",
+            error,
+          );
+        }
+      }
+      // Stop timer (connection state change will also stop it)
+      if (captureTimerRef.current) {
+        clearInterval(captureTimerRef.current);
+        captureTimerRef.current = null;
+      }
+
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      testPatternSourceRef.current?.stop();
+      testPatternSourceRef.current = null;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      // Clean up the video encoder
+      if (videoEncoderRef.current) {
+        videoEncoderRef.current.destroy();
+        videoEncoderRef.current = null;
+      }
+
+      frameQueueRef.current = [];
+      setIsWebcamRunning(false);
+    });
+  }, [clientRef, connectionState, frameQueueRef, videoRef, lifecycle]);
+
   const configureUpload = useCallback(
     async (
       width: number,
@@ -225,23 +278,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               videoEncoderRef.current.destroy();
               videoEncoderRef.current = null;
               if (encodingPreference !== "auto") {
-                captureReadyRef.current = false;
-                streamRef.current?.getTracks().forEach((track) => track.stop());
-                streamRef.current = null;
-                testPatternSourceRef.current?.stop();
-                testPatternSourceRef.current = null;
-                try {
-                  conn.sendUnencryptedAcipPacket(
-                    PacketType.STREAM_STOP,
-                    buildStreamStartPacket(false),
-                  );
-                } catch (stopError) {
-                  console.debug(
-                    "[Client] Could not stop failed capture",
-                    stopError,
-                  );
-                }
-                setIsWebcamRunning(false);
+                stopWebcam();
                 setError(
                   `${failedLabel} encoding failed: ${String(error)} Use ?encoding=raw.`,
                 );
@@ -291,6 +328,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     return sendOneFrame;
   }, [
+    stopWebcam,
     lifecycle,
     captureFrame,
     configureUpload,
@@ -759,7 +797,23 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         video.addEventListener("loadedmetadata", finish);
         if (video.videoWidth && video.videoHeight) finish();
       });
-      await video.play();
+      try {
+        await video.play();
+      } catch (error) {
+        if (
+          typeof (window as Window & { MediaStreamTrackProcessor?: unknown })
+            .MediaStreamTrackProcessor !== "function" ||
+          !videoTrack
+        )
+          throw error;
+        // Direct track capture does not require playback of the preview element.
+        cancelMetadataRef.current?.();
+        const { width, height } = videoTrack.getSettings();
+        if (canvasRef.current && width && height) {
+          canvasRef.current.width = width;
+          canvasRef.current.height = height;
+        }
+      }
       await metadataPromise;
       if (!lifecycle.current(generation)) return;
       if (video.videoWidth && video.videoHeight && canvasRef.current) {
@@ -902,59 +956,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     setError,
     testPattern,
   ]);
-
-  const stopWebcam = useCallback(() => {
-    const wasRunning = lifecycle.current(lifecycle.generation);
-    lifecycle.stop(() => {
-      cancelMetadataRef.current?.();
-      captureReadyRef.current = false;
-      // A stopped browser capture must also stop being a server-side video
-      // source. Otherwise the server keeps compositing its last (often black)
-      // frame over the remaining participants until the connection closes.
-      if (
-        wasRunning &&
-        connectionState === ConnectionState.CONNECTED &&
-        clientRef.current
-      ) {
-        try {
-          clientRef.current.sendUnencryptedAcipPacket(
-            PacketType.STREAM_STOP,
-            buildStreamStartPacket(false),
-          );
-        } catch (error) {
-          console.debug(
-            "[Client] STREAM_STOP skipped while closing capture:",
-            error,
-          );
-        }
-      }
-      // Stop timer (connection state change will also stop it)
-      if (captureTimerRef.current) {
-        clearInterval(captureTimerRef.current);
-        captureTimerRef.current = null;
-      }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      testPatternSourceRef.current?.stop();
-      testPatternSourceRef.current = null;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-
-      // Clean up the video encoder
-      if (videoEncoderRef.current) {
-        videoEncoderRef.current.destroy();
-        videoEncoderRef.current = null;
-      }
-
-      frameQueueRef.current = [];
-      setIsWebcamRunning(false);
-    });
-  }, [clientRef, connectionState, frameQueueRef, videoRef, lifecycle]);
 
   const captureActionsRef = useRef({ startWebcam, stopWebcam });
   useLayoutEffect(() => {
