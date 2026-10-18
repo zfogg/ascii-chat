@@ -351,7 +351,11 @@ export function MirrorPage() {
                     fileMedia.kind !== "image" && (
                       <>
                         <button
-                          className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded"
+                          className={`px-3 py-2 text-black rounded ${
+                            fileMedia.ended || fileMedia.paused
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "bg-orange-500 hover:bg-orange-600"
+                          }`}
                           onClick={
                             fileMedia.ended
                               ? fileMedia.restart
