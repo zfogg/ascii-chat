@@ -310,6 +310,12 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     key_identity_announce(
         ctx->verify_server_key ? "VERIFIED SERVER PUBLIC IDENTITY" : "UNVERIFIED SERVER PUBLIC IDENTITY", &identity);
   } else if (payload_len == ctx->crypto_ctx.public_key_size) {
+    if (ctx->verify_server_key) {
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
+      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server omitted the required identity key");
+    }
     // Simple format: just ephemeral key (no identity key)
     log_debug("Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no "
               "identity key",
@@ -437,7 +443,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   bool server_has_identity = (ctx->crypto_ctx.auth_public_key_size > 0 && ctx->crypto_ctx.signature_size > 0);
   bool server_requires_auth = server_has_identity || ctx->require_client_auth;
 
-  if (server_requires_auth) {
+  if (server_requires_auth || client_has_identity_key) {
     // Send authenticated packet:
     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
     // Use Ed25519 sizes since client has Ed25519 key

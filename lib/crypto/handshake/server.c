@@ -32,7 +32,7 @@ asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_conte
 
   params.selected_kex = KEX_ALGO_X25519;
   params.selected_auth = has_identity_key ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
-  params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  params.selected_cipher = ctx->crypto_ctx.encrypt_data ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
   params.verification_enabled = ctx->require_client_auth ? 1 : 0;
   params.kex_public_key_size = ctx->crypto_ctx.public_key_size;
   params.shared_secret_size = CRYPTO_SHARED_KEY_SIZE;

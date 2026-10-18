@@ -239,3 +239,5 @@ A: Install Emscripten.
 ## License
 
 Same as ascii-chat (see root repository).
+
+Connection encryption and authentication follow the [shared C security policy](../../docs/crypto-policy.md). Keys with explicit no-encrypt authenticate without ACIP payload encryption. Passwords enable ACIP encryption by default, including over WSS.

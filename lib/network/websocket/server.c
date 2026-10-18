@@ -604,6 +604,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE:
+    if (conn_data && conn_data->transport && !acip_transport_is_connected(conn_data->transport))
+      return -1;
     websocket_send_queued_messages(wsi, conn_data);
     break;
 

@@ -1127,3 +1127,24 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(manpage-generation PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()
+
+if(TARGET ascii-chat-static)
+    add_executable(test-crypto-policy EXCLUDE_FROM_ALL standalone/crypto/policy_test.c)
+    target_link_libraries(test-crypto-policy PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-crypto-policy PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-crypto-policy)
+    set_target_properties(test-crypto-policy PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        add_test(NAME crypto-policy COMMAND test-crypto-policy)
+        if(WIN32)
+            set_property(TEST crypto-policy PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+
+        if(TARGET tests)
+            add_dependencies(tests test-crypto-policy)
+        endif()
+    endif()
+endif()

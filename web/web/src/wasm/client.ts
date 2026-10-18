@@ -125,6 +125,13 @@ interface ClientModuleExports {
 }
 
 interface ClientModule {
+  _client_resolve_crypto_policy(secure: number, encryption: number): number;
+  _client_handshake_begin(): number;
+  _client_handshake_receive(
+    type: number,
+    payload: number,
+    length: number,
+  ): number;
   HEAP16: Int16Array;
   _client_acds_handshake_begin(encrypted: number): number;
   _client_acds_handshake_receive(
@@ -1396,4 +1403,18 @@ export function isWasmReady(): boolean {
  */
 export function getClientModule(): ClientModule | null {
   return wasmModule;
+}
+
+/** Uses the shared C policy after configureClientCrypto has installed credentials. */
+export function resolveCryptoPolicy(
+  serverUrl: string,
+  encryption?: boolean,
+): number {
+  if (!wasmModule) throw new Error("WASM client is not initialized");
+  const mode = wasmModule._client_resolve_crypto_policy(
+    new URL(serverUrl).protocol === "wss:" ? 1 : 0,
+    encryption === undefined ? -1 : encryption ? 1 : 0,
+  );
+  if (mode < 0) throw new Error("Invalid crypto policy");
+  return mode;
 }

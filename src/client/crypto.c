@@ -436,12 +436,6 @@ int client_crypto_init(void) {
  * @ingroup client_crypto
  */
 asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
-  // If client has --no-encrypt, skip handshake entirely
-  if (GET_OPTION(no_encrypt)) {
-    NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
-    return ASCIICHAT_OK;
-  }
-
   // If we reach here, crypto must be initialized for encryption
   if (!lifecycle_is_initialized(&g_crypto_lc)) {
     NOTICE(DANGER, "ENCRYPTION REQUIRED",
@@ -526,6 +520,11 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
     log_error("Server mode mismatch: got 0x%02x, expected 0x%02x", server_mode, g_crypto_mode);
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
+  }
+
+  if (g_crypto_mode == ACIP_CRYPTO_NONE) {
+    STOP_TIMER("client_crypto_handshake");
+    return ASCIICHAT_OK;
   }
 
   // Step 0c: Send crypto capabilities to server
@@ -799,7 +798,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  if (!lifecycle_is_initialized(&g_crypto_lc) || GET_OPTION(no_encrypt)) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || g_crypto_mode == ACIP_CRYPTO_NONE) {
     return false;
   }
 
@@ -882,7 +881,7 @@ void crypto_client_cleanup(void) {
  * @ingroup client_crypto
  */
 bool crypto_client_should_rekey(void) {
-  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready() || !g_crypto_ctx.crypto_ctx.encrypt_data) {
     return false;
   }
   return crypto_handshake_should_rekey(&g_crypto_ctx);

@@ -49,6 +49,6 @@ asciichat_error_t acds_protocol_leave(acds_protocol_t *protocol);
 /** Handshake event steps shared by native receive loops and browser socket events.
  * Context must already be initialized and configured with any identity options.
  * Input remains caller-owned. */
-asciichat_error_t acds_handshake_begin(acip_transport_t *transport, bool encrypted);
+asciichat_error_t acds_handshake_begin(acip_transport_t *transport, uint8_t mode);
 asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *context, acip_transport_t *transport,
                                          packet_type_t type, const void *payload, size_t length);

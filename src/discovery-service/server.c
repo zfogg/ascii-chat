@@ -1164,7 +1164,7 @@ void acds_event_accept(platform_event_stream_t *stream, void *arg) {
 static asciichat_error_t acds_receive_websocket_packet(acip_transport_t *transport, void **buffer, size_t *length,
                                                        void **allocation) {
   asciichat_error_t result = acip_transport_recv(transport, buffer, length, allocation);
-  if (result != ASCIICHAT_OK || !transport->crypto_ctx)
+  if (result != ASCIICHAT_OK || !transport->crypto_ctx || !transport->crypto_ctx->encrypt_data)
     return result;
   if (*length < sizeof(packet_header_t))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated encrypted discovery packet");
@@ -1250,35 +1250,18 @@ void *acds_websocket_client_handler(void *arg) {
   log_debug("WebSocket client %s registered (synthetic_id=%d, total=%zu)", client_ip, synthetic_id,
             tcp_server_get_client_count(server->tcp_server));
 
-  // Determine if client authentication is required by checking server configuration
-  bool auth_required = server->config.require_client_identity;
-  ctx->auth_required = auth_required;
-
-  // Plain WebSocket signaling requires the ACIP crypto handshake. TLS can
-  // replace application encryption when identity authentication is not needed.
-  bool skip_handshake = ctx->is_secure && !auth_required;
-
-  if (skip_handshake) {
-    client_data->handshake_complete = true;
-    log_info("Secure WebSocket connection from %s - using TLS without custom crypto handshake", client_ip);
-  } else {
-    log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
-             auth_required ? " (client authentication required)" : "");
-
-    // Perform crypto handshake using shared server_like implementation
-    log_debug("Performing crypto handshake with WebSocket client %s", client_ip);
-    asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport);
-    if (hs_result != ASCIICHAT_OK) {
-      log_warn("Crypto handshake failed for WebSocket client %s", client_ip);
-      tcp_server_remove_client(server->tcp_server, synthetic_id);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-
-    client_data->handshake_complete = true;
-    log_debug("Crypto handshake completed for WebSocket client %s", client_ip);
-    transport->crypto_ctx = &client_data->handshake_ctx.crypto_ctx;
+  client_data->handshake_ctx.require_client_auth = server->config.require_client_identity;
+  asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport);
+  if (hs_result != ASCIICHAT_OK ||
+      (!ctx->is_secure && client_data->handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED && !GET_OPTION(no_encrypt))) {
+    log_warn("Discovery security negotiation failed for %s", client_ip);
+    tcp_server_remove_client(server->tcp_server, synthetic_id);
+    SAFE_FREE(ctx);
+    return NULL;
   }
+  client_data->handshake_complete = true;
+  if (client_data->handshake_ctx.state == CRYPTO_HANDSHAKE_READY)
+    transport->crypto_ctx = &client_data->handshake_ctx.crypto_ctx;
 
   // Main packet processing loop using transport recv
   while (atomic_load_bool(&server->tcp_server->running)) {

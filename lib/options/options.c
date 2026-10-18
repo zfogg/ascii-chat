@@ -1,4 +1,3 @@
-
 /**
  * @file options.c
  * @ingroup options
@@ -46,6 +45,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/crypto/policy.h>
 #include <ctype.h>
 #include <sys/stat.h>
 #include <ascii-chat/options/options.h>
@@ -1464,10 +1464,8 @@ static void load_options_config(options_t *opts, asciichat_mode_t detected_mode,
   (void)config_publish_result; // Suppress unused variable warning
   // Load config files - now uses detected_mode directly for bitmask validation
   // Save flip_x and flip_y as they should not be reset by config files
-  // Also save encryption settings - they should only be controlled via CLI, not config file
   bool saved_flip_x_from_config = opts->flip_x;
   bool saved_flip_y_from_config = opts->flip_y;
-  bool saved_encrypt_enabled = opts->encrypt_enabled;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
   *fps_set_by_config = opts->fps != OPT_FPS_DEFAULT;
@@ -1477,11 +1475,6 @@ static void load_options_config(options_t *opts, asciichat_mode_t detected_mode,
   // Restore flip_x and flip_y - config shouldn't override the defaults
   opts->flip_x = saved_flip_x_from_config;
   opts->flip_y = saved_flip_y_from_config;
-
-  // Restore encrypt_enabled - it should only be set via CLI, not config file
-  // The config can set key/password which auto-enables encryption, but the encrypt_enabled
-  // flag itself should stay at its default unless the user explicitly passes --encrypt
-  opts->encrypt_enabled = saved_encrypt_enabled;
 }
 
 static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode,
@@ -1610,7 +1603,20 @@ static asciichat_error_t validate_custom_palette(options_t *opts) {
 }
 
 static asciichat_error_t validate_encryption_key(options_t *opts) {
-  // Auto-enable encryption if key was provided
+  crypto_policy_t policy = {
+      .encrypt = opts->encrypt_enabled,
+      .no_encrypt = opts->no_encrypt,
+      .no_auth = opts->no_auth,
+      .has_password = opts->password[0] != '\0',
+      .has_identity = opts->encrypt_key[0] != '\0' || opts->num_identity_keys > 0,
+      .has_verification_key = opts->server_key[0] != '\0' || opts->client_keys[0] != '\0',
+  };
+  uint8_t mode;
+  asciichat_error_t result = crypto_policy_resolve(&policy, &mode);
+  if (result != ASCIICHAT_OK)
+    return result;
+
+  // Validate identity paths without changing the encryption policy.
   if (opts->encrypt_key[0] != '\0') {
     // A key may be a local file, a remote reference, or inline key material.
     // Only validate filesystem paths when the value is actually path-like;
@@ -1629,8 +1635,7 @@ static asciichat_error_t validate_encryption_key(options_t *opts) {
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Key path is not a regular file: %s", opts->encrypt_key);
       }
     }
-    opts->encrypt_enabled = 1;
-    log_debug("Auto-enabled encryption because --key was provided");
+    // Identity keys select authentication independently of payload encryption.
   }
   return ASCIICHAT_OK;
 }

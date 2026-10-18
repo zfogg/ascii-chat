@@ -155,12 +155,6 @@ export function ClientPage({
     "crypto",
     false,
   );
-  let signalingUsesWss = false;
-  try {
-    signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const discoveryCryptoOptions = useMemo<ClientCryptoOptions>(() => {
     const options: ClientCryptoOptions = {};
     if (cryptoSettings.authenticationEnabled) {
@@ -175,13 +169,8 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
-  const discoveryHasAuthMaterial =
-    !!discoveryCryptoOptions.password ||
-    !!discoveryCryptoOptions.identityPrivateKeyText ||
-    !!discoveryCryptoOptions.expectedServerPublicKeyText;
   const discoveryApplicationEncryption =
-    (cryptoSettings.customEncryption ?? !signalingUsesWss) ||
-    discoveryHasAuthMaterial;
+    cryptoSettings.customEncryption ?? undefined;
   const [stunUrls, setStunUrls] = useUrlState(
     "stunUrls",
     "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
@@ -256,7 +245,9 @@ export function ClientPage({
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
-            applicationEncryption: discoveryApplicationEncryption,
+            ...(discoveryApplicationEncryption === undefined
+              ? {}
+              : { applicationEncryption: discoveryApplicationEncryption }),
             cryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
@@ -307,13 +298,6 @@ export function ClientPage({
     "serverUrl",
     params.get("testServerUrl") || "ws://localhost:27226",
   );
-  let usesWss = false;
-  try {
-    usesWss =
-      new URL(discoveryMode ? signalingUrl : serverUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
     ? "discovery-service"
     : "client-server";
@@ -331,12 +315,7 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings, connectionCryptoTarget]);
-  const connectionHasAuthMaterial =
-    !!connectionCryptoOptions.password ||
-    !!connectionCryptoOptions.identityPrivateKeyText ||
-    !!connectionCryptoOptions.expectedServerPublicKeyText;
-  const applicationEncryption =
-    (cryptoSettings.customEncryption ?? !usesWss) || connectionHasAuthMaterial;
+  const applicationEncryption = cryptoSettings.customEncryption ?? undefined;
   const [showSettings, setShowSettings] = useUrlState("settings", false);
   const connectionSettingsId = useId();
   const [connectionSettingsOpen, setConnectionSettingsOpen] = useUrlState(
@@ -411,7 +390,7 @@ export function ClientPage({
     handleDisconnect,
   } = useClientConnection({
     autoConnect: false,
-    applicationEncryption,
+    ...(applicationEncryption === undefined ? {} : { applicationEncryption }),
     cryptoOptions: connectionCryptoOptions,
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
@@ -1476,7 +1455,6 @@ export function ClientPage({
       <SecuritySetupModal
         open={securityModalOpen}
         settings={cryptoSettings}
-        defaultEncryptionEnabled={!usesWss}
         onClose={() => {
           writeCryptoUrl(cryptoSettings);
           setSecurityModalOpen(false);

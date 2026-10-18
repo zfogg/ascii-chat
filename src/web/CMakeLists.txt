@@ -213,6 +213,7 @@ set(LIB_SRC_COMMON
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
+    ${LIB_ROOT}/crypto/policy.c
 
     # Video processing (needed by logging and config systems)
     ${LIB_ROOT}/video/ascii/ascii.c
@@ -572,6 +573,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
+    _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
     _client_acds_handshake_begin _client_acds_handshake_receive
     _client_configure_crypto_options
     _client_parse_ssh_private_key

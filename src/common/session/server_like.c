@@ -267,7 +267,19 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected PROTOCOL_VERSION packet");
     }
 
+    if (pkt_len != sizeof(protocol_version_packet_t)) {
+      buffer_release(alloc_buffer);
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
+    }
+    uint8_t mode = ((protocol_version_packet_t *)pkt_data)->supports_encryption;
     buffer_release(alloc_buffer);
+    if (mode > ACIP_CRYPTO_FULL || (ctx->require_client_auth && !ACIP_CRYPTO_HAS_AUTH(mode)))
+      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Invalid or unauthenticated security policy");
+    if (mode == ACIP_CRYPTO_NONE) {
+      ctx->state = CRYPTO_HANDSHAKE_DISABLED;
+      return ASCIICHAT_OK;
+    }
+    ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
     log_debug("Received PROTOCOL_VERSION from client");
   }
 

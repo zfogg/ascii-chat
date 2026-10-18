@@ -391,10 +391,10 @@ asciichat_error_t acds_protocol_leave(acds_protocol_t *p) {
   p->state = ACDS_ENDED;
   return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LEAVE, &req, sizeof(req));
 }
-asciichat_error_t acds_handshake_begin(acip_transport_t *transport, bool encrypted) {
+asciichat_error_t acds_handshake_begin(acip_transport_t *transport, uint8_t mode) {
   protocol_version_packet_t version = {0};
   version.protocol_version = HOST_TO_NET_U16(1);
-  version.supports_encryption = encrypted;
+  version.supports_encryption = mode;
   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
 }
 asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_transport_t *transport,
