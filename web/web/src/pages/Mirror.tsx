@@ -284,7 +284,7 @@ export function MirrorPage() {
               onStopWebcam: stopPlayback,
               onUploadClick: () => setShowUploadModal(true),
               videoRef: undefined,
-              status: fileMedia.loading
+              status: fileMedia.status
                 ? `${fileMedia.status} ${fileMedia.fileName}`
                 : fileMedia.fileName,
               statusControls: (
@@ -355,7 +355,7 @@ export function MirrorPage() {
               uiLoading={!isWebcamRunning}
               uiMessage={
                 error ||
-                (fileMedia.loading
+                (fileMedia.status
                   ? `${fileMedia.status} ${fileMedia.fileName}`
                   : "Choose a camera or media file to begin")
               }

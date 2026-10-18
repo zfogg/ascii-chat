@@ -10,6 +10,7 @@ import { MediaSourceType } from "./useClientLike";
 import type { MediaSource } from "./useClientLike";
 import { createGifPlayer } from "../utils/gifPlayer";
 import { playMedia } from "../utils/playMedia";
+import type { StreamPlayback } from "../utils/streamMedia";
 
 interface Options {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -39,6 +40,7 @@ export function useMirrorFile({
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const owner = useRef<AbortController | null>(null);
+  const streaming = useRef<StreamPlayback | null>(null);
   const release = useRef<(() => void) | null>(null);
   const picture = useRef<((elapsed: number) => CanvasImageSource) | null>(null);
   const clock = useRef({ start: 0, elapsed: 0, paused: false });
@@ -47,6 +49,7 @@ export function useMirrorFile({
   const dispose = useCallback(() => {
     owner.current?.abort();
     owner.current = null;
+    streaming.current = null;
     release.current?.();
     release.current = null;
     picture.current = null;
@@ -60,6 +63,7 @@ export function useMirrorFile({
     setLoading(false);
     setKind(null);
     setFileName("");
+    setStatus("");
   }, [dispose, cancelStart, stopWebcam]);
 
   const start = useCallback(
@@ -111,6 +115,7 @@ export function useMirrorFile({
           picture.current = () => image;
         } else {
           video.srcObject = null;
+          video.autoplay = false;
           video.loop = true;
           video.muted = false;
           video.volume = 1;
@@ -121,34 +126,72 @@ export function useMirrorFile({
           const allowNative = /\.(mp4|m4v|webm)$/i.test(file.name);
           // Probe audio even when the browser accepts the video track. A
           // successful play() does not guarantee that audio was decoded.
-          const prepared = await transcodeMedia(
+          const { streamMedia } = await import("../utils/streamMedia");
+          if (signal.aborted) return;
+          const progressive = await streamMedia(
             file,
+            video,
             signal,
             setStatus,
             allowNative,
+            setPaused,
+            (error) => {
+              if (!signal.aborted) {
+                stop();
+                setError(String(error));
+              }
+            },
           );
           if (signal.aborted) return;
-          if (prepared !== file) {
-            URL.revokeObjectURL(url);
-            url = URL.createObjectURL(prepared);
-            video.src = url;
-          }
-          try {
-            await playMedia(video, signal);
-          } catch (error) {
+          if (progressive && !(progressive instanceof Blob)) {
+            streaming.current = progressive;
+          } else {
+            const prepared =
+              progressive ??
+              (await transcodeMedia(file, signal, setStatus, allowNative));
             if (signal.aborted) return;
-            if (
-              prepared !== file ||
-              !(error instanceof DOMException) ||
-              error.name !== "NotSupportedError"
-            )
-              throw error;
-            const converted = await transcodeMedia(file, signal, setStatus);
-            if (signal.aborted) return;
-            URL.revokeObjectURL(url);
-            url = URL.createObjectURL(converted);
-            video.src = url;
-            await playMedia(video, signal);
+            if (prepared !== file) {
+              URL.revokeObjectURL(url);
+              url = URL.createObjectURL(prepared);
+              video.src = url;
+            }
+            try {
+              await playMedia(video, signal);
+            } catch (error) {
+              if (signal.aborted) return;
+              if (
+                prepared !== file ||
+                !(error instanceof DOMException) ||
+                error.name !== "NotSupportedError"
+              )
+                throw error;
+              const fallback = await streamMedia(
+                file,
+                video,
+                signal,
+                setStatus,
+                false,
+                setPaused,
+                (error) => {
+                  if (!signal.aborted) {
+                    stop();
+                    setError(String(error));
+                  }
+                },
+              );
+              if (signal.aborted) return;
+              if (fallback && !(fallback instanceof Blob)) {
+                streaming.current = fallback;
+              } else {
+                const converted = await transcodeMedia(file, signal, setStatus);
+                if (signal.aborted) return;
+                URL.revokeObjectURL(url);
+                url = URL.createObjectURL(converted);
+                video.src = url;
+                await playMedia(video, signal);
+              }
+            }
+            if (!streaming.current) setStatus("");
           }
           if (signal.aborted) return;
           width = video.videoWidth;
@@ -207,6 +250,10 @@ export function useMirrorFile({
   }, [canvasRef, capture]);
 
   const togglePause = useCallback(() => {
+    if (streaming.current) {
+      streaming.current.togglePause();
+      return;
+    }
     if (picture.current) {
       const timing = clock.current;
       if (!timing.paused) timing.elapsed += performance.now() - timing.start;
@@ -223,6 +270,10 @@ export function useMirrorFile({
   }, [videoRef, setError]);
 
   const restart = useCallback(() => {
+    if (streaming.current) {
+      streaming.current.restart();
+      return;
+    }
     clock.current = { start: performance.now(), elapsed: 0, paused: false };
     setPaused(false);
     if (!picture.current && videoRef.current) {
@@ -238,7 +289,7 @@ export function useMirrorFile({
     if (!video) return;
     const sync = () => {
       if (picture.current) return;
-      setPaused(video.paused);
+      if (!streaming.current) setPaused(video.paused);
       setMuted(video.muted);
       setVolume(video.volume);
     };

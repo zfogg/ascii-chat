@@ -28,6 +28,16 @@ Video also has mute and volume controls. Stop, replacement, and navigation
 release the media and cancel pending conversion. Files are not restored after
 refresh; select the file again.
 
+Video conversion streams fragmented MP4 into the browser's media buffer. Playback
+starts once a conservative reserve is ready (at least three seconds, or the
+whole clip for shorter media). The reserve grows when measured conversion is
+slower than realtime. If conversion later slows, video and audio pause together
+and resume after refilling. The UI shows seconds ready while conversion continues.
+This cannot guarantee uninterrupted playback on every device or scene complexity.
+The completed output is retained for looping/restart, capped at 128 MB; browsers
+without compatible MediaSource support or files with unknown duration use the
+complete-file conversion path.
+
 MP4 and WebM audio tracks are inspected locally before playback. Known supported
 audio codecs play directly; unknown or unsupported audio is converted to AAC.
 This inspection also loads the converter and has the same 256 MB input limit. AVI, MKV, MOV,
