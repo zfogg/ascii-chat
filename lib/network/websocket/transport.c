@@ -29,6 +29,7 @@
  */
 
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/util/endian.h>
@@ -552,65 +553,32 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain, const void *data, size_t len,
                                                    const void **out_data, size_t *out_len,
                                                    uint8_t **out_encrypted_packet, size_t *out_encrypted_size) {
-  // Check if encryption is needed (matching tcp_send logic)
-  const void *send_data = data;
-  size_t send_len = len;
-  uint8_t *encrypted_packet = NULL;
-  size_t encrypted_packet_size = 0;
-
-  if (len >= sizeof(packet_header_t) && transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
-      crypto_is_ready(transport->crypto_ctx)) {
-    const packet_header_t *header = (const packet_header_t *)data;
-    uint16_t packet_type = NET_TO_HOST_U16(header->type);
-
-    if (!packet_is_handshake_type((packet_type_t)packet_type)) {
-      // Encrypt the entire packet (header + payload)
-      size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-      uint8_t *ciphertext = buffer_alloc(domain, ciphertext_size);
-      if (!ciphertext) {
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer for WebSocket");
-      }
-
-      size_t ciphertext_len;
-      crypto_result_t result =
-          crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
-      if (result != CRYPTO_OK) {
-        buffer_release(ciphertext);
-        return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
-      }
-
-      // Build PACKET_TYPE_ENCRYPTED wrapper: header + ciphertext
-      size_t total_encrypted_size = sizeof(packet_header_t) + ciphertext_len;
-      encrypted_packet = buffer_alloc(domain, total_encrypted_size);
-      if (!encrypted_packet) {
-        buffer_release(ciphertext);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate encrypted packet buffer");
-      }
-
-      packet_header_t encrypted_header;
-      encrypted_header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
-      encrypted_header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
-      encrypted_header.length = HOST_TO_NET_U32((uint32_t)ciphertext_len);
-      encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));
-      encrypted_header.client_id = 0;
-
-      memcpy(encrypted_packet, &encrypted_header, sizeof(encrypted_header));
-      memcpy(encrypted_packet + sizeof(encrypted_header), ciphertext, ciphertext_len);
-      buffer_release(ciphertext);
-
-      send_data = encrypted_packet;
-      send_len = total_encrypted_size;
-      encrypted_packet_size = total_encrypted_size;
-
-      log_dev_every(1000000, "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)",
-                    packet_type, send_len);
-    }
+  *out_data = data;
+  *out_len = len;
+  *out_encrypted_packet = NULL;
+  *out_encrypted_size = 0;
+  socket_buffer_t slice = {data, len};
+  acip_packet_plan_t plan;
+  asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, &slice, 1, &plan);
+  if (result != ASCIICHAT_OK || !plan.encrypt)
+    return result;
+  size_t capacity = sizeof(packet_header_t) + plan.ciphertext_capacity;
+  uint8_t *packet = buffer_alloc(domain, capacity);
+  if (!packet)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate WebSocket ciphertext");
+  packet_header_t header;
+  size_t length = 0;
+  result = acip_packet_encrypt(transport->crypto_ctx, &plan, domain, packet + sizeof(header), plan.ciphertext_capacity,
+                               &header, &length);
+  if (result != ASCIICHAT_OK) {
+    buffer_release(packet);
+    return result;
   }
-
-  *out_data = send_data;
-  *out_len = send_len;
-  *out_encrypted_packet = encrypted_packet;
-  *out_encrypted_size = encrypted_packet_size;
+  memcpy(packet, &header, sizeof(header));
+  *out_data = packet;
+  *out_len = sizeof(header) + length;
+  *out_encrypted_packet = packet;
+  *out_encrypted_size = *out_len;
   return ASCIICHAT_OK;
 }
 

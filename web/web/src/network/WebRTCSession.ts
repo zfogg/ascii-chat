@@ -10,6 +10,7 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
+  PeerCryptoSession,
   ConnectionState,
   PacketType,
   parsePacket,
@@ -24,6 +25,8 @@ export interface DiscoveryOptions {
   sessionName: string;
   password: string;
   signalingUrl: string;
+  signalingApplicationEncryption?: boolean;
+  signalingCryptoOptions?: ClientCryptoOptions;
   applicationEncryption?: boolean;
   cryptoOptions?: ClientCryptoOptions;
   stunServers: string[];
@@ -75,6 +78,7 @@ export class WebRTCSession implements ClientSession {
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
+  private peerCrypto: PeerCryptoSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -113,11 +117,11 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      ...(options.applicationEncryption === undefined
+      ...(options.signalingApplicationEncryption === undefined
         ? {}
-        : { applicationEncryption: options.applicationEncryption }),
-      ...(options.cryptoOptions
-        ? { cryptoOptions: options.cryptoOptions }
+        : { applicationEncryption: options.signalingApplicationEncryption }),
+      ...(options.signalingCryptoOptions
+        ? { cryptoOptions: options.signalingCryptoOptions }
         : {}),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
@@ -271,6 +275,19 @@ export class WebRTCSession implements ClientSession {
         negotiated: true,
         id: 0,
       });
+      this.peerCrypto = await PeerCryptoSession.create(
+        { ...this.options.cryptoOptions, password: this.options.cryptoOptions?.password || this.options.password },
+        this.options.applicationEncryption, false,
+        (packet) => {
+          if (!this.bridge) throw new Error("WebRTC bridge is not ready");
+          this.bridge.send(packet);
+        },
+      );
+      if (this.closed) {
+        this.peerCrypto.close();
+        this.peerCrypto = null;
+        return;
+      }
       channel.onopen = () => {
         if (this.closed) {
           channel.close();
@@ -281,11 +298,10 @@ export class WebRTCSession implements ClientSession {
           channel,
           (bytes) => {
             try {
+              const decoded = this.peerCrypto!.receive(bytes);
+              if (!decoded) return;
+              bytes = decoded;
               const packet = parsePacket(bytes);
-              if (packet.type === PacketType.ENCRYPTED)
-                throw new Error(
-                  "Unexpected custom encryption on WebRTC transport",
-                );
               if (packet.type === PacketType.PING)
                 this.sendPacket(PacketType.PONG, bytes.slice(22));
               else {
@@ -323,6 +339,11 @@ export class WebRTCSession implements ClientSession {
           (error) => this.fail(error),
           this.peer?.sctp?.maxMessageSize,
         );
+        try {
+          this.peerCrypto!.flush();
+        } catch (error) {
+          this.fail(error);
+        }
       };
       channel.onclose = () => {
         if (!this.closed) this.fail(new Error("WebRTC DataChannel closed"));
@@ -412,11 +433,14 @@ export class WebRTCSession implements ClientSession {
   sendPacket(type: number, payload: Uint8Array): void {
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
-    // DTLS provides encryption; ACIP media packets carry no custom encryption wrapper.
-    this.bridge.send(
-      serializePacket(type, payload, 0),
-      type === PacketType.IMAGE_FRAME,
-    );
+    // Drop replaceable media before encryption advances the peer's nonce.
+    if (type === PacketType.IMAGE_FRAME && this.bridge.getBufferedAmount() > 256 * 1024) return;
+    try {
+      this.peerCrypto!.sendPacket(serializePacket(type, payload, 0));
+    } catch (error) {
+      this.fail(error);
+      throw error;
+    }
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
     this.sendPacket(type, payload);
@@ -451,6 +475,8 @@ export class WebRTCSession implements ClientSession {
     this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;

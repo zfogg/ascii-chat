@@ -252,7 +252,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 #endif
 
-    if (!skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
+    if (!ctx->addressless_transport && !skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
       uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE];
       bool has_stored_key = false;
       asciichat_error_t known_host_result =
@@ -331,29 +331,30 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
     log_debug("Received ephemeral key (simple format)");
 
-    // SECURITY: For servers without identity keys, we implement a different security model:
-    // 1. Verify IP address matches known_hosts entry
-    // 2. Always require user confirmation (no silent connections)
-    // 3. Store server fingerprint for future verification
+    if (!ctx->addressless_transport) {
+      // SECURITY: For servers without identity keys, we implement a different security model:
+      // 1. Verify IP address matches known_hosts entry
+      // 2. Always require user confirmation (no silent connections)
+      // 3. Store server fingerprint for future verification
 
-    if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
-      SAFE_FREE(server_ephemeral_key);
-      SAFE_FREE(server_identity_key);
-      SAFE_FREE(server_signature);
-      return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
-    }
+      if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
+        return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
+      }
 
-    // Check if this server was previously connected to (IP verification)
-    bool skip_known_hosts = false;
-    asciichat_error_t known_host_result = ASCIICHAT_OK;
-    const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
-    if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
-      log_warn("Skipping known_hosts checking. This is a security vulnerability.");
-      skip_known_hosts = true;
-    }
+      // Check if this server was previously connected to (IP verification)
+      bool skip_known_hosts = false;
+      asciichat_error_t known_host_result = ASCIICHAT_OK;
+      const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+      if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
+        log_warn("Skipping known_hosts checking. This is a security vulnerability.");
+        skip_known_hosts = true;
+      }
 #ifndef NDEBUG
-    // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
-    else if (platform_getenv("CLAUDECODE")) {
+      // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+      else if (platform_getenv("CLAUDECODE")) {
       log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build).");
       skip_known_hosts = true;
     }
@@ -409,6 +410,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       SAFE_FREE(server_identity_key);
       SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
+    }
     }
   } else {
     SAFE_FREE(server_ephemeral_key);
