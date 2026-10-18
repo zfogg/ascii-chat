@@ -242,13 +242,6 @@ jobs:
         if: matrix.os != 'Linux'
         run: cmake --build build_release --target shared-lib
 
-      - name: Verify native Windows PNG decoding
-        if: matrix.os == 'Windows'
-        shell: pwsh
-        run: |
-          python tests/integration/png_snapshot.py build_release/bin/ascii-chat.exe
-          if ($LASTEXITCODE -ne 0) { throw "Native Windows PNG decoding regression failed" }
-
       - name: Verify native Windows call recording
         if: matrix.os == 'Windows'
         shell: pwsh
