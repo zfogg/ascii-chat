@@ -357,7 +357,7 @@ export default function MirrorDemoWidget({
 
       if (videoRef.current) {
         addDebugLog("Setting up video element");
-        videoRef.current.src = "/assets/demo-video-sun-models.webm";
+        videoRef.current.src = "/assets/demo-video-white-knuckles.webm";
         // Don't set crossOrigin for same-domain resources
         // (production server doesn't provide CORS headers)
         videoRef.current.loop = true;
@@ -886,12 +886,12 @@ export default function MirrorDemoWidget({
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
         <a
-          href="https://www.youtube.com/watch?v=RtCaoKY769E"
+          href="https://www.youtube.com/watch?v=nHlJODYBLKs"
           className="text-gray-500 hover:text-gray-400 underline"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Sun Models (ODESZA VIP Remix) - Live from Lollapalooza 2023
+          OK Go — White Knuckles
         </a>
       </p>
     </div>
