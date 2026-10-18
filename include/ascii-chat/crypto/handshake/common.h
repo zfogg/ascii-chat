@@ -96,6 +96,7 @@ typedef struct crypto_handshake_context_t {
   bool addressless_transport;                      /**< Peer transports use explicit identities, not IP:port TOFU. */
   bool verify_server_key;                          /**< Client: verify server key against known_hosts */
   bool require_client_auth;                        /**< Server: require client authentication (whitelist) */
+  bool allow_unlisted_client_identity; ///< Require proof of key possession without whitelist membership (discovery)
   bool server_uses_client_auth;                    /**< Client: whether server requested client authentication */
   char client_keys_path[PLATFORM_MAX_PATH_LENGTH]; /**< Server: client keys file path (whitelist) */
 

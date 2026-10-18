@@ -90,12 +90,20 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
            session->host_ctx);
 
-  // Load or generate identity key
+  // Explicit identity credentials apply to signaling as well as media authentication.
+  const options_t *opts = options_get();
+  bool explicit_identity = opts && opts->encrypt_key[0];
   char identity_path[256];
-  asciichat_error_t id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
+  asciichat_error_t id_result;
+  if (explicit_identity) {
+    SAFE_STRNCPY(identity_path, opts->encrypt_key, sizeof(identity_path));
+    id_result = ASCIICHAT_OK;
+  } else {
+    id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
+  }
   if (id_result == ASCIICHAT_OK) {
     id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
-    if (id_result != ASCIICHAT_OK) {
+    if (id_result != ASCIICHAT_OK && !explicit_identity) {
       // File doesn't exist or is corrupted - generate new key
       log_info("Identity key not found, generating new key");
       id_result = acds_identity_generate(session->identity_pubkey, session->identity_seckey);
@@ -106,6 +114,10 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     }
   }
 
+  if (id_result != ASCIICHAT_OK && explicit_identity) {
+    SAFE_FREE(session);
+    return NULL;
+  }
   if (id_result != ASCIICHAT_OK) {
     NOTICE(DANGER, "DISCOVERY IDENTITY UNAVAILABLE", "Failed to load/generate identity key, using zero key");
     memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
@@ -117,7 +129,6 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   // Load multiple identity keys from options (multi-key protocol support)
-  const options_t *opts = options_get();
   if (opts && opts->num_identity_keys > 0) {
     // Load all identity keys from options
     for (size_t i = 0; i < opts->num_identity_keys && i < MAX_IDENTITY_KEYS; i++) {
@@ -1315,6 +1326,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   handshake_ctx->client_private_key.type = handshake_ctx->client_public_key.type;
   memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, 32);
   memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, 64);
+  memcpy(handshake_ctx->client_private_key.public_key, session->identity_pubkey, sizeof(session->identity_pubkey));
 
   crypto_policy_t signaling_policy = {
       .transport_secure = strncmp(session->acds_url, "wss://", 6) == 0,

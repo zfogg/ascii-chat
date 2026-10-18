@@ -61,7 +61,10 @@
             );
             connection.onStateChange((state) => {
               states.push(state);
-              if (state === ConnectionState.ERROR || state === ConnectionState.DISCONNECTED) {
+              if (
+                state === ConnectionState.ERROR ||
+                state === ConnectionState.DISCONNECTED
+              ) {
                 clearTimeout(timeout);
                 reject(new Error("Security handshake rejected"));
               }
@@ -72,13 +75,19 @@
                     buildCapabilitiesPacket(40, 12),
                   );
                 if (options.discoveryHandshake) {
-                  discovery = new DiscoveryProtocol((type, payload) => connection.sendPacket(type, payload));
+                  discovery = new DiscoveryProtocol((type, payload) =>
+                    connection.sendPacket(type, payload),
+                  );
                   discovery.enter(false, "absent-test-session", "");
-                } else connection.sendPacket(PacketType.PING, new Uint8Array(8));
+                } else
+                  connection.sendPacket(PacketType.PING, new Uint8Array(8));
               }
             });
             connection.onPacketReceived((packet) => {
-              if (packet.type === PacketType.PONG || (options.discoveryHandshake && packet.type === AcdsType.INFO)) {
+              if (
+                packet.type === PacketType.PONG ||
+                (options.discoveryHandshake && packet.type === AcdsType.INFO)
+              ) {
                 clearTimeout(timeout);
                 resolve();
               }

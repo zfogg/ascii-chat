@@ -14,8 +14,9 @@ print(f"Test logs: {directory}", flush=True)
 identity = directory / "acds-key"
 for key in (identity, directory / "host-key", directory / "client-key"):
     subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
+require_identity = "--require-identity" in sys.argv[2:]
 port = free_port()
-with running(binary, directory, "acds", "discovery-service", ["--key", str(identity), "--port", str(port), "--websocket-port", str(free_port()), "--database", str(directory / "acds.db"), "--status-screen=false"]) as acds:
+with running(binary, directory, "acds", "discovery-service", ["--key", str(identity), "--port", str(port), "--websocket-port", str(free_port()), "--database", str(directory / "acds.db"), "--status-screen=false"] + (["--require-client-identity", "--require-server-identity"] if require_identity else [])) as acds:
     acds.wait_for("Server accepting connections", 40)
     discovery = ["--discovery-service", "127.0.0.1", "--discovery-service-port", str(port), "--stun-servers", "stun:127.0.0.1:9", "--turn-servers", "turn:127.0.0.1:9", "--turn-username", "test", "--turn-credential", "test"]
     password = ["--password", "peer-test-password"]
@@ -30,6 +31,8 @@ with running(binary, directory, "acds", "discovery-service", ["--key", str(ident
         ("keys-encrypted", host_keys + ["--encrypt"], client_keys + ["--encrypt"]),
     ]
     for name, host_extra, client_extra in cases:
+        if require_identity and not name.startswith("keys-"):
+            continue
         with running(binary, directory, name + "-host", "server", server_options(free_port(), free_port()) + ["--discovery", "--webrtc", "--discovery-expose-ip"] + discovery + host_extra) as host:
             host.wait_for("Session created:", 40)
             session = re.search(r"Session created: ([a-z0-9-]+)", host.text()).group(1)
@@ -43,4 +46,6 @@ with running(binary, directory, "acds", "discovery-service", ["--key", str(ident
                     time.sleep(0.1)
                 else:
                     raise AssertionError(f"No rendered WebRTC media: {client.text()[-6000:]}")
+                assert "actual_type=6005" in client.text(), "Discovery JOIN response was not decrypted"
+                assert "actual_type=6001" in host.text(), "Host discovery CREATE response was not decrypted"
                 print(f"PASS WebRTC CLI {name}: negotiated media, receive/render FPS {rates[-1]}", flush=True)

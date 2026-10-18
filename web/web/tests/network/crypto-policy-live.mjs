@@ -217,7 +217,9 @@ try {
           ]
         : []),
       ...(item.password ? ["--password", item.password] : []),
-      ...(item.discovery && !item.keys ? ["--key", join(directory, "server")] : []),
+      ...(item.discovery && !item.keys
+        ? ["--key", join(directory, "server")]
+        : []),
       ...(item.secondKey ? ["--key", join(directory, "wrong")] : []),
       ...(item.keys ? (item.discovery ? keys.slice(0, 2) : keys) : []),
       ...(item.discovery

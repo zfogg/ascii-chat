@@ -49,6 +49,7 @@ export class ClientConnection {
     null;
   private transportState = ConnectionState.DISCONNECTED;
   private cryptoMode = 0;
+  private discoveryAccepted = false;
   private get usesApplicationEncryption(): boolean {
     return (this.cryptoMode & 1) !== 0;
   }
@@ -184,6 +185,7 @@ export class ClientConnection {
   }
 
   private async handleSocketOpen(): Promise<void> {
+    this.discoveryAccepted = false;
     const isReconnection = this.socketHasEverOpened;
     this.socketHasEverOpened = true;
 
@@ -311,6 +313,15 @@ export class ClientConnection {
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
 
+      // TLS-only discovery starts application traffic without a version ACK.
+      // A policy rejection must stop retries before its first application reply.
+      if (
+        this.options.discoveryHandshake &&
+        !this.discoveryAccepted &&
+        parsed.type === PacketType.ERROR_MESSAGE
+      )
+        throw new Error("Discovery security policy rejected");
+
       if (this.transportState !== ConnectionState.CONNECTED) {
         const module = getClientModule()!;
         const ptr = module._malloc(payload.length || 1);
@@ -331,6 +342,7 @@ export class ClientConnection {
           if (result) throw new Error("Security handshake rejected");
           const next = getConnectionState();
           if (next === ConnectionState.CONNECTED) {
+            this.discoveryAccepted = true;
             this.wasEverConnected = true;
             this.transportState = ConnectionState.CONNECTED;
           }
@@ -340,6 +352,8 @@ export class ClientConnection {
         }
         return;
       }
+
+      this.discoveryAccepted = true;
 
       // For non-handshake packets during handshake, log a warning
       const state = this.getState();

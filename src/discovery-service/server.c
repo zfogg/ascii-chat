@@ -1085,6 +1085,7 @@ static void acds_event_work(void *arg) {
       return;
     connection->initialized = true;
     client->handshake_ctx.require_client_auth = connection->server->config.require_client_identity;
+    client->handshake_ctx.allow_unlisted_client_identity = connection->server->config.require_client_identity;
     client->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
     client->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
     memcpy(client->handshake_ctx.server_public_key.key, connection->server->identity_public,
@@ -1288,6 +1289,7 @@ void *acds_websocket_client_handler(void *arg) {
             tcp_server_get_client_count(server->tcp_server));
 
   client_data->handshake_ctx.require_client_auth = server->config.require_client_identity;
+  client_data->handshake_ctx.allow_unlisted_client_identity = server->config.require_client_identity;
   asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport, ctx->is_secure);
   if (hs_result != ASCIICHAT_OK) {
     log_warn("Discovery security negotiation failed for %s", client_ip);

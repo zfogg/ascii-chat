@@ -19,7 +19,10 @@ FULL (3). Authentication and payload encryption are independent.
 An explicit encryption setting takes precedence over transport/password
 defaults. Supplying both encrypt and no-encrypt is an error. Supplying
 authentication material with no-auth is an error. Keys alone do not force a
-second encryption layer over TLS or DTLS.
+second encryption layer over TLS or DTLS. Config files, environment variables,
+and CLI flags retain that precedence: an enabled higher-priority encryption
+choice overrides the opposite lower-priority choice. Contradictory choices in
+the same layer are rejected.
 
 For example, both peers can authenticate identities without ACIP payload
 encryption:
@@ -52,6 +55,13 @@ Media is admitted only after peer negotiation succeeds. Discovery signaling has
 its own credentials and security context. Both endpoints must support the new
 peer negotiation; older WebRTC peers must upgrade.
 
+Discovery servers validate the proposed mode with `crypto_policy_check_mode()`
+before key exchange, on both TCP and WebSocket listeners. Native discovery
+clients resolve signaling mode independently of media-peer settings, advertise
+loaded identities, and retain the signaling crypto context until disconnect.
+Encrypted signaling includes keepalive packets. The native ACDS connector also
+accepts a `security_policy` in its configuration for explicit signaling overrides.
+
 The CLI rejects `--encrypt --no-encrypt` and `--no-auth` with any authentication
 material. The shared policy also rejects these combinations for non-CLI callers.
 `--key --server-key` remains valid for mutual authentication. Explicit plaintext
@@ -77,6 +87,8 @@ vp exec node tests/network/crypto-policy-live.mjs /absolute/path/to/ascii-chat h
 
 The live browser test records outgoing ACIP packet types, requires a PONG from
 the native server, and checks wrong-pin/password rejection before CONNECTED.
+Discovery cases use session-lookup round trips and verify server encryption and
+identity requirements. Multi-key cases pin the second configured server identity.
 
 WebRTC validation (real native and browser DataChannels):
 
