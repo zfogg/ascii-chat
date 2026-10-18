@@ -15,6 +15,7 @@ import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
 const backend = vi.hoisted(() => ({
   ready: false,
   file: false,
+  loading: false,
   cameraReady: null as Promise<void> | null,
   suspended: vi.fn(),
   start: vi.fn(),
@@ -56,12 +57,14 @@ vi.mock("../../src/components", () => ({
       onStartWebcam: () => void;
       onStopWebcam: () => void;
       statusControls: React.ReactNode;
+      fps: number;
     };
   }) => (
     <>
       <button onClick={controlBar.onStartWebcam}>Start</button>
       <button onClick={controlBar.onStopWebcam}>Stop</button>
       {controlBar.statusControls}
+      <span data-testid="fps">{controlBar.fps}</span>
     </>
   ),
 }));
@@ -96,6 +99,7 @@ vi.mock("../../src/hooks", () => ({
       },
       wasmInitialized: backend.ready,
       setFps: vi.fn(),
+      fps: 66,
       stopWebcam: useCallback(() => {
         backend.stop();
         setRunning(false);
@@ -122,6 +126,7 @@ vi.mock("../../src/hooks", () => ({
 vi.mock("../../src/hooks/useMirrorFile", () => ({
   useMirrorFile: ({ stopWebcam }: { stopWebcam: () => void }) => ({
     kind: backend.file ? "video" : null,
+    loading: backend.loading,
     setSuspended: backend.suspended,
     stop: stopWebcam,
   }),
@@ -130,6 +135,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   backend.ready = false;
   backend.file = false;
+  backend.loading = false;
   backend.cameraReady = null;
   history.replaceState({}, "", "/mirror");
 });
@@ -176,4 +182,11 @@ test("switching from media retains its frame while the camera opens", async () =
   await act(async () => ready());
   expect(toggle.getAttribute("aria-pressed")).toBe("false");
   expect(screen.getByTestId("renderer").textContent).toBe("frame");
+});
+
+test("loading media does not report splash animation frames as video FPS", () => {
+  backend.ready = true;
+  backend.loading = true;
+  render(<MirrorPage />);
+  expect(screen.getByTestId("fps").textContent).toBe("0");
 });

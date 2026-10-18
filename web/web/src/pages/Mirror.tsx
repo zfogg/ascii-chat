@@ -326,7 +326,7 @@ export function MirrorPage() {
                 ? "Mirror mode (synthetic test input)"
                 : "Mirror mode",
               dimensions: terminalDimensions,
-              fps,
+              fps: fileMedia.loading ? 0 : fps,
               targetFps: settings.targetFps,
               showBandwidth: false,
               isWebcamRunning,
@@ -443,7 +443,7 @@ export function MirrorPage() {
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
               onFpsChange={
-                fileActive && fileMedia.kind === "video"
+                fileMedia.loading || (fileActive && fileMedia.kind === "video")
                   ? ignoreMediaFps
                   : setFps
               }
