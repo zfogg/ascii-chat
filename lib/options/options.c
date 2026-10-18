@@ -1492,6 +1492,27 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (defaults_result != ASCIICHAT_OK) {
     return defaults_result;
   }
+  // An enabled environment flag overrides the opposite config-file choice.
+  const char *encrypt_env = SAFE_GETENV("ASCII_CHAT_ENCRYPT");
+  const char *no_encrypt_env = SAFE_GETENV("ASCII_CHAT_NO_ENCRYPT");
+  if (encrypt_env && !no_encrypt_env && opts->encrypt_enabled)
+    opts->no_encrypt = false;
+  if (no_encrypt_env && !encrypt_env && opts->no_encrypt)
+    opts->encrypt_enabled = false;
+
+  bool cli_encrypt = false, cli_no_encrypt = false;
+  for (int i = 1; i < mode_argc; ++i) {
+    if (strcmp(mode_argv[i], "--") == 0)
+      break;
+    cli_encrypt |= strcmp(mode_argv[i], "--encrypt") == 0 || strcmp(mode_argv[i], "-E") == 0 ||
+                   strncmp(mode_argv[i], "--encrypt=", 10) == 0;
+    cli_no_encrypt |= strcmp(mode_argv[i], "--no-encrypt") == 0 || strncmp(mode_argv[i], "--no-encrypt=", 13) == 0;
+  }
+  // Bare boolean CLI flags toggle from false, independent of lower layers.
+  if (cli_encrypt)
+    opts->encrypt_enabled = false;
+  if (cli_no_encrypt)
+    opts->no_encrypt = false;
   // Restore binary-level options (they should never be overridden by defaults)
   restore_binary_level(opts, &binary_before_defaults);
 
@@ -1513,6 +1534,10 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, opts, mode_bitmask, remaining_argc, remaining_argv);
   log_debug("options_config_parse returned: %d", result);
+  if (cli_encrypt && !cli_no_encrypt && opts->encrypt_enabled)
+    opts->no_encrypt = false;
+  if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
+    opts->encrypt_enabled = false;
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   opts->flip_x = saved_flip_x_for_parse;
   opts->flip_y = saved_flip_y_for_parse;

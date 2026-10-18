@@ -368,6 +368,7 @@ int client_crypto_init(void) {
     SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
     acds_config.server_port = GET_OPTION(discovery_port);
     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
+    acds_config.identity_key = GET_OPTION(encrypt_key);
 
     // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
     if (strlen(GET_OPTION(discovery_service_key)) > 0) {

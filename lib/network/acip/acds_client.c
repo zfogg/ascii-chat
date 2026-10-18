@@ -27,6 +27,7 @@
 #include <ascii-chat/debug/named.h>
 
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/crc32.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -405,6 +406,9 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_t
   case PACKET_TYPE_CRYPTO_PARAMETERS:
     if (ctx->state != CRYPTO_HANDSHAKE_INIT || length != sizeof(crypto_parameters_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery crypto parameters");
+    if ((((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
+        ctx->crypto_ctx.encrypt_data)
+      return SET_ERRNO(ERROR_CRYPTO, "Discovery server changed requested encryption");
     return crypto_handshake_set_parameters(ctx, payload);
   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
     return crypto_handshake_client_key_exchange(ctx, transport, type, payload, length);
@@ -417,4 +421,27 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_t
   default:
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected discovery handshake packet: %u", type);
   }
+}
+
+asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length,
+                                      void **allocation) {
+  asciichat_error_t result = packet_receive_via_transport(transport, type, payload, length, allocation);
+  if (result != ASCIICHAT_OK || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET ||
+      !transport->crypto_ctx || !transport->crypto_ctx->encrypt_data)
+    return result;
+  if (*type != PACKET_TYPE_ENCRYPTED)
+    return SET_ERRNO(ERROR_CRYPTO, "Discovery signaling requires encrypted packets");
+  packet_envelope_t envelope = {.type = *type, .data = *payload, .len = *length, .allocated_buffer = *allocation};
+  result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
+  *allocation = envelope.allocated_buffer;
+  *type = envelope.type;
+  *payload = envelope.data;
+  *length = envelope.len;
+  if (result == ASCIICHAT_OK) {
+    const packet_header_t *inner = envelope.allocated_buffer;
+    if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED ||
+        asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted discovery packet");
+  }
+  return result;
 }

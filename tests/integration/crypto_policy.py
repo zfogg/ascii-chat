@@ -47,6 +47,8 @@ def run_client(binary, directory, name, address, options, mode, success=True):
     else:
         assert result.returncode != 0, (name, "Rejected credentials connected")
         assert "Crypto handshake completed successfully" not in text, (name, text[-6000:])
+        if name == "wss-missing-password":
+            assert "Remote request rejected: Authentication failed" in text, (name, "Lost rejection reason")
     print(f"PASS {name}: mode={mode}, accepted={success}", flush=True)
 
 
@@ -80,6 +82,22 @@ def main():
             assert result.returncode != 0 and any(message in output for message in
                 ("Cannot use", "mutually exclusive", "Authentication material cannot be used")), (ordered, output[-3000:])
         print(f"PASS CLI conflict: {flags}", flush=True)
+    clean_env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    for configured, environment, flags in [
+        ("encrypt", {}, ["--no-encrypt"]),
+        ("no_encrypt", {}, ["--encrypt"]),
+        ("no_encrypt", {}, ["-E"]),
+        ("encrypt", {"ASCII_CHAT_NO_ENCRYPT": "true"}, []),
+        ("no_encrypt", {"ASCII_CHAT_ENCRYPT": "true"}, []),
+        ("encrypt", {"ASCII_CHAT_NO_ENCRYPT": "true"}, ["--encrypt"]),
+        ("no_encrypt", {"ASCII_CHAT_ENCRYPT": "true"}, ["--no-encrypt"]),
+    ]:
+        config = directory / "precedence.toml"
+        config.write_text(f"[security]\n{configured} = true\n")
+        result = subprocess.run([str(binary), "--config", str(config), "client", *flags, "--show-capabilities"],
+                                env={**clean_env, **environment}, cwd=directory, capture_output=True, timeout=10)
+        assert result.returncode == 0, (configured, environment, flags, result.stderr[-3000:])
+        print(f"PASS security precedence: {configured}, {environment}, {flags}", flush=True)
     cases = [
         ("tcp-default", "tcp", [], [], 1, True),
         ("tcp-none", "tcp", ["--no-encrypt", "--no-auth"], ["--no-encrypt", "--no-auth"], 0, True),

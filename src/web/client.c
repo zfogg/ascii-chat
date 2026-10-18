@@ -1029,6 +1029,7 @@ void client_opus_decoder_cleanup(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
   return acds_handshake_begin(&g_wasm_transport, mode);
 }
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
@@ -1062,6 +1063,7 @@ EMSCRIPTEN_KEEPALIVE int client_resolve_crypto_policy(bool secure, int encryptio
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_begin(void) {
   g_connection_state = CONNECTION_STATE_CONNECTING;
   g_version_received = false;
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
   return acds_handshake_begin(&g_wasm_transport, g_crypto_mode);
 }
 
@@ -1088,8 +1090,13 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, c
     caps.preferred_kex = KEX_ALGO_X25519;
     caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
     caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
-    // Browser pin verification is performed against the signed key exchange.
-    return packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    caps.requires_verification = g_has_expected_server_identity_key;
+    asciichat_error_t result =
+        packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    if (result != ASCIICHAT_OK || !g_has_expected_server_identity_key)
+      return result;
+    return packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, g_expected_server_identity_key,
+                                     sizeof(g_expected_server_identity_key), 0);
   }
   if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
     if (!payload || length != sizeof(crypto_parameters_packet_t) ||

@@ -1,3 +1,5 @@
+#include <ascii-chat/crypto/policy.h>
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file acds/server.c
@@ -1010,6 +1012,17 @@ static asciichat_error_t acds_event_packet(const void *data, size_t length, void
     case 0:
       if (type != PACKET_TYPE_PROTOCOL_VERSION || size != sizeof(protocol_version_packet_t))
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected discovery protocol version");
+      uint8_t mode = ((const protocol_version_packet_t *)payload)->supports_encryption;
+      result = crypto_policy_check_mode(false, GET_OPTION(encrypt_enabled), GET_OPTION(no_encrypt),
+                                        client->handshake_ctx.require_client_auth, mode);
+      if (result != ASCIICHAT_OK)
+        return result;
+      client->handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+      if (mode == ACIP_CRYPTO_NONE) {
+        client->handshake_ctx.state = CRYPTO_HANDSHAKE_DISABLED;
+        client->handshake_complete = true;
+        return ASCIICHAT_OK;
+      }
       result = crypto_handshake_server_send_parameters(&client->handshake_ctx, transport);
       if (result == ASCIICHAT_OK)
         result = crypto_handshake_server_start(&client->handshake_ctx, transport);
@@ -1027,17 +1040,40 @@ static asciichat_error_t acds_event_packet(const void *data, size_t length, void
       return result;
     ++connection->handshake_step;
     client->handshake_complete = client->handshake_ctx.state == CRYPTO_HANDSHAKE_READY;
+    if (client->handshake_complete)
+      transport->crypto_ctx = &client->handshake_ctx.crypto_ctx;
     return ASCIICHAT_OK;
+  }
+  packet_envelope_t envelope = {.type = type, .data = (void *)payload, .len = size};
+  if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data) {
+    if (type != PACKET_TYPE_ENCRYPTED)
+      return SET_ERRNO(ERROR_CRYPTO, "Discovery signaling requires encrypted packets");
+    asciichat_error_t result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
+    if (result != ASCIICHAT_OK)
+      return result;
+    const packet_header_t *inner = envelope.allocated_buffer;
+    if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED ||
+        asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32)) {
+      buffer_release(envelope.allocated_buffer);
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted discovery packet");
+    }
+    type = envelope.type;
+    payload = envelope.data;
+    size = envelope.len;
   }
   atomic_fetch_add_u64(&connection->server->stats.bytes_received, length);
   atomic_fetch_add_u64(&connection->server->stats.packets_received, 1);
   if (client->in_multikey_session_create && type != PACKET_TYPE_ACIP_SESSION_CREATE && type != PACKET_TYPE_PING &&
-      type != PACKET_TYPE_PONG)
+      type != PACKET_TYPE_PONG) {
+    buffer_release(envelope.allocated_buffer);
     return acip_send_error(transport, ERROR_INVALID_PARAM,
                            "Only SESSION_CREATE/PING/PONG allowed during session creation");
+  }
   acip_acds_callbacks_t callbacks = g_acds_callbacks;
   callbacks.app_ctx = connection->server;
-  return acip_handle_acds_packet(transport, type, payload, size, connection->ip, &callbacks);
+  asciichat_error_t result = acip_handle_acds_packet(transport, type, payload, size, connection->ip, &callbacks);
+  buffer_release(envelope.allocated_buffer);
+  return result;
 }
 
 static void acds_event_work(void *arg) {
@@ -1048,6 +1084,7 @@ static void acds_event_work(void *arg) {
     if (connection->result != ASCIICHAT_OK)
       return;
     connection->initialized = true;
+    client->handshake_ctx.require_client_auth = connection->server->config.require_client_identity;
     client->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
     client->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
     memcpy(client->handshake_ctx.server_public_key.key, connection->server->identity_public,
@@ -1251,10 +1288,14 @@ void *acds_websocket_client_handler(void *arg) {
             tcp_server_get_client_count(server->tcp_server));
 
   client_data->handshake_ctx.require_client_auth = server->config.require_client_identity;
-  asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport);
-  if (hs_result != ASCIICHAT_OK ||
-      (!ctx->is_secure && client_data->handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED && !GET_OPTION(no_encrypt))) {
+  asciichat_error_t hs_result = session_server_like_handshake(&client_data->handshake_ctx, transport, ctx->is_secure);
+  if (hs_result != ASCIICHAT_OK) {
     log_warn("Discovery security negotiation failed for %s", client_ip);
+    acip_send_error(transport, hs_result, "Discovery security negotiation rejected");
+    asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
+    (void)acip_websocket_transport_flush(transport, NS_PER_SEC_INT);
+    asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_DISMISSED);
+    acip_transport_close(transport);
     tcp_server_remove_client(server->tcp_server, synthetic_id);
     SAFE_FREE(ctx);
     return NULL;

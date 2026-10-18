@@ -442,14 +442,16 @@ void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data
   /* lws suppresses writable callbacks until previously buffered output is
    * consumed. Keep one owner until this completion boundary, or connection
    * teardown; elapsed service-loop iterations are not a completion signal. */
-  buffer_release(ws_data->inflight_buffer);
   websocket_recv_msg_t msg = {0};
   mutex_lock(&ws_data->send_mutex);
+  buffer_release(ws_data->inflight_buffer);
+  ws_data->inflight_buffer = NULL;
   bool available = ringbuffer_read(ws_data->send_queue, &msg);
+  if (available)
+    ws_data->inflight_buffer = msg.data;
   mutex_unlock(&ws_data->send_mutex);
   if (!available)
     return;
-  ws_data->inflight_buffer = msg.data;
   int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
   if (written < 0 || (size_t)written < msg.len) {
     mutex_lock(&ws_data->state_mutex);
@@ -1139,6 +1141,24 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   // Unreachable unless while loop breaks without returning
   mutex_unlock(&ws_data->recv_mutex);
   return SET_ERRNO(ERROR_NETWORK, "Unexpected exit from fragment reassembly loop");
+}
+
+asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, uint64_t timeout_ns) {
+  if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Expected WebSocket transport");
+  websocket_transport_data_t *ws_data = transport->impl_data;
+  uint64_t started = time_get_ns();
+  while (acip_transport_is_connected(transport)) {
+    mutex_lock(&ws_data->send_mutex);
+    bool drained = ringbuffer_is_empty(ws_data->send_queue) && !ws_data->inflight_buffer;
+    mutex_unlock(&ws_data->send_mutex);
+    if (drained)
+      return ASCIICHAT_OK;
+    if (time_get_ns() - started >= timeout_ns)
+      return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "WebSocket send queue did not drain");
+    platform_sleep_us(1000);
+  }
+  return SET_ERRNO(ERROR_NETWORK, "WebSocket closed before send queue drained");
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {

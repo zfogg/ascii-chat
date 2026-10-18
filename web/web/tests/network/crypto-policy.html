@@ -5,6 +5,8 @@
   <body>
     <pre id="result">Waiting for security test</pre>
     <script type="module">
+      import { DiscoveryProtocol } from "/src/network/DiscoveryProtocol.ts";
+      import { AcdsType } from "/src/network/acdsProtocol.ts";
       import { BrowserHostSession } from "/src/network/BrowserHostSession.ts";
       import { WebRTCSession } from "/src/network/WebRTCSession.ts";
       import { ClientConnection } from "/src/network/ClientConnection.ts";
@@ -50,6 +52,7 @@
           ? new WebRTCSession(options)
           : new ClientConnection(options);
         const states = [];
+        let discovery;
         try {
           await new Promise((resolve, reject) => {
             const timeout = setTimeout(
@@ -58,20 +61,24 @@
             );
             connection.onStateChange((state) => {
               states.push(state);
-              if (state === ConnectionState.ERROR) {
+              if (state === ConnectionState.ERROR || state === ConnectionState.DISCONNECTED) {
                 clearTimeout(timeout);
                 reject(new Error("Security handshake rejected"));
               }
               if (state === ConnectionState.CONNECTED) {
-                connection.sendPacket(
-                  PacketType.CLIENT_CAPABILITIES,
-                  buildCapabilitiesPacket(40, 12),
-                );
-                connection.sendPacket(PacketType.PING, new Uint8Array(8));
+                if (!options.discoveryHandshake)
+                  connection.sendPacket(
+                    PacketType.CLIENT_CAPABILITIES,
+                    buildCapabilitiesPacket(40, 12),
+                  );
+                if (options.discoveryHandshake) {
+                  discovery = new DiscoveryProtocol((type, payload) => connection.sendPacket(type, payload));
+                  discovery.enter(false, "absent-test-session", "");
+                } else connection.sendPacket(PacketType.PING, new Uint8Array(8));
               }
             });
             connection.onPacketReceived((packet) => {
-              if (packet.type === PacketType.PONG) {
+              if (packet.type === PacketType.PONG || (options.discoveryHandshake && packet.type === AcdsType.INFO)) {
                 clearTimeout(timeout);
                 resolve();
               }
@@ -102,6 +109,7 @@
             JSON.stringify(result);
           return result;
         } finally {
+          discovery?.close();
           connection.disconnect();
           prototype.send = originalSend;
         }

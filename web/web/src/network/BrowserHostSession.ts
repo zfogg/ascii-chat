@@ -151,7 +151,7 @@ export class BrowserHostSession implements ClientSession {
             const packet = parsePacket(bytes);
             this.packetCallback?.(packet, bytes.slice(22));
           } else {
-            for (const peer of this.peers.values()) {
+            for (const [key, peer] of this.peers) {
               if (peer.id !== id || !peer.crypto?.ready) continue;
               const type = new DataView(
                 bytes.buffer,
@@ -165,7 +165,10 @@ export class BrowserHostSession implements ClientSession {
               try {
                 peer.crypto.sendPacket(bytes);
               } catch (error) {
-                this.fail(error);
+                this.removePeer(key);
+                this.options.onProgress?.(
+                  `Peer disconnected: ${String(error)}`,
+                );
               }
             }
           }

@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 /**
  * @file server_like.c
  * @brief Unified lifecycle for server-like modes (server, discovery-service)
@@ -241,7 +242,7 @@ bool session_server_like_shutdown_requested(void) {
  * ============================================================================ */
 
 static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_context_t *ctx,
-                                                            acip_transport_t *transport) {
+                                                            acip_transport_t *transport, bool transport_secure) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
   }
@@ -273,8 +274,10 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
     }
     uint8_t mode = ((protocol_version_packet_t *)pkt_data)->supports_encryption;
     buffer_release(alloc_buffer);
-    if (mode > ACIP_CRYPTO_FULL || (ctx->require_client_auth && !ACIP_CRYPTO_HAS_AUTH(mode)))
-      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Invalid or unauthenticated security policy");
+    result = crypto_policy_check_mode(transport_secure, GET_OPTION(encrypt_enabled), GET_OPTION(no_encrypt),
+                                      ctx->require_client_auth, mode);
+    if (result != ASCIICHAT_OK)
+      return result;
     if (mode == ACIP_CRYPTO_NONE) {
       ctx->state = CRYPTO_HANDSHAKE_DISABLED;
       return ASCIICHAT_OK;
@@ -345,7 +348,8 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                                bool transport_secure) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
   }
@@ -355,7 +359,7 @@ asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
   // to the handshake so idle-session polling remains responsive.
   const uint64_t previous_receive_timeout_ns = transport->receive_timeout_ns;
   transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
-  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport);
+  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport, transport_secure);
   transport->receive_timeout_ns = previous_receive_timeout_ns;
   return result;
 }

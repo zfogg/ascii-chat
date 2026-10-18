@@ -897,7 +897,7 @@ static void *acds_ping_thread(void *arg) {
     // Send PING every 10 seconds to keep connection alive
     socket_t acds_socket = g_acds_transport->methods->get_socket(g_acds_transport);
     if (acds_socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t ping_result = packet_send(acds_socket, PACKET_TYPE_PING, NULL, 0);
+      asciichat_error_t ping_result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_PING, NULL, 0, 0);
       if (ping_result == ASCIICHAT_OK) {
         log_debug("ACDS keepalive: Sent periodic PING");
       } else {
@@ -1066,6 +1066,7 @@ static void *websocket_client_handler(void *arg) {
   ctx->transport = NULL;
 
   client->transport_encrypted = ctx->is_secure;
+  const uint64_t previous_receive_timeout_ns = client->transport->receive_timeout_ns;
   client->transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
   unsigned step = 0;
   bool ready = false;
@@ -1080,12 +1081,17 @@ static void *websocket_client_handler(void *arg) {
       buffer_release(allocated);
     if (result != ASCIICHAT_OK) {
       acip_send_error(client->transport, result, "Security negotiation rejected");
+      // Keep the transport alive until the service thread sends the rejection.
+      asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
+      (void)acip_websocket_transport_flush(client->transport, NS_PER_SEC_INT);
+      asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_DISMISSED);
       acip_transport_close(client->transport);
       remove_client(server_ctx, client->client_id);
       SAFE_FREE(ctx);
       return NULL;
     }
   }
+  client->transport->receive_timeout_ns = previous_receive_timeout_ns;
   if (start_transport_client_threads(server_ctx, client->client_id) != 0)
     remove_client(server_ctx, client->client_id);
   SAFE_FREE(ctx);
@@ -1608,7 +1614,8 @@ static void server_start_discovery_keepalive(void) {
   log_debug("Server staying connected to ACDS for signaling relay");
 
   // Create ACDS transport wrapper for sending signaling packets
-  g_acds_transport = acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, NULL);
+  g_acds_transport =
+      acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, g_acds_client->transport->crypto_ctx);
   if (!g_acds_transport) {
     log_error("Failed to create ACDS transport wrapper");
   } else {
@@ -1782,6 +1789,7 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
   SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
   acds_config.server_port = acds_port;
   acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
+  acds_config.identity_key = GET_OPTION(encrypt_key);
 
   // Allocate ACDS client on heap for server lifecycle
   g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);

@@ -60,6 +60,80 @@ const keys = [
   join(directory, "client.pub"),
 ];
 const cases = [
+  {
+    name: "discovery-ws-default",
+    discovery: true,
+    secure: false,
+    encrypted: true,
+  },
+  {
+    name: "discovery-wss-default",
+    discovery: true,
+    secure: true,
+    encrypted: false,
+  },
+  {
+    name: "discovery-ws-auth-rejected",
+    discovery: true,
+    secure: false,
+    keys: true,
+    encryption: false,
+    reject: true,
+    serverFlags: [],
+  },
+  {
+    name: "discovery-ws-auth-permitted",
+    discovery: true,
+    secure: false,
+    keys: true,
+    encryption: false,
+    encrypted: false,
+    serverFlags: ["--no-encrypt"],
+  },
+  {
+    name: "discovery-wss-explicit-required",
+    discovery: true,
+    secure: true,
+    reject: true,
+    serverFlags: ["--encrypt"],
+  },
+  {
+    name: "discovery-wss-explicit-accepted",
+    discovery: true,
+    secure: true,
+    encryption: true,
+    encrypted: true,
+    serverFlags: ["--encrypt"],
+  },
+  {
+    name: "discovery-ws-auth-required",
+    discovery: true,
+    secure: false,
+    keys: true,
+    encrypted: true,
+    serverFlags: ["--require-client-identity"],
+  },
+  {
+    name: "discovery-ws-missing-auth",
+    discovery: true,
+    secure: false,
+    reject: true,
+    serverFlags: ["--require-client-identity"],
+  },
+  {
+    name: "ws-second-key",
+    secure: false,
+    keys: true,
+    secondKey: true,
+    encrypted: true,
+  },
+  {
+    name: "wss-second-key-auth-only",
+    secure: true,
+    keys: true,
+    secondKey: true,
+    encrypted: false,
+  },
   { name: "ws-default", secure: false, encrypted: true },
   { name: "ws-none", secure: false, encryption: false, encrypted: false },
   { name: "wss-default", secure: true, encrypted: false },
@@ -127,7 +201,7 @@ try {
       log,
       "--log-level",
       "debug",
-      "server",
+      item.discovery ? "discovery-service" : "server",
       "127.0.0.1",
       "--port",
       String(tcp),
@@ -143,8 +217,14 @@ try {
           ]
         : []),
       ...(item.password ? ["--password", item.password] : []),
-      ...(item.keys ? keys : []),
-      ...(!item.secure && item.encryption === false ? ["--no-encrypt"] : []),
+      ...(item.discovery && !item.keys ? ["--key", join(directory, "server")] : []),
+      ...(item.secondKey ? ["--key", join(directory, "wrong")] : []),
+      ...(item.keys ? (item.discovery ? keys.slice(0, 2) : keys) : []),
+      ...(item.discovery
+        ? ["--database", join(directory, item.name + ".db")]
+        : []),
+      ...(item.serverFlags ??
+        (!item.secure && item.encryption === false ? ["--no-encrypt"] : [])),
     ];
     const env = Object.fromEntries(
       Object.entries(process.env).filter(
@@ -190,6 +270,7 @@ try {
         ...(item.encryption === undefined
           ? {}
           : { applicationEncryption: item.encryption }),
+        discoveryHandshake: !!item.discovery,
         cryptoOptions: {
           ...(item.password
             ? { password: item.badPassword ? "wrong-password" : item.password }
@@ -217,7 +298,7 @@ try {
         assert.equal(result.encrypted, item.encrypted, item.name);
       else {
         assert(
-          !result.states.includes(3),
+          item.discovery || !result.states.includes(3),
           "Authentication failure reported CONNECTED",
         );
         assert(

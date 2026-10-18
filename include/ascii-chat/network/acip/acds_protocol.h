@@ -52,3 +52,7 @@ asciichat_error_t acds_protocol_leave(acds_protocol_t *protocol);
 asciichat_error_t acds_handshake_begin(acip_transport_t *transport, uint8_t mode);
 asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *context, acip_transport_t *transport,
                                          packet_type_t type, const void *payload, size_t length);
+
+/** Receive discovery traffic, including WS application encryption. TCP decrypts in its transport. */
+asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length,
+                                      void **allocation);

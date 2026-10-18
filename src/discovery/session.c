@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -191,6 +192,7 @@ void discovery_session_destroy(discovery_session_t *session) {
   if (session->acds_transport) {
     acip_transport_destroy(session->acds_transport);
     session->acds_transport = NULL;
+    crypto_handshake_destroy(&session->acds_handshake);
   }
 
   // Destroy host context if active
@@ -440,7 +442,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   void *data = NULL;
   size_t len = 0;
   void *alloc_buffer = NULL;
-  asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
+  asciichat_error_t result = acds_receive_packet(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
 
   if (result != ASCIICHAT_OK) {
     log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %d: %s", result,
@@ -514,7 +516,7 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   packet_type_t type;
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
-  asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &type, &payload, &length, &allocation);
+  asciichat_error_t result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
   if (result == ASCIICHAT_OK) result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
   if (result != ASCIICHAT_OK) set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
@@ -1249,33 +1251,43 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
   // Perform crypto handshake with ACDS (same as client-server handshake)
   log_info("discovery_session_start: Performing crypto handshake with ACDS...");
-  crypto_handshake_context_t handshake_ctx;
-  memset(&handshake_ctx, 0, sizeof(handshake_ctx));
+  crypto_handshake_context_t *handshake_ctx = &session->acds_handshake;
 
-  result = crypto_handshake_init("discovery_client", &handshake_ctx, false);
+  result = crypto_handshake_init("discovery_client", handshake_ctx, false);
   if (result != ASCIICHAT_OK) {
     log_error("discovery_session_start: Handshake init failed - %s", asciichat_error_string(result));
     set_error(session, result, "Crypto handshake init failed");
     return result;
   }
 
+  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, 32) != 0;
   // Store identity key in handshake context
-  handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
-  handshake_ctx.client_private_key.type = KEY_TYPE_ED25519;
-  memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
-  memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
+  handshake_ctx->client_public_key.type = has_identity ? KEY_TYPE_ED25519 : KEY_TYPE_UNKNOWN;
+  handshake_ctx->client_private_key.type = handshake_ctx->client_public_key.type;
+  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, 32);
+  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, 64);
 
-  result = acds_handshake_begin(session->acds_transport, true);
-  while (result == ASCIICHAT_OK && handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+  crypto_policy_t signaling_policy = {
+      .transport_secure = strncmp(session->acds_url, "wss://", 6) == 0,
+      .has_identity = has_identity,
+  };
+  uint8_t mode;
+  result = crypto_policy_resolve(&signaling_policy, &mode);
+  if (result == ASCIICHAT_OK) {
+    handshake_ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+    result = acds_handshake_begin(session->acds_transport, mode);
+  }
+  while (result == ASCIICHAT_OK && handshake_ctx->state != CRYPTO_HANDSHAKE_READY) {
     packet_type_t type;
     void *payload = NULL, *allocation = NULL;
     size_t length = 0;
-    result = packet_receive_via_transport(session->acds_transport, &type, &payload, &length, &allocation);
+    result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
     if (result == ASCIICHAT_OK)
-      result = acds_handshake_receive(&handshake_ctx, session->acds_transport, type, payload, length);
+      result = acds_handshake_receive(handshake_ctx, session->acds_transport, type, payload, length);
     buffer_release(allocation);
   }
-  crypto_handshake_destroy(&handshake_ctx);
+  if (result == ASCIICHAT_OK)
+    session->acds_transport->crypto_ctx = &handshake_ctx->crypto_ctx;
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Discovery handshake failed");
     return result;
@@ -1344,8 +1356,7 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
     void *alloc_buffer = NULL;
 
     // Try to receive a packet
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
     if (recv_result == ASCIICHAT_OK) {
       if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
         log_info("Peer joined session, transitioning to negotiation");
@@ -1398,8 +1409,7 @@ static void discovery_session_receive_host_announcement(discovery_session_t *ses
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
     if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
       acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
       log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
@@ -1613,8 +1623,7 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
     if (recv_result == ASCIICHAT_OK) {
       // Dispatch to appropriate handler
@@ -1800,8 +1809,7 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
     if (recv_result == ASCIICHAT_OK) {
       // Dispatch to appropriate handler
