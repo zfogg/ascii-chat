@@ -155,7 +155,6 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
-    ${CMAKE_CURRENT_SOURCE_DIR}/av_state.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/av_state.c
     # Core
     ${LIB_ROOT}/common.c
@@ -570,9 +569,6 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
-    "_web_av_state_create" "_web_av_state_destroy" "_web_av_state_generation"
-    "_session_av_state_begin" "_session_av_state_complete" "_session_av_state_is_current"
-    "_session_av_state_is_active" "_session_av_state_begin_stop" "_session_av_state_finish_stop"
     _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client

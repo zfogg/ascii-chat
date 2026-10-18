@@ -26,6 +26,20 @@ typedef struct {
   uint32_t generation; ///< Owner-managed startup token used to reject stale asynchronous completions.
 } session_av_state_t;
 
+/**
+ * @brief Allocate an idle audio/video state for callers that need a separate handle.
+ * @return Owned state, or NULL on allocation failure. Embedded states may still use zero initialization.
+ */
+session_av_state_t *session_av_state_create(void);
+/**
+ * @brief Free a state allocated by session_av_state_create(); NULL is accepted.
+ * @note Stop resources and settle pending startup callbacks before destroying the state.
+ * Do not pass stack-allocated or embedded states.
+ */
+void session_av_state_destroy(session_av_state_t *state);
+/** @brief Read the owner-managed startup generation; returns zero for NULL or a new state. */
+uint32_t session_av_state_generation(const session_av_state_t *state);
+
 /** Returns a nonzero startup token, or zero when already starting/active/stopping. */
 uint32_t session_av_state_begin(session_av_state_t *state);
 /** Only the current startup can become active; cancelled completions return false. */

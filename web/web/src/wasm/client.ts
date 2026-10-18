@@ -46,9 +46,9 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
-  _web_av_state_create(): number;
-  _web_av_state_destroy(handle: number): void;
-  _web_av_state_generation(handle: number): number;
+  _session_av_state_create(): number;
+  _session_av_state_destroy(handle: number): void;
+  _session_av_state_generation(handle: number): number;
   _session_av_state_begin(handle: number): number;
   _session_av_state_complete(handle: number, generation: number): number;
   _session_av_state_is_current(handle: number, generation: number): number;

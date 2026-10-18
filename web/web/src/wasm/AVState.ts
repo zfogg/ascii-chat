@@ -9,14 +9,16 @@ export class AVState {
     if (!this.handle) {
       this.module = getClientModule();
       if (!this.module) throw new Error("Initialize the client before capture");
-      this.handle = this.module._web_av_state_create();
+      this.handle = this.module._session_av_state_create();
       if (!this.handle) throw new Error("Unable to allocate audio/video state");
     }
     return this.module!._session_av_state_begin(this.handle);
   }
 
   get generation(): number {
-    return this.handle ? this.module!._web_av_state_generation(this.handle) : 0;
+    return this.handle
+      ? this.module!._session_av_state_generation(this.handle)
+      : 0;
   }
 
   current(generation: number): boolean {
@@ -47,7 +49,7 @@ export class AVState {
 
   /** Call only after pending host startup has settled and resources are stopped. */
   dispose(): void {
-    if (this.handle) this.module!._web_av_state_destroy(this.handle);
+    if (this.handle) this.module!._session_av_state_destroy(this.handle);
     this.handle = 0;
     this.module = null;
   }
