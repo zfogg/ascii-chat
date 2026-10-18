@@ -6,9 +6,6 @@
  * Implements the session participant abstraction for client-side connection
  * management and media streaming.
  *
- * NOTE: This is a stub implementation that provides the API structure.
- * Full implementation will integrate with existing client code in a future phase.
- *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
@@ -25,6 +22,9 @@
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
+#include "session/av_state.h"
+#include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/time.h>
@@ -70,11 +70,11 @@ typedef struct session_participant {
   /** @brief User data for callbacks */
   void *user_data;
 
-  /** @brief Connection socket */
-  socket_t socket;
-
-  /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
+  /** @brief Selected transport used by all media workers. */
   struct acip_transport *transport;
+
+  /** @brief Responsibility for releasing the selected transport. */
+  session_transport_ownership_t transport_ownership;
 
   /** @brief Currently connected */
   bool connected;
@@ -83,10 +83,10 @@ typedef struct session_participant {
   uint32_t client_id;
 
   /** @brief Video streaming active */
-  bool video_active;
+  session_av_state_t video;
 
   /** @brief Audio streaming active */
-  bool audio_active;
+  session_av_state_t audio;
 
   /** @brief Current session settings */
   session_settings_t settings;
@@ -97,17 +97,20 @@ typedef struct session_participant {
   /** @brief Audio capture context (for microphone) */
   session_audio_ctx_t *audio_capture;
 
+  /** Audio callbacks borrow the video media source until audio is stopped. */
+  bool audio_uses_video;
+
   /** @brief Video capture thread handle */
   asciichat_thread_t video_capture_thread;
 
   /** @brief Audio capture thread handle */
   asciichat_thread_t audio_capture_thread;
 
-  /** @brief Video capture thread running flag */
-  bool video_capture_running;
+  /** @brief Video worker handle requires joining */
+  bool video_thread_created;
 
-  /** @brief Audio capture thread running flag */
-  bool audio_capture_running;
+  /** @brief Audio worker handle requires joining */
+  bool audio_thread_created;
 
   /** @brief Opus encoder for audio compression */
   opus_codec_t *opus_encoder;
@@ -158,13 +161,9 @@ session_participant_t *session_participant_create(const session_participant_conf
   p->callbacks = config->callbacks;
   p->user_data = config->user_data;
 
-  // Initialize socket to invalid
-  p->socket = INVALID_SOCKET_VALUE;
-  p->transport = NULL; // No alternative transport initially
+  p->transport = NULL;
   p->connected = false;
   p->client_id = 0;
-  p->video_active = false;
-  p->audio_active = false;
 
   // Initialize settings
   session_settings_init(&p->settings);
@@ -180,43 +179,10 @@ void session_participant_destroy(session_participant_t *p) {
     return;
   }
 
-  // Disconnect if connected
-  if (p->connected) {
-    session_participant_disconnect(p);
-  }
-
-  // Stop capture threads if running
-  if (p->video_capture_running) {
-    session_participant_stop_video_capture(p);
-  }
-  if (p->audio_capture_running) {
-    session_participant_stop_audio_capture(p);
-  }
-
-  // Clean up media capture contexts
-  if (p->audio_capture) {
-    session_audio_destroy(p->audio_capture);
-    p->audio_capture = NULL;
-  }
-  if (p->video_capture) {
-    session_capture_destroy(p->video_capture);
-    p->video_capture = NULL;
-  }
-  if (p->opus_encoder) {
-    opus_codec_destroy(p->opus_encoder);
-    p->opus_encoder = NULL;
-  }
-
-  if (p->transport) {
-    acip_transport_destroy(p->transport);
-    p->transport = NULL;
-  }
-
-  // Close socket if open
-  if (p->socket != INVALID_SOCKET_VALUE) {
-    socket_close(p->socket);
-    p->socket = INVALID_SOCKET_VALUE;
-  }
+  session_participant_disconnect(p);
+  // A failed join retains the participant and its resources for a safe retry.
+  if (p->video_thread_created || p->audio_thread_created)
+    return;
 
   // Clear sensitive data
   memset(p->password, 0, sizeof(p->password));
@@ -291,13 +257,17 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     return ASCIICHAT_OK; // Already connected
   }
 
+  session_participant_disconnect(p);
+  if (p->video_thread_created || p->audio_thread_created)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting TCP");
+
   // Create TCP connection to server
   log_debug("session_participant_connect: calling connect_to_server(%s, %d)", p->address, p->port);
-  p->socket = connect_to_server(p->address, p->port);
-  log_debug("session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)", p->socket,
+  socket_t socket = connect_to_server(p->address, p->port);
+  log_debug("session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)", socket,
             INVALID_SOCKET_VALUE);
 
-  if (p->socket == INVALID_SOCKET_VALUE) {
+  if (socket == INVALID_SOCKET_VALUE) {
     log_error("Failed to connect to server at %s:%d", p->address, p->port);
     if (p->callbacks.on_error) {
       p->callbacks.on_error(p, ERROR_NETWORK_CONNECT, "Failed to connect to server", p->user_data);
@@ -305,11 +275,22 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     return SET_ERRNO(ERROR_NETWORK_CONNECT, "Session participant could not connect to server");
   }
 
+  asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+  acip_transport_t *transport = acip_tcp_transport_create_owned("session_participant_tcp", socket, NULL);
+  if (!transport) {
+    asciichat_error_context_t cause;
+    asciichat_error_t error = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_NETWORK_CONNECT;
+    socket_close(socket);
+    return SET_ERRNO(error, "Failed to create participant TCP transport");
+  }
+  p->transport = transport;
+  p->transport_ownership = SESSION_TRANSPORT_OWNED;
+
   log_debug("session_participant_connect: setting p->connected=true");
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
-  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, p->socket);
+  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, socket);
   log_debug("session_participant_connect: p->connected=%d after setting", p->connected);
 
   // Invoke callback
@@ -326,29 +307,22 @@ void session_participant_disconnect(session_participant_t *p) {
     return;
   }
 
-  if (!p->connected) {
+  bool was_connected = p->connected;
+  session_participant_stop_audio(p);
+  session_participant_stop_video(p);
+  if (p->video_thread_created || p->audio_thread_created)
     return;
-  }
 
-  // Stop media streams
-  if (p->video_active) {
-    session_participant_stop_video(p);
-  }
-  if (p->audio_active) {
-    session_participant_stop_audio(p);
-  }
-
-  // Close socket
-  if (p->socket != INVALID_SOCKET_VALUE) {
-    socket_close(p->socket);
-    p->socket = INVALID_SOCKET_VALUE;
-  }
+  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(p->transport);
+  p->transport = NULL;
+  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
 
   p->connected = false;
   p->client_id = 0;
 
   // Invoke callback
-  if (p->callbacks.on_disconnected) {
+  if (was_connected && p->callbacks.on_disconnected) {
     p->callbacks.on_disconnected(p, p->user_data);
   }
 }
@@ -371,99 +345,19 @@ socket_t session_participant_get_socket(session_participant_t *p) {
   if (!p || !p->initialized) {
     return INVALID_SOCKET_VALUE;
   }
-  return p->socket;
+  return acip_transport_get_socket(p->transport);
 }
 
 /* ============================================================================
  * Session Participant Media Control Functions
  * ============================================================================ */
 
-asciichat_error_t session_participant_start_video(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_video: invalid participant");
-  }
-
-  if (!p->connected) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video: not connected");
-  }
-
-  if (p->video_active) {
-    return ASCIICHAT_OK; // Already active
-  }
-
-  if (!p->enable_video) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video: video not enabled");
-  }
-
-  // TODO: Start webcam capture thread using session_capture_ctx_t
-
-  p->video_active = true;
-  return ASCIICHAT_OK;
-}
-
-void session_participant_stop_video(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return;
-  }
-
-  if (!p->video_active) {
-    return;
-  }
-
-  // TODO: Stop webcam capture thread
-
-  p->video_active = false;
-}
-
 bool session_participant_is_video_active(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return false;
-  }
-  return p->video_active;
-}
-
-asciichat_error_t session_participant_start_audio(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_audio: invalid participant");
-  }
-
-  if (!p->connected) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio: not connected");
-  }
-
-  if (p->audio_active) {
-    return ASCIICHAT_OK; // Already active
-  }
-
-  if (!p->enable_audio) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio: audio not enabled");
-  }
-
-  // TODO: Start audio using session_audio_ctx_t
-
-  p->audio_active = true;
-  return ASCIICHAT_OK;
-}
-
-void session_participant_stop_audio(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return;
-  }
-
-  if (!p->audio_active) {
-    return;
-  }
-
-  // TODO: Stop audio
-
-  p->audio_active = false;
+  return p && p->initialized && session_av_state_is_active(&p->video);
 }
 
 bool session_participant_is_audio_active(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return false;
-  }
-  return p->audio_active;
+  return p && p->initialized && session_av_state_is_active(&p->audio);
 }
 
 /* ============================================================================
@@ -513,7 +407,7 @@ static void *participant_video_capture_thread(void *arg) {
 
   log_info("Video capture thread started");
 
-  while (p->video_capture_running && p->connected) {
+  while (session_av_state_should_run(&p->video)) {
     // Capture frame from media source (webcam, file, test pattern)
     image_t *raw_frame = session_capture_read_frame(p->video_capture);
     if (!raw_frame) {
@@ -526,8 +420,7 @@ static void *participant_video_capture_thread(void *arg) {
     image_t *processed = session_capture_process_for_transmission(p->video_capture, raw_frame);
     if (processed) {
       // Send to host via IMAGE_FRAME packet
-      asciichat_error_t err = send_image_frame_packet(p->socket, (const void *)processed->pixels,
-                                                      (uint16_t)processed->w, (uint16_t)processed->h, 0);
+      asciichat_error_t err = acip_send_image_frame(p->transport, processed->pixels, processed->w, processed->h, 0);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send video frame: %d", err);
       }
@@ -562,7 +455,7 @@ static void *participant_audio_capture_thread(void *arg) {
   float sample_buffer[960]; // 20ms @ 48kHz
   uint8_t opus_buffer[1000];
 
-  while (p->audio_capture_running && p->connected) {
+  while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
     size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
     if (samples_read <= 0) {
@@ -577,7 +470,7 @@ static void *participant_audio_capture_thread(void *arg) {
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
       asciichat_error_t err =
-          av_send_audio_opus_batch(p->socket, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+          acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
@@ -592,22 +485,30 @@ static void *participant_audio_capture_thread(void *arg) {
  * Session Participant Media Capture Public API
  * ============================================================================ */
 
-asciichat_error_t session_participant_start_video_capture(session_participant_t *p) {
+static asciichat_error_t participant_startup_error(asciichat_errno_scope_t checkpoint, const char *message) {
+  asciichat_error_context_t cause;
+  asciichat_error_t code = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_INVALID_STATE;
+  return SET_ERRNO(code, "%s", message);
+}
+
+asciichat_error_t session_participant_start_video(session_participant_t *p) {
   if (!p || !p->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_video_capture: invalid participant");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_video: invalid participant");
   }
 
   if (!p->connected) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video_capture: not connected");
+    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video: not connected");
   }
 
   if (!p->enable_video) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video_capture: video not enabled");
+    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video: video not enabled");
   }
 
-  if (p->video_capture_running) {
-    return ASCIICHAT_OK; // Already running
-  }
+  if (session_av_state_is_active(&p->video))
+    return ASCIICHAT_OK;
+  uint32_t generation = session_av_state_begin(&p->video);
+  if (!generation)
+    return SET_ERRNO(ERROR_INVALID_STATE, "video is starting or stopping");
 
   // Create video capture context if not already created
   if (!p->video_capture) {
@@ -630,140 +531,182 @@ asciichat_error_t session_participant_start_video_capture(session_participant_t 
       config.path = config.type == MEDIA_SOURCE_STDIN ? NULL : file;
     }
     config.loop = GET_OPTION(media_loop);
+    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
     p->video_capture = session_capture_create(&config);
     if (!p->video_capture) {
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create video capture context");
+      asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create video capture context");
+      session_participant_stop_video(p);
+      return error;
     }
   }
 
   // Spawn video capture thread (media source is ready in ctx)
-  p->video_capture_running = true;
   if (asciichat_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
-    p->video_capture_running = false;
+    session_participant_stop_video(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
   }
 
+  p->video_thread_created = true;
+  session_av_state_complete(&p->video, generation);
   log_info("Video capture started");
   return ASCIICHAT_OK;
 }
 
-void session_participant_stop_video_capture(session_participant_t *p) {
-  if (!p || !p->initialized) {
+void session_participant_stop_video(session_participant_t *p) {
+  if (!p || !p->initialized)
     return;
-  }
-
-  if (!p->video_capture_running) {
+  if (p->audio_uses_video)
+    session_participant_stop_audio(p);
+  if (p->audio_uses_video && p->audio_thread_created)
     return;
+  session_av_state_begin_stop(&p->video);
+  if (p->video_thread_created) {
+    if (asciichat_thread_join(&p->video_capture_thread, NULL) != 0) {
+      log_error("Failed to join video capture worker; retaining its resources");
+      return;
+    }
+    p->video_thread_created = false;
   }
-
-  // Signal thread to stop
-  p->video_capture_running = false;
-
-  // Wait for thread to complete
-  asciichat_thread_join(&p->video_capture_thread, NULL);
-
-  log_info("Video capture stopped");
+  if (p->video_capture) {
+    session_capture_destroy(p->video_capture);
+    p->video_capture = NULL;
+  }
+  session_av_state_finish_stop(&p->video);
 }
 
-asciichat_error_t session_participant_start_audio_capture(session_participant_t *p) {
+asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   if (!p || !p->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_audio_capture: invalid participant");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_start_audio: invalid participant");
   }
 
   if (!p->connected) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio_capture: not connected");
+    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio: not connected");
   }
 
   if (!p->enable_audio) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio_capture: audio not enabled");
+    return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio: audio not enabled");
   }
 
-  if (p->audio_capture_running) {
-    return ASCIICHAT_OK; // Already running
-  }
+  if (session_av_state_is_active(&p->audio))
+    return ASCIICHAT_OK;
+  uint32_t generation = session_av_state_begin(&p->audio);
+  if (!generation)
+    return SET_ERRNO(ERROR_INVALID_STATE, "audio is starting or stopping");
 
   // Create audio capture context if not already created
   if (!p->audio_capture) {
+    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
     p->audio_capture = session_audio_create(false); // false = participant mode (no mixing)
     if (!p->audio_capture) {
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create audio capture context");
+      asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create audio capture context");
+      session_participant_stop_audio(p);
+      return error;
     }
   }
 
-  session_audio_set_capture_source(p->audio_capture, session_capture_get_media_source(p->video_capture));
+  void *source = p->video_capture ? session_capture_get_media_source(p->video_capture) : NULL;
+  p->audio_uses_video = source != NULL;
+  session_audio_set_capture_source(p->audio_capture, source);
 
   // Start audio capture and playback
   asciichat_error_t err = session_audio_start_duplex(p->audio_capture);
   if (err != ASCIICHAT_OK) {
+    session_participant_stop_audio(p);
     return SET_ERRNO(err, "Failed to start audio duplex");
   }
 
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
+    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
     p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
     if (!p->opus_encoder) {
-      session_audio_stop(p->audio_capture);
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
+      asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
+      session_participant_stop_audio(p);
+      return error;
     }
   }
 
   // Spawn audio capture thread
-  p->audio_capture_running = true;
   if (asciichat_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
-    p->audio_capture_running = false;
-    session_audio_stop(p->audio_capture);
+    session_participant_stop_audio(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");
   }
 
+  p->audio_thread_created = true;
+  session_av_state_complete(&p->audio, generation);
   log_info("Audio capture started");
   return ASCIICHAT_OK;
 }
 
-void session_participant_stop_audio_capture(session_participant_t *p) {
-  if (!p || !p->initialized) {
+void session_participant_stop_audio(session_participant_t *p) {
+  if (!p || !p->initialized)
     return;
+  session_av_state_begin_stop(&p->audio);
+  if (p->audio_thread_created) {
+    if (asciichat_thread_join(&p->audio_capture_thread, NULL) != 0) {
+      log_error("Failed to join audio capture worker; retaining its resources");
+      return;
+    }
+    p->audio_thread_created = false;
   }
-
-  if (!p->audio_capture_running) {
-    return;
-  }
-
-  // Signal thread to stop
-  p->audio_capture_running = false;
-
-  // Wait for thread to complete
-  asciichat_thread_join(&p->audio_capture_thread, NULL);
-
-  // Stop audio streams
   if (p->audio_capture) {
-    session_audio_stop(p->audio_capture);
+    session_audio_destroy(p->audio_capture);
+    p->audio_capture = NULL;
   }
-
-  log_info("Audio capture stopped");
+  if (p->opus_encoder) {
+    opus_codec_destroy(p->opus_encoder);
+    p->opus_encoder = NULL;
+  }
+  p->audio_uses_video = false;
+  session_av_state_finish_stop(&p->audio);
 }
 
 /* ============================================================================
  * Session Participant Transport Functions (WebRTC Integration)
  * ============================================================================ */
 
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport) {
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
+                                                    session_transport_ownership_t ownership) {
   if (!p || !p->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
   }
 
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
+      p->audio_thread_created)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before replacing its transport");
+
   log_info("session_participant_set_transport: Setting transport=%p (was=%p)", transport, p->transport);
 
-  p->transport = transport;
-
-  if (transport) {
-    p->connected = acip_transport_is_connected(transport);
-    log_info("WebRTC transport now active for participant");
-  } else {
-    log_info("WebRTC transport cleared, reverting to socket");
+  if (ownership != SESSION_TRANSPORT_BORROWED && ownership != SESSION_TRANSPORT_OWNED)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
+  if (transport == p->transport) {
+    if (transport && ownership != p->transport_ownership)
+      return SET_ERRNO(ERROR_INVALID_STATE, "Detach before transferring transport ownership");
+    return ASCIICHAT_OK;
   }
+  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(p->transport);
+  p->transport = transport;
+  p->transport_ownership = transport ? ownership : SESSION_TRANSPORT_BORROWED;
+  p->connected = p->transport && acip_transport_is_connected(p->transport);
 
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
+                                                     session_transport_ownership_t *ownership) {
+  if (!p || !p->initialized || !transport || !ownership)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport transfer parameters");
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
+      p->audio_thread_created)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its transport");
+  *transport = p->transport;
+  *ownership = p->transport_ownership;
+  p->transport = NULL;
+  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
+  p->connected = false;
   return ASCIICHAT_OK;
 }
 

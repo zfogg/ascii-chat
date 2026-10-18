@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 /**
  * @file network/acip/client.c
  * @brief ACIP client-side protocol implementation
@@ -35,7 +36,25 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
   asciichat_error_t result = crypto_handshake_init("acds_client", &client->handshake_ctx, false);
   if (result != ASCIICHAT_OK)
     return result;
-  result = acds_handshake_begin(client->transport, true);
+  crypto_policy_t policy = client->config.security_policy;
+  policy.transport_secure = false; // This connector opens TCP.
+  if (client->config.identity_key && client->config.identity_key[0]) {
+    result = parse_private_key(client->config.identity_key, &client->handshake_ctx.client_private_key);
+    if (result != ASCIICHAT_OK)
+      return result;
+    client->handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
+    memcpy(client->handshake_ctx.client_public_key.key, client->handshake_ctx.client_private_key.public_key,
+           sizeof(client->handshake_ctx.client_private_key.public_key));
+    policy.has_identity = true;
+  }
+  uint8_t mode;
+  result = crypto_policy_resolve(&policy, &mode);
+  if (result != ASCIICHAT_OK)
+    return result;
+  client->handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  result = acds_handshake_begin(client->transport, mode);
+  if (mode == ACIP_CRYPTO_NONE)
+    return result;
   while (result == ASCIICHAT_OK && client->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
     packet_type_t type;
     void *payload = NULL, *allocation = NULL;
@@ -45,6 +64,8 @@ static asciichat_error_t acds_client_handshake(acds_client_t *client) {
       result = acds_handshake_receive(&client->handshake_ctx, client->transport, type, payload, length);
     buffer_release(allocation);
   }
+  if (result == ASCIICHAT_OK)
+    client->transport->crypto_ctx = &client->handshake_ctx.crypto_ctx;
   return result;
 }
 

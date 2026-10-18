@@ -727,3 +727,32 @@ Host and participant both provide callback-based interfaces for integration with
 - **Network Protocol**: `lib/network/` - ACIP packet protocol
 - **Platform Abstraction**: `lib/platform/` - Cross-platform internals
 - **Media Resolution**: `lib/media/` - FFmpeg/yt-dlp integration
+
+### Participant media lifecycle
+
+Use `session_participant_start_video/audio()` and `session_participant_stop_video/audio()`.
+The duplicate `_capture` entry points have been removed. Start creates the device context
+and worker, and reports active only after successful startup. Repeated start is
+idempotent; stop joins the worker before releasing capture and codec resources.
+Disconnect and destruction stop streams even after a partial connection failure.
+When audio borrows a video's file source, stopping video first stops audio.
+ACIP transports have explicit owned or borrowed semantics; replace a transport only
+after stopping its workers. Borrowed transports must remain valid until detached. Serialize participant control calls on its owning thread.
+
+`session/av_state.c` is the shared audio/video run state machine for native participant
+workers and browser camera/microphone adapters. A startup token covers asynchronous device permission
+and encoder setup; stopped or superseded tokens cannot activate a stream. Browser
+adapters call this same C implementation through WASM, keeping DOM/device operations
+outside the core. A future iOS adapter can use the same begin/complete/stop contract
+with AVFoundation callbacks; it must stop callbacks before finishing teardown.
+No iOS device adapter is supplied by this change.
+
+Check every start result before claiming streaming success:
+
+```c
+asciichat_error_t error = session_participant_start_video(participant);
+if (error != ASCIICHAT_OK) {
+    session_participant_destroy(participant);
+    return error;
+}
+```

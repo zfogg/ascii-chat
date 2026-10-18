@@ -14,6 +14,7 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
+  PeerCryptoSession,
   ConnectionState,
   PacketType,
   getClientModule,
@@ -38,6 +39,7 @@ type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
 type Peer = {
   pc: RTCPeerConnection;
   bridge: WebRTCBridge | null;
+  crypto: PeerCryptoSession | null;
   id: number;
   session: JoinedSession;
   ice: RTCIceCandidateInit[];
@@ -73,11 +75,11 @@ export class BrowserHostSession implements ClientSession {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
       discoveryHandshake: true,
-      ...(options.applicationEncryption === undefined
+      ...(options.signalingApplicationEncryption === undefined
         ? {}
-        : { applicationEncryption: options.applicationEncryption }),
-      ...(options.cryptoOptions
-        ? { cryptoOptions: options.cryptoOptions }
+        : { applicationEncryption: options.signalingApplicationEncryption }),
+      ...(options.signalingCryptoOptions
+        ? { cryptoOptions: options.signalingCryptoOptions }
         : {}),
       width,
       height,
@@ -149,15 +151,26 @@ export class BrowserHostSession implements ClientSession {
             const packet = parsePacket(bytes);
             this.packetCallback?.(packet, bytes.slice(22));
           } else {
-            for (const peer of this.peers.values())
-              if (peer.id === id)
-                peer.bridge?.send(
-                  bytes,
-                  new DataView(bytes.buffer, bytes.byteOffset).getUint16(
-                    8,
-                    false,
-                  ) === PacketType.ASCII_FRAME,
+            for (const [key, peer] of this.peers) {
+              if (peer.id !== id || !peer.crypto?.ready) continue;
+              const type = new DataView(
+                bytes.buffer,
+                bytes.byteOffset,
+              ).getUint16(8, false);
+              if (
+                type === PacketType.ASCII_FRAME &&
+                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
+              )
+                continue;
+              try {
+                peer.crypto.sendPacket(bytes);
+              } catch (error) {
+                this.removePeer(key);
+                this.options.onProgress?.(
+                  `Peer disconnected: ${String(error)}`,
                 );
+              }
+            }
           }
         });
       };
@@ -203,7 +216,7 @@ export class BrowserHostSession implements ClientSession {
         const pc = new RTCPeerConnection(
           discoveryRTCConfiguration(this.options, this.joined),
         );
-        peer = { pc, bridge: null, id: 0, session, ice: [] };
+        peer = { pc, bridge: null, crypto: null, id: 0, session, ice: [] };
         this.peers.set(key, peer);
         const remote = peer;
         pc.onicecandidate = (event) => {
@@ -223,29 +236,50 @@ export class BrowserHostSession implements ClientSession {
           id: 0,
           ordered: true,
         });
+        remote.crypto = await PeerCryptoSession.create(
+          {
+            ...this.options.cryptoOptions,
+            password:
+              this.options.cryptoOptions?.password || this.options.password,
+          },
+          this.options.applicationEncryption,
+          true,
+          (packet) => {
+            if (!remote.bridge) throw new Error("WebRTC bridge is not ready");
+            remote.bridge.send(packet);
+          },
+        );
+        if (this.closed) {
+          remote.crypto.close();
+          return;
+        }
         channel.onopen = () => {
           if (this.closed) return;
           remote.bridge = new WebRTCBridge(
             channel,
             (bytes) => {
               try {
-                const packet = parsePacket(bytes);
-                this.receive(remote.id, packet.type, bytes.slice(22));
+                const decoded = remote.crypto!.receive(bytes);
+                if (remote.crypto!.ready && !remote.id) {
+                  remote.id = this.module!._browser_host_add_client();
+                  if (!remote.id)
+                    throw new Error("Cannot admit authenticated peer");
+                  this.options.onProgress?.(
+                    "Hosting — peer security negotiated",
+                  );
+                }
+                if (!decoded) return;
+                const packet = parsePacket(decoded);
+                this.receive(remote.id, packet.type, decoded.slice(22));
               } catch (error) {
-                this.fail(error);
+                this.removePeer(key);
+                this.options.onProgress?.(`Peer rejected: ${String(error)}`);
               }
             },
             () => this.removePeer(key),
             pc.sctp?.maxMessageSize,
           );
-          remote.id = this.module!._browser_host_add_client();
-          if (!remote.id) {
-            channel.close();
-            return;
-          }
-          this.options.onProgress?.(
-            "Hosting — participant connected (DTLS encrypted)",
-          );
+          remote.crypto!.flush();
         };
         channel.onclose = () => {
           if (!this.closed) this.removePeer(key);
@@ -316,6 +350,7 @@ export class BrowserHostSession implements ClientSession {
     this.decoders.delete(peer.id);
     peer.pc.close();
     peer.bridge?.close();
+    peer.crypto?.close();
     this.options.onProgress?.(
       this.peers.size
         ? "Hosting — participant connected"
@@ -382,6 +417,7 @@ export class BrowserHostSession implements ClientSession {
     for (const peer of this.peers.values()) {
       peer.pc.close();
       peer.bridge?.close();
+      peer.crypto?.close();
     }
     this.peers.clear();
     for (const decoder of this.decoders.values()) decoder.destroy();

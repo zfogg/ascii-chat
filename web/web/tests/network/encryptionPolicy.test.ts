@@ -7,6 +7,7 @@ import {
   encryptPacket,
   initClientWasm,
   registerSendPacketCallback,
+  resolveCryptoPolicy,
 } from "../../src/wasm/client";
 
 const beginHandshake = vi.hoisted(() => vi.fn(() => 0));
@@ -52,7 +53,11 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   setServerAddress: vi.fn(),
   registerSendPacketCallback: vi.fn(),
   getConnectionState: () => 3,
-  getClientModule: () => ({ _client_acds_handshake_begin: beginHandshake }),
+  resolveCryptoPolicy: vi.fn(() => 1),
+  getClientModule: () => ({
+    _client_acds_handshake_begin: beginHandshake,
+    _client_handshake_begin: beginHandshake,
+  }),
   serializePacket: (type: number, payload: Uint8Array) => {
     const bytes = new Uint8Array(22 + payload.length);
     new DataView(bytes.buffer).setUint16(8, type, false);
@@ -66,24 +71,26 @@ describe("WebSocket encryption defaults", () => {
   beforeEach(() => {
     sockets.sent = [];
     sockets.instances = [];
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    beginHandshake.mockReturnValue(0);
+    vi.mocked(resolveCryptoPolicy).mockReturnValue(1);
   });
   it.each([
     ["ws://localhost:27226", true],
     ["wss://example.com", false],
   ] as const)("%s uses the correct default", async (serverUrl, encrypted) => {
+    vi.mocked(resolveCryptoPolicy).mockReturnValue(encrypted ? 1 : 0);
     const connection = new ClientConnection({ serverUrl });
     const states: ConnectionState[] = [];
     connection.onStateChange((state) => states.push(state));
     await connection.connect();
+    Object.assign(connection, { transportState: ConnectionState.CONNECTED });
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1, 2, 3]));
     expect(encryptPacket).toHaveBeenCalledTimes(encrypted ? 1 : 0);
     expect(new DataView(sockets.sent[0]!.buffer).getUint16(8, false)).toBe(
       encrypted ? PacketType.ENCRYPTED : PacketType.IMAGE_FRAME,
     );
-    expect(states).toContain(
-      encrypted ? ConnectionState.CONNECTING : ConnectionState.CONNECTED,
-    );
+    expect(states).toContain(ConnectionState.CONNECTING);
     connection.disconnect();
   });
   it("permits explicit application encryption on WSS", async () => {
@@ -92,6 +99,7 @@ describe("WebSocket encryption defaults", () => {
       applicationEncryption: true,
     });
     await connection.connect();
+    Object.assign(connection, { transportState: ConnectionState.CONNECTED });
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
     expect(encryptPacket).toHaveBeenCalledOnce();
     connection.disconnect();
@@ -103,6 +111,9 @@ describe("WebSocket encryption defaults", () => {
   ] as const)(
     "%s starts the C discovery handshake with the encryption policy",
     async (serverUrl, supportsEncryption, expectedState) => {
+      vi.mocked(resolveCryptoPolicy).mockReturnValue(
+        supportsEncryption ? 1 : 0,
+      );
       const connection = new ClientConnection({
         serverUrl,
         discoveryHandshake: true,
@@ -218,6 +229,31 @@ describe("WebSocket encryption defaults", () => {
     );
     expect(sockets.instances).toHaveLength(0);
     expect(sockets.sent).toHaveLength(0);
+    connection.disconnect();
+  });
+});
+
+describe("authentication without payload encryption", () => {
+  it("uses the C AUTH mode, blocks early media, then sends plaintext", async () => {
+    vi.mocked(resolveCryptoPolicy).mockReturnValue(2);
+    beginHandshake.mockReturnValue(0);
+    vi.mocked(encryptPacket).mockClear();
+    const connection = new ClientConnection({
+      serverUrl: "wss://example.com",
+      applicationEncryption: false,
+      cryptoOptions: { identityPrivateKeyText: "identity" },
+    });
+    await connection.connect();
+    expect(resolveCryptoPolicy).toHaveBeenCalledWith(
+      "wss://example.com",
+      false,
+    );
+    expect(() =>
+      connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1])),
+    ).toThrow("not complete");
+    Object.assign(connection, { transportState: ConnectionState.CONNECTED });
+    connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
+    expect(encryptPacket).not.toHaveBeenCalled();
     connection.disconnect();
   });
 });

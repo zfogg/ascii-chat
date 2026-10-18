@@ -40,6 +40,11 @@ interface MirrorDemoWidgetProps {
   showHeader?: boolean;
 }
 
+function formatPlaybackTime(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
 let lastMatrixRain = false;
 
 function applyDemoOption(
@@ -106,6 +111,8 @@ export default function MirrorDemoWidget({
   const [wasmReady, setWasmReady] = useState(false);
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [durationSeconds, setDurationSeconds] = useState(0);
   const [termDims, setTermDims] = useState({ cols: 0, rows: 0 });
   const termDimsRef = useRef(termDims);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
@@ -357,7 +364,7 @@ export default function MirrorDemoWidget({
 
       if (videoRef.current) {
         addDebugLog("Setting up video element");
-        videoRef.current.src = "/assets/demo-video-sun-models.webm";
+        videoRef.current.src = "/assets/demo-video-white-knuckles.webm";
         // Don't set crossOrigin for same-domain resources
         // (production server doesn't provide CORS headers)
         videoRef.current.loop = true;
@@ -697,6 +704,13 @@ export default function MirrorDemoWidget({
       >
         <video
           ref={videoRef}
+          onTimeUpdate={(event) =>
+            setElapsedSeconds(Math.floor(event.currentTarget.currentTime))
+          }
+          onDurationChange={(event) => {
+            const duration = event.currentTarget.duration;
+            setDurationSeconds(Number.isFinite(duration) ? duration : 0);
+          }}
           autoPlay
           muted
           playsInline
@@ -717,6 +731,7 @@ export default function MirrorDemoWidget({
         <div className="demo-widget-inner">
           <AsciiRenderer
             ref={rendererRef}
+            initializeOptions={false}
             keyboardEnabled={false}
             splashEnabled={false}
             onDimensionsChange={handleDimensionsChange}
@@ -739,6 +754,16 @@ export default function MirrorDemoWidget({
             height: "100%",
           }}
         >
+          {source === MediaSourceType.FILE && durationSeconds > 0 && (
+            <span
+              className="absolute top-2 left-3 z-10 rounded bg-neutral-500/40 px-2 py-1 font-mono text-sm tabular-nums text-white/80 select-none"
+              style={{ textShadow: "0 1px 3px #000, 0 0 6px #000" }}
+              aria-label="Video playback time"
+            >
+              {formatPlaybackTime(elapsedSeconds)} /{" "}
+              {formatPlaybackTime(durationSeconds)}
+            </span>
+          )}
           {!source && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-auto">
               <p className="text-gray-200 text-sm sm:text-base bg-gray-800 px-2 py-1 rounded">
@@ -886,12 +911,12 @@ export default function MirrorDemoWidget({
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
         <a
-          href="https://www.youtube.com/watch?v=RtCaoKY769E"
+          href="https://www.youtube.com/watch?v=nHlJODYBLKs"
           className="text-gray-500 hover:text-gray-400 underline"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Sun Models (ODESZA VIP Remix) - Live from Lollapalooza 2023
+          OK Go — White Knuckles
         </a>
       </p>
     </div>

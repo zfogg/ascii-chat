@@ -207,6 +207,27 @@ describe("Discovery connection settings", () => {
 });
 
 describe("WebRTC signaling reconnects", () => {
+  it("keeps media credentials separate from discovery-service credentials", () => {
+    new WebRTCSession({
+      sessionName: "blue-mountain-tiger",
+      password: "media-password",
+      signalingUrl: "wss://localhost",
+      applicationEncryption: true,
+      cryptoOptions: {
+        password: "media-password",
+        expectedServerPublicKeyText: "media-key",
+      },
+      stunServers: [],
+      turnServers: [],
+    });
+    expect(
+      signalingHarness.current!.options.applicationEncryption,
+    ).toBeUndefined();
+    expect(signalingHarness.current!.options).not.toHaveProperty(
+      "cryptoOptions",
+    );
+  });
+
   it.each([AcdsType.INFO, AcdsType.JOINED, AcdsType.END])(
     "stops retrying rejected/ended session response %s",
     async (type) => {

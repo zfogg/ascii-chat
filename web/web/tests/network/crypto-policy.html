@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>ACIP security integration</title>
+  <body>
+    <pre id="result">Waiting for security test</pre>
+    <script type="module">
+      import { DiscoveryProtocol } from "/src/network/DiscoveryProtocol.ts";
+      import { AcdsType } from "/src/network/acdsProtocol.ts";
+      import { BrowserHostSession } from "/src/network/BrowserHostSession.ts";
+      import { WebRTCSession } from "/src/network/WebRTCSession.ts";
+      import { ClientConnection } from "/src/network/ClientConnection.ts";
+      import { buildCapabilitiesPacket } from "/src/network/packetBuilders.ts";
+      import { ConnectionState, PacketType } from "/src/wasm/client.ts";
+
+      window.startBrowserHost = async (options) => {
+        let created;
+        const ready = new Promise((resolve) => {
+          created = resolve;
+        });
+        window.testHost = new BrowserHostSession({
+          ...options,
+          createSession: true,
+          onCreated: created,
+        });
+        await window.testHost.connect();
+        return ready;
+      };
+
+      window.runSecurityTest = async (options) => {
+        const sent = [];
+        const progress = [];
+        options.onProgress = (message) => progress.push(message);
+        const prototype = options.sessionName
+          ? RTCDataChannel.prototype
+          : WebSocket.prototype;
+        const originalSend = prototype.send;
+        prototype.send = function (data) {
+          const bytes =
+            data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+          if (bytes.byteLength >= 22)
+            sent.push(
+              new DataView(
+                bytes.buffer,
+                bytes.byteOffset,
+                bytes.byteLength,
+              ).getUint16(8, false),
+            );
+          return originalSend.call(this, data);
+        };
+        const connection = options.sessionName
+          ? new WebRTCSession(options)
+          : new ClientConnection(options);
+        const states = [];
+        let discovery;
+        try {
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(
+              () => reject(new Error("Security handshake timed out")),
+              30000,
+            );
+            connection.onStateChange((state) => {
+              states.push(state);
+              if (
+                state === ConnectionState.ERROR ||
+                state === ConnectionState.DISCONNECTED
+              ) {
+                clearTimeout(timeout);
+                reject(new Error("Security handshake rejected"));
+              }
+              if (state === ConnectionState.CONNECTED) {
+                if (!options.discoveryHandshake)
+                  connection.sendPacket(
+                    PacketType.CLIENT_CAPABILITIES,
+                    buildCapabilitiesPacket(40, 12),
+                  );
+                if (options.discoveryHandshake) {
+                  discovery = new DiscoveryProtocol((type, payload) =>
+                    connection.sendPacket(type, payload),
+                  );
+                  discovery.enter(false, "absent-test-session", "");
+                } else
+                  connection.sendPacket(PacketType.PING, new Uint8Array(8));
+              }
+            });
+            connection.onPacketReceived((packet) => {
+              if (
+                packet.type === PacketType.PONG ||
+                (options.discoveryHandshake && packet.type === AcdsType.INFO)
+              ) {
+                clearTimeout(timeout);
+                resolve();
+              }
+            });
+            connection.connect().catch((error) => {
+              clearTimeout(timeout);
+              reject(error);
+            });
+          });
+          const result = {
+            ok: true,
+            sent,
+            states,
+            encrypted: sent.includes(PacketType.ENCRYPTED),
+          };
+          document.querySelector("#result").textContent =
+            JSON.stringify(result);
+          return result;
+        } catch (error) {
+          const result = {
+            ok: false,
+            sent,
+            states,
+            progress,
+            error: String(error),
+          };
+          document.querySelector("#result").textContent =
+            JSON.stringify(result);
+          return result;
+        } finally {
+          discovery?.close();
+          connection.disconnect();
+          prototype.send = originalSend;
+        }
+      };
+    </script>
+  </body>
+</html>

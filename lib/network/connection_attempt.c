@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file connection_attempt.c
@@ -210,30 +212,27 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     ctx->attempt_start_time_ns = time_get_realtime_ns();
     ctx->timeout_ns = CONN_TIMEOUT_TCP; // Use same timeout as TCP
 
-    // Compute crypto mode from CLI options
-    // Determine if client has authentication material (keys or password)
-    bool has_auth_material =
-        (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0 || GET_OPTION(password)[0] != '\0');
-    bool no_encrypt = GET_OPTION(no_encrypt);
-    bool no_auth = GET_OPTION(no_auth);
-
+    const crypto_policy_t policy = {
+        .transport_secure = strncmp(ws_url, "wss://", 6) == 0,
+        .encrypt = GET_OPTION(encrypt_enabled),
+        .no_encrypt = GET_OPTION(no_encrypt),
+        .no_auth = GET_OPTION(no_auth),
+        .has_password = GET_OPTION(password)[0] != '\0',
+        .has_identity = GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0,
+        .has_verification_key = GET_OPTION(server_key)[0] != '\0',
+    };
     uint8_t crypto_mode;
-    if (!no_encrypt && !no_auth && !has_auth_material)
-      crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
-    else if (!no_encrypt && !no_auth && has_auth_material)
-      crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
-    else if (no_encrypt && !no_auth && has_auth_material)
-      crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
-    else
-      crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+    asciichat_error_t policy_result = crypto_policy_resolve(&policy, &crypto_mode);
+    if (policy_result != ASCIICHAT_OK)
+      return policy_result;
+
+    if (!policy.transport_secure && !ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode))
+      NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
 
     log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
-    // Set crypto mode before initialization via callback
-    // NOTE: Always initialize crypto context, even in NONE mode!
-    // The server always sends KEY_EXCHANGE_INIT packets, and the context
-    // must be initialized to handle them (even if in disabled/none mode).
+    // Initialize negotiation even in NONE mode so the server can enforce its policy.
     const crypto_context_t *crypto_ctx = NULL;
 
     log_debug("Initializing crypto context for WebSocket with mode 0x%02x...", crypto_mode);
@@ -288,6 +287,13 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
       return SET_ERRNO(ERROR_NETWORK, "WebSocket handshake timeout");
     }
 
+    asciichat_error_t handshake_result = APP_CALLBACK_ERROR_TRANSPORT(client_crypto_handshake, transport);
+    if (handshake_result != ASCIICHAT_OK) {
+      websocket_client_destroy(&ws_client);
+      return handshake_result;
+    }
+    if (APP_CALLBACK_BOOL(crypto_client_is_ready))
+      transport->crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
     log_info("WebSocket connection established to %s", ws_url);
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->connection.transport = transport;
@@ -347,22 +353,24 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     log_warn("TCP client did not populate server_ip field");
   }
 
-  // Compute crypto mode from CLI options
-  // Determine if client has authentication material (keys or password)
-  bool has_auth_material =
-      (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0 || GET_OPTION(password)[0] != '\0');
-  bool no_encrypt = GET_OPTION(no_encrypt);
-  bool no_auth = GET_OPTION(no_auth);
-
+  const crypto_policy_t policy = {
+      .transport_secure = false,
+      .encrypt = GET_OPTION(encrypt_enabled),
+      .no_encrypt = GET_OPTION(no_encrypt),
+      .no_auth = GET_OPTION(no_auth),
+      .has_password = GET_OPTION(password)[0] != '\0',
+      .has_identity = GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0,
+      .has_verification_key = GET_OPTION(server_key)[0] != '\0',
+  };
   uint8_t crypto_mode;
-  if (!no_encrypt && !no_auth && !has_auth_material)
-    crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
-  else if (!no_encrypt && !no_auth && has_auth_material)
-    crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
-  else if (no_encrypt && !no_auth && has_auth_material)
-    crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
-  else
-    crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+  asciichat_error_t policy_result = crypto_policy_resolve(&policy, &crypto_mode);
+  if (policy_result != ASCIICHAT_OK) {
+    tcp_client_destroy(&tcp_client);
+    return policy_result;
+  }
+
+  if (!policy.transport_secure && !ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode))
+    NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
 
   log_debug("TCP crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode, ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode),
             ACIP_CRYPTO_HAS_AUTH(crypto_mode));
@@ -371,7 +379,7 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
   const crypto_context_t *crypto_ctx = NULL;
   acip_transport_t *transport = NULL;
 
-  if (crypto_mode != ACIP_CRYPTO_NONE) {
+  {
     APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
 
     // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
@@ -410,14 +418,6 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
       crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
       transport->crypto_ctx = (crypto_context_t *)crypto_ctx;
     }
-  } else {
-    // No crypto — create transport without encryption
-    transport = acip_tcp_transport_create("connection", sockfd, NULL);
-    if (!transport) {
-      log_error("Failed to create ACIP transport for TCP");
-      tcp_client_destroy(&tcp_client);
-      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
-    }
   }
 
   log_info("TCP connection established to %s:%u", endpoint.host, endpoint.port);
@@ -448,72 +448,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
  * and creates ACIP transport for protocol communication.
  */
 static asciichat_error_t connection_attempt_websocket_measured(connection_attempt_context_t *ctx, const char *ws_url) {
-  log_info("=== connection_attempt_websocket CALLED: url='%s' ===", ws_url);
-
-  if (!ctx || !ws_url) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-  }
-
-  // Check if shutdown was requested (via callback if available)
-  if (APP_CALLBACK_BOOL(should_exit)) {
-    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
-  }
-
-  log_info("Attempting WebSocket connection to %s", ws_url);
-
-  // Transition to attempting state
-  asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  // Set timeout for this attempt
-  ctx->attempt_start_time_ns = time_get_realtime_ns();
-  ctx->timeout_ns = CONN_TIMEOUT_TCP;
-
-  // Initialize crypto context if encryption is enabled
-  const crypto_context_t *crypto_ctx = NULL;
-  if (!GET_OPTION(no_encrypt)) {
-    log_debug("Initializing crypto context for WebSocket...");
-
-    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
-      log_error("Failed to initialize crypto context");
-      return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
-    }
-    log_debug("Crypto context initialized successfully");
-
-    // Get crypto context if ready
-    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
-      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
-    }
-  }
-
-  // Create WebSocket client instance
-  websocket_client_t *ws_client = websocket_client_create("connection");
-  if (!ws_client) {
-    log_error("Failed to create WebSocket client");
-    connection_state_transition(ctx, CONN_STATE_FAILED);
-    return SET_ERRNO(ERROR_NETWORK, "WebSocket client creation failed");
-  }
-
-  // Connect via WebSocket
-  acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
-  if (!transport) {
-    log_error("Failed to create WebSocket ACIP transport");
-    websocket_client_destroy(&ws_client);
-    connection_state_transition(ctx, CONN_STATE_FAILED);
-    return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
-  }
-
-  log_info("WebSocket connection established to %s", ws_url);
-  connection_state_transition(ctx, CONN_STATE_CONNECTED);
-  ctx->connection.transport = transport;
-  ctx->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
-  ctx->connection.owner = ws_client;
-  ctx->connection.owner_destroy = destroy_websocket_client_owner;
-  log_debug("WebSocket owner stored in connection context");
-
-  return ASCIICHAT_OK;
+  // URL dispatch and security negotiation are identical to the general connector.
+  return connection_attempt_tcp_measured(ctx, ws_url, 0);
 }
 
 asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx, const char *ws_url) {

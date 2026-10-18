@@ -344,7 +344,10 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   // Set up data channel callbacks for incoming channel
   rtcSetUserPointer(dc_id, dc);
   rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
-  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  // Keep libdatachannel's receive queue intact until a consumer is installed.
+  // An adapter with no user callback would silently discard early peer hellos.
+  if (pc->config.on_datachannel_message)
+    rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
 
   log_info("Set up callbacks for incoming DataChannel (dc_id=%d, dc=%p)", dc_id, (void *)dc);
@@ -815,7 +818,10 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
   // Set up callbacks
   rtcSetUserPointer(dc_id, dc);
   rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
-  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  // Keep libdatachannel's receive queue intact until a consumer is installed.
+  // An adapter with no user callback would silently discard early peer hellos.
+  if (pc->config.on_datachannel_message)
+    rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
 
   pc->dc = dc;

@@ -1,6 +1,7 @@
 # lib/crypto - Cryptography
 
 set(CRYPTO_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/policy.c
     ${CMAKE_CURRENT_SOURCE_DIR}/crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/keymask.c
     ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/display.c

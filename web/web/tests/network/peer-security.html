@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>WebRTC ACIP security integration</title>
+  <body>
+    <pre id="result">Waiting for peer test</pre>
+    <script type="module">
+      import {
+        initClientWasm,
+        PeerCryptoSession,
+        serializePacket,
+        parsePacket,
+        PacketType,
+      } from "/src/wasm/client.ts";
+      import { WebRTCBridge } from "/src/network/WebRTCBridge.ts";
+
+      window.runPeerSecurityTest = async (settings = {}) => {
+        await initClientWasm({ width: 40, height: 12 });
+        const pcs = [new RTCPeerConnection(), new RTCPeerConnection()];
+        const channels = pcs.map((pc) =>
+          pc.createDataChannel("acip", {
+            negotiated: true,
+            id: 0,
+            ordered: true,
+          }),
+        );
+        const peers = [],
+          bridges = [],
+          sent = [[], []],
+          received = [[], []];
+        let failure;
+        const fail = (error) => {
+          failure = String(error);
+        };
+        const until = async (predicate) => {
+          const start = performance.now();
+          while (!predicate()) {
+            if (failure) throw new Error(failure);
+            if (performance.now() - start > 15000)
+              throw new Error("Peer test timed out");
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+        };
+        try {
+          for (let i = 0; i < 2; i++) {
+            peers[i] = await PeerCryptoSession.create(
+              settings[i ? "client" : "server"] || {},
+              settings[i ? "clientEncryption" : "serverEncryption"] ??
+                settings.encryption,
+              i === 0,
+              (packet) => {
+                sent[i].push(parsePacket(packet).type);
+                bridges[i].send(packet);
+              },
+            );
+            bridges[i] = new WebRTCBridge(
+              channels[i],
+              (packet) => {
+                try {
+                  const decoded = peers[i].receive(packet);
+                  if (decoded) received[i].push(decoded);
+                } catch (error) {
+                  fail(error);
+                }
+              },
+              fail,
+            );
+          }
+          let prematureRejected = false;
+          try {
+            peers[1].sendPacket(
+              serializePacket(PacketType.PING, new Uint8Array(8), 0),
+            );
+          } catch {
+            prematureRejected = true;
+          }
+          if (!prematureRejected)
+            throw new Error("Media was admitted before authentication");
+          await pcs[1].setLocalDescription(await pcs[1].createOffer());
+          await until(() => pcs[1].iceGatheringState === "complete");
+          await pcs[0].setRemoteDescription(pcs[1].localDescription);
+          await pcs[0].setLocalDescription(await pcs[0].createAnswer());
+          await until(() => pcs[0].iceGatheringState === "complete");
+          await pcs[1].setRemoteDescription(pcs[0].localDescription);
+          await until(() =>
+            channels.every((channel) => channel.readyState === "open"),
+          );
+          peers[0].flush();
+          peers[1].flush();
+          await until(() => peers.every((peer) => peer.ready));
+          if (settings.plaintextInjection) {
+            bridges[1].send(
+              serializePacket(PacketType.PING, new Uint8Array(8), 0),
+            );
+            await until(() => false);
+          }
+          const payload = new Uint8Array(65536).fill(0x5a);
+          for (const peer of peers)
+            peer.sendPacket(serializePacket(PacketType.PING, payload, 0));
+          await until(() => received.every((packets) => packets.length === 1));
+          if (
+            received.some(
+              (packets) =>
+                packets[0].length !== payload.length + 22 ||
+                packets[0].slice(22).some((byte) => byte !== 0x5a),
+            )
+          )
+            throw new Error("Peer payload did not round-trip");
+          const result = {
+            ok: true,
+            prematureRejected,
+            encrypted: sent.map((types) =>
+              types.includes(PacketType.ENCRYPTED),
+            ),
+            bytes: received.map((packets) => packets[0].length),
+          };
+          document.querySelector("#result").textContent =
+            JSON.stringify(result);
+          return result;
+        } catch (error) {
+          const result = {
+            ok: false,
+            error: String(error),
+            received: received.map((packets) => packets.length),
+          };
+          document.querySelector("#result").textContent =
+            JSON.stringify(result);
+          return result;
+        } finally {
+          bridges.forEach((bridge) => bridge.close());
+          peers.forEach((peer) => peer.close());
+          pcs.forEach((pc) => pc.close());
+        }
+      };
+    </script>
+  </body>
+</html>

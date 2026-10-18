@@ -1170,33 +1170,7 @@ int protocol_start_connection() {
     }
     log_debug("[FRAME_RECV_INIT] WS: Data thread spawned, waiting for crypto handshake");
 
-    // Wait for crypto handshake to complete (CRYPTO_PARAMETERS → KEY_EXCHANGE → HANDSHAKE_COMPLETE)
-    // Skip waiting if encryption is disabled (no_encrypt mode)
-    if (!GET_OPTION(no_encrypt)) {
-      const int MAX_CRYPTO_WAIT_MS = 10000; // 10 seconds
-      const int POLL_INTERVAL_MS = 10;
-      int waited_ms = 0;
-      while (!crypto_client_is_ready() && !should_exit() && server_connection_is_active() &&
-             waited_ms < MAX_CRYPTO_WAIT_MS) {
-        platform_sleep_us(POLL_INTERVAL_MS * 1000);
-        waited_ms += POLL_INTERVAL_MS;
-        if (waited_ms % 1000 == 0) {
-          log_info("[FRAME_RECV_INIT] WS_CRYPTO: Waiting for handshake... (%d ms elapsed)", waited_ms);
-        }
-      }
 
-      if (!crypto_client_is_ready()) {
-        if (should_exit() || !server_connection_is_active()) {
-          log_error("[FRAME_RECV_INIT] WS: Connection lost during crypto handshake");
-        } else {
-          log_error("[FRAME_RECV_INIT] WS: Crypto handshake timed out after %d ms", MAX_CRYPTO_WAIT_MS);
-        }
-        return -1;
-      }
-      log_info("[FRAME_RECV_INIT] WS: Crypto handshake completed after %d ms", waited_ms);
-    } else {
-      log_info("[FRAME_RECV_INIT] WS: Encryption disabled, skipping handshake wait");
-    }
   }
 
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)

@@ -155,6 +155,7 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/av_state.c
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
@@ -213,6 +214,7 @@ set(LIB_SRC_COMMON
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
+    ${LIB_ROOT}/crypto/policy.c
 
     # Video processing (needed by logging and config systems)
     ${LIB_ROOT}/video/ascii/ascii.c
@@ -321,6 +323,7 @@ set(LIB_SRC_MIRROR_ONLY
 set(LIB_SRC_CLIENT_CRYPTO
     ${LIB_ROOT}/crypto/handshake/common.c
     ${LIB_ROOT}/crypto/handshake/client.c
+    ${LIB_ROOT}/crypto/handshake/server.c
     ${LIB_ROOT}/crypto/regex.c
     ${LIB_ROOT}/crypto/ssh/ssh_keys.c
     ${LIB_ROOT}/crypto/gpg/openpgp.c
@@ -335,6 +338,8 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/errors.c
     ${LIB_ROOT}/network/frame_validator.c
     ${LIB_ROOT}/network/acip/send.c
+    ${LIB_ROOT}/network/acip/prepare.c
+    ${LIB_ROOT}/network/acip/security.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)
@@ -451,6 +456,7 @@ apply_sanitizers_to_target(mirror-web)
 set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/browser_host.c
     ${CMAKE_CURRENT_SOURCE_DIR}/browser_discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
@@ -568,10 +574,22 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _peer_crypto_error
+    _peer_crypto_create
+    _peer_crypto_destroy
+    _peer_crypto_ready
+    _peer_crypto_send
+    _peer_crypto_receive
+    _peer_crypto_output_data
+    _peer_crypto_output_size
+    _peer_crypto_output_pop
+    _peer_crypto_received_data
+    _peer_crypto_received_size
     _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
+    _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
     _client_acds_handshake_begin _client_acds_handshake_receive
     _client_configure_crypto_options
     _client_parse_ssh_private_key
