@@ -70,14 +70,11 @@ typedef struct session_participant {
   /** @brief User data for callbacks */
   void *user_data;
 
-  /** @brief Connection socket */
-  socket_t socket;
-
-  /** @brief Selected media transport; external replacements are borrowed. */
+  /** @brief Selected transport used by all media workers. */
   struct acip_transport *transport;
 
-  /** @brief Owned TCP wrapper, retained while an external transport is selected. */
-  struct acip_transport *tcp_transport;
+  /** @brief Responsibility for releasing the selected transport. */
+  session_transport_ownership_t transport_ownership;
 
   /** @brief Currently connected */
   bool connected;
@@ -164,8 +161,6 @@ session_participant_t *session_participant_create(const session_participant_conf
   p->callbacks = config->callbacks;
   p->user_data = config->user_data;
 
-  // Initialize socket to invalid
-  p->socket = INVALID_SOCKET_VALUE;
   p->transport = NULL;
   p->connected = false;
   p->client_id = 0;
@@ -188,8 +183,6 @@ void session_participant_destroy(session_participant_t *p) {
   // A failed join retains the participant and its resources for a safe retry.
   if (p->video_thread_created || p->audio_thread_created)
     return;
-  // Alternative transports are borrowed from the caller.
-  p->transport = NULL;
 
   // Clear sensitive data
   memset(p->password, 0, sizeof(p->password));
@@ -264,19 +257,17 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     return ASCIICHAT_OK; // Already connected
   }
 
-  if (p->transport && p->transport != p->tcp_transport)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Detach the external transport before reconnecting TCP");
   session_participant_disconnect(p);
   if (p->video_thread_created || p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting TCP");
 
   // Create TCP connection to server
   log_debug("session_participant_connect: calling connect_to_server(%s, %d)", p->address, p->port);
-  p->socket = connect_to_server(p->address, p->port);
-  log_debug("session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)", p->socket,
+  socket_t socket = connect_to_server(p->address, p->port);
+  log_debug("session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)", socket,
             INVALID_SOCKET_VALUE);
 
-  if (p->socket == INVALID_SOCKET_VALUE) {
+  if (socket == INVALID_SOCKET_VALUE) {
     log_error("Failed to connect to server at %s:%d", p->address, p->port);
     if (p->callbacks.on_error) {
       p->callbacks.on_error(p, ERROR_NETWORK_CONNECT, "Failed to connect to server", p->user_data);
@@ -285,21 +276,21 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   }
 
   asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
-  p->tcp_transport = acip_tcp_transport_create("session_participant_tcp", p->socket, NULL);
-  if (!p->tcp_transport) {
+  acip_transport_t *transport = acip_tcp_transport_create_owned("session_participant_tcp", socket, NULL);
+  if (!transport) {
     asciichat_error_context_t cause;
     asciichat_error_t error = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_NETWORK_CONNECT;
-    socket_close(p->socket);
-    p->socket = INVALID_SOCKET_VALUE;
+    socket_close(socket);
     return SET_ERRNO(error, "Failed to create participant TCP transport");
   }
-  p->transport = p->tcp_transport;
+  p->transport = transport;
+  p->transport_ownership = SESSION_TRANSPORT_OWNED;
 
   log_debug("session_participant_connect: setting p->connected=true");
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
-  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, p->socket);
+  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, socket);
   log_debug("session_participant_connect: p->connected=%d after setting", p->connected);
 
   // Invoke callback
@@ -322,19 +313,10 @@ void session_participant_disconnect(session_participant_t *p) {
   if (p->video_thread_created || p->audio_thread_created)
     return;
 
-  // The TCP wrapper borrows the socket; release it before closing the socket.
-  if (p->tcp_transport) {
-    if (p->transport == p->tcp_transport)
-      p->transport = NULL;
-    acip_transport_destroy(p->tcp_transport);
-    p->tcp_transport = NULL;
-  }
-
-  // Close socket
-  if (p->socket != INVALID_SOCKET_VALUE) {
-    socket_close(p->socket);
-    p->socket = INVALID_SOCKET_VALUE;
-  }
+  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(p->transport);
+  p->transport = NULL;
+  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
 
   p->connected = false;
   p->client_id = 0;
@@ -363,7 +345,7 @@ socket_t session_participant_get_socket(session_participant_t *p) {
   if (!p || !p->initialized) {
     return INVALID_SOCKET_VALUE;
   }
-  return p->socket;
+  return acip_transport_get_socket(p->transport);
 }
 
 /* ============================================================================
@@ -685,7 +667,8 @@ void session_participant_stop_audio(session_participant_t *p) {
  * Session Participant Transport Functions (WebRTC Integration)
  * ============================================================================ */
 
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport) {
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
+                                                    session_transport_ownership_t ownership) {
   if (!p || !p->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
   }
@@ -696,9 +679,34 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 
   log_info("session_participant_set_transport: Setting transport=%p (was=%p)", transport, p->transport);
 
-  p->transport = transport ? transport : p->tcp_transport;
+  if (ownership != SESSION_TRANSPORT_BORROWED && ownership != SESSION_TRANSPORT_OWNED)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
+  if (transport == p->transport) {
+    if (transport && ownership != p->transport_ownership)
+      return SET_ERRNO(ERROR_INVALID_STATE, "Detach before transferring transport ownership");
+    return ASCIICHAT_OK;
+  }
+  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(p->transport);
+  p->transport = transport;
+  p->transport_ownership = transport ? ownership : SESSION_TRANSPORT_BORROWED;
   p->connected = p->transport && acip_transport_is_connected(p->transport);
 
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
+                                                     session_transport_ownership_t *ownership) {
+  if (!p || !p->initialized || !transport || !ownership)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport transfer parameters");
+  if (session_media_should_run(&p->video) || session_media_should_run(&p->audio) || p->video_thread_created ||
+      p->audio_thread_created)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its transport");
+  *transport = p->transport;
+  *ownership = p->transport_ownership;
+  p->transport = NULL;
+  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
+  p->connected = false;
   return ASCIICHAT_OK;
 }
 

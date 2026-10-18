@@ -376,32 +376,49 @@ socket_t session_participant_get_socket(session_participant_t *p);
  */
 typedef struct acip_transport acip_transport_t;
 
+/** @brief Responsibility for releasing the participant's selected transport. */
+typedef enum {
+  SESSION_TRANSPORT_BORROWED, ///< The external owner releases the detached transport.
+  SESSION_TRANSPORT_OWNED,    ///< The participant destroys the transport on replacement or disconnect.
+} session_transport_ownership_t;
+
 /**
- * @brief Set an alternative transport for the participant
+ * @brief Select a transport and its ownership mode for the participant
  *
  * Allows replacing the default TCP socket transport with an alternative
  * transport such as WebRTC DataChannel. Once set, the participant will
  * use this transport for send/receive operations.
  *
  * @param p Participant handle (must not be NULL)
- * @param transport Borrowed transport, or NULL to restore the owned TCP transport if connected
+ * @param transport Selected transport, or NULL to detach without a fallback
+ * @param ownership Responsibility for destroying the selected transport
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @note This is used for WebRTC integration when DataChannel becomes ready
- * @note Transport ownership remains with caller (participant does not free it)
+ * @note Ownership transfers only on success. Replacing an owned transport destroys it.
  * @note Media must be stopped before switching transports.
- * @note The internally created TCP wrapper remains owned by the participant.
  *
  * @ingroup session
  */
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport);
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
+                                                    session_transport_ownership_t ownership);
+
+/**
+ * @brief Detach the selected transport and transfer its ownership responsibility.
+ * @param p Participant whose media workers have been stopped
+ * @param transport Receives the detached transport, or NULL if none
+ * @param ownership Receives the detached transport's ownership mode
+ * @return ASCIICHAT_OK on success; outputs are unchanged on failure
+ */
+asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
+                                                     session_transport_ownership_t *ownership);
 
 /**
  * @brief Get the current transport for the participant
  *
  * Returns the selected transport, including the internally created TCP wrapper.
  * This accessor does not transfer ownership. External owners must detach their
- * transport before freeing it; the participant frees its own TCP wrapper.
+ * transport before freeing it; the participant destroys any owned transport.
  *
  * @param p Participant handle (must not be NULL)
  * @return Selected transport, or NULL when none is attached
