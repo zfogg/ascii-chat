@@ -552,7 +552,10 @@ static bool websocket_handle_http(struct lws *wsi, const char *path) {
   return !lws_http_transaction_completed(wsi);
 }
 
-static void websocket_request_writable_callbacks(struct lws *wsi) {
+static asciichat_error_t websocket_request_writable_callbacks(struct lws *wsi) {
+  if (!wsi) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot request WebSocket writable callbacks without a connection");
+  }
   // Fired on the service thread when lws_cancel_service() is called from another thread.
   // This is how we safely convert cross-thread send requests into writable callbacks.
   // lws_callback_on_writable() is only safe from the service thread context.
@@ -569,8 +572,7 @@ static void websocket_request_writable_callbacks(struct lws *wsi) {
 
   struct lws_context *ctx = lws_get_context(wsi);
   if (!ctx) {
-    log_error("EVENT_WAIT_CANCELLED: Could not get context from wsi");
-    return;
+    return SET_ERRNO(ERROR_INVALID_STATE, "EVENT_WAIT_CANCELLED: Could not get context from wsi");
   }
 
   // Trigger WRITEABLE on both protocols
@@ -578,8 +580,13 @@ static void websocket_request_writable_callbacks(struct lws *wsi) {
     log_dev_every(1 * US_PER_SEC_INT,
                   ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
                   websocket_protocols[i].name);
-    lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
+    int result = lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
+    if (result != 0) {
+      return SET_ERRNO(ERROR_NETWORK, "Failed to request WebSocket writable callbacks for protocol '%s': %d",
+                       websocket_protocols[i].name, result);
+    }
   }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -639,9 +646,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
   }
 
-  case LWS_CALLBACK_EVENT_WAIT_CANCELLED:
-    websocket_request_writable_callbacks(wsi);
-    break;
+  case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
+    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_error_t result = websocket_request_writable_callbacks(wsi);
+    if (result != ASCIICHAT_OK) {
+      asciichat_error_context_t error;
+      if (asciichat_errno_peek_since(scope, &error)) {
+        log_error("WebSocket writable callback request failed: %s", error.context_message);
+      } else {
+        log_error("WebSocket writable callback request failed: %s", asciichat_error_string(result));
+      }
+    }
+    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    return result == ASCIICHAT_OK ? 0 : -1;
+  }
 
   default:
     break;
