@@ -20,29 +20,6 @@
 #include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_NEON
-#include <arm_neon.h>
-
-/**
- * @brief Quantize RGB to 256-color palette with dithering (NEON)
- * @param r Red components (16 pixels)
- * @param g Green components (16 pixels)
- * @param b Blue components (16 pixels)
- * @param pixel_offset Pixel offset for dithering
- * @return 256-color palette indices (16 pixels)
- *
- * @ingroup video
- */
-uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);
-
-/**
- * @brief Initialize NEON decimal lookup table
- *
- * Must be called once at startup before using NEON functions.
- *
- * @ingroup video
- */
-void init_neon_decimal_table(void);
-
 /**
  * @brief Render image as monochrome ASCII using NEON
  * @param image Source image

@@ -1,52 +1,12 @@
-/**
- * @file video/ascii/ascii_simd_color.c
- * @ingroup video
- * @brief 🎨 SIMD-accelerated color matching and palette lookup for ASCII rendering
+/** @file video/ascii/sgr.c
+ * Shared ANSI SGR encoders for scalar, SIMD, and compatibility entry points.
  */
-
-#include "ascii-chat/common/error_codes.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <assert.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <ascii-chat/video/ascii/common.h>
-
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/util/number.h> // For write_u8
-#include <ascii-chat/util/time.h>
-#include <ascii-chat/log/log.h>
-
-/* ============================================================================
- * SIMD-Optimized Colored ASCII Generation
- *
- * This extends the basic SIMD luminance conversion to include full
- * ANSI color code generation for maximum performance.
- * ============================================================================
- */
-
-// Background ASCII luminance threshold - same as NEON version
-#ifndef BGASCII_LUMA_THRESHOLD
-#define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
-#endif
-
-#ifndef CUBE_GRAY_THRESHOLD
-#define CUBE_GRAY_THRESHOLD 10
-#endif
-
-/* ============================================================================
- * 256-Color ANSI Escape Sequence Generation (cached)
- * ============================================================================
- * Pre-generates all 256 color sequences at startup and caches them.
- * This avoids repeated generation during per-pixel rendering.
- */
-
-/* write_u8() is now in util/number.h */
+#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/sgr.h>
+#include <ascii-chat/util/number.h>
+#include <string.h>
 
 /**
  * @brief Pre-computed 256-color ANSI SGR sequence
@@ -56,9 +16,9 @@ typedef struct {
   uint8_t len;  ///< Length of sequence string
 } sgr256_seq_t;
 
-static sgr256_seq_t sgr256_fg_cache[256];
-static sgr256_seq_t sgr256_bg_cache[256];
-static bool sgr256_cache_initialized = false;
+static _Thread_local sgr256_seq_t sgr256_fg_cache[256];
+static _Thread_local sgr256_seq_t sgr256_bg_cache[256];
+static _Thread_local bool sgr256_cache_initialized = false;
 
 // Build and cache all 256 foreground and background color sequences
 static void init_sgr256_cache(void) {
@@ -153,278 +113,44 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   return build_sgr256_fgbg(buf, fg, bg, len_out);
 }
 
-inline char *append_sgr_reset(char *dst) {
-  // "\x1b[0m"
-  static const char RESET[] = "\033[0m";
-  memcpy(dst, RESET, sizeof(RESET) - 1);
-  return dst + (sizeof(RESET) - 1);
+char *append_sgr_reset(char *dst) {
+  memcpy(dst, "\033[0m", 4);
+  return dst + 4;
 }
 
-// OPTIMIZATION 9: Direct writes instead of memcpy - \x1b[38;2;R;G;Bm
-inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  // Constructor ensures initialization
-
-  // Direct character writes (compiler will optimize to word operations)
-  *dst++ = '\033';
-  *dst++ = '[';
-  *dst++ = '3';
-  *dst++ = '8';
+static char *append_rgb_components(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  dst = write_u8(dst, r);
   *dst++ = ';';
-  *dst++ = '2';
+  dst = write_u8(dst, g);
   *dst++ = ';';
+  return write_u8(dst, b);
+}
 
-  // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
-  const dec3_t *rd = &g_dec3_cache.dec3_table[r];
-  if (rd->len == 1) {
-    *dst++ = rd->s[0];
-  } else if (rd->len == 2) {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst[2] = rd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *gd = &g_dec3_cache.dec3_table[g];
-  if (gd->len == 1) {
-    *dst++ = gd->s[0];
-  } else if (gd->len == 2) {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst[2] = gd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *bd = &g_dec3_cache.dec3_table[b];
-  if (bd->len == 1) {
-    *dst++ = bd->s[0];
-  } else if (bd->len == 2) {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst[2] = bd->s[2];
-    dst += 3;
-  }
+static char *append_rgb_sgr(char *dst, bool background, uint8_t r, uint8_t g, uint8_t b) {
+  memcpy(dst, background ? "\033[48;2;" : "\033[38;2;", 7);
+  dst = append_rgb_components(dst + 7, r, g, b);
   *dst++ = 'm';
   return dst;
 }
 
-// OPTIMIZATION 9: Direct writes - \x1b[48;2;R;G;Bm
-inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  // Constructor ensures initialization
+char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  return append_rgb_sgr(dst, false, r, g, b);
+}
 
-  // Direct character writes for "\033[48;2;"
-  *dst++ = '\033';
-  *dst++ = '[';
-  *dst++ = '4';
-  *dst++ = '8';
-  *dst++ = ';';
-  *dst++ = '2';
-  *dst++ = ';';
+char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  return append_rgb_sgr(dst, true, r, g, b);
+}
 
-  // Optimized digit copying
-  const dec3_t *rd = &g_dec3_cache.dec3_table[r];
-  if (rd->len == 1) {
-    *dst++ = rd->s[0];
-  } else if (rd->len == 2) {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst[2] = rd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *gd = &g_dec3_cache.dec3_table[g];
-  if (gd->len == 1) {
-    *dst++ = gd->s[0];
-  } else if (gd->len == 2) {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst[2] = gd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *bd = &g_dec3_cache.dec3_table[b];
-  if (bd->len == 1) {
-    *dst++ = bd->s[0];
-  } else if (bd->len == 2) {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst[2] = bd->s[2];
-    dst += 3;
-  }
+char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+  memcpy(dst, "\033[38;2;", 7);
+  dst = append_rgb_components(dst + 7, fr, fg, fb);
+  memcpy(dst, ";48;2;", 6);
+  dst = append_rgb_components(dst + 6, br, bg, bb);
   *dst++ = 'm';
   return dst;
 }
 
-// OPTIMIZATION 9: Optimized FG+BG - \x1b[38;2;R;G;B;48;2;r;g;bm (eliminate all memcpy calls)
-inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
-                                        uint8_t bb) {
-  // Constructor ensures initialization
-
-  // Write "\033[38;2;" directly (7 chars)
-  *dst++ = '\033';
-  *dst++ = '[';
-  *dst++ = '3';
-  *dst++ = '8';
-  *dst++ = ';';
-  *dst++ = '2';
-  *dst++ = ';';
-
-  // Foreground RGB digits
-  const dec3_t *d = &g_dec3_cache.dec3_table[fr];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  d = &g_dec3_cache.dec3_table[fg];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  d = &g_dec3_cache.dec3_table[fb];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-
-  // Write ";48;2;" directly (6 chars)
-  *dst++ = ';';
-  *dst++ = '4';
-  *dst++ = '8';
-  *dst++ = ';';
-  *dst++ = '2';
-  *dst++ = ';';
-
-  // Background RGB digits
-  d = &g_dec3_cache.dec3_table[br];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  d = &g_dec3_cache.dec3_table[bg];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  d = &g_dec3_cache.dec3_table[bb];
-  if (d->len == 1) {
-    *dst++ = d->s[0];
-  } else if (d->len == 2) {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst += 2;
-  } else {
-    dst[0] = d->s[0];
-    dst[1] = d->s[1];
-    dst[2] = d->s[2];
-    dst += 3;
-  }
-
-  *dst++ = 'm';
-  return dst;
-}
-
-/* ============================================================================
- * All platform-specific implementations moved to lib/video/simd/
- * ============================================================================
- */
-
-// Row-based scalar function removed - use image_print_color() instead
-
-/* ============================================================================
- * OPTIMIZATION #4: Fast 256-color implementations (defined after SGR functions)
- * ============================================================================
- */
-
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
-  if (!image || !ascii_chars) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_print_color_simd: image or ascii_chars is NULL");
-    return NULL;
-  }
-
-  log_dev_every(4500 * US_PER_MS_INT, "image_print_color_simd called: width=%d, height=%d, use_256color=%d", image->w,
-                image->h, use_256color);
-
-  // Shared formatting calls the runtime-selected luminance kernel for each row.
-  if (use_background_mode) {
-    return image_print_16color_dithered_with_background(image, use_background_mode, ascii_chars);
-  } else if (use_256color) {
-    return image_print_256color(image, ascii_chars);
-  } else {
-    return image_print_color(image, ascii_chars);
-  }
+char *image_print_color_simd(image_t *image, bool background, bool indexed, const char *palette) {
+  return ascii_render(image, palette, indexed ? ASCII_COLOR_256 : ASCII_COLOR_TRUE, background, false,
+                      simd_backend()->luminance);
 }

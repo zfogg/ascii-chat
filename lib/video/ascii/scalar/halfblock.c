@@ -137,24 +137,14 @@ char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int heig
         }
 
         // Emit halfblock once, then RLE or literals
-        ob_write(&ob, HB, 3);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, HB, 3);
-          }
-        }
+        emit_glyph_run(&ob, HB, 3, run);
       }
 
       x = j;
     }
 
     // End of line: reset and newline (except for last output line)
-    emit_reset(&ob);
-    if (y + 2 < height) {
-      ob_putc(&ob, '\n');
-    }
+    emit_row_end(&ob, true, y + 2 < height);
     cur_fr = cur_fg = cur_fb = -1;
     cur_br = cur_bg = cur_bb = -1;
   }
@@ -261,14 +251,7 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
 
         // Emit the appropriate shade character
         const char *shade_char = shades[shade_top];
-        ob_write(&ob, shade_char, 3);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, shade_char, 3);
-          }
-        }
+        emit_glyph_run(&ob, shade_char, 3, run);
       }
 
       x = j;
@@ -380,23 +363,13 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
           cur_bg = color_bg;
         }
 
-        ob_write(&ob, HB, 3);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, HB, 3);
-          }
-        }
+        emit_glyph_run(&ob, HB, 3, run);
       }
 
       x = j;
     }
 
-    emit_reset(&ob);
-    if (y + 2 < height) {
-      ob_putc(&ob, '\n');
-    }
+    emit_row_end(&ob, true, y + 2 < height);
     cur_fg = cur_bg = -1;
   }
 
@@ -499,23 +472,13 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
           cur_bg = color_bg;
         }
 
-        ob_write(&ob, HB, 3);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, HB, 3);
-          }
-        }
+        emit_glyph_run(&ob, HB, 3, run);
       }
 
       x = j;
     }
 
-    emit_reset(&ob);
-    if (y + 2 < height) {
-      ob_putc(&ob, '\n');
-    }
+    emit_row_end(&ob, true, y + 2 < height);
     cur_fg = cur_bg = -1;
   }
 

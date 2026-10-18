@@ -403,3 +403,10 @@ void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  */
 
 /* digits_u32() is now in util/number.h - include above for access */
+
+/** Emit complete UTF-8 glyphs, using REP only when it saves bytes.
+ * count includes the first glyph; callers keep runs inside one terminal row.
+ */
+void emit_glyph_run(outbuf_t *out, const void *glyph, size_t bytes, uint32_t count);
+/** Reset colored state before moving to the next row. */
+void emit_row_end(outbuf_t *out, bool colored, bool newline);
