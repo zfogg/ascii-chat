@@ -11,6 +11,7 @@
 #include <ascii-chat/util/time.h>
 #include <stdlib.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/buffer.h>
 
 #define CHECK(c)                                                                                                       \
   do {                                                                                                                 \
@@ -21,6 +22,7 @@
   } while (0)
 static int fail_stage, capture_count, audio_count, codec_count, workers;
 static bool fail_join;
+static bool fail_tcp_transport;
 static int transports_destroyed;
 static atomic_t packets, video_packets, audio_packets;
 static image_t *frame;
@@ -113,6 +115,14 @@ static int test_thread_join(asciichat_thread_t *thread, void **result) {
     workers--;
   return error;
 }
+static acip_transport_t *test_tcp_transport_create(const char *name, socket_t socket, crypto_context_t *crypto) {
+  if (fail_tcp_transport) {
+    SET_ERRNO(ERROR_MEMORY, "Injected TCP wrapper allocation failure");
+    return NULL;
+  }
+  return acip_tcp_transport_create(name, socket, crypto);
+}
+#define acip_tcp_transport_create test_tcp_transport_create
 #define session_capture_create test_capture_create
 #define session_capture_destroy test_capture_destroy
 #define session_capture_read_frame test_read_frame
@@ -158,6 +168,7 @@ static void destroy_transport_impl(acip_transport_t *transport) {
 }
 int main(void) {
   log_set_terminal_output(true);
+  CHECK(socket_init() == ASCIICHAT_OK);
   options_t options = options_t_new();
   CHECK(options_state_init() == ASCIICHAT_OK);
   CHECK(options_state_set(&options) == ASCIICHAT_OK);
@@ -257,6 +268,72 @@ int main(void) {
   owned = NULL;
   CHECK(transports_destroyed == 2);
   clean();
+  // A real TCP connection uses the same ACIP media send path as borrowed transports.
+  socket_t listener = socket_create("participant-test-listener", AF_INET, SOCK_STREAM, 0);
+  CHECK(listener != INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  CHECK(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)) == 0);
+  CHECK(socket_listen(listener, 4) == 0);
+  socklen_t address_size = sizeof(address);
+  CHECK(socket_getsockname(listener, (struct sockaddr *)&address, &address_size) == 0);
+  config.address = "127.0.0.1";
+  config.port = NET_TO_HOST_U16(address.sin_port);
+  session_participant_t *tcp_participant = session_participant_create(&config);
+  fail_tcp_transport = true;
+  CHECK(session_participant_connect(tcp_participant) == ERROR_MEMORY);
+  CHECK(!session_participant_is_connected(tcp_participant));
+  CHECK(!session_participant_has_transport(tcp_participant));
+  CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
+  socket_t rejected = socket_accept(listener, NULL, NULL, "rejected-wrapper");
+  CHECK(rejected != INVALID_SOCKET_VALUE);
+  socket_close(rejected);
+  fail_tcp_transport = false;
+  for (int cycle = 0; cycle < 2; cycle++) {
+    CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
+    acip_transport_t *tcp = session_participant_get_transport(tcp_participant);
+    CHECK(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
+    CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
+    CHECK(session_participant_get_transport(tcp_participant) == tcp);
+    CHECK(session_participant_set_transport(tcp_participant, &transport) == ASCIICHAT_OK);
+    CHECK(session_participant_set_transport(tcp_participant, NULL) == ASCIICHAT_OK);
+    CHECK(session_participant_get_transport(tcp_participant) == tcp);
+    socket_t peer = socket_accept(listener, NULL, NULL, "participant-test-peer");
+    CHECK(peer != INVALID_SOCKET_VALUE);
+    acip_transport_t *receiver = acip_tcp_transport_create("participant-test-receiver", peer, NULL);
+    CHECK(receiver);
+    receiver->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    CHECK(session_participant_start_video(tcp_participant) == ASCIICHAT_OK);
+    CHECK(session_participant_start_audio(tcp_participant) == ASCIICHAT_OK);
+    bool video_received = false, audio_received = false;
+    for (int packet = 0; packet < 100 && !(video_received && audio_received); packet++) {
+      packet_type_t type;
+      void *payload = NULL, *allocation = NULL;
+      size_t length = 0;
+      CHECK(packet_receive_via_transport(receiver, &type, &payload, &length, &allocation) == ASCIICHAT_OK);
+      video_received |= type == PACKET_TYPE_IMAGE_FRAME;
+      audio_received |= type == PACKET_TYPE_AUDIO_OPUS_BATCH;
+      buffer_release(allocation);
+    }
+    CHECK(video_received && audio_received);
+    session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
+    CHECK(mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality") == ASCIICHAT_OK);
+    session->participant_ctx = tcp_participant;
+    CHECK(release_participant_transport(session) == ASCIICHAT_OK);
+    CHECK(session_participant_get_transport(tcp_participant) == tcp);
+    if (cycle == 0) {
+      session->participant_ctx = NULL;
+      session_participant_disconnect(tcp_participant);
+      CHECK(!session_participant_has_transport(tcp_participant));
+      CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
+    }
+    discovery_session_destroy(session);
+    session = NULL;
+    acip_transport_destroy(receiver);
+    socket_close(peer);
+    clean();
+  }
+  tcp_participant = NULL;
+  socket_close(listener);
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
   session_media_t media = {0};
   uint32_t old = session_media_begin(&media);

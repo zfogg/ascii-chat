@@ -193,7 +193,8 @@ static asciichat_error_t release_participant_transport(discovery_session_t *sess
   asciichat_error_t result = session_participant_set_transport(participant, NULL);
   if (result != ASCIICHAT_OK)
     return result;
-  if (transport)
+  // Clearing an external transport restores the participant-owned TCP wrapper.
+  if (transport && transport != session_participant_get_transport(participant))
     acip_transport_destroy(transport);
   return ASCIICHAT_OK;
 }

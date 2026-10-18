@@ -384,12 +384,13 @@ typedef struct acip_transport acip_transport_t;
  * use this transport for send/receive operations.
  *
  * @param p Participant handle (must not be NULL)
- * @param transport Alternative transport to use (can be NULL to clear)
+ * @param transport Borrowed transport, or NULL to restore the owned TCP transport if connected
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @note This is used for WebRTC integration when DataChannel becomes ready
  * @note Transport ownership remains with caller (participant does not free it)
- * @note If both socket and transport exist, transport takes precedence
+ * @note Media must be stopped before switching transports.
+ * @note The internally created TCP wrapper remains owned by the participant.
  *
  * @ingroup session
  */
@@ -398,24 +399,24 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 /**
  * @brief Get the current transport for the participant
  *
- * Returns the currently active transport, if any. May return NULL if only
- * socket transport is in use.
+ * Returns the selected transport, including the internally created TCP wrapper.
+ * This accessor does not transfer ownership. External owners must detach their
+ * transport before freeing it; the participant frees its own TCP wrapper.
  *
  * @param p Participant handle (must not be NULL)
- * @return Transport pointer if set, NULL if using socket transport
+ * @return Selected transport, or NULL when none is attached
  *
  * @ingroup session
  */
 acip_transport_t *session_participant_get_transport(session_participant_t *p);
 
 /**
- * @brief Check if participant has an active alternative transport
+ * @brief Check if participant has a selected transport
  *
- * Convenient way to check if the participant is using an alternative
- * transport (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ * Includes TCP, WebRTC, and WebSocket transports.
  *
  * @param p Participant handle (can be NULL)
- * @return true if alternative transport is set, false otherwise
+ * @return true if a transport is selected, false otherwise
  *
  * @ingroup session
  */

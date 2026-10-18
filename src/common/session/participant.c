@@ -73,8 +73,11 @@ typedef struct session_participant {
   /** @brief Connection socket */
   socket_t socket;
 
-  /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
+  /** @brief Selected media transport; external replacements are borrowed. */
   struct acip_transport *transport;
+
+  /** @brief Owned TCP wrapper, retained while an external transport is selected. */
+  struct acip_transport *tcp_transport;
 
   /** @brief Currently connected */
   bool connected;
@@ -163,7 +166,7 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   // Initialize socket to invalid
   p->socket = INVALID_SOCKET_VALUE;
-  p->transport = NULL; // No alternative transport initially
+  p->transport = NULL;
   p->connected = false;
   p->client_id = 0;
 
@@ -187,12 +190,6 @@ void session_participant_destroy(session_participant_t *p) {
     return;
   // Alternative transports are borrowed from the caller.
   p->transport = NULL;
-
-  // Close socket if open
-  if (p->socket != INVALID_SOCKET_VALUE) {
-    socket_close(p->socket);
-    p->socket = INVALID_SOCKET_VALUE;
-  }
 
   // Clear sensitive data
   memset(p->password, 0, sizeof(p->password));
@@ -267,6 +264,12 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     return ASCIICHAT_OK; // Already connected
   }
 
+  if (p->transport && p->transport != p->tcp_transport)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Detach the external transport before reconnecting TCP");
+  session_participant_disconnect(p);
+  if (p->video_thread_created || p->audio_thread_created)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting TCP");
+
   // Create TCP connection to server
   log_debug("session_participant_connect: calling connect_to_server(%s, %d)", p->address, p->port);
   p->socket = connect_to_server(p->address, p->port);
@@ -280,6 +283,17 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     }
     return SET_ERRNO(ERROR_NETWORK_CONNECT, "Session participant could not connect to server");
   }
+
+  asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+  p->tcp_transport = acip_tcp_transport_create("session_participant_tcp", p->socket, NULL);
+  if (!p->tcp_transport) {
+    asciichat_error_context_t cause;
+    asciichat_error_t error = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_NETWORK_CONNECT;
+    socket_close(p->socket);
+    p->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO(error, "Failed to create participant TCP transport");
+  }
+  p->transport = p->tcp_transport;
 
   log_debug("session_participant_connect: setting p->connected=true");
   p->connected = true;
@@ -307,6 +321,14 @@ void session_participant_disconnect(session_participant_t *p) {
   session_participant_stop_video(p);
   if (p->video_thread_created || p->audio_thread_created)
     return;
+
+  // The TCP wrapper borrows the socket; release it before closing the socket.
+  if (p->tcp_transport) {
+    if (p->transport == p->tcp_transport)
+      p->transport = NULL;
+    acip_transport_destroy(p->tcp_transport);
+    p->tcp_transport = NULL;
+  }
 
   // Close socket
   if (p->socket != INVALID_SOCKET_VALUE) {
@@ -416,10 +438,7 @@ static void *participant_video_capture_thread(void *arg) {
     image_t *processed = session_capture_process_for_transmission(p->video_capture, raw_frame);
     if (processed) {
       // Send to host via IMAGE_FRAME packet
-      asciichat_error_t err =
-          p->transport ? acip_send_image_frame(p->transport, processed->pixels, processed->w, processed->h, 0)
-                       : send_image_frame_packet(p->socket, processed->pixels, (uint16_t)processed->w,
-                                                 (uint16_t)processed->h, 0);
+      asciichat_error_t err = acip_send_image_frame(p->transport, processed->pixels, processed->w, processed->h, 0);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send video frame: %d", err);
       }
@@ -469,8 +488,7 @@ static void *participant_audio_capture_thread(void *arg) {
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
       asciichat_error_t err =
-          p->transport ? acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20)
-                       : av_send_audio_opus_batch(p->socket, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+          acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
@@ -678,15 +696,8 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 
   log_info("session_participant_set_transport: Setting transport=%p (was=%p)", transport, p->transport);
 
-  p->transport = transport;
-
-  if (transport) {
-    p->connected = acip_transport_is_connected(transport);
-    log_info("WebRTC transport now active for participant");
-  } else {
-    p->connected = p->socket != INVALID_SOCKET_VALUE;
-    log_info("WebRTC transport cleared, reverting to socket");
-  }
+  p->transport = transport ? transport : p->tcp_transport;
+  p->connected = p->transport && acip_transport_is_connected(p->transport);
 
   return ASCIICHAT_OK;
 }
