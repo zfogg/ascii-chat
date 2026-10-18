@@ -155,6 +155,7 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/av_state.c
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c

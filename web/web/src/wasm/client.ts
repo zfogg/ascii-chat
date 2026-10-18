@@ -46,6 +46,15 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
+  _session_av_state_create(): number;
+  _session_av_state_destroy(handle: number): void;
+  _session_av_state_generation(handle: number): number;
+  _session_av_state_begin(handle: number): number;
+  _session_av_state_complete(handle: number, generation: number): number;
+  _session_av_state_is_current(handle: number, generation: number): number;
+  _session_av_state_is_active(handle: number): number;
+  _session_av_state_begin_stop(handle: number): void;
+  _session_av_state_finish_stop(handle: number): void;
   _client_init_with_args(args_string: number): number;
   _client_cleanup(): void;
   _client_configure_crypto_options(
@@ -124,7 +133,7 @@ interface ClientModuleExports {
   _free(ptr: number): void;
 }
 
-interface ClientModule {
+interface ClientModule extends ClientModuleExports {
   HEAP16: Int16Array;
   _client_acds_handshake_begin(encrypted: number): number;
   _client_acds_handshake_receive(

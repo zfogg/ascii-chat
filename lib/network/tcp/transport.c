@@ -26,7 +26,8 @@
  * @brief TCP transport implementation data
  */
 typedef struct {
-  socket_t sockfd;        ///< Socket descriptor (NOT owned - don't close)
+  socket_t sockfd;        ///< Connected socket descriptor
+  bool owns_socket;       ///< Close the socket when this transport is closed or destroyed
   bool is_connected;      ///< Connection state
   bool zerocopy_disabled; ///< Disable copy avoidance after unsupported or copied completion
   mutex_t send_mutex;     ///< Mutex to protect concurrent sends (multiple threads may send packets)
@@ -216,6 +217,11 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 static asciichat_error_t tcp_close(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
+  if (tcp->owns_socket && tcp->sockfd != INVALID_SOCKET_VALUE) {
+    socket_close(tcp->sockfd);
+    tcp->sockfd = INVALID_SOCKET_VALUE;
+  }
+
   log_warn("[TCP_CLOSE_STATE] 🔴 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport,
            tcp->sockfd, tcp->is_connected ? "yes" : "no");
 
@@ -224,9 +230,9 @@ static asciichat_error_t tcp_close(acip_transport_t *transport) {
     return ASCIICHAT_OK; // Already closed
   }
 
-  // Note: We do NOT close the socket - caller owns it
-  // We just mark ourselves as disconnected
-  log_warn("[TCP_CLOSE_STATE] 🔴 MARKING_DISCONNECTED: transport=%p, sockfd=%d (socket NOT closed - caller owns it)",
+  // Borrowed sockets remain open for their owner.
+  log_warn("[TCP_CLOSE_STATE] 🔴 MARKING_DISCONNECTED: transport=%p, sockfd=%d (owned socket closed; borrowed socket "
+           "retained)",
            (void *)transport, tcp->sockfd);
   tcp->is_connected = false;
 
@@ -271,6 +277,9 @@ static bool tcp_has_pending_data(acip_transport_t *transport) {
 static void tcp_destroy_impl(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
   if (tcp) {
+    // Receive errors may have cleared is_connected before destruction.
+    if (tcp->owns_socket)
+      tcp_close(transport);
     // Destroy the send mutex
     int result = mutex_destroy(&tcp->send_mutex);
     if (result != 0) {
@@ -337,6 +346,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
+  tcp_data->owns_socket = false;
   tcp_data->zerocopy_disabled = false;
 
   // Initialize send mutex to protect concurrent sends from multiple threads
@@ -374,6 +384,13 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
+  return transport;
+}
+
+acip_transport_t *acip_tcp_transport_create_owned(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx) {
+  acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
+  if (transport)
+    ((tcp_transport_data_t *)transport->impl_data)->owns_socket = true;
   return transport;
 }
 

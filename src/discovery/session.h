@@ -216,6 +216,8 @@ typedef struct {
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;
   session_participant_t *participant_ctx;
+  acip_transport_t *host_control_transport; ///< Host control connection retained during WebRTC media.
+  session_transport_ownership_t host_control_ownership; ///< Ownership transferred with the control connection.
 
   // Callbacks for state changes
   void (*on_state_change)(discovery_state_t new_state, void *user_data);

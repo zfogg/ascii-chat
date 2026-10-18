@@ -32,13 +32,17 @@
  * session_participant_config_t config = {
  *     .address = "127.0.0.1",
  *     .port = 27224,
+ *     .enable_video = true,
  *     .callbacks = { .on_connected = on_connected, .on_frame_received = on_frame }
  * };
  * session_participant_t *p = session_participant_create(&config);
  * session_participant_connect(p);
  *
  * // Start streaming
- * session_participant_start_video(p);
+ * if (session_participant_start_video(p) != ASCIICHAT_OK) {
+ *     session_participant_destroy(p);
+ *     return;
+ * }
  *
  * // Cleanup
  * session_participant_destroy(p);
@@ -253,14 +257,17 @@ uint32_t session_participant_get_client_id(session_participant_t *p);
  * @param p Participant handle (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Starts capturing video from the webcam and streaming to the server.
+ * Starts the configured webcam/file source and its transmission worker.
+ * Repeated starts are idempotent. Failure releases resources and leaves video inactive.
+ * Control calls must be serialized by the owning thread.
  *
  * @ingroup session
  */
 asciichat_error_t session_participant_start_video(session_participant_t *p);
 
 /**
- * @brief Stop video capture and streaming
+ * @brief Stop and join video capture, then release its resources
+ * Also stops audio when it may borrow the video media source.
  * @param p Participant handle (must not be NULL)
  *
  * @ingroup session
@@ -283,6 +290,8 @@ bool session_participant_is_video_active(session_participant_t *p);
  *
  * Starts capturing audio from the microphone and streaming to the server.
  * Also starts audio playback for receiving audio from other participants.
+ * Failure releases partially initialized capture/codec resources.
+ * Stop and disconnect join workers before releasing their resources.
  *
  * @ingroup session
  */
@@ -339,73 +348,6 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
 /** @} */
 
-/* ============================================================================
- * Session Participant Media Capture Functions
- * @{
- */
-
-/**
- * @brief Start video capture and transmission to host
- * @param p Participant handle (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Spawns a background thread that:
- * - Captures video from webcam/file/test pattern
- * - Resizes for network efficiency (bandwidth optimization)
- * - Sends IMAGE_FRAME packets to the host
- *
- * Video capture respects the participant's enable_video flag and
- * connection state. Multiple calls are safe (returns OK if already running).
- *
- * @note Requires connection to be established first via session_participant_connect()
- * @note Use session_participant_stop_video_capture() to stop transmission
- *
- * @ingroup session
- */
-asciichat_error_t session_participant_start_video_capture(session_participant_t *p);
-
-/**
- * @brief Stop video capture and transmission
- * @param p Participant handle (must not be NULL)
- *
- * Stops the video capture background thread and cleans up resources.
- * Safe to call if video is not running.
- *
- * @ingroup session
- */
-void session_participant_stop_video_capture(session_participant_t *p);
-
-/**
- * @brief Start audio capture and transmission to host
- * @param p Participant handle (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Spawns a background thread that:
- * - Captures audio from microphone
- * - Encodes to Opus (lossy compression)
- * - Sends AUDIO packets to the host
- *
- * Audio capture respects the participant's enable_audio flag and
- * connection state. Multiple calls are safe (returns OK if already running).
- *
- * @note Requires connection to be established first via session_participant_connect()
- * @note Use session_participant_stop_audio_capture() to stop transmission
- *
- * @ingroup session
- */
-asciichat_error_t session_participant_start_audio_capture(session_participant_t *p);
-
-/**
- * @brief Stop audio capture and transmission
- * @param p Participant handle (must not be NULL)
- *
- * Stops the audio capture background thread and cleans up resources.
- * Safe to call if audio is not running.
- *
- * @ingroup session
- */
-void session_participant_stop_audio_capture(session_participant_t *p);
-
 /**
  * @brief Get the socket from a participant context
  * @param p Participant handle (must not be NULL)
@@ -434,46 +376,64 @@ socket_t session_participant_get_socket(session_participant_t *p);
  */
 typedef struct acip_transport acip_transport_t;
 
+/** @brief Responsibility for releasing the participant's selected transport. */
+typedef enum {
+  SESSION_TRANSPORT_BORROWED, ///< The external owner releases the detached transport.
+  SESSION_TRANSPORT_OWNED,    ///< The participant destroys the transport on replacement or disconnect.
+} session_transport_ownership_t;
+
 /**
- * @brief Set an alternative transport for the participant
+ * @brief Select a transport and its ownership mode for the participant
  *
  * Allows replacing the default TCP socket transport with an alternative
  * transport such as WebRTC DataChannel. Once set, the participant will
  * use this transport for send/receive operations.
  *
  * @param p Participant handle (must not be NULL)
- * @param transport Alternative transport to use (can be NULL to clear)
+ * @param transport Selected transport, or NULL to detach without a fallback
+ * @param ownership Responsibility for destroying the selected transport
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @note This is used for WebRTC integration when DataChannel becomes ready
- * @note Transport ownership remains with caller (participant does not free it)
- * @note If both socket and transport exist, transport takes precedence
+ * @note Ownership transfers only on success. Replacing an owned transport destroys it.
+ * @note Media must be stopped before switching transports.
  *
  * @ingroup session
  */
-asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport);
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
+                                                    session_transport_ownership_t ownership);
+
+/**
+ * @brief Detach the selected transport and transfer its ownership responsibility.
+ * @param p Participant whose media workers have been stopped
+ * @param transport Receives the detached transport, or NULL if none
+ * @param ownership Receives the detached transport's ownership mode
+ * @return ASCIICHAT_OK on success; outputs are unchanged on failure
+ */
+asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
+                                                     session_transport_ownership_t *ownership);
 
 /**
  * @brief Get the current transport for the participant
  *
- * Returns the currently active transport, if any. May return NULL if only
- * socket transport is in use.
+ * Returns the selected transport, including the internally created TCP wrapper.
+ * This accessor does not transfer ownership. External owners must detach their
+ * transport before freeing it; the participant destroys any owned transport.
  *
  * @param p Participant handle (must not be NULL)
- * @return Transport pointer if set, NULL if using socket transport
+ * @return Selected transport, or NULL when none is attached
  *
  * @ingroup session
  */
 acip_transport_t *session_participant_get_transport(session_participant_t *p);
 
 /**
- * @brief Check if participant has an active alternative transport
+ * @brief Check if participant has a selected transport
  *
- * Convenient way to check if the participant is using an alternative
- * transport (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ * Includes TCP, WebRTC, and WebSocket transports.
  *
  * @param p Participant handle (can be NULL)
- * @return true if alternative transport is set, false otherwise
+ * @return true if a transport is selected, false otherwise
  *
  * @ingroup session
  */
