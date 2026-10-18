@@ -59,6 +59,9 @@ struct session_capture_ctx {
   atomic_t non_media_active;
   bool media_was_paused;
   bool saved_matrix, saved_waveform, saved_fft;
+  bool non_media_requested;
+  media_source_t *saved_audio_source;
+  bool saved_playback_only, saved_monitor_media;
 
   /** @brief FPS tracker for monitoring capture rate */
   fps_t fps_tracker;
@@ -391,19 +394,30 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     if (leaving) {
       ctx->media_was_paused = media_source_is_paused(ctx->source);
       media_source_pause(ctx->source);
-      options_set_bool("matrix_rain", ctx->saved_matrix);
-      options_set_bool("waveform", ctx->saved_waveform);
-      options_set_bool("fft", ctx->saved_fft);
-    } else {
-      ctx->saved_matrix = GET_OPTION(matrix_rain);
-      ctx->saved_waveform = GET_OPTION(waveform);
-      ctx->saved_fft = GET_OPTION(fft);
-      options_set_bool("matrix_rain", false);
-      options_set_bool("waveform", false);
-      options_set_bool("fft", false);
-      if (!ctx->media_was_paused)
-        media_source_resume(ctx->source);
     }
+    audio_context_t *audio = ctx->audio_ctx;
+    if (audio && audio_stop_duplex(audio) == ASCIICHAT_OK) {
+      if (leaving) {
+        ctx->saved_audio_source = audio->capture_media_source;
+        ctx->saved_playback_only = audio->playback_only;
+        ctx->saved_monitor_media = audio->monitor_local_media;
+        audio->capture_media_source = NULL;
+        audio->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), false);
+        audio->monitor_local_media = false;
+      } else {
+        audio->capture_media_source = ctx->saved_audio_source;
+        audio->playback_only = ctx->saved_playback_only;
+        audio->monitor_local_media = ctx->saved_monitor_media;
+      }
+      if (audio->capture_buffer)
+        audio_ring_buffer_clear(audio->capture_buffer);
+      if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+        LOG_ERRNO_IF_SET("Failed to switch audio input");
+        CLEAR_ERRNO();
+      }
+    }
+    if (!leaving && !ctx->media_was_paused)
+      media_source_resume(ctx->source);
     atomic_store_bool(&ctx->non_media_active, leaving);
     atomic_store_bool(&ctx->redraw_media, true);
     ctx->next_frame_deadline_ns = 0;
@@ -623,10 +637,8 @@ size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, siz
   }
 
   // If using microphone fallback, read from mic context
-  if (ctx->mic_audio_ctx) {
-    // mic_audio_ctx is actually an audio_context_t pointer
-    // We need to read from its capture_buffer audio ring buffer
-    audio_context_t *audio_ctx = (audio_context_t *)ctx->mic_audio_ctx;
+  if (ctx->mic_audio_ctx || (ctx->audio_ctx && atomic_load_bool(&ctx->non_media_active))) {
+    audio_context_t *audio_ctx = ctx->mic_audio_ctx ? ctx->mic_audio_ctx : ctx->audio_ctx;
     if (audio_ctx && audio_ctx->capture_buffer) {
       return audio_ring_buffer_read(audio_ctx->capture_buffer, buffer, num_samples);
     }
@@ -663,8 +675,24 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
 }
 
 void session_capture_toggle_media(session_capture_ctx_t *ctx) {
-  if (ctx && ctx->source && media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE)
-    atomic_fetch_add_u64(&ctx->toggle_media, 1);
+  if (!ctx || !ctx->source || media_source_get_type(ctx->source) != MEDIA_SOURCE_FILE)
+    return;
+  // Swap UI preferences in input order so a following animation key applies to
+  // the newly selected mode even before the capture thread switches devices.
+  ctx->non_media_requested = !ctx->non_media_requested;
+  if (ctx->non_media_requested) {
+    options_set_bool("matrix_rain", ctx->saved_matrix);
+    options_set_bool("waveform", ctx->saved_waveform);
+    options_set_bool("fft", ctx->saved_fft);
+  } else {
+    ctx->saved_matrix = GET_OPTION(matrix_rain);
+    ctx->saved_waveform = GET_OPTION(waveform);
+    ctx->saved_fft = GET_OPTION(fft);
+    options_set_bool("matrix_rain", false);
+    options_set_bool("waveform", false);
+    options_set_bool("fft", false);
+  }
+  atomic_fetch_add_u64(&ctx->toggle_media, 1);
 }
 
 bool session_capture_media_active(session_capture_ctx_t *ctx) {
