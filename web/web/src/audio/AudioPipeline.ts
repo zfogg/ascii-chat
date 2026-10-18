@@ -1,4 +1,4 @@
-import { MediaLifecycle } from "../wasm/MediaLifecycle";
+import { AVState } from "../wasm/AVState";
 import { OpusEncoder } from "./OpusEncoder";
 import { getClientModule, PacketType } from "../wasm/client";
 import {
@@ -43,7 +43,7 @@ export class AudioPipeline {
   private pending: number[] = [];
   private playAt = 0;
   private sources = new Set<AudioBufferSourceNode>();
-  private lifecycle = new MediaLifecycle();
+  private avState = new AVState();
   private starting: Promise<void> | null = null;
   private closed = false;
   private microphoneChangeGeneration = 0;
@@ -120,33 +120,33 @@ export class AudioPipeline {
     }
   }
   get captureActive(): boolean {
-    return this.lifecycle.active;
+    return this.avState.active;
   }
 
   startCapture(): Promise<void> {
     if (this.closed)
       return Promise.reject(new Error("Audio pipeline is closed"));
-    if (this.starting && this.lifecycle.current(this.lifecycle.generation))
+    if (this.starting && this.avState.current(this.avState.generation))
       return this.starting;
     const previous = this.starting;
-    const generation = this.lifecycle.begin();
+    const generation = this.avState.begin();
     if (!generation) return Promise.resolve();
     const pending = (
       previous ? previous.catch(() => undefined) : Promise.resolve()
     )
       .then(() => {
-        if (this.lifecycle.current(generation))
+        if (this.avState.current(generation))
           return this.startCaptureHost(generation);
         return undefined;
       })
       .catch((error: unknown) => {
-        if (this.lifecycle.current(generation)) this.stopCapture();
+        if (this.avState.current(generation)) this.stopCapture();
         throw error;
       })
       .finally(() => {
         if (this.starting !== pending) return;
         this.starting = null;
-        if (this.closed) this.lifecycle.dispose();
+        if (this.closed) this.avState.dispose();
       });
     this.starting = pending;
     return pending;
@@ -154,7 +154,7 @@ export class AudioPipeline {
 
   private async startCaptureHost(generation: number): Promise<void> {
     await this.enablePlayback();
-    if (!this.lifecycle.current(generation)) return;
+    if (!this.avState.current(generation)) return;
     const microphoneId = getMediaDevicePreferences().microphoneId;
     const stream = isTestMode()
       ? (() => {
@@ -193,7 +193,7 @@ export class AudioPipeline {
             });
           }
         })();
-    if (!this.lifecycle.current(generation) || !this.context) {
+    if (!this.avState.current(generation) || !this.context) {
       stream.getTracks().forEach((track) => track.stop());
       this.testPatternSource?.stop();
       this.testPatternSource = null;
@@ -234,7 +234,7 @@ export class AudioPipeline {
     this.source.connect(this.processor);
     this.processor.connect(this.gain);
     this.gain.connect(this.context.destination);
-    this.lifecycle.complete(generation);
+    this.avState.complete(generation);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
     if (
@@ -245,7 +245,7 @@ export class AudioPipeline {
     )
       return;
 
-    const generation = this.lifecycle.generation;
+    const generation = this.avState.generation;
     const requestGeneration = ++this.microphoneChangeGeneration;
     const audio: MediaTrackConstraints = {
       channelCount: 1,
@@ -279,7 +279,7 @@ export class AudioPipeline {
       });
     }
     if (
-      !this.lifecycle.current(generation) ||
+      !this.avState.current(generation) ||
       requestGeneration !== this.microphoneChangeGeneration ||
       !this.processor ||
       !this.context
@@ -427,7 +427,7 @@ export class AudioPipeline {
     this.reportLevels();
   }
   stopCapture(): void {
-    this.lifecycle.stop(() => {
+    this.avState.stop(() => {
       this.microphoneChangeGeneration++;
       if (this.processor) this.processor.onaudioprocess = null;
       this.processor?.disconnect();
@@ -446,7 +446,7 @@ export class AudioPipeline {
   close(): void {
     this.closed = true;
     this.stopCapture();
-    if (!this.starting) this.lifecycle.dispose();
+    if (!this.starting) this.avState.dispose();
     for (const source of this.sources) source.stop();
     this.sources.clear();
     this.playback?.disconnect();

@@ -22,7 +22,7 @@
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
-#include "session/media.h"
+#include "session/av_state.h"
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -83,10 +83,10 @@ typedef struct session_participant {
   uint32_t client_id;
 
   /** @brief Video streaming active */
-  session_media_t video;
+  session_av_state_t video;
 
   /** @brief Audio streaming active */
-  session_media_t audio;
+  session_av_state_t audio;
 
   /** @brief Current session settings */
   session_settings_t settings;
@@ -353,11 +353,11 @@ socket_t session_participant_get_socket(session_participant_t *p) {
  * ============================================================================ */
 
 bool session_participant_is_video_active(session_participant_t *p) {
-  return p && p->initialized && session_media_is_active(&p->video);
+  return p && p->initialized && session_av_state_is_active(&p->video);
 }
 
 bool session_participant_is_audio_active(session_participant_t *p) {
-  return p && p->initialized && session_media_is_active(&p->audio);
+  return p && p->initialized && session_av_state_is_active(&p->audio);
 }
 
 /* ============================================================================
@@ -407,7 +407,7 @@ static void *participant_video_capture_thread(void *arg) {
 
   log_info("Video capture thread started");
 
-  while (session_media_should_run(&p->video)) {
+  while (session_av_state_should_run(&p->video)) {
     // Capture frame from media source (webcam, file, test pattern)
     image_t *raw_frame = session_capture_read_frame(p->video_capture);
     if (!raw_frame) {
@@ -455,7 +455,7 @@ static void *participant_audio_capture_thread(void *arg) {
   float sample_buffer[960]; // 20ms @ 48kHz
   uint8_t opus_buffer[1000];
 
-  while (session_media_should_run(&p->audio)) {
+  while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
     size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
     if (samples_read <= 0) {
@@ -504,9 +504,9 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_video: video not enabled");
   }
 
-  if (session_media_is_active(&p->video))
+  if (session_av_state_is_active(&p->video))
     return ASCIICHAT_OK;
-  uint32_t generation = session_media_begin(&p->video);
+  uint32_t generation = session_av_state_begin(&p->video);
   if (!generation)
     return SET_ERRNO(ERROR_INVALID_STATE, "video is starting or stopping");
 
@@ -548,7 +548,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
   }
 
   p->video_thread_created = true;
-  session_media_complete(&p->video, generation);
+  session_av_state_complete(&p->video, generation);
   log_info("Video capture started");
   return ASCIICHAT_OK;
 }
@@ -560,7 +560,7 @@ void session_participant_stop_video(session_participant_t *p) {
     session_participant_stop_audio(p);
   if (p->audio_uses_video && p->audio_thread_created)
     return;
-  session_media_begin_stop(&p->video);
+  session_av_state_begin_stop(&p->video);
   if (p->video_thread_created) {
     if (asciichat_thread_join(&p->video_capture_thread, NULL) != 0) {
       log_error("Failed to join video capture worker; retaining its resources");
@@ -572,7 +572,7 @@ void session_participant_stop_video(session_participant_t *p) {
     session_capture_destroy(p->video_capture);
     p->video_capture = NULL;
   }
-  session_media_finish_stop(&p->video);
+  session_av_state_finish_stop(&p->video);
 }
 
 asciichat_error_t session_participant_start_audio(session_participant_t *p) {
@@ -588,9 +588,9 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
     return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_start_audio: audio not enabled");
   }
 
-  if (session_media_is_active(&p->audio))
+  if (session_av_state_is_active(&p->audio))
     return ASCIICHAT_OK;
-  uint32_t generation = session_media_begin(&p->audio);
+  uint32_t generation = session_av_state_begin(&p->audio);
   if (!generation)
     return SET_ERRNO(ERROR_INVALID_STATE, "audio is starting or stopping");
 
@@ -635,7 +635,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   }
 
   p->audio_thread_created = true;
-  session_media_complete(&p->audio, generation);
+  session_av_state_complete(&p->audio, generation);
   log_info("Audio capture started");
   return ASCIICHAT_OK;
 }
@@ -643,7 +643,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
 void session_participant_stop_audio(session_participant_t *p) {
   if (!p || !p->initialized)
     return;
-  session_media_begin_stop(&p->audio);
+  session_av_state_begin_stop(&p->audio);
   if (p->audio_thread_created) {
     if (asciichat_thread_join(&p->audio_capture_thread, NULL) != 0) {
       log_error("Failed to join audio capture worker; retaining its resources");
@@ -660,7 +660,7 @@ void session_participant_stop_audio(session_participant_t *p) {
     p->opus_encoder = NULL;
   }
   p->audio_uses_video = false;
-  session_media_finish_stop(&p->audio);
+  session_av_state_finish_stop(&p->audio);
 }
 
 /* ============================================================================
@@ -673,7 +673,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
   }
 
-  if (session_media_should_run(&p->video) || session_media_should_run(&p->audio) || p->video_thread_created ||
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
       p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before replacing its transport");
 
@@ -699,7 +699,7 @@ asciichat_error_t session_participant_take_transport(session_participant_t *p, a
                                                      session_transport_ownership_t *ownership) {
   if (!p || !p->initialized || !transport || !ownership)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport transfer parameters");
-  if (session_media_should_run(&p->video) || session_media_should_run(&p->audio) || p->video_thread_created ||
+  if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
       p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its transport");
   *transport = p->transport;

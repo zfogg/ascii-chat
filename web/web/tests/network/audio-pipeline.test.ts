@@ -15,8 +15,8 @@ vi.mock("../../src/wasm/client", () => ({
 }));
 // Host resource tests isolate the C boundary; native and browser integration tests
 // exercise the actual shared state machine.
-vi.mock("../../src/wasm/MediaLifecycle", () => ({
-  MediaLifecycle: class {
+vi.mock("../../src/wasm/AVState", () => ({
+  AVState: class {
     generation = 0;
     active = false;
     pending = false;

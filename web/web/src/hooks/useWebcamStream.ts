@@ -1,4 +1,4 @@
-import { MediaLifecycle } from "../wasm/MediaLifecycle";
+import { AVState } from "../wasm/AVState";
 import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -84,7 +84,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     validate: validateEncoding,
   } = useVideoEncodings({ fps: settings.targetFps });
 
-  const [lifecycle] = useState(() => new MediaLifecycle());
+  const [avState] = useState(() => new AVState());
   const startingRef = useRef(false);
   const mountedRef = useRef(true);
   const cancelMetadataRef = useRef<(() => void) | null>(null);
@@ -105,8 +105,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
 
   const stopWebcam = useCallback(() => {
-    const wasRunning = lifecycle.current(lifecycle.generation);
-    lifecycle.stop(() => {
+    const wasRunning = avState.current(avState.generation);
+    avState.stop(() => {
       cancelMetadataRef.current?.();
       captureReadyRef.current = false;
       // A stopped browser capture must also stop being a server-side video
@@ -155,7 +155,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       frameQueueRef.current = [];
       setIsWebcamRunning(false);
     });
-  }, [clientRef, connectionState, frameQueueRef, videoRef, lifecycle]);
+  }, [clientRef, connectionState, frameQueueRef, videoRef, avState]);
 
   const configureUpload = useCallback(
     async (
@@ -171,8 +171,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         height,
         settings.targetFps,
         (chunk, codec) => {
-          if (!lifecycle.current(generation) || !captureReadyRef.current)
-            return;
+          if (!avState.current(generation) || !captureReadyRef.current) return;
           conn.sendPacket(
             codec === "hevc"
               ? PacketType.IMAGE_FRAME_H265
@@ -187,7 +186,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         },
         after,
       );
-      if (!lifecycle.current(generation)) {
+      if (!avState.current(generation)) {
         encoder?.destroy();
         return;
       }
@@ -217,7 +216,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         `[Client] Upload encoding: ${encoder?.codec ?? "raw"} ${width}x${height}`,
       );
     },
-    [clientRef, settings, terminalDimensions, createEncoder, lifecycle],
+    [clientRef, settings, terminalDimensions, createEncoder, avState],
   );
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
@@ -284,7 +283,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 );
               } else {
                 captureReadyRef.current = false;
-                const generation = lifecycle.generation;
+                const generation = avState.generation;
                 void configureUpload(
                   frame.width,
                   frame.height,
@@ -292,11 +291,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                   failedCodec,
                 )
                   .then(() => {
-                    if (lifecycle.current(generation))
+                    if (avState.current(generation))
                       captureReadyRef.current = true;
                   })
                   .catch((fallbackError: unknown) => {
-                    if (lifecycle.current(generation)) {
+                    if (avState.current(generation)) {
                       setError(
                         `Failed to change upload encoding: ${String(fallbackError)}`,
                       );
@@ -329,7 +328,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     return sendOneFrame;
   }, [
     stopWebcam,
-    lifecycle,
+    avState,
     captureFrame,
     configureUpload,
     encodingPreference,
@@ -553,7 +552,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     console.log("[Client] Passed all initial checks");
 
-    const generation = lifecycle.begin();
+    const generation = avState.begin();
     if (!generation) return;
     startingRef.current = true;
     try {
@@ -621,7 +620,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         };
       }
 
-      if (!lifecycle.current(generation)) return;
+      if (!avState.current(generation)) return;
       let stream: MediaStream;
       if (testPattern.enabled) {
         const frameInterval = 1000 / settings.targetFps;
@@ -672,7 +671,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         }
       }
 
-      if (!lifecycle.current(generation)) {
+      if (!avState.current(generation)) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -746,7 +745,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       });
 
       if (
-        !lifecycle.current(generation) ||
+        !avState.current(generation) ||
         clientRef.current?.getState() !== ConnectionState.CONNECTED
       ) {
         stream.getTracks().forEach((track) => track.stop());
@@ -815,7 +814,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         }
       }
       await metadataPromise;
-      if (!lifecycle.current(generation)) return;
+      if (!avState.current(generation)) return;
       if (video.videoWidth && video.videoHeight && canvasRef.current) {
         canvasRef.current.width = video.videoWidth;
         canvasRef.current.height = video.videoHeight;
@@ -860,7 +859,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      if (!lifecycle.current(generation)) return;
+      if (!avState.current(generation)) return;
       const scale = Math.min(
         1,
         320 / canvasRef.current.width,
@@ -883,10 +882,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         canvasRef.current.height,
         generation,
       );
-      if (!lifecycle.current(generation)) return;
-      if (!lifecycle.complete(generation)) return;
+      if (!avState.current(generation)) return;
+      if (!avState.complete(generation)) return;
       captureReadyRef.current = true;
-      setIsWebcamRunning(lifecycle.active);
+      setIsWebcamRunning(avState.active);
 
       console.log("[Client] Starting render loops...");
       console.log(
@@ -910,7 +909,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       const errMsg = `Failed to start webcam: ${String(err)}`;
       console.error("[Client]", errMsg);
       console.error("[Client] Error:", err);
-      if (lifecycle.current(generation)) {
+      if (avState.current(generation)) {
         if (clientRef.current?.getState() === ConnectionState.CONNECTED) {
           try {
             clientRef.current.sendUnencryptedAcipPacket(
@@ -926,8 +925,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         setIsWebcamRunning(false);
         setError(errMsg);
       }
-      if (lifecycle.current(generation))
-        lifecycle.stop(() => {
+      if (avState.current(generation))
+        avState.stop(() => {
           videoEncoderRef.current?.destroy();
           videoEncoderRef.current = null;
           streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -938,10 +937,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     } finally {
       cancelMetadataRef.current?.();
       startingRef.current = false;
-      if (!mountedRef.current) lifecycle.dispose();
+      if (!mountedRef.current) avState.dispose();
     }
   }, [
-    lifecycle,
+    avState,
     configureUpload,
     connectionState,
     includeAudio,
@@ -966,9 +965,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     return () => {
       mountedRef.current = false;
       captureActionsRef.current.stopWebcam();
-      if (!startingRef.current) lifecycle.dispose();
+      if (!startingRef.current) avState.dispose();
     };
-  }, [lifecycle]);
+  }, [avState]);
 
   const previousEncodingRef = useRef(encodingPreference);
   useEffect(() => {

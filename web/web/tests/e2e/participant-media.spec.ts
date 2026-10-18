@@ -12,7 +12,7 @@ test.afterAll(async () => {
   await server?.stop();
 });
 
-test("shared C lifecycle and browser media survive stop and restart", async ({
+test("shared C avState and browser media survive stop and restart", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -42,21 +42,21 @@ test("shared C lifecycle and browser media survive stop and restart", async ({
   });
 
   const states = await page.evaluate(async () => {
-    const path = "/src/wasm/MediaLifecycle.ts";
-    const { MediaLifecycle } = await import(path);
-    const lifecycle = new MediaLifecycle();
-    const first = lifecycle.begin();
-    const before = lifecycle.active;
-    const duplicate = lifecycle.begin();
-    lifecycle.stop(() => {});
-    const cancelled = lifecycle.complete(first);
-    const second = lifecycle.begin();
-    const stale = lifecycle.complete(first);
-    const started = lifecycle.complete(second);
-    const active = lifecycle.active;
-    lifecycle.stop(() => {});
-    const stopped = lifecycle.active;
-    lifecycle.dispose();
+    const path = "/src/wasm/AVState.ts";
+    const { AVState } = await import(path);
+    const avState = new AVState();
+    const first = avState.begin();
+    const before = avState.active;
+    const duplicate = avState.begin();
+    avState.stop(() => {});
+    const cancelled = avState.complete(first);
+    const second = avState.begin();
+    const stale = avState.complete(first);
+    const started = avState.complete(second);
+    const active = avState.active;
+    avState.stop(() => {});
+    const stopped = avState.active;
+    avState.dispose();
     return { before, duplicate, cancelled, stale, started, active, stopped };
   });
   expect(states).toEqual({
@@ -152,7 +152,7 @@ test("real WASM rejects late microphone startup after cancellation", async ({
 });
 
 test("fixed encoder failure permits webcam restart", async ({ page }) => {
-  // Inject only the codec device boundary; camera, hook and C/WASM lifecycle are real.
+  // Inject only the codec device boundary; camera, hook and C/WASM avState are real.
   await page.addInitScript(() => {
     let calls = 0;
     class FailingEncoder {

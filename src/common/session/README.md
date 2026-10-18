@@ -736,11 +736,11 @@ and worker, and reports active only after successful startup. Repeated start is
 idempotent; stop joins the worker before releasing capture and codec resources.
 Disconnect and destruction stop streams even after a partial connection failure.
 When audio borrows a video's file source, stopping video first stops audio.
-Alternative ACIP transports are borrowed and must outlive the participant; replace
-one only after stopping media. Serialize participant control calls on its owning thread.
+ACIP transports have explicit owned or borrowed semantics; replace a transport only
+after stopping its workers. Borrowed transports must remain valid until detached. Serialize participant control calls on its owning thread.
 
-`session/media.c` is the shared lifecycle for native participant workers and browser
-camera/microphone adapters. A startup token covers asynchronous device permission
+`session/av_state.c` is the shared audio/video run state machine for native participant
+workers and browser camera/microphone adapters. A startup token covers asynchronous device permission
 and encoder setup; stopped or superseded tokens cannot activate a stream. Browser
 adapters call this same C implementation through WASM, keeping DOM/device operations
 outside the core. A future iOS adapter can use the same begin/complete/stop contract

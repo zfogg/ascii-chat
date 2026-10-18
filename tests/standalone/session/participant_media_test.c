@@ -358,17 +358,17 @@ int main(void) {
   tcp_participant = NULL;
   socket_close(listener);
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
-  session_media_t media = {0};
-  uint32_t old = session_media_begin(&media);
-  CHECK(old && !session_media_is_active(&media) && !session_media_begin(&media));
-  session_media_begin_stop(&media);
-  CHECK(!session_media_complete(&media, old));
-  session_media_finish_stop(&media);
-  uint32_t next = session_media_begin(&media);
-  CHECK(next != old && !session_media_complete(&media, old));
-  CHECK(session_media_complete(&media, next) && session_media_is_active(&media));
-  session_media_begin_stop(&media);
-  session_media_finish_stop(&media);
+  session_av_state_t media = {0};
+  uint32_t old = session_av_state_begin(&media);
+  CHECK(old && !session_av_state_is_active(&media) && !session_av_state_begin(&media));
+  session_av_state_begin_stop(&media);
+  CHECK(!session_av_state_complete(&media, old));
+  session_av_state_finish_stop(&media);
+  uint32_t next = session_av_state_begin(&media);
+  CHECK(next != old && !session_av_state_complete(&media, old));
+  CHECK(session_av_state_complete(&media, next) && session_av_state_is_active(&media));
+  session_av_state_begin_stop(&media);
+  session_av_state_finish_stop(&media);
   image_destroy(frame);
   options_state_destroy();
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
