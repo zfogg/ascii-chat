@@ -93,6 +93,10 @@ if(NOT USE_MUSL)
     endif()
 endif()
 
+if(NOT _use_shared_lib)
+    target_compile_definitions(ascii-chat PRIVATE BUILDING_STATIC_LIB)
+endif()
+
 if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
     # macOS Release executables statically link the project archive and its
     # dependencies. Keep ascii-chat-shared as a separate development artifact.
