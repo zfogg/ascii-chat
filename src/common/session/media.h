@@ -14,9 +14,16 @@ typedef enum {
   SESSION_MEDIA_STOPPING,
 } session_media_phase_t;
 
+/**
+ * @brief Shared lifecycle state for a native or asynchronous host media stream.
+ *
+ * Zero initialization represents an idle stream with no startup token.
+ * The owner serializes transitions and generation access; workers may query
+ * the atomic phase through session_media_should_run().
+ */
 typedef struct {
-  atomic_t phase;
-  uint32_t generation;
+  atomic_t phase;      ///< Current session_media_phase_t, queried atomically by workers.
+  uint32_t generation; ///< Owner-managed startup token used to reject stale asynchronous completions.
 } session_media_t;
 
 /** Returns a nonzero startup token, or zero when already starting/active/stopping. */
