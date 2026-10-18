@@ -44,8 +44,10 @@ static void ready(acip_transport_t *transport, void *arg) {
 static void opened(webrtc_data_channel_t *dc, void *arg) {
   endpoint_t *endpoint = arg;
   endpoint->dc = dc;
-  endpoint->transport = acip_webrtc_transport_create_secure(endpoint->pc, dc, endpoint->security, ready, endpoint);
-  CHECK(endpoint->transport);
+  if (!endpoint->security->handshake.is_server) {
+    endpoint->transport = acip_webrtc_transport_create_secure(endpoint->pc, dc, endpoint->security, ready, endpoint);
+    CHECK(endpoint->transport);
+  }
   atomic_store_bool(&endpoint->opened, true);
 }
 
@@ -123,8 +125,13 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
   CHECK(webrtc_create_offer(client.pc) == ASCIICHAT_OK);
   await_flag(&server.opened);
   await_flag(&client.opened);
-  CHECK(acip_security_start(server.security, server.transport) == ASCIICHAT_OK);
   CHECK(acip_security_start(client.security, client.transport) == ASCIICHAT_OK);
+  // Exercise the browser startup ordering: the hello reaches an open channel
+  // before its host has installed the transport receiver. Registration must
+  // retain and drain that hello with a fully initialized response path.
+  platform_sleep_ms(100);
+  server.transport = acip_webrtc_transport_create_secure(server.pc, server.dc, server.security, ready, &server);
+  CHECK(server.transport);
   if (rejection) {
     uint64_t start = time_get_ns();
     while (acip_transport_is_connected(client.transport) && acip_transport_is_connected(server.transport) &&
