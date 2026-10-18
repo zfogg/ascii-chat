@@ -60,7 +60,7 @@ class Service:
         env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                    APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
         self.process = subprocess.Popen(
-            [str(binary), "--log-file", str(self.log), "--log-level", "debug", mode, *options],
+            [str(binary), "--no-check-update", "--log-file", str(self.log), "--log-level", "debug", mode, *options],
             cwd=directory, stdout=self.stream, stderr=subprocess.STDOUT, env=env, **flags,
         )
 
@@ -110,7 +110,7 @@ def check_client(binary, directory, destination, name, extra=()):
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                    APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
     result = subprocess.run(
-        [str(binary), "--log-file", str(directory / (name + ".log")), "client", destination,
+        [str(binary), "--no-check-update", "--log-file", str(directory / (name + ".log")), "client", destination,
          "--test-pattern", "--video-codec", "raw", "--audio=false", "--snapshot",
          "--snapshot-delay", "0", "--width", "40", "--height", "12",
          "--color-mode", "none", "--splash-screen=false", *extra],

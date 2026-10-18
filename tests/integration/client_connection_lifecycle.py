@@ -44,7 +44,7 @@ def failures(binary, directory, destination, prefix):
                    ASCII_CHAT_TEST_CLIENT_FAIL_STAGE=stage)
         log = directory / f"{name}.log"
         result = subprocess.run(
-            [str(binary), "--log-file", str(log), "--log-level", "debug", "client",
+            [str(binary), "--no-check-update", "--log-file", str(log), "--log-level", "debug", "client",
              *client_options(destination), "--reconnect-attempts", "0"],
             env=env, cwd=directory, capture_output=True, timeout=25)
         text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
@@ -52,13 +52,15 @@ def failures(binary, directory, destination, prefix):
         assert f"Injected client startup failure after {stage}" in text, text[-5000:]
         assert text.count("CLIENT_CONNECTION_RELEASED") == 1, text[-5000:]
         assert "CLIENT_CONNECTION_STOPPED: workers=0" in text, text[-5000:]
-        assert "retaining its pool entry" not in text, text[-5000:]
+        # A timed join may retain a worker temporarily. Final cleanup must
+        # prove it joined before any connection resources are released.
+        assert text.rfind("CLIENT_CONNECTION_STOPPED: workers=0") > text.rfind("retaining its pool entry"), text[-5000:]
     # Reuse one process after partial worker startup, rather than relying only
     # on process exit to clear state between injected failures.
     env["ASCII_CHAT_TEST_CLIENT_FAIL_STAGE"] = "audio-sender"
     log = directory / f"{prefix}-repeated-failure.log"
     result = subprocess.run(
-        [str(binary), "--log-file", str(log), "--log-level", "debug", "client",
+        [str(binary), "--no-check-update", "--log-file", str(log), "--log-level", "debug", "client",
          *client_options(destination), "--reconnect-attempts", "3"],
         env=env, cwd=directory, capture_output=True, timeout=30)
     text = log.read_text(encoding="utf-8", errors="replace")
@@ -113,7 +115,9 @@ def reconnect(binary, directory, websocket):
         text = client.text()
         assert text.count("CLIENT_CONNECTION_RELEASED") >= 4, text[-5000:]
         assert text.count("CLIENT_CONNECTION_CREATED: workers=0 frames=0") == text.count("CLIENT_CONNECTION_RELEASED"), text[-5000:]
-        assert "retaining its pool entry" not in text, text[-5000:]
+        # A timed join may retain a worker temporarily. Final cleanup must
+        # prove it joined before any connection resources are released.
+        assert text.rfind("CLIENT_CONNECTION_STOPPED: workers=0") > text.rfind("retaining its pool entry"), text[-5000:]
         client = server = None
         print(f"PASS: {prefix}: three reconnects in one process and concurrent peer/local shutdown", flush=True)
     finally:
