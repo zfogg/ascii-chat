@@ -155,6 +155,8 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/media.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/media.c
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
@@ -568,6 +570,9 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    "_web_media_create" "_web_media_destroy" "_web_media_generation"
+    "_session_media_begin" "_session_media_complete" "_session_media_is_current"
+    "_session_media_is_active" "_session_media_begin_stop" "_session_media_finish_stop"
     _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client

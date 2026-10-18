@@ -1,3 +1,4 @@
+import { MediaLifecycle } from "../wasm/MediaLifecycle";
 import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -83,8 +84,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     validate: validateEncoding,
   } = useVideoEncodings({ fps: settings.targetFps });
 
-  const generationRef = useRef(0);
+  const [lifecycle] = useState(() => new MediaLifecycle());
   const startingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const cancelMetadataRef = useRef<(() => void) | null>(null);
   const captureReadyRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const videoEncoderRef = useRef<VideoUploadEncoder | null>(null);
@@ -115,7 +118,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         height,
         settings.targetFps,
         (chunk, codec) => {
-          if (generation !== generationRef.current || !captureReadyRef.current)
+          if (!lifecycle.current(generation) || !captureReadyRef.current)
             return;
           conn.sendPacket(
             codec === "hevc"
@@ -131,7 +134,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         },
         after,
       );
-      if (generation !== generationRef.current) {
+      if (!lifecycle.current(generation)) {
         encoder?.destroy();
         return;
       }
@@ -161,7 +164,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         `[Client] Upload encoding: ${encoder?.codec ?? "raw"} ${width}x${height}`,
       );
     },
-    [clientRef, settings, terminalDimensions, createEncoder],
+    [clientRef, settings, terminalDimensions, createEncoder, lifecycle],
   );
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
@@ -244,7 +247,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 );
               } else {
                 captureReadyRef.current = false;
-                const generation = generationRef.current;
+                const generation = lifecycle.generation;
                 void configureUpload(
                   frame.width,
                   frame.height,
@@ -252,11 +255,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                   failedCodec,
                 )
                   .then(() => {
-                    if (generation === generationRef.current)
+                    if (lifecycle.current(generation))
                       captureReadyRef.current = true;
                   })
                   .catch((fallbackError: unknown) => {
-                    if (generation === generationRef.current) {
+                    if (lifecycle.current(generation)) {
                       setError(
                         `Failed to change upload encoding: ${String(fallbackError)}`,
                       );
@@ -288,6 +291,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     return sendOneFrame;
   }, [
+    lifecycle,
     captureFrame,
     configureUpload,
     encodingPreference,
@@ -511,8 +515,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
     console.log("[Client] Passed all initial checks");
 
+    const generation = lifecycle.begin();
+    if (!generation) return;
     startingRef.current = true;
-    const generation = ++generationRef.current;
     try {
       validateEncoding();
       setError("");
@@ -578,6 +583,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         };
       }
 
+      if (!lifecycle.current(generation)) return;
       let stream: MediaStream;
       if (testPattern.enabled) {
         const frameInterval = 1000 / settings.targetFps;
@@ -627,6 +633,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           }
         }
       }
+
+      if (!lifecycle.current(generation)) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      // Publish ownership before any further awaits so stop can release the device.
+      streamRef.current = stream;
 
       // Some Windows UVC cameras only expose 60 FPS at 720p or widescreen
       // VGA, while the default 640x480 mode is limited to 30 FPS. ASCII input
@@ -695,7 +708,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       });
 
       if (
-        generation !== generationRef.current ||
+        !lifecycle.current(generation) ||
         clientRef.current?.getState() !== ConnectionState.CONNECTED
       ) {
         stream.getTracks().forEach((track) => track.stop());
@@ -733,106 +746,26 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         };
       });
 
-      // Set up metadata listener BEFORE playing to catch the event
+      // Resolve or cancel readiness without leaving listeners/timers after stop.
       const metadataPromise = new Promise<void>((resolve) => {
-        const handleMetadata = () => {
-          const video = videoRef.current!;
-          const canvas = canvasRef.current!;
-          console.log(
-            `[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}, videoTime=${video.currentTime}, paused=${video.paused}`,
-          );
-          console.log("[DEBUG] Metadata event - full video element state:", {
-            videoWidth: video.videoWidth,
-            videoHeight: video.videoHeight,
-            readyState: video.readyState,
-            networkState: video.networkState,
-            currentTime: video.currentTime,
-            duration: video.duration,
-            paused: video.paused,
-            srcObject: !!video.srcObject,
-            src: video.src,
-          });
-
-          // Check if dimensions are valid before resizing
-          if (video.videoWidth > 0 && video.videoHeight > 0) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            console.log(
-              `[Client] Canvas resized to: ${canvas.width}x${canvas.height}`,
-            );
-            console.log("[DEBUG] Canvas state after resize:", {
-              width: canvas.width,
-              height: canvas.height,
-              clientWidth: canvas.clientWidth,
-              clientHeight: canvas.clientHeight,
-            });
-          } else {
-            console.warn(
-              `[DEBUG] Invalid video dimensions: ${video.videoWidth}x${video.videoHeight}, not resizing canvas`,
-            );
-          }
-          video.removeEventListener("loadedmetadata", handleMetadata);
+        const finish = () => {
+          video.removeEventListener("loadedmetadata", finish);
+          window.clearTimeout(timeout);
+          cancelMetadataRef.current = null;
           resolve();
         };
-        videoRef.current!.addEventListener("loadedmetadata", handleMetadata);
-        console.log("[DEBUG] loadedmetadata listener attached");
+        const timeout = window.setTimeout(finish, 5000);
+        cancelMetadataRef.current = finish;
+        video.addEventListener("loadedmetadata", finish);
+        if (video.videoWidth && video.videoHeight) finish();
       });
-
-      // Now play the video (metadata event may already be queued)
-      console.log("[Client] Attempting to play video...");
-      console.log("[DEBUG] Video element before play():", {
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-        readyState: video.readyState,
-        paused: video.paused,
-        srcObject: !!video.srcObject,
-      });
-      try {
-        await video.play();
-        console.log("[Client] Video is playing");
-        console.log("[DEBUG] Video element after play():", {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          readyState: video.readyState,
-          paused: video.paused,
-        });
-      } catch (playErr) {
-        console.error("[Client] Video play failed (may be expected):", playErr);
-        console.error("[DEBUG] Video state when play() failed:", {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          readyState: video.readyState,
-          srcObject: !!video.srcObject,
-        });
+      await video.play();
+      await metadataPromise;
+      if (!lifecycle.current(generation)) return;
+      if (video.videoWidth && video.videoHeight && canvasRef.current) {
+        canvasRef.current.width = video.videoWidth;
+        canvasRef.current.height = video.videoHeight;
       }
-
-      // Wait for metadata with a timeout (5 seconds) in case it never fires
-      const timeoutPromise = new Promise<void>((resolve) => {
-        setTimeout(() => {
-          console.warn(
-            "[Client] Metadata timeout - setting canvas dimensions from current video properties",
-          );
-          if (
-            generation === generationRef.current &&
-            !streamRef.current?.active &&
-            videoRef.current &&
-            canvasRef.current
-          ) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              console.log(
-                `[Client] Canvas resized from timeout: ${canvas.width}x${canvas.height}`,
-              );
-            }
-          }
-          resolve();
-        }, 5000);
-      });
-
-      await Promise.race([metadataPromise, timeoutPromise]);
 
       // Validate that canvas has valid dimensions before proceeding
       if (
@@ -873,7 +806,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      if (generation !== generationRef.current) return;
+      if (!lifecycle.current(generation)) return;
       const scale = Math.min(
         1,
         320 / canvasRef.current.width,
@@ -896,9 +829,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         canvasRef.current.height,
         generation,
       );
-      if (generation !== generationRef.current) return;
+      if (!lifecycle.current(generation)) return;
+      if (!lifecycle.complete(generation)) return;
       captureReadyRef.current = true;
-      setIsWebcamRunning(true);
+      setIsWebcamRunning(lifecycle.active);
 
       console.log("[Client] Starting render loops...");
       console.log(
@@ -922,7 +856,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       const errMsg = `Failed to start webcam: ${String(err)}`;
       console.error("[Client]", errMsg);
       console.error("[Client] Error:", err);
-      if (generation === generationRef.current) {
+      if (lifecycle.current(generation)) {
         if (clientRef.current?.getState() === ConnectionState.CONNECTED) {
           try {
             clientRef.current.sendUnencryptedAcipPacket(
@@ -938,16 +872,22 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         setIsWebcamRunning(false);
         setError(errMsg);
       }
-      videoEncoderRef.current?.destroy();
-      videoEncoderRef.current = null;
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      testPatternSourceRef.current?.stop();
-      testPatternSourceRef.current = null;
+      if (lifecycle.current(generation))
+        lifecycle.stop(() => {
+          videoEncoderRef.current?.destroy();
+          videoEncoderRef.current = null;
+          streamRef.current?.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+          testPatternSourceRef.current?.stop();
+          testPatternSourceRef.current = null;
+        });
     } finally {
+      cancelMetadataRef.current?.();
       startingRef.current = false;
+      if (!mountedRef.current) lifecycle.dispose();
     }
   }, [
+    lifecycle,
     configureUpload,
     connectionState,
     includeAudio,
@@ -964,59 +904,71 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   ]);
 
   const stopWebcam = useCallback(() => {
-    generationRef.current++;
-    captureReadyRef.current = false;
-    // A stopped browser capture must also stop being a server-side video
-    // source. Otherwise the server keeps compositing its last (often black)
-    // frame over the remaining participants until the connection closes.
-    if (
-      isWebcamRunning &&
-      connectionState === ConnectionState.CONNECTED &&
-      clientRef.current
-    ) {
-      try {
-        clientRef.current.sendUnencryptedAcipPacket(
-          PacketType.STREAM_STOP,
-          buildStreamStartPacket(false),
-        );
-      } catch (error) {
-        console.debug(
-          "[Client] STREAM_STOP skipped while closing capture:",
-          error,
-        );
+    const wasRunning = lifecycle.current(lifecycle.generation);
+    lifecycle.stop(() => {
+      cancelMetadataRef.current?.();
+      captureReadyRef.current = false;
+      // A stopped browser capture must also stop being a server-side video
+      // source. Otherwise the server keeps compositing its last (often black)
+      // frame over the remaining participants until the connection closes.
+      if (
+        wasRunning &&
+        connectionState === ConnectionState.CONNECTED &&
+        clientRef.current
+      ) {
+        try {
+          clientRef.current.sendUnencryptedAcipPacket(
+            PacketType.STREAM_STOP,
+            buildStreamStartPacket(false),
+          );
+        } catch (error) {
+          console.debug(
+            "[Client] STREAM_STOP skipped while closing capture:",
+            error,
+          );
+        }
       }
-    }
-    // Stop timer (connection state change will also stop it)
-    if (captureTimerRef.current) {
-      clearInterval(captureTimerRef.current);
-      captureTimerRef.current = null;
-    }
+      // Stop timer (connection state change will also stop it)
+      if (captureTimerRef.current) {
+        clearInterval(captureTimerRef.current);
+        captureTimerRef.current = null;
+      }
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    testPatternSourceRef.current?.stop();
-    testPatternSourceRef.current = null;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      testPatternSourceRef.current?.stop();
+      testPatternSourceRef.current = null;
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
 
-    // Clean up the video encoder
-    if (videoEncoderRef.current) {
-      videoEncoderRef.current.destroy();
-      videoEncoderRef.current = null;
-    }
+      // Clean up the video encoder
+      if (videoEncoderRef.current) {
+        videoEncoderRef.current.destroy();
+        videoEncoderRef.current = null;
+      }
 
-    frameQueueRef.current = [];
-    setIsWebcamRunning(false);
-  }, [clientRef, connectionState, frameQueueRef, isWebcamRunning, videoRef]);
+      frameQueueRef.current = [];
+      setIsWebcamRunning(false);
+    });
+  }, [clientRef, connectionState, frameQueueRef, videoRef, lifecycle]);
 
   const captureActionsRef = useRef({ startWebcam, stopWebcam });
   useLayoutEffect(() => {
     captureActionsRef.current = { startWebcam, stopWebcam };
   }, [startWebcam, stopWebcam]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      captureActionsRef.current.stopWebcam();
+      if (!startingRef.current) lifecycle.dispose();
+    };
+  }, [lifecycle]);
+
   const previousEncodingRef = useRef(encodingPreference);
   useEffect(() => {
     if (previousEncodingRef.current === encodingPreference) return;

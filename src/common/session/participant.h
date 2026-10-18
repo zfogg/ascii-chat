@@ -32,13 +32,17 @@
  * session_participant_config_t config = {
  *     .address = "127.0.0.1",
  *     .port = 27224,
+ *     .enable_video = true,
  *     .callbacks = { .on_connected = on_connected, .on_frame_received = on_frame }
  * };
  * session_participant_t *p = session_participant_create(&config);
  * session_participant_connect(p);
  *
  * // Start streaming
- * session_participant_start_video(p);
+ * if (session_participant_start_video(p) != ASCIICHAT_OK) {
+ *     session_participant_destroy(p);
+ *     return;
+ * }
  *
  * // Cleanup
  * session_participant_destroy(p);
@@ -253,14 +257,17 @@ uint32_t session_participant_get_client_id(session_participant_t *p);
  * @param p Participant handle (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Starts capturing video from the webcam and streaming to the server.
+ * Starts the configured webcam/file source and its transmission worker.
+ * Repeated starts are idempotent. Failure releases resources and leaves video inactive.
+ * Control calls must be serialized by the owning thread.
  *
  * @ingroup session
  */
 asciichat_error_t session_participant_start_video(session_participant_t *p);
 
 /**
- * @brief Stop video capture and streaming
+ * @brief Stop and join video capture, then release its resources
+ * Also stops audio when it may borrow the video media source.
  * @param p Participant handle (must not be NULL)
  *
  * @ingroup session
@@ -283,6 +290,8 @@ bool session_participant_is_video_active(session_participant_t *p);
  *
  * Starts capturing audio from the microphone and streaming to the server.
  * Also starts audio playback for receiving audio from other participants.
+ * Failure releases partially initialized capture/codec resources.
+ * Stop and disconnect join workers before releasing their resources.
  *
  * @ingroup session
  */
@@ -338,73 +347,6 @@ asciichat_error_t session_participant_get_settings(session_participant_t *p, ses
 asciichat_error_t session_participant_request_settings(session_participant_t *p, const session_settings_t *settings);
 
 /** @} */
-
-/* ============================================================================
- * Session Participant Media Capture Functions
- * @{
- */
-
-/**
- * @brief Start video capture and transmission to host
- * @param p Participant handle (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Spawns a background thread that:
- * - Captures video from webcam/file/test pattern
- * - Resizes for network efficiency (bandwidth optimization)
- * - Sends IMAGE_FRAME packets to the host
- *
- * Video capture respects the participant's enable_video flag and
- * connection state. Multiple calls are safe (returns OK if already running).
- *
- * @note Requires connection to be established first via session_participant_connect()
- * @note Use session_participant_stop_video_capture() to stop transmission
- *
- * @ingroup session
- */
-asciichat_error_t session_participant_start_video_capture(session_participant_t *p);
-
-/**
- * @brief Stop video capture and transmission
- * @param p Participant handle (must not be NULL)
- *
- * Stops the video capture background thread and cleans up resources.
- * Safe to call if video is not running.
- *
- * @ingroup session
- */
-void session_participant_stop_video_capture(session_participant_t *p);
-
-/**
- * @brief Start audio capture and transmission to host
- * @param p Participant handle (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Spawns a background thread that:
- * - Captures audio from microphone
- * - Encodes to Opus (lossy compression)
- * - Sends AUDIO packets to the host
- *
- * Audio capture respects the participant's enable_audio flag and
- * connection state. Multiple calls are safe (returns OK if already running).
- *
- * @note Requires connection to be established first via session_participant_connect()
- * @note Use session_participant_stop_audio_capture() to stop transmission
- *
- * @ingroup session
- */
-asciichat_error_t session_participant_start_audio_capture(session_participant_t *p);
-
-/**
- * @brief Stop audio capture and transmission
- * @param p Participant handle (must not be NULL)
- *
- * Stops the audio capture background thread and cleans up resources.
- * Safe to call if audio is not running.
- *
- * @ingroup session
- */
-void session_participant_stop_audio_capture(session_participant_t *p);
 
 /**
  * @brief Get the socket from a participant context
