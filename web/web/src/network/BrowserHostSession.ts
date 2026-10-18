@@ -269,7 +269,8 @@ export class BrowserHostSession implements ClientSession {
                 const packet = parsePacket(decoded);
                 this.receive(remote.id, packet.type, decoded.slice(22));
               } catch (error) {
-                this.fail(error);
+                this.removePeer(key);
+                this.options.onProgress?.(`Peer rejected: ${String(error)}`);
               }
             },
             () => this.removePeer(key),

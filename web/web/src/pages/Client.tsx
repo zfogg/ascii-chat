@@ -169,6 +169,19 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
+  const peerCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+    const options: ClientCryptoOptions = {};
+    if (discoveryCryptoOptions.password)
+      options.password = discoveryCryptoOptions.password;
+    if (discoveryCryptoOptions.identityPrivateKeyText)
+      options.identityPrivateKeyText =
+        discoveryCryptoOptions.identityPrivateKeyText;
+    const expected = cryptoSettings.skipServerVerification
+      ? undefined
+      : getActiveVerificationKey(cryptoSettings, "client-server");
+    if (expected) options.expectedServerPublicKeyText = expected;
+    return options;
+  }, [cryptoSettings, discoveryCryptoOptions]);
   const discoveryApplicationEncryption =
     cryptoSettings.customEncryption ?? undefined;
   const [stunUrls, setStunUrls] = useUrlState(
@@ -248,7 +261,8 @@ export function ClientPage({
             ...(discoveryApplicationEncryption === undefined
               ? {}
               : { applicationEncryption: discoveryApplicationEncryption }),
-            cryptoOptions: discoveryCryptoOptions,
+            cryptoOptions: peerCryptoOptions,
+            signalingCryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
@@ -271,6 +285,7 @@ export function ClientPage({
       signalingUrl,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
+      peerCryptoOptions,
       stunUrls,
       turnUrls,
       connectionRoute,

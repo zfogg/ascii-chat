@@ -1,5 +1,4 @@
 #include <ascii-chat/network/tcp/async.h>
-#include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -31,39 +30,61 @@ typedef struct {
 } async_tcp_t;
 
 static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  if (!buffers || !count || count > SOCKET_IOV_MAX || buffers[0].len < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing async packet header");
+  size_t size = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((!buffers[i].data && buffers[i].len) || buffers[i].len > SOCKET_SEND_BUFFER_MAX - size)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid async packet vectors");
+    size += buffers[i].len;
+  }
   async_tcp_t *tcp = transport->impl_data;
   mutex_lock(&tcp->mutex);
   if (tcp->closed) {
     mutex_unlock(&tcp->mutex);
     return SET_ERRNO(ERROR_NETWORK, "Async transport closed");
   }
-  acip_packet_plan_t plan;
-  asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, buffers, count, &plan);
-  if (result != ASCIICHAT_OK) {
-    mutex_unlock(&tcp->mutex);
-    return result;
-  }
-  if (!plan.encrypt) {
+  packet_header_t header;
+  memcpy(&header, buffers[0].data, sizeof(header));
+  bool encrypt = transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
+                 crypto_is_ready(transport->crypto_ctx) && !packet_is_handshake_type(NET_TO_HOST_U16(header.type));
+  asciichat_error_t result;
+  if (!encrypt) {
     result = platform_event_stream_write(tcp->stream, buffers, count, NULL, NULL);
+  } else if (size > CRYPTO_MAX_PLAINTEXT_SIZE) {
+    result = SET_ERRNO(ERROR_NETWORK_SIZE, "Encrypted async packet too large");
   } else {
-    uint8_t *ciphertext = buffer_alloc(plan.domain, plan.ciphertext_capacity);
-    if (!ciphertext) {
+    uint8_t *plaintext = buffer_alloc(NULL, size);
+    if (!plaintext) {
       mutex_unlock(&tcp->mutex);
-      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async ciphertext");
+      return SET_ERRNO(ERROR_MEMORY, "Async encryption exceeds buffer budget");
+    }
+    size_t offset = 0;
+    for (size_t i = 0; i < count; ++i) {
+      if (buffers[i].len)
+        memcpy(plaintext + offset, buffers[i].data, buffers[i].len);
+      offset += buffers[i].len;
+    }
+    size_t capacity = size + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+    uint8_t *ciphertext = buffer_alloc(NULL, capacity);
+    if (!ciphertext) {
+      buffer_release(plaintext);
+      mutex_unlock(&tcp->mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Async encryption exceeds buffer budget");
     }
     size_t length = 0;
-    packet_header_t outer;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity,
-                                 &outer, &length);
-    if (result == ERROR_MEMORY) {
-      buffer_release(ciphertext);
-      mutex_unlock(&tcp->mutex);
-      return result;
-    }
-    if (result == ASCIICHAT_OK) {
+    crypto_result_t encrypted = crypto_encrypt(transport->crypto_ctx, plaintext, size, ciphertext, capacity, &length);
+    buffer_release(plaintext);
+    if (encrypted == CRYPTO_OK) {
+      packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                               .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
+                               .length = HOST_TO_NET_U32((uint32_t)length),
+                               .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, length)),
+                               .client_id = 0};
       socket_buffer_t wire[] = {{&outer, sizeof(outer)}, {ciphertext, length}};
-      // The event stream copies the vectors before returning.
       result = platform_event_stream_write(tcp->stream, wire, 2, NULL, NULL);
+    } else {
+      result = SET_ERRNO(ERROR_CRYPTO, "Async packet encryption failed");
     }
     buffer_release(ciphertext);
   }
@@ -71,8 +92,6 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
     // Encryption sequence may already have advanced. Never continue this stream.
     tcp->closed = true;
     platform_event_stream_request_close(tcp->stream, result);
-    if (result != ERROR_CRYPTO)
-      result = SET_ERRNO(ERROR_NETWORK, "Async packet transmission failed");
   }
   mutex_unlock(&tcp->mutex);
   return result;

@@ -39,8 +39,7 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers,
-                                              size_t count) {
+asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
   size_t total = 0;
@@ -72,27 +71,6 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
   asciichat_error_t result = acip_transport_send(transport, packet, total);
   buffer_release(packet);
   return result;
-}
-
-asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
-  asciichat_error_t result = transport_sendv_impl(transport, buffers, count);
-  if (result == ASCIICHAT_OK)
-    return result;
-  log_error("ACIP packet send failed: %s", asciichat_error_string(result));
-  // Only local rejections leave framing and crypto sequence safe for another send.
-  // Never recursively report a failed error packet, or fall back to plaintext
-  // after a crypto failure. The caller retains the original failure code.
-  if (network_error_is_local_rejection(result) && transport && acip_transport_is_connected(transport) && buffers &&
-      count && count <= SOCKET_IOV_MAX && buffers[0].data && buffers[0].len >= sizeof(packet_header_t)) {
-    packet_header_t header;
-    memcpy(&header, buffers[0].data, sizeof(header));
-    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ERROR_MESSAGE) {
-      asciichat_error_t reported = acip_send_error(transport, result, NULL);
-      if (reported != ASCIICHAT_OK)
-        log_warn("Cannot notify peer of ACIP rejection: %s", asciichat_error_string(reported));
-    }
-  }
-  return SET_ERRNO(result, "ACIP packet send failed: %s", asciichat_error_string(result));
 }
 
 asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
@@ -305,7 +283,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
 
   // Allocate buffer for header + message
   size_t total_size = sizeof(header) + msg_len;
-  uint8_t *buffer = buffer_alloc(buffer_control_domain(), total_size);
+  uint8_t *buffer = buffer_alloc(NULL, total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }

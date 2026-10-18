@@ -10,7 +10,6 @@
  */
 
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/log/log.h>
@@ -35,25 +34,37 @@ typedef struct {
 
 static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
   tcp_transport_data_t *tcp = transport->impl_data;
+  if (!buffers || !count || count > SOCKET_IOV_MAX || buffers[0].len < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet header");
+  size_t len = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((buffers[i].len && !buffers[i].data) || buffers[i].len > SOCKET_SEND_BUFFER_MAX - len)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid TCP vector size");
+    len += buffers[i].len;
+  }
+  packet_header_t header;
+  memcpy(&header, buffers[0].data, sizeof(header));
   mutex_lock(&tcp->send_mutex);
   if (!tcp->is_connected) {
     mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "TCP transport disconnected");
   }
-  acip_packet_plan_t plan;
-  asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, buffers, count, &plan);
-  if (result != ASCIICHAT_OK) {
-    mutex_unlock(&tcp->send_mutex);
-    return result;
-  }
-  uint64_t timeout = packet_send_timeout_ns(plan.plaintext_size);
-  if (!plan.encrypt) {
+  bool encrypt = transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
+                 crypto_is_ready(transport->crypto_ctx) && !packet_is_handshake_type(NET_TO_HOST_U16(header.type));
+  uint64_t timeout = packet_send_timeout_ns(len);
+  asciichat_error_t result;
+  if (!encrypt) {
     result = socket_sendv_all(tcp->sockfd, buffers, count, timeout);
   } else {
-    size_t capacity = sizeof(packet_header_t) + plan.ciphertext_capacity;
+    if (len > CRYPTO_MAX_PLAINTEXT_SIZE ||
+        len > SOCKET_SEND_BUFFER_MAX - sizeof(header) - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
+      mutex_unlock(&tcp->send_mutex);
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Encrypted TCP packet too large");
+    }
+    size_t capacity = sizeof(header) + len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
     socket_send_buffer_t wire = {0};
-    if (tcp->zerocopy_disabled || plan.domain) {
-      wire.data = buffer_alloc(plan.domain, capacity);
+    if (tcp->zerocopy_disabled) {
+      wire.data = buffer_alloc(NULL, capacity);
       wire.capacity = capacity;
       result = wire.data ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot allocate ciphertext");
     } else {
@@ -63,21 +74,44 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
       mutex_unlock(&tcp->send_mutex);
       return result;
     }
+    uint8_t *gathered = NULL;
+    const uint8_t *plaintext = buffers[0].data;
+    if (count > 1) {
+      gathered = buffer_alloc(NULL, len);
+      if (!gathered) {
+        socket_send_buffer_free(&wire);
+        mutex_unlock(&tcp->send_mutex);
+        return SET_ERRNO(ERROR_MEMORY, "Cannot allocate encryption input");
+      }
+      size_t offset = 0;
+      for (size_t i = 0; i < count; ++i) {
+        if (buffers[i].len)
+          memcpy(gathered + offset, buffers[i].data, buffers[i].len);
+        offset += buffers[i].len;
+      }
+      plaintext = gathered;
+    }
     size_t ciphertext_len = 0;
-    packet_header_t outer;
-    result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, (uint8_t *)wire.data + sizeof(outer),
-                                 plan.ciphertext_capacity, &outer, &ciphertext_len);
-    if (result != ASCIICHAT_OK) {
+    uint8_t *ciphertext = (uint8_t *)wire.data + sizeof(header);
+    crypto_result_t encrypted =
+        crypto_encrypt(transport->crypto_ctx, plaintext, len, ciphertext, capacity - sizeof(header), &ciphertext_len);
+    buffer_release(gathered);
+    if (encrypted != CRYPTO_OK) {
       socket_send_buffer_free(&wire);
       mutex_unlock(&tcp->send_mutex);
-      return result;
+      return SET_ERRNO(ERROR_CRYPTO, "Cannot encrypt TCP packet");
     }
+    packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                             .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
+                             .length = HOST_TO_NET_U32((uint32_t)ciphertext_len),
+                             .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len)),
+                             .client_id = 0};
     memcpy(wire.data, &outer, sizeof(outer));
     size_t wire_len = sizeof(outer) + ciphertext_len;
     bool supported = false, copied = false;
     uint64_t send_start = time_get_ns();
     result = ASCIICHAT_OK;
-    if (!tcp->zerocopy_disabled && !plan.domain && wire_len >= SOCKET_ZEROCOPY_THRESHOLD) {
+    if (!tcp->zerocopy_disabled && wire_len >= SOCKET_ZEROCOPY_THRESHOLD) {
       result = socket_send_zerocopy(tcp->sockfd, &wire, wire_len, timeout, &supported, &copied);
       tcp->zerocopy_disabled = !supported || copied;
       log_debug("TCP zerocopy: supported=%d copied=%d bytes=%zu", supported, copied, wire_len);

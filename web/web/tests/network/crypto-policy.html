@@ -5,14 +5,35 @@
   <body>
     <pre id="result">Waiting for security test</pre>
     <script type="module">
+      import { BrowserHostSession } from "/src/network/BrowserHostSession.ts";
+      import { WebRTCSession } from "/src/network/WebRTCSession.ts";
       import { ClientConnection } from "/src/network/ClientConnection.ts";
       import { buildCapabilitiesPacket } from "/src/network/packetBuilders.ts";
       import { ConnectionState, PacketType } from "/src/wasm/client.ts";
 
+      window.startBrowserHost = async (options) => {
+        let created;
+        const ready = new Promise((resolve) => {
+          created = resolve;
+        });
+        window.testHost = new BrowserHostSession({
+          ...options,
+          createSession: true,
+          onCreated: created,
+        });
+        await window.testHost.connect();
+        return ready;
+      };
+
       window.runSecurityTest = async (options) => {
         const sent = [];
-        const originalSend = WebSocket.prototype.send;
-        WebSocket.prototype.send = function (data) {
+        const progress = [];
+        options.onProgress = (message) => progress.push(message);
+        const prototype = options.sessionName
+          ? RTCDataChannel.prototype
+          : WebSocket.prototype;
+        const originalSend = prototype.send;
+        prototype.send = function (data) {
           const bytes =
             data instanceof ArrayBuffer ? new Uint8Array(data) : data;
           if (bytes.byteLength >= 22)
@@ -25,7 +46,9 @@
             );
           return originalSend.call(this, data);
         };
-        const connection = new ClientConnection(options);
+        const connection = options.sessionName
+          ? new WebRTCSession(options)
+          : new ClientConnection(options);
         const states = [];
         try {
           await new Promise((resolve, reject) => {
@@ -68,13 +91,19 @@
             JSON.stringify(result);
           return result;
         } catch (error) {
-          const result = { ok: false, sent, states, error: String(error) };
+          const result = {
+            ok: false,
+            sent,
+            states,
+            progress,
+            error: String(error),
+          };
           document.querySelector("#result").textContent =
             JSON.stringify(result);
           return result;
         } finally {
           connection.disconnect();
-          WebSocket.prototype.send = originalSend;
+          prototype.send = originalSend;
         }
       };
     </script>
