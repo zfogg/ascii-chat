@@ -41,6 +41,7 @@ export function useMirrorFile({
   const suspended = useRef(false);
   const resumePlayback = useRef(false);
   const [paused, setPaused] = useState(false);
+  const [ended, setEnded] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const owner = useRef<AbortController | null>(null);
@@ -66,6 +67,7 @@ export function useMirrorFile({
     cancelStart();
     stopWebcam();
     setLoading(false);
+    setEnded(false);
     setKind(null);
     setFileName("");
     setStatus("");
@@ -318,6 +320,7 @@ export function useMirrorFile({
   }, [videoRef, setError]);
 
   const restart = useCallback(() => {
+    setEnded(false);
     if (streaming.current) {
       streaming.current.restart();
       return;
@@ -338,10 +341,11 @@ export function useMirrorFile({
     const sync = () => {
       if (picture.current) return;
       if (!streaming.current && !suspended.current) setPaused(video.paused);
+      setEnded(video.ended);
       setMuted(video.muted);
       setVolume(video.volume);
     };
-    const events = ["play", "pause", "volumechange"];
+    const events = ["play", "pause", "ended", "seeked", "volumechange"];
     events.forEach((event) => video.addEventListener(event, sync));
     return () =>
       events.forEach((event) => video.removeEventListener(event, sync));
@@ -356,6 +360,7 @@ export function useMirrorFile({
     loading,
     status,
     paused,
+    ended,
     muted,
     volume,
     togglePause,
