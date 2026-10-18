@@ -1,3 +1,4 @@
+#include <ascii-chat/ui/notice.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -225,6 +226,9 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     if (policy_result != ASCIICHAT_OK)
       return policy_result;
 
+    if (!policy.transport_secure && !ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode))
+      NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
+
     log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
@@ -364,6 +368,9 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     tcp_client_destroy(&tcp_client);
     return policy_result;
   }
+
+  if (!policy.transport_secure && !ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode))
+    NOTICE(DANGER, "ENCRYPTION DISABLED", "--no-encrypt is enabled. This connection is not encrypted.");
 
   log_debug("TCP crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode, ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode),
             ACIP_CRYPTO_HAS_AUTH(crypto_mode));

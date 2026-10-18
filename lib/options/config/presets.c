@@ -359,7 +359,19 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Encryption & Authentication Conflicts
   // ============================================================================
-  // Security combinations are validated by crypto_policy_resolve().
+  // Reject contradictory CLI requests before initializing transport security.
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+
+  // Authentication material conflicts with explicitly disabling authentication.
+  options_builder_add_dependency_conflicts(b, "no-auth", "key",
+                                           "Cannot use --no-auth with --key (key requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "password",
+                                           "Cannot use --no-auth with --password (password requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
+                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
+                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
+
   // Identity and verification keys can be combined, including with --no-encrypt.
 
   // ============================================================================

@@ -42,6 +42,8 @@ def run_client(binary, directory, name, address, options, mode, success=True):
         assert result.returncode == 0, (name, result.returncode, "\n".join(line for line in text.splitlines() if "[ERROR" in line or "[WARN" in line)[-6000:])
         assert len(result.stdout.strip()) > 100, (name, "No rendered frame", text[-6000:])
         assert f"crypto mode: 0x{mode:02x}" in text, (name, "Wrong negotiated mode", text[-6000:])
+        expected_notice = not (mode & 1) and not address.startswith("wss://")
+        assert ("ENCRYPTION DISABLED" in text) == expected_notice, (name, "Incorrect encryption notice")
     else:
         assert result.returncode != 0, (name, "Rejected credentials connected")
         assert "Crypto handshake completed successfully" not in text, (name, text[-6000:])
@@ -63,6 +65,21 @@ def main():
     server_key = ["--key", str(directory / "server")]
     client_key = ["--key", str(directory / "client"), "--server-key", str(directory / "server.pub")]
     whitelist = ["--client-keys", str(directory / "client.pub")]
+    conflicts = [
+        ("client", ["--encrypt", "--no-encrypt"]),
+        ("client", ["--no-auth", "--key", str(directory / "client")]),
+        ("client", ["--no-auth", "--password", "test-password"]),
+        ("server", ["--no-auth", "--client-keys", str(directory / "client.pub")]),
+        ("client", ["--no-auth", "--server-key", str(directory / "server.pub")]),
+    ]
+    for command, flags in conflicts:
+        for ordered in (flags, flags[1:] + flags[:1]) if flags[0] == "--no-auth" else (flags, list(reversed(flags))):
+            result = subprocess.run([str(binary), command, *ordered], cwd=directory,
+                                    capture_output=True, timeout=10)
+            output = (result.stdout + result.stderr).decode("utf-8", errors="replace")
+            assert result.returncode != 0 and any(message in output for message in
+                ("Cannot use", "mutually exclusive", "Authentication material cannot be used")), (ordered, output[-3000:])
+        print(f"PASS CLI conflict: {flags}", flush=True)
     cases = [
         ("tcp-default", "tcp", [], [], 1, True),
         ("tcp-none", "tcp", ["--no-encrypt", "--no-auth"], ["--no-encrypt", "--no-auth"], 0, True),
