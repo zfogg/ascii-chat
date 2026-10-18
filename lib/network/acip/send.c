@@ -79,19 +79,9 @@ asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket
   if (result == ASCIICHAT_OK)
     return result;
   log_error("ACIP packet send failed: %s", asciichat_error_string(result));
-  // Only local rejections leave framing and crypto sequence safe for another send.
-  // Never recursively report a failed error packet, or fall back to plaintext
-  // after a crypto failure. The caller retains the original failure code.
-  if (network_error_is_local_rejection(result) && transport && acip_transport_is_connected(transport) && buffers &&
-      count && count <= SOCKET_IOV_MAX && buffers[0].data && buffers[0].len >= sizeof(packet_header_t)) {
-    packet_header_t header;
-    memcpy(&header, buffers[0].data, sizeof(header));
-    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ERROR_MESSAGE) {
-      asciichat_error_t reported = acip_send_error(transport, result, NULL);
-      if (reported != ASCIICHAT_OK)
-        log_warn("Cannot notify peer of ACIP rejection: %s", asciichat_error_string(reported));
-    }
-  }
+  // A local preparation failure can drop one frame without ending the session.
+  // ERROR_MESSAGE sanitizes these failures to fatal ERROR_INTERNAL at the peer;
+  // leave protocol-level rejection notifications to callers that intend to stop.
   return SET_ERRNO(result, "ACIP packet send failed: %s", asciichat_error_string(result));
 }
 

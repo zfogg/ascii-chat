@@ -34,7 +34,7 @@ allocation/copy work on contiguous encrypted async TCP and WebSocket paths.
 
 - `test-acip-prepare`: borrowed plaintext vectors, handshake exceptions, identical
   contiguous/vector ciphertext, decryption, bounds, allocation/crypto failures,
-  synchronous and asynchronous TCP, and recoverable peer error packets.
+  synchronous and asynchronous TCP, and continued delivery after local send rejection.
 - `python tests/integration/acip_prepare_websocket.py build/bin/test-acip-prepare`:
   real WebSocket binary-frame round trip using the shared envelope.
 - `test-webrtc-security`: real libdatachannel peers, 64 KiB round trips, nonce

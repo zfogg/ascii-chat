@@ -1111,6 +1111,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     target_include_directories(test-acip-prepare PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        set_property(TARGET test-acip-prepare PROPERTY EXCLUDE_FROM_ALL FALSE)
         add_test(NAME acip-prepare COMMAND test-acip-prepare)
         add_test(NAME acip-prepare-websocket COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/integration/acip_prepare_websocket.py $<TARGET_FILE:test-acip-prepare>)

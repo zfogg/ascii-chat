@@ -151,15 +151,17 @@ static void tcp_fixture(bool async, bool encrypted) {
   CHECK(envelope.type == PACKET_TYPE_PING && envelope.len == (encrypted ? 9 : sizeof(packet_header_t) + 9));
   CHECK(memcmp((uint8_t *)envelope.allocated_buffer + sizeof(packet_header_t), "123456789", 9) == 0);
   buffer_release(envelope.allocated_buffer);
-  // Local size rejection sends a public error and leaves the connection usable.
+  // A rejected frame must not insert a fatal error before the next valid packet.
   packet_header_t header = inner_header(0);
   socket_buffer_t invalid[] = {{&header, sizeof(header)}, {"x", SIZE_MAX}};
   CHECK(acip_transport_sendv(sender, invalid, 2) == ERROR_NETWORK_SIZE);
+  CHECK(acip_transport_is_connected(sender));
+  CHECK(packet_send_via_transportv(sender, PACKET_TYPE_PING, payload, 3, 7) == ASCIICHAT_OK);
   CHECK(receive_packet_secure_with_timeout(sockets[1], encrypted ? &peer : NULL, encrypted, &envelope,
                                            5 * NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
-  CHECK(envelope.type == PACKET_TYPE_ERROR_MESSAGE);
+  CHECK(envelope.type == PACKET_TYPE_PING && envelope.len == (encrypted ? 9 : sizeof(packet_header_t) + 9));
+  CHECK(memcmp((uint8_t *)envelope.allocated_buffer + sizeof(packet_header_t), "123456789", 9) == 0);
   buffer_release(envelope.allocated_buffer);
-  CHECK(acip_transport_is_connected(sender));
   acip_transport_destroy(sender);
   if (sockets[0] != INVALID_SOCKET_VALUE)
     socket_close(sockets[0]);
