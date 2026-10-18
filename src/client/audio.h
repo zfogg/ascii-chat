@@ -35,6 +35,7 @@
  */
 
 #pragma once
+#include "connection.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -102,7 +103,7 @@ int audio_client_init(void);
  * packets from the send queue (populated by the capture thread) and sends
  * them to the server.
  *
- * Must be called after audio_client_init() and BEFORE audio_start_thread()
+ * Must be called after audio_client_init() and BEFORE audio_start_thread(client_connection_t *connection)
  * during protocol_start_connection() after server connection succeeds.
  *
  * @note This is called automatically by protocol_start_connection() and
@@ -112,7 +113,7 @@ int audio_client_init(void);
  *
  * @see audio_start_thread "Start audio capture thread"
  */
-void audio_sender_init(void);
+asciichat_error_t audio_sender_init(client_connection_t *connection);
 
 /** Signal the asynchronous audio sender to stop before worker threads are joined. */
 void audio_sender_cleanup(void);
@@ -145,7 +146,7 @@ void audio_sender_finalize(void);
  *
  * @see audio_stop_thread "Stop audio capture thread"
  */
-int audio_start_thread(void);
+int audio_start_thread(client_connection_t *connection);
 
 /**
  * @brief Stop audio capture thread
@@ -253,3 +254,5 @@ int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, 
  * @ingroup client_audio
  */
 audio_context_t *audio_get_context(void);
+
+asciichat_error_t audio_connection_init(client_connection_t *connection);

@@ -1129,6 +1129,23 @@ asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, ui
   return SET_ERRNO(ERROR_NETWORK, "WebSocket closed before send queue drained");
 }
 
+void acip_websocket_transport_interrupt(acip_transport_t *transport) {
+  if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET || !transport->impl_data)
+    return;
+  websocket_transport_data_t *ws_data = transport->impl_data;
+  atomic_store_bool(&ws_data->is_destroying, true);
+  mutex_lock(&ws_data->state_mutex);
+  ws_data->is_connected = false;
+  cond_broadcast(&ws_data->state_cond);
+  mutex_unlock(&ws_data->state_mutex);
+  // Receivers release recv_mutex while waiting; acquire it to avoid lost wakes.
+  mutex_lock(&ws_data->recv_mutex);
+  cond_broadcast(&ws_data->recv_cond);
+  mutex_unlock(&ws_data->recv_mutex);
+  if (ws_data->context)
+    lws_cancel_service(ws_data->context);
+}
+
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
   uint64_t now_ns = time_get_ns();
@@ -1488,6 +1505,35 @@ static struct lws_context *websocket_create_client_context(void) {
   lws_log_init_client();
 
   return lws_create_context(&info);
+}
+
+struct acip_websocket_runtime {
+  struct lws_context *context;
+};
+
+asciichat_error_t acip_websocket_runtime_create(acip_websocket_runtime_t **out) {
+  if (!out || *out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WebSocket runtime output must be empty");
+  acip_websocket_runtime_t *runtime = SAFE_CALLOC(1, sizeof(*runtime), acip_websocket_runtime_t *);
+  if (!runtime)
+    return SET_ERRNO(ERROR_MEMORY, "Could not allocate WebSocket runtime");
+  // libwebsockets 4.5 calls OPENSSL_cleanup when its last TLS context goes away.
+  // An application reference prevents connection teardown from ending TLS lifetime.
+  runtime->context = websocket_create_client_context();
+  if (!runtime->context) {
+    SAFE_FREE(runtime);
+    return SET_ERRNO(ERROR_NETWORK, "Could not initialize WebSocket runtime");
+  }
+  *out = runtime;
+  return ASCIICHAT_OK;
+}
+
+void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime) {
+  if (!runtime || !*runtime)
+    return;
+  lws_context_destroy((*runtime)->context);
+  SAFE_FREE(*runtime);
+  *runtime = NULL;
 }
 
 /**

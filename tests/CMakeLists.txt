@@ -1219,3 +1219,11 @@ if(BUILD_TESTS)
     add_test(NAME participant-media COMMAND test-participant-media)
     set_tests_properties(participant-media PROPERTIES LABELS "integration" TIMEOUT 60)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    add_test(NAME client-connection-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_connection_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(client-connection-lifecycle PROPERTIES LABELS "integration" TIMEOUT 300)
+endif()

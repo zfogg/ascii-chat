@@ -13,6 +13,7 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/server/stats.c
     # Client mode
     ${CMAKE_CURRENT_SOURCE_DIR}/client/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/client/connection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/protocol.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/crypto.c

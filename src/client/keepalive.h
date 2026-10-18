@@ -11,6 +11,7 @@
  */
 
 #pragma once
+#include "connection.h"
 
 #include <stdbool.h>
 
@@ -20,7 +21,7 @@
  *
  * @ingroup client_keepalive
  */
-int keepalive_start_thread();
+int keepalive_start_thread(client_connection_t *connection);
 
 /**
  * @brief Stop keepalive/ping thread

@@ -159,6 +159,7 @@
  */
 
 #pragma once
+#include "connection.h"
 
 #include <stdbool.h>
 
@@ -280,7 +281,7 @@ int capture_init();
  * @see capture_thread_exited "Check if thread has exited"
  * @see media_source_read_video "Frame acquisition from media source"
  */
-int capture_start_thread();
+int capture_start_thread(client_connection_t *connection);
 
 /**
  * @brief Stop capture thread

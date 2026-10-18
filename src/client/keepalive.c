@@ -1,3 +1,4 @@
+#include "connection_internal.h"
 /**
  * @file client/keepalive.c
  * @ingroup client_keepalive
@@ -81,26 +82,6 @@
  * Keepalive Thread Management
  * ============================================================================ */
 
-/**
- * @brief Flag indicating if ping thread was successfully created
- *
- * Used during shutdown to determine whether the thread handle is valid and
- * should be joined. Prevents attempting to join a thread that was never created.
- *
- * @ingroup client_keepalive
- */
-static bool g_ping_thread_created = false;
-
-/**
- * @brief Atomic flag indicating ping thread has exited
- *
- * Set by the ping thread when it exits. Used by other threads to detect
- * thread termination without blocking on thread join operations.
- *
- * @ingroup client_keepalive
- */
-static atomic_t g_ping_thread_exited = {0};
-
 /* ============================================================================
  * Keepalive Configuration
  * ============================================================================ */
@@ -141,15 +122,15 @@ static atomic_t g_ping_thread_exited = {0};
  * @ingroup client_keepalive
  */
 static void *ping_thread_func(void *arg) {
-  (void)arg;
+  client_connection_t *connection = arg;
 
 #ifdef DEBUG_THREADS
   log_debug("Ping thread started");
 #endif
 
   // FPS tracking for keepalive thread (ping sent every 1 second)
-  static fps_t fps_tracker = {0};
-  static bool fps_tracker_initialized = false;
+  fps_t fps_tracker = {0};
+  bool fps_tracker_initialized = false;
   if (!fps_tracker_initialized) {
     fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE",
                            100 * NS_PER_MS_INT); // Report keepalive metrics every 100ms
@@ -211,7 +192,7 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread stopped");
 #endif
 
-  atomic_store_bool(&g_ping_thread_exited, true);
+  atomic_store_bool(&connection->ping_thread_exited, true);
 
   // Clean up thread-local error context before exit
 
@@ -232,28 +213,22 @@ static void *ping_thread_func(void *arg) {
  *
  * @ingroup client_keepalive
  */
-int keepalive_start_thread() {
-  if (g_ping_thread_created) {
+int keepalive_start_thread(client_connection_t *connection) {
+  if (connection->ping_thread_created) {
     log_warn("Ping thread already created");
     return 0;
   }
 
-  // Register keepalive atomics with named debug registry
-  static bool keepalive_atomics_registered = false;
-  if (!keepalive_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_ping_thread_exited, "keepalive_ping_thread_exit_confirmation", NULL);
-    keepalive_atomics_registered = true;
-  }
-
   // Start ping thread for keepalive
-  atomic_store_bool(&g_ping_thread_exited, false);
-  if (thread_pool_spawn(g_client_worker_pool, ping_thread_func, NULL, 3, "keepalive_ping") != ASCIICHAT_OK) {
+  atomic_store_bool(&connection->ping_thread_exited, false);
+  if (thread_pool_spawn(connection->client_worker_pool, ping_thread_func, connection, 3, "keepalive_ping") !=
+      ASCIICHAT_OK) {
     log_error("Failed to spawn ping thread in worker pool");
     LOG_ERRNO_IF_SET("Ping thread creation failed");
     return -1;
   }
 
-  g_ping_thread_created = true;
+  connection->ping_thread_created = true;
   return 0;
 }
 
@@ -266,7 +241,9 @@ int keepalive_start_thread() {
  * @ingroup client_keepalive
  */
 void keepalive_stop_thread() {
-  if (!g_ping_thread_created) {
+  if (!client_connection_current())
+    return;
+  if (!client_connection_current()->ping_thread_created) {
     return;
   }
 
@@ -275,17 +252,17 @@ void keepalive_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load_bool(&g_ping_thread_exited)) {
+  while (wait_count < 20 && !atomic_load_bool(&client_connection_current()->ping_thread_exited)) {
     platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
     wait_count++;
   }
 
-  if (!atomic_load_bool(&g_ping_thread_exited)) {
+  if (!atomic_load_bool(&client_connection_current()->ping_thread_exited)) {
     log_warn("Ping thread not responding - will be joined by thread pool");
   }
 
-  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
-  g_ping_thread_created = false;
+  // Thread will be joined by thread_pool_stop_all() in client_connection_stop()
+  client_connection_current()->ping_thread_created = false;
 
   log_debug("Ping thread stopped and joined");
 }
@@ -298,5 +275,5 @@ void keepalive_stop_thread() {
  * @ingroup client_keepalive
  */
 bool keepalive_thread_exited() {
-  return atomic_load_bool(&g_ping_thread_exited);
+  return atomic_load_bool(&client_connection_current()->ping_thread_exited);
 }

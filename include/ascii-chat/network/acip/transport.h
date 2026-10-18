@@ -397,6 +397,16 @@ asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, b
  * Call from a worker, never from the libwebsockets service thread. */
 asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, uint64_t timeout_ns);
 
+/** Application lifetime reference for libwebsockets TLS initialization.
+ * Keep it alive across connection contexts and release it after the last user. */
+typedef struct acip_websocket_runtime acip_websocket_runtime_t;
+asciichat_error_t acip_websocket_runtime_create(acip_websocket_runtime_t **out);
+void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime);
+
+/** Interrupt WebSocket I/O without freeing the transport or joining workers.
+ * Call from normal thread context while retaining ownership of the transport. */
+void acip_websocket_transport_interrupt(acip_transport_t *transport);
+
 acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
                                                          crypto_context_t *crypto_ctx);
 
